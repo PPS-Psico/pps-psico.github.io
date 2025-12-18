@@ -1,17 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { SmartInsight, PriorityLevel } from '../hooks/useSmartAnalysis';
 
 interface SmartBriefingProps {
     status: PriorityLevel;
     summary: string;
     insights: SmartInsight[];
-    score: number;
+    signals: string[];
     userName: string;
 }
 
-const SmartBriefing: React.FC<SmartBriefingProps> = ({ status, summary, insights, score, userName }) => {
+const SmartBriefing: React.FC<SmartBriefingProps> = ({ status, summary, insights, signals, userName }) => {
     const [greeting, setGreeting] = useState('');
 
     useEffect(() => {
@@ -21,171 +22,132 @@ const SmartBriefing: React.FC<SmartBriefingProps> = ({ status, summary, insights
         else setGreeting('Buenas noches');
     }, []);
 
-    // Configuración de Tema según Estado
-    const getThemeColors = (s: PriorityLevel) => {
+    const getStatusConfig = (s: PriorityLevel) => {
         switch (s) {
             case 'critical': 
                 return { 
-                    text: 'text-rose-600 dark:text-rose-400', 
-                    ringColor: 'text-rose-500',
-                    gradientFrom: '#f43f5e', // rose-500
-                    gradientTo: '#fb923c',   // orange-400
-                    bgGlow: 'from-rose-500/10 dark:from-rose-500/20',
-                    cardAction: 'bg-rose-50 border-rose-100 dark:bg-rose-950/40 dark:border-rose-900/60'
+                    color: '#f43f5e',
+                    icon: 'gavel',
+                    label: 'Acción Requerida',
+                    bg: 'bg-rose-500/10'
                 };
             case 'warning': 
                 return { 
-                    text: 'text-amber-600 dark:text-amber-400', 
-                    ringColor: 'text-amber-500',
-                    gradientFrom: '#f59e0b', // amber-500
-                    gradientTo: '#facc15',   // yellow-400
-                    bgGlow: 'from-amber-500/10 dark:from-amber-500/20',
-                    cardAction: 'bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800'
+                    color: '#f59e0b',
+                    icon: 'auto_fix_high',
+                    label: 'Alertas de Flujo',
+                    bg: 'bg-amber-500/10'
                 };
-            default: // stable/optimal
+            default: 
                 return { 
-                    text: 'text-emerald-600 dark:text-emerald-400', 
-                    ringColor: 'text-emerald-500',
-                    gradientFrom: '#10b981', // emerald-500
-                    gradientTo: '#3b82f6',   // blue-500
-                    bgGlow: 'from-blue-500/10 dark:from-blue-500/20',
-                    cardAction: 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700'
+                    color: '#10b981',
+                    icon: 'insights',
+                    label: 'Operación Estable',
+                    bg: 'bg-emerald-500/10'
                 };
         }
     };
 
-    const theme = getThemeColors(status);
-
-    // Cálculos para el Anillo SVG
-    const radius = 38;
-    const stroke = 6;
-    const normalizedRadius = radius - stroke * 2;
-    const circumference = normalizedRadius * 2 * Math.PI;
-    const strokeDashoffset = circumference - (score / 100) * circumference;
+    const config = getStatusConfig(status);
 
     return (
-        <div className="relative w-full overflow-hidden rounded-[2rem] bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none animate-fade-in-up transition-colors duration-300">
-            
-            {/* Ambient Background Glow */}
-            <div className={`absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br ${theme.bgGlow} via-transparent to-transparent rounded-full blur-3xl opacity-60 dark:opacity-40 pointer-events-none`}></div>
+        <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-white/5 transition-all duration-500">
+            {/* Background Effects */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <motion.div 
+                    animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
+                    transition={{ duration: 10, repeat: Infinity }}
+                    className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full blur-[120px]"
+                    style={{ backgroundColor: config.color + '22' }}
+                />
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] dark:opacity-20 mix-blend-overlay"></div>
+            </div>
 
-            <div className="relative z-10 p-6 sm:p-10 flex flex-col lg:flex-row gap-8 items-center lg:items-stretch">
+            <div className="relative z-10 p-8 sm:p-12 flex flex-col lg:flex-row gap-12">
                 
-                {/* LEFT: Text Content */}
-                <div className="flex-1 flex flex-col justify-center text-center lg:text-left">
-                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-3">
-                        <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm text-blue-600 dark:text-blue-400">
-                            <span className="material-icons !text-base">smart_toy</span>
+                {/* Lado Izquierdo: Orbe de Estado y Señales Rápidas */}
+                <div className="flex-none w-full lg:w-64 space-y-6">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${config.bg} border border-white/10 shadow-inner relative overflow-hidden`}>
+                            <motion.div 
+                                animate={{ opacity: [0.4, 1, 0.4] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className="absolute inset-0 bg-white/10"
+                            />
+                            <span className="material-icons !text-3xl relative z-10" style={{ color: config.color }}>{config.icon}</span>
                         </div>
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                            {greeting}, {userName.split(' ')[0]}.
-                        </h2>
+                        <div>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Diagnóstico</h4>
+                            <p className="text-sm font-bold truncate" style={{ color: config.color }}>{config.label}</p>
+                        </div>
                     </div>
-                    
-                    <p className="text-lg text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-2xl">
-                        {summary}
-                    </p>
 
-                    <div className="mt-5 flex items-center justify-center lg:justify-start gap-2.5">
-                         <span className={`flex h-2.5 w-2.5 relative`}>
-                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === 'critical' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${status === 'critical' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                         </span>
-                         <span className={`text-xs font-bold uppercase tracking-wider ${status === 'critical' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                             Sistema {status === 'critical' ? 'Requiere Atención' : 'Operativo'}
-                         </span>
+                    <div className="space-y-2">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-3">Señales Detectadas</h4>
+                        <div className="flex flex-wrap lg:flex-col gap-2">
+                            {signals.length > 0 ? signals.map((sig, i) => (
+                                <motion.span 
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    key={i} 
+                                    className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[11px] font-bold text-slate-700 dark:text-slate-300"
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full mr-2" style={{ backgroundColor: config.color }}></span>
+                                    {sig}
+                                </motion.span>
+                            )) : (
+                                <span className="text-xs text-slate-400 italic font-medium">No hay alertas activas</span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* RIGHT: Operational Health Widget (Removed Box Container) */}
-                <div className="flex-none flex flex-col sm:flex-row items-center gap-8 pl-0 lg:pl-8">
-                    
-                    {/* Health Ring */}
-                    <div className="relative flex items-center justify-center">
-                        <svg
-                            height={radius * 2}
-                            width={radius * 2}
-                            className="transform -rotate-90"
-                        >
-                            <defs>
-                                <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor={theme.gradientFrom} />
-                                    <stop offset="100%" stopColor={theme.gradientTo} />
-                                </linearGradient>
-                            </defs>
-                            {/* Track - Light gray in light mode, Dark gray in dark mode */}
-                            <circle
-                                className="stroke-slate-100 dark:stroke-slate-800"
-                                strokeWidth={stroke}
-                                fill="transparent"
-                                r={normalizedRadius}
-                                cx={radius}
-                                cy={radius}
-                            />
-                            {/* Progress */}
-                            <circle
-                                stroke="url(#healthGradient)"
-                                strokeWidth={stroke}
-                                strokeDasharray={circumference + ' ' + circumference}
-                                style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s ease-in-out' }}
-                                strokeLinecap="round"
-                                fill="transparent"
-                                r={normalizedRadius}
-                                cx={radius}
-                                cy={radius}
-                            />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-2xl font-black text-slate-800 dark:text-white leading-none">{score}%</span>
-                        </div>
+                {/* Centro/Derecha: Narrativa de IA y Acciones */}
+                <div className="flex-1 space-y-8">
+                    <div className="space-y-4">
+                        <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                            {greeting}, <span className="text-blue-600 dark:text-blue-400">{userName.split(' ')[0]}</span>.
+                        </h2>
                         
-                        <div className="absolute -bottom-6 w-full text-center">
-                            <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider">Salud</span>
+                        <div className="relative pt-2">
+                            <span className="absolute -left-4 top-2 bottom-0 w-1 bg-blue-600/30 rounded-full"></span>
+                            <p className="text-xl sm:text-2xl text-slate-700 dark:text-slate-200 font-bold leading-tight tracking-tight pr-4">
+                                {summary}
+                            </p>
                         </div>
                     </div>
 
-                    {/* Separator (Desktop) */}
-                    <div className="hidden sm:block w-px h-20 bg-slate-200 dark:bg-slate-700/50"></div>
-
-                    {/* Action Area */}
-                    <div className="flex flex-col justify-center min-w-[220px]">
-                        {insights.length > 0 ? (
-                            <>
-                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wide">Acción Prioritaria</p>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border transition-colors shadow-sm ${theme.cardAction}`}>
-                                    <span className={`material-icons !text-lg ${insights[0].type === 'critical' ? 'text-rose-500' : 'text-blue-500 dark:text-blue-400'}`}>
-                                        {insights[0].icon}
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium line-clamp-2 leading-tight mb-1.5">
-                                            {insights[0].message}
-                                        </p>
-                                        {insights[0].actionLink && (
-                                            <Link 
-                                                to={insights[0].actionLink}
-                                                className={`text-[10px] font-bold uppercase tracking-wide hover:underline ${theme.text}`}
-                                            >
-                                                {insights[0].actionLabel || 'REVISAR'} &rarr;
-                                            </Link>
-                                        )}
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                             <div className="text-center sm:text-left py-2">
-                                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5 justify-center sm:justify-start">
-                                    <span className="material-icons !text-lg">check_circle</span>
-                                    Todo en orden
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-0.5">No hay alertas críticas pendientes.</p>
-                             </div>
-                        )}
+                    {/* Acciones Prioritarias Sugeridas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <AnimatePresence>
+                            {insights.map((insight, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.3 + (idx * 0.1) }}
+                                >
+                                    <Link 
+                                        to={insight.actionLink || '#'}
+                                        className="group/btn flex items-start gap-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 transition-all duration-300 h-full shadow-sm hover:shadow-md"
+                                    >
+                                        <div className={`p-2.5 rounded-xl ${insight.type === 'critical' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'} group-hover/btn:scale-110 transition-transform`}>
+                                            <span className="material-icons !text-xl">{insight.icon}</span>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{insight.message}</p>
+                                            <span className="inline-flex items-center text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-tighter group-hover/btn:gap-2 gap-1 transition-all">
+                                                Acceder a gestión <span className="material-icons !text-xs">arrow_forward</span>
+                                            </span>
+                                        </div>
+                                    </Link>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     </div>
                 </div>
             </div>
-            
-            {/* Bottom Color Line */}
-            <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-${status === 'critical' ? 'rose' : 'emerald'}-400 to-transparent opacity-60`}></div>
         </div>
     );
 };

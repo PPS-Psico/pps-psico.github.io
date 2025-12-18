@@ -139,7 +139,7 @@ export const StudentHome: React.FC = () => {
                 <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
                     <button 
                         onClick={() => setIsFinalizationModalOpen(false)}
-                        className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
+                        className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
                     >
                         <span className="material-icons">close</span>
                     </button>
@@ -487,7 +487,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
               <EmptyState 
                   icon="search_off" 
                   title="Sin Resultados" 
-                  message="No se encontraron información de prácticas o solicitudes para este estudiante." 
+                  message="No se encontraron información de prácticas or solicitudes para este estudiante." 
                   action={
                     <div className="flex gap-3 justify-center mt-4">
                         <button onClick={refetchAll} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm">
@@ -538,7 +538,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
           <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
               <button 
                 onClick={() => setIsFinalizationModalOpen(false)}
-                className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
+                className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
               >
                   <span className="material-icons">close</span>
               </button>

@@ -1,4 +1,3 @@
-
 import React, { useState, lazy, Suspense } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +12,10 @@ const GestionView = lazy(() => import('./admin/GestionView'));
 const SolicitudesManager = lazy(() => import('../components/SolicitudesManager'));
 const HerramientasView = lazy(() => import('./admin/HerramientasView'));
 const MetricsView = lazy(() => import('./admin/MetricsView'));
+
+// Lazy load heavy components (kept for normal routing)
+const StudentDashboard = lazy(() => import('./StudentDashboard'));
+const { StudentPanelProvider } = await import('../contexts/StudentPanelContext');
 
 interface AdminViewProps {
     isTestingMode?: boolean;

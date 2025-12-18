@@ -11,12 +11,8 @@
     "lint": "tsc --noEmit",
     "preview": "vite preview",
     "test": "npx jest",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "generate-schema": "node ./scripts/generate-schema.mjs",
     "prep-github": "node ./scripts/prepare-deploy.js",
-    "fix-statuses": "node ./scripts/sync-solicitudes-status.js",
-    "cleanup-solicitudes": "node ./scripts/cleanup-solicitudes.js"
+    "deploy": "npm run prep-github && npm run build"
   },
   "engines": {
     "node": ">=20.x"

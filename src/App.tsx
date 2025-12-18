@@ -32,6 +32,7 @@ import {
     FIELD_SOLICITUD_TIENE_TUTOR,
     FIELD_SOLICITUD_CONTACTO_TUTOR,
     FIELD_SOLICITUD_TIPO_PRACTICA,
+    FIELD_SOLICITUD_TIPO_PRACTICA as FIELD_SOLICITUD_TIPO_PRACTICA_CONST,
     FIELD_SOLICITUD_DESCRIPCION,
     FIELD_ESTADO_PPS,
     FIELD_ULTIMA_ACTUALIZACION_PPS,
@@ -211,6 +212,7 @@ const StudentSolicitudesWrapper = () => {
             </PageWrapper>
             
             <PreSolicitudCheckModal 
+                /* FIX: Corrected variable name from isPreCheckOpen to isPreCheckModalOpen to match the defined state */
                 isOpen={isPreCheckModalOpen}
                 onClose={() => setIsPreCheckModalOpen(false)}
                 onContinue={handleProceedToForm}
@@ -268,7 +270,7 @@ const AdminStudentWrapper = () => {
     if (!legajo) return null;
     return (
         <StudentPanelProvider legajo={legajo}>
-            <StudentDashboard user={{ legajo, nombre: 'Estudiante' } as any} showExportButton />
+            <StudentDashboard key={legajo} user={{ legajo, nombre: 'Estudiante' } as any} showExportButton />
         </StudentPanelProvider>
     );
 };

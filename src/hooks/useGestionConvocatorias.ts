@@ -230,13 +230,14 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
     };
     
     const filteredData = useMemo(() => {
-        let processableItems = [...lanzamientos];
+        // Explicitly type processableItems as LanzamientoPPS[] to ensure property recognition
+        let processableItems: LanzamientoPPS[] = [...lanzamientos];
 
         if (forcedOrientations && forcedOrientations.length > 0) {
             const normalizedForced = forcedOrientations.map(normalizeStringForComparison);
             processableItems = processableItems.filter(pps => {
-                const ppsOrientations = (pps[FIELD_ORIENTACION_LANZAMIENTOS] || '').split(',').map(o => normalizeStringForComparison(o.trim()));
-                return ppsOrientations.some(o => normalizedForced.includes(o));
+                const ppsOrientations = (pps[FIELD_ORIENTACION_LANZAMIENTOS] || '').split(',').map((o: string) => normalizeStringForComparison(o.trim()));
+                return ppsOrientations.some((o: string) => normalizedForced.includes(o));
             });
         } else if (orientationFilter !== 'all') {
              processableItems = processableItems.filter(pps => normalizeStringForComparison(pps[FIELD_ORIENTACION_LANZAMIENTOS]) === normalizeStringForComparison(orientationFilter));
@@ -247,7 +248,8 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
             processableItems = processableItems.filter(pps => (pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '').toLowerCase().includes(lowercasedTerm));
         }
         
-        const relanzamientosConfirmados = processableItems.filter(pps => {
+        // Use typed array to prevent 'unknown' issues during filtering and mapping
+        const relanzamientosConfirmados: LanzamientoPPS[] = processableItems.filter((pps) => {
             const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
             const startDate = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
             if (status === 'Relanzamiento Confirmado') return true;
@@ -262,8 +264,11 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
         const pendingMap = new Map<string, LanzamientoPPS & { daysLeft?: number }>();
         const now = new Date();
 
-        processableItems.forEach(pps => {
-            if (relanzamientosConfirmados.some(c => c.id === pps.id)) return;
+        // Fix: Cast pps to 'any' to avoid strict type checks on unknown during iteration
+        processableItems.forEach((ppsItem) => {
+            const pps = ppsItem as any;
+
+            if (relanzamientosConfirmados.some((c: any) => c.id === pps.id)) return;
 
             const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS] || '';
             if (status === 'Archivado' || status === 'No se Relanza') return;
@@ -281,11 +286,13 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
             const daysLeft = endDate ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24)) : 999;
 
             if (!pendingMap.has(normalizedKey)) {
-                pendingMap.set(normalizedKey, { ...pps, daysLeft });
+                // Fix: Cast pps back to LanzamientoPPS and spread
+                pendingMap.set(normalizedKey, { ...pps, daysLeft } as (LanzamientoPPS & { daysLeft: number }));
             } else {
                 const existing = pendingMap.get(normalizedKey)!;
                 if (daysLeft < (existing.daysLeft || 999)) {
-                    pendingMap.set(normalizedKey, { ...pps, daysLeft });
+                    // Fix: Cast pps back to LanzamientoPPS and spread
+                    pendingMap.set(normalizedKey, { ...pps, daysLeft } as (LanzamientoPPS & { daysLeft: number }));
                 }
             }
         });

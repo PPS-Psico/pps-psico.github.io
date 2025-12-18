@@ -10,32 +10,38 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
+/**
+ * Standard React Error Boundary component.
+ * Fixed: Explicitly extend Component and declare state to ensure type safety.
+ */
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Initialize state as a class property
   public state: ErrorBoundaryState = {
     hasError: false,
     error: undefined
   };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error in component:", error, errorInfo);
   }
 
-  handleRetry = () => {
+  // Use arrow function as a class property to ensure 'this' refers to the component instance
+  private handleRetry = () => {
     this.setState({ hasError: false, error: undefined });
     if (this.props.onRetry) {
       this.props.onRetry();
     }
   };
 
-  handleRefresh = () => {
+  private handleRefresh = () => {
       window.location.reload();
   }
 
-  render() {
+  public render() {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-red-200/60 dark:border-red-900/50 max-w-lg mx-auto my-8 animate-fade-in-up">

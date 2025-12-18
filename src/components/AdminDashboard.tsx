@@ -26,7 +26,6 @@ const ManagementCard: React.FC<{
     subLabel?: string;
 }> = ({ title, count, icon, color, onClick, label, subCount, subLabel }) => {
     
-    // Configuración de colores dinámica
     const styles = {
         red: {
             hoverBorder: 'group-hover:border-rose-300 dark:group-hover:border-rose-700',
@@ -59,7 +58,7 @@ const ManagementCard: React.FC<{
     return (
         <button 
             onClick={onClick}
-            className={`flex flex-col p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg text-left group ${style.hoverBorder} ${style.hoverBg}`}
+            className={`flex flex-col p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg text-left group ${style.hoverBorder} ${style.hoverBg}`}
         >
             <div className="flex justify-between items-start w-full mb-4">
                 <div className={`p-3 rounded-xl shadow-sm transition-colors ${style.iconBg}`}>
@@ -93,81 +92,62 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
     const navigate = useNavigate();
     const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     
-    // Fetch Operational Data
     const { data: opData, isLoading: isOpLoading, error: opError } = useOperationalData(isTestingMode);
-
-    // Smart Analysis Hook
     const analysis = useSmartAnalysis(opData, isOpLoading);
 
     if (isOpLoading) return <AdminDashboardSkeleton />;
     
     if (opError) {
-        return (
-            <EmptyState 
-                icon="error" 
-                title="Error cargando el dashboard" 
-                message={(opError as any)?.message || "Ocurrió un error desconocido."} 
-            />
-        );
+        return <EmptyState icon="error" title="Error" message={(opError as any)?.message} />;
     }
     
-    // Calcular contadores para las tarjetas
     const now = new Date();
-    
-    // 1. Cierres Vencidos (Lanzamientos cuya fecha fin ya pasó)
     const overdueCount = (opData?.endingLaunches || []).filter((l: any) => l.daysLeft < 0).length;
-    
-    // 2. Solicitudes Demoradas (+5 días sin actualización)
     let stagnantCount = 0;
     (opData?.pendingRequests || []).forEach((r: any) => {
         if (!r.updated) return;
         const lastUpdate = new Date(r.updated);
         if (differenceInDays(now, lastUpdate) > 5) stagnantCount++;
     });
-
-    // 3. Acreditaciones Pendientes
     const accreditationCount = (opData?.pendingFinalizations || []).length;
-
-    // 4. Próximos a Vencer (0 a 30 días)
-    const upcomingLaunches = (opData?.endingLaunches || []).filter((l: any) => l.daysLeft >= 0 && l.daysLeft <= 30);
-    const upcomingCount = upcomingLaunches.length;
-    
-    // 4b. Urgentes (0 a 7 días) - Para destacar
-    const urgentCount = upcomingLaunches.filter((l: any) => l.daysLeft <= 7).length;
-
+    const upcomingCount = (opData?.endingLaunches || []).filter((l: any) => l.daysLeft >= 0 && l.daysLeft <= 30).length;
 
     return (
-        <div className="space-y-8 animate-fade-in-up pb-10">
+        <div className="space-y-12 animate-fade-in-up pb-10">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
 
-            {/* --- SECCIÓN 1: INTELIGENCIA ARTIFICIAL --- */}
-            <SmartBriefing 
-                status={analysis.status === 'loading' ? 'stable' : analysis.status}
-                summary={analysis.summary}
-                insights={analysis.insights}
-                score={analysis.systemScore}
-                userName={authenticatedUser?.nombre || 'Admin'}
-            />
+            {/* --- SECCIÓN IA: EL FOCO DE LA PÁGINA --- */}
+            <section className="px-1">
+                <SmartBriefing 
+                    status={analysis.status === 'loading' ? 'stable' : analysis.status}
+                    summary={analysis.summary}
+                    insights={analysis.insights}
+                    signals={analysis.signals}
+                    userName={authenticatedUser?.nombre || 'Admin'}
+                />
+            </section>
             
-            {/* --- SECCIÓN 2: GESTIÓN INMEDIATA (Tarjetas) --- */}
-            <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-5 flex items-center gap-2 px-1">
-                    <span className="material-icons text-indigo-500 dark:text-indigo-400">dashboard</span>
-                    Gestión Operativa
-                </h3>
+            {/* --- SECCIÓN GESTIÓN: GRID DE TARJETAS --- */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3 px-4">
+                    <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
+                    <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                        Estado Operativo
+                    </h3>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <ManagementCard
                         title="Cierres Vencidos"
                         count={overdueCount}
-                        label="Requieren archivo o relanzamiento"
+                        label="Gestión requerida"
                         icon="event_busy"
                         color="red"
                         onClick={() => navigate('/admin/gestion?filter=vencidas')}
                     />
                     <ManagementCard
-                        title="Solicitudes Demoradas"
+                        title="Demoradas"
                         count={stagnantCount}
-                        label="Sin respuesta hace +5 días"
+                        label="Sin cambio +5 días"
                         icon="hourglass_empty"
                         color="amber"
                         onClick={() => navigate('/admin/solicitudes?tab=ingreso')}
@@ -175,28 +155,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
                     <ManagementCard
                         title="Acreditaciones"
                         count={accreditationCount}
-                        label="Documentación a revisar"
+                        label="Pendientes de carga"
                         icon="verified"
                         color="emerald"
                         onClick={() => navigate('/admin/solicitudes?tab=egreso')}
                     />
                     <ManagementCard
-                        title="Vencimientos Próximos"
+                        title="Próximas a Vencer"
                         count={upcomingCount}
-                        label="Cierran este mes"
+                        label="Vencen este mes"
                         icon="update"
                         color="blue"
-                        subCount={urgentCount}
-                        subLabel="en 7 días"
                         onClick={() => navigate('/admin/gestion?filter=proximas')}
                     />
                 </div>
-            </div>
+            </section>
 
-            {/* --- SECCIÓN 3: FEED DE ACTIVIDAD (Diseño Timeline) --- */}
-            <div className="pt-4">
+            {/* --- SECCIÓN FEED: ACTIVIDAD RECIENTE --- */}
+            <section className="pt-4">
                  <ActivityFeed isTestingMode={isTestingMode} />
-            </div>
+            </section>
         </div>
     );
 };

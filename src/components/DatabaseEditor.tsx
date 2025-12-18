@@ -1,15 +1,19 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { schema } from '../lib/dbSchema';
-import type { AppRecord } from '../types';
+import type { AppRecord, LanzamientoPPSFields, InstitucionFields, AirtableRecord, EstudianteFields } from '../types';
 import SubTabs from './SubTabs';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
 import Toast from './Toast';
 import RecordEditModal from './RecordEditModal';
-import { formatDate, getEspecialidadClasses, getStatusVisuals } from '../utils/formatters';
+import DuplicateToStudentModal from './DuplicateToStudentModal';
+import AdminSearch from './AdminSearch';
+import ConfirmModal from './ConfirmModal';
+import { formatDate, getEspecialidadClasses, normalizeStringForComparison, getStatusVisuals } from '../utils/formatters';
 import Card from './Card';
 import { ALL_ORIENTACIONES } from '../types';
 import { 
@@ -39,6 +43,7 @@ import {
     TABLE_NAME_PRACTICAS,
     TABLE_NAME_ESTUDIANTES,
     TABLE_NAME_INSTITUCIONES,
+    FIELD_FECHA_INICIO_LANZAMIENTOS,
     FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
     FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
     TABLE_NAME_CONVOCATORIAS,
@@ -51,7 +56,8 @@ import {
     FIELD_FINALES_ADEUDA_CONVOCATORIAS,
     FIELD_NOMBRE_PPS_CONVOCATORIAS,
     FIELD_CV_CONVOCATORIAS,
-    FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS
+    FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS,
+    FIELD_AIRTABLE_ID
 } from '../constants';
 
 interface FieldConfig {
@@ -119,16 +125,16 @@ const EDITABLE_TABLES: Record<string, TableConfig> = {
         icon: 'work_history',
         tableName: TABLE_NAME_PRACTICAS,
         schema: schema.practicas,
-        displayFields: ['__studentName', '__lanzamientoName', FIELD_ESPECIALIDAD_PRACTICAS, FIELD_HORAS_PRACTICAS, FIELD_FECHA_INICIO_PRACTICAS, FIELD_FECHA_FIN_PRACTICAS, FIELD_ESTADO_PRACTICA],
+        displayFields: ['__studentName', '__lanzamientoName', FIELD_ESPECIALIDAD_PRACTICAS, FIELD_HORAS_PRACTICAS, FIELD_FECHA_INICIO_PRACTICAS, FIELD_ESTADO_PRACTICA],
         searchFields: [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS, FIELD_ESPECIALIDAD_PRACTICAS],
         fieldConfig: [
             { key: FIELD_ESTUDIANTE_LINK_PRACTICAS, label: 'Estudiante', type: 'text' }, 
             { key: FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, label: 'Lanzamiento/Institución', type: 'text' },
-            { key: FIELD_FECHA_INICIO_PRACTICAS, label: 'Inicio', type: 'date', width: 'w-24', align: 'center' },
-            { key: FIELD_FECHA_FIN_PRACTICAS, label: 'Fin', type: 'date', width: 'w-24', align: 'center' },
-            { key: FIELD_HORAS_PRACTICAS, label: 'Horas', type: 'number', width: 'w-16', align: 'center' },
+            { key: FIELD_FECHA_INICIO_PRACTICAS, label: 'Inicio', type: 'date', width: 'w-32' },
+            { key: FIELD_FECHA_FIN_PRACTICAS, label: 'Fin', type: 'date', width: 'w-32' },
+            { key: FIELD_HORAS_PRACTICAS, label: 'Horas', type: 'number', width: 'w-24', align: 'center' },
             { key: FIELD_ESTADO_PRACTICA, label: 'Estado', type: 'select', options: ['En curso', 'Finalizada', 'Convenio Realizado', 'No se pudo concretar', 'Pendiente', 'En proceso'] },
-            { key: FIELD_ESPECIALIDAD_PRACTICAS, label: 'Especialidad', type: 'select', options: ALL_ORIENTACIONES, width: 'w-32' },
+            { key: FIELD_ESPECIALIDAD_PRACTICAS, label: 'Especialidad', type: 'select', options: ALL_ORIENTACIONES, width: 'w-40' },
             { key: FIELD_NOTA_PRACTICAS, label: 'Nota', type: 'select', options: ['Sin calificar', 'Entregado (sin corregir)', 'No Entregado', 'Desaprobado', '4', '5', '6', '7', '8', '9', '10'] },
         ]
     },
@@ -151,48 +157,6 @@ const EDITABLE_TABLES: Record<string, TableConfig> = {
 
 type TableKey = keyof typeof EDITABLE_TABLES;
 
-interface ContextMenuProps {
-    x: number;
-    y: number;
-    onEdit: () => void;
-    onDuplicate: () => void;
-    onDelete: () => void;
-    onClose: () => void;
-}
-
-const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onEdit, onDuplicate, onDelete, onClose }) => {
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                onClose();
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [onClose]);
-
-    return (
-        <div 
-            ref={menuRef}
-            className="fixed z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl py-1 min-w-[160px] animate-fade-in text-sm"
-            style={{ top: y, left: x }}
-        >
-            <button onClick={onEdit} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <span className="material-icons !text-base">edit</span> Editar
-            </button>
-            <button onClick={onDuplicate} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <span className="material-icons !text-base">content_copy</span> Duplicar
-            </button>
-            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-            <button onClick={onDelete} className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center gap-2">
-                <span className="material-icons !text-base">delete</span> Eliminar
-            </button>
-        </div>
-    );
-};
-
 interface DatabaseEditorProps {
   isTestingMode?: boolean;
 }
@@ -205,24 +169,37 @@ const SortableHeader: React.FC<{
   sortConfig: { key: string; direction: 'asc' | 'desc' };
   requestSort: (key: string) => void;
   className?: string;
+  hasCheckbox?: boolean;
+  onSelectAll?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  allSelected?: boolean;
   align?: 'left' | 'center' | 'right';
-}> = ({ label, sortKey, sortConfig, requestSort, className = "", align = 'left' }) => {
+}> = ({ label, sortKey, sortConfig, requestSort, className = "", hasCheckbox, onSelectAll, allSelected, align = 'left' }) => {
   const isActive = sortConfig.key === sortKey;
   const icon = isActive ? (sortConfig.direction === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more';
   
-  // Justify content based on align prop
-  const justifyClass = align === 'center' ? 'justify-center' : (align === 'right' ? 'justify-end' : 'justify-start');
-
   return (
     <th
       scope="col"
-      className={`px-4 py-3 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${className}`}
-      onClick={() => requestSort(sortKey)}
+      className={`px-6 py-4 select-none group bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 ${className}`}
     >
-      <div className={`flex items-center gap-2 ${justifyClass}`}>
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
-        <span className={`material-icons !text-sm transition-opacity ${isActive ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-30 group-hover:opacity-70'}`}>{icon}</span>
-      </div>
+        <div className={`flex items-center gap-2 ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'}`}>
+            {hasCheckbox && (
+                <input 
+                    type="checkbox" 
+                    checked={allSelected} 
+                    onChange={onSelectAll}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                />
+            )}
+            <button onClick={() => requestSort(sortKey)} className="flex items-center gap-1.5 focus:outline-none group/btn">
+                <span className={`text-[11px] font-extrabold uppercase tracking-widest transition-colors ${isActive ? 'text-blue-700 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 group-hover/btn:text-slate-700 dark:group-hover/btn:text-slate-200'}`}>
+                    {label}
+                </span>
+                <span className={`material-icons !text-xs transition-all duration-200 ${isActive ? 'opacity-100 text-blue-600 dark:text-blue-400 transform scale-110' : 'opacity-0 -ml-2 group-hover/btn:opacity-40 group-hover/btn:ml-0'}`}>
+                    {icon}
+                </span>
+            </button>
+        </div>
     </th>
   );
 };
@@ -235,42 +212,97 @@ const PaginationControls: React.FC<{
     onItemsPerPageChange: (items: number) => void;
     totalItems: number;
 }> = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange, totalItems }) => (
-    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 px-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-        <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-            <span>Filas por pág:</span>
-            <select 
-                value={itemsPerPage} 
-                onChange={(e) => { onItemsPerPageChange(Number(e.target.value)); onPageChange(1); }}
-                className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-                {ITEMS_PER_PAGE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-3 px-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-b-2xl">
+        <div className="flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2">
+                <span>Mostrar</span>
+                <select 
+                    value={itemsPerPage} 
+                    onChange={(e) => { onItemsPerPageChange(Number(e.target.value)); onPageChange(1); }}
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-slate-700 dark:text-slate-200 shadow-sm"
+                >
+                    {ITEMS_PER_PAGE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+                <span>filas</span>
+            </div>
+            <span className="hidden sm:inline w-px h-4 bg-slate-200 dark:bg-slate-700 mx-2"></span>
             <span className="hidden sm:inline">
-                | Total: <strong>{totalItems}</strong> registros
+                <strong>{totalItems}</strong> registros encontrados
             </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 p-1 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
             <button 
                 onClick={() => onPageChange(currentPage - 1)} 
                 disabled={currentPage === 1}
-                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                className="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-all shadow-sm disabled:shadow-none text-slate-600 dark:text-slate-300"
             >
-                <span className="material-icons">chevron_left</span>
+                <span className="material-icons !text-lg">chevron_left</span>
             </button>
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                Pág {currentPage} de {totalPages || 1}
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 min-w-[80px] text-center">
+                Pág {currentPage} / {totalPages || 1}
             </span>
             <button 
                 onClick={() => onPageChange(currentPage + 1)} 
                 disabled={currentPage === totalPages || totalPages === 0}
-                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                className="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-all shadow-sm disabled:shadow-none text-slate-600 dark:text-slate-300"
             >
-                <span className="material-icons">chevron_right</span>
+                <span className="material-icons !text-lg">chevron_right</span>
             </button>
         </div>
     </div>
 );
+
+const ContextMenu: React.FC<{
+    x: number;
+    y: number;
+    onEdit: () => void;
+    onDuplicate: () => void;
+    onDelete: () => void;
+    onClose: () => void;
+    isPracticaTable?: boolean;
+}> = ({ x, y, onEdit, onDuplicate, onDelete, onClose, isPracticaTable }) => {
+    const adjustedTop = Math.min(y, window.innerHeight - 200); 
+
+    return createPortal(
+        <>
+            <div 
+                className="fixed inset-0 z-[9998]" 
+                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+            />
+            <div 
+                className="fixed z-[9999] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl py-1 min-w-[200px] animate-fade-in text-sm ring-1 ring-black/5"
+                style={{ top: adjustedTop, left: x }}
+                onClick={(e) => e.stopPropagation()} 
+            >
+                <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700/50 mb-1">
+                    Acciones
+                </div>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }} 
+                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors"
+                >
+                    <span className="material-icons text-blue-500 !text-lg">edit</span> Editar Registro
+                </button>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onDuplicate(); }} 
+                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors"
+                >
+                    <span className="material-icons text-slate-400 !text-lg">content_copy</span> {isPracticaTable ? 'Duplicar a otro Alumno' : 'Duplicar'}
+                </button>
+                <div className="h-px bg-slate-100 dark:bg-slate-700 my-1 mx-2"></div>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }} 
+                    className="w-full text-left px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 flex items-center gap-3 transition-colors"
+                >
+                    <span className="material-icons !text-lg">delete</span> Eliminar
+                </button>
+            </div>
+        </>,
+        document.body
+    );
+};
 
 const cleanDisplayValue = (val: any): string => {
     if (val === null || val === undefined) return '';
@@ -278,111 +310,223 @@ const cleanDisplayValue = (val: any): string => {
     return str.replace(/[\[\]\{\}"]/g, '').trim();
 };
 
+const getErrorMessage = (err: any) => {
+    if (typeof err === 'string') return err;
+    if (err?.message) return err.message;
+    if (err?.error?.message) return err.error.message;
+    if (err?.error && typeof err.error === 'string') return err.error;
+    return 'Error desconocido';
+};
+
 const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }) => {
     const [activeTable, setActiveTable] = useState<TableKey>('estudiantes');
-    const [editingRecord, setEditingRecord] = useState<AppRecord<any> | { isCreating: true } | null>(null);
+    const [editingRecord, setEditingRecord] = useState<AppRecord<any> | { isCreating: true; initialData?: any } | null>(null);
+    const [duplicateTargetRecord, setDuplicateTargetRecord] = useState<AppRecord<any> | null>(null);
     const [toastInfo, setToastInfo] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: AppRecord<any> } | null>(null);
     
-    // Server-side state
+    // Deletion State
+    const [idToDelete, setIdToDelete] = useState<string | null>(null);
+
+    // Filter State
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    
+    const [filterStudentId, setFilterStudentId] = useState<string>('');
+    const [selectedStudentLabel, setSelectedStudentLabel] = useState<string>('');
+
+    const [filterInstitutionId, setFilterInstitutionId] = useState<string>('');
+    const [filterLaunchId, setFilterLaunchId] = useState<string>('');
+
+    // Filter Data State
+    const [allInstitutions, setAllInstitutions] = useState<AirtableRecord<InstitucionFields>[]>([]);
+    const [availableLaunches, setAvailableLaunches] = useState<AirtableRecord<LanzamientoPPSFields>[]>([]);
     
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
     
-    const queryClient = useQueryClient();
+    // Bulk Actions State
+    const [isBulkEditMode, setIsBulkEditMode] = useState(false);
+    const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+    const [bulkStatus, setBulkStatus] = useState('');
+    const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
-    // Debounce search to avoid too many requests
+    const queryClient = useQueryClient();
+    
+    const hasSpecificFilters = activeTable === 'practicas' || activeTable === 'convocatorias';
+
+    // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchTerm);
-            setCurrentPage(1); // Reset to page 1 on search
+            setCurrentPage(1);
         }, 500);
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Reset state on table change
+    useEffect(() => {
+        setCurrentPage(1);
+        setSearchTerm('');
+        setFilterStudentId('');
+        setSelectedStudentLabel('');
+        setFilterInstitutionId('');
+        setFilterLaunchId('');
+        setContextMenu(null);
+        setIsBulkEditMode(false);
+        setSelectedRowIds(new Set());
+        setSelectedRowId(null);
+        setIdToDelete(null);
+    }, [activeTable]);
+
+    // Load Filter Data for Practicas (Institutions)
+    useEffect(() => {
+        if (activeTable === 'practicas' && !isTestingMode) {
+            db.instituciones.getAll({ fields: [FIELD_NOMBRE_INSTITUCIONES] }).then(recs => {
+                const sorted = recs.sort((a, b) => (a[FIELD_NOMBRE_INSTITUCIONES] || '').localeCompare(b[FIELD_NOMBRE_INSTITUCIONES] || ''));
+                setAllInstitutions(sorted);
+            });
+        }
+    }, [activeTable, isTestingMode]);
+
+    // Load Launches when Institution is selected
+    useEffect(() => {
+        setFilterLaunchId('');
+
+        if (filterInstitutionId && !isTestingMode) {
+             const institution = allInstitutions.find(i => i.id === filterInstitutionId);
+             const instName = institution?.[FIELD_NOMBRE_INSTITUCIONES];
+             if (instName) {
+                 db.lanzamientos.getAll({
+                     fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS]
+                 }).then(recs => {
+                     const filtered = recs.filter(l => {
+                         const ppsName = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '';
+                         return normalizeStringForComparison(ppsName).includes(normalizeStringForComparison(instName));
+                     }).sort((a, b) => {
+                         const dateA = new Date(a[FIELD_FECHA_INICIO_LANZAMIENTOS] || 0).getTime();
+                         const dateB = new Date(b[FIELD_FECHA_INICIO_LANZAMIENTOS] || 0).getTime();
+                         return dateB - dateA;
+                     });
+                     setAvailableLaunches(filtered);
+                 });
+             }
+        } else {
+            setAvailableLaunches([]);
+        }
+    }, [filterInstitutionId, allInstitutions, isTestingMode]);
+
+
     const activeTableConfig = EDITABLE_TABLES[activeTable];
-    const queryKey = ['databaseEditor', activeTable, currentPage, itemsPerPage, sortConfig, debouncedSearch, isTestingMode];
+    
+    const dbFilters = useMemo(() => {
+        const filters: Record<string, any> = {};
+        
+        if (activeTable === 'practicas') {
+            if (filterStudentId) filters[FIELD_ESTUDIANTE_LINK_PRACTICAS] = filterStudentId;
+            
+            if (filterLaunchId) {
+                // When launch ID is selected, use it directly (Assuming Supabase relation works with ID)
+                // If filtering by Institution name string in practices (legacy), we need to adjust logic
+                const launch = availableLaunches.find(l => l.id === filterLaunchId);
+                if (launch) {
+                    // Try to filter by exact Launch ID first, fall back to institution Name string match if practice stores names
+                    // This dual-logic depends on your supabaseService applyFilters implementation
+                    filters[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = filterLaunchId;
+                }
+            } else if (filterInstitutionId) {
+                const inst = allInstitutions.find(i => i.id === filterInstitutionId);
+                if (inst) filters[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = inst[FIELD_NOMBRE_INSTITUCIONES];
+            }
+        } else if (activeTable === 'convocatorias') {
+            if (filterStudentId) filters[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] = filterStudentId;
+        }
+        return filters;
+    }, [activeTable, filterStudentId, filterLaunchId, filterInstitutionId, allInstitutions, availableLaunches]);
+
+    const queryKey = ['databaseEditor', activeTable, currentPage, itemsPerPage, sortConfig, debouncedSearch, dbFilters, isTestingMode];
 
     const { data: queryResult, isLoading, error } = useQuery({
         queryKey,
         queryFn: async () => {
              if (isTestingMode) return { records: [], total: 0 };
 
-            const { records, total, error } = await db[activeTable].getPage(
+            const { records, total, error } = await (db as any)[activeTable].getPage(
                 currentPage,
                 itemsPerPage,
                 {
-                    searchTerm: debouncedSearch,
+                    searchTerm: hasSpecificFilters ? undefined : debouncedSearch, 
                     searchFields: activeTableConfig.searchFields,
-                    sort: sortConfig.key ? { field: sortConfig.key, direction: sortConfig.direction } : undefined
+                    sort: sortConfig.key ? { field: sortConfig.key, direction: sortConfig.direction } : undefined,
+                    filters: dbFilters
                 }
             );
 
-            if (error) throw new Error(error.error as string);
+            if (error) throw new Error(getErrorMessage(error));
 
-            // Special handling for "practicas" which needs joined data for display
-            if (activeTable === 'practicas' && records.length > 0) {
-                // We only fetch related data for the current page to be efficient
+            if ((activeTable === 'practicas' || activeTable === 'convocatorias') && records.length > 0) {
+                // Hydrate with Student Names for better display
+                const studentIds = records.map((r: any) => 
+                     activeTable === 'practicas' ? r[FIELD_ESTUDIANTE_LINK_PRACTICAS] : r[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]
+                ).flat().filter(Boolean);
+
+                const lanzamientoIds = records.map((r: any) => 
+                     activeTable === 'practicas' ? r[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] : r[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]
+                ).flat().filter(Boolean);
+
                 const [estudiantesRes, lanzamientosRes] = await Promise.all([
-                    db.estudiantes.getAll({ fields: [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES] }),
-                    db.lanzamientos.getAll({ fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS] })
+                    db.estudiantes.getAll({ filters: { id: studentIds }, fields: [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES] }),
+                    db.lanzamientos.getAll({ filters: { id: lanzamientoIds }, fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS] })
                 ]);
     
                 const estudiantesMap = new Map(estudiantesRes.map(r => [r.id, r]));
                 const lanzamientosMap = new Map(lanzamientosRes.map(r => [r.id, r]));
     
-                const enrichedRecords = records.map(p => {
-                    const rawStudentId = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
+                const enrichedRecords = records.map((p: any) => {
+                    const rawStudentId = p[activeTable === 'practicas' ? FIELD_ESTUDIANTE_LINK_PRACTICAS : FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
                     const studentId = Array.isArray(rawStudentId) ? rawStudentId[0] : rawStudentId;
                     
-                    const rawLanzamientoId = p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
+                    const rawLanzamientoId = p[activeTable === 'practicas' ? FIELD_LANZAMIENTO_VINCULADO_PRACTICAS : FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
                     const lanzamientoId = Array.isArray(rawLanzamientoId) ? rawLanzamientoId[0] : rawLanzamientoId;
                     
                     const student = estudiantesMap.get(studentId as string);
                     const studentName = student?.[FIELD_NOMBRE_ESTUDIANTES] || 'Desconocido';
                     const studentLegajo = student?.[FIELD_LEGAJO_ESTUDIANTES] || '---';
                     
-                    const lanzamientoName = lanzamientosMap.get(lanzamientoId as string)?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || cleanDisplayValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || 'N/A';
+                    const fallbackName = activeTable === 'practicas' 
+                        ? cleanDisplayValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) 
+                        : (p as any)[FIELD_NOMBRE_PPS_CONVOCATORIAS] || 'N/A';
+                    
+                    const lanzamientoName = lanzamientosMap.get(lanzamientoId as string)?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || fallbackName;
     
                     return {
                         ...p,
-                        __studentName: `${studentName} (${studentLegajo})`,
+                        __studentName: `${studentName}`, 
+                        __studentLegajo: studentLegajo,
                         __lanzamientoName: lanzamientoName
                     };
                 });
                 return { records: enrichedRecords, total };
             }
-
-            if (activeTable === 'convocatorias' && records.length > 0) {
-                 const [estudiantesRes, lanzamientosRes] = await Promise.all([
-                    db.estudiantes.getAll({ fields: [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES] }),
-                    db.lanzamientos.getAll({ fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS] })
-                ]);
-                const estudiantesMap = new Map(estudiantesRes.map(r => [r.id, r]));
-                const lanzamientosMap = new Map(lanzamientosRes.map(r => [r.id, r]));
-
-                const enrichedRecords = records.map(c => {
-                    const rawStudentId = c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
-                    const studentId = Array.isArray(rawStudentId) ? rawStudentId[0] : rawStudentId;
-                    const rawLanzamientoId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-                    const lanzamientoId = Array.isArray(rawLanzamientoId) ? rawLanzamientoId[0] : rawLanzamientoId;
-
-                    const student = estudiantesMap.get(studentId as string);
-                    const studentName = student?.[FIELD_NOMBRE_ESTUDIANTES] || 'Desconocido';
-                    const studentLegajo = student?.[FIELD_LEGAJO_ESTUDIANTES] || '---';
-                    const lanzamientoName = lanzamientosMap.get(lanzamientoId as string)?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || 'N/A';
-
-                    return {
-                        ...c,
-                        __studentName: `${studentName} (${studentLegajo})`,
-                        __studentLegajo: studentLegajo,
-                        __lanzamientoName: lanzamientoName
-                    };
+            else if (activeTable === 'estudiantes' && records.length > 0) {
+                // For students, fetch total hours sum as a virtual field
+                const studentIds = records.map((r: any) => r.id);
+                // Optimized fetch: Only get hours for visible students
+                const allPractices = await db.practicas.getAll({
+                    filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds },
+                    fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS]
                 });
+                
+                const enrichedRecords = records.map((s: any) => {
+                    const studentPractices = allPractices.filter(p => {
+                        const link = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
+                        return Array.isArray(link) ? link.includes(s.id) : link === s.id;
+                    });
+                    const totalHours = studentPractices.reduce((sum, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
+                    return { ...s, __totalHours: totalHours };
+                });
+                
                 return { records: enrichedRecords, total };
             }
             
@@ -396,93 +540,65 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     const updateMutation = useMutation({
-        mutationFn: ({ recordId, fields }: { recordId: string, fields: any }) => {
-             if (isTestingMode) return new Promise(resolve => setTimeout(() => resolve(null), 500));
-            return db[activeTable].update(recordId, fields);
-        },
+        mutationFn: ({ recordId, fields }: { recordId: string, fields: any }) => (db as any)[activeTable].update(recordId, fields),
         onSuccess: () => {
             setToastInfo({ message: 'Registro actualizado.', type: 'success' });
             queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] });
             setEditingRecord(null);
         },
-        onError: (e) => setToastInfo({ message: `Error: ${e.message}`, type: 'error' }),
+        onError: (e) => setToastInfo({ message: `Error: ${getErrorMessage(e)}`, type: 'error' }),
     });
 
     const createMutation = useMutation({
-        mutationFn: (fields: any) => {
-            if (isTestingMode) return new Promise(resolve => setTimeout(() => resolve(null), 500));
-            return db[activeTable].create(fields);
-        },
+        mutationFn: (fields: any) => (db as any)[activeTable].create(fields),
         onSuccess: () => {
              setToastInfo({ message: 'Registro creado.', type: 'success' });
              setEditingRecord(null);
+             setDuplicateTargetRecord(null);
              queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] }); 
         },
-        onError: (e) => setToastInfo({ message: `Error: ${e.message}`, type: 'error' }),
+        onError: (e) => setToastInfo({ message: `Error: ${getErrorMessage(e)}`, type: 'error' }),
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (recordId: string) => {
-            if (isTestingMode) return new Promise(resolve => setTimeout(() => resolve(null), 500));
-            return db[activeTable].delete(recordId);
+        mutationFn: (recordId: string) => (db as any)[activeTable].delete(recordId),
+        onSuccess: (_, deletedId) => {
+             // Optimistic update of list
+             queryClient.setQueriesData({ queryKey: ['databaseEditor', activeTable] }, (oldData: any) => {
+                 if (!oldData || !oldData.records) return oldData;
+                 return {
+                     ...oldData,
+                     records: oldData.records.filter((r: any) => r.id !== deletedId),
+                     total: Math.max(0, oldData.total - 1)
+                 };
+             });
+
+             setToastInfo({ message: 'Registro eliminado.', type: 'success' });
+             // Full refetch to ensure consistency
+             queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] });
+             
+             setIdToDelete(null);
+             setContextMenu(null);
+             setSelectedRowId(null);
         },
-        onSuccess: () => {
-            setToastInfo({ message: 'Registro eliminado.', type: 'success' });
-            setContextMenu(null);
-            setSelectedRowId(null);
-            queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] });
+        onError: (e) => {
+            setToastInfo({ message: `Error al eliminar: ${getErrorMessage(e)}`, type: 'error' });
+            setIdToDelete(null);
         },
-        onError: (e) => setToastInfo({ message: `Error: ${e.message}`, type: 'error' }),
     });
-
-    const duplicateMutation = useMutation({
-        mutationFn: (record: AppRecord<any>) => {
-            const { id, createdTime, created_at, ...originalFields } = record;
-            const newFields: { [key: string]: any } = { ...originalFields };
-
-            // Append (Copia) to primary field
-            const primaryFieldKey = EDITABLE_TABLES[activeTable].displayFields[0];
-            if (newFields[primaryFieldKey]) {
-                 newFields[primaryFieldKey] = `${newFields[primaryFieldKey]} (Copia)`;
-            }
-            // Remove computed fields
-             delete newFields['__studentName'];
-             delete newFields['__studentLegajo'];
-             delete newFields['__lanzamientoName'];
-
-            if (isTestingMode) return new Promise(resolve => setTimeout(() => resolve(null), 500));
-            return db[activeTable].create(newFields);
-        },
-        onSuccess: () => {
-            setToastInfo({ message: 'Registro duplicado.', type: 'success' });
-            setContextMenu(null);
+    
+    const bulkUpdateMutation = useMutation({
+        mutationFn: async (updates: { id: string, fields: any }[]) => (db as any)[activeTable].updateMany(updates),
+        onSuccess: (data) => {
+            setToastInfo({ message: `${data?.length || 0} registros actualizados.`, type: 'success' });
+            setSelectedRowIds(new Set());
+            setIsBulkEditMode(false);
             queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] });
         },
-        onError: (e) => setToastInfo({ message: `Error: ${e.message}`, type: 'error' }),
+        onError: (e) => setToastInfo({ message: `Error en actualización masiva: ${getErrorMessage(e)}`, type: 'error' }),
     });
 
     const tableTabs = Object.entries(EDITABLE_TABLES).map(([key, { label, icon }]) => ({ id: key, label, icon }));
-
-    useEffect(() => {
-        setCurrentPage(1);
-        setSearchTerm('');
-        setContextMenu(null);
-        setSelectedRowId(null);
-    }, [activeTable]);
-    
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedRowId) {
-                const activeTag = document.activeElement?.tagName;
-                if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
-                    handleDelete(selectedRowId);
-                }
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedRowId]);
 
     const requestSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -495,14 +611,83 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     
     const handleRowContextMenu = (e: React.MouseEvent, record: AppRecord<any>) => {
         e.preventDefault();
-        setSelectedRowId(record.id);
         setContextMenu({ x: e.clientX, y: e.clientY, record });
     };
 
-    const handleDelete = (recordId: string) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar este registro? Esta acción no se puede deshacer.')) {
-            deleteMutation.mutate(recordId);
+    const handleDeleteClick = (recordId: string) => {
+        setIdToDelete(recordId);
+        setContextMenu(null); 
+    };
+
+    const confirmDelete = () => {
+        if (idToDelete) {
+            deleteMutation.mutate(idToDelete);
         }
+    };
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            const ids = new Set<string>(records.map((r: any) => String(r.id)));
+            setSelectedRowIds(ids);
+        } else {
+            setSelectedRowIds(new Set());
+        }
+    };
+
+    const handleRowSelect = (id: string) => {
+        const newSet = new Set(selectedRowIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedRowIds(newSet);
+    };
+    
+    const handleBulkUpdateStatus = () => {
+        if (!bulkStatus) return;
+        const updates = Array.from(selectedRowIds).map(id => ({ id, fields: { [FIELD_ESTADO_PRACTICA]: bulkStatus } }));
+        bulkUpdateMutation.mutate(updates);
+    };
+
+    const handleDuplicateWithStudent = (studentId: string) => {
+        if (!duplicateTargetRecord) return;
+        const { id, createdTime, created_at, ...originalFields } = duplicateTargetRecord;
+        const newFields: any = { ...originalFields };
+        
+        delete newFields[FIELD_AIRTABLE_ID];
+        newFields[FIELD_ESTUDIANTE_LINK_PRACTICAS] = studentId;
+
+        delete newFields['__studentName'];
+        delete newFields['__lanzamientoName'];
+        delete newFields['__studentLegajo'];
+        
+        createMutation.mutate(newFields);
+    };
+    
+    const handleSimpleDuplicate = (record: AppRecord<any>) => {
+         const { id, createdTime, created_at, ...originalFields } = record;
+         const newFields: any = { ...originalFields };
+         
+         delete newFields[FIELD_AIRTABLE_ID];
+         
+         const primaryKey = activeTableConfig.displayFields[0];
+         if (newFields[primaryKey] && typeof newFields[primaryKey] === 'string') {
+             newFields[primaryKey] += ' (Copia)';
+         }
+         delete newFields['__studentName'];
+         delete newFields['__lanzamientoName'];
+         delete newFields['__studentLegajo'];
+         delete newFields['__totalHours'];
+         createMutation.mutate(newFields);
+    };
+    
+    const handleStudentSelect = (student: AirtableRecord<any>) => {
+        setFilterStudentId(student.id);
+        setSelectedStudentLabel(`${student[FIELD_NOMBRE_ESTUDIANTES]} (${student[FIELD_LEGAJO_ESTUDIANTES]})`);
+    };
+
+    const clearStudentFilter = () => {
+        setFilterStudentId('');
+        setSelectedStudentLabel('');
+        setSearchTerm(''); 
     };
 
     const renderCellValue = (record: AppRecord<any>, fieldConfig: any) => {
@@ -521,25 +706,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         }
 
         if (key === FIELD_HORAS_PRACTICAS) {
-            return <div className="font-mono font-bold text-slate-700 dark:text-slate-200 text-center">{value || '-'}</div>;
-        }
-        
-        if (key === FIELD_FECHA_INICIO_PRACTICAS) {
-             if (!value) return <span className="text-slate-300 block text-center">-</span>;
-             return (
-                 <span className="font-mono text-[11px] font-bold whitespace-nowrap text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-800 flex justify-center w-fit mx-auto">
-                     {formatDate(value)}
-                 </span>
-             );
-        }
-        
-        if (key === FIELD_FECHA_FIN_PRACTICAS) {
-             if (!value) return <span className="text-slate-300 block text-center">-</span>;
-             return (
-                 <span className="font-mono text-[11px] font-bold whitespace-nowrap text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded border border-rose-100 dark:border-rose-800 flex justify-center w-fit mx-auto">
-                     {formatDate(value)}
-                 </span>
-             );
+            return <div className="font-mono font-bold text-slate-700 dark:text-slate-200">{value || '-'}</div>;
         }
 
         if (key === '__totalHours') {
@@ -557,7 +724,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         }
 
         if (fieldConfig.type === 'date') {
-            return <span className="font-mono text-[13px] whitespace-nowrap text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 block text-center">{formatDate(value)}</span>;
+            return <span className="font-mono text-[13px] whitespace-nowrap text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">{formatDate(value)}</span>;
         }
         
         if (key === FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES || key === FIELD_ESPECIALIDAD_PRACTICAS) {
@@ -585,7 +752,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                 </div>
              );
         }
-
+        
         if (key === FIELD_CORREO_ESTUDIANTES) {
              if (!value) return <span className="text-slate-300">-</span>;
              return (
@@ -618,18 +785,205 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         return <span className="truncate block max-w-[200px] text-[13px] font-medium text-slate-600 dark:text-slate-300" title={String(value || '')}>{String(value || '')}</span>;
     };
 
+    const ActionButtons = () => (
+        <div className="flex items-center gap-2">
+            {isBulkEditMode && (
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 animate-scale-in origin-right">
+                    <select 
+                        value={bulkStatus} 
+                        onChange={e => setBulkStatus(e.target.value)}
+                        className="text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 outline-none focus:border-blue-500"
+                    >
+                        <option value="">Cambiar Estado...</option>
+                        <option value="Finalizada">Finalizada</option>
+                        <option value="En curso">En curso</option>
+                    </select>
+                    <button 
+                        onClick={handleBulkUpdateStatus}
+                        disabled={selectedRowIds.size === 0 || !bulkStatus}
+                        className="text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                    >
+                        Aplicar ({selectedRowIds.size})
+                    </button>
+                    <button onClick={() => {setIsBulkEditMode(false); setSelectedRowIds(new Set())}} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 ml-1"><span className="material-icons !text-lg">close</span></button>
+                </div>
+            )}
+
+            {!isBulkEditMode && activeTable === 'practicas' && (
+                <button 
+                    onClick={() => setIsBulkEditMode(true)}
+                    className="p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                    title="Edición masiva"
+                >
+                    <span className="material-icons !text-xl">playlist_add_check</span>
+                </button>
+            )}
+
+            <button 
+                onClick={() => selectedRowId && handleDeleteClick(selectedRowId)} 
+                disabled={!selectedRowId}
+                className={`px-4 py-2.5 bg-white dark:bg-slate-800 border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-bold rounded-lg text-sm flex items-center justify-center gap-2 transition-all shrink-0 ${!selectedRowId ? 'opacity-50 cursor-not-allowed hidden md:flex' : 'hover:bg-rose-50 dark:hover:bg-rose-900/20 shadow-sm'}`}
+            >
+                <span className="material-icons !text-lg">delete</span>
+                <span className="hidden sm:inline">Eliminar</span>
+            </button>
+
+            <button onClick={() => setEditingRecord({ isCreating: true })} className="bg-blue-600 text-white font-bold py-2.5 px-5 rounded-lg text-sm flex items-center gap-2 hover:bg-blue-700 hover:shadow-lg shadow-blue-500/20 hover:-translate-y-0.5 transition-all active:scale-95">
+                <span className="material-icons !text-lg">add_circle</span>
+                <span className="hidden sm:inline">Nuevo</span>
+            </button>
+        </div>
+    );
+
+    const FilterToolbar = () => (
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-6 flex flex-col xl:flex-row gap-4">
+            {/* 1. Main Search - Large & Prominent */}
+            <div className="flex-1 relative group">
+                {!hasSpecificFilters ? (
+                    <div className="relative h-full">
+                        <input 
+                            type="search" 
+                            placeholder={activeTable === 'estudiantes' ? "Buscar por nombre, legajo o DNI..." : "Buscar..."}
+                            value={searchTerm} 
+                            onChange={e => setSearchTerm(e.target.value)} 
+                            className="w-full h-11 pl-11 pr-10 bg-slate-50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" 
+                        />
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-xl pointer-events-none group-focus-within:text-blue-500 transition-colors">search</span>
+                        {searchTerm && (
+                            <button 
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                <span className="material-icons !text-lg">close</span>
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    // Specialized Search Component Wrapper (For Students/Complex Tables)
+                     <div className="relative h-full">
+                        {filterStudentId ? (
+                            <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/30 h-11 px-3 rounded-xl border border-blue-200 dark:border-blue-800 animate-fade-in">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="w-7 h-7 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-200 flex items-center justify-center text-xs font-bold shadow-sm shrink-0">
+                                        {selectedStudentLabel.charAt(0)}
+                                    </div>
+                                    <span className="text-sm font-bold text-blue-900 dark:text-blue-100 truncate">
+                                        {selectedStudentLabel}
+                                    </span>
+                                </div>
+                                <button 
+                                    onClick={clearStudentFilter}
+                                    className="p-1.5 rounded-full text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+                                    title="Quitar filtro"
+                                >
+                                    <span className="material-icons !text-base">close</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="h-11">
+                                <AdminSearch 
+                                    onStudentSelect={handleStudentSelect}
+                                    isTestingMode={isTestingMode}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* 2. Secondary Filters (Horizontal Row) */}
+            {hasSpecificFilters && (
+                <div className="flex items-center gap-3 overflow-x-auto pb-2 xl:pb-0">
+                    {/* Institution Filter */}
+                    {activeTable === 'practicas' && (
+                        <>
+                            <div className="relative min-w-[200px]">
+                                <select 
+                                    value={filterInstitutionId} 
+                                    onChange={(e) => { setFilterInstitutionId(e.target.value); }}
+                                    className="w-full h-11 pl-3 pr-8 text-sm font-medium rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm cursor-pointer appearance-none hover:bg-white dark:hover:bg-slate-800"
+                                >
+                                    <option value="">🏢 Todas las instituciones</option>
+                                    {allInstitutions.map(i => (
+                                        <option key={i.id} value={i.id}>{i[FIELD_NOMBRE_INSTITUCIONES]}</option>
+                                    ))}
+                                </select>
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 material-icons text-slate-400 pointer-events-none !text-lg">expand_more</span>
+                            </div>
+
+                            {/* Launch Filter (Dependent) */}
+                            {filterInstitutionId && (
+                                <div className="relative min-w-[200px] animate-fade-in">
+                                    <select 
+                                        value={filterLaunchId} 
+                                        onChange={(e) => setFilterLaunchId(e.target.value)}
+                                        className="w-full h-11 pl-3 pr-8 text-sm font-medium rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm cursor-pointer appearance-none hover:bg-white dark:hover:bg-slate-800"
+                                    >
+                                        <option value="">📅 Cualquier fecha</option>
+                                        {availableLaunches.map(l => (
+                                            <option key={l.id} value={l.id}>
+                                                {formatDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS])} - {l[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 material-icons text-slate-400 pointer-events-none !text-lg">expand_more</span>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* 3. Actions Group */}
+            <div className="flex-shrink-0 flex items-center justify-end xl:w-auto w-full pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
+                <ActionButtons />
+            </div>
+        </div>
+    );
+
     return (
-        <Card title="Editor de Base de Datos" icon="storage">
-            {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
+        <Card title="Editor de Base de Datos" icon="storage" className="border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0F172A] shadow-lg">
+            {toastInfo && (
+                <Toast 
+                    message={toastInfo.message} 
+                    type={toastInfo.type} 
+                    onClose={() => setToastInfo(null)} 
+                />
+            )}
+
+            {/* Confirm Delete Modal */}
+            <ConfirmModal 
+                isOpen={!!idToDelete}
+                onClose={() => setIdToDelete(null)}
+                onConfirm={confirmDelete}
+                title="Confirmar Eliminación"
+                message="¿Estás seguro de que deseas eliminar este registro permanentemente? Esta acción no se puede deshacer."
+                confirmText="Sí, Eliminar"
+                type="danger"
+            />
             
             {contextMenu && (
                 <ContextMenu
                     x={contextMenu.x}
                     y={contextMenu.y}
                     onEdit={() => { setEditingRecord(contextMenu.record); setContextMenu(null); }}
-                    onDuplicate={() => { duplicateMutation.mutate(contextMenu.record); setContextMenu(null); }}
-                    onDelete={() => { handleDelete(contextMenu.record.id); setContextMenu(null); }}
+                    onDuplicate={() => {
+                        if (activeTable === 'practicas') { setDuplicateTargetRecord(contextMenu.record); } 
+                        else { handleSimpleDuplicate(contextMenu.record); }
+                        setContextMenu(null);
+                    }}
+                    onDelete={() => handleDeleteClick(contextMenu.record.id)}
                     onClose={() => setContextMenu(null)}
+                    isPracticaTable={activeTable === 'practicas'}
+                />
+            )}
+            
+            {duplicateTargetRecord && (
+                <DuplicateToStudentModal 
+                    isOpen={!!duplicateTargetRecord}
+                    onClose={() => setDuplicateTargetRecord(null)}
+                    onConfirm={handleDuplicateWithStudent}
+                    sourceRecordLabel={(duplicateTargetRecord as any).__lanzamientoName || duplicateTargetRecord[activeTableConfig.displayFields[0]] || 'Registro'}
                 />
             )}
 
@@ -641,96 +995,95 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                 />
             </div>
 
-            <div className="mt-6 border-t border-slate-200/60 dark:border-slate-700/60 pt-6">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
-                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-wrap">
-                        <div className="relative w-full md:w-72 group">
-                            <input 
-                                type="search" 
-                                placeholder="Buscar..." 
-                                value={searchTerm} 
-                                onChange={e => setSearchTerm(e.target.value)} 
-                                className="w-full pl-10 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
-                            />
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-lg pointer-events-none">search</span>
-                            {searchTerm && (
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                    <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" style={{ opacity: isLoading ? 1 : 0 }} />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                        <button 
-                            onClick={() => selectedRowId && handleDelete(selectedRowId)} 
-                            disabled={!selectedRowId}
-                            className={`w-full md:w-auto bg-white border border-rose-300 text-rose-600 font-bold py-2.5 px-5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all shrink-0 ${!selectedRowId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-rose-50 shadow-sm'}`}
-                        >
-                            <span className="material-icons !text-lg">delete</span>
-                            Eliminar
-                        </button>
-
-                        <button onClick={() => setEditingRecord({ isCreating: true })} className="w-full md:w-auto bg-blue-600 text-white font-bold py-2.5 px-5 rounded-lg text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shrink-0">
-                            <span className="material-icons !text-lg">add_circle</span>
-                            Nuevo Registro
-                        </button>
-                    </div>
-                </div>
+            <div className="mt-6 pt-2">
+                <FilterToolbar />
                 
-                {isLoading && records.length === 0 && <div className="py-10"><Loader /></div>}
+                {isLoading && records.length === 0 && <div className="py-20"><Loader /></div>}
                 {error && <EmptyState icon="error" title="Error de Carga" message={error.message} />}
                 
                 {(!isLoading || records.length > 0) && !error && (
-                    <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[800px] text-sm text-left">
-                                <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
-                                    <tr>
-                                        {activeTableConfig.displayFields.map(key => {
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-slate-900 ring-1 ring-black/5 dark:ring-white/5 relative z-0">
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full min-w-[900px] text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800">
+                                        {activeTableConfig.displayFields.map((key, idx) => {
                                             const fieldConfig = activeTableConfig.fieldConfig.find(f => f.key === key);
                                             const label = fieldConfig ? fieldConfig.label : (key.startsWith('__') ? key.substring(2).replace(/([A-Z])/g, ' $1') : key);
-                                            const className = key === '__lanzamientoName' || key === FIELD_NOMBRE_ESTUDIANTES ? "min-w-[250px]" : "";
-                                            // Pass align prop to header
-                                            return <SortableHeader key={key} label={label} sortKey={key} sortConfig={sortConfig} requestSort={requestSort} className={className} align={fieldConfig?.align} />;
+                                            
+                                            // Dynamic widths
+                                            let widthClass = fieldConfig?.width || "";
+                                            if (!widthClass) {
+                                                if (key === '__studentName') widthClass = "w-64";
+                                                else if (key === '__lanzamientoName') widthClass = "w-64";
+                                                else if (fieldConfig?.type === 'date') widthClass = "w-32";
+                                            }
+                                            
+                                            return (
+                                                <SortableHeader 
+                                                    key={key} 
+                                                    label={label} 
+                                                    sortKey={key} 
+                                                    sortConfig={sortConfig} 
+                                                    requestSort={requestSort} 
+                                                    className={`${widthClass} sticky top-0 z-10`}
+                                                    hasCheckbox={idx === 0 && isBulkEditMode}
+                                                    onSelectAll={handleSelectAll}
+                                                    allSelected={selectedRowIds.size > 0 && selectedRowIds.size === records.length}
+                                                    align={fieldConfig?.align || 'left'}
+                                                />
+                                            );
                                         })}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                    {records.length > 0 ? records.map((record, idx) => {
-                                        const isSelected = selectedRowId === record.id;
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                                    {records.map((record: any, idx: number) => {
+                                        const isSelected = selectedRowIds.has(record.id);
+                                        const isContextOpen = contextMenu?.record.id === record.id;
+                                        
                                         return (
                                             <tr 
                                                 key={record.id} 
-                                                onClick={() => setSelectedRowId(isSelected ? null : record.id)}
+                                                onClick={() => isBulkEditMode ? handleRowSelect(record.id) : setSelectedRowId(selectedRowId === record.id ? null : record.id)}
                                                 onDoubleClick={() => setEditingRecord(record)}
                                                 onContextMenu={(e) => handleRowContextMenu(e, record)}
-                                                className={`transition-colors cursor-pointer ${
-                                                    isSelected 
+                                                className={`group transition-all duration-150 cursor-pointer ${
+                                                    isSelected || selectedRowId === record.id
                                                         ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-inset ring-blue-300 dark:ring-blue-700' 
-                                                        : idx % 2 === 0 ? 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50' : 'bg-slate-50/30 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/70'
+                                                        : isContextOpen
+                                                            ? 'bg-slate-100 dark:bg-slate-800'
+                                                            : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 bg-white dark:bg-slate-900'
                                                 }`}
                                             >
-                                                {activeTableConfig.displayFields.map(key => {
-                                                    const fieldConfig = activeTableConfig.fieldConfig.find(f => f.key === key) || { key, type: 'text', label: '' };
-                                                    // Add alignment class to cell, reduce padding
-                                                    const alignClass = fieldConfig.align === 'center' ? 'text-center' : (fieldConfig.align === 'right' ? 'text-right' : 'text-left');
-                                                    
+                                                {activeTableConfig.displayFields.map((key, colIdx) => {
+                                                    const fieldConfig = activeTableConfig.fieldConfig.find(f => f.key === key) || { key } as FieldConfig;
                                                     return (
-                                                        <td key={key} className={`px-4 py-3 text-slate-700 dark:text-slate-300 align-middle ${alignClass}`}>
-                                                            {renderCellValue(record, fieldConfig)}
+                                                        <td key={key} className={`px-4 py-4 align-middle border-b border-transparent group-hover:border-slate-100 dark:group-hover:border-slate-800 ${colIdx === 0 ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'} ${fieldConfig.align === 'center' ? 'text-center' : fieldConfig.align === 'right' ? 'text-right' : 'text-left'}`}>
+                                                            {colIdx === 0 && (
+                                                                <div className="flex items-center gap-3">
+                                                                    {isBulkEditMode && (
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={isSelected} 
+                                                                            onChange={() => handleRowSelect(record.id)}
+                                                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                                                                            onClick={e => e.stopPropagation()}
+                                                                        />
+                                                                    )}
+                                                                    {/* Row Indicator */}
+                                                                    {selectedRowId === record.id && !isBulkEditMode && (
+                                                                        <div className="w-1 h-8 absolute left-0 bg-blue-500 rounded-r-md"></div>
+                                                                    )}
+                                                                    {renderCellValue(record, fieldConfig)}
+                                                                </div>
+                                                            )}
+                                                            {colIdx !== 0 && renderCellValue(record, fieldConfig)}
                                                         </td>
                                                     );
                                                 })}
                                             </tr>
                                         );
-                                    }) : (
-                                        <tr>
-                                            <td colSpan={activeTableConfig.displayFields.length}>
-                                                <div className="py-12"><EmptyState icon="search_off" title="Sin Resultados" message="No hay registros que coincidan con tu búsqueda." /></div>
-                                            </td>
-                                        </tr>
-                                    )}
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -752,9 +1105,18 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                     isOpen={!!editingRecord} 
                     onClose={() => setEditingRecord(null)} 
                     record={'isCreating' in editingRecord ? null : editingRecord} 
+                    initialData={'isCreating' in editingRecord ? editingRecord.initialData : undefined}
                     tableConfig={activeTableConfig} 
                     onSave={(recordId, fields) => {
-                        if (recordId) { updateMutation.mutate({ recordId, fields }); } else { createMutation.mutate(fields); }
+                        const cleanFields = { ...fields };
+                        Object.keys(cleanFields).forEach(key => {
+                            if (key.startsWith('__')) {
+                                delete cleanFields[key];
+                            }
+                        });
+                        
+                        if (recordId) { updateMutation.mutate({ recordId, fields: cleanFields }); } 
+                        else { createMutation.mutate(cleanFields); }
                     }} 
                     isSaving={updateMutation.isPending || createMutation.isPending} 
                 />
