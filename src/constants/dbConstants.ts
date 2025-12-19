@@ -3,7 +3,7 @@
 export const TABLE_NAME_PPS = 'solicitudes_pps' as const;
 export const TABLE_NAME_PRACTICAS = 'practicas' as const;
 export const TABLE_NAME_ESTUDIANTES = 'estudiantes' as const;
-export const TABLE_NAME_AUTH_USERS = 'auth_users' as const;
+export const TABLE_NAME_AUTH_USERS = 'auth_users' as const; // View or Table
 export const TABLE_NAME_LANZAMIENTOS_PPS = 'lanzamientos_pps' as const;
 export const TABLE_NAME_CONVOCATORIAS = 'convocatorias' as const;
 export const TABLE_NAME_INSTITUCIONES = 'instituciones' as const;
@@ -33,11 +33,11 @@ export const FIELD_FINALIZARON_ESTUDIANTES = 'finalizaron';
 export const FIELD_USER_ID_ESTUDIANTES = 'user_id';
 export const FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES = 'must_change_password';
 export const FIELD_ROLE_ESTUDIANTES = 'role';
-export const FIELD_TRABAJA_ESTUDIANTES = 'trabaja';
-export const FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES = 'certificado_trabajo';
+export const FIELD_TRABAJA_ESTUDIANTES = 'trabaja'; // Added
+export const FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES = 'certificado_trabajo'; // Added
 
 // Prácticas
-export const FIELD_NOMBRE_BUSQUEDA_PRACTICAS = 'legajo_busqueda';
+export const FIELD_NOMBRE_BUSQUEDA_PRACTICAS = 'legajo_busqueda'; // Optional helper column if needed
 export const FIELD_ESTUDIANTE_LINK_PRACTICAS = 'estudiante_id';
 export const FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS = 'nombre_institucion'; 
 export const FIELD_HORAS_PRACTICAS = 'horas_realizadas';
@@ -47,7 +47,7 @@ export const FIELD_ESTADO_PRACTICA = 'estado';
 export const FIELD_ESPECIALIDAD_PRACTICAS = 'especialidad';
 export const FIELD_NOTA_PRACTICAS = 'nota';
 export const FIELD_LANZAMIENTO_VINCULADO_PRACTICAS = 'lanzamiento_id';
-export const FIELD_INSTITUCION_LINK_PRACTICAS = 'institucion_id';
+export const FIELD_INSTITUCION_LINK_PRACTICAS = 'institucion_id'; // Optional
 
 // Solicitud de PPS
 export const FIELD_EMPRESA_PPS_SOLICITUD = 'nombre_institucion';
@@ -70,7 +70,7 @@ export const FIELD_SOLICITUD_CONTACTO_TUTOR = 'contacto_tutor';
 export const FIELD_SOLICITUD_TIPO_PRACTICA = 'tipo_practica';
 export const FIELD_SOLICITUD_DESCRIPCION = 'descripcion_institucion';
 
-// AuthUsers
+// AuthUsers (If view exists)
 export const FIELD_LEGAJO_AUTH = 'legajo';
 export const FIELD_NOMBRE_AUTH = 'nombre';
 export const FIELD_PASSWORD_HASH_AUTH = 'password_hash';
@@ -97,11 +97,9 @@ export const FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS = 'fecha_relanzamiento';
 export const FIELD_TELEFONO_INSTITUCION_LANZAMIENTOS = 'telefono'; 
 export const FIELD_PERMITE_CERTIFICADO_LANZAMIENTOS = 'permite_certificado';
 export const FIELD_AIRTABLE_ID = 'airtable_id';
-// Nuevos campos para configuración de documentación
-export const FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS = 'req_certificado_trabajo';
-export const FIELD_REQ_CV_LANZAMIENTOS = 'req_cv';
-// Nuevo campo para HTML del campus
-export const FIELD_CODIGO_CAMPUS_LANZAMIENTOS = 'codigo_tarjeta_campus';
+export const FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS = 'req_certificado_trabajo'; // Added
+export const FIELD_REQ_CV_LANZAMIENTOS = 'req_cv'; // Added
+export const FIELD_CODIGO_CAMPUS_LANZAMIENTOS = 'codigo_tarjeta_campus'; // Added
 
 // Instituciones
 export const FIELD_NOMBRE_INSTITUCIONES = 'nombre';
@@ -109,36 +107,35 @@ export const FIELD_TELEFONO_INSTITUCIONES = 'telefono';
 export const FIELD_DIRECCION_INSTITUCIONES = 'direccion';
 export const FIELD_CONVENIO_NUEVO_INSTITUCIONES = 'convenio_nuevo';
 export const FIELD_TUTOR_INSTITUCIONES = 'tutor';
-export const FIELD_CODIGO_CAMPUS_INSTITUCIONES = 'codigo_tarjeta_campus'; // Nuevo: Plantilla maestra
+export const FIELD_CODIGO_CAMPUS_INSTITUCIONES = 'codigo_tarjeta_campus'; // Added
 
 // Convocatorias
 export const FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS = 'lanzamiento_id';
-export const FIELD_NOMBRE_PPS_CONVOCATORIAS = 'nombre_pps';
+export const FIELD_NOMBRE_PPS_CONVOCATORIAS = 'nombre_pps'; // Helper from JOIN
 export const FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS = 'estudiante_id';
-export const FIELD_FECHA_INICIO_CONVOCATORIAS = 'fecha_inicio';
-export const FIELD_FECHA_FIN_CONVOCATORIAS = 'fecha_finalizacion';
-export const FIELD_DIRECCION_CONVOCATORIAS = 'direccion';
+export const FIELD_FECHA_INICIO_CONVOCATORIAS = 'fecha_inicio'; // Helper
+export const FIELD_FECHA_FIN_CONVOCATORIAS = 'fecha_finalizacion'; // Helper
+export const FIELD_DIRECCION_CONVOCATORIAS = 'direccion'; // Helper
 export const FIELD_HORARIO_FORMULA_CONVOCATORIAS = 'horario_seleccionado';
-export const FIELD_HORAS_ACREDITADAS_CONVOCATORIAS = 'horas_acreditadas';
-export const FIELD_CUPOS_DISPONIBLES_CONVOCATORIAS = 'cupos_disponibles';
+export const FIELD_HORAS_ACREDITADAS_CONVOCATORIAS = 'horas_acreditadas'; // Helper
+export const FIELD_CUPOS_DISPONIBLES_CONVOCATORIAS = 'cupos_disponibles'; // Helper
 export const FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS = 'estado_inscripcion';
-export const FIELD_ORIENTACION_CONVOCATORIAS = 'orientacion';
+export const FIELD_ORIENTACION_CONVOCATORIAS = 'orientacion'; // Helper
 export const FIELD_TERMINO_CURSAR_CONVOCATORIAS = 'termino_cursar';
 export const FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS = 'cursando_electivas';
 export const FIELD_FINALES_ADEUDA_CONVOCATORIAS = 'finales_adeuda';
 export const FIELD_OTRA_SITUACION_CONVOCATORIAS = 'otra_situacion_academica';
-export const FIELD_LEGAJO_CONVOCATORIAS = 'legajo';
-export const FIELD_DNI_CONVOCATORIAS = 'dni';
-export const FIELD_CORREO_CONVOCATORIAS = 'correo';
-export const FIELD_FECHA_NACIMIENTO_CONVOCATORIAS = 'fecha_nacimiento';
-export const FIELD_TELEFONO_CONVOCATORIAS = 'telefono';
+export const FIELD_LEGAJO_CONVOCATORIAS = 'legajo'; // Helper
+export const FIELD_DNI_CONVOCATORIAS = 'dni'; // Helper
+export const FIELD_CORREO_CONVOCATORIAS = 'correo'; // Helper
+export const FIELD_FECHA_NACIMIENTO_CONVOCATORIAS = 'fecha_nacimiento'; // Helper
+export const FIELD_TELEFONO_CONVOCATORIAS = 'telefono'; // Helper
 export const FIELD_INFORME_SUBIDO_CONVOCATORIAS = 'informe_subido';
 export const FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS = 'fecha_entrega_informe';
 export const FIELD_CERTIFICADO_CONVOCATORIAS = 'certificado_url';
-export const FIELD_TRABAJA_CONVOCATORIAS = 'trabaja';
-export const FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS = 'certificado_trabajo';
-// Nuevo campo para CV
-export const FIELD_CV_CONVOCATORIAS = 'cv_url';
+export const FIELD_TRABAJA_CONVOCATORIAS = 'trabaja'; // Added
+export const FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS = 'certificado_trabajo'; // Added
+export const FIELD_CV_CONVOCATORIAS = 'cv_url'; // Added
 
 // Finalizacion PPS
 export const FIELD_ESTUDIANTE_FINALIZACION = 'estudiante_id';
@@ -156,10 +153,3 @@ export const FIELD_PENALIZACION_NOTAS = 'notas';
 export const FIELD_PENALIZACION_FECHA = 'fecha_incidente';
 export const FIELD_PENALIZACION_PUNTAJE = 'puntaje_penalizacion';
 export const FIELD_PENALIZACION_CONVOCATORIA_LINK = 'convocatoria_afectada';
-
-// --- Legacy Columns (Backward Compatibility) ---
-export const COL_ESTUDIANTE_LEGAJO = FIELD_LEGAJO_ESTUDIANTES;
-export const COL_ESTUDIANTE_USER_ID = FIELD_USER_ID_ESTUDIANTES;
-export const COL_ESTUDIANTE_NOMBRE = FIELD_NOMBRE_ESTUDIANTES;
-export const COL_PRACTICA_ESTUDIANTE_ID = FIELD_ESTUDIANTE_LINK_PRACTICAS;
-export const COL_PRACTICA_LANZAMIENTO_ID = FIELD_LANZAMIENTO_VINCULADO_PRACTICAS;

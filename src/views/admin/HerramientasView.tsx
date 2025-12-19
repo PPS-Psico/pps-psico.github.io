@@ -1,4 +1,5 @@
-import React, { useState, lazy, Suspense } from 'react';
+
+import React, { useState, lazy, Suspense, useMemo } from 'react';
 import SubTabs from '../../components/SubTabs';
 import AdminSearch from '../../components/AdminSearch';
 import type { AirtableRecord, EstudianteFields } from '../../types';
@@ -14,6 +15,7 @@ import {
     FIELD_LEGAJO_ESTUDIANTES, 
     FIELD_NOTAS_INTERNAS_ESTUDIANTES
 } from '../../constants';
+import { useAdminPreferences } from '../../contexts/AdminPreferencesContext';
 
 // Lazy load heavy components
 const DatabaseEditor = lazy(() => import('../../components/DatabaseEditor'));
@@ -23,6 +25,7 @@ const NuevosConvenios = lazy(() => import('../../components/NuevosConvenios'));
 const DataIntegrityTool = lazy(() => import('../../components/DataIntegrityTool'));
 const ExecutiveReportGenerator = lazy(() => import('../../components/ExecutiveReportGenerator'));
 const ActiveInstitutionsReport = lazy(() => import('../../components/ActiveInstitutionsReport'));
+const PersonalizationPanel = lazy(() => import('../../components/PersonalizationPanel'));
 
 // Configuración simplificada para alta rápida: Solo Nombre y Legajo
 const QUICK_STUDENT_CONFIG = {
@@ -41,6 +44,7 @@ interface HerramientasViewProps {
 }
 
 const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, isTestingMode = false }) => {
+  const { preferences } = useAdminPreferences();
   const [activeTabId, setActiveTabId] = useState('editor-db');
   const [activeReportType, setActiveReportType] = useState<'instituciones' | 'ejecutivo'>('instituciones');
   
@@ -63,15 +67,28 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
       onError: (e: any) => setToastInfo({ message: `Error al crear: ${e.message}`, type: 'error' }),
   });
 
-  const tabs = [
-    { id: 'editor-db', label: 'Editor DB', icon: 'storage' },
-    { id: 'search', label: 'Buscar Alumno', icon: 'person_search' },
-    { id: 'convenios', label: 'Convenios Nuevos', icon: 'handshake' },
-    { id: 'penalizaciones', label: 'Penalizaciones', icon: 'gavel' },
-    { id: 'automation', label: 'Automatizaciones', icon: 'auto_fix_high' },
-    { id: 'integrity', label: 'Integridad', icon: 'health_and_safety' },
-    { id: 'reportes', label: 'Reportes', icon: 'summarize' },
-  ];
+  const tabs = useMemo(() => {
+      const availableTabs = [
+        { id: 'editor-db', label: 'Editor DB', icon: 'storage' },
+        { id: 'search', label: 'Buscar Alumno', icon: 'person_search' },
+      ];
+
+      if (preferences.showNewAgreements) availableTabs.push({ id: 'convenios', label: 'Convenios Nuevos', icon: 'handshake' });
+      if (preferences.showPenalizations) availableTabs.push({ id: 'penalizaciones', label: 'Penalizaciones', icon: 'gavel' });
+      if (preferences.showAutomation) availableTabs.push({ id: 'automation', label: 'Automatizaciones', icon: 'auto_fix_high' });
+      
+      // HIDE INTEGRITY IN TESTING MODE
+      if (preferences.showIntegrity && !isTestingMode) {
+          availableTabs.push({ id: 'integrity', label: 'Integridad', icon: 'health_and_safety' });
+      }
+
+      if (preferences.showReports) availableTabs.push({ id: 'reportes', label: 'Reportes', icon: 'summarize' });
+      
+      // Always show personalization at the end
+      availableTabs.push({ id: 'personalization', label: 'Personalización', icon: 'tune' });
+
+      return availableTabs;
+  }, [preferences, isTestingMode]);
 
   return (
     <div className="space-y-8">
@@ -87,27 +104,33 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
             </ErrorBoundary>
           )}
           
-          {activeTabId === 'convenios' && (
+          {activeTabId === 'convenios' && preferences.showNewAgreements && (
             <ErrorBoundary>
               <NuevosConvenios isTestingMode={isTestingMode} />
             </ErrorBoundary>
           )}
 
-          {activeTabId === 'penalizaciones' && (
+          {activeTabId === 'penalizaciones' && preferences.showPenalizations && (
             <ErrorBoundary>
               <PenalizationManager isTestingMode={isTestingMode} />
             </ErrorBoundary>
           )}
 
-          {activeTabId === 'automation' && (
+          {activeTabId === 'automation' && preferences.showAutomation && (
             <ErrorBoundary>
               <EmailAutomationManager />
             </ErrorBoundary>
           )}
 
-          {activeTabId === 'integrity' && (
+          {activeTabId === 'integrity' && preferences.showIntegrity && !isTestingMode && (
             <ErrorBoundary>
               <DataIntegrityTool />
+            </ErrorBoundary>
+          )}
+
+          {activeTabId === 'personalization' && (
+            <ErrorBoundary>
+              <PersonalizationPanel />
             </ErrorBoundary>
           )}
           
@@ -143,7 +166,7 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
             </ErrorBoundary>
           )}
 
-          {activeTabId === 'reportes' && (
+          {activeTabId === 'reportes' && preferences.showReports && (
              <div className="space-y-6">
                 <div className="flex justify-center">
                     <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">

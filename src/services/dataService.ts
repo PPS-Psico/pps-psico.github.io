@@ -12,14 +12,15 @@ import * as C from '../constants';
 import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
 
 export const fetchStudentData = async (legajo: string): Promise<{ studentDetails: Estudiante | null; studentAirtableId: string | null; }> => {
-  const records = await db.estudiantes.getAll({
-      filters: { [C.FIELD_LEGAJO_ESTUDIANTES]: legajo }
-  });
+  // Intentamos buscar por legajo exacto
+  const { data, error } = await supabase
+      .from(C.TABLE_NAME_ESTUDIANTES)
+      .select('*')
+      .eq(C.FIELD_LEGAJO_ESTUDIANTES, legajo)
+      .maybeSingle();
   
-  // records is already typed as Estudiante[] (AppRecord<EstudianteFields>[])
-  const data = records[0];
-
-  if (!data) {
+  if (error || !data) {
+      console.warn("Estudiante no encontrado por legajo:", legajo);
       return { studentDetails: null, studentAirtableId: null };
   }
 
@@ -30,31 +31,58 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
   const { studentAirtableId } = await fetchStudentData(legajo);
   if (!studentAirtableId) return [];
 
-  const records = await db.practicas.getAll({
-      filters: { [C.FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentAirtableId }
-  });
-  
-  if (records.length === 0) return [];
+  // Usamos una consulta directa con JOIN para traer el nombre de la institución
+  // desde la tabla de lanzamientos, si el vínculo existe.
+  const { data, error } = await supabase
+      .from(C.TABLE_NAME_PRACTICAS)
+      .select(`
+          *,
+          lanzamiento:lanzamientos_pps!fk_practica_lanzamiento (
+              nombre_pps,
+              orientacion,
+              fecha_inicio,
+              fecha_finalizacion
+          )
+      `)
+      .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentAirtableId);
 
-  const launchIds = [...new Set(records.map(p => p[C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]).filter(Boolean))] as string[];
-  
-  let launchMap = new Map<string, string>();
-  if (launchIds.length > 0) {
-      const launches = await db.lanzamientos.getAll({ filters: { id: launchIds }, fields: [C.FIELD_NOMBRE_PPS_LANZAMIENTOS] });
-      launches.forEach(l => {
-          if (l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]) {
-              launchMap.set(l.id, l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS] as string);
-          }
-      });
+  if (error || !data) {
+      console.error("Error fetching practicas:", error);
+      return [];
   }
 
-  return records.map((row) => {
-      const lanzId = row[C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
-      const linkedName = lanzId ? launchMap.get(lanzId as string) : null;
+  return data.map((row: any) => {
+      // Lógica de recuperación de nombre de institución:
+      // 1. Nombre guardado físicamente en la tabla practicas (si existe)
+      // 2. Nombre traído del lanzamiento vinculado (JOIN)
+      // 3. Fallback a "Institución desconocida"
       
+      const lanzamiento = Array.isArray(row.lanzamiento) ? row.lanzamiento[0] : row.lanzamiento;
+      
+      // Limpiar el nombre si viene con corchetes/comillas de la migración
+      let rawName = row[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
+      if (rawName && typeof rawName === 'string') {
+          rawName = rawName.replace(/[\[\]"]/g, '');
+      }
+
+      const finalName = rawName || lanzamiento?.nombre_pps || 'Institución desconocida';
+      
+      // Si faltan fechas en la práctica, usamos las del lanzamiento
+      if (!row[C.FIELD_FECHA_INICIO_PRACTICAS] && lanzamiento?.fecha_inicio) {
+          row[C.FIELD_FECHA_INICIO_PRACTICAS] = lanzamiento.fecha_inicio;
+      }
+      if (!row[C.FIELD_FECHA_FIN_PRACTICAS] && lanzamiento?.fecha_finalizacion) {
+          row[C.FIELD_FECHA_FIN_PRACTICAS] = lanzamiento.fecha_finalizacion;
+      }
+      
+      // Si falta especialidad, usamos la del lanzamiento
+      if (!row[C.FIELD_ESPECIALIDAD_PRACTICAS] && lanzamiento?.orientacion) {
+          row[C.FIELD_ESPECIALIDAD_PRACTICAS] = lanzamiento.orientacion;
+      }
+
       return {
           ...row,
-          [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: row[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] || linkedName || 'Institución desconocida',
+          [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: finalName,
       } as unknown as Practica;
   });
 };
@@ -67,12 +95,35 @@ export const fetchSolicitudes = async (legajo: string, studentAirtableId: string
   }
   if (!targetId) return [];
 
-  const records = await db.solicitudes.getAll({
-      filters: { [C.FIELD_LEGAJO_PPS]: targetId },
-      sort: [{ field: C.FIELD_ULTIMA_ACTUALIZACION_PPS, direction: 'desc' }]
-  });
+  // Usamos supabase directo para hacer el JOIN y obtener el nombre si falta
+  const { data, error } = await supabase
+      .from(C.TABLE_NAME_PPS)
+      .select(`
+          *,
+          estudiante:estudiantes!fk_solicitud_estudiante (
+            nombre, legajo, correo
+          )
+      `)
+      .eq(C.FIELD_LEGAJO_PPS, targetId)
+      .order('created_at', { ascending: false });
+
+  if (error || !data) {
+      console.error("Error fetching solicitudes:", error);
+      return [];
+  }
   
-  return records.filter(r => r[C.FIELD_ESTADO_PPS] !== 'Archivado') as unknown as SolicitudPPS[];
+  // Mapear para rellenar datos faltantes desde la relación
+  const mappedRecords = data.map((r: any) => {
+      const student = Array.isArray(r.estudiante) ? r.estudiante[0] : r.estudiante;
+      return {
+          ...r,
+          [C.FIELD_SOLICITUD_NOMBRE_ALUMNO]: r[C.FIELD_SOLICITUD_NOMBRE_ALUMNO] || student?.nombre || 'Estudiante',
+          [C.FIELD_SOLICITUD_LEGAJO_ALUMNO]: r[C.FIELD_SOLICITUD_LEGAJO_ALUMNO] || student?.legajo,
+          [C.FIELD_SOLICITUD_EMAIL_ALUMNO]: r[C.FIELD_SOLICITUD_EMAIL_ALUMNO] || student?.correo
+      };
+  });
+
+  return mappedRecords.filter(r => r[C.FIELD_ESTADO_PPS] !== 'Archivado') as unknown as SolicitudPPS[];
 };
 
 export const fetchFinalizacionRequest = async (legajo: string, studentAirtableId: string | null): Promise<FinalizacionPPS | null> => {

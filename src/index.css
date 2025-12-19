@@ -12,9 +12,10 @@
 
 html.dark {
   color-scheme: dark;
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --glass-bg: rgba(15, 23, 42, 0.6); 
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  /* Dark Mode mejorado: Bordes más claros y definidos, fondos con tinte azul */
+  --glass-border: rgba(255, 255, 255, 0.1); 
+  --glass-bg: rgba(15, 23, 42, 0.7); 
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 }
 
 html, body {
@@ -27,12 +28,12 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #ffffff; /* Fondo blanco puro para modo claro */
+  background-color: #ffffff; 
   color: #1e293b;
 }
 
 html.dark body {
-  background-color: #020617;
+  background-color: #020617; /* Slate 950 - Profundo */
   color: #e2e8f0;
 }
 
@@ -40,7 +41,7 @@ html.dark body {
   min-height: 100vh;
   width: 100%;
   position: relative;
-  /* Fondo con sutil tinte azul en lugar de gris */
+  /* Fondo mejorado */
   background-image: 
     radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
     radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.05) 0px, transparent 50%);
@@ -54,6 +55,14 @@ html.dark body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+}
+
+/* Dark Mode Glow Effect */
+html.dark .glass-panel {
+  box-shadow: 
+    0 0 0 1px rgba(255,255,255,0.05), /* Inner rim */
+    0 4px 6px -1px rgba(0, 0, 0, 0.5), 
+    0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
 .text-gradient-primary {
@@ -79,6 +88,11 @@ html.dark body {
   animation: pulse-glow 3s infinite;
 }
 
+@keyframes subtle-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
 /* Scrollbar con tonos azules */
 ::-webkit-scrollbar {
   width: 6px;
@@ -92,10 +106,13 @@ html.dark body {
   border-radius: 10px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #bfdbfe;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 @media print {

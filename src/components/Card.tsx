@@ -35,17 +35,17 @@ const Card: React.FC<CardProps> = ({
       style={style}
     >
       {(title || description || actions) && (
-        <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-slate-100 dark:border-white/5 ${noPadding ? 'p-6' : 'p-6 sm:p-8 mb-0'}`}>
+        <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-slate-100 dark:border-white/10 ${noPadding ? 'p-6' : 'p-6 sm:p-8 mb-0'}`}>
           {(title || description) && (
             <div className="flex items-start gap-4 flex-grow">
               {icon && (
-                <div className="flex-shrink-0 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl h-12 w-12 flex items-center justify-center shadow-sm">
+                <div className="flex-shrink-0 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-2xl h-12 w-12 flex items-center justify-center shadow-sm border border-blue-100 dark:border-slate-700">
                   <span className="material-icons !text-2xl">{icon}</span>
                 </div>
               )}
               <div>
                 {title && (
-                  <TitleTag className={`text-slate-900 dark:text-white text-xl font-bold tracking-tight ${titleClassName}`}>
+                  <TitleTag className={`text-slate-900 dark:text-white text-xl font-black tracking-tight ${titleClassName}`}>
                     {title}
                   </TitleTag>
                 )}

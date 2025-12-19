@@ -17,10 +17,10 @@ const MobileCriteriaCard: React.FC<MobileCriteriaCardProps> = ({ criterios, sele
   const Badge = ({ isComplete, icon, text, subtext }: { isComplete: boolean; icon: string; text: string; subtext?: string }) => (
     <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors ${isComplete 
       ? 'bg-emerald-50/80 border-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400' 
-      : 'bg-white/60 border-slate-100 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300'
+      : 'bg-white/60 border-slate-100 text-slate-600 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
     }`}>
       <div className="flex items-center gap-3">
-        <div className={`p-1.5 rounded-lg ${isComplete ? 'bg-emerald-200/50 text-emerald-700 dark:bg-emerald-800/50' : 'bg-slate-200/50 text-slate-500 dark:bg-slate-700/50'}`}>
+        <div className={`p-1.5 rounded-lg ${isComplete ? 'bg-emerald-200/50 text-emerald-700 dark:bg-emerald-800/50' : 'bg-slate-200/50 text-slate-500 dark:bg-indigo-500/20 dark:text-indigo-400'}`}>
             <span className="material-icons !text-sm block">
             {icon}
             </span>

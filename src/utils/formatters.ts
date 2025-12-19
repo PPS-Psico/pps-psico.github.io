@@ -1,11 +1,28 @@
 
+const isHolidayOrRecess = (date: Date): boolean => {
+    const month = date.getMonth(); // 0 = Enero, 11 = Diciembre
+    const day = date.getDate();
+
+    // 1. Receso de Verano: Todo Enero
+    if (month === 0) return true;
+
+    // 2. Fiestas de Diciembre (24, 25 y 31)
+    if (month === 11 && (day === 24 || day === 25 || day === 31)) return true;
+
+    return false;
+};
+
 export function addBusinessDays(startDate: Date, days: number): Date {
     let date = new Date(startDate.getTime());
     let added = 0;
     while (added < days) {
         date.setDate(date.getDate() + 1);
         const dayOfWeek = date.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isRecess = isHolidayOrRecess(date);
+
+        if (!isWeekend && !isRecess) {
             added++;
         }
     }
@@ -20,25 +37,34 @@ export function getBusinessDaysDiff(startDate: Date, endDate: Date): number {
 
     if (start.getTime() === end.getTime()) return 0;
 
+    // Si la fecha actual ya pasó la fecha objetivo (atrasado)
     if (start > end) {
         let count = 0;
         let curr = new Date(start);
         while (curr > end) {
             curr.setDate(curr.getDate() - 1);
             const dayOfWeek = curr.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isRecess = isHolidayOrRecess(curr);
+
+            if (!isWeekend && !isRecess) {
                 count++;
             }
         }
         return -count;
     }
     
+    // Si aún falta para la fecha objetivo
     let count = 0;
     let curr = new Date(start);
+    // Iteramos hasta llegar a la fecha fin para contar días hábiles reales en el medio
     while (curr < end) {
         curr.setDate(curr.getDate() + 1);
         const dayOfWeek = curr.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isRecess = isHolidayOrRecess(curr);
+
+        if (!isWeekend && !isRecess) {
             count++;
         }
     }
@@ -300,8 +326,6 @@ export function isValidLocation(location?: string): boolean {
         return false;
     }
 
-    // Removed the regex requirement for a digit (height number).
-    // Many institutions or hospitals don't have a street number, e.g. "Hospital Central", "Escuela N° 5"
     if (normalizedLocation.length < 3) return false;
 
     return true;

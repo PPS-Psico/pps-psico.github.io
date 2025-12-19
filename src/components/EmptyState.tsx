@@ -1,8 +1,9 @@
 
 import React from 'react';
+import { IllusSearch, IllusEmpty, IllusError, IllusSuccess, IllusConstruction, IllusDocuments } from './Illustrations';
 
 interface EmptyStateProps {
-  icon: string;
+  icon: string; // Used as key to map to illustration
   title: string;
   message: string;
   className?: string;
@@ -10,16 +11,63 @@ interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message, className = '', action }) => {
+  
+  // Mapping logic to select the right illustration based on the legacy icon name
+  const renderIllustration = () => {
+      const illustrationClass = "w-32 h-32 sm:w-40 sm:h-40 mx-auto drop-shadow-sm";
+      
+      switch (icon) {
+          case 'search_off':
+          case 'person_search':
+          case 'search':
+              return <IllusSearch className={illustrationClass} />;
+          
+          case 'error':
+          case 'warning':
+          case 'report':
+              return <IllusError className={illustrationClass} />;
+          
+          case 'check_circle':
+          case 'task_alt':
+          case 'verified':
+          case 'verified_user':
+              return <IllusSuccess className={illustrationClass} />;
+
+          case 'construction':
+          case 'pending_actions':
+              return <IllusConstruction className={illustrationClass} />;
+          
+          case 'inbox':
+          case 'list_alt':
+          case 'description':
+          case 'folder_off':
+              return <IllusDocuments className={illustrationClass} />;
+
+          default:
+              return <IllusEmpty className={illustrationClass} />;
+      }
+  };
+
   return (
-    <div className={`text-center py-12 px-6 bg-white dark:bg-slate-900 rounded-2xl mt-2 border border-gray-200/60 dark:border-gray-800 shadow-sm ${className}`}>
-      <div className="mx-auto bg-primary-100 dark:bg-primary-900/30 text-primary-500 dark:text-primary-400 rounded-full h-16 w-16 flex items-center justify-center animate-[subtle-bob_3s_ease-in-out_infinite]">
-        <span className="material-icons !text-4xl">{icon}</span>
+    <div className={`text-center py-12 px-6 rounded-3xl transition-all duration-300 ${className}`}>
+      
+      <div className="mb-6 animate-[subtle-bob_4s_ease-in-out_infinite]">
+         {renderIllustration()}
       </div>
-      <h3 className="mt-6 font-extrabold text-gray-800 dark:text-gray-100 text-xl tracking-tight">{title}</h3>
-      <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mt-2 max-w-md mx-auto leading-relaxed">
+
+      <h3 className="font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl tracking-tight mb-2">
+        {title}
+      </h3>
+      
+      <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium max-w-md mx-auto leading-relaxed">
         {message}
       </p>
-      {action && <div className="mt-6">{action}</div>}
+
+      {action && (
+        <div className="mt-8 flex justify-center">
+            {action}
+        </div>
+      )}
     </div>
   );
 };

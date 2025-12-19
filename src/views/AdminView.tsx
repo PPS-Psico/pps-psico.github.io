@@ -1,9 +1,12 @@
+
 import React, { useState, lazy, Suspense } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAdminPreferences } from '../contexts/AdminPreferencesContext'; // Importar contexto
 import WelcomeBannerAdmin from '../components/WelcomeBannerAdmin';
 import Loader from '../components/Loader';
 import AppModals from '../components/AppModals';
+import { StudentPanelProvider } from '../contexts/StudentPanelContext';
 
 // Components for Testing Mode (Imported directly to avoid Router outlet issues in test mode)
 const AdminDashboard = lazy(() => import('../components/AdminDashboard'));
@@ -15,7 +18,6 @@ const MetricsView = lazy(() => import('./admin/MetricsView'));
 
 // Lazy load heavy components (kept for normal routing)
 const StudentDashboard = lazy(() => import('./StudentDashboard'));
-const { StudentPanelProvider } = await import('../contexts/StudentPanelContext');
 
 interface AdminViewProps {
     isTestingMode?: boolean;
@@ -23,6 +25,7 @@ interface AdminViewProps {
 
 const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     const { authenticatedUser } = useAuth();
+    const { preferences } = useAdminPreferences(); // Consumir preferencias
     const navigate = useNavigate();
     const location = useLocation();
     const params = useParams();
@@ -30,14 +33,21 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     // State for local tabs in testing mode (Bypasses React Router)
     const [localTab, setLocalTab] = useState('dashboard');
 
+    // Construcción dinámica de pestañas basada en preferencias
     const tabs = [
         { id: 'dashboard', label: 'Inicio', icon: 'dashboard', path: '/admin/dashboard' },
         { id: 'lanzador', label: 'Lanzador', icon: 'rocket_launch', path: '/admin/lanzador' },
-        { id: 'gestion', label: 'Gestión', icon: 'tune', path: '/admin/gestion' },
+    ];
+
+    if (preferences.showManagementTab) {
+        tabs.push({ id: 'gestion', label: 'Gestión', icon: 'tune', path: '/admin/gestion' });
+    }
+
+    tabs.push(
         { id: 'solicitudes', label: 'Solicitudes', icon: 'list_alt', path: '/admin/solicitudes' },
         { id: 'metrics', label: 'Métricas', icon: 'analytics', path: '/admin/metrics' },
         { id: 'herramientas', label: 'Herramientas', icon: 'construction', path: '/admin/herramientas' },
-    ];
+    );
 
     const isActive = (tabId: string, path: string) => {
         if (isTestingMode) return localTab === tabId;
@@ -54,9 +64,6 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
 
     // Function to mimic navigation to a student detail in testing mode
     const handleTestStudentSelect = (student: any) => {
-        // In a real app we might open a modal or change view. 
-        // For this demo, we'll just alert or console log as full routing simulation is complex inside a tab.
-        // Or we could switch to a "student-detail" localTab if we implemented it.
         alert(`Navegación simulada al perfil de: ${student.nombre} (${student.legajo})`);
     };
 
@@ -76,7 +83,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 min-h-[600px]">
                     {localTab === 'dashboard' && <AdminDashboard isTestingMode={true} />}
                     {localTab === 'lanzador' && <LanzadorView isTestingMode={true} />}
-                    {localTab === 'gestion' && <GestionView isTestingMode={true} />}
+                    {localTab === 'gestion' && (preferences.showManagementTab ? <GestionView isTestingMode={true} /> : <div className="p-8 text-center text-slate-500">Módulo desactivado</div>)}
                     {localTab === 'solicitudes' && <SolicitudesManager isTestingMode={true} />}
                     {localTab === 'metrics' && <MetricsView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />}
                     {localTab === 'herramientas' && <HerramientasView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />}

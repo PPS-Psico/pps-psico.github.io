@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
+import { mockDb } from '../services/mockDb';
 import { schema } from '../lib/dbSchema';
 import type { AppRecord, LanzamientoPPSFields, InstitucionFields, AirtableRecord, EstudianteFields } from '../types';
 import SubTabs from './SubTabs';
@@ -163,6 +164,7 @@ interface DatabaseEditorProps {
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50];
 
+// ... (SortableHeader & PaginationControls remain the same) ...
 const SortableHeader: React.FC<{
   label: string;
   sortKey: string;
@@ -382,11 +384,18 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
 
     // Load Filter Data for Practicas (Institutions)
     useEffect(() => {
-        if (activeTable === 'practicas' && !isTestingMode) {
-            db.instituciones.getAll({ fields: [FIELD_NOMBRE_INSTITUCIONES] }).then(recs => {
-                const sorted = recs.sort((a, b) => (a[FIELD_NOMBRE_INSTITUCIONES] || '').localeCompare(b[FIELD_NOMBRE_INSTITUCIONES] || ''));
-                setAllInstitutions(sorted);
-            });
+        if (activeTable === 'practicas') {
+            if (isTestingMode) {
+                 mockDb.getAll('instituciones').then(recs => {
+                    const sorted = recs.sort((a: any, b: any) => (a[FIELD_NOMBRE_INSTITUCIONES] || '').localeCompare(b[FIELD_NOMBRE_INSTITUCIONES] || ''));
+                    setAllInstitutions(sorted as any);
+                });
+            } else {
+                db.instituciones.getAll({ fields: [FIELD_NOMBRE_INSTITUCIONES] }).then(recs => {
+                    const sorted = recs.sort((a, b) => (a[FIELD_NOMBRE_INSTITUCIONES] || '').localeCompare(b[FIELD_NOMBRE_INSTITUCIONES] || ''));
+                    setAllInstitutions(sorted);
+                });
+            }
         }
     }, [activeTable, isTestingMode]);
 
@@ -394,13 +403,13 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     useEffect(() => {
         setFilterLaunchId('');
 
-        if (filterInstitutionId && !isTestingMode) {
+        if (filterInstitutionId) {
              const institution = allInstitutions.find(i => i.id === filterInstitutionId);
              const instName = institution?.[FIELD_NOMBRE_INSTITUCIONES];
              if (instName) {
-                 db.lanzamientos.getAll({
-                     fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS]
-                 }).then(recs => {
+                 const fetchFn = isTestingMode ? mockDb.getAll('lanzamientos_pps') : db.lanzamientos.getAll({ fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS] });
+                 
+                 fetchFn.then((recs: any[]) => {
                      const filtered = recs.filter(l => {
                          const ppsName = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '';
                          return normalizeStringForComparison(ppsName).includes(normalizeStringForComparison(instName));
@@ -409,7 +418,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                          const dateB = new Date(b[FIELD_FECHA_INICIO_LANZAMIENTOS] || 0).getTime();
                          return dateB - dateA;
                      });
-                     setAvailableLaunches(filtered);
+                     setAvailableLaunches(filtered as any);
                  });
              }
         } else {
@@ -427,12 +436,8 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
             if (filterStudentId) filters[FIELD_ESTUDIANTE_LINK_PRACTICAS] = filterStudentId;
             
             if (filterLaunchId) {
-                // When launch ID is selected, use it directly (Assuming Supabase relation works with ID)
-                // If filtering by Institution name string in practices (legacy), we need to adjust logic
                 const launch = availableLaunches.find(l => l.id === filterLaunchId);
                 if (launch) {
-                    // Try to filter by exact Launch ID first, fall back to institution Name string match if practice stores names
-                    // This dual-logic depends on your supabaseService applyFilters implementation
                     filters[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = filterLaunchId;
                 }
             } else if (filterInstitutionId) {
@@ -450,7 +455,63 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     const { data: queryResult, isLoading, error } = useQuery({
         queryKey,
         queryFn: async () => {
-             if (isTestingMode) return { records: [], total: 0 };
+             if (isTestingMode) {
+                 // Simulate server-side filtering/pagination locally
+                 const allRecords = await mockDb.getAll(activeTableConfig.tableName, dbFilters);
+                 
+                 let filtered = allRecords;
+                 if (debouncedSearch) {
+                     const lowerSearch = debouncedSearch.toLowerCase();
+                     filtered = allRecords.filter((r: any) => {
+                         return activeTableConfig.searchFields.some(field => {
+                             const val = r[field];
+                             return String(val || '').toLowerCase().includes(lowerSearch);
+                         });
+                     });
+                 }
+                 
+                 if (sortConfig.key) {
+                     filtered.sort((a: any, b: any) => {
+                         const valA = a[sortConfig.key] || '';
+                         const valB = b[sortConfig.key] || '';
+                         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                         return 0;
+                     });
+                 }
+                 
+                 const total = filtered.length;
+                 const start = (currentPage - 1) * itemsPerPage;
+                 const paginated = filtered.slice(start, start + itemsPerPage);
+                 
+                 // If practices or convocatorias, mock join logic
+                 if (activeTable === 'practicas' || activeTable === 'convocatorias') {
+                     const studentIds = paginated.map((r: any) => activeTable === 'practicas' ? r[FIELD_ESTUDIANTE_LINK_PRACTICAS] : r[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
+                     const students = await mockDb.getAll('estudiantes'); // Simplify by getting all
+                     const studentMap = new Map(students.map((s: any) => [s.id, s]));
+                     
+                     const launchIds = paginated.map((r: any) => activeTable === 'practicas' ? r[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] : r[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
+                     const launches = await mockDb.getAll('lanzamientos_pps');
+                     const launchMap = new Map(launches.map((l: any) => [l.id, l]));
+
+                     const enriched = paginated.map((p: any) => {
+                         const sId = activeTable === 'practicas' ? p[FIELD_ESTUDIANTE_LINK_PRACTICAS] : p[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
+                         const lId = activeTable === 'practicas' ? p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] : p[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
+                         
+                         const student = studentMap.get(sId);
+                         const launch = launchMap.get(lId);
+                         
+                         return {
+                             ...p,
+                             __studentName: student ? `${student[FIELD_NOMBRE_ESTUDIANTES]} (${student[FIELD_LEGAJO_ESTUDIANTES]})` : 'Desconocido',
+                             __lanzamientoName: launch ? launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] : 'N/A'
+                         }
+                     });
+                     return { records: enriched, total };
+                 }
+
+                 return { records: paginated, total };
+             }
 
             const { records, total, error } = await (db as any)[activeTable].getPage(
                 currentPage,
@@ -540,7 +601,10 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     const updateMutation = useMutation({
-        mutationFn: ({ recordId, fields }: { recordId: string, fields: any }) => (db as any)[activeTable].update(recordId, fields),
+        mutationFn: ({ recordId, fields }: { recordId: string, fields: any }) => {
+             if (isTestingMode) return mockDb.update(activeTableConfig.tableName, recordId, fields);
+            return db[activeTable].update(recordId, fields);
+        },
         onSuccess: () => {
             setToastInfo({ message: 'Registro actualizado.', type: 'success' });
             queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] });
@@ -550,7 +614,10 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     });
 
     const createMutation = useMutation({
-        mutationFn: (fields: any) => (db as any)[activeTable].create(fields),
+        mutationFn: (fields: any) => {
+            if (isTestingMode) return mockDb.create(activeTableConfig.tableName, fields);
+            return db[activeTable].create(fields);
+        },
         onSuccess: () => {
              setToastInfo({ message: 'Registro creado.', type: 'success' });
              setEditingRecord(null);
@@ -561,20 +628,23 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (recordId: string) => (db as any)[activeTable].delete(recordId),
+        mutationFn: (recordId: string) => {
+            if (isTestingMode) return mockDb.delete(activeTableConfig.tableName, recordId);
+            return db[activeTable].delete(recordId);
+        },
         onSuccess: (_, deletedId) => {
-             // Optimistic update of list
              queryClient.setQueriesData({ queryKey: ['databaseEditor', activeTable] }, (oldData: any) => {
                  if (!oldData || !oldData.records) return oldData;
+                 // For optimistic UI in mock mode where delete might return success object
+                 const idToRemove = typeof deletedId === 'object' ? (deletedId as any).id : deletedId; 
                  return {
                      ...oldData,
-                     records: oldData.records.filter((r: any) => r.id !== deletedId),
+                     records: oldData.records.filter((r: any) => r.id !== idToRemove),
                      total: Math.max(0, oldData.total - 1)
                  };
              });
 
              setToastInfo({ message: 'Registro eliminado.', type: 'success' });
-             // Full refetch to ensure consistency
              queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] });
              
              setIdToDelete(null);
@@ -588,7 +658,16 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     });
     
     const bulkUpdateMutation = useMutation({
-        mutationFn: async (updates: { id: string, fields: any }[]) => (db as any)[activeTable].updateMany(updates),
+        mutationFn: async (updates: { id: string, fields: any }[]) => {
+            if (isTestingMode) {
+                // Mock bulk update
+                for (const update of updates) {
+                    await mockDb.update(activeTableConfig.tableName, update.id, update.fields);
+                }
+                return updates;
+            }
+            return (db as any)[activeTable].updateMany(updates);
+        },
         onSuccess: (data) => {
             setToastInfo({ message: `${data?.length || 0} registros actualizados.`, type: 'success' });
             setSelectedRowIds(new Set());
@@ -720,7 +799,11 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         }
 
         if (fieldConfig.type === 'checkbox') {
-            return value ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">Sí</span> : <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">No</span>;
+            return value ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">Sí</span>
+            ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">No</span>
+            );
         }
 
         if (fieldConfig.type === 'date') {
@@ -728,7 +811,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         }
         
         if (key === FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES || key === FIELD_ESPECIALIDAD_PRACTICAS) {
-            if (!value) return <span className="text-slate-300">-</span>;
+            if (!value) return <span className="text-slate-400">-</span>;
             const visuals = getEspecialidadClasses(String(value));
             return <span className={`${visuals.tag} whitespace-nowrap shadow-none border-0`}>{String(value)}</span>;
         }
@@ -754,7 +837,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         }
         
         if (key === FIELD_CORREO_ESTUDIANTES) {
-             if (!value) return <span className="text-slate-300">-</span>;
+             if (!value) return <span className="text-slate-400">-</span>;
              return (
                  <a href={`mailto:${value}`} className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 text-xs font-medium group">
                      <span className="material-icons !text-sm text-slate-400 group-hover:text-blue-500">email</span>
@@ -764,7 +847,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         }
 
         if (key === FIELD_TELEFONO_ESTUDIANTES) {
-             if (!value) return <span className="text-slate-300">-</span>;
+             if (!value) return <span className="text-slate-400">-</span>;
              return (
                  <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                      <span className="material-icons !text-sm text-slate-400">smartphone</span>
@@ -781,8 +864,8 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                 </div>
             );
         }
-        
-        return <span className="truncate block max-w-[200px] text-[13px] font-medium text-slate-600 dark:text-slate-300" title={String(value || '')}>{String(value || '')}</span>;
+
+        return <span className="truncate block max-w-[200px]" title={String(value || '')}>{String(value || '')}</span>;
     };
 
     const ActionButtons = () => (

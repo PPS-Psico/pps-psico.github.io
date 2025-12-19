@@ -22,13 +22,16 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
     const totalBusinessDays = 14;
     const daysPassed = totalBusinessDays - Math.max(0, daysDisplay);
     
-    // Porcentaje de barra
+    // Porcentaje de barra (Solo basado en tiempo)
     let percentage = Math.min(100, Math.max(5, (daysPassed / totalBusinessDays) * 100)); 
-    if (isEnProceso && percentage < 50) percentage = 50;
     if (daysDisplay < 0) percentage = 100;
     
     const firstName = studentName?.split(' ')[0] || 'Estudiante';
     const isOverdue = daysDisplay < 0;
+
+    // Detectar si la fecha estimada cae en Enero o Febrero
+    const targetMonth = targetDate.getMonth();
+    const isExtendedByRecess = targetMonth === 0 || targetMonth === 1 || (startDate.getMonth() === 11 && startDate.getDate() > 15);
 
     // --- VISTA DE ÉXITO (YA CARGADO) ---
     if (isFinished) {
@@ -70,158 +73,192 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
         );
     }
 
-    // --- CONFIGURACIÓN DE CONTENIDO SEGÚN ESTADO ---
+    // --- CONFIGURACIÓN DE ESTADOS ---
     let bannerTitle = "¡Solicitud Recibida!";
     let bannerText = "Felicitaciones por finalizar tu recorrido de prácticas. Estamos evaluando tu solicitud y validando la documentación presentada.";
     let bannerStatus = "Solicitud Enviada";
     let bannerColorClass = "text-blue-600 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800";
     
-    let step1State: 'active' | 'completed' = 'active';
-    let step2State: 'pending' | 'active' = 'pending';
+    // 0 = Paso 1 (Validación), 1 = Paso 2 (Circuito), 2 = Paso 3 (Fin)
+    let currentStepIndex = 0; 
 
     if (isEnProceso) {
         bannerTitle = `Todo marcha bien, ${firstName}.`;
         bannerText = "Tus documentos fueron validados correctamente y el expediente se encuentra en proceso de acreditación interna.";
         bannerStatus = "En Proceso";
         bannerColorClass = "text-indigo-600 bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800";
-        step1State = 'completed';
-        step2State = 'active';
+        currentStepIndex = 1;
     }
 
+    const steps = [
+        {
+            title: "Validación Documental",
+            desc: "Revisión de firmas y planillas.",
+            icon: "inventory_2"
+        },
+        {
+            title: "Circuito Administrativo",
+            desc: "Aprobación final por áreas UFLO.",
+            icon: "settings_suggest"
+        },
+        {
+            title: "Acreditación Final",
+            desc: "Carga definitiva en sistema SAC.",
+            icon: "school"
+        }
+    ];
+
     return (
-        <div className="max-w-7xl mx-auto mt-6 animate-fade-in-up pb-12 space-y-8">
+        <div className="max-w-7xl mx-auto mt-6 animate-fade-in-up pb-12 space-y-6">
             
             {/* BANNER SUPERIOR */}
-            <div className="relative overflow-hidden bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-xl p-8 sm:p-10">
+            <div className="relative overflow-hidden bg-white dark:bg-[#0F172A] rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl p-8 sm:p-12">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-blue-50/50 to-transparent dark:from-blue-900/10 rounded-full blur-3xl -mr-40 -mt-40 pointer-events-none"></div>
                 <div className="relative z-10">
-                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border ${bannerColorClass}`}>
-                        <span className="relative flex h-2 w-2">
+                    <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6 border shadow-sm ${bannerColorClass}`}>
+                        <span className="relative flex h-2.5 w-2.5">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-current"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-current"></span>
                         </span>
                         {bannerStatus}
                     </div>
-                    <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-4 tracking-tight">
+                    <h2 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white leading-tight mb-4 tracking-tighter">
                         {bannerTitle}
                     </h2>
-                    <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed max-w-3xl">
+                    <p className="text-slate-600 dark:text-slate-400 text-lg sm:text-xl leading-relaxed max-w-4xl font-medium">
                         {bannerText}
                     </p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                 
-                {/* --- TIMELINE --- */}
-                <div className="hidden lg:block lg:col-span-8 pl-2 sm:pl-0">
-                    <div className="bg-white/60 dark:bg-[#0F172A]/60 rounded-[2rem] border border-slate-200/60 dark:border-slate-800 p-8 backdrop-blur-md h-full flex flex-col justify-center shadow-sm">
-                        <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3 mb-12 text-lg uppercase tracking-wide">
-                            Etapas del Proceso
-                        </h3>
+                {/* --- TIMELINE (IZQUIERDA) - REDISEÑADO --- */}
+                <div className="lg:col-span-8">
+                    <div className="bg-white/80 dark:bg-[#0F172A]/80 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 backdrop-blur-xl h-full flex flex-col shadow-md shadow-slate-200/40 dark:shadow-none relative">
                         
-                        <div className="relative space-y-0 pl-4 sm:pl-6">
-                             <div className="absolute left-[28px] sm:left-[36px] top-6 bottom-16 w-0.5 bg-slate-200 dark:bg-slate-700/50">
+                        <div className="flex items-center gap-3 mb-10">
+                            <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300">
+                                <span className="material-icons !text-2xl">timeline</span>
+                            </div>
+                            <h3 className="font-extrabold text-slate-800 dark:text-white text-xl tracking-tight">
+                                Etapas del Proceso
+                            </h3>
+                        </div>
+                        
+                        <div className="flex-grow flex flex-col justify-center pl-2">
+                             <div className="relative space-y-12">
+                                 
+                                 {/* Línea de fondo (Gris) */}
+                                 <div className="absolute left-[28px] top-4 bottom-4 w-1 bg-slate-100 dark:bg-slate-800 -z-10 rounded-full"></div>
+                                 
+                                 {/* Línea de progreso (Color) */}
                                  <div 
-                                    className="absolute top-0 left-0 w-full bg-blue-500 transition-all duration-1000 ease-in-out" 
-                                    style={{ height: isEnProceso ? '60%' : '20%' }}
+                                    className="absolute left-[28px] top-4 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 -z-10 rounded-full transition-all duration-1000 ease-in-out"
+                                    style={{ height: `${(currentStepIndex / (steps.length - 1)) * 85}%` }}
                                  ></div>
+
+                                {steps.map((step, idx) => {
+                                    const isCompleted = idx < currentStepIndex;
+                                    const isActive = idx === currentStepIndex;
+                                    const isPending = idx > currentStepIndex;
+
+                                    return (
+                                        <div key={idx} className={`relative flex items-center gap-6 ${isPending ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                                            
+                                            {/* ICONO */}
+                                            <div className={`
+                                                flex-shrink-0 w-14 h-14 rounded-full border-[5px] flex items-center justify-center z-10 transition-all duration-500
+                                                ${isCompleted 
+                                                    ? 'bg-emerald-500 border-white dark:border-slate-900 text-white shadow-lg shadow-emerald-500/30 scale-105' 
+                                                    : isActive 
+                                                        ? 'bg-white dark:bg-slate-900 border-blue-500 text-blue-600 shadow-xl shadow-blue-500/20 ring-4 ring-blue-100 dark:ring-blue-900/30 scale-110'
+                                                        : 'bg-slate-100 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400'
+                                                }
+                                            `}>
+                                                <span className={`material-icons !text-2xl ${isActive ? 'animate-pulse' : ''}`}>
+                                                    {isCompleted ? 'check' : step.icon}
+                                                </span>
+                                            </div>
+
+                                            {/* TEXTO */}
+                                            <div className="py-1">
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <h4 className={`text-lg font-bold tracking-tight ${isActive ? 'text-blue-700 dark:text-blue-400' : isCompleted ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                        {step.title}
+                                                    </h4>
+                                                    {isCompleted && (
+                                                        <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                                                            Completado
+                                                        </span>
+                                                    )}
+                                                    {isActive && (
+                                                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
+                                                            En Curso
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed max-w-md">
+                                                    {step.desc}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                              </div>
-
-                            {/* Step 1 */}
-                            <div className="relative flex gap-6 pb-16 group">
-                                <div className={`flex-shrink-0 w-14 h-14 rounded-full border-4 flex items-center justify-center z-10 shadow-sm transition-all duration-500 ${step1State === 'completed' ? 'bg-emerald-500 border-emerald-100 dark:border-emerald-900/50 text-white' : 'bg-white dark:bg-slate-800 border-blue-100 dark:border-blue-900/50 text-blue-600'}`}>
-                                    <span className="material-icons !text-2xl">
-                                        {step1State === 'completed' ? 'check' : 'inventory_2'}
-                                    </span>
-                                </div>
-                                <div className="pt-2">
-                                    <h4 className={`text-lg font-bold mb-2 flex items-center gap-2 ${step1State === 'completed' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
-                                        Validación Documental
-                                        {step1State === 'completed' && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Completada</span>}
-                                    </h4>
-                                    <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-lg">
-                                        Revisión de planillas y firmas. Si hay algún inconveniente, te notificaremos vía email.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Step 2 */}
-                            <div className="relative flex gap-6 pb-16 group">
-                                <div className={`flex-shrink-0 w-14 h-14 rounded-full border-4 flex items-center justify-center z-10 shadow-sm transition-all duration-500 ${step2State === 'active' ? 'bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-800 ring-4 ring-indigo-50 dark:ring-indigo-900/20 scale-110' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                                    <span className={`material-icons !text-2xl ${step2State === 'active' ? 'text-indigo-600 dark:text-indigo-400 animate-pulse' : 'text-slate-400'}`}>admin_panel_settings</span>
-                                </div>
-                                <div className="pt-2">
-                                    <h4 className={`text-lg font-bold mb-2 ${step2State === 'active' ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-500'}`}>
-                                        Circuito Administrativo
-                                        {step2State === 'active' && <span className="ml-2 text-[10px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">En Curso</span>}
-                                    </h4>
-                                    <p className={`text-sm leading-relaxed max-w-lg ${step2State === 'active' ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-600'}`}>
-                                        Una vez validada, entran en juego varios sectores de la universidad para la carga y acreditación de tus PPS.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Step 3 */}
-                            <div className="relative flex gap-6 group">
-                                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-slate-50 dark:bg-slate-900 border-4 border-slate-200 dark:border-slate-800 flex items-center justify-center z-10 shadow-sm">
-                                    <span className="material-icons !text-2xl text-slate-300 dark:text-slate-600">flag</span>
-                                </div>
-                                <div className="pt-2">
-                                    <h4 className="text-lg font-bold text-slate-400 dark:text-slate-600 mb-1">Finalización</h4>
-                                    <p className="text-slate-400 dark:text-slate-600 text-sm italic">
-                                        Carga definitiva en el sistema SAC.
-                                    </p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* --- SIDEBAR --- */}
-                <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+                {/* --- SIDEBAR (DERECHA) --- */}
+                <div className="lg:col-span-4 space-y-4 flex flex-col">
                     
-                    {/* CARD ESTIMACIÓN REDISEÑADA */}
-                    <div className="bg-white dark:bg-[#0F172A] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden relative group">
-                        {/* Status Stripe */}
+                    {/* CARD ESTIMACIÓN */}
+                    <div className="bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden relative group flex-grow flex flex-col">
                         <div className={`h-1.5 w-full ${isOverdue ? 'bg-rose-500' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}></div>
 
-                        <div className="p-6 pb-8">
-                            <div className="flex items-center justify-between mb-8">
-                                <h3 className="font-bold text-slate-700 dark:text-slate-200 text-base uppercase tracking-wider">Tiempo Estimado</h3>
-                                <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-full text-slate-400 dark:text-slate-500">
+                        <div className="p-6 flex flex-col flex-grow justify-center">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wider">Tiempo Estimado</h3>
+                                <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-500">
                                      <span className="material-icons !text-xl">timer</span>
                                 </div>
                             </div>
                             
-                            {/* Big Number Display */}
                             <div className="flex flex-col items-center justify-center mb-8">
-                                <span className={`text-7xl font-black tracking-tighter leading-none ${isOverdue ? "text-rose-500 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}>
+                                <span className={`text-6xl font-black tracking-tighter leading-none ${isOverdue ? "text-rose-500 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}>
                                     {Math.max(0, daysDisplay)}
                                 </span>
-                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-2">
-                                    Días Hábiles Restantes
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
+                                    Días Hábiles
                                 </span>
                             </div>
 
-                            {/* Progress Bar */}
-                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mb-8 overflow-hidden">
+                            {isExtendedByRecess && (
+                                <div className="mb-6 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-xl flex items-start gap-2.5">
+                                    <span className="material-icons text-amber-500 !text-base mt-0.5">beach_access</span>
+                                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 leading-snug">
+                                        Contempla receso administrativo de enero.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
                                 <div 
                                     className={`h-full rounded-full transition-all duration-1000 ease-out ${isOverdue ? 'bg-rose-500' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}
                                     style={{ width: `${percentage}%` }}
                                 ></div>
                             </div>
 
-                            {/* Date Grid - Symmetrical & Clean */}
-                            <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
+                            <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-4">
                                 <div className="flex flex-col items-center border-r border-slate-100 dark:border-slate-800">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Solicitado</span>
+                                    <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Solicitado</span>
                                     <span className="text-sm font-bold text-slate-700 dark:text-slate-200 font-mono">
                                         {formatDate(startDate.toISOString())}
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-center">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Resolución Aprox.</span>
+                                    <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Resolución</span>
                                     <span className={`text-sm font-bold font-mono ${isOverdue ? 'text-rose-500' : 'text-slate-700 dark:text-slate-200'}`}>
                                         {formatDate(targetDate.toISOString())}
                                     </span>
@@ -231,42 +268,35 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                     </div>
 
                     {/* CARD SOPORTE */}
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg relative overflow-hidden group">
+                    <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-700 shadow-md relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-white dark:from-slate-800 dark:to-slate-900 pointer-events-none"></div>
 
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-slate-600">
+                        <div className="relative z-10 flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-slate-600 shadow-sm">
                                     <span className="material-icons !text-xl">support_agent</span>
                                 </div>
-                                <h3 className="font-bold text-slate-800 dark:text-white text-lg">¿Necesitas ayuda?</h3>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 dark:text-white text-lg">¿Ayuda?</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Sólo si el plazo venció.</p>
+                                </div>
                             </div>
                             
-                            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-                                Por favor, contáctanos <strong>únicamente</strong> si el plazo de 14 días hábiles se ha cumplido y aún no visualizas tus horas en el sistema.
-                            </p>
-
                             <a 
                                 href={isOverdue 
                                     ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${studentName}`
                                     : undefined
                                 }
-                                className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition-all shadow-sm
+                                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all
                                     ${isOverdue 
-                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md cursor-pointer hover:-translate-y-0.5' 
+                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md cursor-pointer hover:-translate-y-0.5' 
                                         : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed'
                                     }`}
                                 onClick={(e) => { if(!isOverdue) e.preventDefault(); }}
                             >
                                 <span className="material-icons !text-lg">{isOverdue ? 'mail' : 'lock_clock'}</span>
-                                {isOverdue ? 'Contactar Soporte' : 'Espera el plazo'}
+                                {isOverdue ? 'Contactar' : 'Espera el plazo'}
                             </a>
-
-                            {!isOverdue && (
-                                <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-3">
-                                    Botón habilitado al finalizar el plazo estimado.
-                                </p>
-                            )}
                         </div>
                     </div>
 

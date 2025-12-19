@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
@@ -43,7 +42,6 @@ import Select from './Select';
 import Button from './Button';
 import Checkbox from './Checkbox';
 import { GoogleGenAI } from "@google/genai";
-import { GEMINI_API_KEY } from '../constants/configConstants';
 
 const mockInstitutions = [
   { id: 'recInstMock1', [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital de Juguete' },
@@ -537,7 +535,8 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
         setIsGeneratingCode(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+            // Fix: Obtain API key exclusively from process.env.API_KEY as per coding guidelines
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const horarioString = schedules.join('; ');
 
             const prompt = `
@@ -662,7 +661,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                 </div>
             </div>
         );
-    }, []);
+    }, [handleStatusAction]);
 
     const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all";
 
@@ -1023,34 +1022,4 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                 <CollapsibleSection 
                                     title="Archivados / Ocultos" 
                                     count={hiddenHistory.length}
-                                    icon="visibility_off"
-                                    iconBgColor="bg-slate-100 dark:bg-slate-700"
-                                    iconColor="text-slate-500 dark:text-slate-400"
-                                    borderColor="border-slate-300 dark:border-slate-700"
-                                    defaultOpen={false}
-                                >
-                                    <div className="grid gap-4 mt-4">
-                                        {hiddenHistory.map(renderLaunchItem)}
-                                    </div>
-                                </CollapsibleSection>
-                             )}
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {editingLaunch && (
-                <RecordEditModal 
-                    isOpen={!!editingLaunch}
-                    onClose={() => setEditingLaunch(null)}
-                    record={editingLaunch}
-                    tableConfig={LAUNCH_TABLE_CONFIG}
-                    onSave={(id, fields) => updateDetailsMutation.mutate({ id: id!, fields })}
-                    isSaving={updateDetailsMutation.isPending}
-                />
-            )}
-        </Card>
-    );
-};
-
-export default LanzadorConvocatorias;
+                                    icon

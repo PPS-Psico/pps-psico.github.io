@@ -12,36 +12,36 @@ interface ErrorBoundaryState {
 
 /**
  * Standard React Error Boundary component.
- * Fixed: Explicitly extend Component and declare state to ensure type safety.
+ * Explicitly extend Component and declare state to ensure type safety.
  */
+// Fix: Extending Component (imported from 'react') helps TypeScript recognize inherited properties like setState and props
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Initialize state as a class property
   public state: ErrorBoundaryState = {
     hasError: false,
     error: undefined
   };
 
-  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error in component:", error, errorInfo);
   }
 
-  // Use arrow function as a class property to ensure 'this' refers to the component instance
-  private handleRetry = () => {
+  // Fix: handleRetry now correctly references this.setState and this.props from the base Component class
+  handleRetry = () => {
     this.setState({ hasError: false, error: undefined });
     if (this.props.onRetry) {
       this.props.onRetry();
     }
-  };
+  }
 
-  private handleRefresh = () => {
+  handleRefresh = () => {
       window.location.reload();
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-red-200/60 dark:border-red-900/50 max-w-lg mx-auto my-8 animate-fade-in-up">
@@ -70,6 +70,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
     
+    // Fix: this.props.children is properly identified through Component class inheritance
     return this.props.children;
   }
 }

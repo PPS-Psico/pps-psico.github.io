@@ -29,7 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             text-blue-950 dark:text-slate-100 
             bg-white dark:bg-slate-950 
             shadow-sm transition-all duration-200 ease-out
-            placeholder:text-blue-200 dark:placeholder:text-slate-500
+            placeholder:text-slate-400 dark:placeholder:text-slate-500 
             focus:border-blue-600 dark:focus:border-blue-400 
             focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/40 
             focus:outline-none 

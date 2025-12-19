@@ -1,9 +1,9 @@
 
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminSearch from './AdminSearch';
 import { fetchAllData, createRecord, deleteRecord, updateRecord } from '../services/supabaseService';
+import { mockDb } from '../services/mockDb';
 import type { EstudianteFields, Penalizacion, PenalizacionFields, ConvocatoriaFields, PracticaFields, LanzamientoPPSFields, AirtableRecord } from '../types';
 import {
   TABLE_NAME_ESTUDIANTES,
@@ -74,7 +74,14 @@ const AddPenaltyModal: React.FC<{
     const { data: relevantPPS, isLoading: isLoadingPPS } = useQuery({
         queryKey: ['relevantPPSForModal', student.id, isTestingMode],
         queryFn: async () => {
-            if (isTestingMode) return [];
+            if (isTestingMode) {
+                // Return dummy data or fetch from mock
+                const mockRecs = await mockDb.getAll('lanzamientos_pps');
+                return mockRecs.map((r: any) => ({
+                    id: r.id,
+                    name: `${r[FIELD_NOMBRE_PPS_LANZAMIENTOS]} (${formatDate(r[FIELD_FECHA_INICIO_LANZAMIENTOS])})`
+                }));
+            }
             
             // 1. Fetch Convocatorias for this student (Native Filter)
             const { records: convocatorias } = await fetchAllData<ConvocatoriaFields>(
@@ -132,6 +139,7 @@ const AddPenaltyModal: React.FC<{
         mutationFn: async (penaltyData: any) => {
             if (isTestingMode) {
                 console.log("TEST MODE: Applying penalty:", penaltyData);
+                await mockDb.create('penalizaciones', penaltyData);
                 return;
             }
             const penaltyResult = await createRecord<PenalizacionFields>(TABLE_NAME_PENALIZACIONES, penaltyData);
@@ -194,6 +202,7 @@ const AddPenaltyModal: React.FC<{
             [FIELD_PENALIZACION_TIPO]: penaltyType,
             [FIELD_PENALIZACION_FECHA]: new Date().toISOString().split('T')[0],
             [FIELD_PENALIZACION_NOTAS]: notes,
+            [FIELD_PENALIZACION_PUNTAJE]: 10, // Default penalty points, adjust logic as needed
         };
         if (selectedPpsId) penaltyData[FIELD_PENALIZACION_CONVOCATORIA_LINK] = selectedPpsId;
         applyPenaltyMutation.mutate(penaltyData);
@@ -363,29 +372,41 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
     const { data: penalizedStudents, isLoading } = useQuery<PenalizedStudent[]>({
         queryKey: ['allPenalizedStudents', isTestingMode],
         queryFn: async () => {
-            if (isTestingMode) return [];
-            const [penaltiesRes, studentsRes, lanzamientosRes] = await Promise.all([
-                fetchAllData<PenalizacionFields>(TABLE_NAME_PENALIZACIONES, penalizacionArraySchema),
-                fetchAllData<EstudianteFields>(TABLE_NAME_ESTUDIANTES, estudianteArraySchema, [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES]),
-                fetchAllData<LanzamientoPPSFields>(TABLE_NAME_LANZAMIENTOS_PPS, lanzamientoPPSArraySchema, [FIELD_NOMBRE_PPS_LANZAMIENTOS])
-            ]);
+            let penaltiesRes, studentsRes, lanzamientosRes;
+
+            if (isTestingMode) {
+                 [penaltiesRes, studentsRes, lanzamientosRes] = await Promise.all([
+                    mockDb.getAll('penalizaciones'),
+                    mockDb.getAll('estudiantes'),
+                    mockDb.getAll('lanzamientos_pps')
+                ]);
+            } else {
+                 const [p, s, l] = await Promise.all([
+                    fetchAllData<PenalizacionFields>(TABLE_NAME_PENALIZACIONES, penalizacionArraySchema),
+                    fetchAllData<EstudianteFields>(TABLE_NAME_ESTUDIANTES, estudianteArraySchema, [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES]),
+                    fetchAllData<LanzamientoPPSFields>(TABLE_NAME_LANZAMIENTOS_PPS, lanzamientoPPSArraySchema, [FIELD_NOMBRE_PPS_LANZAMIENTOS])
+                ]);
+                penaltiesRes = p.records;
+                studentsRes = s.records;
+                lanzamientosRes = l.records;
+            }
 
             const studentsMap = new Map<string, { legajo: string, nombre: string }>();
-            studentsRes.records.forEach(r => {
+            studentsRes.forEach((r: any) => {
                 if(r[FIELD_LEGAJO_ESTUDIANTES] && r[FIELD_NOMBRE_ESTUDIANTES]) {
                     studentsMap.set(r.id, { legajo: String(r[FIELD_LEGAJO_ESTUDIANTES]), nombre: String(r[FIELD_NOMBRE_ESTUDIANTES]) });
                 }
             });
             
             const lanzamientosMap = new Map<string, string>();
-            lanzamientosRes.records.forEach(r => {
+            lanzamientosRes.forEach((r: any) => {
                 if(r[FIELD_NOMBRE_PPS_LANZAMIENTOS]) {
                     lanzamientosMap.set(r.id, String(r[FIELD_NOMBRE_PPS_LANZAMIENTOS]));
                 }
             });
             
             const penaltiesByStudent = new Map<string, PenalizedStudent>();
-            penaltiesRes.records.forEach(p => {
+            penaltiesRes.forEach((p: any) => {
                 const rawStudentLink = p[FIELD_PENALIZACION_ESTUDIANTE_LINK];
                 const studentId = (Array.isArray(rawStudentLink) ? rawStudentLink[0] : rawStudentLink);
                 const studentInfo = studentId ? studentsMap.get(studentId) : null;
@@ -418,8 +439,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
     const deleteMutation = useMutation({
         mutationFn: (penaltyId: string) => {
             if (isTestingMode) {
-                console.log("TESTING: Deleting penalty", penaltyId);
-                return Promise.resolve({ success: true, error: null });
+                return mockDb.delete('penalizaciones', penaltyId);
             }
             return deleteRecord(TABLE_NAME_PENALIZACIONES, penaltyId)
         },
@@ -478,7 +498,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
 
             <Card title="Panel de Penalizaciones" icon="gavel" description="Aplica y gestiona las penalizaciones por incumplimientos de los estudiantes.">
                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                     <AdminSearch onStudentSelect={handleStudentSelect} />
+                     <AdminSearch onStudentSelect={handleStudentSelect} isTestingMode={isTestingMode} />
                 </div>
             </Card>
 

@@ -1,8 +1,6 @@
-
 import { useMemo, useState, useEffect } from 'react';
 import { differenceInDays } from 'date-fns';
 import { GoogleGenAI } from "@google/genai";
-import { GEMINI_API_KEY } from '../constants/configConstants';
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from '../constants';
 
 interface DashboardData {
@@ -35,20 +33,23 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
         let score = 100;
         const now = new Date();
 
-        // --- DEDUPLICACIÓN POR INSTITUCIÓN (Corrección de conteo 73 vs 57) ---
+        // --- DEDUPLICACIÓN POR INSTITUCIÓN ---
         const getBaseName = (name: string) => name.split(' - ')[0].trim();
 
         // 1. Cierres Vencidos por Institución
         const overdueByInst = new Map<string, any>();
         data.endingLaunches.forEach(l => {
-            const isPending = l.estado_gestion === 'Pendiente de Gestión' || !l.estado_gestion;
-            if (l.daysLeft < 0 && isPending) {
+            const status = l.estado_gestion;
+            const isResolved = status === 'Relanzamiento Confirmado' || status === 'Archivado' || status === 'No se Relanza';
+            
+            if (l.daysLeft < 0 && !isResolved) {
                 const name = getBaseName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '');
                 overdueByInst.set(name, l);
             }
         });
 
         const overdueCount = overdueByInst.size;
+        
         if (overdueCount > 0) {
             score -= (overdueCount * 20);
             signals.push(`${overdueCount} inst. vencidas`);
@@ -97,7 +98,6 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
             insights, 
             signals,
             rawData: {
-                vencidas: Array.from(overdueByInst.keys()),
                 vencidasCount: overdueCount,
                 estancadasCount: stagnant.length,
                 acreditacionesCount: data.pendingFinalizations.length
@@ -107,32 +107,44 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
 
     useEffect(() => {
         const fetchAiInsight = async () => {
-            if (!algorithmicAnalysis.rawData || !GEMINI_API_KEY || GEMINI_API_KEY.includes('PEGAR_AQUI')) return;
+            // Fix: Use process.env.API_KEY exclusively for Gemini API interactions
+            if (!algorithmicAnalysis.rawData || !process.env.API_KEY) return;
             
             setIsAiLoading(true);
             try {
-                const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+                // Fix: Initialize GoogleGenAI with process.env.API_KEY directly
+                const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+                
+                // Prompt ajustado para tono académico/administrativo
                 const prompt = `
-                    Actúa como un Monitor de Estado de Sistema. 
-                    Analiza estas cifras actuales de la plataforma de PPS:
+                    Actúa como un Analista de Gestión Académica.
+                    Analiza la situación actual de tareas pendientes basada en los siguientes datos:
                     ${JSON.stringify(algorithmicAnalysis.rawData)}
 
-                    Tu objetivo es generar un reporte técnico de estado (máx 30 palabras).
-                    Reglas críticas:
-                    1. PROHIBIDO usar lenguaje subjetivo, opiniones o frases como "es importante", "deberías", "atención".
-                    2. PROHIBIDO hablar en primera persona ("nosotros", "sugiero").
-                    3. Solo describe el estado de los puntos de bloqueo detectados.
-                    4. No resumas todos los números, prioriza el bloqueo más grande.
-                    
-                    Formato: Texto directo, informativo, estilo log de sistema. Sin saludos.
+                    Tu objetivo: Generar un resumen ejecutivo breve (máximo 2 oraciones) para la Coordinación de Prácticas Profesionales.
+
+                    Reglas de Tono y Estilo:
+                    1. FORMAL Y PROFESIONAL: Utiliza terminología administrativa adecuada (ej: "gestión", "requiere intervención", "expedientes"). Evita coloquialismos.
+                    2. OBJETIVO: Céntrate en los hechos y la acción requerida.
+                    3. PRIORIZACIÓN:
+                       - Si 'vencidasCount' > 0: Es crítico. Menciona la necesidad de gestionar instituciones con plazos vencidos.
+                       - Si 'estancadasCount' > 0: Menciona demoras en el flujo de solicitudes estudiantiles.
+                       - Si 'acreditacionesCount' > 0: Menciona expedientes pendientes de carga administrativa (SAC).
+                       - Si todo es 0: Indica "Sin novedades operativas pendientes" o "Gestión al día".
+
+                    Ejemplos del estilo deseado:
+                    - "Se requiere intervención en 3 instituciones con ciclos lectivos finalizados pendientes de cierre."
+                    - "Existen solicitudes de estudiantes sin actividad reciente que requieren seguimiento administrativo."
+                    - "La gestión operativa se encuentra al día; restan procesar 2 acreditaciones finales."
+                    - "No se detectan pendientes prioritarios en las bandejas de entrada."
                 `;
 
                 const response = await ai.models.generateContent({
-                    model: 'gemini-3-flash-preview',
+                    model: 'gemini-2.5-flash',
                     contents: prompt,
                     config: {
-                        temperature: 0.1, // Baja temperatura para más precisión y menos creatividad
-                        topP: 0.1
+                        temperature: 0.2, // Baja temperatura para mayor consistencia y formalidad
+                        topP: 0.8
                     }
                 });
                 
@@ -150,7 +162,7 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
 
     return {
         ...algorithmicAnalysis,
-        summary: aiSummary || "Generando reporte de estado...",
+        summary: aiSummary || "Analizando estado de gestión...",
         isAiLoading
     };
 };

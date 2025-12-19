@@ -24,7 +24,7 @@ const StatusWidget = ({
     relative overflow-hidden rounded-[2rem] p-6 flex flex-col justify-between h-full transition-all duration-500
     ${isCompleted 
       ? 'bg-emerald-50/50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-500/30' 
-      : 'bg-white border border-blue-100 dark:bg-[#1E293B] dark:border-slate-800'
+      : 'bg-white border border-blue-100 dark:bg-slate-800/40 dark:border-indigo-500/20 backdrop-blur-sm'
     } shadow-sm hover:shadow-md
   `}>
     <div className="flex justify-between items-start z-10">
@@ -32,7 +32,7 @@ const StatusWidget = ({
             w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500
             ${isCompleted 
                 ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
-                : 'bg-blue-50 text-blue-600 dark:bg-slate-800 dark:text-slate-400'
+                : 'bg-blue-50 text-blue-600 dark:bg-indigo-500/20 dark:text-indigo-400'
             }
         `}>
             <span className="material-icons !text-2xl">{icon}</span>
@@ -46,7 +46,7 @@ const StatusWidget = ({
     </div>
 
     <div className="mt-6 z-10">
-        <h4 className="text-[11px] font-bold text-blue-300 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">
+        <h4 className="text-[11px] font-bold text-blue-300 dark:text-slate-400 uppercase tracking-[0.2em] mb-2">
             {label}
         </h4>
         <div className="flex items-baseline gap-2">
@@ -54,7 +54,7 @@ const StatusWidget = ({
                 {value}
             </span>
             {subValue && (
-                <span className="text-sm font-bold text-blue-200 dark:text-slate-400">
+                <span className="text-sm font-bold text-blue-200 dark:text-slate-500">
                     {subValue}
                 </span>
             )}
@@ -273,7 +273,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
                       isCompleted={criterios.cumpleHorasOrientacion}
                    />
               ) : (
-                  <div className="h-full bg-white dark:bg-[#1E293B] rounded-[2rem] p-8 border-2 border-dashed border-blue-100 dark:border-slate-800 flex flex-col justify-center items-center text-center hover:border-blue-400 dark:hover:border-blue-500 transition-all group cursor-pointer shadow-sm">
+                  <div className="h-full bg-white dark:bg-[#1E293B] rounded-[2rem] p-8 border-2 border-dashed border-blue-100 dark:border-slate-700 flex flex-col justify-center items-center text-center hover:border-blue-400 dark:hover:border-blue-500 transition-all group cursor-pointer shadow-sm">
                       <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl text-blue-500 transition-transform group-hover:scale-110">
                           <span className="material-icons !text-3xl">add_task</span>
                       </div>

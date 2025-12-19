@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAdminPreferences } from '../contexts/AdminPreferencesContext'; // Import context
 import { useSmartAnalysis } from '../hooks/useSmartAnalysis';
 import { useOperationalData } from '../hooks/useOperationalData';
 import SmartBriefing from './SmartBriefing';
@@ -10,6 +11,7 @@ import { AdminDashboardSkeleton } from './Skeletons';
 import EmptyState from './EmptyState';
 import ActivityFeed from './ActivityFeed';
 import { differenceInDays } from 'date-fns';
+import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from '../constants';
 
 interface AdminDashboardProps {
     isTestingMode?: boolean;
@@ -89,11 +91,14 @@ const ManagementCard: React.FC<{
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }) => {
     const { authenticatedUser } = useAuth();
+    const { preferences } = useAdminPreferences(); // Access prefs
     const navigate = useNavigate();
     const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     
     const { data: opData, isLoading: isOpLoading, error: opError } = useOperationalData(isTestingMode);
-    const analysis = useSmartAnalysis(opData, isOpLoading);
+    
+    // Only call AI analysis if feature is enabled
+    const analysis = useSmartAnalysis(opData, isOpLoading && preferences.showAiInsights);
 
     if (isOpLoading) return <AdminDashboardSkeleton />;
     
@@ -102,7 +107,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
     }
     
     const now = new Date();
-    const overdueCount = (opData?.endingLaunches || []).filter((l: any) => l.daysLeft < 0).length;
+    
+    // --- LÓGICA DE AGRUPACIÓN ---
+    const overdueLaunches = (opData?.endingLaunches || []).filter((l: any) => l.daysLeft < 0);
+    
+    const uniqueOverdueInstitutions = new Set(overdueLaunches.map((l: any) => {
+        const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '';
+        return name.split(' - ')[0].trim();
+    }));
+    
+    const overdueCount = uniqueOverdueInstitutions.size;
+
     let stagnantCount = 0;
     (opData?.pendingRequests || []).forEach((r: any) => {
         if (!r.updated) return;
@@ -116,16 +131,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
         <div className="space-y-12 animate-fade-in-up pb-10">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
 
-            {/* --- SECCIÓN IA: EL FOCO DE LA PÁGINA --- */}
-            <section className="px-1">
-                <SmartBriefing 
-                    status={analysis.status === 'loading' ? 'stable' : analysis.status}
-                    summary={analysis.summary}
-                    insights={analysis.insights}
-                    signals={analysis.signals}
-                    userName={authenticatedUser?.nombre || 'Admin'}
-                />
-            </section>
+            {/* --- SECCIÓN IA: CONDITIONAL RENDERING --- */}
+            {preferences.showAiInsights && (
+                <section className="px-1">
+                    <SmartBriefing 
+                        status={analysis.status === 'loading' ? 'stable' : analysis.status}
+                        summary={analysis.summary}
+                        insights={analysis.insights}
+                        signals={analysis.signals}
+                        userName={authenticatedUser?.nombre || 'Admin'}
+                    />
+                </section>
+            )}
             
             {/* --- SECCIÓN GESTIÓN: GRID DE TARJETAS --- */}
             <section className="space-y-6">
@@ -137,7 +154,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <ManagementCard
-                        title="Cierres Vencidos"
+                        title="Instituciones Vencidas"
                         count={overdueCount}
                         label="Gestión requerida"
                         icon="event_busy"

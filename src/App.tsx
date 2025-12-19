@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ModalProvider, useModal } from './contexts/ModalContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfigProvider } from './contexts/ConfigContext'; // NEW
+import { AdminPreferencesProvider } from './contexts/AdminPreferencesContext'; // NEW
 import ErrorBoundary from './components/ErrorBoundary';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -32,7 +33,6 @@ import {
     FIELD_SOLICITUD_TIENE_TUTOR,
     FIELD_SOLICITUD_CONTACTO_TUTOR,
     FIELD_SOLICITUD_TIPO_PRACTICA,
-    FIELD_SOLICITUD_TIPO_PRACTICA as FIELD_SOLICITUD_TIPO_PRACTICA_CONST,
     FIELD_SOLICITUD_DESCRIPCION,
     FIELD_ESTADO_PPS,
     FIELD_ULTIMA_ACTUALIZACION_PPS,
@@ -335,21 +335,23 @@ const App: React.FC = () => {
   return (
     <Router>
         <ConfigProvider>
-            <NotificationProvider>
-                <PwaInstallProvider>
-                    <ThemeProvider>
-                        <ModalProvider>
-                            <ErrorBoundary>
-                                <Layout>
-                                    <Suspense fallback={<Loader />}>
-                                        <AppRoutes />
-                                    </Suspense>
-                                </Layout>
-                            </ErrorBoundary>
-                        </ModalProvider>
-                    </ThemeProvider>
-                </PwaInstallProvider>
-            </NotificationProvider>
+            <AdminPreferencesProvider>
+                <NotificationProvider>
+                    <PwaInstallProvider>
+                        <ThemeProvider>
+                            <ModalProvider>
+                                <ErrorBoundary>
+                                    <Layout>
+                                        <Suspense fallback={<Loader />}>
+                                            <AppRoutes />
+                                        </Suspense>
+                                    </Layout>
+                                </ErrorBoundary>
+                            </ModalProvider>
+                        </ThemeProvider>
+                    </PwaInstallProvider>
+                </NotificationProvider>
+            </AdminPreferencesProvider>
         </ConfigProvider>
     </Router>
   );

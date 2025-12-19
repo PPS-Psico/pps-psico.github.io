@@ -183,7 +183,7 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
       if (isTestingMode) {
           await mockDb.update('instituciones', institutionId, { [FIELD_TELEFONO_INSTITUCIONES]: phone });
           setInstitutionsMap(prev => {
-              const newMap = new Map(prev);
+              const newMap = new Map<string, { id: string; phone?: string }>(prev);
               for (const [key, val] of newMap.entries()) {
                   if (val.id === institutionId) {
                       newMap.set(key, { ...val, phone });
@@ -206,7 +206,7 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
       } else {
           setToastInfo({ message: 'Teléfono guardado exitosamente.', type: 'success' });
           setInstitutionsMap(prevMap => {
-              const newMap = new Map(prevMap);
+              const newMap = new Map<string, { id: string; phone?: string }>(prevMap);
               for (const [key, value] of newMap.entries()) {
                   if (value.id === institutionId) {
                       newMap.set(key, { ...value, phone });
