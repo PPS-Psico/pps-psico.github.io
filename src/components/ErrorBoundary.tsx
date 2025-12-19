@@ -1,3 +1,4 @@
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
@@ -12,14 +13,18 @@ interface ErrorBoundaryState {
 
 /**
  * Standard React Error Boundary component.
- * Explicitly extend Component and declare state to ensure type safety.
+ * Explicitly extend React.Component and declare state to ensure type safety.
  */
-// Fix: Extending Component (imported from 'react') helps TypeScript recognize inherited properties like setState and props
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = {
-    hasError: false,
-    error: undefined
-  };
+  public state: ErrorBoundaryState;
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: undefined
+    };
+  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
@@ -29,7 +34,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     console.error("Uncaught error in component:", error, errorInfo);
   }
 
-  // Fix: handleRetry now correctly references this.setState and this.props from the base Component class
   handleRetry = () => {
     this.setState({ hasError: false, error: undefined });
     if (this.props.onRetry) {
@@ -70,7 +74,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
     
-    // Fix: this.props.children is properly identified through Component class inheritance
     return this.props.children;
   }
 }

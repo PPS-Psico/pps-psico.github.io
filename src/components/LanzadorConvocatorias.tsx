@@ -435,8 +435,6 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
         const institutionTemplate = inst[FIELD_CODIGO_CAMPUS_INSTITUCIONES];
         if (institutionTemplate) {
             setCampusCode(String(institutionTemplate));
-            // Show toast so user knows where this came from
-            // setToastInfo({ message: 'Plantilla de código HTML cargada desde la Institución.', type: 'success' });
         } else {
              // If not, clear it or it will be populated by "Last Launch" effect later
              setCampusCode('');
@@ -535,7 +533,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
         setIsGeneratingCode(true);
         try {
-            // Fix: Obtain API key exclusively from process.env.API_KEY as per coding guidelines
+            // Fix: Initialize GoogleGenAI with process.env.API_KEY directly
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const horarioString = schedules.join('; ');
 
@@ -1022,4 +1020,34 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                 <CollapsibleSection 
                                     title="Archivados / Ocultos" 
                                     count={hiddenHistory.length}
-                                    icon
+                                    icon="visibility_off"
+                                    iconBgColor="bg-slate-100 dark:bg-slate-800"
+                                    iconColor="text-slate-500 dark:text-slate-400"
+                                    borderColor="border-slate-200 dark:border-slate-700"
+                                    defaultOpen={false}
+                                >
+                                    <div className="space-y-4">
+                                        {hiddenHistory.map(renderLaunchItem)}
+                                    </div>
+                                </CollapsibleSection>
+                             )}
+                        </>
+                    )}
+                </div>
+            </div>
+            
+            {editingLaunch && (
+                 <RecordEditModal
+                    isOpen={!!editingLaunch}
+                    onClose={() => setEditingLaunch(null)}
+                    record={editingLaunch}
+                    tableConfig={LAUNCH_TABLE_CONFIG}
+                    onSave={(id, fields) => updateDetailsMutation.mutate({ id: id!, fields })}
+                    isSaving={updateDetailsMutation.isPending}
+                 />
+            )}
+        </Card>
+    );
+};
+
+export default LanzadorConvocatorias;

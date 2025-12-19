@@ -8,8 +8,7 @@ import Tabs from '../components/Tabs';
 import Card from '../components/Card';
 import WelcomeBanner from '../components/WelcomeBanner';
 import InformesList from '../components/InformesList';
-import MobileCriteriaCard from '../components/MobileCriteriaCard';
-import Button from '../components/Button';
+import WhatsAppExportButton from '../components/WhatsAppExportButton';
 import { useAuth } from '../contexts/AuthContext';
 import type { AuthUser } from '../contexts/AuthContext';
 import type { TabId, Orientacion, SolicitudPPSFields } from '../types';
@@ -17,7 +16,6 @@ import DashboardLoadingSkeleton from '../components/DashboardLoadingSkeleton';
 import ErrorState from '../components/ErrorState';
 import ProfileView from '../components/ProfileView';
 import HomeView from '../components/HomeView';
-import PrintableReport from '../components/PrintableReport';
 import { useStudentPanel } from '../contexts/StudentPanelContext';
 import FinalizacionForm from '../components/FinalizacionForm';
 import { 
@@ -43,19 +41,18 @@ import {
     FIELD_LEGAJO_ESTUDIANTES,
     FIELD_CORREO_ESTUDIANTES,
     FIELD_FECHA_SOLICITUD_FINALIZACION,
-    FIELD_ESTADO_FINALIZACION,
-    FIELD_NOMBRE_INSTITUCIONES,
-    FIELD_NOMBRE_PPS_LANZAMIENTOS
+    FIELD_ESTADO_FINALIZACION
 } from '../constants';
 import { useNavigate } from 'react-router-dom';
 import { useModal } from '../contexts/ModalContext';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
-import { normalizeStringForComparison } from '../utils/formatters';
+import { addBusinessDays } from '../utils/formatters';
 import FinalizationStatusCard from '../components/FinalizationStatusCard';
 import MobileSectionHeader from '../components/MobileSectionHeader';
 import ErrorBoundary from '../components/ErrorBoundary';
-import PreSolicitudCheckModal from '../components/PreSolicitudCheckModal';
+import Button from '../components/Button';
+import MobileCriteriaCard from '../components/MobileCriteriaCard';
 
 // Export individual views for Router
 export { default as StudentPracticas } from '../components/PracticasTable';
@@ -86,7 +83,7 @@ export const StudentHome: React.FC = () => {
     
     const {
         studentDetails,
-        studentAirtableId,
+        studentAirtableId, // Retrieved from context
         lanzamientos,
         allLanzamientos,
         institutionAddressMap,
@@ -112,6 +109,7 @@ export const StudentHome: React.FC = () => {
                     >
                         <span className="material-icons">close</span>
                     </button>
+                    {/* Use context ID directly */}
                     <FinalizacionForm 
                         studentAirtableId={studentAirtableId} 
                         onClose={() => setIsFinalizationModalOpen(false)}
@@ -137,7 +135,7 @@ export const StudentHome: React.FC = () => {
     );
 };
 
-// --- COMPONENT: StudentDashboard ---
+// --- COMPONENT: StudentDashboard (Standalone Widget) ---
 interface StudentDashboardProps {
   user?: AuthUser;
   activeTab?: TabId;
@@ -149,9 +147,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
-  const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false); 
-  const [forceInteractiveMode, setForceInteractiveMode] = useState(false); 
+  const [forceInteractiveMode, setForceInteractiveMode] = useState(false); // New state to override empty view
   const { openSolicitudPPSModal, showModal } = useModal();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const currentUser = user || authenticatedUser;
@@ -159,7 +157,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
 
   const {
     studentDetails,
-    studentAirtableId, 
+    studentAirtableId, // Use the ID provided by context
     practicas,
     solicitudes,
     lanzamientos,
@@ -171,49 +169,26 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
     updateInternalNotes,
     updateNota,
     enrollStudent,
+    confirmInforme,
     refetchAll,
     criterios,
     enrollmentMap,
     completedLanzamientoIds,
     informeTasks,
-    finalizacionRequest
+    finalizacionRequest // New from context
   } = useStudentPanel();
 
-  const [internalActiveTab, setInternalActiveTab] = useState<TabId>('inicio');
+  const [internalActiveTab, setInternalActiveTab] = useState<TabId>(showExportButton ? 'practicas' : 'inicio');
   const currentActiveTab = activeTab ?? internalActiveTab;
   const setCurrentActiveTab = onTabChange ?? setInternalActiveTab;
   
   const selectedOrientacion = (studentDetails?.[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "") as Orientacion | "";
   const studentNameForPanel = studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || currentUser?.nombre || 'Estudiante';
 
-  // OBTENER LISTADO MAESTRO DE INSTITUCIONES (~43+)
-  const { data: masterInstitutions = [] } = useQuery({
-      queryKey: ['masterInstitutionsList'],
-      queryFn: async () => {
-          // Fix: db.instituciones.getAll returns array directly
-          const data = await db.instituciones.getAll({ fields: [FIELD_NOMBRE_INSTITUCIONES] });
-          return data.map((i: any) => i[FIELD_NOMBRE_INSTITUCIONES] as string).filter(Boolean);
-      },
-      staleTime: 1000 * 60 * 60, // 1 hora de cache
-  });
-
-  const existingInstitutions = useMemo(() => {
-    const names = masterInstitutions.length > 0 ? masterInstitutions : allLanzamientos.map((l: any) => l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string).filter(Boolean);
-    const namesSet = new Set<string>();
-    const excludedTerms = ["relevamiento", "jornada universitaria"];
-    
-    names.forEach(name => {
-         const lowerName = normalizeStringForComparison(name);
-         if (!excludedTerms.some(term => lowerName.includes(term))) {
-             const groupName = name.split(' - ')[0].trim();
-             namesSet.add(groupName);
-        }
-    });
-
-    return Array.from(namesSet)
-        .map(name => name.charAt(0).toUpperCase() + name.slice(1)) 
-        .sort((a, b) => a.localeCompare(b));
-  }, [masterInstitutions, allLanzamientos]);
+  // Helper to safely get student ID - prioritize context ID
+  const getStudentId = () => {
+      return studentAirtableId || currentUser?.id || null;
+  };
 
   const handleOrientacionChange = useCallback((orientacion: Orientacion | "") => {
     updateOrientation.mutate(orientacion, {
@@ -232,9 +207,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
       setIsFinalizationModalOpen(true);
   }, []);
 
+  // Create new PPS Request Mutation
   const createSolicitudMutation = useMutation({
       mutationFn: async (formData: any) => {
-          const studentId = studentAirtableId || currentUser?.id;
+          const studentId = getStudentId();
           if (!studentId) throw new Error("Error identificando al estudiante.");
 
           const newRecord: Partial<SolicitudPPSFields> = {
@@ -242,6 +218,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
               [FIELD_SOLICITUD_LEGAJO_ALUMNO]: studentDetails?.[FIELD_LEGAJO_ESTUDIANTES],
               [FIELD_SOLICITUD_NOMBRE_ALUMNO]: studentDetails?.[FIELD_NOMBRE_ESTUDIANTES],
               [FIELD_SOLICITUD_EMAIL_ALUMNO]: studentDetails?.[FIELD_CORREO_ESTUDIANTES],
+              
               [FIELD_EMPRESA_PPS_SOLICITUD]: formData.nombreInstitucion,
               [FIELD_SOLICITUD_LOCALIDAD]: formData.localidad,
               [FIELD_SOLICITUD_DIRECCION]: formData.direccion,
@@ -253,25 +230,29 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
               [FIELD_SOLICITUD_CONTACTO_TUTOR]: formData.contactoTutor,
               [FIELD_SOLICITUD_TIPO_PRACTICA]: formData.tipoPractica,
               [FIELD_SOLICITUD_DESCRIPCION]: formData.descripcion,
+              
               [FIELD_ESTADO_PPS]: 'Pendiente',
               [FIELD_ULTIMA_ACTUALIZACION_PPS]: new Date().toISOString().split('T')[0]
           };
+
           await db.solicitudes.create(newRecord as any);
       },
       onSuccess: () => {
-          showModal('Solicitud Enviada', 'Tu solicitud de PPS ha sido registrada.');
-          queryClient.invalidateQueries({ queryKey: ['solicitudes'] }); 
+          showModal('Solicitud Enviada', 'Tu solicitud de PPS ha sido registrada. Te notificaremos cuando haya novedades.');
+          queryClient.invalidateQueries({ queryKey: ['solicitudes'] }); // Refresh list
       },
-      onError: (err: any) => showModal('Error', `Error: ${err.message}`)
+      onError: (err: any) => {
+          showModal('Error', `Hubo un problema al enviar la solicitud: ${err.message}`);
+      }
   });
 
-  const handleProceedToForm = useCallback(() => {
-      setIsPreCheckModalOpen(false);
+  const handleCreateSolicitud = useCallback(() => {
       openSolicitudPPSModal(async (data) => {
           await createSolicitudMutation.mutateAsync(data);
       });
   }, [openSolicitudPPSModal, createSolicitudMutation]);
   
+  // Tab Contents Wrappers with ErrorBoundary
   const homeContent = useMemo(() => (
     <ErrorBoundary>
         <HomeView 
@@ -291,11 +272,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
     </ErrorBoundary>
   ), [enrollmentMap, allLanzamientos, informeTasks, lanzamientos, studentDetails, enrollStudent.mutate, institutionAddressMap, completedLanzamientoIds, criterios, handleOpenFinalization]);
   
+  // Informes removed from view but kept for logic if needed elsewhere
+  const informesContent = useMemo(() => (
+    <ErrorBoundary>
+        <InformesList tasks={informeTasks} onConfirmar={confirmInforme.mutate} />
+    </ErrorBoundary>
+  ), [informeTasks, confirmInforme]);
+
   const solicitudesContent = useMemo(() => (
     <ErrorBoundary>
-        <SolicitudesList solicitudes={solicitudes} onCreateSolicitud={() => setIsPreCheckModalOpen(true)} onRequestFinalization={handleOpenFinalization} criterios={criterios} />
+        <SolicitudesList solicitudes={solicitudes} onCreateSolicitud={handleCreateSolicitud} onRequestFinalization={handleOpenFinalization} criterios={criterios} />
     </ErrorBoundary>
-  ), [solicitudes, handleOpenFinalization, criterios]);
+  ), [solicitudes, handleCreateSolicitud, handleOpenFinalization, criterios]);
 
   const practicasContent = useMemo(() => (
     <ErrorBoundary>
@@ -310,15 +298,34 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   ), [studentDetails, isLoading, updateInternalNotes]);
 
   const studentDataTabs = useMemo(() => {
-    return [
+    // REMOVED 'Informes' tab from the array
+    const tabs: { id: TabId; label: string; icon: string; content: React.ReactNode; badge?: number }[] = [
       { id: 'inicio', label: 'Inicio', icon: 'home', content: homeContent },
       { id: 'solicitudes', label: `Mis Solicitudes`, icon: 'list_alt', content: solicitudesContent, badge: solicitudes.length > 0 ? solicitudes.length : undefined },
-      { id: 'practicas', label: `Mis Prácticas`, icon: 'work_history', content: practicasContent, badge: practicas.length > 0 ? practicas.length : undefined },
-      { id: 'profile' as TabId, label: 'Mi Perfil', icon: 'person', content: profileContent }
+      { id: 'practicas', label: `Mis Prácticas`, icon: 'work_history', content: practicasContent, badge: practicas.length > 0 ? practicas.length : undefined }
     ];
-  }, [solicitudes.length, practicas.length, homeContent, solicitudesContent, practicasContent, profileContent]);
+
+    tabs.push({
+        id: 'profile' as TabId,
+        label: 'Mi Perfil',
+        icon: 'person',
+        content: profileContent,
+        badge: undefined
+    });
+    return tabs;
+
+  }, [
+      informeTasks.length, solicitudes.length, practicas.length, showExportButton,
+      homeContent, informesContent, solicitudesContent, practicasContent, profileContent
+  ]);
   
-  // Fix: Missing hasData was defined in later version, added here to first version which matches error log
+  useEffect(() => {
+    const isCurrentTabValid = studentDataTabs.some(tab => tab.id === currentActiveTab);
+    if (!isCurrentTabValid && studentDataTabs.length > 0) {
+      setCurrentActiveTab(studentDataTabs[0].id);
+    }
+  }, [studentDataTabs, currentActiveTab, setCurrentActiveTab]);
+
   const hasData = useMemo(() => practicas.length > 0 || solicitudes.length > 0 || lanzamientos.length > 0 || informeTasks.length > 0, [practicas, solicitudes, lanzamientos, informeTasks]);
   
   // Logic updated: Allow forceInteractiveMode to override the Empty State
@@ -347,38 +354,87 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
       {isFinalizationModalOpen && (
         <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
-              <button onClick={() => setIsFinalizationModalOpen(false)} className="absolute top-4 right-4 z-10 p-2 text-slate-50 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"><span className="material-icons">close</span></button>
-              <FinalizacionForm studentAirtableId={studentAirtableId} onClose={() => setIsFinalizationModalOpen(false)} />
+              <button 
+                onClick={() => setIsFinalizationModalOpen(false)}
+                className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
+              >
+                  <span className="material-icons">close</span>
+              </button>
+              <FinalizacionForm 
+                studentAirtableId={getStudentId()} 
+                onClose={() => setIsFinalizationModalOpen(false)}
+              />
           </div>
         </div>
       )}
 
-      <PreSolicitudCheckModal isOpen={isPreCheckModalOpen} onClose={() => setIsPreCheckModalOpen(false)} onContinue={handleProceedToForm} existingInstitutions={existingInstitutions} />
-
-      <div className="print-only"><PrintableReport studentDetails={studentDetails} criterios={criterios} practicas={practicas} /></div>
-
-      <div className="hidden md:block space-y-8 animate-fade-in-up">
+      {/* --- VISTA DE ESCRITORIO --- */}
+      <div className="hidden md:block no-print space-y-8 animate-fade-in-up">
         <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
+        
         {finalizacionRequest ? (
-            <FinalizationStatusCard status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} requestDate={finalizacionRequest.created_at || ''} studentName={studentNameForPanel} />
+            <FinalizationStatusCard 
+                status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
+                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+            />
         ) : (
-            <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} />
+            <ErrorBoundary>
+                <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} />
+            </ErrorBoundary>
         )}
-        <Card><Tabs tabs={studentDataTabs} activeTabId={currentActiveTab} onTabChange={(id) => setCurrentActiveTab(id as TabId)} /></Card>
+        
+        <Tabs
+            tabs={studentDataTabs}
+            activeTabId={currentActiveTab}
+            onTabChange={(id) => setCurrentActiveTab(id as TabId)}
+        />
       </div>
 
-      <div className="md:hidden space-y-8 animate-fade-in-up">
+      {/* --- VISTA MÓVIL --- */}
+      <div className="md:hidden no-print space-y-8 animate-fade-in-up">
           {currentActiveTab === 'inicio' && (
               <>
                   <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
-                  {finalizacionRequest && <FinalizationStatusCard status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} requestDate={finalizacionRequest.created_at || ''} studentName={studentNameForPanel} />}
+                  {finalizacionRequest && (
+                      <FinalizationStatusCard 
+                          status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
+                          requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+                      />
+                  )}
                   {(!finalizacionRequest || isAdminViewing) && homeContent}
               </>
           )}
-          {currentActiveTab === 'solicitudes' && solicitudesContent}
-          {currentActiveTab === 'practicas' && <>{!finalizacionRequest && <MobileCriteriaCard criterios={criterios} selectedOrientacion={selectedOrientacion} />}{practicasContent}</>}
-          {currentActiveTab === 'profile' && profileContent}
+
+          {/* 'informes' logic removed from mobile tabs as requested */}
+
+          {currentActiveTab === 'solicitudes' && (
+              <ErrorBoundary>
+                 <MobileSectionHeader title="Mis Solicitudes de PPS" description="Seguimiento del estado de las Prácticas Profesionales Supervisadas que has solicitado." />
+                 {solicitudesContent}
+              </ErrorBoundary>
+          )}
+          
+          {currentActiveTab === 'practicas' && (
+              <ErrorBoundary>
+                  {!finalizacionRequest && <MobileCriteriaCard criterios={criterios} selectedOrientacion={selectedOrientacion} />}
+                  <MobileSectionHeader title="Historial de Prácticas" description="Detalle de todas las prácticas que has realizado y sus calificaciones." />
+                  {practicasContent}
+              </ErrorBoundary>
+          )}
+
+          {currentActiveTab === 'profile' && (
+                <ErrorBoundary>
+                  <MobileSectionHeader title="Mi Perfil" />
+                  <Card>
+                    {profileContent}
+                  </Card>
+                </ErrorBoundary>
+          )}
       </div>
+      
+      {showExportButton && (
+        <WhatsAppExportButton practicas={practicas} criterios={criterios} selectedOrientacion={selectedOrientacion} studentNameForPanel={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
+      )}
     </>
   );
 };

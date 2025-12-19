@@ -508,6 +508,15 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                          }
                      });
                      return { records: enriched, total };
+                 } else if (activeTable === 'estudiantes') {
+                      // Mock virtual field calculation for hours
+                      const allPractices = await mockDb.getAll('practicas');
+                      const enriched = paginated.map((s: any) => {
+                          const studentPractices = allPractices.filter((p: any) => p[FIELD_ESTUDIANTE_LINK_PRACTICAS] === s.id);
+                          const totalHours = studentPractices.reduce((sum: number, p: any) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
+                          return { ...s, __totalHours: totalHours };
+                      });
+                      return { records: enriched, total };
                  }
 
                  return { records: paginated, total };

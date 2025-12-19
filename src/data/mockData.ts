@@ -1,231 +1,243 @@
 
 import { ALL_ORIENTACIONES } from '../types';
+import {
+    FIELD_NOMBRE_PPS_LANZAMIENTOS,
+    FIELD_FECHA_INICIO_LANZAMIENTOS,
+    FIELD_FECHA_FIN_LANZAMIENTOS,
+    FIELD_ORIENTACION_LANZAMIENTOS,
+    FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+    FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+    FIELD_ESTADO_GESTION_LANZAMIENTOS,
+    FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+    FIELD_DIRECCION_LANZAMIENTOS,
+    FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
+    FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
+    FIELD_REQ_CV_LANZAMIENTOS,
+    FIELD_NOMBRE_INSTITUCIONES,
+    FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+    FIELD_TUTOR_INSTITUCIONES,
+    FIELD_DIRECCION_INSTITUCIONES,
+    FIELD_TELEFONO_INSTITUCIONES,
+    FIELD_NOMBRE_ESTUDIANTES,
+    FIELD_LEGAJO_ESTUDIANTES,
+    FIELD_DNI_ESTUDIANTES,
+    FIELD_CORREO_ESTUDIANTES,
+    FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
+    FIELD_NOTAS_INTERNAS_ESTUDIANTES,
+    FIELD_FINALIZARON_ESTUDIANTES,
+    FIELD_FECHA_FINALIZACION_ESTUDIANTES,
+    FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+    FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
+    FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+    FIELD_HORARIO_FORMULA_CONVOCATORIAS,
+    FIELD_ESTUDIANTE_LINK_PRACTICAS,
+    FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+    FIELD_HORAS_PRACTICAS,
+    FIELD_ESTADO_PRACTICA,
+    FIELD_NOTA_PRACTICAS,
+    FIELD_ESPECIALIDAD_PRACTICAS,
+    FIELD_FECHA_INICIO_PRACTICAS,
+    FIELD_FECHA_FIN_PRACTICAS,
+    FIELD_ESTUDIANTE_FINALIZACION,
+    FIELD_FECHA_SOLICITUD_FINALIZACION,
+    FIELD_ESTADO_FINALIZACION,
+    FIELD_SOLICITUD_NOMBRE_ALUMNO,
+    FIELD_EMPRESA_PPS_SOLICITUD,
+    FIELD_ESTADO_PPS,
+    FIELD_LEGAJO_PPS
+} from '../constants';
 
 // Helper for consistent dates
 const NOW = new Date();
-const currentYear = NOW.getFullYear();
-const STR_NOW = NOW.toISOString();
-const STR_FUTURE = new Date(NOW.getTime() + 86400000 * 30).toISOString(); // +30 days
-const STR_PAST = new Date(NOW.getTime() - 86400000 * 30).toISOString(); // -30 days
-const STR_FAR_PAST = new Date(NOW.getTime() - 86400000 * 365).toISOString(); // -1 year
+const CURRENT_YEAR = NOW.getFullYear();
 
-// Instituciones Reales (Ámbito Psicología)
+const getDate = (monthOffset: number = 0) => {
+    const d = new Date(NOW);
+    d.setMonth(d.getMonth() + monthOffset);
+    return d.toISOString();
+};
+
+const getYearDate = (month: number) => {
+    return new Date(CURRENT_YEAR, month, 15).toISOString();
+};
+
+// --- INSTITUCIONES ---
 export const MOCK_INSTITUCIONES = [
-    { id: 'inst_1', created_at: STR_PAST, nombre: 'Hospital Garrahan', direccion: 'Pichincha 1890', telefono: '4122-6000', convenio_nuevo: true, tutor: 'Lic. Peralta' },
-    { id: 'inst_2', created_at: STR_PAST, nombre: 'Clínica San Jorge', direccion: 'Av. Maipú 1234', telefono: '4790-1000', convenio_nuevo: false, tutor: 'Lic. Fernandez' },
-    { id: 'inst_3', created_at: STR_PAST, nombre: 'Fundación Sí', direccion: 'Ángel Carranza 1962', telefono: '4775-6900', convenio_nuevo: true, tutor: 'Lic. Gomez' },
-    { id: 'inst_4', created_at: STR_PAST, nombre: 'ManpowerGroup', direccion: 'F. Alcorta 3351', telefono: '4809-5100', convenio_nuevo: true, tutor: 'Lic. Martinez' },
-    { id: 'inst_5', created_at: STR_PAST, nombre: 'Centro de Salud Mental N°1', direccion: 'Manuela Pedraza 1558', telefono: '4702-7489', convenio_nuevo: true, tutor: 'Lic. Lopez' },
+    { id: 'inst_1', created_at: getDate(-20), [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital Garrahan', [FIELD_DIRECCION_INSTITUCIONES]: 'Pichincha 1890', [FIELD_TELEFONO_INSTITUCIONES]: '4122-6000', [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true, [FIELD_TUTOR_INSTITUCIONES]: 'Lic. Peralta' },
+    { id: 'inst_2', created_at: getDate(-20), [FIELD_NOMBRE_INSTITUCIONES]: 'Clínica San Jorge', [FIELD_DIRECCION_INSTITUCIONES]: 'Av. Maipú 1234', [FIELD_TELEFONO_INSTITUCIONES]: '4790-1000', [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: false, [FIELD_TUTOR_INSTITUCIONES]: 'Lic. Fernandez' },
+    { id: 'inst_3', created_at: getDate(-20), [FIELD_NOMBRE_INSTITUCIONES]: 'Fundación Sí', [FIELD_DIRECCION_INSTITUCIONES]: 'Ángel Carranza 1962', [FIELD_TELEFONO_INSTITUCIONES]: '4775-6900', [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true, [FIELD_TUTOR_INSTITUCIONES]: 'Lic. Gomez' },
+    { id: 'inst_4', created_at: getDate(-20), [FIELD_NOMBRE_INSTITUCIONES]: 'ManpowerGroup', [FIELD_DIRECCION_INSTITUCIONES]: 'F. Alcorta 3351', [FIELD_TELEFONO_INSTITUCIONES]: '4809-5100', [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true, [FIELD_TUTOR_INSTITUCIONES]: 'Lic. Martinez' },
+    { id: 'inst_5', created_at: getDate(-20), [FIELD_NOMBRE_INSTITUCIONES]: 'Centro de Salud Mental N°1', [FIELD_DIRECCION_INSTITUCIONES]: 'Manuela Pedraza 1558', [FIELD_TELEFONO_INSTITUCIONES]: '4702-7489', [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true, [FIELD_TUTOR_INSTITUCIONES]: 'Lic. Lopez' },
 ];
 
-// Alumnos
+// --- ESTUDIANTES ---
 export const MOCK_ESTUDIANTES = [
-    // Usuario de Prueba (Tú)
+    // Usuario Test
     { 
         id: 'st_999', 
-        created_at: STR_PAST,
-        legajo: '99999', 
-        nombre: 'Usuario de Prueba', 
-        dni: 12345678, 
-        correo: 'tester@uflo.edu.ar', 
-        telefono: '11-9999-9999',
-        orientacion_elegida: 'Clinica', 
-        total_horas: 260, // Listo para acreditar
-        finalizaron: false,
-        notas_internas: 'Alumno para demostración de flujos.'
+        created_at: getDate(-12),
+        [FIELD_LEGAJO_ESTUDIANTES]: '99999', 
+        [FIELD_NOMBRE_ESTUDIANTES]: 'Usuario de Prueba', 
+        [FIELD_DNI_ESTUDIANTES]: 12345678, 
+        [FIELD_CORREO_ESTUDIANTES]: 'tester@uflo.edu.ar', 
+        [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', 
+        [FIELD_FINALIZARON_ESTUDIANTES]: false,
+        [FIELD_NOTAS_INTERNAS_ESTUDIANTES]: 'Alumno para demostración.'
     }, 
-    // Compañeros para rellenar listas
-    { id: 'st_1', created_at: STR_PAST, legajo: '35123', nombre: 'Sofía Martínez', dni: 38111, correo: 'sofia@test.com', orientacion_elegida: 'Clinica', total_horas: 180, finalizaron: false }, 
-    { id: 'st_2', created_at: STR_PAST, legajo: '36451', nombre: 'Lucas Pérez', dni: 40222, correo: 'lucas@test.com', orientacion_elegida: 'Laboral', total_horas: 40, finalizaron: false }, 
-    { id: 'st_3', created_at: STR_PAST, legajo: '33999', nombre: 'Camila López', dni: 37333, correo: 'cami@test.com', orientacion_elegida: 'Educacional', total_horas: 260, finalizaron: false }, 
-    { id: 'st_4', created_at: STR_PAST, legajo: '31000', nombre: 'Martín Garcia', dni: 35444, correo: 'martin@test.com', orientacion_elegida: 'Comunitaria', total_horas: 100, finalizaron: false }, 
-    { id: 'st_5', created_at: STR_PAST, legajo: '32555', nombre: 'Ana Torres', dni: 39555, correo: 'ana@test.com', orientacion_elegida: 'Clinica', total_horas: 250, finalizaron: true, fecha_finalizacion: STR_PAST }, 
+    // Alumnos Activos
+    { id: 'st_1', created_at: getDate(-10), [FIELD_LEGAJO_ESTUDIANTES]: '35123', [FIELD_NOMBRE_ESTUDIANTES]: 'Sofía Martínez', [FIELD_DNI_ESTUDIANTES]: 38111, [FIELD_CORREO_ESTUDIANTES]: 'sofia@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', [FIELD_FINALIZARON_ESTUDIANTES]: false }, 
+    { id: 'st_2', created_at: getDate(-10), [FIELD_LEGAJO_ESTUDIANTES]: '36451', [FIELD_NOMBRE_ESTUDIANTES]: 'Lucas Pérez', [FIELD_DNI_ESTUDIANTES]: 40222, [FIELD_CORREO_ESTUDIANTES]: 'lucas@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Laboral', [FIELD_FINALIZARON_ESTUDIANTES]: false }, 
+    // Alumnos Finalizados
+    { id: 'st_3', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '33999', [FIELD_NOMBRE_ESTUDIANTES]: 'Camila López', [FIELD_DNI_ESTUDIANTES]: 37333, [FIELD_CORREO_ESTUDIANTES]: 'cami@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Educacional', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(2) }, 
+    { id: 'st_4', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '31000', [FIELD_NOMBRE_ESTUDIANTES]: 'Martín Garcia', [FIELD_DNI_ESTUDIANTES]: 35444, [FIELD_CORREO_ESTUDIANTES]: 'martin@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Comunitaria', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(5) }, 
+    { id: 'st_5', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '32555', [FIELD_NOMBRE_ESTUDIANTES]: 'Ana Torres', [FIELD_DNI_ESTUDIANTES]: 39555, [FIELD_CORREO_ESTUDIANTES]: 'ana@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(8) }, 
 ];
 
-// Lanzamientos (Las 3 situaciones + 1 nueva para inscribirse)
+// --- LANZAMIENTOS (OFERTA PPS) ---
+// Distribuidos en el año actual para que las métricas funcionen
 export const MOCK_LANZAMIENTOS = [
-    // ESCENARIO 1: Seleccionado (Conjunto)
+    // Marzo
     { 
         id: 'lanz_1', 
-        created_at: STR_NOW,
-        nombre_pps: 'Hospital Garrahan - Guardia Pediátrica', 
-        fecha_inicio: `${currentYear}-03-15`, 
-        fecha_fin: `${currentYear}-07-15`, 
-        orientacion: 'Clinica', 
-        cupos_disponibles: 3, 
-        estado_convocatoria: 'Abierta', // Aún abierta pero ya seleccionado
-        estado_gestion: 'Relanzamiento Confirmado',
-        horario_seleccionado: 'Lunes 8 a 12hs; Miércoles 8 a 12hs',
-        direccion: 'Pichincha 1890',
-        horas_acreditadas: 80,
-        req_certificado_trabajo: true
+        created_at: getDate(-6),
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Hospital Garrahan - Guardia Pediátrica', 
+        [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(2), // Marzo
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(6), 
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica', 
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 10, 
+        [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta',
+        [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
+        [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Lunes 8 a 12hs; Miércoles 8 a 12hs',
+        [FIELD_DIRECCION_LANZAMIENTOS]: 'Pichincha 1890',
+        [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 80,
     },
-    // ESCENARIO 2: Lista Visible (No Seleccionado / Cerrada)
+    // Abril
     { 
         id: 'lanz_2', 
-        created_at: STR_PAST,
-        nombre_pps: 'Clínica San Jorge - Admisiones', 
-        fecha_inicio: `${currentYear}-04-01`, 
-        fecha_fin: `${currentYear}-08-01`, 
-        orientacion: 'Clinica', 
-        cupos_disponibles: 5, 
-        estado_convocatoria: 'Cerrado', // Cerrada, muestra lista
-        estado_gestion: 'Relanzamiento Confirmado',
-        horario_seleccionado: 'Martes 14 a 18hs',
-        direccion: 'Av. Maipú 1234',
-        horas_acreditadas: 60,
-        req_cv: true
+        created_at: getDate(-5),
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Clínica San Jorge - Admisiones', 
+        [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(3), // Abril
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(7), 
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica', 
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 5, 
+        [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado',
+        [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
+        [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Martes 14 a 18hs',
+        [FIELD_DIRECCION_LANZAMIENTOS]: 'Av. Maipú 1234',
+        [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 60,
     },
-    // ESCENARIO 3: Inscripto (Esperando)
+    // Mayo
     { 
         id: 'lanz_3', 
-        created_at: STR_NOW,
-        nombre_pps: 'Fundación Sí - Abordaje Comunitario', 
-        fecha_inicio: `${currentYear}-05-01`, 
-        fecha_fin: `${currentYear}-09-01`, 
-        orientacion: 'Comunitaria', 
-        cupos_disponibles: 10, 
-        estado_convocatoria: 'Abierta',
-        estado_gestion: 'Relanzamiento Confirmado',
-        horario_seleccionado: 'Sábados 10 a 14hs',
-        direccion: 'Ángel Carranza 1962',
-        horas_acreditadas: 40
+        created_at: getDate(-4),
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Fundación Sí - Abordaje Comunitario', 
+        [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(4), // Mayo
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(8), 
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Comunitaria', 
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 15, 
+        [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta',
+        [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
+        [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Sábados 10 a 14hs',
+        [FIELD_DIRECCION_LANZAMIENTOS]: 'Ángel Carranza 1962',
+        [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 40
     },
-    // Historial (Archivada) - Año Pasado
+    // Agosto (Próxima)
     { 
         id: 'lanz_4', 
-        created_at: STR_FAR_PAST,
-        nombre_pps: 'ManpowerGroup - Selección IT', 
-        fecha_inicio: `${currentYear - 1}-08-01`, 
-        fecha_fin: `${currentYear - 1}-12-01`, 
-        orientacion: 'Laboral', 
-        cupos_disponibles: 4, 
-        estado_convocatoria: 'Cerrado',
-        estado_gestion: 'Archivado', 
-        horario_seleccionado: 'Full time',
-        direccion: 'Remoto',
-        horas_acreditadas: 120
-    },
-    // ESCENARIO 4: DISPONIBLE PARA INSCRIBIRSE (NUEVA)
-    { 
-        id: 'lanz_5', 
-        created_at: STR_NOW,
-        nombre_pps: 'Centro de Salud Mental N°1 - Consultorios Externos', 
-        fecha_inicio: `${currentYear}-06-01`, 
-        fecha_fin: `${currentYear}-11-01`, 
-        orientacion: 'Clinica', 
-        cupos_disponibles: 8, 
-        estado_convocatoria: 'Abierta',
-        estado_gestion: 'Relanzamiento Confirmado',
-        horario_seleccionado: 'Jueves 8 a 13hs',
-        direccion: 'Manuela Pedraza 1558',
-        horas_acreditadas: 60
+        created_at: getDate(-1),
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'ManpowerGroup - Selección IT', 
+        [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(7), // Agosto
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(11), 
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Laboral', 
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 8, 
+        [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta',
+        [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
+        [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Full time',
+        [FIELD_DIRECCION_LANZAMIENTOS]: 'Remoto',
+        [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 120
     }
 ];
 
-// Convocatorias (Vínculos)
+// --- INSCRIPCIONES (CONVOCATORIAS) ---
 export const MOCK_CONVOCATORIAS = [
-    // Escenario 1: Tester Seleccionado con otros
-    { id: 'conv_1', lanzamiento_id: 'lanz_1', estudiante_id: 'st_999', estado_inscripcion: 'Seleccionado', horario_seleccionado: 'Lunes 8 a 12hs', created_at: STR_NOW },
-    { id: 'conv_2', lanzamiento_id: 'lanz_1', estudiante_id: 'st_1', estado_inscripcion: 'Seleccionado', horario_seleccionado: 'Miércoles 8 a 12hs', created_at: STR_NOW },
-    { id: 'conv_3', lanzamiento_id: 'lanz_1', estudiante_id: 'st_2', estado_inscripcion: 'Inscripto', horario_seleccionado: 'Lunes 8 a 12hs', created_at: STR_NOW }, // Uno en espera
-
-    // Escenario 2: Tester No Quedó (o no se inscribió, pero ve lista), Otros sí
-    { id: 'conv_4', lanzamiento_id: 'lanz_2', estudiante_id: 'st_3', estado_inscripcion: 'Seleccionado', horario_seleccionado: 'Martes 14 a 18hs', created_at: STR_PAST },
-    { id: 'conv_5', lanzamiento_id: 'lanz_2', estudiante_id: 'st_4', estado_inscripcion: 'Seleccionado', horario_seleccionado: 'Martes 14 a 18hs', created_at: STR_PAST },
-
-    // Escenario 3: Tester Inscripto (Esperando acción del Admin)
-    { id: 'conv_6', lanzamiento_id: 'lanz_3', estudiante_id: 'st_999', estado_inscripcion: 'Inscripto', horario_seleccionado: 'Sábados 10 a 14hs', created_at: STR_NOW },
-    { id: 'conv_7', lanzamiento_id: 'lanz_3', estudiante_id: 'st_2', estado_inscripcion: 'Inscripto', horario_seleccionado: 'Sábados 10 a 14hs', created_at: STR_NOW },
+    // Inscripciones a Garrahan (lanz_1)
+    { id: 'conv_1', created_at: getDate(-5), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_1', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_999', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Seleccionado', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Lunes 8 a 12hs' },
+    { id: 'conv_2', created_at: getDate(-5), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_1', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_1', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Seleccionado', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Miércoles 8 a 12hs' },
+    { id: 'conv_3', created_at: getDate(-5), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_1', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_2', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Inscripto', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Lunes 8 a 12hs' },
     
-    // Escenario 4: lanz_5 está libre (sin convocatoria para st_999)
+    // Inscripciones a Clínica San Jorge (lanz_2)
+    { id: 'conv_4', created_at: getDate(-4), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_2', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_3', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Seleccionado', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Martes 14 a 18hs' },
+    
+    // Inscripciones a Fundación Sí (lanz_3)
+    { id: 'conv_5', created_at: getDate(-2), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_3', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_4', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Inscripto', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Sábados 10 a 14hs' },
 ];
 
+// --- PRÁCTICAS EN CURSO / FINALIZADAS ---
 export const MOCK_PRACTICAS = [
-    // Práctica Histórica del Tester
-    { 
-        id: 'prac_1', 
-        created_at: STR_FAR_PAST,
-        estudiante_id: 'st_999', 
-        lanzamiento_id: 'lanz_4', 
-        nombre_institucion: 'ManpowerGroup - Selección IT', 
-        horas_realizadas: 120, 
-        estado: 'Finalizada', 
-        nota: '9', 
-        especialidad: 'Laboral', 
-        fecha_inicio: `${currentYear - 1}-08-01`,
-        fecha_finalizacion: `${currentYear - 1}-12-01`
+    // Práctica en Curso
+    {
+        id: 'prac_1',
+        created_at: getDate(-2),
+        [FIELD_ESTUDIANTE_LINK_PRACTICAS]: 'st_999',
+        [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: 'lanz_1',
+        [FIELD_HORAS_PRACTICAS]: 40,
+        [FIELD_ESTADO_PRACTICA]: 'En curso',
+        [FIELD_NOTA_PRACTICAS]: 'Sin calificar',
+        [FIELD_ESPECIALIDAD_PRACTICAS]: 'Clinica',
+        [FIELD_FECHA_INICIO_PRACTICAS]: getYearDate(2),
+        [FIELD_FECHA_FIN_PRACTICAS]: getYearDate(6)
     },
-    // Práctica en Curso (Vinculada al escenario 1)
+    // Práctica Finalizada (Otro Alumno)
     {
         id: 'prac_2',
-        created_at: STR_PAST,
-        estudiante_id: 'st_999',
-        lanzamiento_id: 'lanz_1', // Vinculada al Garrahan
-        nombre_institucion: 'Hospital Garrahan - Guardia Pediátrica',
-        horas_realizadas: 40,
-        estado: 'En curso',
-        nota: 'Sin calificar',
-        especialidad: 'Clinica',
-        fecha_inicio: `${currentYear}-03-15`,
-        fecha_finalizacion: `${currentYear}-07-15`
-    },
-    // Prácticas para otros alumnos (para métricas y penalizaciones)
-    { id: 'prac_3', created_at: STR_PAST, estudiante_id: 'st_1', lanzamiento_id: 'lanz_1', nombre_institucion: 'Hosp. Garrahan', horas_realizadas: 80, estado: 'En curso', nota: 'Sin calificar', especialidad: 'Clinica', fecha_inicio: `${currentYear}-03-15` },
-    { id: 'prac_4', created_at: STR_FAR_PAST, estudiante_id: 'st_2', lanzamiento_id: 'lanz_4', nombre_institucion: 'Manpower', horas_realizadas: 40, estado: 'Finalizada', nota: '4', especialidad: 'Laboral', fecha_inicio: `${currentYear - 1}-08-01` },
+        created_at: getDate(-6),
+        [FIELD_ESTUDIANTE_LINK_PRACTICAS]: 'st_3',
+        [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: 'lanz_2',
+        [FIELD_HORAS_PRACTICAS]: 60,
+        [FIELD_ESTADO_PRACTICA]: 'Finalizada',
+        [FIELD_NOTA_PRACTICAS]: '9',
+        [FIELD_ESPECIALIDAD_PRACTICAS]: 'Clinica',
+        [FIELD_FECHA_INICIO_PRACTICAS]: getYearDate(3),
+        [FIELD_FECHA_FIN_PRACTICAS]: getYearDate(7)
+    }
 ];
 
+// --- SOLICITUDES PPS (Autogestión) ---
 export const MOCK_SOLICITUDES = [
     {
         id: 'sol_1',
-        created_at: STR_PAST,
-        estudiante_id: 'st_999',
-        nombre_alumno: 'Usuario de Prueba',
-        legajo: '99999',
-        email: 'tester@uflo.edu.ar',
-        nombre_institucion: 'Centro Racker',
-        estado_seguimiento: 'Realizando convenio',
-        tipo_practica: 'Individual',
-        actualizacion: STR_NOW,
-        notas: 'En espera de la firma del convenio específico.'
+        created_at: getDate(-1),
+        [FIELD_SOLICITUD_NOMBRE_ALUMNO]: 'Usuario de Prueba',
+        [FIELD_LEGAJO_PPS]: 'st_999',
+        [FIELD_EMPRESA_PPS_SOLICITUD]: 'Centro Racker',
+        [FIELD_ESTADO_PPS]: 'Pendiente'
     },
     {
         id: 'sol_2',
-        created_at: STR_NOW,
-        estudiante_id: 'st_2',
-        nombre_alumno: 'Lucas Pérez',
-        legajo: '36451',
-        email: 'lucas@test.com',
-        nombre_institucion: 'Clínica de la Esperanza',
-        estado_seguimiento: 'Pendiente',
-        tipo_practica: 'Individual',
-        actualizacion: STR_NOW,
-        notas: 'Nueva solicitud.'
+        created_at: getDate(-5),
+        [FIELD_SOLICITUD_NOMBRE_ALUMNO]: 'Lucas Pérez',
+        [FIELD_LEGAJO_PPS]: 'st_2',
+        [FIELD_EMPRESA_PPS_SOLICITUD]: 'Clínica Esperanza',
+        [FIELD_ESTADO_PPS]: 'Realizando convenio'
     }
 ];
 
-export const MOCK_PENALIZACIONES = [
-    {
-        id: 'pen_1',
-        created_at: STR_FAR_PAST,
-        estudiante_id: 'st_2', // Lucas Pérez
-        tipo_incumplimiento: 'Baja Anticipada',
-        fecha_incidente: `${currentYear - 1}-10-15`,
-        notas: 'Dejó la práctica sin aviso previo.',
-        puntaje_penalizacion: 50,
-        convocatoria_afectada: 'lanz_4' // Manpower
-    }
-];
-
+// --- FINALIZACIONES (ACREDITACIONES) ---
 export const MOCK_FINALIZACIONES = [
     {
         id: 'fin_1',
-        created_at: STR_NOW,
-        estudiante_id: 'st_3', // Camila López (Tiene muchas horas)
-        fecha_solicitud: STR_NOW,
-        estado: 'Pendiente',
-        informe_final_url: 'mock_url_informe.pdf',
-        planilla_horas_url: 'mock_url_horas.xlsx',
-        sugerencias_mejoras: 'Todo muy bien, gracias.'
+        created_at: getDate(-1),
+        [FIELD_ESTUDIANTE_FINALIZACION]: 'st_5',
+        [FIELD_FECHA_SOLICITUD_FINALIZACION]: getDate(-1),
+        [FIELD_ESTADO_FINALIZACION]: 'Pendiente'
+    },
+    {
+        id: 'fin_2',
+        created_at: getDate(-20),
+        [FIELD_ESTUDIANTE_FINALIZACION]: 'st_3',
+        [FIELD_FECHA_SOLICITUD_FINALIZACION]: getDate(-20),
+        [FIELD_ESTADO_FINALIZACION]: 'Cargado'
     }
 ];
+
+export const MOCK_PENALIZACIONES = [];

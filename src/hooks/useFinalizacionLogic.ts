@@ -105,41 +105,66 @@ export const useFinalizacionLogic = (isTestingMode = false) => {
         mutationFn: async ({ id, status }: { id: string; status: string }) => {
              if (isTestingMode) {
                  await mockDb.update('finalizacion_pps', id, { [FIELD_ESTADO_FINALIZACION]: status });
-                 return;
+                 return { emailSuccess: true };
              }
              
              const request = requests.find(r => r.id === id);
-             if (!request) return;
+             if (!request) throw new Error("Solicitud no encontrada en memoria");
              
              // 1. Update status
              await db.finalizacion.update(id, { [FIELD_ESTADO_FINALIZACION]: status });
              
              // 2. Process "Cargado" logic (Email & Student Record)
+             let emailResult: { success: boolean; message?: string } = { success: false, message: '' };
+             
              if (status === 'Cargado') {
                  const sIdRaw = request[FIELD_ESTUDIANTE_FINALIZACION];
                  const sId = Array.isArray(sIdRaw) ? sIdRaw[0] : sIdRaw;
+                 
+                 // Fetch latest student email to be sure
+                 let studentEmail = request.studentEmail;
+                 let studentName = request.studentName;
+                 
                  if (sId) {
                      await db.estudiantes.update(sId, { 
                          [FIELD_FINALIZARON_ESTUDIANTES]: true,
                          [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: new Date().toISOString() 
                      });
+                     
+                     // Force fetch fresh email if missing
+                     if (!studentEmail) {
+                         try {
+                             const freshStudent = await db.estudiantes.get({ filters: { id: sId } });
+                             if (freshStudent && freshStudent.length > 0) {
+                                 studentEmail = freshStudent[0][FIELD_CORREO_ESTUDIANTES];
+                                 studentName = freshStudent[0][FIELD_NOMBRE_ESTUDIANTES] || studentName;
+                             }
+                         } catch (e) {
+                             console.error("Error fetching fresh student email:", e);
+                         }
+                     }
                  }
                  
-                 const emailRes = await sendSmartEmail('sac', {
-                     studentName: String(request.studentName),
-                     studentEmail: String(request.studentEmail),
-                     ppsName: 'Práctica Profesional Supervisada'
-                 });
-                 
-                 if (!emailRes.success && emailRes.message !== 'Automación desactivada') {
-                     console.warn('SAC Email failed:', emailRes.message);
+                 if (studentEmail) {
+                     emailResult = await sendSmartEmail('sac', {
+                         studentName: String(studentName),
+                         studentEmail: String(studentEmail),
+                         ppsName: 'Práctica Profesional Supervisada'
+                     });
+                 } else {
+                     emailResult = { success: false, message: 'No se encontró email del alumno.' };
                  }
              }
+             return { emailSuccess: emailResult.success, emailMessage: emailResult.message };
         },
-        onSuccess: (_, variables) => {
+        onSuccess: (data, variables) => {
              queryClient.invalidateQueries({ queryKey: ['finalizacionRequests'] });
              if (variables.status === 'Cargado') {
-                 setToastInfo({ message: 'Acreditación confirmada y email enviado (si activo).', type: 'success' });
+                 if (data.emailSuccess) {
+                     setToastInfo({ message: 'Acreditación confirmada y email enviado.', type: 'success' });
+                 } else {
+                     setToastInfo({ message: `Acreditado, pero falló el email: ${data.emailMessage || 'Error desconocido'}`, type: 'warning' });
+                 }
              } else {
                  setToastInfo({ message: 'Estado actualizado.', type: 'success' });
              }

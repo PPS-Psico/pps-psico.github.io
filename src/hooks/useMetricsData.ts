@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
+import { mockDb } from '../services/mockDb'; // Import mockDb
 import { 
     TABLE_NAME_ESTUDIANTES, 
     TABLE_NAME_PRACTICAS, 
@@ -23,7 +24,9 @@ import {
     FIELD_FECHA_FINALIZACION_ESTUDIANTES,
     FIELD_FINALIZARON_ESTUDIANTES,
     FIELD_FECHA_INICIO_CONVOCATORIAS,
-    FIELD_NOMBRE_PPS_CONVOCATORIAS
+    FIELD_NOMBRE_PPS_CONVOCATORIAS,
+    TABLE_NAME_INSTITUCIONES, // Added missing constants
+    TABLE_NAME_PPS
 } from '../constants';
 import { safeGetId, parseToUTCDate, normalizeStringForComparison, formatDate } from '../utils/formatters';
 
@@ -256,24 +259,51 @@ export const useMetricsData = ({ targetYear, isTestingMode = false }: { targetYe
     return useQuery({
         queryKey: ['metricsData', targetYear, isTestingMode],
         queryFn: async () => {
-            const [est, prac, lanz, conv, fin] = await Promise.all([
-                supabase.from(TABLE_NAME_ESTUDIANTES).select('*'),
-                supabase.from(TABLE_NAME_PRACTICAS).select('*'),
-                supabase.from(TABLE_NAME_LANZAMIENTOS_PPS).select('*'),
-                supabase.from(TABLE_NAME_CONVOCATORIAS).select('*'),
-                supabase.from(TABLE_NAME_FINALIZACION).select('*')
-            ]);
+            let rawData;
             
-            const rawData = { 
-                estudiantes: est.data || [], 
-                practicas: prac.data || [], 
-                lanzamientos: lanz.data || [], 
-                convocatorias: conv.data || [], 
-                finalizaciones: fin.data || []
-            };
+            if (isTestingMode) {
+                const [est, prac, lanz, conv, fin, inst, req] = await Promise.all([
+                    mockDb.getAll('estudiantes'),
+                    mockDb.getAll('practicas'),
+                    mockDb.getAll('lanzamientos_pps'),
+                    mockDb.getAll('convocatorias'),
+                    mockDb.getAll('finalizacion_pps'),
+                    mockDb.getAll('instituciones'),
+                    mockDb.getAll('solicitudes_pps')
+                ]);
+                rawData = { 
+                    estudiantes: est, 
+                    practicas: prac, 
+                    lanzamientos: lanz, 
+                    convocatorias: conv, 
+                    finalizaciones: fin, 
+                    instituciones: inst, 
+                    solicitudes: req 
+                };
+            } else {
+                 const [est, prac, lanz, conv, fin, inst, req] = await Promise.all([
+                    supabase.from(TABLE_NAME_ESTUDIANTES).select('*'),
+                    supabase.from(TABLE_NAME_PRACTICAS).select('*'),
+                    supabase.from(TABLE_NAME_LANZAMIENTOS_PPS).select('*'),
+                    supabase.from(TABLE_NAME_CONVOCATORIAS).select('*'),
+                    supabase.from(TABLE_NAME_FINALIZACION).select('*'),
+                    supabase.from(TABLE_NAME_INSTITUCIONES).select('*'),
+                    supabase.from(TABLE_NAME_PPS).select('*')
+                ]);
+                
+                rawData = { 
+                    estudiantes: est.data || [], 
+                    practicas: prac.data || [], 
+                    lanzamientos: lanz.data || [], 
+                    convocatorias: conv.data || [], 
+                    finalizaciones: fin.data || [], 
+                    instituciones: inst.data || [],
+                    solicitudes: req.data || []
+                };
+            }
             
             return processAllData(rawData, targetYear);
         },
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 5, 
     });
 };
