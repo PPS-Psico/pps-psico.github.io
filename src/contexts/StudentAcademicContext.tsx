@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useStudentContextData } from './StudentDataContext';
@@ -29,6 +30,7 @@ interface StudentAcademicContextType {
     enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean; };
     confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
     refetchAcademic: () => void;
+    updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string; }, unknown>;
 }
 
 const StudentAcademicContext = createContext<StudentAcademicContextType | undefined>(undefined);
@@ -38,7 +40,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     const { studentDetails, studentAirtableId } = useStudentContextData();
     const config = useAppConfig();
 
-    const { practicas, isPracticasLoading, practicasError, updateNota, refetchPracticas } = useStudentPracticas(legajo);
+    const { practicas, isPracticasLoading, practicasError, updateNota, updateFechaFin, refetchPracticas } = useStudentPracticas(legajo);
     const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } = useStudentSolicitudes(legajo, studentAirtableId);
     const { 
         lanzamientos, myEnrollments, allLanzamientos, isConvocatoriasLoading, convocatoriasError,
@@ -88,6 +90,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
         isAcademicLoading,
         academicError,
         updateNota,
+        updateFechaFin,
         enrollStudent,
         confirmInforme,
         refetchAcademic,

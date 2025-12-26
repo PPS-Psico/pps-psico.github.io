@@ -74,7 +74,7 @@ export interface Database {
           orientacion_elegida: string | null
           notas_internas: string | null
           fecha_finalizacion: string | null
-          finalizaron: boolean | null
+          estado: string | null
           user_id: string | null
           must_change_password: boolean | null
           role: string | null
@@ -94,7 +94,7 @@ export interface Database {
           orientacion_elegida?: string | null
           notas_internas?: string | null
           fecha_finalizacion?: string | null
-          finalizaron?: boolean | null
+          estado?: string | null
           user_id?: string | null
           must_change_password?: boolean | null
           role?: string | null
@@ -114,7 +114,7 @@ export interface Database {
           orientacion_elegida?: string | null
           notas_internas?: string | null
           fecha_finalizacion?: string | null
-          finalizaron?: boolean | null
+          estado?: string | null
           user_id?: string | null
           must_change_password?: boolean | null
           role?: string | null
@@ -336,9 +336,10 @@ export interface Database {
           nombre: string | null
           direccion: string | null
           telefono: string | null
-          convenio_nuevo: boolean | null
+          convenio_nuevo: string | boolean | null
           tutor: string | null
           codigo_tarjeta_campus: string | null
+          orientaciones: string | null
         }
         Insert: {
           id?: string
@@ -346,9 +347,10 @@ export interface Database {
           nombre?: string | null
           direccion?: string | null
           telefono?: string | null
-          convenio_nuevo?: boolean | null
+          convenio_nuevo?: string | boolean | null
           tutor?: string | null
           codigo_tarjeta_campus?: string | null
+          orientaciones?: string | null
         }
         Update: {
           id?: string
@@ -356,9 +358,10 @@ export interface Database {
           nombre?: string | null
           direccion?: string | null
           telefono?: string | null
-          convenio_nuevo?: boolean | null
+          convenio_nuevo?: string | boolean | null
           tutor?: string | null
           codigo_tarjeta_campus?: string | null
+          orientaciones?: string | null
         }
       }
       solicitudes_pps: {

@@ -12,6 +12,7 @@ import type { EnrichedStudent } from '../types';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
 import Toast from './Toast';
+import ConfirmModal from './ConfirmModal';
 
 const StudentRow: React.FC<{ 
     student: EnrichedStudent; 
@@ -22,7 +23,6 @@ const StudentRow: React.FC<{
 }> = ({ student, onToggleSelection, onUpdateSchedule, isUpdating, isReviewMode = false }) => {
     const [localSchedule, setLocalSchedule] = React.useState(student.horarioSeleccionado);
     const [isScheduleDirty, setIsScheduleDirty] = React.useState(false);
-    // Estado de nota expandida eliminado: ahora se muestra siempre completa.
     const isSelected = normalizeStringForComparison(student.status) === 'seleccionado';
 
     const handleScheduleBlur = () => {
@@ -36,7 +36,6 @@ const StudentRow: React.FC<{
         <div className={`rounded-xl border transition-all duration-200 ${isSelected ? 'bg-emerald-50/60 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800 shadow-sm' : 'bg-white dark:bg-[#0B1120] border-slate-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800'}`}>
             <div className="p-3 sm:p-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center">
                 
-                {/* 1. Puntaje, Nombre y Horas (Datos clave para decidir) */}
                 <div className="flex items-center gap-3 min-w-[200px]">
                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-base font-black border shadow-sm ${student.puntajeTotal >= 100 ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`} title="Puntaje Total">
                         {student.puntajeTotal}
@@ -45,7 +44,6 @@ const StudentRow: React.FC<{
                         <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate leading-tight" title={student.nombre}>
                             {student.nombre}
                         </h4>
-                        {/* Horas movidas aquí debajo del nombre */}
                         <div className="mt-1">
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
                                 <span className="material-icons !text-[11px]">schedule</span> {student.totalHoras} hs acumuladas
@@ -54,10 +52,7 @@ const StudentRow: React.FC<{
                     </div>
                 </div>
 
-                {/* 2. Situación Académica y Notas (Unificado) */}
                 <div className="flex-1 w-full lg:w-auto flex flex-wrap items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 pt-3 lg:pt-0 lg:pl-4 min-h-[32px]">
-                    
-                    {/* Cursada Status */}
                     {student.terminoCursar ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 whitespace-nowrap">
                             Terminó Cursada
@@ -68,19 +63,16 @@ const StudentRow: React.FC<{
                         </span>
                     )}
 
-                    {/* Finales */}
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border whitespace-nowrap ${student.finalesAdeuda ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700'}`}>
                         {student.finalesAdeuda ? `Adeuda: ${student.finalesAdeuda}` : 'Sin Finales'}
                     </span>
 
-                    {/* Electivas */}
                     {student.cursandoElectivas && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap">
                             Electivas
                         </span>
                     )}
                     
-                    {/* Trabaja */}
                     {student.trabaja && (
                          <a 
                              href={student.certificadoTrabajo || '#'} 
@@ -95,7 +87,6 @@ const StudentRow: React.FC<{
                         </a>
                     )}
                     
-                    {/* NEW: CV Badge */}
                     {student.cvUrl && (
                         <a 
                              href={student.cvUrl} 
@@ -109,14 +100,12 @@ const StudentRow: React.FC<{
                         </a>
                     )}
                     
-                    {/* Penalización */}
                     {student.penalizacionAcumulada > 0 && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800 whitespace-nowrap">
                             Penalización Activa
                         </span>
                     )}
 
-                    {/* Nota del alumno (siempre visible completa) */}
                     {student.notasEstudiante && (
                          <div 
                             className="inline-flex items-start gap-1.5 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-800/30 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300 w-full break-words mt-1"
@@ -129,7 +118,6 @@ const StudentRow: React.FC<{
                     )}
                 </div>
 
-                {/* 3. Acción y Horario */}
                 <div className="flex items-center gap-2 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                     <div className="flex-grow lg:w-40">
                         <input 
@@ -182,6 +170,8 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
         handleToggle, handleUpdateSchedule, handleConfirmAndCloseTable, closeLaunchMutation
     } = useSeleccionadorLogic(isTestingMode, onNavigateToInsurance, preSelectedLaunchId);
 
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
     if (isLoadingLaunches) return <Loader />;
 
     if (!selectedLanzamiento) {
@@ -203,9 +193,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
                                     onClick={() => setSelectedLanzamiento(lanz)}
                                     className="text-left p-5 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#0F172A] shadow-sm hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-600 dark:hover:shadow-blue-900/10 transition-all group relative overflow-hidden"
                                 >
-                                    {/* Accent Background on Dark Mode */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-transparent to-slate-50 dark:to-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                    
                                     <div className="relative z-10">
                                         <div className="flex justify-between items-start mb-3">
                                             <span className={visuals.tag}>{lanz[FIELD_ORIENTACION_LANZAMIENTOS]}</span>
@@ -234,6 +222,19 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
         <div className="animate-fade-in-up space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
             
+            <ConfirmModal 
+                isOpen={isConfirmOpen}
+                title="¿Cerrar Mesa de Inscripción?"
+                message={`Se enviarán correos automáticos de confirmación a los ${selectedCandidates.length} alumnos seleccionados. ¿Deseas proceder con el cierre definitivo de esta convocatoria?`}
+                onConfirm={() => {
+                    handleConfirmAndCloseTable();
+                    setIsConfirmOpen(false);
+                }}
+                onClose={() => setIsConfirmOpen(false)}
+                confirmText="Confirmar Cierre"
+                type="info"
+            />
+
             <div className="bg-white dark:bg-[#0F172A] p-4 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div className="flex items-center gap-3">
@@ -262,7 +263,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
                                 Volver
                             </button>
                             <button 
-                                onClick={handleConfirmAndCloseTable} 
+                                onClick={() => setIsConfirmOpen(true)} 
                                 disabled={isClosingTable} 
                                 className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-colors disabled:opacity-70 dark:bg-emerald-700 dark:hover:bg-emerald-600"
                             >

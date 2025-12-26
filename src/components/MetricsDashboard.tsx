@@ -7,10 +7,10 @@ import StudentListModal from './StudentListModal';
 import Card from './Card';
 import MetricCard from './MetricCard';
 import HeroMetric from './MetricHero';
-import FunnelRow from './MetricFunnel';
 import { MetricsSkeleton } from './Skeletons';
-import EnrollmentTrendChart from './Charts/EnrollmentTrendChart';
 import OrientationDistributionChart from './Charts/OrientationDistributionChart';
+import EnrollmentTrendChart from './Charts/EnrollmentTrendChart';
+import EnrollmentEvolutionChart from './Charts/EnrollmentEvolutionChart';
 
 type ModalData = {
   title: string;
@@ -25,61 +25,13 @@ const Tabs: React.FC<{ active: string; onChange: (t: string) => void }> = ({ act
     { key: 'students', label: 'Estudiantes', icon: 'groups' },
     { key: 'institutions', label: 'Instituciones', icon: 'apartment' },
   ];
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
-  const activeTabInfo = tabs.find(t => t.key === active) || tabs[0];
-
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelect = (key: string) => {
-    onChange(key);
-    setIsDropdownOpen(false);
-  };
-  
   return (
-    <div className="mt-4">
-      <div ref={dropdownRef} className="relative lg:hidden">
-        <button
-          type="button"
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="w-full flex items-center justify-between p-3 rounded-xl border bg-white dark:bg-slate-800/50 dark:border-slate-700 shadow-sm"
-        >
-          <div className="flex items-center gap-3">
-            <span className="material-icons !text-xl text-blue-600 dark:text-blue-400">{activeTabInfo.icon}</span>
-            <span className="font-semibold text-slate-800 dark:text-slate-100">{activeTabInfo.label}</span>
-          </div>
-          <span className={`material-icons text-slate-500 dark:text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
-        </button>
-        {isDropdownOpen && (
-          <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-lg border dark:border-slate-700 z-10 animate-fade-in-up">
-            {tabs.map(t => (
-              <button
-                key={t.key}
-                onClick={() => handleSelect(t.key)}
-                className="w-full text-left flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 first:rounded-t-xl last:rounded-b-xl"
-              >
-                <span className="material-icons !text-xl text-slate-500 dark:text-slate-400">{t.icon}</span>
-                <span className="font-medium text-slate-700 dark:text-slate-200">{t.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="hidden lg:inline-flex p-1 rounded-xl border bg-white dark:bg-slate-800/50 dark:border-slate-700">
+    <div className="mt-4 inline-flex p-1 rounded-xl border bg-white dark:bg-slate-800/50 dark:border-slate-700">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => onChange(t.key)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300 dark:focus-visible:ring-offset-slate-800 ${
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               active === t.key ? 'bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
             }`}
           >
@@ -87,7 +39,6 @@ const Tabs: React.FC<{ active: string; onChange: (t: string) => void }> = ({ act
             <span className="whitespace-nowrap">{t.label}</span>
           </button>
         ))}
-      </div>
     </div>
   );
 };
@@ -105,78 +56,19 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ onStudentSel
   const openModal = useCallback((payload: ModalData) => setModalData(payload), []);
   const closeModal = useCallback(() => setModalData(null), []);
 
-  const { data: metrics, isLoading, error, refetch, isFetching } = useMetricsData({ targetYear, isTestingMode });
+  const { data: metrics, isLoading, error } = useMetricsData({ targetYear, isTestingMode });
 
-  const MONTH_NAMES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
-  const chartsData = useMemo(() => {
-    if (!metrics || !metrics.rawStudents) return { trend: [], distribution: [] };
-
-    // 1. Distribución por Orientación
-    const orientationCounts: Record<string, number> = {};
-    metrics.rawStudents.forEach((s: any) => {
-        const orientation = s.orientacion_elegida || 'Sin definir';
-        const label = orientation.charAt(0).toUpperCase() + orientation.slice(1);
-        orientationCounts[label] = (orientationCounts[label] || 0) + 1;
-    });
+  const distributionData = useMemo(() => {
+    if (!metrics?.occupancyDistribution) return [];
     
-    const distribution = Object.entries(orientationCounts)
-        .map(([name, value]) => ({ name, value }))
+    return (Object.entries(metrics.occupancyDistribution) as [string, any[]][])
+        .map(([name, list]) => ({ name, value: list.length }))
+        .filter(item => item.value > 0)
         .sort((a, b) => b.value - a.value);
-
-    // 2. Gráfico de Evolución Acumulada (Stock Activo)
-    // Stock en Mes M = Stock en Mes M-1 + Entradas(M) - Salidas(M)
-    const trendData: { month: string, value: number }[] = [];
-    const maxMonth = targetYear === new Date().getFullYear() ? new Date().getMonth() : 11;
-    
-    // Arrays auxiliares para conteo mes a mes
-    const entriesPerMonth = new Array(12).fill(0);
-    const exitsPerMonth = new Array(12).fill(0);
-
-    metrics.rawStudents.forEach((s: any) => {
-        if (s.startMonth >= 0 && s.startMonth <= 11) {
-            entriesPerMonth[s.startMonth]++;
-        }
-        if (s.endMonth !== undefined && s.endMonth >= 0 && s.endMonth <= 11) {
-            exitsPerMonth[s.endMonth]++;
-        }
-    });
-
-    let currentStock = 0;
-    for (let m = 0; m <= maxMonth; m++) {
-        currentStock += entriesPerMonth[m]; // Sumamos los que entraron este mes
-        currentStock -= exitsPerMonth[m];   // Restamos los que se acreditaron este mes
-        
-        // Evitar números negativos por inconsistencias de datos (ej: fecha fin anterior a inicio)
-        if (currentStock < 0) currentStock = 0;
-
-        trendData.push({ month: MONTH_NAMES[m], value: currentStock });
-    }
-
-    return { distribution, trend: trendData };
-  }, [metrics, targetYear]);
-
+  }, [metrics]);
 
   if (isLoading) return <MetricsSkeleton />;
-
-  if (error) {
-    return (
-      <div className="max-w-3xl mx-auto mt-10">
-        <EmptyState
-          icon="error"
-          title="Error al cargar métricas"
-          message={(error as any).message}
-          action={
-            <button onClick={() => refetch()} className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">
-              <span className="material-icons">refresh</span>
-              Reintentar
-            </button>
-          }
-        />
-      </div>
-    );
-  }
-
+  if (error) return <EmptyState icon="error" title="Error" message={(error as any).message} />;
   if (!metrics) return null;
 
   return (
@@ -188,192 +80,230 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ onStudentSel
         students={modalData?.students || []}
         headers={modalData?.headers}
         description={modalData?.description}
+        onStudentClick={(s) => {
+            // Permitir clic solo si tiene legajo válido para navegar
+            if (s.legajo && s.legajo !== 'Confirmado' && s.legajo !== 'Activa' && s.legajo !== '---') {
+                onStudentSelect?.({ legajo: s.legajo, nombre: s.nombre });
+                closeModal();
+            }
+        }}
       />
       
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-50 tracking-tight">
-            Métricas Académicas
-          </h2>
-          
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-50 tracking-tight">Metricas Academicas</h2>
           <div className="flex items-center gap-3">
               <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
                   {[2024, 2025].map(year => (
-                      <button
-                        key={year}
-                        onClick={() => setTargetYear(year)}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${targetYear === year ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-50 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                      >
-                          Ciclo {year}
-                      </button>
+                      <button key={year} onClick={() => { setTargetYear(year); setActiveTab('overview'); }} className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${targetYear === year ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-50 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{year}</button>
                   ))}
               </div>
-              {isFetching && (
-                <span className="material-icons !text-base animate-spin text-blue-500">autorenew</span>
-              )}
           </div>
+      </div>
+
+      {/* Hero Cards: Grid de 3 (Solicitudes en curso eliminada) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <HeroMetric
+            title="Matricula Generada"
+            value={metrics.matriculaGenerada.value}
+            icon="group_add"
+            description={`Total histórico en ${targetYear}`}
+            onClick={() => openModal({ title: `Matricula Generada ${targetYear}`, students: metrics.matriculaGenerada.list as StudentInfo[] })}
+            color="indigo"
+        />
+        <HeroMetric
+            title="Acreditados"
+            value={metrics.alumnosFinalizados.value}
+            icon="military_tech"
+            description={`Finalizaron en ${targetYear}`}
+            onClick={() => openModal({ title: `Acreditados en ${targetYear}`, students: metrics.alumnosFinalizados.list as StudentInfo[] })}
+            color="emerald"
+        />
+        <HeroMetric
+            title="Matricula Activa"
+            value={metrics.matriculaActiva.value}
+            icon="play_circle"
+            description={targetYear === 2025 ? "Alumnos activos hoy" : "Activos a fin de ciclo"}
+            onClick={() => openModal({ title: `Matricula Activa ${targetYear}`, students: metrics.matriculaActiva.list as StudentInfo[] })}
+            color="blue"
+        />
       </div>
 
       <Tabs active={activeTab} onChange={(t) => setActiveTab(t as any)} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        <HeroMetric
-            title="Oferta PPS"
-            value={metrics.ppsLanzadas.value}
-            icon="rocket_launch"
-            description={`Comisiones únicas abiertas en ${targetYear}.`}
-            onClick={() =>
-            openModal({
-                title: `PPS Lanzadas (${targetYear})`,
-                students: metrics.ppsLanzadas.list as StudentInfo[],
-                headers: [
-                    { key: 'nombre', label: 'Institución' },
-                    { key: 'legajo', label: 'Orientación' },
-                    { key: 'cupos', label: 'Cupos' },
-                ],
-            })
-            }
-            color="indigo"
-        />
-        <HeroMetric
-            title="Matrícula Activa"
-            value={metrics.alumnosActivos.value}
-            icon="school"
-            description={`Estudiantes inscriptos en el ciclo ${targetYear}.`}
-            onClick={() => openModal({ title: `Estudiantes Activos (${targetYear})`, students: metrics.alumnosActivos.list as StudentInfo[] })}
-            color="blue"
-        />
-        <HeroMetric
-            title="Finalizados"
-            value={metrics.alumnosFinalizados.value}
-            icon="military_tech"
-            description={`Egresados registrados durante el ciclo ${targetYear}.`}
-            onClick={() => openModal({ 
-                title: `Alumnos Finalizados (${targetYear})`, 
-                students: metrics.alumnosFinalizados.list as StudentInfo[],
-                headers: [
-                    { key: 'nombre', label: 'Nombre' },
-                    { key: 'legajo', label: 'Legajo' },
-                    { key: 'fechaFin', label: 'Fecha' },
-                ]
-            })}
-            color="emerald"
-        />
-      </div>
+      <div className="mt-8 animate-fade-in-up">
+        {activeTab === 'overview' && (
+            <div className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                        {/* Nuevos Inscriptos: Solo mostrar para 2025 o superior */}
+                        {targetYear >= 2025 && (
+                            <EnrollmentEvolutionChart 
+                                data={metrics.enrollmentEvolution} 
+                                onBarClick={(item) => item.year !== '2024' && openModal({
+                                    title: `Estudiantes ${item.year}`,
+                                    students: item.list as StudentInfo[],
+                                    description: item.isProjection ? 'Alumnos detectados con estado "Nuevo" pendientes de matriculacion completa.' : 'Alumnos que iniciaron su recorrido en este ciclo.'
+                                })}
+                            />
+                        )}
+                        
+                        {/* Distribución por Área: Ocultar en 2024 */}
+                        {targetYear !== 2024 && (
+                            <OrientationDistributionChart data={distributionData} />
+                        )}
+                    </div>
 
-      {activeTab === 'overview' && (
-        <div className="mt-8 space-y-8 animate-fade-in-up">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <EnrollmentTrendChart data={chartsData.trend} />
-                 <OrientationDistributionChart data={chartsData.distribution} />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card icon="filter_alt" title="Desglose del Ciclo" description={`Estado de los ${metrics.alumnosActivos.value} alumnos del año.`}>
-                <div className="mt-4 space-y-2 divide-y divide-slate-200/60 dark:divide-slate-700/60">
-                    <FunnelRow
-                    label="Cursando PPS"
-                    value={metrics.alumnosEnPPS.value}
-                    total={metrics.alumnosActivos.value}
-                    color="bg-emerald-500"
-                    description="Alumnos con al menos una práctica vinculada a este año."
-                    onClick={() =>
-                        openModal({
-                        title: 'Alumnos en PPS',
-                        students: metrics.alumnosEnPPS.list as StudentInfo[],
-                        })
-                    }
-                    />
-                    <FunnelRow
-                    label="Sin PPS Registrada"
-                    value={metrics.alumnosActivosSinPpsEsteAno.value}
-                    total={metrics.alumnosActivos.value}
-                    color="bg-rose-500"
-                    description={`Inscriptos a convocatoria pero sin práctica asignada.`}
-                    onClick={() =>
-                        openModal({
-                        title: `Activos Sin PPS en ${targetYear}`,
-                        students: metrics.alumnosActivosSinPpsEsteAno.list as StudentInfo[],
-                        })
-                    }
-                    />
+                    <div className="space-y-6">
+                        {/* Gráfico de Tendencia Restaurado */}
+                        <EnrollmentTrendChart data={metrics.trendData} />
+                        
+                        {/* Cupos Ocupados por Área: Ocultar en 2024 */}
+                        {targetYear !== 2024 && (
+                            <Card title="Cupos Ocupados por Area" icon="list" description="Distribucion de vacantes segun el area de la PPS.">
+                                <div className="mt-4 space-y-2">
+                                    {distributionData.map((item) => (
+                                        <button
+                                            key={item.name}
+                                            onClick={() => openModal({
+                                                title: `Alumnos en Area: ${item.name}`,
+                                                students: metrics.occupancyDistribution[item.name] as StudentInfo[],
+                                                headers: [
+                                                    { key: 'nombre', label: 'Nombre' },
+                                                    { key: 'legajo', label: 'Legajo' },
+                                                    { key: 'institucion', label: 'Institucion' },
+                                                    ...(item.name === 'Sin definir' ? [{ key: 'raw_value', label: 'Valor en DB' }] : [])
+                                                ],
+                                                description: item.name === 'Sin definir' 
+                                                    ? "Estos registros tienen orientaciones no reconocidas en el lanzamiento de origen. Revisa la columna 'Valor en DB'."
+                                                    : `Estudiantes seleccionados en vacantes de ${item.name} durante el ciclo ${targetYear}.`
+                                            })}
+                                            className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className={`w-2 h-2 rounded-full ${item.name === 'Sin definir' ? 'bg-rose-500' : 'bg-blue-500'}`}></span>
+                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-black text-slate-900 dark:text-white">{item.value} cupos</span>
+                                                <span className="material-icons text-slate-300 group-hover:text-blue-500 transition-colors !text-base">arrow_forward</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
+                    </div>
                 </div>
-                </Card>
-
-                <Card icon="campaign" title="Capacidad Instalada" description={`Distribución de cupos en el ciclo ${targetYear}.`}>
-                    <div className="mt-4 grid grid-cols-2 gap-4 divide-x divide-slate-200/70 dark:divide-slate-700/70 border-b border-slate-200/70 dark:border-slate-700/70 pb-4">
-                        <div className="text-center px-2">
-                            <p className="text-5xl font-black text-slate-800 dark:text-slate-100">{metrics.activeInstitutions.value}</p>
-                            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-1">Instituciones</p>
-                        </div>
-                        <div className="text-center px-2">
-                            <p className="text-5xl font-black text-slate-800 dark:text-slate-100">{metrics.cuposOfrecidos.value}</p>
-                            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-1">Cupos Totales</p>
-                        </div>
-                    </div>
-                    <div className="mt-4 text-center">
-                         <p className="text-xs text-slate-500 font-medium italic">Datos basados en lanzamientos oficiales del ciclo.</p>
-                    </div>
-                </Card>
             </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === 'students' && (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-            <MetricCard
-                title={`Matrícula Activa ${targetYear}`}
-                value={metrics.alumnosActivos.value}
-                icon="school"
-                description={`Total de alumnos con inscripción a convocatorias del año.`}
-                isLoading={false}
-                onClick={() => openModal({ title: `Activos en ${targetYear}`, students: metrics.alumnosActivos.list as StudentInfo[] })}
-            />
-            <MetricCard
-                title="En Curso / Con Práctica"
-                value={metrics.alumnosEnPPS.value}
-                icon="work"
-                description="Alumnos con práctica asignada este año."
-                isLoading={false}
-                onClick={() => openModal({ title: 'Alumnos en PPS', students: metrics.alumnosEnPPS.list as StudentInfo[] })}
-            />
-             <MetricCard
-                title={`Finalizados ${targetYear}`}
-                value={metrics.alumnosFinalizados.value}
-                icon="military_tech"
-                description={`Alumnos que acreditaron en el ciclo.`}
-                isLoading={false}
-                onClick={() => openModal({ 
-                    title: `Finalizados en ${targetYear}`, 
-                    students: metrics.alumnosFinalizados.list as StudentInfo[],
-                    headers: [
-                        { key: 'nombre', label: 'Nombre' },
-                        { key: 'legajo', label: 'Legajo' },
-                        { key: 'fechaFin', label: 'Fecha' },
-                    ]
-                })}
-            />
-        </div>
-      )}
+        {activeTab === 'students' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* 1. Ingresantes */}
+                <MetricCard
+                    title={`Ingresantes ${targetYear}`}
+                    value={metrics.nuevosIngresantes.value}
+                    icon="person_add"
+                    description={`Nuevos matriculados en ${targetYear}`}
+                    onClick={() => openModal({
+                        title: `Nuevos Ingresantes ${targetYear}`,
+                        students: metrics.nuevosIngresantes.list as any,
+                        headers: [{key: 'nombre', label: 'Nombre'}, {key: 'legajo', label: 'Legajo'}]
+                    })}
+                    isLoading={false}
+                    className="bg-blue-50/50 border-blue-200"
+                />
 
-      {activeTab === 'institutions' && (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-            <MetricCard
-                title="PPS Lanzadas"
-                value={metrics.ppsLanzadas.value}
-                icon="rocket_launch"
-                description={`Instituciones con aperturas en ${targetYear}.`}
-                isLoading={false}
-                onClick={() => openModal({ title: `PPS Lanzadas (${targetYear})`, students: metrics.ppsLanzadas.list as StudentInfo[] })}
-            />
-            <MetricCard
-                title="Cupos Ofrecidos"
-                value={metrics.cuposOfrecidos.value}
-                icon="groups"
-                description={`Total de vacantes puestas a disposición.`}
-                isLoading={false}
-            />
-        </div>
-      )}
+                {/* 2. Sin PPS */}
+                <MetricCard
+                    title="Sin Ninguna PPS"
+                    value={metrics.alumnosSinPPS.value}
+                    icon="person_off"
+                    description="Alumnos activos sin actividad registrada"
+                    onClick={() => openModal({
+                        title: "Alumnos Activos Sin PPS",
+                        students: metrics.alumnosSinPPS.list as any,
+                        headers: [{key: 'nombre', label: 'Nombre'}, {key: 'legajo', label: 'Legajo'}, {key: 'correo', label: 'Email'}]
+                    })}
+                    isLoading={false}
+                    className="bg-rose-50/30 border-rose-200"
+                />
+
+                {/* 3. Próximos a Finalizar */}
+                <MetricCard
+                    title="Próximos a Finalizar"
+                    value={metrics.proximosAFinalizar.value}
+                    icon="hourglass_top"
+                    description=">=230hs o Completos con Práctica Activa"
+                    onClick={() => openModal({
+                        title: "Alumnos Próximos a Finalizar",
+                        students: metrics.proximosAFinalizar.list as any,
+                        headers: [{key: 'nombre', label: 'Nombre'}, {key: 'legajo', label: 'Legajo'}],
+                        description: "Listado de alumnos con más de 230 horas acumuladas o que ya cumplen los requisitos pero tienen prácticas 'En curso' impidiendo el cierre."
+                    })}
+                    isLoading={false}
+                    className="bg-amber-50/30 border-amber-200"
+                />
+
+                {/* 4. Haciendo PPS */}
+                <MetricCard
+                    title="Haciendo PPS"
+                    value={metrics.haciendoPPS.value}
+                    icon="engineering"
+                    description="Alumnos con prácticas en curso ahora"
+                    onClick={() => openModal({
+                        title: "Alumnos Cursando PPS",
+                        students: metrics.haciendoPPS.list as any,
+                        headers: [{key: 'nombre', label: 'Nombre'}, {key: 'legajo', label: 'Legajo'}]
+                    })}
+                    isLoading={false}
+                    className="bg-emerald-50/30 border-emerald-200"
+                />
+            </div>
+        )}
+
+        {activeTab === 'institutions' && (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <MetricCard
+                    title="PPS Lanzadas"
+                    value={metrics.ppsLanzadas.value}
+                    icon="rocket_launch"
+                    description={`Convocatorias publicadas en ${targetYear}`}
+                    isLoading={false}
+                />
+                <MetricCard
+                    title="Instituciones Activas"
+                    value={metrics.institucionesActivas?.value || 0}
+                    icon="apartment"
+                    description={`Sedes con actividad en ${targetYear}`}
+                    onClick={() => openModal({
+                        title: `Instituciones Activas ${targetYear}`,
+                        students: metrics.institucionesActivas?.list as any
+                    })}
+                    isLoading={false}
+                />
+                <MetricCard
+                    title="Cupos Ofrecidos"
+                    value={metrics.cuposOfrecidos.value}
+                    icon="groups"
+                    description="Total de vacantes puestas a disposicion."
+                    isLoading={false}
+                />
+                <MetricCard
+                    title="Nuevos Convenios"
+                    value={metrics.conveniosNuevos.value}
+                    icon="handshake"
+                    description="Instituciones incorporadas este ciclo."
+                    onClick={() => openModal({ 
+                        title: "Nuevos Convenios", 
+                        students: metrics.conveniosNuevos.list as any
+                    })}
+                    isLoading={false}
+                    className="bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800"
+                />
+            </div>
+        )}
+      </div>
     </>
   );
 };

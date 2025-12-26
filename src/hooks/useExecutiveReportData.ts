@@ -11,7 +11,6 @@ import {
     TABLE_NAME_INSTITUCIONES, 
     FIELD_LEGAJO_ESTUDIANTES, 
     FIELD_NOMBRE_ESTUDIANTES, 
-    FIELD_FINALIZARON_ESTUDIANTES, 
     FIELD_ESTUDIANTE_LINK_PRACTICAS, 
     FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
     FIELD_FECHA_INICIO_LANZAMIENTOS,
@@ -31,7 +30,8 @@ import {
     FIELD_ESTADO_PPS,
     FIELD_LEGAJO_PPS,
     FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-    FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS
+    FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+    FIELD_ESTADO_ESTUDIANTES
 } from '../constants';
 import { 
     AnyReportData, 
@@ -95,12 +95,10 @@ const processAllData = (allData: any, targetYear: number) => {
      const launchIdsInYear = new Set<string>(launchesInTargetYear.map((l: any) => l.id));
 
      // 2. IDENTIFICAR ESTUDIANTES ACTIVOS
-     // Regla Estricta: Un estudiante es activo solo si tiene una inscripción vinculada a un lanzamiento de este año.
      const activeStudentIds = new Set<string>();
      
      allData.convocatorias.forEach((c: any) => {
          const rawLanzId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-         // Handle Supabase returning array for relations sometimes
          const lanzId = Array.isArray(rawLanzId) ? rawLanzId[0] : rawLanzId;
          
          if (lanzId && launchIdsInYear.has(lanzId)) {
@@ -110,9 +108,8 @@ const processAllData = (allData: any, targetYear: number) => {
      });
 
      const activeList = allData.estudiantes.filter((s: any) => {
-         // Excluir finalizados
-         if (s[FIELD_FINALIZARON_ESTUDIANTES]) return false;
-         // INCLUIR SOLO SI TIENE ACTIVIDAD ESTE AÑO
+         // Excluir finalizados usando la nueva lógica de 'estado'
+         if (s[FIELD_ESTADO_ESTUDIANTES] === 'Finalizado') return false;
          return activeStudentIds.has(s.id);
      });
 
@@ -152,7 +149,6 @@ const processAllData = (allData: any, targetYear: number) => {
             const monthIndex = date ? date.getUTCMonth() : -1;
             const cupos = Number(launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
             
-            // Count unique launch per month
             if (monthIndex >= 0) {
                 uniqueLaunchesSet.add(`${groupName}::${monthIndex}`);
                 
@@ -198,7 +194,6 @@ const processAllData = (allData: any, targetYear: number) => {
         return null;
     }).filter((item): item is TimelineMonthData => item !== null);
 
-    // Activas hoy (para dashboard)
     const uniqueInstitutionsNames = new Set<string>();
     launchesInTargetYear.forEach((l: any) => {
          const name = getGroupName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
@@ -207,15 +202,13 @@ const processAllData = (allData: any, targetYear: number) => {
     const activeInstitutionsCount = uniqueInstitutionsNames.size;
     const activeInstitutionsList = Array.from(uniqueInstitutionsNames).map(name => ({ nombre: name, legajo: 'Activa', cupos: 'N/A' }));
 
-    // Convenios Nuevos
+    // UPDATE: Filter new agreements strictly by Institution Table and Year
     const newAgreementsList = allData.instituciones
-        .filter((i: any) => !!i[FIELD_CONVENIO_NUEVO_INSTITUCIONES])
+        .filter((i: any) => String(i[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) === String(targetYear))
         .map((i: any) => ({ nombre: i[FIELD_NOMBRE_INSTITUCIONES] }));
 
-    // Solicitudes
     const ppsRequests = processRequestsForYear(targetYear, allData.solicitudes, allData.estudiantes);
 
-    // Lanzamientos Mes Actual
     const now = new Date();
     const currentMonth = now.getUTCMonth();
     const currentMonthLaunches: any[] = [];
@@ -226,30 +219,21 @@ const processAllData = (allData: any, targetYear: number) => {
     }
 
     return {
-        // KPIs
         alumnosActivos: { value: activeList.length, list: activeList },
         alumnosFinalizados: { value: finishedList.length, list: finishedList },
         alumnosSinNingunaPPS: { value: activeWithoutPpsList.length, list: activeWithoutPpsList },
-        
         ppsLanzadas: { value: ppsLanzadasValue, list: ppsLaunchedList },
         cuposOfrecidos: { value: totalCupos, list: [] },
-        
-        // Derived
         alumnosEnPPS: { value: activeList.length - activeWithoutPpsList.length, list: [] }, 
         alumnosConPpsEsteAno: { value: activeList.length - activeWithoutPpsList.length, list: [] }, 
         alumnosActivosSinPpsEsteAno: { value: activeWithoutPpsList.length, list: activeWithoutPpsList },
-        
         alumnosProximosAFinalizar: { value: 0, list: [] }, 
         alumnosParaAcreditar: { value: 0, list: [] },
-        
         nuevosConvenios: { value: newAgreementsList.length, list: newAgreementsList },
         activeInstitutions: { value: activeInstitutionsCount, list: activeInstitutionsList },
-        
         cuposTotalesConRelevamiento: { value: 0, list: [] },
         lanzamientosMesActual: currentMonthLaunches,
-        
         rawStudents: activeList,
-        
         launchesByMonth,
         newAgreementsList: newAgreementsList.map(i => i.nombre),
         ppsRequests
@@ -361,50 +345,6 @@ export const useExecutiveReportData = ({ reportType, enabled = false, isTestingM
             throw new Error(`Invalid report type: ${reportType}`);
         },
         enabled: enabled,
-    });
-};
-
-export const useMetricsData = ({ targetYear, isTestingMode = false }: { targetYear: number; isTestingMode?: boolean; }) => {
-    return useQuery({
-        queryKey: ['metricsData', targetYear, isTestingMode],
-        queryFn: async () => {
-            let rawData;
-            
-            if (isTestingMode) {
-                const [est, prac, lanz, conv, fin, inst, req] = await Promise.all([
-                    mockDb.getAll('estudiantes'),
-                    mockDb.getAll('practicas'),
-                    mockDb.getAll('lanzamientos_pps'),
-                    mockDb.getAll('convocatorias'),
-                    mockDb.getAll('finalizacion_pps'),
-                    mockDb.getAll('instituciones'),
-                    mockDb.getAll('solicitudes_pps')
-                ]);
-                rawData = { estudiantes: est, practicas: prac, lanzamientos: lanz, convocatorias: conv, finalizaciones: fin, instituciones: inst, solicitudes: req };
-            } else {
-                 const [est, prac, lanz, conv, fin, inst, req] = await Promise.all([
-                    supabase.from(TABLE_NAME_ESTUDIANTES).select('*'),
-                    supabase.from(TABLE_NAME_PRACTICAS).select('*'),
-                    supabase.from(TABLE_NAME_LANZAMIENTOS_PPS).select('*'),
-                    supabase.from(TABLE_NAME_CONVOCATORIAS).select('*'),
-                    supabase.from(TABLE_NAME_FINALIZACION).select('*'),
-                    supabase.from(TABLE_NAME_INSTITUCIONES).select('*'),
-                    supabase.from(TABLE_NAME_PPS).select('*')
-                ]);
-                rawData = { 
-                    estudiantes: est.data || [], 
-                    practicas: prac.data || [], 
-                    lanzamientos: lanz.data || [], 
-                    convocatorias: conv.data || [], 
-                    finalizaciones: fin.data || [], 
-                    instituciones: inst.data || [],
-                    solicitudes: req.data || []
-                };
-            }
-            
-            return processAllData(rawData, targetYear);
-        },
-        staleTime: 1000 * 60 * 5, 
     });
 };
 

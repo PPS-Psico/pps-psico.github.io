@@ -14,7 +14,6 @@ import Loader from './Loader';
 import EmptyState from './EmptyState';
 import Toast from './Toast';
 import { getEspecialidadClasses, formatDate, getStatusVisuals } from '../utils/formatters';
-import { lanzamientoPPSArraySchema } from '../schemas';
 
 const mockLanzamientosStatus: LanzamientoPPS[] = [
     { id: 'lanz_status_1', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Prueba Abierta', [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta', [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica' } as any,
@@ -142,7 +141,6 @@ const ConvocatoriaStatusManager: React.FC<ConvocatoriaStatusManagerProps> = ({ i
         
         const { records, error: fetchError } = await fetchAllData(
             TABLE_NAME_LANZAMIENTOS_PPS,
-            lanzamientoPPSArraySchema,
             [
                 FIELD_NOMBRE_PPS_LANZAMIENTOS,
                 FIELD_FECHA_INICIO_LANZAMIENTOS,

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { db } from '../lib/db';
@@ -22,7 +23,7 @@ const getGroupName = (name: string | undefined): string => {
 
 interface ReportData {
     institucion: string;
-    convenioNuevo: string;
+    anioConvenio: string | number;
     orientaciones: string;
     tutor: string;
     lanzamientosCount: number;
@@ -52,7 +53,6 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
         if (!data) return [];
 
         const currentYear = new Date().getFullYear();
-        const aost2024Cutoff = new Date('2024-08-01T00:00:00.000Z');
         
         const launchesThisYearRaw = data.lanzamientos.filter(l => {
             const date = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
@@ -82,7 +82,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
             if (!reportMap.has(groupName)) {
                 reportMap.set(groupName, {
                     institucion: groupName,
-                    convenioNuevo: 'No',
+                    anioConvenio: '',
                     orientaciones: '',
                     tutor: 'No disponible',
                     lanzamientosCount: 0,
@@ -103,33 +103,24 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
         reportMap.forEach(entry => {
             const normalizedBaseName = normalizeStringForComparison(entry.institucion);
             let foundTutor: string | undefined;
-            let isMarkedAsNew = false;
+            let foundYear: string | number = '';
 
             for (const inst of data.instituciones) {
                 const instName = inst[FIELD_NOMBRE_INSTITUCIONES];
+                // Buscamos coincidencia flexible
                 if (instName && normalizeStringForComparison(instName).startsWith(normalizedBaseName)) {
                     if (!foundTutor && inst[FIELD_TUTOR_INSTITUCIONES]) {
                         foundTutor = inst[FIELD_TUTOR_INSTITUCIONES];
                     }
+                    // Si existe el valor y es numérico o string válido (no false/null)
                     if (inst[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) {
-                        isMarkedAsNew = true;
+                        foundYear = inst[FIELD_CONVENIO_NUEVO_INSTITUCIONES];
                     }
                 }
             }
             
             entry.tutor = foundTutor || 'No disponible';
-
-            if (isMarkedAsNew) {
-                const firstLaunchThisYear = launchesThisYear
-                    .filter(l => normalizeStringForComparison(getGroupName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])) === normalizedBaseName)
-                    .map(l => parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]))
-                    .filter((d): d is Date => d !== null)
-                    .sort((a,b) => a.getTime() - b.getTime())[0];
-                
-                if (firstLaunchThisYear && firstLaunchThisYear >= aost2024Cutoff) {
-                    entry.convenioNuevo = 'Sí';
-                }
-            }
+            entry.anioConvenio = foundYear || '-';
         });
 
         return Array.from(reportMap.values()).sort((a, b) => a.institucion.localeCompare(b.institucion));
@@ -160,20 +151,10 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
             // Spacer
             worksheet.addRow([]);
     
-            // Descriptions Block
-            const descStartRow = 3;
-            worksheet.addRow(['Nota: Todas las instituciones listadas cuentan con Convenio Marco y Específico vigente.']);
-            worksheet.mergeCells(`A${descStartRow}:F${descStartRow}`);
-            worksheet.getRow(descStartRow).font = { name: 'Calibri', italic: true, size: 13, color: { argb: 'FF475569' } };
-            worksheet.getRow(descStartRow).alignment = { vertical: 'middle', horizontal: 'left' };
-            worksheet.getRow(descStartRow).getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-            
-            worksheet.addRow([]);
-    
             // Header Row
             const header = [
                 'Institución',
-                'Convenio Nuevo (desde Ago 2024)',
+                'Año del Convenio',
                 'Orientación(es)',
                 'Tutor Institucional',
                 'Nº de Lanzamientos (año)',
@@ -201,7 +182,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
             reportData.forEach((row, index) => {
                 const dataRow = worksheet.addRow([
                     row.institucion,
-                    row.convenioNuevo,
+                    row.anioConvenio,
                     row.orientaciones,
                     row.tutor,
                     row.lanzamientosCount,
@@ -219,10 +200,12 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
                     }
                     
-                    if (row.convenioNuevo === 'Sí') {
-                       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; 
-                       if (colNumber === 2) {
-                          cell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FF15803D' } }; 
+                    // Colorear si el año es reciente (ej: actual o anterior)
+                    if (colNumber === 2 && row.anioConvenio) {
+                       const year = Number(row.anioConvenio);
+                       if (!isNaN(year) && year >= 2024) {
+                           cell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FF15803D' } }; 
+                           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
                        }
                     }
 
@@ -234,7 +217,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
     
             worksheet.columns = [
                 { key: 'institucion', width: 60 },
-                { key: 'convenioNuevo', width: 25 },
+                { key: 'anioConvenio', width: 25 },
                 { key: 'orientaciones', width: 40 },
                 { key: 'tutor', width: 35 },
                 { key: 'lanzamientos', width: 22 },
@@ -286,7 +269,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                         <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 uppercase">
                             <tr>
                                 <th className="px-6 py-3 font-bold">Institución</th>
-                                <th className="px-6 py-3 font-bold text-center">Convenio Nuevo</th>
+                                <th className="px-6 py-3 font-bold text-center">Año Convenio</th>
                                 <th className="px-6 py-3 font-bold">Orientación(es)</th>
                                 <th className="px-6 py-3 font-bold">Tutor</th>
                                 <th className="px-6 py-3 font-bold text-center">Lanzamientos</th>
@@ -298,9 +281,9 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                                 <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                     <td className="px-6 py-3 font-medium text-slate-900 dark:text-white">{row.institucion}</td>
                                     <td className="px-6 py-3 text-center">
-                                        {row.convenioNuevo === 'Sí' ? (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
-                                                Sí
+                                        {row.anioConvenio ? (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                                {row.anioConvenio}
                                             </span>
                                         ) : (
                                             <span className="text-slate-400">-</span>

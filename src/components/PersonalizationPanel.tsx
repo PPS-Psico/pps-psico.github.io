@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Card from './Card';
 import Toggle from './Toggle';
@@ -72,14 +71,6 @@ const PersonalizationPanel: React.FC = () => {
                             icon="mark_email_read"
                             checked={preferences.showAutomation} 
                             onChange={() => toggleModule('showAutomation')} 
-                        />
-
-                        <Toggle 
-                            label="Integridad de Datos" 
-                            description="Herramienta técnica para detectar duplicados y errores."
-                            icon="health_and_safety"
-                            checked={preferences.showIntegrity} 
-                            onChange={() => toggleModule('showIntegrity')} 
                         />
                         
                         <Toggle 

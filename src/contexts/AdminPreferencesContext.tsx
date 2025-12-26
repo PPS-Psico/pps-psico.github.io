@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 // Definición de qué módulos se pueden apagar/prender
@@ -8,7 +7,6 @@ export interface AdminModuleConfig {
     showLaunchHistory: boolean;   // Historial en Lanzador
     showPenalizations: boolean;   // Herramienta Penalizaciones
     showAutomation: boolean;      // Herramienta Automatización
-    showIntegrity: boolean;       // Herramienta Integridad
     showNewAgreements: boolean;   // Herramienta Nuevos Convenios
     showReports: boolean;         // Herramienta Reportes
 }
@@ -19,7 +17,6 @@ const DEFAULT_PREFERENCES: AdminModuleConfig = {
     showLaunchHistory: true,
     showPenalizations: true,
     showAutomation: true,
-    showIntegrity: true,
     showNewAgreements: true,
     showReports: true,
 };
@@ -43,6 +40,7 @@ export const AdminPreferencesProvider: React.FC<{ children: ReactNode }> = ({ ch
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
+                // Fusionar con defaults por si faltan claves nuevas
                 setPreferences({ ...DEFAULT_PREFERENCES, ...parsed });
             } catch (e) {
                 console.warn("Error parsing admin preferences", e);

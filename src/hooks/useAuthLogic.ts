@@ -1,5 +1,4 @@
 
-
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/db';
@@ -119,18 +118,17 @@ export const useAuthLogic = ({ login, showModal }: UseAuthLogicProps) => {
                 });
 
                 if (signInError) {
+                    console.warn("Login failed:", signInError.message);
+                    
                     if (signInError.message.includes('Invalid login credentials')) {
-                        // LOGICA INTELIGENTE: Si falla el login, pero el estudiante existe en DB,
-                        // lo mandamos a validar sus datos para resetear/crear su clave.
-                        setMode('migration');
-                        setMigrationStep(1);
-                        setError('No pudimos iniciar sesión con esa clave. Por favor, validá tu identidad para configurar tu acceso.');
-                        // No lanzamos error, cambiamos de modo y el UI se actualiza
-                        setIsLoading(false);
-                        return;
+                        // MODIFICADO: Ya no redirige a migración. Muestra error en pantalla.
+                        setError('Contraseña incorrecta. Verificá tus datos o usá el botón de recuperar contraseña.');
+                        setFieldError('password');
                     } else {
-                        throw signInError;
+                        setError('Ocurrió un error al iniciar sesión. Intenta nuevamente.');
                     }
+                    setIsLoading(false);
+                    return;
                 }
                 // Si el login es exitoso, AuthContext detectará el cambio de sesión automáticamente
             } catch (err: any) {

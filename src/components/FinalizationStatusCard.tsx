@@ -29,28 +29,36 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
     const firstName = studentName?.split(' ')[0] || 'Estudiante';
     const isOverdue = daysDisplay < 0;
 
-    // Detectar si la fecha estimada cae en Enero o Febrero
+    // Detectar si la fecha estimada cae en Enero o Febrero o si hubo feriados
     const targetMonth = targetDate.getMonth();
-    const isExtendedByRecess = targetMonth === 0 || targetMonth === 1 || (startDate.getMonth() === 11 && startDate.getDate() > 15);
+    // Mensaje de advertencia si hay receso o feriados largos cerca
+    const showRecessWarning = targetMonth === 0 || targetMonth === 1 || targetMonth === 2 || (startDate.getMonth() === 11 && startDate.getDate() > 15);
+
+    const gradientName = (
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400">
+            {firstName}
+        </span>
+    );
 
     // --- VISTA DE ÉXITO (YA CARGADO) ---
     if (isFinished) {
         return (
             <div className="max-w-4xl mx-auto mt-8 animate-fade-in-up">
-                <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-900 dark:to-teal-900 p-10 sm:p-14 shadow-2xl text-white text-center border border-emerald-400/30 dark:border-emerald-700/50">
-                    <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-white/10 blur-3xl pointer-events-none"></div>
-                    <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-64 w-64 rounded-full bg-emerald-300/20 blur-3xl pointer-events-none"></div>
+                <div className="relative overflow-hidden rounded-[2.5rem] bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800 p-10 sm:p-14 shadow-xl shadow-emerald-100/50 dark:shadow-none text-center backdrop-blur-xl">
+                    {/* Background decorations for subtle elegance */}
+                    <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-emerald-100/40 dark:bg-emerald-900/10 blur-3xl pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-64 w-64 rounded-full bg-teal-100/40 dark:bg-teal-900/10 blur-3xl pointer-events-none"></div>
                     
                     <div className="relative z-10 flex flex-col items-center gap-8">
-                        <div className="h-24 w-24 bg-white dark:bg-emerald-950 rounded-full flex items-center justify-center shadow-lg animate-bounce-slow text-emerald-600 dark:text-emerald-400 ring-8 ring-white/20">
+                        <div className="h-24 w-24 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-lg animate-bounce-slow text-emerald-500 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50">
                             <span className="material-icons !text-5xl">verified</span>
                         </div>
                         
                         <div className="space-y-4 max-w-2xl">
-                            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white drop-shadow-sm">
-                                ¡Felicitaciones, {firstName}!
+                            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter text-slate-900 dark:text-white drop-shadow-sm">
+                                ¡Felicitaciones, {gradientName}!
                             </h1>
-                            <p className="text-lg sm:text-xl text-emerald-50 font-medium leading-relaxed opacity-95">
+                            <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
                                 Tu acreditación ha sido completada exitosamente. <br/>
                                 Tus horas de Práctica Profesional Supervisada ya se encuentran cargadas en el sistema académico.
                             </p>
@@ -61,7 +69,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                                 href="https://alumno.uflo.edu.ar" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="group inline-flex items-center gap-3 px-8 py-4 bg-white dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold rounded-2xl shadow-xl hover:bg-emerald-50 dark:hover:bg-emerald-900 hover:scale-105 transition-all duration-300"
+                                className="group inline-flex items-center gap-3 px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300"
                             >
                                 <span>Verificar en Autogestión</span>
                                 <span className="material-icons !text-xl group-hover:translate-x-1 transition-transform">open_in_new</span>
@@ -74,7 +82,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
     }
 
     // --- CONFIGURACIÓN DE ESTADOS ---
-    let bannerTitle = "¡Solicitud Recibida!";
+    let renderTitle = () => <span className="text-slate-900 dark:text-white">¡Solicitud Recibida!</span>;
     let bannerText = "Felicitaciones por finalizar tu recorrido de prácticas. Estamos evaluando tu solicitud y validando la documentación presentada.";
     let bannerStatus = "Solicitud Enviada";
     let bannerColorClass = "text-blue-600 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800";
@@ -83,7 +91,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
     let currentStepIndex = 0; 
 
     if (isEnProceso) {
-        bannerTitle = `Todo marcha bien, ${firstName}.`;
+        renderTitle = () => <>Todo marcha bien, {gradientName}.</>;
         bannerText = "Tus documentos fueron validados correctamente y el expediente se encuentra en proceso de acreditación interna.";
         bannerStatus = "En Proceso";
         bannerColorClass = "text-indigo-600 bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800";
@@ -122,8 +130,8 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                         </span>
                         {bannerStatus}
                     </div>
-                    <h2 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white leading-tight mb-4 tracking-tighter">
-                        {bannerTitle}
+                    <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-4 tracking-tighter">
+                        {renderTitle()}
                     </h2>
                     <p className="text-slate-600 dark:text-slate-400 text-lg sm:text-xl leading-relaxed max-w-4xl font-medium">
                         {bannerText}
@@ -133,7 +141,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                 
-                {/* --- TIMELINE (IZQUIERDA) - REDISEÑADO --- */}
+                {/* --- TIMELINE (IZQUIERDA) --- */}
                 <div className="lg:col-span-8">
                     <div className="bg-white/80 dark:bg-[#0F172A]/80 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 p-8 sm:p-10 backdrop-blur-xl h-full flex flex-col shadow-md shadow-slate-200/40 dark:shadow-none relative">
                         
@@ -234,11 +242,11 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                                 </span>
                             </div>
 
-                            {isExtendedByRecess && (
+                            {showRecessWarning && (
                                 <div className="mb-6 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-xl flex items-start gap-2.5">
                                     <span className="material-icons text-amber-500 !text-base mt-0.5">beach_access</span>
                                     <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 leading-snug">
-                                        Contempla receso administrativo de enero.
+                                        Se descuentan feriados nacionales y receso de enero.
                                     </p>
                                 </div>
                             )}
@@ -284,7 +292,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                             
                             <a 
                                 href={isOverdue 
-                                    ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${studentName}`
+                                    ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${studentName || firstName}`
                                     : undefined
                                 }
                                 className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all

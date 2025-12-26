@@ -3,14 +3,7 @@ import { z } from 'zod';
 import * as C from './constants';
 
 export const ALL_ORIENTACIONES = ['Clinica', 'Educacional', 'Laboral', 'Comunitaria'] as const;
-
-const attachmentSchema = z.object({
-    id: z.string().optional(),
-    url: z.string().url(),
-    filename: z.string(),
-    size: z.number().optional(),
-    type: z.string().optional(),
-});
+export const ALL_ESTADOS_ESTUDIANTE = ['Activo', 'Finalizado', 'Inactivo', 'Nuevo (Sin cuenta)'] as const;
 
 const baseRecordSchema = z.object({
   id: z.string(),
@@ -23,7 +16,6 @@ export const estudianteFieldsSchema = z.object({
     [C.FIELD_NOMBRE_ESTUDIANTES]: z.string().optional().nullable(),
     [C.FIELD_NOMBRE_SEPARADO_ESTUDIANTES]: z.string().optional().nullable(),
     [C.FIELD_APELLIDO_SEPARADO_ESTUDIANTES]: z.string().optional().nullable(),
-    // Relaxed to string to allow any value from DB
     [C.FIELD_GENERO_ESTUDIANTES]: z.string().optional().nullable(),
     [C.FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: z.string().optional().nullable(),
     [C.FIELD_DNI_ESTUDIANTES]: z.number().optional().nullable(),
@@ -32,7 +24,7 @@ export const estudianteFieldsSchema = z.object({
     [C.FIELD_TELEFONO_ESTUDIANTES]: z.string().optional().nullable(),
     [C.FIELD_NOTAS_INTERNAS_ESTUDIANTES]: z.string().optional().nullable(),
     [C.FIELD_FECHA_FINALIZACION_ESTUDIANTES]: z.string().optional().nullable(),
-    [C.FIELD_FINALIZARON_ESTUDIANTES]: z.boolean().optional().nullable(),
+    [C.FIELD_ESTADO_ESTUDIANTES]: z.enum(ALL_ESTADOS_ESTUDIANTE).optional().nullable(),
     [C.FIELD_USER_ID_ESTUDIANTES]: z.string().uuid().optional().nullable(),
     [C.FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES]: z.boolean().optional().nullable(),
     [C.FIELD_ROLE_ESTUDIANTES]: z.string().optional().nullable(),
@@ -131,16 +123,17 @@ export const institucionFieldsSchema = z.object({
     [C.FIELD_NOMBRE_INSTITUCIONES]: z.string().optional().nullable(),
     [C.FIELD_TELEFONO_INSTITUCIONES]: z.string().optional().nullable(),
     [C.FIELD_DIRECCION_INSTITUCIONES]: z.string().optional().nullable(),
-    [C.FIELD_CONVENIO_NUEVO_INSTITUCIONES]: z.boolean().optional().nullable(),
+    [C.FIELD_CONVENIO_NUEVO_INSTITUCIONES]: z.string().or(z.boolean()).optional().nullable(),
     [C.FIELD_TUTOR_INSTITUCIONES]: z.string().optional().nullable(),
     [C.FIELD_CODIGO_CAMPUS_INSTITUCIONES]: z.string().optional().nullable(),
+    [C.FIELD_ORIENTACIONES_INSTITUCIONES]: z.string().optional().nullable(),
 });
 
 export const penalizacionFieldsSchema = z.object({
     [C.FIELD_PENALIZACION_ESTUDIANTE_LINK]: z.string().or(z.array(z.string())).optional().nullable(),
     [C.FIELD_PENALIZACION_TIPO]: z.string().optional().nullable(),
-    [C.FIELD_PENALIZACION_NOTAS]: z.string().optional().nullable(),
     [C.FIELD_PENALIZACION_FECHA]: z.string().optional().nullable(),
+    [C.FIELD_PENALIZACION_NOTAS]: z.string().optional().nullable(),
     [C.FIELD_PENALIZACION_PUNTAJE]: z.number().optional().nullable(),
     [C.FIELD_PENALIZACION_CONVOCATORIA_LINK]: z.string().or(z.array(z.string())).optional().nullable(),
 });

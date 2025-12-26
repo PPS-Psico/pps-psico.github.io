@@ -6,10 +6,11 @@ import {
   EstudianteFields,
   GroupedSeleccionados,
   FinalizacionPPS,
-  Estudiante
+  Estudiante,
+  InformeCorreccionPPS
 } from '../types';
 import * as C from '../constants';
-import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
+import { normalizeStringForComparison, parseToUTCDate, safeGetId } from '../utils/formatters';
 
 export const fetchStudentData = async (legajo: string): Promise<{ studentDetails: Estudiante | null; studentAirtableId: string | null; }> => {
   // Intentamos buscar por legajo exacto
@@ -95,7 +96,7 @@ export const fetchSolicitudes = async (legajo: string, studentAirtableId: string
   }
   if (!targetId) return [];
 
-  // Usamos supabase directo para hacer el JOIN y obtener el nombre si falta
+  // Se especifica fk_solicitud_estudiante para resolver la ambigüedad de relaciones
   const { data, error } = await supabase
       .from(C.TABLE_NAME_PPS)
       .select(`
@@ -117,9 +118,9 @@ export const fetchSolicitudes = async (legajo: string, studentAirtableId: string
       const student = Array.isArray(r.estudiante) ? r.estudiante[0] : r.estudiante;
       return {
           ...r,
-          [C.FIELD_SOLICITUD_NOMBRE_ALUMNO]: r[C.FIELD_SOLICITUD_NOMBRE_ALUMNO] || student?.nombre || 'Estudiante',
-          [C.FIELD_SOLICITUD_LEGAJO_ALUMNO]: r[C.FIELD_SOLICITUD_LEGAJO_ALUMNO] || student?.legajo,
-          [C.FIELD_SOLICITUD_EMAIL_ALUMNO]: r[C.FIELD_SOLICITUD_EMAIL_ALUMNO] || student?.correo
+          [C.FIELD_SOLICITUD_NOMBRE_ALUMNO]: student?.nombre || r[C.FIELD_SOLICITUD_NOMBRE_ALUMNO] || 'Estudiante',
+          [C.FIELD_SOLICITUD_LEGAJO_ALUMNO]: student?.legajo || r[C.FIELD_SOLICITUD_LEGAJO_ALUMNO],
+          [C.FIELD_SOLICITUD_EMAIL_ALUMNO]: student?.correo || r[C.FIELD_SOLICITUD_EMAIL_ALUMNO]
       };
   });
 
@@ -382,4 +383,174 @@ export const deleteFinalizationRequest = async (id: string, record: any): Promis
         console.error("Error deleting finalization request:", error);
         return { success: false, error };
     }
+};
+
+// --- DATA ACCESS ABSTRACTION FOR CORRECTION PANEL ---
+
+export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCorreccionPPS>> => {
+    // 1. Fetch relevant Convocatorias (Status 'Seleccionado')
+    const { data: convocatoriasData, error: convError } = await supabase
+        .from(C.TABLE_NAME_CONVOCATORIAS)
+        .select(`
+            *,
+            estudiante:estudiantes!fk_convocatoria_estudiante (
+                id, nombre, legajo
+            ),
+            lanzamiento:lanzamientos_pps!fk_convocatoria_lanzamiento (
+                id, nombre_pps, orientacion, informe, fecha_fin, fecha_inicio
+            )
+        `)
+        .ilike(C.FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS, '%seleccionado%');
+
+    if (convError) throw convError;
+    if (!convocatoriasData) return new Map();
+
+    // 2. Collect IDs
+    const studentIds = new Set<string>();
+    const lanzamientoIds = new Set<string>();
+
+    convocatoriasData.forEach((c: any) => {
+        if (c.estudiante_id) studentIds.add(c.estudiante_id);
+        if (c.lanzamiento_id) lanzamientoIds.add(c.lanzamiento_id);
+    });
+
+    // 3. Fetch Practices for context
+    let practicasData: any[] = [];
+    if (studentIds.size > 0 && lanzamientoIds.size > 0) {
+        const { data: pData, error: pError } = await supabase
+            .from(C.TABLE_NAME_PRACTICAS)
+            .select('*')
+            .in(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, Array.from(studentIds))
+            .in(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, Array.from(lanzamientoIds));
+        
+        if (pError) console.error("Error fetching practices context:", pError);
+        if (pData) practicasData = pData;
+    }
+
+    const practicasMap = new Map<string, any>();
+    practicasData.forEach((p: any) => {
+        const sId = p[C.FIELD_ESTUDIANTE_LINK_PRACTICAS];
+        const lId = p[C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
+        if (sId && lId) {
+            practicasMap.set(`${sId}-${lId}`, p);
+        }
+    });
+
+    // 4. Build Groups
+    const ppsGroups = new Map<string, InformeCorreccionPPS>();
+
+    convocatoriasData.forEach((conv: any) => {
+        const lanzamiento = conv.lanzamiento;
+        const student = conv.estudiante;
+        
+        if (!lanzamiento || !student) return;
+
+        const lanzamientoId = lanzamiento.id;
+
+        if (!ppsGroups.has(lanzamientoId)) {
+            ppsGroups.set(lanzamientoId, {
+                lanzamientoId,
+                ppsName: lanzamiento.nombre_pps,
+                orientacion: lanzamiento.orientacion,
+                informeLink: lanzamiento.informe,
+                fechaFinalizacion: lanzamiento.fecha_fin,
+                students: [],
+            });
+        }
+
+        const practicaRecord = practicasMap.get(`${student.id}-${lanzamientoId}`);
+
+        ppsGroups.get(lanzamientoId)!.students.push({
+            studentId: student.id,
+            studentName: student.nombre || 'Nombre desconocido',
+            convocatoriaId: conv.id,
+            practicaId: practicaRecord?.id || null,
+            informeSubido: conv[C.FIELD_INFORME_SUBIDO_CONVOCATORIAS] || false,
+            nota: practicaRecord?.[C.FIELD_NOTA_PRACTICAS] || 'Sin calificar',
+            lanzamientoId,
+            orientacion: lanzamiento.orientacion,
+            fechaFinalizacionPPS: lanzamiento.fecha_fin,
+            fechaEntregaInforme: conv[C.FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS],
+        });
+    });
+
+    return ppsGroups;
+};
+
+// --- DATA ACCESS ABSTRACTION FOR FINALIZATION FORM ---
+
+export const uploadFinalizationFile = async (file: File, studentId: string, type: 'informe' | 'horas' | 'asistencia'): Promise<string> => {
+    if (!studentId) throw new Error("No se ha identificado al estudiante.");
+
+    const fileExt = file.name.split('.').pop();
+    const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+    const fileName = `${studentId}/${type}_${Date.now()}_${uniqueSuffix}.${fileExt}`;
+    
+    const options = {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || 'application/octet-stream'
+    };
+
+    const { error: uploadError } = await supabase.storage
+        .from('documentos_finalizacion')
+        .upload(fileName, file, options);
+
+    if (uploadError) {
+        console.error("Storage Error:", uploadError);
+        throw new Error(`Fallo al subir ${file.name}: ${uploadError.message}`);
+    }
+
+    const { data } = supabase.storage
+        .from('documentos_finalizacion')
+        .getPublicUrl(fileName);
+
+    return data.publicUrl;
+};
+
+export const archiveActiveRequests = async (studentId: string) => {
+    try {
+        const { data: activeRequests } = await supabase
+            .from(C.TABLE_NAME_PPS)
+            .select('id')
+            .eq(C.FIELD_LEGAJO_PPS, studentId)
+            .not(C.FIELD_ESTADO_PPS, 'in', '("Archivado","Finalizada","Cancelada","Rechazada")');
+
+        if (activeRequests && activeRequests.length > 0) {
+            console.log(`Archiving ${activeRequests.length} requests for finalization.`);
+            const updates = activeRequests.map((r: any) => ({
+                id: r.id,
+                fields: { [C.FIELD_ESTADO_PPS]: 'Archivado' }
+            }));
+            await db.solicitudes.updateMany(updates);
+        }
+    } catch (err) {
+        console.warn("Auto-archiving warning:", err);
+    }
+};
+
+export const submitFinalizationRequest = async (
+    studentId: string, 
+    data: { 
+        informes: { url: string, filename: string }[], 
+        horas: { url: string, filename: string }[], 
+        asistencias: { url: string, filename: string }[], 
+        sugerencias: string 
+    }
+) => {
+    const dbRecord: any = {
+        [C.FIELD_ESTUDIANTE_FINALIZACION]: studentId, 
+        [C.FIELD_FECHA_SOLICITUD_FINALIZACION]: new Date().toISOString(),
+        [C.FIELD_ESTADO_FINALIZACION]: 'Pendiente',
+        [C.FIELD_INFORME_FINAL_FINALIZACION]: JSON.stringify(data.informes),
+        [C.FIELD_PLANILLA_HORAS_FINALIZACION]: JSON.stringify(data.horas),
+        [C.FIELD_PLANILLA_ASISTENCIA_FINALIZACION]: JSON.stringify(data.asistencias),
+    };
+    
+    if (data.sugerencias) {
+        dbRecord[C.FIELD_SUGERENCIAS_MEJORAS_FINALIZACION] = data.sugerencias;
+    }
+
+    await db.finalizacion.create(dbRecord);
+    await archiveActiveRequests(studentId);
 };

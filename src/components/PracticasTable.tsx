@@ -19,6 +19,7 @@ import {
 } from '../utils/formatters';
 import EmptyState from './EmptyState';
 import NotaSelector from './NotaSelector';
+import { TableSkeleton } from './Skeletons';
 
 const cleanInstitutionName = (val: any): string => {
     if (val === null || val === undefined) return 'N/A';
@@ -31,6 +32,7 @@ interface PracticasTableProps {
     practicas: Practica[];
     handleNotaChange: (practicaId: string, nota: string, convocatoriaId?: string) => void;
     handleFechaFinChange?: (practicaId: string, fecha: string) => void; 
+    isLoading?: boolean;
 }
 
 const GradeDisplay: React.FC<{ 
@@ -229,7 +231,7 @@ const PracticaRow: React.FC<{
     );
 };
 
-const PracticasTable: React.FC<PracticasTableProps> = ({ practicas, handleNotaChange, handleFechaFinChange }) => {
+const PracticasTable: React.FC<PracticasTableProps> = ({ practicas, handleNotaChange, handleFechaFinChange, isLoading = false }) => {
   const [savingNotaId, setSavingNotaId] = useState<string | null>(null);
   const [justUpdatedPracticaId, setJustUpdatedPracticaId] = useState<string | null>(null);
 
@@ -240,6 +242,17 @@ const PracticasTable: React.FC<PracticasTableProps> = ({ practicas, handleNotaCh
       setJustUpdatedPracticaId(practicaId);
       setTimeout(() => setJustUpdatedPracticaId(null), 2000);
   };
+
+  if (isLoading) {
+      return (
+          <div className="flex flex-col gap-3">
+              <div className="flex justify-between items-end px-2 mb-1">
+                  <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
+              </div>
+              <TableSkeleton />
+          </div>
+      );
+  }
 
   if (practicas.length === 0) {
     return (

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
@@ -44,6 +45,7 @@ import Checkbox from './Checkbox';
 import { GoogleGenAI } from "@google/genai";
 
 const mockInstitutions = [
+  { id: 'recInstMock1', [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital de Juguete' },
   { id: 'recInstMock1', [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital de Juguete' },
   { id: 'recInstMock2', [FIELD_NOMBRE_INSTITUCIONES]: 'Escuela de Pruebas' },
   { id: 'recInstMock3', [FIELD_NOMBRE_INSTITUCIONES]: 'Empresa Ficticia S.A.' },
@@ -447,9 +449,12 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
         const { name, value, type } = e.target;
         const checked = (e.target as HTMLInputElement).checked;
         
+        // Explicitly cast the value to any to avoid TS error about boolean vs string assignment on dynamic keys
+        const newValue = type === 'checkbox' ? checked : value;
+
         setFormData(prev => ({ 
             ...prev, 
-            [name]: type === 'checkbox' ? checked : value 
+            [name]: newValue as any 
         }));
     };
 
@@ -533,7 +538,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
         setIsGeneratingCode(true);
         try {
-            // Fix: Initialize GoogleGenAI with process.env.API_KEY directly
+            // Fix: Initialize GoogleGenAI with process.env.API_KEY directly as per guidelines
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const horarioString = schedules.join('; ');
 
@@ -560,10 +565,12 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             `;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                // Fix: Updated model name to gemini-3-flash-preview as recommended for text tasks
+                model: 'gemini-3-flash-preview',
                 contents: prompt,
             });
 
+            // Fix: Directly access text property from response object without calling it as a function
             const newCode = response.text.replace(/```html/g, '').replace(/```/g, '').trim();
             setCampusCode(newCode);
             
@@ -727,11 +734,11 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                                 }}
                                                 onFocus={() => setIsDropdownOpen(true)}
                                                 placeholder="Escribe para buscar..."
-                                                className="w-full pl-12 pr-4 py-3 text-lg font-medium bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors shadow-sm placeholder:font-normal"
+                                                className="w-full h-11 pl-11 pr-4 text-lg font-medium bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-blue-500 focus:ring-0 transition-colors shadow-sm placeholder:font-normal"
                                                 autoComplete="off"
                                                 required
                                             />
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-2xl">search</span>
+                                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-xl">search</span>
                                         </div>
 
                                         {/* Dropdown de Resultados - Increased z-index to fly above everything */}

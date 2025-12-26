@@ -6,16 +6,16 @@
 :root {
   --color-primary: 37, 99, 235;
   --glass-border: rgba(37, 99, 235, 0.08);
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.05);
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
 }
 
 html.dark {
   color-scheme: dark;
-  /* Dark Mode mejorado: Bordes más claros y definidos, fondos con tinte azul */
-  --glass-border: rgba(255, 255, 255, 0.1); 
-  --glass-bg: rgba(15, 23, 42, 0.7); 
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  /* Dark Mode mejorado: Fondo más profundo (Slate 950/Black) en lugar de gris */
+  --glass-border: rgba(255, 255, 255, 0.05); 
+  --glass-bg: rgba(2, 6, 23, 0.8); 
+  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
 }
 
 html, body {
@@ -28,41 +28,40 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #ffffff; 
-  color: #1e293b;
+  background-color: #ffffff; /* Pure white for cleaner look */
+  color: #0f172a;
 }
 
 html.dark body {
-  background-color: #020617; /* Slate 950 - Profundo */
-  color: #e2e8f0;
+  background-color: #020617; /* Deepest Slate/Black */
+  color: #f1f5f9;
 }
 
 #root {
   min-height: 100vh;
   width: 100%;
   position: relative;
-  /* Fondo mejorado */
+  /* Fondo más sutil y moderno */
   background-image: 
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.05) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.03) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.03) 0px, transparent 50%);
 }
 
 /* --- CLASES DE UTILIDAD PREMIUM --- */
 
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
 
-/* Dark Mode Glow Effect */
+/* Dark Mode Glow Effect Subtle */
 html.dark .glass-panel {
   box-shadow: 
-    0 0 0 1px rgba(255,255,255,0.05), /* Inner rim */
-    0 4px 6px -1px rgba(0, 0, 0, 0.5), 
-    0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    0 0 0 1px rgba(255,255,255,0.03),
+    0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
 .text-gradient-primary {
@@ -73,7 +72,7 @@ html.dark .glass-panel {
 
 @keyframes float {
   0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-5px); }
   100% { transform: translateY(0px); }
 }
 .animate-float {
@@ -81,8 +80,8 @@ html.dark .glass-panel {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.15); }
-  50% { box-shadow: 0 0 40px rgba(37, 99, 235, 0.3); }
+  0%, 100% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.1); }
+  50% { box-shadow: 0 0 30px rgba(37, 99, 235, 0.2); }
 }
 .animate-pulse-glow {
   animation: pulse-glow 3s infinite;
@@ -90,10 +89,10 @@ html.dark .glass-panel {
 
 @keyframes subtle-bob {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
+    50% { transform: translateY(-2px); }
 }
 
-/* Scrollbar con tonos azules */
+/* Scrollbar minimalista */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -102,17 +101,28 @@ html.dark .glass-panel {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #dbeafe;
+  background: #cbd5e1;
   border-radius: 10px;
 }
 .dark ::-webkit-scrollbar-thumb {
   background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #bfdbfe;
+  background: #94a3b8;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 @media print {

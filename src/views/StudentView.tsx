@@ -44,13 +44,6 @@ const StudentLayout: React.FC = () => {
 
     return (
         <div className="pb-24 md:pb-8 min-h-screen flex flex-col">
-            
-            {/* 
-                DELEGACIÓN COMPLETA A STUDENT DASHBOARD 
-                Ahora StudentDashboard maneja el layout completo.
-                Se removió showExportButton={true} para ocultar botones de impresión/compartir.
-            */}
-            
             <main className="flex-grow">
                 <StudentDashboard 
                     user={authenticatedUser as any} 

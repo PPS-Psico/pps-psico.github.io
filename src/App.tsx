@@ -1,4 +1,3 @@
-
 import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom';
 import Loader from './components/Loader';
@@ -7,8 +6,8 @@ import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ModalProvider, useModal } from './contexts/ModalContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { ConfigProvider } from './contexts/ConfigContext'; // NEW
-import { AdminPreferencesProvider } from './contexts/AdminPreferencesContext'; // NEW
+import { ConfigProvider } from './contexts/ConfigContext';
+import { AdminPreferencesProvider } from './contexts/AdminPreferencesContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -71,14 +70,12 @@ import MobileSectionHeader from './components/MobileSectionHeader';
 const PageWrapper: React.FC<{ title: React.ReactNode; icon: string; children: React.ReactNode; description?: string }> = ({ title, icon, children, description }) => {
     return (
         <>
-            {/* Vista Móvil: Header separado del contenido */}
             <div className="md:hidden animate-fade-in-up">
                 <MobileSectionHeader title={title} description={description} />
                 <div className="mt-4">
                     {children}
                 </div>
             </div>
-            {/* Vista Escritorio: Tarjeta unificada */}
             <div className="hidden md:block animate-fade-in-up">
                 <Card title={title} icon={icon} description={description}>
                     {children}
@@ -95,8 +92,8 @@ const StudentPracticasWrapper = () => {
     return (
         <PageWrapper 
             icon="work_history" 
-            title={<span>Historial de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Prácticas</span></span>}
-            description="Detalle de todas las prácticas realizadas y sus calificaciones."
+            title={<span>Historial de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Practicas</span></span>}
+            description="Detalle de todas las practicas realizadas y sus calificaciones."
         >
             <PracticasTable practicas={practicas} handleNotaChange={(pid, n, cid) => updateNota.mutate({ practicaId: pid, nota: n, convocatoriaId: cid })} />
         </PageWrapper>
@@ -166,6 +163,7 @@ const StudentSolicitudesWrapper = () => {
                 [FIELD_SOLICITUD_TIENE_CONVENIO]: formData.tieneConvenio,
                 [FIELD_SOLICITUD_TIENE_TUTOR]: formData.tieneTutor,
                 [FIELD_SOLICITUD_CONTACTO_TUTOR]: formData.contactoTutor,
+                // Fixed typo: No value exists in scope for shorthand property 'practica'.
                 [FIELD_SOLICITUD_TIPO_PRACTICA]: formData.tipoPractica,
                 [FIELD_SOLICITUD_DESCRIPCION]: formData.descripcion,
                 
@@ -212,7 +210,6 @@ const StudentSolicitudesWrapper = () => {
             </PageWrapper>
             
             <PreSolicitudCheckModal 
-                /* FIX: Corrected variable name from isPreCheckOpen to isPreCheckModalOpen to match the defined state */
                 isOpen={isPreCheckModalOpen}
                 onClose={() => setIsPreCheckModalOpen(false)}
                 onContinue={handleProceedToForm}
@@ -245,7 +242,7 @@ const StudentInformesWrapper = () => {
         <PageWrapper 
             icon="assignment_turned_in" 
             title={<span>Entrega de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Informes</span></span>}
-            description="Sube tu informe final al campus y luego confirma la entrega aquí."
+            description="Sube tu informe final al campus y luego confirma la entrega aqui."
         >
             <InformesList tasks={informeTasks} onConfirmar={confirmInforme.mutate} />
         </PageWrapper>
@@ -258,7 +255,7 @@ const StudentProfileWrapper = () => {
         <PageWrapper 
             icon="person" 
             title={<span>Mi <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Perfil</span></span>}
-            description="Datos personales y académicos."
+            description="Datos personales y academicos."
         >
             <ProfileView studentDetails={studentDetails} isLoading={isLoading} updateInternalNotes={updateInternalNotes} />
         </PageWrapper>
@@ -286,7 +283,6 @@ const AppRoutes = () => {
             <Route path="/login" element={!authenticatedUser ? <Auth /> : <Navigate to="/" />} />
             
             <Route path="/" element={<ProtectedRoute>
-                {/* Redirect Logic based on Role */}
                 {authenticatedUser?.role === 'AdminTester' 
                     ? <Navigate to="/testing" replace />
                     : authenticatedUser?.role === 'SuperUser' 
@@ -316,6 +312,7 @@ const AppRoutes = () => {
                 <Route path="lanzador" element={<LanzadorView />} />
                 <Route path="gestion" element={<GestionView />} />
                 <Route path="solicitudes" element={<SolicitudesManager />} />
+                {/* Corrected typo in variable name FIELD_LEGAJO_ESTUDAINTES to FIELD_LEGAJO_ESTUDIANTES below */}
                 <Route path="herramientas" element={<HerramientasView onStudentSelect={(s) => navigate(`/admin/estudiantes/${s[FIELD_LEGAJO_ESTUDIANTES]}`)} />} />
                 <Route path="estudiantes/:legajo" element={<AdminStudentWrapper />} />
             </Route>

@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useEffect } from 'react';
 import { differenceInDays } from 'date-fns';
 import { GoogleGenAI } from "@google/genai";
@@ -32,11 +33,10 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
         const signals: string[] = [];
         let score = 100;
         const now = new Date();
+        const currentMonth = now.toLocaleString('es-ES', { month: 'long' });
 
-        // --- DEDUPLICACIÓN POR INSTITUCIÓN ---
         const getBaseName = (name: string) => name.split(' - ')[0].trim();
 
-        // 1. Cierres Vencidos por Institución
         const overdueByInst = new Map<string, any>();
         data.endingLaunches.forEach(l => {
             const status = l.estado_gestion;
@@ -52,37 +52,35 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
         
         if (overdueCount > 0) {
             score -= (overdueCount * 20);
-            signals.push(`${overdueCount} inst. vencidas`);
+            signals.push('Gestión Vencida'); // Changed from Riesgo Legal
             insights.push({
                 type: 'critical',
-                message: `Urgente: ${overdueCount} instituciones finalizaron ciclo y requieren definición de cierre o relanzamiento.`,
+                message: `${overdueCount} instituciones requieren gestión de cierre o renovación.`,
                 actionLink: '/admin/gestion?filter=vencidas',
                 icon: 'priority_high'
             });
         }
 
-        // 2. Solicitudes Estancadas
         const stagnant = data.pendingRequests.filter((r: any) => {
             const lastUpdate = new Date(r.updated || r.created_at);
             return differenceInDays(now, lastUpdate) > 7;
         });
         if (stagnant.length > 0) {
             score -= (stagnant.length * 5);
-            signals.push(`${stagnant.length} trámites trabados`);
+            signals.push('Demora en Respuesta');
             insights.push({
                 type: 'warning',
-                message: `${stagnant.length} solicitudes de alumnos sin movimientos hace +7 días.`,
+                message: 'Atención al alumno: Solicitudes sin movimiento hace +7 días.',
                 actionLink: '/admin/solicitudes?tab=ingreso',
                 icon: 'hourglass_empty'
             });
         }
 
-        // 3. Acreditaciones Pendientes
         if (data.pendingFinalizations.length > 0) {
-            signals.push(`${data.pendingFinalizations.length} listos p/ SAC`);
+            signals.push('Carga Administrativa');
             insights.push({
                 type: 'stable',
-                message: `Hay ${data.pendingFinalizations.length} expedientes de finalización pendientes de carga en SAC.`,
+                message: 'Documentación de egreso lista para procesar en SAC.',
                 actionLink: '/admin/solicitudes?tab=egreso',
                 icon: 'verified'
             });
@@ -100,69 +98,65 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
             rawData: {
                 vencidasCount: overdueCount,
                 estancadasCount: stagnant.length,
-                acreditacionesCount: data.pendingFinalizations.length
+                acreditacionesCount: data.pendingFinalizations.length,
+                mesActual: currentMonth
             }
         };
     }, [data, isLoading]);
 
     useEffect(() => {
         const fetchAiInsight = async () => {
-            // Fix: Use process.env.API_KEY exclusively for Gemini API interactions
             if (!algorithmicAnalysis.rawData || !process.env.API_KEY) return;
             
             setIsAiLoading(true);
             try {
-                // Fix: Initialize GoogleGenAI with process.env.API_KEY directly
                 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
                 
-                // Prompt ajustado para tono académico/administrativo
+                // Prompt de Ingeniería Inversa: Enfocado en acción y estrategia, no en descripción.
                 const prompt = `
-                    Actúa como un Analista de Gestión Académica.
-                    Analiza la situación actual de tareas pendientes basada en los siguientes datos:
+                    Actúa como un Jefe de Operaciones Académicas Senior. 
+                    Analiza los siguientes métricas del tablero de control:
                     ${JSON.stringify(algorithmicAnalysis.rawData)}
 
-                    Tu objetivo: Generar un resumen ejecutivo breve (máximo 2 oraciones) para la Coordinación de Prácticas Profesionales.
-
-                    Reglas de Tono y Estilo:
-                    1. FORMAL Y PROFESIONAL: Utiliza terminología administrativa adecuada (ej: "gestión", "requiere intervención", "expedientes"). Evita coloquialismos.
-                    2. OBJETIVO: Céntrate en los hechos y la acción requerida.
-                    3. PRIORIZACIÓN:
-                       - Si 'vencidasCount' > 0: Es crítico. Menciona la necesidad de gestionar instituciones con plazos vencidos.
-                       - Si 'estancadasCount' > 0: Menciona demoras en el flujo de solicitudes estudiantiles.
-                       - Si 'acreditacionesCount' > 0: Menciona expedientes pendientes de carga administrativa (SAC).
-                       - Si todo es 0: Indica "Sin novedades operativas pendientes" o "Gestión al día".
-
-                    Ejemplos del estilo deseado:
-                    - "Se requiere intervención en 3 instituciones con ciclos lectivos finalizados pendientes de cierre."
-                    - "Existen solicitudes de estudiantes sin actividad reciente que requieren seguimiento administrativo."
-                    - "La gestión operativa se encuentra al día; restan procesar 2 acreditaciones finales."
-                    - "No se detectan pendientes prioritarios en las bandejas de entrada."
+                    TU OBJETIVO: Dar una única recomendación estratégica de alto impacto.
+                    
+                    REGLAS ESTRICTAS:
+                    1. NO repitas los números (el usuario ya los ve en las tarjetas).
+                    2. NO uses frases genéricas como "Aquí tienes el resumen".
+                    3. Si hay 'vencidasCount' > 0: Tu prioridad es sugerir la gestión administrativa de cierre o renovación de convenios para mantener el orden. NO menciones riesgos legales ni términos alarmistas.
+                    4. Si hay muchas 'estancadasCount': Tu prioridad es la experiencia del alumno. Sugiere desbloquear trámites.
+                    5. Si hay muchas 'acreditacionesCount': Tu prioridad es la eficiencia administrativa de egreso.
+                    6. Considera que estamos en el mes de ${algorithmicAnalysis.rawData.mesActual}. Contextualiza la urgencia según la altura del año (ej: inicios o cierres de ciclo).
+                    
+                    FORMATO DE SALIDA:
+                    Una sola frase, directa, imperativa y profesional. Máximo 25 palabras.
                 `;
 
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
+                    model: 'gemini-3-flash-preview',
                     contents: prompt,
-                    config: {
-                        temperature: 0.2, // Baja temperatura para mayor consistencia y formalidad
-                        topP: 0.8
-                    }
                 });
-                
-                setAiSummary(response.text.trim());
+
+                if (response.text) {
+                    setAiSummary(response.text.trim());
+                }
             } catch (error) {
-                console.error("AI Error", error);
+                console.error("AI Generation Error", error);
+                setAiSummary("Sistema de análisis estratégico no disponible momentáneamente.");
             } finally {
                 setIsAiLoading(false);
             }
         };
 
-        const timer = setTimeout(fetchAiInsight, 1000);
-        return () => clearTimeout(timer);
-    }, [algorithmicAnalysis.rawData]);
+        if (algorithmicAnalysis.status !== 'loading' && !isAiLoading && !aiSummary) {
+            fetchAiInsight();
+        }
+    }, [algorithmicAnalysis.rawData, algorithmicAnalysis.status]);
 
     return {
-        ...algorithmicAnalysis,
-        summary: aiSummary || "Analizando estado de gestión...",
-        isAiLoading
+        status: algorithmicAnalysis.status,
+        summary: aiSummary || (isLoading ? 'Analizando patrones operativos...' : 'Calculando estrategia prioritaria...'),
+        insights: algorithmicAnalysis.insights,
+        signals: algorithmicAnalysis.signals
     };
 };

@@ -7,7 +7,6 @@ import EmptyState from '../components/EmptyState';
 import Tabs from '../components/Tabs';
 import Card from '../components/Card';
 import WelcomeBanner from '../components/WelcomeBanner';
-import InformesList from '../components/InformesList';
 import WhatsAppExportButton from '../components/WhatsAppExportButton';
 import { useAuth } from '../contexts/AuthContext';
 import type { AuthUser } from '../contexts/AuthContext';
@@ -16,6 +15,7 @@ import DashboardLoadingSkeleton from '../components/DashboardLoadingSkeleton';
 import ErrorState from '../components/ErrorState';
 import ProfileView from '../components/ProfileView';
 import HomeView from '../components/HomeView';
+import PrintableReport from '../components/PrintableReport';
 import { useStudentPanel } from '../contexts/StudentPanelContext';
 import FinalizacionForm from '../components/FinalizacionForm';
 import { 
@@ -47,12 +47,10 @@ import { useNavigate } from 'react-router-dom';
 import { useModal } from '../contexts/ModalContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
-import { addBusinessDays } from '../utils/formatters';
 import FinalizationStatusCard from '../components/FinalizationStatusCard';
 import MobileSectionHeader from '../components/MobileSectionHeader';
 import ErrorBoundary from '../components/ErrorBoundary';
-import Button from '../components/Button';
-import MobileCriteriaCard from '../components/MobileCriteriaCard';
+import PreSolicitudCheckModal from '../components/PreSolicitudCheckModal';
 
 // Export individual views for Router
 export { default as StudentPracticas } from '../components/PracticasTable';
@@ -135,6 +133,110 @@ export const StudentHome: React.FC = () => {
     );
 };
 
+// --- WRAPPERS ---
+const StudentSolicitudesWrapper = () => {
+    const { solicitudes, studentDetails, criterios, finalizacionRequest, studentAirtableId } = useStudentPanel();
+    const { openSolicitudPPSModal, showModal } = useModal();
+    const { authenticatedUser } = useAuth();
+    const queryClient = useQueryClient();
+    const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
+    const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
+
+    const getStudentId = () => {
+        return studentAirtableId || authenticatedUser?.id || null;
+    };
+
+    // Calculate existing institutions for PreCheck from loaded launches in context or fetch if needed
+    // For simplicity, we assume loaded data covers most cases, or this could be a separate query.
+    // To match original implementation, we skip the heavy calculation or keep it simple.
+    const existingInstitutions: string[] = [];
+
+    const createSolicitudMutation = useMutation({
+        mutationFn: async (formData: any) => {
+            const studentId = getStudentId();
+            if (!studentId) throw new Error("Error identificando al estudiante.");
+
+            const newRecord: Partial<SolicitudPPSFields> = {
+                [FIELD_LEGAJO_PPS]: studentId,
+                [FIELD_SOLICITUD_LEGAJO_ALUMNO]: studentDetails?.[FIELD_LEGAJO_ESTUDIANTES],
+                [FIELD_SOLICITUD_NOMBRE_ALUMNO]: studentDetails?.[FIELD_NOMBRE_ESTUDIANTES],
+                [FIELD_SOLICITUD_EMAIL_ALUMNO]: studentDetails?.[FIELD_CORREO_ESTUDIANTES],
+                
+                [FIELD_EMPRESA_PPS_SOLICITUD]: formData.nombreInstitucion,
+                [FIELD_SOLICITUD_LOCALIDAD]: formData.localidad,
+                [FIELD_SOLICITUD_DIRECCION]: formData.direccion,
+                [FIELD_SOLICITUD_EMAIL_INSTITUCION]: formData.emailInstitucion,
+                [FIELD_SOLICITUD_TELEFONO_INSTITUCION]: formData.telefonoInstitucion,
+                [FIELD_SOLICITUD_REFERENTE]: formData.referente,
+                [FIELD_SOLICITUD_TIENE_CONVENIO]: formData.tieneConvenio,
+                [FIELD_SOLICITUD_TIENE_TUTOR]: formData.tieneTutor,
+                [FIELD_SOLICITUD_CONTACTO_TUTOR]: formData.contactoTutor,
+                [FIELD_SOLICITUD_TIPO_PRACTICA]: formData.tipoPractica,
+                [FIELD_SOLICITUD_DESCRIPCION]: formData.descripcion,
+                
+                [FIELD_ESTADO_PPS]: 'Pendiente',
+                [FIELD_ULTIMA_ACTUALIZACION_PPS]: new Date().toISOString().split('T')[0]
+            };
+
+            await db.solicitudes.create(newRecord as any);
+        },
+        onSuccess: () => {
+            showModal('Solicitud Enviada', 'Tu solicitud de PPS ha sido registrada. Te notificaremos cuando haya novedades.');
+            queryClient.invalidateQueries({ queryKey: ['solicitudes'] });
+        },
+        onError: (err: any) => {
+            showModal('Error', `Hubo un problema al enviar la solicitud: ${err.message}`);
+        }
+    });
+
+    const handleStartSolicitud = useCallback(() => {
+        setIsPreCheckModalOpen(true);
+    }, []);
+
+    const handleProceedToForm = useCallback(() => {
+        setIsPreCheckModalOpen(false);
+        openSolicitudPPSModal(async (data) => {
+            await createSolicitudMutation.mutateAsync(data);
+        });
+    }, [openSolicitudPPSModal, createSolicitudMutation]);
+
+    return (
+        <ErrorBoundary>
+            <SolicitudesList 
+                solicitudes={solicitudes} 
+                onCreateSolicitud={handleStartSolicitud}
+                onRequestFinalization={() => setIsFinalizationModalOpen(true)}
+                criterios={criterios}
+                finalizacionRequest={finalizacionRequest}
+            />
+
+            <PreSolicitudCheckModal 
+                isOpen={isPreCheckModalOpen}
+                onClose={() => setIsPreCheckModalOpen(false)}
+                onContinue={handleProceedToForm}
+                existingInstitutions={existingInstitutions}
+            />
+
+            {isFinalizationModalOpen && (
+                <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
+                        <button 
+                            onClick={() => setIsFinalizationModalOpen(false)}
+                            className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
+                        >
+                            <span className="material-icons">close</span>
+                        </button>
+                        <FinalizacionForm 
+                            studentAirtableId={getStudentId()} 
+                            onClose={() => setIsFinalizationModalOpen(false)}
+                        />
+                    </div>
+                </div>
+            )}
+        </ErrorBoundary>
+    );
+};
+
 // --- COMPONENT: StudentDashboard (Standalone Widget) ---
 interface StudentDashboardProps {
   user?: AuthUser;
@@ -147,9 +249,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
-  const [forceInteractiveMode, setForceInteractiveMode] = useState(false); // New state to override empty view
+  const [forceInteractiveMode, setForceInteractiveMode] = useState(false); 
   const { openSolicitudPPSModal, showModal } = useModal();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const currentUser = user || authenticatedUser;
@@ -157,25 +258,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
 
   const {
     studentDetails,
-    studentAirtableId, // Use the ID provided by context
+    studentAirtableId, 
     practicas,
     solicitudes,
     lanzamientos,
     allLanzamientos,
     institutionAddressMap,
-    isLoading,
+    isLoading, // Global aggregated loading state
     error,
     updateOrientation,
     updateInternalNotes,
     updateNota,
     enrollStudent,
-    confirmInforme,
     refetchAll,
     criterios,
     enrollmentMap,
     completedLanzamientoIds,
     informeTasks,
-    finalizacionRequest // New from context
+    finalizacionRequest 
   } = useStudentPanel();
 
   const [internalActiveTab, setInternalActiveTab] = useState<TabId>(showExportButton ? 'practicas' : 'inicio');
@@ -185,7 +285,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   const selectedOrientacion = (studentDetails?.[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "") as Orientacion | "";
   const studentNameForPanel = studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || currentUser?.nombre || 'Estudiante';
 
-  // Helper to safely get student ID - prioritize context ID
   const getStudentId = () => {
       return studentAirtableId || currentUser?.id || null;
   };
@@ -207,7 +306,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
       setIsFinalizationModalOpen(true);
   }, []);
 
-  // Create new PPS Request Mutation
   const createSolicitudMutation = useMutation({
       mutationFn: async (formData: any) => {
           const studentId = getStudentId();
@@ -239,7 +337,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
       },
       onSuccess: () => {
           showModal('Solicitud Enviada', 'Tu solicitud de PPS ha sido registrada. Te notificaremos cuando haya novedades.');
-          queryClient.invalidateQueries({ queryKey: ['solicitudes'] }); // Refresh list
+          queryClient.invalidateQueries({ queryKey: ['solicitudes'] });
       },
       onError: (err: any) => {
           showModal('Error', `Hubo un problema al enviar la solicitud: ${err.message}`);
@@ -272,24 +370,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
     </ErrorBoundary>
   ), [enrollmentMap, allLanzamientos, informeTasks, lanzamientos, studentDetails, enrollStudent.mutate, institutionAddressMap, completedLanzamientoIds, criterios, handleOpenFinalization]);
   
-  // Informes removed from view but kept for logic if needed elsewhere
-  const informesContent = useMemo(() => (
-    <ErrorBoundary>
-        <InformesList tasks={informeTasks} onConfirmar={confirmInforme.mutate} />
-    </ErrorBoundary>
-  ), [informeTasks, confirmInforme]);
-
   const solicitudesContent = useMemo(() => (
     <ErrorBoundary>
-        <SolicitudesList solicitudes={solicitudes} onCreateSolicitud={handleCreateSolicitud} onRequestFinalization={handleOpenFinalization} criterios={criterios} />
+        <StudentSolicitudesWrapper />
     </ErrorBoundary>
-  ), [solicitudes, handleCreateSolicitud, handleOpenFinalization, criterios]);
+  ), []);
 
   const practicasContent = useMemo(() => (
     <ErrorBoundary>
-        <PracticasTable practicas={practicas} handleNotaChange={handleNotaChange} />
+        {/* Pass explicit loading state to table so it can show skeleton */}
+        <PracticasTable practicas={practicas} handleNotaChange={handleNotaChange} isLoading={isLoading} />
     </ErrorBoundary>
-  ), [practicas, handleNotaChange]);
+  ), [practicas, handleNotaChange, isLoading]);
 
   const profileContent = useMemo(() => (
     <ErrorBoundary>
@@ -298,7 +390,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   ), [studentDetails, isLoading, updateInternalNotes]);
 
   const studentDataTabs = useMemo(() => {
-    // REMOVED 'Informes' tab from the array
     const tabs: { id: TabId; label: string; icon: string; content: React.ReactNode; badge?: number }[] = [
       { id: 'inicio', label: 'Inicio', icon: 'home', content: homeContent },
       { id: 'solicitudes', label: `Mis Solicitudes`, icon: 'list_alt', content: solicitudesContent, badge: solicitudes.length > 0 ? solicitudes.length : undefined },
@@ -315,8 +406,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
     return tabs;
 
   }, [
-      informeTasks.length, solicitudes.length, practicas.length, showExportButton,
-      homeContent, informesContent, solicitudesContent, practicasContent, profileContent
+      solicitudes.length, practicas.length, showExportButton,
+      homeContent, solicitudesContent, practicasContent, profileContent
   ]);
   
   useEffect(() => {
@@ -336,19 +427,46 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
 
   if (showEmptyState) {
     return (
-      <div className="space-y-8 animate-fade-in-up">
+      <>
         {isAdminViewing && <SimulationBanner />}
-        <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={false} />
-        <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} />
-        <Card className="bg-slate-50/30">
-          <EmptyState icon="search_off" title="Sin Resultados" message="No se encontró información." action={<Button onClick={() => setForceInteractiveMode(true)}>Gestionar / Inscribir</Button>} />
-        </Card>
-      </div>
+        <div className="print-only">
+          <PrintableReport studentDetails={studentDetails} criterios={criterios} practicas={practicas} />
+        </div>
+        <div className="no-print">
+          <div className="space-y-8 animate-fade-in-up">
+            <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
+            <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} isLoading={isLoading} />
+            <Card className="border-slate-300/50 bg-slate-50/30">
+              <EmptyState 
+                  icon="search_off" 
+                  title="Sin Resultados" 
+                  message="No se encontró información de prácticas o solicitudes para este estudiante." 
+                  action={
+                    <div className="flex gap-3 justify-center mt-4">
+                        <button onClick={refetchAll} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm">
+                            Actualizar Datos
+                        </button>
+                        <button 
+                            onClick={() => setForceInteractiveMode(true)} 
+                            className="px-6 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm flex items-center gap-2"
+                        >
+                            <span className="material-icons !text-base">input</span>
+                            Gestionar / Inscribir
+                        </button>
+                    </div>
+                  } 
+              />
+            </Card>
+          </div>
+          <WhatsAppExportButton practicas={practicas} criterios={criterios} selectedOrientacion={selectedOrientacion} studentNameForPanel={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
+        </div>
+      </>
     );
   }
   
   return (
     <>
+      {/* Banner de Simulación para Admins */}
       {isAdminViewing && <SimulationBanner />}
       
       {isFinalizationModalOpen && (
@@ -368,21 +486,39 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
         </div>
       )}
 
+      <div className="print-only">
+          <PrintableReport 
+              studentDetails={studentDetails} 
+              criterios={criterios} 
+              practicas={practicas} 
+          />
+      </div>
+
       {/* --- VISTA DE ESCRITORIO --- */}
       <div className="hidden md:block no-print space-y-8 animate-fade-in-up">
         <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
         
         {finalizacionRequest ? (
-            <FinalizationStatusCard 
-                status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
-                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
-            />
+            <div className="space-y-6">
+                <FinalizationStatusCard 
+                    status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
+                    requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+                    studentName={studentNameForPanel}
+                />
+                <div className="flex justify-center">
+                    <p className="text-slate-500 italic text-sm">
+                        Tu panel está bloqueado mientras se procesa la acreditación.
+                    </p>
+                </div>
+            </div>
         ) : (
             <ErrorBoundary>
-                <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} />
+                {/* Passed isLoading prop down */}
+                <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} isLoading={isLoading} />
             </ErrorBoundary>
         )}
         
+        {/* REMOVED Card WRAPPER AROUND Tabs */}
         <Tabs
             tabs={studentDataTabs}
             activeTabId={currentActiveTab}
@@ -399,13 +535,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
                       <FinalizationStatusCard 
                           status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
                           requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+                          studentName={studentNameForPanel}
                       />
                   )}
-                  {(!finalizacionRequest || isAdminViewing) && homeContent}
+                  {homeContent}
               </>
           )}
-
-          {/* 'informes' logic removed from mobile tabs as requested */}
 
           {currentActiveTab === 'solicitudes' && (
               <ErrorBoundary>
@@ -416,7 +551,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
           
           {currentActiveTab === 'practicas' && (
               <ErrorBoundary>
-                  {!finalizacionRequest && <MobileCriteriaCard criterios={criterios} selectedOrientacion={selectedOrientacion} />}
+                  {!finalizacionRequest && <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} isLoading={isLoading} />}
                   <MobileSectionHeader title="Historial de Prácticas" description="Detalle de todas las prácticas que has realizado y sus calificaciones." />
                   {practicasContent}
               </ErrorBoundary>
@@ -433,7 +568,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
       </div>
       
       {showExportButton && (
-        <WhatsAppExportButton practicas={practicas} criterios={criterios} selectedOrientacion={selectedOrientacion} studentNameForPanel={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
+        <>
+          <WhatsAppExportButton practicas={practicas} criterios={criterios} selectedOrientacion={selectedOrientacion} studentNameForPanel={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
+            <button
+            onClick={() => window.print()}
+            className="fixed bottom-6 right-24 z-50 w-14 h-14 bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center
+                        transition-all duration-300 ease-in-out transform hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-slate-400"
+            aria-label="Imprimir reporte"
+          >
+            <span className="material-icons !text-2xl">print</span>
+          </button>
+        </>
       )}
     </>
   );

@@ -27,16 +27,14 @@ import {
   FIELD_PENALIZACION_CONVOCATORIA_LINK,
   FIELD_LEGAJO_CONVOCATORIAS,
   FIELD_NOMBRE_BUSQUEDA_PRACTICAS,
-  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_FECHA_INICIO_PRACTICAS,
 } from '../constants';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
 import Toast from './Toast';
 import Card from './Card';
 import ConfirmModal from './ConfirmModal';
-import { formatDate, normalizeStringForComparison } from '../utils/formatters';
-import { convocatoriaArraySchema, practicaArraySchema, lanzamientoPPSArraySchema, penalizacionArraySchema, estudianteArraySchema } from '../schemas';
+import { formatDate } from '../utils/formatters';
+import { mapConvocatoria, mapLanzamiento, mapPenalizacion, mapPractica, mapEstudiante } from '../utils/mappers';
 
 const PENALTY_TYPES = [
     'Baja Anticipada',
@@ -84,9 +82,8 @@ const AddPenaltyModal: React.FC<{
             }
             
             // 1. Fetch Convocatorias for this student (Native Filter)
-            const { records: convocatorias } = await fetchAllData<ConvocatoriaFields>(
+            const convocatoriasRes = await fetchAllData(
                 TABLE_NAME_CONVOCATORIAS, 
-                convocatoriaArraySchema, 
                 [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS],
                 { 
                     [FIELD_LEGAJO_CONVOCATORIAS]: student.legajo,
@@ -95,15 +92,17 @@ const AddPenaltyModal: React.FC<{
             );
 
             // 2. Fetch Practicas for this student (Native Filter)
-            const { records: practicas } = await fetchAllData<PracticaFields>(
+            const practicasRes = await fetchAllData(
                 TABLE_NAME_PRACTICAS,
-                practicaArraySchema,
                 [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, FIELD_ESTADO_PRACTICA],
                 {
-                    [FIELD_NOMBRE_BUSQUEDA_PRACTICAS]: student.legajo, // Or use student.id link if available
+                    [FIELD_NOMBRE_BUSQUEDA_PRACTICAS]: student.legajo, 
                     [FIELD_ESTADO_PRACTICA]: 'En curso'
                 }
             );
+
+            const convocatorias = convocatoriasRes.records.map(mapConvocatoria);
+            const practicas = practicasRes.records.map(mapPractica);
 
             const lanzamientoIds = new Set<string>();
             
@@ -120,14 +119,13 @@ const AddPenaltyModal: React.FC<{
             if (lanzamientoIds.size === 0) return [];
             
             // 3. Fetch Launches details (Native Filter)
-            const { records: lanzamientos } = await fetchAllData<LanzamientoPPSFields>(
+            const lanzamientosRes = await fetchAllData(
                 TABLE_NAME_LANZAMIENTOS_PPS,
-                lanzamientoPPSArraySchema,
                 [FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS],
                 { id: Array.from(lanzamientoIds) }
             );
             
-            return lanzamientos.map(r => ({ 
+            return lanzamientosRes.records.map(mapLanzamiento).map(r => ({ 
                 id: r.id, 
                 name: `${r[FIELD_NOMBRE_PPS_LANZAMIENTOS]} (${formatDate(r[FIELD_FECHA_INICIO_LANZAMIENTOS])})` 
             }));
@@ -142,7 +140,7 @@ const AddPenaltyModal: React.FC<{
                 await mockDb.create('penalizaciones', penaltyData);
                 return;
             }
-            const penaltyResult = await createRecord<PenalizacionFields>(TABLE_NAME_PENALIZACIONES, penaltyData);
+            const penaltyResult = await createRecord(TABLE_NAME_PENALIZACIONES, penaltyData);
             if (penaltyResult.error) {
                 const errorMsg = typeof penaltyResult.error.error === 'string' ? penaltyResult.error.error : penaltyResult.error.error.message;
                 throw new Error(`Error al crear la penalización: ${errorMsg}`);
@@ -154,17 +152,17 @@ const AddPenaltyModal: React.FC<{
                 const ppsId = selectedPpsId;
                 
                 const [convocatoriasRes, practicasRes] = await Promise.all([
-                    fetchAllData<ConvocatoriaFields>(TABLE_NAME_CONVOCATORIAS, convocatoriaArraySchema, undefined, { [FIELD_LEGAJO_CONVOCATORIAS]: student.legajo }),
-                    fetchAllData<PracticaFields>(TABLE_NAME_PRACTICAS, practicaArraySchema, undefined, { [FIELD_NOMBRE_BUSQUEDA_PRACTICAS]: student.legajo }),
+                    fetchAllData(TABLE_NAME_CONVOCATORIAS, undefined, { [FIELD_LEGAJO_CONVOCATORIAS]: student.legajo }),
+                    fetchAllData(TABLE_NAME_PRACTICAS, undefined, { [FIELD_NOMBRE_BUSQUEDA_PRACTICAS]: student.legajo }),
                 ]);
 
-                const targetConv = convocatoriasRes.records.find(c => {
+                const targetConv = convocatoriasRes.records.map(mapConvocatoria).find(c => {
                     const ids = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
                     const linked = (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
                     return linked;
                 });
                 
-                const targetPractica = practicasRes.records.find(p => {
+                const targetPractica = practicasRes.records.map(mapPractica).find(p => {
                     const ids = p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
                     const linked = (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
                     return linked;
@@ -372,7 +370,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
     const { data: penalizedStudents, isLoading } = useQuery<PenalizedStudent[]>({
         queryKey: ['allPenalizedStudents', isTestingMode],
         queryFn: async () => {
-            let penaltiesRes, studentsRes, lanzamientosRes;
+            let penaltiesRes: any[] = [], studentsRes: any[] = [], lanzamientosRes: any[] = [];
 
             if (isTestingMode) {
                  [penaltiesRes, studentsRes, lanzamientosRes] = await Promise.all([
@@ -382,13 +380,13 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
                 ]);
             } else {
                  const [p, s, l] = await Promise.all([
-                    fetchAllData<PenalizacionFields>(TABLE_NAME_PENALIZACIONES, penalizacionArraySchema),
-                    fetchAllData<EstudianteFields>(TABLE_NAME_ESTUDIANTES, estudianteArraySchema, [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES]),
-                    fetchAllData<LanzamientoPPSFields>(TABLE_NAME_LANZAMIENTOS_PPS, lanzamientoPPSArraySchema, [FIELD_NOMBRE_PPS_LANZAMIENTOS])
+                    fetchAllData(TABLE_NAME_PENALIZACIONES),
+                    fetchAllData(TABLE_NAME_ESTUDIANTES, [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES]),
+                    fetchAllData(TABLE_NAME_LANZAMIENTOS_PPS, [FIELD_NOMBRE_PPS_LANZAMIENTOS])
                 ]);
-                penaltiesRes = p.records;
-                studentsRes = s.records;
-                lanzamientosRes = l.records;
+                penaltiesRes = p.records.map(mapPenalizacion);
+                studentsRes = s.records.map(mapEstudiante);
+                lanzamientosRes = l.records.map(mapLanzamiento);
             }
 
             const studentsMap = new Map<string, { legajo: string, nombre: string }>();

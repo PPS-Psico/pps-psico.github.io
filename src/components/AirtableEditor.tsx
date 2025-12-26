@@ -34,7 +34,8 @@ import {
     FIELD_TELEFONO_INSTITUCIONES,
     FIELD_DIRECCION_INSTITUCIONES,
     FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-    FIELD_TUTOR_INSTITUCIONES
+    FIELD_TUTOR_INSTITUCIONES,
+    FIELD_ORIENTACIONES_INSTITUCIONES
 } from '../constants';
 
 interface FieldConfig {
@@ -92,7 +93,7 @@ const EDITABLE_TABLES: Record<string, TableConfig & { icon: string }> = {
         label: 'Instituciones', 
         icon: 'apartment', 
         schema: schema.instituciones,
-        displayFields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_TELEFONO_INSTITUCIONES, FIELD_CONVENIO_NUEVO_INSTITUCIONES],
+        displayFields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_TELEFONO_INSTITUCIONES, FIELD_CONVENIO_NUEVO_INSTITUCIONES, FIELD_ORIENTACIONES_INSTITUCIONES],
         searchFields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_DIRECCION_INSTITUCIONES],
         fieldConfig: [
             { key: FIELD_NOMBRE_INSTITUCIONES, label: 'Nombre', type: 'text' },
@@ -100,6 +101,7 @@ const EDITABLE_TABLES: Record<string, TableConfig & { icon: string }> = {
             { key: FIELD_DIRECCION_INSTITUCIONES, label: 'Dirección', type: 'text' },
             { key: FIELD_CONVENIO_NUEVO_INSTITUCIONES, label: 'Convenio Nuevo', type: 'checkbox' },
             { key: FIELD_TUTOR_INSTITUCIONES, label: 'Tutor', type: 'text' },
+            { key: FIELD_ORIENTACIONES_INSTITUCIONES, label: 'Orientaciones (CSV)', type: 'text' },
         ]
     },
 };
@@ -445,8 +447,20 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
             return <span className="font-mono text-xs whitespace-nowrap">{formatDate(value)}</span>;
         }
         
-        if (key === FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES || key === FIELD_ESPECIALIDAD_PRACTICAS) {
+        if (key === FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES || key === FIELD_ESPECIALIDAD_PRACTICAS || key === FIELD_ORIENTACIONES_INSTITUCIONES) {
             if (!value) return <span className="text-slate-400">-</span>;
+            // Handle CSV for orientations
+            if (key === FIELD_ORIENTACIONES_INSTITUCIONES) {
+                const list = String(value).split(',').map(s => s.trim()).filter(Boolean);
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {list.map((o, i) => {
+                            const visuals = getEspecialidadClasses(o);
+                            return <span key={i} className={`${visuals.tag} text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap shadow-none border-0`}>{o}</span>
+                        })}
+                    </div>
+                );
+            }
             const visuals = getEspecialidadClasses(String(value));
             return <span className={`${visuals.tag} whitespace-nowrap shadow-none border-0`}>{String(value)}</span>;
         }

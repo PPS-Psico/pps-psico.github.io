@@ -1,24 +1,12 @@
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { db } from '../lib/db';
-import { supabase } from '../lib/supabaseClient';
-import {
-    FIELD_ESTUDIANTE_FINALIZACION,
-    FIELD_FECHA_SOLICITUD_FINALIZACION,
-    FIELD_ESTADO_FINALIZACION,
-    FIELD_INFORME_FINAL_FINALIZACION,
-    FIELD_PLANILLA_HORAS_FINALIZACION,
-    FIELD_PLANILLA_ASISTENCIA_FINALIZACION,
-    FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
-    TABLE_NAME_PPS,
-    FIELD_LEGAJO_PPS,
-    FIELD_ESTADO_PPS
-} from '../constants';
+import { uploadFinalizationFile, submitFinalizationRequest } from '../services/dataService';
 import Card from './Card';
 import Button from './Button';
 import Toast from './Toast';
 import EmptyState from './EmptyState';
+import { supabase } from '../lib/supabaseClient'; // Solo para downloadTemplate que es lectura publica
 
 interface FinalizacionFormProps {
     studentAirtableId: string | null;
@@ -41,48 +29,17 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
     const queryClient = useQueryClient();
     
     const [fileCategories, setFileCategories] = useState<Record<FileUploadType, FileCategoryState>>({
-        horas: { files: [], uploading: false, uploadedData: [] }, // Planilla de Seguimiento
-        asistencia: { files: [], uploading: false, uploadedData: [] }, // Planilla de Asistencia (Múltiple)
-        informe: { files: [], uploading: false, uploadedData: [] }, // Informes (Múltiple)
+        horas: { files: [], uploading: false, uploadedData: [] },
+        asistencia: { files: [], uploading: false, uploadedData: [] },
+        informe: { files: [], uploading: false, uploadedData: [] },
     });
     
     const [sugerencias, setSugerencias] = useState('');
 
-    // Refs for hidden inputs
     const fileInputRefs = {
         horas: useRef<HTMLInputElement>(null),
         asistencia: useRef<HTMLInputElement>(null),
         informe: useRef<HTMLInputElement>(null),
-    };
-
-    const uploadFileToStorage = async (file: File, type: FileUploadType): Promise<string> => {
-        if (!studentAirtableId) throw new Error("No se ha identificado al estudiante para crear la carpeta de archivos.");
-
-        const fileExt = file.name.split('.').pop();
-        const uniqueSuffix = Math.random().toString(36).substring(2, 8);
-        const fileName = `${studentAirtableId}/${type}_${Date.now()}_${uniqueSuffix}.${fileExt}`;
-        const filePath = fileName;
-
-        const options = {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: file.type || 'application/octet-stream'
-        };
-
-        const { error: uploadError } = await supabase.storage
-            .from('documentos_finalizacion')
-            .upload(filePath, file, options);
-
-        if (uploadError) {
-            console.error("Supabase Upload Error:", uploadError);
-            throw new Error(`Fallo al subir ${file.name}: ${uploadError.message}`);
-        }
-
-        const { data } = supabase.storage
-            .from('documentos_finalizacion')
-            .getPublicUrl(filePath);
-
-        return data.publicUrl;
     };
 
     const handleFilesAdded = (newFiles: FileList | null, type: FileUploadType) => {
@@ -91,7 +48,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
         const validFiles: File[] = [];
         for (let i = 0; i < newFiles.length; i++) {
             const file = newFiles[i];
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            if (file.size > 10 * 1024 * 1024) { 
                 setToastInfo({ message: `El archivo ${file.name} es demasiado grande (máx 10MB).`, type: 'error' });
                 continue;
             }
@@ -101,7 +58,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
         setFileCategories(prev => {
             const isSingleFile = type === 'horas';
             const currentFiles = isSingleFile ? [] : [...prev[type].files];
-            
             return {
                 ...prev,
                 [type]: {
@@ -152,7 +108,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
             if (fileCategories.asistencia.files.length === 0) throw new Error("Falta la Planilla de Asistencia.");
             if (fileCategories.informe.files.length === 0) throw new Error("Falta el Informe Final.");
 
-            // 1. Upload Process
+            // 1. Upload Process using Service
             const uploadedResults: Partial<Record<FileUploadType, { url: string, filename: string }[]>> = {};
 
             for (const type of categories) {
@@ -164,7 +120,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                 const typeUploads = [];
                 try {
                     for (const file of categoryState.files) {
-                        const url = await uploadFileToStorage(file, type);
+                        const url = await uploadFinalizationFile(file, studentAirtableId, type);
                         typeUploads.push({ url, filename: file.name });
                     }
                     uploadedResults[type] = typeUploads;
@@ -179,51 +135,20 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                 }
             }
             
-            // 2. Create DB Record
-            const dbRecord: any = {
-                [FIELD_ESTUDIANTE_FINALIZACION]: studentAirtableId, 
-                [FIELD_FECHA_SOLICITUD_FINALIZACION]: new Date().toISOString(),
-                [FIELD_ESTADO_FINALIZACION]: 'Pendiente',
-            };
-            
-            if (sugerencias.trim()) {
-                dbRecord[FIELD_SUGERENCIAS_MEJORAS_FINALIZACION] = sugerencias.trim();
-            }
-
-            if (uploadedResults.informe) dbRecord[FIELD_INFORME_FINAL_FINALIZACION] = JSON.stringify(uploadedResults.informe);
-            if (uploadedResults.horas) dbRecord[FIELD_PLANILLA_HORAS_FINALIZACION] = JSON.stringify(uploadedResults.horas);
-            if (uploadedResults.asistencia) dbRecord[FIELD_PLANILLA_ASISTENCIA_FINALIZACION] = JSON.stringify(uploadedResults.asistencia);
-
-            await db.finalizacion.create(dbRecord);
-
-            // 3. Auto-Archive pending PPS requests logic
-            try {
-                // Fetch all active requests for this student that are NOT already archived or finished
-                const { data: activeRequests } = await supabase
-                    .from(TABLE_NAME_PPS as any)
-                    .select('id')
-                    .eq(FIELD_LEGAJO_PPS, studentAirtableId)
-                    .not(FIELD_ESTADO_PPS, 'in', '("Archivado","Finalizada","Cancelada","Rechazada")');
-
-                if (activeRequests && activeRequests.length > 0) {
-                    console.log(`Archiving ${activeRequests.length} active PPS requests due to finalization...`);
-                    const updates = activeRequests.map((r: any) => ({
-                        id: r.id,
-                        fields: { [FIELD_ESTADO_PPS]: 'Archivado' }
-                    }));
-                    // Using updateMany from db abstraction
-                    await db.solicitudes.updateMany(updates);
-                }
-            } catch (err) {
-                console.warn("Error auto-archiving requests:", err);
-            }
+            // 2. Create DB Record & Archive via Service
+            await submitFinalizationRequest(studentAirtableId, {
+                informes: uploadedResults.informe || [],
+                horas: uploadedResults.horas || [],
+                asistencias: uploadedResults.asistencia || [],
+                sugerencias
+            });
 
             return true;
         },
         onSuccess: () => {
             setIsSubmitted(true);
             queryClient.invalidateQueries({ queryKey: ['finalizacionRequest'] });
-            queryClient.invalidateQueries({ queryKey: ['solicitudes'] }); // Refresh requests list to show archived status
+            queryClient.invalidateQueries({ queryKey: ['solicitudes'] });
             setToastInfo({ message: 'Solicitud enviada con éxito. Se procesará tu acreditación.', type: 'success' });
         },
         onError: (error: any) => {

@@ -1,9 +1,8 @@
 
-
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAllData } from '../services/supabaseService';
-import type { LanzamientoPPS, LanzamientoPPSFields } from '../types';
+import type { LanzamientoPPS } from '../types';
 import {
   TABLE_NAME_LANZAMIENTOS_PPS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
@@ -14,7 +13,7 @@ import {
 import Loader from './Loader';
 import EmptyState from './EmptyState';
 import { parseToUTCDate } from '../utils/formatters';
-import { lanzamientoPPSArraySchema } from '../schemas';
+import { mapLanzamiento } from '../utils/mappers';
 
 const MOCK_TIMELINE_DATA: any[] = [
     { id: 'tl_mock_1', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Hospital de Simulación', [FIELD_FECHA_INICIO_LANZAMIENTOS]: `${new Date().getFullYear()}-03-10`, [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 10 },
@@ -24,9 +23,8 @@ const MOCK_TIMELINE_DATA: any[] = [
 ];
 
 const fetchTimelineData = async (): Promise<LanzamientoPPS[]> => {
-  const { records, error } = await fetchAllData<LanzamientoPPSFields>(
+  const { records, error } = await fetchAllData(
     TABLE_NAME_LANZAMIENTOS_PPS,
-    lanzamientoPPSArraySchema,
     [
       FIELD_NOMBRE_PPS_LANZAMIENTOS,
       FIELD_ORIENTACION_LANZAMIENTOS,
@@ -42,15 +40,14 @@ const fetchTimelineData = async (): Promise<LanzamientoPPS[]> => {
     throw new Error(`Error fetching timeline data: ${errorMsg}`);
   }
 
-  // Records are already flat, containing fields merged with id and createdTime
-  return records as LanzamientoPPS[];
+  // Use the mapper to convert DB rows to AppRecords
+  return records.map(mapLanzamiento);
 };
 
 const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 const getGroupName = (name: string | undefined): string => {
     if (!name) return 'Sin Nombre';
-    // Splits by " - " and takes the first part. Handles cases where there's no hyphen.
     return name.split(' - ')[0].trim();
 };
 
@@ -154,46 +151,19 @@ const TimelineView: React.FC<TimelineViewProps> = ({ isTestingMode = false }) =>
         };
     }, [launches, targetYear]);
 
-
-    if (isLoading) {
-        return <div className="flex justify-center p-8"><Loader /></div>;
-    }
-
-    if (error) {
-        return <EmptyState icon="error" title="Error al Cargar la Línea de Tiempo" message={error.message} />;
-    }
+    if (isLoading) return <div className="flex justify-center p-8"><Loader /></div>;
+    if (error) return <EmptyState icon="error" title="Error" message={error.message} />;
     
-    if (launchesByMonth.length === 0) {
-        return (
-            <div className="animate-fade-in-up space-y-8">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                     <h2 className="text-3xl font-black text-slate-900 dark:text-slate-50 tracking-tight">Línea de Tiempo {targetYear}</h2>
-                     <div className="relative w-full sm:w-48">
-                         <select 
-                            value={targetYear} 
-                            onChange={(e) => setTargetYear(Number(e.target.value))}
-                            className="w-full appearance-none pl-4 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors"
-                            aria-label="Seleccionar año"
-                         >
-                             {availableYears.map((year: number) => <option key={year} value={year}>{year}</option>)}
-                         </select>
-                         <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 dark:text-slate-500 pointer-events-none">expand_more</span>
-                     </div>
-                </div>
-                <EmptyState icon="calendar_today" title={`Sin Actividad en ${targetYear}`} message={`No se encontraron lanzamientos de PPS para el ciclo ${targetYear}.`} />
-            </div>
-        );
-    }
-
     return (
         <div className="animate-fade-in-up space-y-8">
+             {/* HEADER & SELECTOR */}
              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                 <h2 className="text-3xl font-black text-slate-900 dark:text-slate-50 tracking-tight">Línea de Tiempo {targetYear}</h2>
+                 <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Cronograma {targetYear}</h2>
                  <div className="relative w-full sm:w-48">
                      <select 
                         value={targetYear} 
                         onChange={e => setTargetYear(Number(e.target.value))}
-                        className="w-full appearance-none pl-4 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors"
+                        className="w-full appearance-none pl-4 pr-10 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors"
                         aria-label="Seleccionar año"
                      >
                          {availableYears.map((year: number) => <option key={year} value={year}>{year}</option>)}
@@ -202,77 +172,76 @@ const TimelineView: React.FC<TimelineViewProps> = ({ isTestingMode = false }) =>
                  </div>
             </div>
             
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-lg">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-700 text-center">
+            {/* STATS CARD */}
+            <div className="bg-white dark:bg-[#0B1120] p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+                <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-8 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800 text-center">
                     <div className="pt-4 sm:pt-0">
-                        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total de PPS Lanzadas ({targetYear})</p>
-                        <p className="text-6xl font-black text-blue-600 dark:text-blue-400 tracking-tighter mt-2">{totalLaunchesForYear}</p>
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Convocatorias Lanzadas</p>
+                        <p className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter">{totalLaunchesForYear}</p>
                     </div>
                     <div className="pt-4 sm:pt-0">
-                        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total de Cupos Lanzados ({targetYear})</p>
-                        <p className="text-6xl font-black text-indigo-600 dark:text-indigo-400 tracking-tighter mt-2">{totalCuposForYear}</p>
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Cupos Totales</p>
+                        <p className="text-6xl font-black text-indigo-600 dark:text-indigo-400 tracking-tighter">{totalCuposForYear}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="space-y-6">
-                {launchesByMonth.map((monthData) => {
-                    return (
-                        <div key={monthData.monthName} className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-lg shadow-slate-500/5 dark:shadow-black/20 transition-all duration-300 hover:shadow-blue-500/10 dark:hover:shadow-blue-400/10 hover:-translate-y-1">
-                            {/* Month Header */}
-                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{monthData.monthName}</h3>
-                                <div className="flex items-center gap-4 flex-wrap">
-                                    <div className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-200 bg-blue-100 dark:bg-blue-900/50 px-3 py-1.5 rounded-full ring-1 ring-blue-200/50 dark:ring-blue-800/50">
-                                        <span className="material-icons !text-base">rocket_launch</span>
-                                        <span>{monthData.ppsCount} PPS Lanzada{monthData.ppsCount > 1 ? 's' : ''}</span>
+            {/* MONTH CARDS */}
+            {launchesByMonth.length === 0 ? (
+                <EmptyState icon="calendar_today" title={`Sin Actividad en ${targetYear}`} message={`No se encontraron lanzamientos de PPS para el ciclo ${targetYear}.`} />
+            ) : (
+                <div className="space-y-6">
+                    {launchesByMonth.map((monthData, idx) => (
+                        <div key={monthData.monthName} className="relative group">
+                            {/* Connector Line */}
+                            {idx !== launchesByMonth.length - 1 && (
+                                <div className="absolute left-[27px] top-10 bottom-0 w-0.5 bg-slate-200 dark:bg-slate-800 -z-10 group-hover:bg-slate-300 dark:group-hover:bg-slate-700 transition-colors"></div>
+                            )}
+                            
+                            <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm text-slate-900 dark:text-white">
+                                            <span className="text-xs font-bold uppercase text-slate-400">{monthData.monthName.substring(0,3)}</span>
+                                        </div>
+                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{monthData.monthName}</h3>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700 dark:text-indigo-200 bg-indigo-100 dark:bg-indigo-900/50 px-3 py-1.5 rounded-full ring-1 ring-indigo-200/50 dark:ring-indigo-800/50">
-                                        <span className="material-icons !text-base">groups</span>
-                                        <span>{monthData.cuposTotal} Cupos</span>
+                                    <div className="flex gap-2">
+                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/50">
+                                            {monthData.ppsCount} Convocatorias
+                                        </span>
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-900/50">
+                                            {monthData.cuposTotal} Cupos
+                                        </span>
                                     </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {monthData.institutions.map(inst => {
+                                        const hasVariants = inst.variants.length > 1;
+                                        return (
+                                            <div key={inst.name} className="flex flex-col justify-center p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200 leading-tight">{inst.name}</span>
+                                                    <span className="text-[10px] font-mono text-slate-400 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-700">
+                                                        {inst.cupos}
+                                                    </span>
+                                                </div>
+                                                {hasVariants && (
+                                                    <p className="text-[10px] text-slate-400 mt-1 pl-1 border-l-2 border-slate-200 dark:border-slate-700">
+                                                        {inst.variants.length} comisiones
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-
-                            {/* Institutions List */}
-                            {monthData.institutions.length > 0 && (
-                                <div className="mt-5 pt-5 border-t border-slate-200 dark:border-slate-700">
-                                    <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3">Instituciones con convocatorias:</h4>
-                                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        {monthData.institutions.map(inst => {
-                                            const hasVariants = inst.variants.length > 1 && inst.variants.some(v => v !== inst.name);
-                                            return (
-                                                <li key={inst.name}>
-                                                    <div className="flex items-start gap-2.5 text-slate-700 dark:text-slate-300 text-sm">
-                                                        <span className="text-blue-400 dark:text-blue-500 text-lg leading-none mt-0.5">&bull;</span>
-                                                        <div className="flex-grow">
-                                                            <span>
-                                                                {inst.name}
-                                                                <span className="text-xs text-slate-500 dark:text-slate-400 ml-1.5">
-                                                                    ({inst.cupos} {inst.cupos === 1 ? 'Cupo' : 'Cupos'})
-                                                                </span>
-                                                            </span>
-                                                            {hasVariants && (
-                                                                <ul className="mt-1 pl-4 text-xs list-disc list-inside">
-                                                                    {inst.variants.map(variant => (
-                                                                        <li key={variant} className="text-slate-600 dark:text-slate-400">
-                                                                            {variant.replace(`${inst.name} - `, '')}
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </div>
-                            )}
                         </div>
-                    );
-                })}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

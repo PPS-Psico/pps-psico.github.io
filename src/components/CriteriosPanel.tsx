@@ -3,8 +3,8 @@ import React, { useMemo, useState } from 'react';
 import { HORAS_OBJETIVO_TOTAL, HORAS_OBJETIVO_ORIENTACION } from '../constants';
 import ProgressCircle from './ProgressCircle';
 import OrientacionSelector from './OrientacionSelector';
-import Button from './Button';
 import type { CriteriosCalculados, Orientacion } from '../types';
+import { CriteriosPanelSkeleton } from './Skeletons';
 
 // Componente: Widget de Estado Rediseñado
 const StatusWidget = ({ 
@@ -157,6 +157,7 @@ interface CriteriosPanelProps {
   handleOrientacionChange: (orientacion: Orientacion | "") => void;
   showSaveConfirmation: boolean;
   onRequestFinalization: () => void;
+  isLoading?: boolean;
 }
 
 const CriteriosPanel: React.FC<CriteriosPanelProps> = ({ 
@@ -164,7 +165,8 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
     selectedOrientacion, 
     handleOrientacionChange, 
     showSaveConfirmation, 
-    onRequestFinalization 
+    onRequestFinalization,
+    isLoading = false
 }) => {
   const [showWarningModal, setShowWarningModal] = useState(false);
   
@@ -204,6 +206,10 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
           setShowWarningModal(true);
       }
   };
+
+  if (isLoading) {
+      return <CriteriosPanelSkeleton />;
+  }
 
   return (
     <section className="animate-fade-in-up space-y-6">

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
@@ -37,7 +38,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         queryFn: async () => {
             if (isTestingMode) {
                 return {
-                    instituciones: [{ id: 'inst_test_1', createdTime: '', [FIELD_NOMBRE_INSTITUCIONES]: 'Inst Test Nueva', [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true } as any, { id: 'inst_test_2', createdTime: '', [FIELD_NOMBRE_INSTITUCIONES]: 'Inst Test Potencial' } as any],
+                    instituciones: [{ id: 'inst_test_1', createdTime: '', [FIELD_NOMBRE_INSTITUCIONES]: 'Inst Test Nueva', [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: 2024 } as any, { id: 'inst_test_2', createdTime: '', [FIELD_NOMBRE_INSTITUCIONES]: 'Inst Test Potencial' } as any],
                     lanzamientos: [{ id: 'lanz_test_1', createdTime: '', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Inst Test Nueva - Sede A', [FIELD_FECHA_INICIO_LANZAMIENTOS]: `${new Date().getFullYear()}-03-01` } as any, { id: 'lanz_test_2', createdTime: '', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Inst Test Potencial - Taller B', [FIELD_FECHA_INICIO_LANZAMIENTOS]: `${new Date().getFullYear()}-04-01` } as any]
                 };
             }
@@ -51,11 +52,14 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
     
     const confirmMutation = useMutation({
         mutationFn: (institutionId: string) => {
+            const currentYear = new Date().getFullYear();
             if (isTestingMode) {
                 console.log("TEST MODE: Confirming agreement for", institutionId);
                 return new Promise(resolve => setTimeout(resolve, 500));
             }
-            return db.instituciones.update(institutionId, { [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true });
+            // Actualizamos con el año actual en lugar de true
+            // Cast to any because the schema defines this field as boolean, but we store the year
+            return db.instituciones.update(institutionId, { [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: currentYear as any });
         },
         onSuccess: () => {
             setToastInfo({ message: 'Convenio confirmado con éxito.', type: 'success' });
@@ -72,13 +76,16 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
 
         const currentYear = new Date().getFullYear();
 
-        const institutionsMap = new Map<string, { id: string, isNew: boolean }>();
+        const institutionsMap = new Map<string, { id: string, isNew: boolean, year?: number }>();
         data.instituciones.forEach(inst => {
             const name = inst[FIELD_NOMBRE_INSTITUCIONES];
             if (name) {
+                const yearVal = Number(inst[FIELD_CONVENIO_NUEVO_INSTITUCIONES]);
+                const isNew = !isNaN(yearVal) && yearVal >= (currentYear - 1); // Consideramos "Nuevo" si es de este año o el anterior
                 institutionsMap.set(normalizeStringForComparison(name), {
                     id: inst.id,
-                    isNew: !!inst[FIELD_CONVENIO_NUEVO_INSTITUCIONES]
+                    isNew,
+                    year: yearVal
                 });
             }
         });
@@ -163,7 +170,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                 )}
             </Card>
 
-            <Card icon="add_business" title="Posibles Convenios Nuevos a Confirmar" description="Instituciones con lanzamientos este año que no están marcadas como 'Convenio Nuevo'.">
+            <Card icon="add_business" title="Posibles Convenios Nuevos a Confirmar" description="Instituciones con lanzamientos este año que no están marcadas con el año de convenio.">
                 {potentials.length > 0 ? (
                     <div className="mt-4 space-y-4">
                         {potentials.map(item => (
@@ -180,7 +187,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                                     isLoading={confirmMutation.isPending && confirmMutation.variables === item.institutionId}
                                     icon="add_task"
                                 >
-                                    Confirmar Convenio
+                                    Confirmar {new Date().getFullYear()}
                                 </Button>
                             </div>
                         ))}

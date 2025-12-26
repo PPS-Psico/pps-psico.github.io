@@ -22,12 +22,14 @@ const DatabaseEditor = lazy(() => import('../../components/DatabaseEditor'));
 const PenalizationManager = lazy(() => import('../../components/PenalizationManager'));
 const EmailAutomationManager = lazy(() => import('../../components/EmailAutomationManager'));
 const NuevosConvenios = lazy(() => import('../../components/NuevosConvenios'));
-const DataIntegrityTool = lazy(() => import('../../components/DataIntegrityTool'));
 const ExecutiveReportGenerator = lazy(() => import('../../components/ExecutiveReportGenerator'));
 const ActiveInstitutionsReport = lazy(() => import('../../components/ActiveInstitutionsReport'));
 const PersonalizationPanel = lazy(() => import('../../components/PersonalizationPanel'));
+const DataIntegrityTool = lazy(() => import('../../components/DataIntegrityTool'));
+const OrphanFixer = lazy(() => import('../../components/OrphanFixer'));
+const YearEndResetTool = lazy(() => import('../../components/YearEndResetTool'));
+const StudentDiagnostics = lazy(() => import('../../components/StudentDiagnostics'));
 
-// Configuración simplificada para alta rápida: Solo Nombre y Legajo
 const QUICK_STUDENT_CONFIG = {
     label: 'Estudiante',
     schema: schema.estudiantes,
@@ -46,9 +48,7 @@ interface HerramientasViewProps {
 const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, isTestingMode = false }) => {
   const { preferences } = useAdminPreferences();
   const [activeTabId, setActiveTabId] = useState('editor-db');
-  const [activeReportType, setActiveReportType] = useState<'instituciones' | 'ejecutivo'>('instituciones');
   
-  // Estado para alta rápida
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
   const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const queryClient = useQueryClient();
@@ -61,7 +61,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
       onSuccess: () => {
            setToastInfo({ message: 'Estudiante registrado correctamente.', type: 'success' });
            setIsCreatingStudent(false);
-           // Invalidar queries relevantes
            queryClient.invalidateQueries({ queryKey: ['databaseEditor', 'estudiantes'] }); 
       },
       onError: (e: any) => setToastInfo({ message: `Error al crear: ${e.message}`, type: 'error' }),
@@ -76,19 +75,13 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
       if (preferences.showNewAgreements) availableTabs.push({ id: 'convenios', label: 'Convenios Nuevos', icon: 'handshake' });
       if (preferences.showPenalizations) availableTabs.push({ id: 'penalizaciones', label: 'Penalizaciones', icon: 'gavel' });
       if (preferences.showAutomation) availableTabs.push({ id: 'automation', label: 'Automatizaciones', icon: 'auto_fix_high' });
-      
-      // HIDE INTEGRITY IN TESTING MODE
-      if (preferences.showIntegrity && !isTestingMode) {
-          availableTabs.push({ id: 'integrity', label: 'Integridad', icon: 'health_and_safety' });
-      }
-
       if (preferences.showReports) availableTabs.push({ id: 'reportes', label: 'Reportes', icon: 'summarize' });
       
-      // Always show personalization at the end
+      availableTabs.push({ id: 'mantenimiento', label: 'Mantenimiento', icon: 'cleaning_services' });
       availableTabs.push({ id: 'personalization', label: 'Personalización', icon: 'tune' });
 
       return availableTabs;
-  }, [preferences, isTestingMode]);
+  }, [preferences]);
 
   return (
     <div className="space-y-8">
@@ -101,6 +94,19 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
           {activeTabId === 'editor-db' && (
             <ErrorBoundary>
               <DatabaseEditor isTestingMode={isTestingMode} />
+            </ErrorBoundary>
+          )}
+
+          {activeTabId === 'mantenimiento' && (
+            <ErrorBoundary>
+              <div className="space-y-8 animate-fade-in">
+                  <DataIntegrityTool />
+                  <OrphanFixer />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <StudentDiagnostics />
+                      <YearEndResetTool />
+                  </div>
+              </div>
             </ErrorBoundary>
           )}
           
@@ -122,12 +128,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
             </ErrorBoundary>
           )}
 
-          {activeTabId === 'integrity' && preferences.showIntegrity && !isTestingMode && (
-            <ErrorBoundary>
-              <DataIntegrityTool />
-            </ErrorBoundary>
-          )}
-
           {activeTabId === 'personalization' && (
             <ErrorBoundary>
               <PersonalizationPanel />
@@ -138,7 +138,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
             <ErrorBoundary>
               <div className="p-4 max-w-2xl mx-auto">
                 <AdminSearch onStudentSelect={onStudentSelect} isTestingMode={isTestingMode} />
-                
                 <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700 text-center">
                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                         ¿No encuentras al estudiante? Agrégalo manualmente solo con nombre y legajo.
@@ -151,7 +150,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
                         Alta Rápida de Estudiante
                     </button>
                 </div>
-
                 {isCreatingStudent && (
                     <RecordEditModal 
                         isOpen={isCreatingStudent} 
@@ -168,36 +166,10 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
 
           {activeTabId === 'reportes' && preferences.showReports && (
              <div className="space-y-6">
-                <div className="flex justify-center">
-                    <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <button 
-                            onClick={() => setActiveReportType('instituciones')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeReportType === 'instituciones' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                        >
-                            Instituciones
-                        </button>
-                        <button 
-                            onClick={() => setActiveReportType('ejecutivo')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeReportType === 'ejecutivo' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                        >
-                            Ejecutivo
-                        </button>
-                    </div>
-                </div>
-
-                {activeReportType === 'instituciones' && (
-                    <ErrorBoundary>
-                        <ActiveInstitutionsReport isTestingMode={isTestingMode} />
-                    </ErrorBoundary>
-                )}
-                {activeReportType === 'ejecutivo' && (
-                    <ErrorBoundary>
-                        <ExecutiveReportGenerator isTestingMode={isTestingMode} />
-                    </ErrorBoundary>
-                )}
+                <ErrorBoundary><ActiveInstitutionsReport isTestingMode={isTestingMode} /></ErrorBoundary>
+                <ErrorBoundary><ExecutiveReportGenerator isTestingMode={isTestingMode} /></ErrorBoundary>
              </div>
           )}
-
         </Suspense>
       </div>
     </div>

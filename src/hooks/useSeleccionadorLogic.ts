@@ -76,7 +76,6 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
     
     const queryClient = useQueryClient();
 
-    // 1. Fetch Open Launches
     const { data: openLaunches = [], isLoading: isLoadingLaunches } = useQuery({
         queryKey: ['openLaunchesForSelector', isTestingMode],
         queryFn: async () => {
@@ -88,7 +87,7 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
             }
             
             return records
-                .map(r => r as LanzamientoPPS) // Ensure flat object usage
+                .map(r => r as LanzamientoPPS) 
                 .filter(l => {
                     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
                     return status === 'abierta' || status === 'abierto';
@@ -96,7 +95,6 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
         }
     });
 
-    // EFFECT: Auto-select launch if ID provided and data loaded
     useEffect(() => {
         if (initialLaunchId && openLaunches.length > 0 && !selectedLanzamiento) {
             const target = openLaunches.find(l => l.id === initialLaunchId);
@@ -108,36 +106,28 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
 
     const candidatesQueryKey = ['candidatesForLaunch', selectedLanzamiento?.id, isTestingMode];
 
-    // 2. Fetch Candidates
     const { data: candidates = [], isLoading: isLoadingCandidates, refetch: refetchCandidates } = useQuery({
         queryKey: candidatesQueryKey,
         queryFn: async () => {
             if (!selectedLanzamiento) return [];
-            
             const launchId = selectedLanzamiento.id;
-            
             let allEnrollments: any[] = [];
             if (isTestingMode) {
                  allEnrollments = await mockDb.getAll('convocatorias');
             } else {
                  allEnrollments = await db.convocatorias.getAll();
             }
-
             const enrollments = allEnrollments.filter(c => {
                  const linked = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
                  if (Array.isArray(linked)) return linked.includes(launchId);
                  return linked === launchId;
             });
-            
             if (enrollments.length === 0) return [];
-
             const studentIds = enrollments.map(e => {
                 const raw = e[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
                 return Array.isArray(raw) ? raw[0] : raw;
             }).filter(Boolean) as string[];
-            
             let studentsRes: any[] = [], practicasRes: any[] = [], penaltiesRes: any[] = [];
-
             if (isTestingMode) {
                 [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
                     mockDb.getAll('estudiantes', { id: studentIds }),
@@ -151,35 +141,26 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
                     db.penalizaciones.getAll({ filters: { [FIELD_PENALIZACION_ESTUDIANTE_LINK]: studentIds } })
                 ]);
             }
-
             const studentMap = new Map(studentsRes.map(s => [s.id, s]));
-            
             const enrichedList: EnrichedStudent[] = enrollments.map(enrollment => {
                 const sIdRaw = enrollment[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
                 const sId = Array.isArray(sIdRaw) ? sIdRaw[0] : sIdRaw;
-
                 const studentDetails = sId ? studentMap.get(String(sId)) : null;
                 if (!studentDetails) return null;
-
                 const studentPractices = practicasRes.filter(p => {
                      const links = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
                      return Array.isArray(links) ? links.includes(String(sId)) : links === String(sId);
                 });
                 const totalHoras = studentPractices.reduce((sum: number, p: any) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
-
                 const studentPenalties = penaltiesRes.filter(p => {
                     const links = p[FIELD_PENALIZACION_ESTUDIANTE_LINK];
                     return Array.isArray(links) ? links.includes(String(sId)) : links === String(sId);
                 });
                 const penalizacionAcumulada = studentPenalties.reduce((sum: number, p: any) => sum + (p[FIELD_PENALIZACION_PUNTAJE] || 0), 0);
-                
-                // Determine work status
                 const works = !!enrollment[FIELD_TRABAJA_CONVOCATORIAS] || !!studentDetails[FIELD_TRABAJA_ESTUDIANTES];
                 const cert = enrollment[FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS] || studentDetails[FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES];
                 const cvUrl = enrollment[FIELD_CV_CONVOCATORIAS] as string | null;
-
                 const puntajeTotal = calculateScore(enrollment, totalHoras, penalizacionAcumulada, works);
-
                 return {
                     enrollmentId: enrollment.id,
                     studentId: String(sId),
@@ -200,7 +181,6 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
                     cvUrl: cvUrl
                 };
             }).filter((item): item is EnrichedStudent => item !== null);
-
             return enrichedList.sort((a, b) => b.puntajeTotal - a.puntajeTotal);
         },
         enabled: !!selectedLanzamiento
@@ -214,27 +194,18 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
         mutationFn: async (student: EnrichedStudent) => {
             if (!selectedLanzamiento) return;
             const isCurrentlySelected = normalizeStringForComparison(student.status) === 'seleccionado';
-            
             if (isTestingMode) {
                 await new Promise(resolve => setTimeout(resolve, 300));
                 const newStatus = isCurrentlySelected ? 'Inscripto' : 'Seleccionado';
                 await mockDb.update('convocatorias', student.enrollmentId, { [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: newStatus });
                 return { success: true, student };
             }
-
-            // Real API call
-            const result = await toggleStudentSelection(
-                student.enrollmentId, 
-                !isCurrentlySelected, 
-                student.studentId, 
-                selectedLanzamiento
-            );
+            const result = await toggleStudentSelection(student.enrollmentId, !isCurrentlySelected, student.studentId, selectedLanzamiento);
             return { ...result, student };
         },
         onMutate: async (student) => {
             await queryClient.cancelQueries({ queryKey: candidatesQueryKey });
             const previousCandidates = queryClient.getQueryData<EnrichedStudent[]>(candidatesQueryKey);
-
             queryClient.setQueryData(candidatesQueryKey, (old: EnrichedStudent[] | undefined) => {
                 if (!old) return [];
                 return old.map(c => {
@@ -245,32 +216,25 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
                     return c;
                 });
             });
-
             return { previousCandidates };
         },
         onSuccess: (data, vars, context) => {
              if (!data?.success) {
                  setToastInfo({ message: `Error: ${data?.error}`, type: 'error' });
-                 if (context?.previousCandidates) {
-                     queryClient.setQueryData(candidatesQueryKey, context.previousCandidates);
-                 }
+                 if (context?.previousCandidates) queryClient.setQueryData(candidatesQueryKey, context.previousCandidates);
              }
              queryClient.invalidateQueries({ queryKey: candidatesQueryKey });
         },
         onError: (err, vars, context) => {
             setToastInfo({ message: `Error: ${err.message}`, type: 'error' });
-            if (context?.previousCandidates) {
-                queryClient.setQueryData(candidatesQueryKey, context.previousCandidates);
-            }
+            if (context?.previousCandidates) queryClient.setQueryData(candidatesQueryKey, context.previousCandidates);
         },
         onSettled: () => setUpdatingId(null)
     });
 
     const scheduleMutation = useMutation({
         mutationFn: async ({ id, schedule }: { id: string, schedule: string }) => {
-            if (isTestingMode) {
-                return mockDb.update('convocatorias', id, { [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: schedule });
-            }
+            if (isTestingMode) return mockDb.update('convocatorias', id, { [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: schedule });
             return db.convocatorias.update(id, { [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: schedule });
         },
         onSuccess: () => {
@@ -279,26 +243,19 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
         }
     });
 
-    // Mutation to Close Call
     const closeLaunchMutation = useMutation({
         mutationFn: async () => {
             if (!selectedLanzamiento) return;
-            if (isTestingMode) {
-                return mockDb.update('lanzamientos_pps', selectedLanzamiento.id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado' });
-            }
-            return db.lanzamientos.update(selectedLanzamiento.id, {
-                [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado'
-            });
+            if (isTestingMode) return mockDb.update('lanzamientos_pps', selectedLanzamiento.id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado' });
+            return db.lanzamientos.update(selectedLanzamiento.id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado' });
         },
         onSuccess: () => {
             setToastInfo({ message: 'Convocatoria cerrada exitosamente.', type: 'success' });
             queryClient.invalidateQueries({ queryKey: ['openLaunchesForSelector'] });
-            queryClient.invalidateQueries({ queryKey: ['launchHistory'] }); // Update History Tab
+            queryClient.invalidateQueries({ queryKey: ['launchHistory'] }); 
             setSelectedLanzamiento(null); 
         },
-        onError: (err: Error) => {
-            setToastInfo({ message: `Error al cerrar: ${err.message}`, type: 'error' });
-        }
+        onError: (err: Error) => setToastInfo({ message: `Error al cerrar: ${err.message}`, type: 'error' })
     });
 
     const handleToggle = (student: EnrichedStudent) => {
@@ -312,34 +269,25 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
 
     const handleConfirmAndCloseTable = async () => {
         if (!selectedLanzamiento) return;
-        if (!window.confirm(`¿Cerrar mesa? Se enviarán correos a ${selectedCandidates.length} alumnos.`)) return;
-
         setIsClosingTable(true);
         try {
             if (!isTestingMode) {
-                let emailSuccessCount = 0;
                 const emailPromises = selectedCandidates.map(async (student) => {
-                     const res = await sendSmartEmail('seleccion', {
+                     return sendSmartEmail('seleccion', {
                          studentName: student.nombre,
                          studentEmail: student.correo,
                          ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
                          schedule: student.horarioSeleccionado || 'A confirmar'
                      });
-                     if (res.success) emailSuccessCount++;
-                     return res;
                 });
                 await Promise.all(emailPromises);
-                
                 await db.lanzamientos.update(selectedLanzamiento.id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado' });
             } else {
                  await mockDb.update('lanzamientos_pps', selectedLanzamiento.id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado' });
             }
-            
             setToastInfo({ message: `Mesa cerrada.`, type: 'success' });
-            
-            if (onNavigateToInsurance) {
-                setTimeout(() => onNavigateToInsurance(selectedLanzamiento.id), 1500);
-            } else {
+            if (onNavigateToInsurance) setTimeout(() => onNavigateToInsurance(selectedLanzamiento.id), 1500);
+            else {
                 queryClient.invalidateQueries({ queryKey: ['openLaunchesForSelector'] });
                 queryClient.invalidateQueries({ queryKey: ['launchHistory'] });
                 setSelectedLanzamiento(null);

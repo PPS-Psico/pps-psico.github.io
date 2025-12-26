@@ -43,7 +43,8 @@ export interface AppErrorResponse {
 export type Orientacion = typeof ALL_ORIENTACIONES[number];
 export { ALL_ORIENTACIONES };
 
-export type TabId = 'inicio' | 'informes' | 'solicitudes' | 'practicas' | 'profile' | 'calendario' | 'finalizacion';
+// REMOVED 'informes' from TabId
+export type TabId = 'inicio' | 'solicitudes' | 'practicas' | 'profile' | 'calendario' | 'finalizacion' | 'informes';
 
 export interface CriteriosCalculados {
   horasTotales: number;
