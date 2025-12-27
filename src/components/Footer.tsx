@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ALERT_PRACTICAS_TITLE, ALERT_PRACTICAS_TEXT, ALERT_INFORMES_TITLE } from '../constants';
 import Card from './Card';
@@ -51,7 +52,7 @@ const noticeConfig: Partial<Record<TabId, NoticeConfig>> = {
   },
   profile: {
     title: 'Sobre tus Datos Personales',
-    text: 'Mantener tus datos de contacto actualizados es fundamental para que podamos comunicarnos contigo sobre el estado de tus PPS, nuevas convocatorias y fechas importantes. Si detectas algún error, no dudes en solicitar una corrección.',
+    text: 'Mantener tus datos de contacto actualizados es fundamental para que podamos comunicarnos contigo sobre el estado de tus PPS. Ahora tienes el control para editar tu teléfono y correo electrónico directamente desde este panel si detectas algún cambio necesario.',
     icon: 'contact_mail',
     mailToSubject: 'Solicitud de Actualización de Datos - Mi Panel Académico',
     mailToBody: 'Hola,\n\nTengo una consulta o solicitud sobre mis datos personales.\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n- Mi consulta es: [Describe tu duda]\n\nGracias.',
@@ -72,30 +73,32 @@ const Footer: React.FC<FooterProps> = ({ activeTab }) => {
   return (
     <footer className="mt-16 mb-8 animate-fade-in-up">
       <Card>
-        <div className="flex items-start gap-5">
-          <div className="flex-shrink-0">
-            <div className="bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 rounded-full size-11 flex items-center justify-center">
-              <span className="material-icons" aria-hidden="true">
+        <div className="flex flex-col sm:flex-row items-start gap-6">
+          <div className="hidden sm:block flex-shrink-0">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-600 dark:text-blue-400 rounded-2xl h-14 w-14 flex items-center justify-center border border-blue-100 dark:border-blue-800 shadow-sm">
+              <span className="material-icons !text-3xl" aria-hidden="true">
                 {currentNotice.icon}
               </span>
             </div>
           </div>
           <div className="flex-grow">
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg leading-tight">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-lg leading-tight mb-3">
               {currentNotice.title}
             </h3>
-            <p className="mt-2 text-slate-600 dark:text-slate-300 text-sm leading-relaxed max-w-prose">
+            <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed max-w-prose">
               {currentNotice.text}
             </p>
-            <a
-              href={mailToLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2.5 bg-blue-600 text-white font-bold text-sm py-2.5 px-6 rounded-lg border border-transparent hover:bg-blue-700 transition-all duration-200 transform hover:-translate-y-0.5 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-800"
-            >
-              <span className="material-icons !text-base">email</span>
-              <span>{currentNotice.buttonText}</span>
-            </a>
+            <div className="mt-6">
+              <a
+                href={mailToLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 hover:border-blue-200 dark:bg-gradient-to-r dark:from-blue-600 dark:to-indigo-600 dark:text-white dark:border-transparent dark:hover:from-blue-500 dark:hover:to-indigo-500 font-bold text-sm py-3 px-6 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-slate-900"
+              >
+                <span className="material-icons !text-lg">email</span>
+                <span>{currentNotice.buttonText}</span>
+              </a>
+            </div>
           </div>
         </div>
       </Card>

@@ -136,8 +136,8 @@ const ConvocatoriaCard: React.FC<ConvocatoriaCardProps> = ({
   );
 
   // --- BOTONES UNIFICADOS ---
-  // Dimensiones idénticas para todos los botones: h-12 (48px) y min-width
-  const baseButtonClasses = "w-full sm:w-auto h-12 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 shadow-sm border select-none min-w-[200px]";
+  // Dimensiones idénticas para todos los botones: h-12 (48px) y min-width aumentado a 240px para consistencia visual
+  const baseButtonClasses = "w-full sm:w-auto h-12 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 shadow-sm border select-none min-w-[240px]";
 
   const InscribirButton: React.FC = () => (
     <button

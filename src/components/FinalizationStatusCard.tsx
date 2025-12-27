@@ -275,11 +275,11 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                         </div>
                     </div>
 
-                    {/* CARD SOPORTE */}
-                    <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-200 dark:border-slate-700 shadow-md relative overflow-hidden group">
+                    {/* CARD SOPORTE - UPDATED PADDING */}
+                    <div className="bg-white dark:bg-slate-800 rounded-[2rem] px-6 pt-8 pb-6 border border-slate-200 dark:border-slate-700 shadow-md relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-white dark:from-slate-800 dark:to-slate-900 pointer-events-none"></div>
 
-                        <div className="relative z-10 flex flex-col gap-3">
+                        <div className="relative z-10 flex flex-col gap-6">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-slate-600 shadow-sm">
                                     <span className="material-icons !text-xl">support_agent</span>

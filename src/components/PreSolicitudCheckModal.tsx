@@ -20,8 +20,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredInstitutions = useMemo(() => {
-    // We trust existingInstitutions to be already cleaned by the parent (App.tsx)
-    // This simplifies the logic and centralizes the exclusion rules.
+    // Return all if no search term, otherwise filter
     if (!searchTerm) return existingInstitutions;
     
     const lowerSearch = normalizeStringForComparison(searchTerm);
@@ -83,7 +82,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                 </p>
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col max-h-[300px]">
+            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col h-96">
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
                     <Input 
                         placeholder="Buscar institución en el listado actual..." 
@@ -94,7 +93,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                     />
                 </div>
                 <div className="overflow-y-auto p-2 bg-slate-50/30 dark:bg-slate-900/30 custom-scrollbar flex-grow">
-                    {filteredInstitutions.length > 0 ? (
+                    {filteredInstitutions && filteredInstitutions.length > 0 ? (
                         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {filteredInstitutions.map((inst, idx) => (
                                 <li key={idx} className="text-xs px-3 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2 truncate" title={inst}>
@@ -104,8 +103,10 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                             ))}
                         </ul>
                     ) : (
-                        <p className="text-center text-sm text-slate-500 py-6 italic font-medium">
-                            No se encontraron instituciones con ese nombre en el listado actual.
+                        <p className="text-center text-sm text-slate-500 py-10 italic font-medium">
+                            {existingInstitutions.length === 0 
+                                ? "Cargando lista de instituciones..." 
+                                : "No se encontraron instituciones con ese nombre en el listado actual."}
                         </p>
                     )}
                 </div>

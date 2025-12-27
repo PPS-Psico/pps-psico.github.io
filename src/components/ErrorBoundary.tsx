@@ -15,13 +15,12 @@ interface ErrorBoundaryState {
  * Standard React Error Boundary component to catch rendering errors and show a fallback UI.
  */
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = {
-    hasError: false,
-    error: undefined
-  };
-
   constructor(props: ErrorBoundaryProps) {
     super(props);
+    this.state = {
+      hasError: false,
+      error: undefined
+    };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {

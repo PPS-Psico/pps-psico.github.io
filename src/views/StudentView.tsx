@@ -16,13 +16,6 @@ const StudentLayout: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // Scroll to top on route change ONLY on mobile
-    useEffect(() => {
-        if (window.innerWidth < 768) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, [location.pathname]);
-
     // Determine active tab from URL
     let activeTab: TabId = 'inicio';
     if (location.pathname.includes('/practicas')) activeTab = 'practicas';

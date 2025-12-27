@@ -35,11 +35,11 @@ const Card: React.FC<CardProps> = ({
       style={style}
     >
       {(title || description || actions) && (
-        <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-slate-100 dark:border-white/10 ${noPadding ? 'p-6' : 'p-6 sm:p-8 mb-0'}`}>
+        <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100/50 dark:border-white/5 ${noPadding ? 'p-6' : 'p-6 sm:p-8 mb-0'}`}>
           {(title || description) && (
             <div className="flex items-start gap-4 flex-grow">
               {icon && (
-                <div className="flex-shrink-0 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-2xl h-12 w-12 flex items-center justify-center shadow-sm border border-blue-100 dark:border-slate-700">
+                <div className="flex-shrink-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 text-blue-600 dark:text-blue-400 rounded-2xl h-12 w-12 flex items-center justify-center shadow-sm">
                   <span className="material-icons !text-2xl">{icon}</span>
                 </div>
               )}

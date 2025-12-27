@@ -211,83 +211,110 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
         { 
             key: 'horas' as FileUploadType, 
             label: 'Planilla de Seguimiento', 
-            desc: 'Excel de seguimiento de horas firmado por el tutor.', 
+            desc: 'Excel de seguimiento de horas completo.', 
             icon: 'schedule',
+            iconColor: 'text-blue-500',
+            bgColor: 'bg-blue-100 dark:bg-blue-900/30',
             hasTemplate: true,
             allowsMultiple: false 
         },
         { 
             key: 'asistencia' as FileUploadType, 
             label: 'Planillas de Asistencia', 
-            desc: 'Registros diarios de asistencia firmados. Puedes subir múltiples fotos o PDFs.', 
+            desc: 'Registros diarios de todas tus PPS presenciales. Puedes subir fotos o PDFs.', 
             icon: 'event_available',
+            iconColor: 'text-purple-500',
+            bgColor: 'bg-purple-100 dark:bg-purple-900/30',
             allowsMultiple: true
         },
         { 
             key: 'informe' as FileUploadType, 
             label: 'Informes Finales', 
-            desc: 'Informes de la práctica. Puedes subir múltiples archivos si es necesario.', 
+            desc: 'Informes de todas las prácticas. Puedes subir múltiples archivos.', 
             icon: 'description',
+            iconColor: 'text-emerald-500',
+            bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
             allowsMultiple: true
         },
     ];
 
     return (
-        <div className="animate-fade-in-up h-full flex flex-col">
+        <div className="animate-fade-in-up h-full flex flex-col bg-white dark:bg-slate-900">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
             
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+            {/* Header Estilizado */}
+            <div className="p-5 border-b border-indigo-100 dark:border-slate-800 bg-indigo-50/50 dark:bg-slate-900/50 flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 rounded-2xl shadow-sm border border-indigo-100 dark:border-slate-700">
                         <span className="material-icons !text-2xl">verified</span>
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Solicitud de Finalización</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Adjunta la documentación final para cerrar tu ciclo de prácticas.</p>
+                        <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Solicitud de Finalización</h2>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Adjunta la documentación para cerrar el ciclo.</p>
                     </div>
                 </div>
+                <button 
+                    onClick={onClose} 
+                    className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                >
+                    <span className="material-icons !text-xl">close</span>
+                </button>
             </div>
 
-            <div className="flex-grow overflow-y-auto p-6 space-y-8 bg-slate-50 dark:bg-slate-900/30">
+            <div className="flex-grow overflow-y-auto p-6 space-y-6 custom-scrollbar">
                 
                 {uploadSections.map((section) => {
                     const categoryState = fileCategories[section.key];
                     const isActive = dragActive === section.key;
+                    const hasFiles = categoryState.files.length > 0;
 
                     return (
-                        <div key={section.key} className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                    <h4 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                        <span className="material-icons text-blue-500 !text-lg">{section.icon}</span>
-                                        {section.label}
-                                    </h4>
-                                    {(section.allowsMultiple || categoryState.files.length > 0) && (
-                                        <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
-                                            {categoryState.files.length} {categoryState.files.length === 1 ? 'archivo' : 'archivos'}
+                        <div key={section.key} className={`
+                            relative rounded-2xl border-2 transition-all duration-300 overflow-hidden
+                            ${isActive 
+                                ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-lg scale-[1.01]' 
+                                : hasFiles 
+                                    ? 'border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-slate-800' 
+                                    : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-blue-200 dark:hover:border-slate-600'
+                            }
+                        `}>
+                             <div className="p-5">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-xl ${section.bgColor} ${section.iconColor}`}>
+                                            <span className="material-icons !text-xl">{section.icon}</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{section.label}</h4>
+                                            {section.hasTemplate && (
+                                                <button 
+                                                    onClick={handleDownloadTemplate}
+                                                    disabled={isDownloadingTemplate}
+                                                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5 mt-0.5"
+                                                >
+                                                    {isDownloadingTemplate ? 'Descargando...' : 'Descargar plantilla'}
+                                                    <span className="material-icons !text-[10px]">download</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {hasFiles && (
+                                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            <span className="material-icons !text-[12px]">check</span>
+                                            Listo
                                         </span>
                                     )}
                                 </div>
-                                {section.hasTemplate && (
-                                    <button 
-                                        onClick={handleDownloadTemplate}
-                                        disabled={isDownloadingTemplate}
-                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
-                                    >
-                                        {isDownloadingTemplate ? <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div> : <span className="material-icons !text-sm">download</span>}
-                                        Descargar Plantilla
-                                    </button>
-                                )}
-                            </div>
-                            
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{section.desc}</p>
+                                
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 pl-1">{section.desc}</p>
 
-                            {section.allowsMultiple ? (
+                                {/* Drop Zone Area */}
                                 <div 
-                                    className={`relative border-2 border-dashed rounded-xl p-6 transition-all duration-200 text-center cursor-pointer group
+                                    className={`
+                                        rounded-xl border-2 border-dashed p-4 text-center cursor-pointer transition-colors
                                         ${isActive 
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                                            : 'border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-white dark:hover:bg-slate-800 bg-slate-100/50 dark:bg-slate-800/50'
+                                            ? 'border-blue-400 bg-white/50 dark:bg-black/20' 
+                                            : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-700/30'
                                         }
                                     `}
                                     onDragEnter={(e) => handleDrag(e, section.key)}
@@ -301,105 +328,82 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                                         ref={fileInputRefs[section.key]}
                                         onChange={(e) => handleFilesAdded(e.target.files, section.key)}
                                         className="hidden"
-                                        multiple
+                                        multiple={section.allowsMultiple}
                                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                                     />
-                                    
-                                    <div className="pointer-events-none">
-                                        <span className={`material-icons !text-4xl mb-2 transition-colors ${isActive ? 'text-blue-500' : 'text-slate-400 group-hover:text-blue-400'}`}>cloud_upload</span>
-                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                            {isActive ? "Suelta los archivos aquí" : "Haz clic o arrastra tus archivos aquí"}
-                                        </p>
-                                        <p className="text-xs text-slate-400 mt-1">Soporta PDF, Excel, Word, Imágenes (Máx 10MB)</p>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <span className={`material-icons !text-2xl ${isActive ? 'text-blue-500' : 'text-slate-300 dark:text-slate-600'}`}>cloud_upload</span>
+                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                            {isActive ? 'Suelta aquí' : (hasFiles ? 'Agregar más archivos' : 'Haz clic para subir')}
+                                        </span>
                                     </div>
                                 </div>
-                            ) : (
-                                <div>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRefs[section.key]}
-                                        onChange={(e) => handleFilesAdded(e.target.files, section.key)}
-                                        className="hidden"
-                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-                                    />
-                                    
-                                    {categoryState.files.length === 0 ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRefs[section.key].current?.click()}
-                                            className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm"
-                                        >
-                                            <span className="material-icons text-blue-500 !text-xl">upload_file</span>
-                                            <span>Seleccionar Archivo</span>
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRefs[section.key].current?.click()}
-                                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1"
-                                        >
-                                            <span className="material-icons !text-sm">autorenew</span> Reemplazar archivo
-                                        </button>
-                                    )}
-                                </div>
-                            )}
 
-                            {categoryState.files.length > 0 && (
-                                <div className={`grid grid-cols-1 ${section.allowsMultiple ? 'sm:grid-cols-2' : ''} gap-2 mt-3`}>
-                                    {categoryState.files.map((file, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm animate-fade-in">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <span className="material-icons text-slate-400 !text-xl shrink-0">description</span>
-                                                <span className="text-sm text-slate-700 dark:text-slate-200 truncate" title={file.name}>{file.name}</span>
+                                {/* File List */}
+                                {hasFiles && (
+                                    <div className="mt-3 space-y-2">
+                                        {categoryState.files.map((file, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    <span className="material-icons text-slate-400 !text-base shrink-0">description</span>
+                                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{file.name}</span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleFileRemove(section.key, idx)}
+                                                    className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded transition-colors"
+                                                >
+                                                    <span className="material-icons !text-base">close</span>
+                                                </button>
                                             </div>
-                                            <button 
-                                                onClick={() => handleFileRemove(section.key, idx)}
-                                                className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded transition-colors"
-                                                title="Eliminar archivo"
-                                            >
-                                                <span className="material-icons !text-lg">close</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     );
                 })}
 
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200/70 dark:border-slate-700 shadow-sm mt-8">
-                    <div className="flex items-center gap-2 mb-3">
-                        <span className="material-icons text-amber-500 !text-xl">tips_and_updates</span>
-                        <h3 className="text-slate-800 dark:text-slate-100 font-semibold text-base leading-tight">
-                            Sugerencias (Opcional)
+                <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-800/50">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="material-icons text-amber-500 !text-lg">tips_and_updates</span>
+                        <h3 className="text-amber-900 dark:text-amber-100 font-bold text-sm">
+                            Espacio de sugerencias (Opcional)
                         </h3>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
-                        ¿Tienes alguna sugerencia para mejorar el proceso de prácticas? Tu opinión es valiosa.
-                    </p>
                     <textarea
                         value={sugerencias}
                         onChange={(e) => setSugerencias(e.target.value)}
-                        rows={3}
-                        className="w-full text-sm rounded-lg border p-3 bg-slate-50 dark:bg-slate-900/50 shadow-inner outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200"
-                        placeholder="Escribe tus comentarios aquí..."
+                        rows={2}
+                        className="w-full text-xs rounded-xl border border-amber-200 dark:border-amber-800/50 bg-white dark:bg-slate-900 p-3 outline-none focus:ring-2 focus:ring-amber-400 text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
+                        placeholder="¿Algo para mejorar en el proceso?"
                     />
                 </div>
             </div>
 
-            <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex justify-end items-center gap-4">
+            <div className="p-5 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row justify-end items-center gap-3">
                 {submitMutation.isPending && (
-                    <span className="text-sm text-slate-500 animate-pulse">Subiendo archivos, por favor espera...</span>
+                    <span className="text-xs font-bold text-slate-500 animate-pulse flex items-center gap-1">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div> Subiendo archivos...
+                    </span>
                 )}
-                <Button
-                    onClick={() => submitMutation.mutate()}
-                    isLoading={submitMutation.isPending}
-                    disabled={fileCategories.horas.files.length === 0 || fileCategories.asistencia.files.length === 0 || fileCategories.informe.files.length === 0}
-                    icon="send"
-                    className="w-full sm:w-auto shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                >
-                    Enviar Solicitud y Finalizar
-                </Button>
+                <div className="flex gap-3 w-full sm:w-auto">
+                    <button 
+                         onClick={() => onClose ? onClose() : window.location.reload()}
+                         className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+                         disabled={submitMutation.isPending}
+                    >
+                        Cancelar
+                    </button>
+                    <Button
+                        onClick={() => submitMutation.mutate()}
+                        isLoading={submitMutation.isPending}
+                        disabled={fileCategories.horas.files.length === 0 || fileCategories.asistencia.files.length === 0 || fileCategories.informe.files.length === 0}
+                        icon="send"
+                        className="flex-1 sm:flex-none shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                        Finalizar
+                    </Button>
+                </div>
             </div>
         </div>
     );

@@ -9,26 +9,20 @@ interface MobileCriteriaCardProps {
 }
 
 const MobileCriteriaCard: React.FC<MobileCriteriaCardProps> = ({ criterios, selectedOrientacion }) => {
-  // Helpers para estados visuales
   const isRotationComplete = criterios.cumpleRotacion;
   const isSpecialtyComplete = criterios.cumpleHorasOrientacion;
   const isTotalComplete = criterios.cumpleHorasTotales;
 
-  const Badge = ({ isComplete, icon, text, subtext }: { isComplete: boolean; icon: string; text: string; subtext?: string }) => (
+  const Badge = ({ isComplete, text, subtext }: { isComplete: boolean; text: string; subtext?: string }) => (
     <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors ${isComplete 
-      ? 'bg-emerald-50/80 border-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400' 
-      : 'bg-white/60 border-slate-100 text-slate-600 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+      ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300' 
+      : 'bg-white/60 border-slate-100 text-slate-700 dark:bg-indigo-900/10 dark:border-indigo-800 dark:text-indigo-200'
     }`}>
-      <div className="flex items-center gap-3">
-        <div className={`p-1.5 rounded-lg ${isComplete ? 'bg-emerald-200/50 text-emerald-700 dark:bg-emerald-800/50' : 'bg-slate-200/50 text-slate-500 dark:bg-indigo-500/20 dark:text-indigo-400'}`}>
-            <span className="material-icons !text-sm block">
-            {icon}
-            </span>
-        </div>
-        <span className="text-xs font-bold uppercase tracking-wider">{text}</span>
+      <div>
+        <span className="text-xs font-bold uppercase tracking-wider block">{text}</span>
       </div>
-      <span className="text-xs font-mono font-semibold opacity-90">
-        {isComplete ? <span className="material-icons !text-lg text-emerald-500">check_circle</span> : subtext}
+      <span className="text-sm font-black font-mono opacity-100">
+        {subtext}
       </span>
     </div>
   );
@@ -59,19 +53,15 @@ const MobileCriteriaCard: React.FC<MobileCriteriaCardProps> = ({ criterios, sele
               </div>
           </div>
 
-          <div className="space-y-3">
-              {/* Rotación */}
+          <div className="space-y-2">
               <Badge 
                 isComplete={isRotationComplete}
-                icon="autorenew"
                 text="Rotación de Áreas"
                 subtext={`${criterios.orientacionesCursadasCount} / ${ROTACION_OBJETIVO_ORIENTACIONES}`}
               />
 
-              {/* Especialidad */}
               <Badge 
                 isComplete={isSpecialtyComplete}
-                icon="psychology"
                 text={selectedOrientacion ? selectedOrientacion : "Especialidad"}
                 subtext={selectedOrientacion ? `${Math.round(criterios.horasOrientacionElegida)}hs` : "-"}
               />

@@ -5,17 +5,16 @@
 
 :root {
   --color-primary: 37, 99, 235;
-  --glass-border: rgba(37, 99, 235, 0.08);
-  --glass-bg: rgba(255, 255, 255, 0.9);
-  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
 
 html.dark {
   color-scheme: dark;
-  /* Dark Mode mejorado: Fondo más profundo (Slate 950/Black) en lugar de gris */
-  --glass-border: rgba(255, 255, 255, 0.05); 
-  --glass-bg: rgba(2, 6, 23, 0.8); 
-  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
 html, body {
@@ -28,12 +27,12 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #ffffff; /* Pure white for cleaner look */
+  background-color: #f8fafc;
   color: #0f172a;
 }
 
 html.dark body {
-  background-color: #020617; /* Deepest Slate/Black */
+  background-color: #020617;
   color: #f1f5f9;
 }
 
@@ -41,10 +40,13 @@ html.dark body {
   min-height: 100vh;
   width: 100%;
   position: relative;
-  /* Fondo más sutil y moderno */
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.03) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.03) 0px, transparent 50%);
+  /* Fondo animado sutil */
+  background: 
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
+  background-attachment: fixed;
 }
 
 /* --- CLASES DE UTILIDAD PREMIUM --- */
@@ -57,19 +59,13 @@ html.dark body {
   box-shadow: var(--glass-shadow);
 }
 
-/* Dark Mode Glow Effect Subtle */
-html.dark .glass-panel {
-  box-shadow: 
-    0 0 0 1px rgba(255,255,255,0.03),
-    0 4px 6px -1px rgba(0, 0, 0, 0.3);
-}
-
 .text-gradient-primary {
   background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
+/* Animaciones suaves */
 @keyframes float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-5px); }
@@ -80,16 +76,11 @@ html.dark .glass-panel {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.1); }
-  50% { box-shadow: 0 0 30px rgba(37, 99, 235, 0.2); }
+  0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
 }
 .animate-pulse-glow {
   animation: pulse-glow 3s infinite;
-}
-
-@keyframes subtle-bob {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-2px); }
 }
 
 /* Scrollbar minimalista */
@@ -114,15 +105,13 @@ html.dark .glass-panel {
   background: #475569;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* Ocultar scrollbar pero permitir scroll */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
-/* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @media print {
