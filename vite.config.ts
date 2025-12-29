@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
-    base: './',
+    // IMPORTANTE: Esto debe coincidir con el nombre de tu repositorio en GitHub
+    base: '/consulta-pps-uflo/',
     plugins: [react()],
     resolve: {
       alias: {
