@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface ToastProps {
@@ -11,14 +12,19 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    setIsVisible(true);
-    const timer = setTimeout(() => {
+    // Small delay to ensure DOM is ready before animating in
+    const entryTimer = setTimeout(() => setIsVisible(true), 50);
+    
+    const exitTimer = setTimeout(() => {
       setIsVisible(false);
       // Allow time for fade-out animation before calling onClose
       setTimeout(onClose, 300);
     }, duration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(entryTimer);
+      clearTimeout(exitTimer);
+    };
   }, [duration, onClose]);
   
   let stateClasses = '';
@@ -58,9 +64,17 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
       <div className={`flex-shrink-0 ${iconColor}`}>
         <span className="material-icons">{icon}</span>
       </div>
-      <div className="flex-grow text-sm font-medium">{message}</div>
+      {/* 
+         CRITICAL FIX: Wrap text in a span. 
+         Google Translate often replaces text nodes directly. If React holds a reference 
+         to that text node and it gets replaced by a <font> tag, React crashes on unmount/update.
+         Wrapping it isolates the text node.
+      */}
+      <div className="flex-grow text-sm font-medium">
+          <span>{message}</span>
+      </div>
       <button
-        onClick={onClose}
+        onClick={() => { setIsVisible(false); setTimeout(onClose, 300); }}
         className="flex-shrink-0 p-1 -m-1 rounded-full hover:bg-black/10 transition-colors"
         aria-label="Cerrar notificación"
       >

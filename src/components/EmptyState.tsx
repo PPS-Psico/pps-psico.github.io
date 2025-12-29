@@ -56,12 +56,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message, className
       </div>
 
       <h3 className="font-extrabold text-slate-900 dark:text-white text-xl sm:text-2xl tracking-tight mb-2">
-        {title}
+        <span>{title}</span>
       </h3>
       
-      <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium max-w-md mx-auto leading-relaxed">
-        {message}
-      </p>
+      <div className="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium max-w-md mx-auto leading-relaxed">
+        <span>{message}</span>
+      </div>
 
       {action && (
         <div className="mt-8 flex justify-center">

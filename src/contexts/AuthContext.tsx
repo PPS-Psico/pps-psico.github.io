@@ -43,6 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Refs to track state without triggering re-renders
   const refreshLoopCounter = useRef(0);
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const authStabilizationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Función de limpieza profunda
   const deepCleanup = useCallback(() => {
@@ -63,7 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // 2. Clear local state first
         setAuthenticatedUser(null);
         
-        // 3. Sign out from Supabase
+        // 3. Sign out from Supabase (Safe catch if no session exists)
         const { error } = await (supabase.auth as any).signOut();
         if (error) console.warn("Supabase signOut warning:", error.message);
 
@@ -112,34 +113,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 if (profile && !error) {
                     const dbRole = profile[FIELD_ROLE_ESTUDIANTES] as AuthUser['role'] | undefined;
                     
-                    setAuthenticatedUser({
-                        id: session.user.id,
-                        legajo: profile[FIELD_LEGAJO_ESTUDIANTES],
-                        nombre: profile[FIELD_NOMBRE_ESTUDIANTES],
-                        orientaciones: profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] ? [profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]] : [],
-                        mustChangePassword: profile[FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES],
-                        role: dbRole
-                    });
-                } else {
-                    // Orphaned session (User exists in Auth but not in DB)
-                    // Check if it's a special admin account or really an error
-                    // Si el usuario es el admin "hardcoded", no lo deslogueamos aquí, lo maneja el hook useAuthLogic o el login manual.
-                    // Pero si es un estudiante huérfano, hay que limpiar.
-                    console.warn("Profile not found for authenticated user. Posible Admin o Error de Integridad.");
+                    // Stabilization: Delay the state update slightly to let previous React tree unmount cleanly
+                    if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
                     
-                    // Si no es un usuario especial, forzamos logout para evitar estado zombie
-                    if (session.user.email !== 'admin@uflo.edu.ar') { // Ejemplo de check
-                         // No forzamos logout inmediato para no romper logins de admin manuales, 
-                         // pero dejamos el estado null para que la UI pida login.
+                    authStabilizationTimer.current = setTimeout(() => {
+                        setAuthenticatedUser({
+                            id: session.user.id,
+                            legajo: profile[FIELD_LEGAJO_ESTUDIANTES],
+                            nombre: profile[FIELD_NOMBRE_ESTUDIANTES],
+                            orientaciones: profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] ? [profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]] : [],
+                            mustChangePassword: profile[FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES],
+                            role: dbRole
+                        });
+                        setIsAuthLoading(false);
+                    }, 50); // Small delay to decouple from event loop
+
+                } else {
+                    console.warn("Profile not found for authenticated user. Posible Admin o Error de Integridad.");
+                    if (session.user.email !== 'admin@uflo.edu.ar') {
                          setAuthenticatedUser(null);
+                         setIsAuthLoading(false);
                     }
                 }
             }
         } catch (err) {
             console.error("Profile fetch error:", err);
-            if (isMounted) setAuthenticatedUser(null);
-        } finally {
-            if (isMounted) setIsAuthLoading(false);
+            if (isMounted) {
+                setAuthenticatedUser(null);
+                setIsAuthLoading(false);
+            }
         }
     };
 
@@ -147,7 +149,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     (supabase.auth as any).getSession().then(({ data, error }: any) => {
         if (error) {
             const msg = error.message.toLowerCase();
-            // DETECCIÓN CRÍTICA DE TOKEN INVÁLIDO
             if (msg.includes("refresh token") || msg.includes("not found") || msg.includes("invalid")) {
                 console.error("🚨 Token corrupto detectado. Limpiando almacenamiento.");
                 deepCleanup();
@@ -167,7 +168,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (event === 'TOKEN_REFRESHED') {
             refreshLoopCounter.current += 1;
-            // Si hay muchos refrescos seguidos, es un bucle infinito -> Kill session
             if (refreshLoopCounter.current > 3) {
                 console.error("🔄 Bucle de refresco detectado. Forzando salida.");
                 refreshLoopCounter.current = 0;
@@ -186,12 +186,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 queryClient.clear();
             }
         }
-      }
+    }
     );
 
     return () => {
         isMounted = false;
         if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+        if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
         subscription.unsubscribe();
     };
   }, [queryClient, deepCleanup]);

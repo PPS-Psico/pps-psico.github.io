@@ -23,6 +23,10 @@ if (!rootElement) {
   throw new Error("No se encontró el elemento root");
 }
 
+// Ensure the root element itself blocks translation to protect React tree
+rootElement.classList.add('notranslate');
+rootElement.setAttribute('translate', 'no');
+
 const root = createRoot(rootElement);
 
 root.render(
