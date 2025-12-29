@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import './index.css';
 
-// --- REACT RESILIENCE PATCH (GOOGLE TRANSLATE FIX) ---
+// --- REACT RESILIENCE PATCH ---
 if (typeof Node === 'function' && Node.prototype) {
   const originalRemoveChild = Node.prototype.removeChild;
   Node.prototype.removeChild = function <T extends Node>(child: T): T {
@@ -47,26 +47,22 @@ if (!container) {
   throw new Error("No se encontró el elemento root");
 }
 
-// --- SINGLETON ROOT PATTERN ---
-// Previene que la aplicación se monte múltiples veces si el script se carga duplicado
-// o durante actualizaciones de Hot Module Replacement (HMR).
-
-// @ts-ignore - Propiedad custom para rastrear el root en window
-if (window.__APP_MOUNTED__) {
-  console.warn("⚠️ La aplicación ya estaba montada. Limpiando para remontaje...");
-  // Si llegamos aquí, es probable que haya un remanente. Limpiamos el DOM.
-  container.innerHTML = '';
+// --- SINGLETON PATTERN ---
+// @ts-ignore
+if (window.__REACT_ROOT_INSTANCE__) {
+    console.log('Desmontando instancia previa (src/main)...');
+    // @ts-ignore
+    window.__REACT_ROOT_INSTANCE__.unmount();
 }
 
-// @ts-ignore
-window.__APP_MOUNTED__ = true;
-
-// Aseguramos limpieza visual antes de crear el root
+// Limpieza visual extra por seguridad
 if (container.hasChildNodes()) {
   container.innerHTML = '';
 }
 
 const root = createRoot(container);
+// @ts-ignore
+window.__REACT_ROOT_INSTANCE__ = root;
 
 root.render(
   <React.StrictMode>
@@ -83,7 +79,6 @@ root.render(
 const meta = import.meta as any;
 if (meta.env && meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Usamos ruta relativa para que funcione bajo el subdirectorio de GitHub Pages
     navigator.serviceWorker.register('./sw.js')
       .then(registration => {
         console.log('SW registrado:', registration.scope);

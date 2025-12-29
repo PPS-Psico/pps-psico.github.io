@@ -13,9 +13,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
-    // IMPORTANTE: Esto debe coincidir con el nombre de tu repositorio en GitHub
-    // para que los archivos CSS/JS se carguen desde la ruta correcta (evita error 404).
-    base: '/consulta-pps-uflo/', 
+    // CAMBIO CLAVE: Usar ruta relativa './' permite que la app funcione
+    // tanto en el subdirectorio de GitHub Pages como en la raíz del preview local.
+    // Esto soluciona los errores 404 de CSS/JS.
+    base: './', 
     plugins: [react()],
     resolve: {
       alias: {
@@ -29,7 +30,6 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
-      // Limpia el directorio de salida antes de construir para evitar archivos viejos
       emptyOutDir: true, 
       rollupOptions: {
         output: {
