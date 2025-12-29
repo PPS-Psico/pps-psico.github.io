@@ -13,14 +13,14 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
-    // Uso de rutas relativas para máxima compatibilidad con GitHub Pages y HashRouter
-    base: './',
+    // IMPORTANTE: Esto debe coincidir con el nombre de tu repositorio en GitHub
+    // para que los archivos CSS/JS se carguen desde la ruta correcta (evita error 404).
+    base: '/consulta-pps-uflo/', 
     plugins: [react()],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
-      // Esta opción le dice a Vite que se asegure de usar una única copia de estas librerías
       dedupe: ['react', 'react-dom', 'react-router-dom'],
     },
     define: {
@@ -29,18 +29,15 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
+      // Limpia el directorio de salida antes de construir para evitar archivos viejos
+      emptyOutDir: true, 
       rollupOptions: {
         output: {
-          // Asegurar nombres de archivo amigables para caché
           entryFileNames: 'assets/[name]-[hash].js',
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]'
         }
       },
-    },
-    // Optimize deps to ensure they are pre-bundled correctly
-    optimizeDeps: {
-      include: ['react', 'react-dom', 'react-router-dom']
     }
   }
 })

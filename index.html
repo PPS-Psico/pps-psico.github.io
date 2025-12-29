@@ -1,85 +1,82 @@
+
 <!DOCTYPE html>
 <html lang="es" translate="no" class="notranslate">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="google" content="notranslate" />
-  <meta name="description" content="Portal de autogestión para Prácticas Profesionales Supervisadas - UFLO" />
-  <title>Consulta de PPS y Prácticas</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google" content="notranslate" />
+    <meta name="description" content="Portal de autogestión para Prácticas Profesionales Supervisadas - UFLO" />
+    <title>Consulta de PPS y Prácticas</title>
 
-  <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%232563eb%22%3E%3Cpath%20d%3D%22M5%2013.18v4L12%2021l7-3.82v-4L12%2017l-7-3.82zM12%203L1%209l11%206%209-4.91V17h2V9L12%203z%22/%3E%3C/svg%3E">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%232563eb%22%3E%3Cpath%20d%3D%22M5%2013.18v4L12%2021l7-3.82v-4L12%2017l-7-3.82zM12%203L1%209l11%206%209-4.91V17h2V9L12%203z%22/%3E%3C/svg%3E">
 
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json" />
+    <!-- Tailwind Config for Development/Preview (Removed in Prod by prep-github script) -->
+    <!-- Tailwind CDN removed for production build -->
+    <script>
+      if (typeof tailwind !== 'undefined') {
+        tailwind.config = { darkMode: 'class' };
+      }
+    </script>
 
-  <!-- Theme color -->
-  <meta name="theme-color" content="#2563eb" />
+    <!-- Dark mode init -->
+    <script>
+      if (
+        localStorage.getItem('theme') === 'dark' ||
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
 
-  <!-- Tailwind CSS CDN (Required for AI Studio Preview Environment as PostCSS might not run) -->
-  <!-- Tailwind CDN removed for production build -->
-
-  <!-- Dark mode script -->
-  <script>
-    if (typeof tailwind !== 'undefined') {
-      tailwind.config = { darkMode: 'class' };
-    }
-    if (
-      localStorage.getItem('theme') === 'dark' ||
-      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    ) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  </script>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet" />
-<script type="importmap">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet" />
+  <script type="importmap">
 {
   "imports": {
-    "vite": "https://esm.sh/vite@^7.3.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
-    "date-fns/": "https://esm.sh/date-fns@^4.1.0/",
-    "date-fns": "https://esm.sh/date-fns@^4.1.0",
-    "url": "https://esm.sh/url@^0.11.4",
-    "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
-    "file-saver": "https://esm.sh/file-saver@^2.0.5",
-    "dompurify": "https://esm.sh/dompurify@^3.3.1",
-    "jszip": "https://esm.sh/jszip@^3.10.1",
-    "path": "https://esm.sh/path@^0.12.7",
-    "@tanstack/react-query-devtools": "https://esm.sh/@tanstack/react-query-devtools@^5.91.2",
-    "fs": "https://esm.sh/fs@^0.0.1-security",
-    "zod": "https://esm.sh/zod@^4.2.1",
     "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@^5.90.14",
+    "@tanstack/react-query-devtools": "https://esm.sh/@tanstack/react-query-devtools@^5.91.2",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+    "zod": "https://esm.sh/zod@^4.2.1",
+    "date-fns": "https://esm.sh/date-fns@^4.1.0",
+    "exceljs": "https://esm.sh/exceljs@^4.4.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "jest": "https://esm.sh/jest@^30.2.0",
     "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1",
+    "@jest/globals": "https://esm.sh/@jest/globals@^30.2.0",
     "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.1",
     "@storybook/react": "https://esm.sh/@storybook/react@^10.1.10",
+    "dompurify": "https://esm.sh/dompurify@^3.3.1",
     "@testing-library/user-event": "https://esm.sh/@testing-library/user-event@^14.6.1",
-    "exceljs": "https://esm.sh/exceljs@^4.4.0",
-    "jest": "https://esm.sh/jest@^30.2.0",
-    "@jest/globals": "https://esm.sh/@jest/globals@^30.2.0"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "jszip": "https://esm.sh/jszip@^3.10.1",
+    "file-saver": "https://esm.sh/file-saver@^2.0.5",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "path": "https://esm.sh/path@^0.12.7",
+    "url": "https://esm.sh/url@^0.11.4",
+    "date-fns/": "https://esm.sh/date-fns@^4.1.0/",
+    "recharts": "https://esm.sh/recharts@^3.6.0"
   }
 }
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="notranslate">
-  <div id="root"></div>
-  <!-- Entry point -->
-  <script type="module" src="/src/main.tsx"></script>
-<script type="module" src="/index.tsx"></script>
+  <body class="notranslate">
+    <div id="root"></div>
+    <!-- Entry point: Vite will inject CSS automatically. No manual <link> tags for styles here. -->
+    <script type="module" src="/src/main.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>

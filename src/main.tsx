@@ -9,13 +9,11 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import './index.css';
 
 // --- REACT RESILIENCE PATCH (GOOGLE TRANSLATE FIX) ---
-// Intercepta errores del DOM causados por traductores automáticos
-// evitando que la aplicación se rompa (pantalla blanca/error removeChild).
 if (typeof Node === 'function' && Node.prototype) {
   const originalRemoveChild = Node.prototype.removeChild;
   Node.prototype.removeChild = function <T extends Node>(child: T): T {
     if (child.parentNode !== this) {
-      if (console) console.warn('[React Resilience] Suppressing removeChild error from external mutation.');
+      if (console) console.warn('[React Resilience] Suppressing removeChild error.');
       return child;
     }
     return originalRemoveChild.call(this, child) as T;
@@ -24,14 +22,13 @@ if (typeof Node === 'function' && Node.prototype) {
   const originalInsertBefore = Node.prototype.insertBefore;
   Node.prototype.insertBefore = function <T extends Node>(newNode: T, referenceNode: Node | null): T {
     if (referenceNode && referenceNode.parentNode !== this) {
-      if (console) console.warn('[React Resilience] Suppressing insertBefore error from external mutation.');
+      if (console) console.warn('[React Resilience] Suppressing insertBefore error.');
       return newNode;
     }
     return originalInsertBefore.call(this, newNode, referenceNode) as T;
   };
 }
 
-// Deshabilitar traducción automática preventivamente en el body
 document.body.classList.add('notranslate');
 document.body.setAttribute('translate', 'no');
 
@@ -44,18 +41,32 @@ const queryClient = new QueryClient({
   },
 });
 
-const rootElement = document.getElementById('root');
+const container = document.getElementById('root');
 
-if (!rootElement) {
+if (!container) {
   throw new Error("No se encontró el elemento root");
 }
 
-// --- SOLUCIÓN ESTRUCTURAL: LIMPIEZA DE CONTENEDOR ---
-// Esto previene el problema de "pantalla duplicada" en entornos de desarrollo/preview
-// asegurando que el contenedor esté vacío antes de que React monte la aplicación.
-rootElement.innerHTML = '';
+// --- SINGLETON ROOT PATTERN ---
+// Previene que la aplicación se monte múltiples veces si el script se carga duplicado
+// o durante actualizaciones de Hot Module Replacement (HMR).
 
-const root = createRoot(rootElement);
+// @ts-ignore - Propiedad custom para rastrear el root en window
+if (window.__APP_MOUNTED__) {
+  console.warn("⚠️ La aplicación ya estaba montada. Limpiando para remontaje...");
+  // Si llegamos aquí, es probable que haya un remanente. Limpiamos el DOM.
+  container.innerHTML = '';
+}
+
+// @ts-ignore
+window.__APP_MOUNTED__ = true;
+
+// Aseguramos limpieza visual antes de crear el root
+if (container.hasChildNodes()) {
+  container.innerHTML = '';
+}
+
+const root = createRoot(container);
 
 root.render(
   <React.StrictMode>
@@ -68,17 +79,17 @@ root.render(
   </React.StrictMode>
 );
 
-// Service Worker Registration
+// Service Worker
 const meta = import.meta as any;
 if (meta.env && meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Registro del SW con ruta relativa para soportar GitHub Pages (base: ./)
+    // Usamos ruta relativa para que funcione bajo el subdirectorio de GitHub Pages
     navigator.serviceWorker.register('./sw.js')
       .then(registration => {
-        console.log('Service Worker registered with scope:', registration.scope);
+        console.log('SW registrado:', registration.scope);
       })
       .catch(error => {
-        console.log('Service Worker registration failed:', error);
+        console.log('SW falló:', error);
       });
   });
 }
