@@ -157,12 +157,12 @@ const PracticaRow: React.FC<{
     return (
         <div 
             className={`
-                group relative bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between
+                group relative bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between overflow-hidden
                 ${isMenuOpen ? 'z-50 ring-1 ring-blue-200 dark:ring-blue-800' : 'z-0'}
             `}
         >
             {/* Left Border Accent */}
-            <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-gradient-to-b ${espVisuals.gradient}`}></div>
+            <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${espVisuals.gradient}`}></div>
             
             <div className="pl-3 flex-1 min-w-0 w-full">
                 <div className="flex items-center gap-2 mb-2">

@@ -2,10 +2,11 @@
 import React, { useState, useMemo } from 'react';
 import EmptyState from './EmptyState';
 import ConfirmModal from './ConfirmModal';
-import type { SolicitudPPS, CriteriosCalculados, FinalizacionPPS } from '../types';
+import type { SolicitudPPS, CriteriosCalculados, FinalizacionPPS, InformeTask } from '../types';
 import FinalizationStatusCard from './FinalizationStatusCard';
 import { FIELD_ESTADO_FINALIZACION, FIELD_FECHA_SOLICITUD_FINALIZACION, FIELD_ESTADO_PPS, FIELD_EMPRESA_PPS_SOLICITUD, FIELD_ULTIMA_ACTUALIZACION_PPS, FIELD_NOTAS_PPS } from '../constants';
 import { normalizeStringForComparison, getStatusVisuals, formatDate } from '../utils/formatters';
+import AcreditacionPreflightModal from './AcreditacionPreflightModal';
 
 const cleanValue = (val: any): string => {
     if (val === null || val === undefined) return '';
@@ -20,6 +21,7 @@ interface SolicitudesListProps {
   onRequestFinalization?: () => void;
   criterios?: CriteriosCalculados;
   finalizacionRequest?: FinalizacionPPS | null;
+  informeTasks?: InformeTask[]; // Nuevo prop
 }
 
 const SolicitudItem: React.FC<{ solicitud: SolicitudPPS }> = ({ solicitud }) => {
@@ -109,13 +111,18 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
     onCreateSolicitud, 
     onRequestFinalization,
     criterios,
-    finalizacionRequest
+    finalizacionRequest,
+    informeTasks = []
 }) => {
-  const [showModal, setShowModal] = useState(false);
-  const [capturedState, setCapturedState] = useState<'ready' | 'incomplete'>('incomplete');
+  const [showPreflightModal, setShowPreflightModal] = useState(false);
   
+  const hasPendingCorrections = useMemo(() => 
+      informeTasks.some(t => t.informeSubido && (t.nota === 'Sin calificar' || t.nota === 'Entregado (sin corregir)')),
+      [informeTasks]
+  );
+
   const isAccreditationReady = criterios 
-    ? criterios.cumpleHorasTotales && criterios.cumpleRotacion && criterios.cumpleHorasOrientacion && !criterios.tienePracticasPendientes
+    ? criterios.cumpleHorasTotales && criterios.cumpleRotacion && criterios.cumpleHorasOrientacion && !criterios.tienePracticasPendientes && !hasPendingCorrections
     : false;
 
   const { activeRequests, historyRequests } = useMemo(() => {
@@ -138,22 +145,9 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
 
   const handleAccreditationClick = () => {
     if (!onRequestFinalization) return;
-    setCapturedState(isAccreditationReady ? 'ready' : 'incomplete');
-    setShowModal(true);
+    // Siempre mostrar el preflight para que el usuario vea el checklist completo
+    setShowPreflightModal(true);
   };
-
-  const WarningContent = () => (
-      <div className="text-left">
-        <p className="mb-3">El sistema indica que aún te faltan requisitos para acreditar:</p>
-        <ul className="space-y-3 text-sm mt-2 mb-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-            {criterios && !criterios.cumpleHorasTotales && <li className="flex items-center gap-3 text-slate-700 dark:text-slate-300"><span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span> Completar 250 horas totales.</li>}
-            {criterios && !criterios.cumpleHorasOrientacion && <li className="flex items-center gap-3 text-slate-700 dark:text-slate-300"><span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span> Completar 70 horas de especialidad.</li>}
-            {criterios && !criterios.cumpleRotacion && <li className="flex items-center gap-3 text-slate-700 dark:text-slate-300"><span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span> Rotar por 3 áreas distintas.</li>}
-            {criterios && criterios.tienePracticasPendientes && <li className="flex items-center gap-3 text-slate-700 dark:text-slate-300"><span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span> Cerrar prácticas en curso.</li>}
-        </ul>
-        <p className="text-xs text-slate-500 italic">Si consideras que esto es un error y tienes la documentación para respaldarlo, puedes iniciar el trámite igual.</p>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -193,17 +187,19 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
             </div>
         )}
 
-        {/* Modal Logic */}
-        <ConfirmModal
-            isOpen={showModal}
-            onClose={() => setShowModal(false)}
-            onConfirm={() => { if (onRequestFinalization) onRequestFinalization(); setShowModal(false); }}
-            type={capturedState === 'ready' ? 'info' : 'warning'}
-            title={capturedState === 'ready' ? "Iniciar Acreditación" : "Requisitos Incompletos"}
-            message={capturedState === 'ready' ? "Has cumplido los objetivos. ¿Deseas iniciar el trámite de cierre?" : <WarningContent />}
-            confirmText={capturedState === 'ready' ? "Comenzar" : "Iniciar de todas formas"}
-            cancelText="Cancelar"
-        />
+        {/* Improved Modal Logic */}
+        {criterios && (
+            <AcreditacionPreflightModal 
+                isOpen={showPreflightModal}
+                onClose={() => setShowPreflightModal(false)}
+                onConfirm={() => {
+                    if (onRequestFinalization) onRequestFinalization();
+                    setShowPreflightModal(false);
+                }}
+                criterios={criterios}
+                informeTasks={informeTasks}
+            />
+        )}
 
         {/* Active List */}
         {activeRequests.length > 0 && (

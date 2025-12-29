@@ -181,10 +181,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ studentDetails, isLoading, up
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-700 dark:group-hover:text-blue-300">Editar Datos de Contacto</span>
                     </button>
                     
-                    <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    {/* Solo visible en móvil para activar notificaciones de nuevas convocatorias */}
+                    <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between md:hidden">
                         <div>
-                            <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Notificaciones</h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Recibe alertas sobre cambios.</p>
+                            <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Alertas al Celular</h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Avisarme de nuevas convocatorias.</p>
                         </div>
                         <button 
                             onClick={subscribeToPush}

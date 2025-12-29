@@ -276,7 +276,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                     </div>
 
                     {/* CARD SOPORTE - UPDATED PADDING */}
-                    <div className="bg-white dark:bg-slate-800 rounded-[2rem] px-6 pt-8 pb-6 border border-slate-200 dark:border-slate-700 shadow-md relative overflow-hidden group">
+                    <div className="bg-white dark:bg-slate-800 rounded-[2rem] px-6 pt-12 pb-8 border border-slate-200 dark:border-slate-700 shadow-md relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-white dark:from-slate-800 dark:to-slate-900 pointer-events-none"></div>
 
                         <div className="relative z-10 flex flex-col gap-6">
@@ -285,8 +285,8 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                                     <span className="material-icons !text-xl">support_agent</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-slate-800 dark:text-white text-lg">¿Ayuda?</h3>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Sólo si el plazo venció.</p>
+                                    <h3 className="font-bold text-slate-800 dark:text-white text-lg leading-none">¿Ayuda?</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Sólo si el plazo venció.</p>
                                 </div>
                             </div>
                             
@@ -295,7 +295,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({ status,
                                     ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${studentName || firstName}`
                                     : undefined
                                 }
-                                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all
+                                className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold transition-all
                                     ${isOverdue 
                                         ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md cursor-pointer hover:-translate-y-0.5' 
                                         : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed'

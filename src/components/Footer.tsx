@@ -26,14 +26,6 @@ const noticeConfig: Partial<Record<TabId, NoticeConfig>> = {
     mailToBody: 'Hola,\n\nTengo una consulta sobre las convocatorias de PPS.\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n- Mi consulta es: [Describe tu duda]\n\nGracias.',
     buttonText: 'Consultar sobre convocatorias'
   },
-  informes: {
-    title: ALERT_INFORMES_TITLE,
-    text: 'El proceso de entrega tiene dos pasos: primero, haz clic en la tarjeta del informe para ir al campus y subir tu archivo. Luego, regresa a este panel y presiona "Confirmar Entrega" para notificarnos. Las fechas límite pueden variar levemente; siempre se respetarán los 30 días reglamentarios desde tu finalización real para la entrega.',
-    icon: 'rule_folder',
-    mailToSubject: 'Consulta sobre Fecha de Entrega de Informe - Mi Panel Académico',
-    mailToBody: 'Hola,\n\nQuisiera solicitar una corrección o consultar sobre la fecha de entrega de un informe.\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n- PPS Involucrada: [Escribe el nombre de la PPS]\n\nGracias.',
-    buttonText: 'Consultar sobre fecha de entrega'
-  },
   solicitudes: {
     title: 'Acerca de tus Solicitudes',
     text: 'El estado de tus solicitudes de PPS se actualiza a medida que avanzan las gestiones con las instituciones, lo cual puede tomar tiempo. Te mantendremos informado de cada avance a través de notificaciones por correo electrónico. Si tienes dudas sobre un estado en particular, puedes contactarnos.',
@@ -52,7 +44,7 @@ const noticeConfig: Partial<Record<TabId, NoticeConfig>> = {
   },
   profile: {
     title: 'Sobre tus Datos Personales',
-    text: 'Mantener tus datos de contacto actualizados es fundamental para que podamos comunicarnos contigo sobre el estado de tus PPS. Ahora tienes el control para editar tu teléfono y correo electrónico directamente desde este panel si detectas algún cambio necesario.',
+    text: 'Mantener tus datos de contacto actualizados es fundamental para que las instituciones puedan contactarse contigo. Ahora tienes el control para editar tu teléfono y correo electrónico directamente desde este panel si detectas algún cambio necesario.',
     icon: 'contact_mail',
     mailToSubject: 'Solicitud de Actualización de Datos - Mi Panel Académico',
     mailToBody: 'Hola,\n\nTengo una consulta o solicitud sobre mis datos personales.\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n- Mi consulta es: [Describe tu duda]\n\nGracias.',
@@ -81,7 +73,7 @@ const Footer: React.FC<FooterProps> = ({ activeTab }) => {
               </span>
             </div>
           </div>
-          <div className="flex-grow">
+          <div className="flex-grow pt-2 sm:pt-0">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-lg leading-tight mb-3">
               {currentNotice.title}
             </h3>

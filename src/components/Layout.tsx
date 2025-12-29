@@ -13,7 +13,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { showModal } = useModal();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-    // Rutas que deben ocupar todo el ancho de la pantalla
+    const isLoginPage = location.pathname === '/login';
+
+    // Rutas que deben ocupar todo el ancho de la pantalla (dashboard)
     const fullWidthRoutes = ['/admin', '/jefe', '/directivo', '/reportero', '/testing'];
     const isFullWidth = fullWidthRoutes.some(route => location.pathname.startsWith(route));
 
@@ -51,6 +53,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             window.removeEventListener('offline', handleOffline);
         };
     }, [showModal]);
+
+    // Si estamos en login, renderizamos solo los hijos (el componente Auth se encarga de su propio layout completo)
+    if (isLoginPage) {
+        return <>{children}</>;
+    }
 
     return (
         <div className="flex flex-col min-h-screen">

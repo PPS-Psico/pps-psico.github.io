@@ -3,9 +3,10 @@ import React, { useMemo, useState } from 'react';
 import { HORAS_OBJETIVO_TOTAL, HORAS_OBJETIVO_ORIENTACION, ROTACION_OBJETIVO_ORIENTACIONES } from '../constants';
 import ProgressCircle from './ProgressCircle';
 import OrientacionSelector from './OrientacionSelector';
-import type { CriteriosCalculados, Orientacion } from '../types';
+import type { CriteriosCalculados, Orientacion, InformeTask } from '../types';
 import { CriteriosPanelSkeleton } from './Skeletons';
 import { normalizeStringForComparison } from '../utils/formatters';
+import AcreditacionPreflightModal from './AcreditacionPreflightModal';
 
 // --- SUB-COMPONENTES PARA ESTILOS ---
 
@@ -90,113 +91,6 @@ const DetailCard = ({
     </div>
 );
 
-const AcreditacionPreflightModal = ({ 
-    isOpen, 
-    onClose, 
-    onConfirm, 
-    criterios 
-}: { 
-    isOpen: boolean; 
-    onClose: () => void; 
-    onConfirm: () => void; 
-    criterios: CriteriosCalculados 
-}) => {
-    if (!isOpen) return null;
-
-    const items = [
-        { 
-            label: `Completar ${HORAS_OBJETIVO_TOTAL} horas totales`,
-            ok: criterios.cumpleHorasTotales, 
-            icon: 'schedule',
-            subtext: criterios.cumpleHorasTotales ? null : `${Math.round(criterios.horasTotales)}/${HORAS_OBJETIVO_TOTAL} hs`
-        },
-        { 
-            label: `Alcanzar ${HORAS_OBJETIVO_ORIENTACION} horas de especialidad`,
-            ok: criterios.cumpleHorasOrientacion, 
-            icon: 'psychology',
-            subtext: criterios.cumpleHorasOrientacion ? null : `${Math.round(criterios.horasOrientacionElegida)}/${HORAS_OBJETIVO_ORIENTACION} hs`
-        },
-        { 
-            label: `Rotar por al menos ${ROTACION_OBJETIVO_ORIENTACIONES} áreas`,
-            ok: criterios.cumpleRotacion, 
-            icon: 'cached',
-            subtext: criterios.cumpleRotacion ? null : `${criterios.orientacionesCursadasCount}/${ROTACION_OBJETIVO_ORIENTACIONES} áreas`
-        },
-        { 
-            label: "Cerrar prácticas activas",
-            ok: !criterios.tienePracticasPendientes, 
-            icon: 'library_books',
-            subtext: !criterios.tienePracticasPendientes ? null : "Pendientes"
-        },
-    ];
-
-    return (
-        <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fade-in" onClick={onClose}>
-            <div className="relative w-full max-w-lg bg-white dark:bg-[#0F172A] rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col animate-scale-in" onClick={e => e.stopPropagation()}>
-                
-                <div className="p-8 pb-0">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 rounded-2xl">
-                            <span className="material-icons !text-3xl">warning_amber</span>
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Requisitos Pendientes</h2>
-                            <p className="text-sm text-slate-500 font-medium mt-1">Verificación de cumplimiento</p>
-                        </div>
-                    </div>
-
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 font-medium leading-relaxed">
-                        Nuestros registros automáticos indican que aún no has completado todos los requisitos. Si tienes documentación que lo avale, puedes continuar.
-                    </p>
-
-                    <div className="space-y-3 mb-6">
-                        {items.map((item, idx) => (
-                            <div key={idx} className={`flex items-center justify-between p-4 rounded-2xl border transition-colors ${item.ok ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700'}`}>
-                                <div className="flex items-center gap-3">
-                                    <span className={`material-icons !text-lg ${item.ok ? 'text-emerald-500' : 'text-slate-400'}`}>
-                                        {item.icon}
-                                    </span>
-                                    <div>
-                                        <p className={`text-sm font-bold ${item.ok ? 'text-emerald-900 dark:text-emerald-100' : 'text-slate-700 dark:text-slate-200'}`}>
-                                            {item.label}
-                                        </p>
-                                        {item.subtext && (
-                                            <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider mt-0.5">
-                                                {item.subtext}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                                {item.ok && (
-                                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                                        <span className="material-icons !text-sm font-bold">check</span>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="p-6 pt-0 flex gap-3">
-                    <button 
-                        onClick={onClose} 
-                        className="flex-1 py-3.5 rounded-xl font-bold text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                        Volver
-                    </button>
-                    <button 
-                        onClick={() => { onConfirm(); onClose(); }} 
-                        className="flex-1 py-3.5 rounded-xl font-bold text-sm text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                    >
-                        <span>Iniciar igual</span>
-                        <span className="material-icons !text-lg">arrow_forward</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 interface CriteriosPanelProps {
   criterios: CriteriosCalculados;
   selectedOrientacion: Orientacion | "";
@@ -204,6 +98,7 @@ interface CriteriosPanelProps {
   showSaveConfirmation: boolean;
   onRequestFinalization: () => void;
   isLoading?: boolean;
+  informeTasks?: InformeTask[]; // Nuevo prop
 }
 
 const CriteriosPanel: React.FC<CriteriosPanelProps> = ({ 
@@ -212,16 +107,24 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
     handleOrientacionChange, 
     showSaveConfirmation, 
     onRequestFinalization,
-    isLoading = false
+    isLoading = false,
+    informeTasks = []
 }) => {
   const [showWarningModal, setShowWarningModal] = useState(false);
   
+  // Incluimos verificación de informes pendientes en la lógica
+  const hasPendingCorrections = useMemo(() => 
+      informeTasks.some(t => t.informeSubido && (t.nota === 'Sin calificar' || t.nota === 'Entregado (sin corregir)')),
+      [informeTasks]
+  );
+
   const todosLosCriteriosCumplidos = useMemo(() => 
     criterios.cumpleHorasTotales && 
     criterios.cumpleRotacion && 
     criterios.cumpleHorasOrientacion && 
-    !criterios.tienePracticasPendientes,
-    [criterios]
+    !criterios.tienePracticasPendientes &&
+    !hasPendingCorrections, // Nuevo criterio
+    [criterios, hasPendingCorrections]
   );
 
   // Asegurar que no hay duplicados para la visualización en tarjetas
@@ -241,84 +144,186 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
   }, [criterios.orientacionesUnicas]);
 
   const handleButtonClick = () => {
-      if (todosLosCriteriosCumplidos) {
-          onRequestFinalization();
-      } else {
-          setShowWarningModal(true);
-      }
+      // Siempre mostramos el modal "bonito" ahora, que sirve tanto de confirmación exitosa como de advertencia
+      setShowWarningModal(true);
   };
 
   if (isLoading) {
       return <CriteriosPanelSkeleton />;
   }
 
+  // Calculate percentages
+  const progressPercent = Math.min(100, Math.round((criterios.horasTotales / HORAS_OBJETIVO_TOTAL) * 100));
+
+  // --- VISTA MÓVIL OPTIMIZADA (COMPACTA) ---
+  const MobileView = () => (
+      <div className="bg-white/80 dark:bg-[#0F172A]/80 backdrop-blur-xl rounded-[2rem] p-6 border border-slate-200/60 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none relative overflow-hidden mb-6">
+           {/* Background Ambience */}
+           <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+           <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+
+           <div className="relative z-10">
+              <div className="flex justify-between items-end mb-4 pb-4 border-b border-slate-100 dark:border-white/5">
+                  <div>
+                      <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Horas Acumuladas</p>
+                      <div className="flex items-baseline gap-1.5">
+                          <span className={`text-6xl font-black tracking-tighter leading-none ${todosLosCriteriosCumplidos ? 'text-transparent bg-clip-text bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-400 dark:to-teal-500' : 'text-slate-900 dark:text-white'}`}>
+                              {Math.round(criterios.horasTotales)}
+                          </span>
+                          <span className="text-lg font-bold text-slate-400 dark:text-slate-600">hs</span>
+                      </div>
+                  </div>
+                  
+                  {/* Indicador Global de Estado */}
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-sm ${todosLosCriteriosCumplidos ? 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-100 text-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'}`}>
+                      <span className="material-icons !text-2xl">
+                          {todosLosCriteriosCumplidos ? 'verified' : 'hourglass_top'}
+                      </span>
+                  </div>
+              </div>
+
+              {/* Status Text (Matches Desktop logic) */}
+              <div className="mb-4">
+                  {todosLosCriteriosCumplidos ? (
+                       <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold leading-tight flex items-start gap-1.5">
+                           <span className="material-icons !text-sm mt-0.5">check_circle</span>
+                           <span>¡Felicitaciones! Has completado todos los requisitos.</span>
+                       </p>
+                  ) : (
+                       <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-tight">
+                           Has completado el <strong className="text-blue-600 dark:text-blue-400">{progressPercent}%</strong> de las horas requeridas para tu acreditación.
+                       </p>
+                  )}
+              </div>
+
+              <div className="space-y-3">
+                  {/* Badge Rotación */}
+                   <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors ${criterios.cumpleRotacion 
+                      ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300' 
+                      : 'bg-white/60 border-slate-100 text-slate-700 dark:bg-indigo-900/10 dark:border-indigo-800 dark:text-indigo-200'
+                    }`}>
+                      <div>
+                        <span className="text-xs font-bold uppercase tracking-wider block">Rotación de Áreas</span>
+                      </div>
+                      <span className="text-sm font-black font-mono opacity-100">
+                         {criterios.orientacionesCursadasCount} / {ROTACION_OBJETIVO_ORIENTACIONES}
+                      </span>
+                    </div>
+
+                    {/* Badge Especialidad */}
+                    <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors ${criterios.cumpleHorasOrientacion 
+                      ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300' 
+                      : 'bg-white/60 border-slate-100 text-slate-700 dark:bg-indigo-900/10 dark:border-indigo-800 dark:text-indigo-200'
+                    }`}>
+                       <div>
+                         <span className="text-xs font-bold uppercase tracking-wider block">{selectedOrientacion || "Especialidad"}</span>
+                       </div>
+                       <span className="text-sm font-black font-mono opacity-100">
+                          {selectedOrientacion ? `${Math.round(criterios.horasOrientacionElegida)}hs` : "-"}
+                       </span>
+                    </div>
+              </div>
+           </div>
+      </div>
+  );
+
   return (
     <section className="animate-fade-in-up">
-      {/* GRID LAYOUT MODERNIZADO: 1 Main Hero + 2 Small Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      {/* --- MÓVIL --- */}
+      <div className="block lg:hidden">
+          <MobileView />
+      </div>
+
+      {/* --- DESKTOP --- */}
+      <div className="hidden lg:grid grid-cols-3 gap-6">
           
           {/* 1. HERO CARD (Recorrido Principal) */}
-          <div className="lg:col-span-2 relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0B1120] text-slate-900 dark:text-white shadow-xl shadow-slate-200/60 dark:shadow-black/50 p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-12 group border border-slate-100 dark:border-slate-800">
+          <div className="col-span-2 relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-white to-slate-50 dark:from-[#0B1120] dark:to-[#0f172a] text-slate-900 dark:text-white shadow-xl shadow-slate-200/50 dark:shadow-black/50 border border-slate-200/80 dark:border-slate-800">
                
                {/* Background Effects */}
-               <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-blue-100/40 to-purple-100/40 dark:from-blue-600/30 dark:to-purple-600/30 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none opacity-60 dark:opacity-100 group-hover:opacity-80 transition-opacity duration-700"></div>
-               <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-emerald-100/40 dark:bg-emerald-600/20 rounded-full blur-[80px] -ml-20 -mb-20 pointer-events-none opacity-60 dark:opacity-100"></div>
+               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-blue-100/60 to-transparent dark:from-blue-900/20 rounded-full blur-[120px] -mr-40 -mt-40 pointer-events-none opacity-80"></div>
+               <div className="absolute bottom-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] dark:opacity-[0.07] mix-blend-overlay pointer-events-none"></div>
 
-               {/* LEFT SIDE: Data Composition */}
-               <div className="relative z-10 flex-1 flex flex-col items-center md:items-start text-center md:text-left h-full justify-between gap-6">
+               {/* Grid Layout for Hero Content */}
+               <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center p-8 sm:p-10 h-full">
                    
-                   {/* Badge */}
-                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 backdrop-blur-md text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-white shadow-sm">
-                       <span className={`w-2 h-2 rounded-full ${todosLosCriteriosCumplidos ? 'bg-emerald-500 animate-pulse-glow' : 'bg-blue-500'}`}></span>
-                       Tu Progreso Global
-                   </div>
-                   
-                   {/* Main Metric Block */}
-                   <div>
-                       <div className="flex items-baseline justify-center md:justify-start">
-                           <span className="text-8xl font-black tracking-tighter leading-none text-slate-900 dark:text-white drop-shadow-sm">
-                               {Math.round(criterios.horasTotales)}
-                           </span>
-                           <span className="text-3xl text-slate-400 dark:text-slate-500 font-bold ml-1">hs</span>
+                   {/* Left Side: Text & Actions (More span) */}
+                   <div className="md:col-span-7 flex flex-col justify-center h-full space-y-8">
+                       
+                       <div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/60 dark:bg-white/5 border border-slate-200 dark:border-white/10 backdrop-blur-md shadow-sm mb-4">
+                                <span className={`w-2 h-2 rounded-full ${todosLosCriteriosCumplidos ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`}></span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Progreso General</span>
+                            </div>
+
+                           <div className="flex items-baseline gap-1">
+                               <span className="text-7xl sm:text-8xl font-black tracking-tighter leading-none text-slate-900 dark:text-white drop-shadow-sm">
+                                   {Math.round(criterios.horasTotales)}
+                               </span>
+                               <span className="text-2xl sm:text-3xl text-slate-400 dark:text-slate-500 font-bold">hs</span>
+                           </div>
+                           
+                           {/* Texto condicional */}
+                           {todosLosCriteriosCumplidos ? (
+                               <p className="text-lg text-emerald-600 dark:text-emerald-400 font-bold mt-2 max-w-sm leading-relaxed flex items-start gap-2">
+                                   <span className="material-icons mt-1 !text-lg">check_circle</span>
+                                   ¡Felicitaciones! Has completado todos los requisitos para tu acreditación.
+                               </p>
+                           ) : (
+                               <p className="text-lg text-slate-600 dark:text-slate-400 font-medium mt-2 max-w-sm leading-relaxed">
+                                   Has completado el <strong className="text-blue-600 dark:text-blue-400">{progressPercent}%</strong> de las horas requeridas para tu acreditación.
+                               </p>
+                           )}
                        </div>
-                       <p className="text-lg font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-                           Acumuladas de <strong className="text-slate-700 dark:text-slate-300 font-bold">{HORAS_OBJETIVO_TOTAL}</strong> requeridas
-                       </p>
+
+                       {/* Action Button */}
+                       <div className="pt-2">
+                           <button
+                                onClick={handleButtonClick}
+                                className={`
+                                    group relative inline-flex items-center justify-center gap-3 px-8 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-95 border w-full sm:w-auto
+                                    ${todosLosCriteriosCumplidos 
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' 
+                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
+                                    }
+                                `}
+                            >
+                                {todosLosCriteriosCumplidos ? (
+                                    <>
+                                        <span className="material-icons text-emerald-400 !text-xl">verified</span>
+                                        <span>Solicitar Acreditación</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Trámite de Acreditación</span>
+                                        <span className="material-icons !text-lg text-slate-400 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                    </>
+                                )}
+                            </button>
+                       </div>
                    </div>
 
-                   {/* Action Button: COMPACT VERSION */}
-                   <button
-                        onClick={handleButtonClick}
-                        className={`
-                            group relative inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 border backdrop-blur-md w-full sm:w-auto mt-4
-                            ${todosLosCriteriosCumplidos 
-                                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/20 border-transparent' 
-                                : 'bg-white/80 dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10'
-                            }
-                        `}
-                    >
-                        <span className={`material-icons !text-lg ${todosLosCriteriosCumplidos ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-blue-500'}`}>
-                            {todosLosCriteriosCumplidos ? 'verified' : 'auto_awesome'}
-                        </span>
-                        <span>{todosLosCriteriosCumplidos ? 'Solicitar Acreditación' : 'Trámite de Acreditación'}</span>
-                    </button>
-               </div>
-
-               {/* RIGHT SIDE: Chart */}
-               <div className="relative flex-shrink-0">
-                    <div className="absolute inset-0 bg-blue-100/50 dark:bg-blue-500/20 blur-3xl rounded-full transform scale-110"></div>
-                    <ProgressCircle 
-                        value={criterios.horasTotales} 
-                        max={HORAS_OBJETIVO_TOTAL} 
-                        size={180} 
-                        strokeWidth={14}
-                        className="drop-shadow-2xl"
-                    />
+                   {/* Right Side: Chart (Less span, centered) */}
+                   <div className="md:col-span-5 flex items-center justify-center relative">
+                        {/* Decorative Circle Background */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-50 to-indigo-50 dark:from-slate-800/50 dark:to-slate-900/50 rounded-full blur-2xl transform scale-90"></div>
+                        
+                        <div className="relative z-10 scale-110">
+                             <ProgressCircle 
+                                value={criterios.horasTotales} 
+                                max={HORAS_OBJETIVO_TOTAL} 
+                                size={220} 
+                                strokeWidth={16} 
+                                className="drop-shadow-lg"
+                            />
+                        </div>
+                   </div>
                </div>
           </div>
 
           {/* 2. COLUMNA LATERAL (Tarjetas Apiladas) */}
-          <div className="lg:col-span-1 flex flex-col gap-6">
+          <div className="col-span-1 flex flex-col gap-6">
               
               {/* Tarjeta Especialidad */}
               <div className="flex-1">
@@ -385,6 +390,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
             onRequestFinalization();
         }}
         criterios={criterios}
+        informeTasks={informeTasks}
       />
     </section>
   );

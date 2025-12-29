@@ -64,36 +64,71 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const isStudent = !isAdmin && !!authenticatedUser;
     const userId = authenticatedUser?.id || 'guest';
     const STORAGE_KEY = `read_notifications_v2_${userId}`;
+    const PUSH_STORAGE_KEY = `push_enabled_${userId}`;
 
     // Check Push Permission on Mount
     useEffect(() => {
+        // 1. Check real service worker subscription
         if ('serviceWorker' in navigator && 'PushManager' in window) {
             navigator.serviceWorker.ready.then(registration => {
                 registration.pushManager.getSubscription().then(subscription => {
-                    setIsPushEnabled(!!subscription);
+                    if (subscription) setIsPushEnabled(true);
                 });
             });
         }
-    }, []);
+        
+        // 2. Check local storage override (for UI consistency in demo mode without real VAPID keys)
+        const storedPush = localStorage.getItem(PUSH_STORAGE_KEY);
+        if (storedPush === 'true') {
+            setIsPushEnabled(true);
+        }
+    }, [PUSH_STORAGE_KEY]);
 
     const subscribeToPush = async () => {
         if (!authenticatedUser) return;
         
         try {
-            if (!('serviceWorker' in navigator)) throw new Error('No Service Worker support');
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                throw new Error('Tu navegador no soporta notificaciones push.');
+            }
             
-            const registration = await navigator.serviceWorker.ready;
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                throw new Error('Permiso denegado');
+            // Check for iOS specifically to give better feedback
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+            if (isIOS && !('standalone' in window.navigator) && !(window.navigator as any).standalone) {
+                 // In iOS, push only works if installed to homescreen
             }
 
-            const subscription = { endpoint: 'mock-endpoint', keys: { p256dh: 'mock', auth: 'mock' } }; 
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                throw new Error('Permiso de notificaciones denegado. Habilítalo en la configuración del navegador.');
+            }
+
+            const registration = await navigator.serviceWorker.ready;
+            
+            // NOTE: In a real production environment, you would subscribe here with VAPID keys:
+            // const subscription = await registration.pushManager.subscribe({
+            //    userVisibleOnly: true,
+            //    applicationServerKey: 'YOUR_VAPID_PUBLIC_KEY'
+            // });
+            
+            // For now, we simulate success and persist state locally
+            localStorage.setItem(PUSH_STORAGE_KEY, 'true');
             setIsPushEnabled(true);
-            setToast({ message: 'Notificaciones activadas.', type: 'success' });
+            setToast({ message: 'Notificaciones activadas correctamente.', type: 'success' });
+            
+            // Send a test notification immediately if supported to confirm
+            if (registration.showNotification) {
+                registration.showNotification('¡Activado!', {
+                    body: 'Recibirás avisos importantes aquí.',
+                    icon: '/icons/icon-192x192.png'
+                });
+            }
+
         } catch (e: any) {
             console.error('Push subscription error:', e);
-            setToast({ message: 'No se pudieron activar las notificaciones.', type: 'error' });
+            let msg = 'No se pudieron activar las notificaciones.';
+            if (e.message) msg = e.message;
+            setToast({ message: msg, type: 'error' });
         }
     };
 

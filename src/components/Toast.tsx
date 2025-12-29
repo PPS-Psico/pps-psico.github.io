@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 interface ToastProps {
   message: string;
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'warning';
   onClose: () => void;
   duration?: number;
 }
@@ -21,18 +21,33 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
     return () => clearTimeout(timer);
   }, [duration, onClose]);
   
-  const isSuccess = type === 'success';
+  let stateClasses = '';
+  let icon = '';
+  let iconColor = '';
+
+  switch (type) {
+    case 'success':
+      stateClasses = 'bg-emerald-50 border-emerald-200 text-emerald-800';
+      icon = 'check_circle';
+      iconColor = 'text-emerald-500';
+      break;
+    case 'warning':
+      stateClasses = 'bg-amber-50 border-amber-200 text-amber-800';
+      icon = 'warning';
+      iconColor = 'text-amber-500';
+      break;
+    case 'error':
+    default:
+      stateClasses = 'bg-rose-50 border-rose-200 text-rose-800';
+      icon = 'error';
+      iconColor = 'text-rose-500';
+      break;
+  }
 
   const baseClasses = 'fixed top-5 right-5 z-[2000] flex items-center gap-4 w-full max-w-sm p-4 rounded-xl shadow-lg border transition-all duration-300 ease-in-out';
-  const stateClasses = isSuccess
-    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-    : 'bg-rose-50 border-rose-200 text-rose-800';
   const visibilityClasses = isVisible
     ? 'opacity-100 translate-y-0'
     : 'opacity-0 -translate-y-4';
-
-  const icon = isSuccess ? 'check_circle' : 'error';
-  const iconColor = isSuccess ? 'text-emerald-500' : 'text-rose-500';
 
   return (
     <div 
