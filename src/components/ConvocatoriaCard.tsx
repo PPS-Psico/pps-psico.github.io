@@ -6,7 +6,7 @@ import {
     FIELD_ORIENTACION_LANZAMIENTOS,
     FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
 } from '../constants';
-import { getEspecialidadClasses, getStatusVisuals, normalizeStringForComparison, isValidLocation } from '../utils/formatters';
+import { getEspecialidadClasses, getStatusVisuals, normalizeStringForComparison, cleanInstitutionName } from '../utils/formatters';
 import { useModal } from '../contexts/ModalContext';
 
 interface ConvocatoriaCardProps {
@@ -44,10 +44,13 @@ const ConvocatoriaCard: React.FC<ConvocatoriaCardProps> = ({
   const isEnrolling = isSubmittingEnrollment && selectedLanzamientoForEnrollment?.id === lanzamiento.id;
 
   const {
-    [FIELD_NOMBRE_PPS_LANZAMIENTOS]: nombre,
+    [FIELD_NOMBRE_PPS_LANZAMIENTOS]: rawNombre,
     [FIELD_ORIENTACION_LANZAMIENTOS]: orientacion,
     [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: estadoConvocatoria,
   } = lanzamiento;
+
+  // CLEAN NAME
+  const nombre = cleanInstitutionName(rawNombre);
   
   // Calculate if new (created in last 7 days)
   const isNew = useMemo(() => {

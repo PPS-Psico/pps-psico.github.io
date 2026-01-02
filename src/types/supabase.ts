@@ -82,6 +82,9 @@ export interface Database {
           nombre_separado: string | null
           apellido_separado: string | null
           fecha_nacimiento: string | null
+          // Add missing fields to Row
+          trabaja: boolean | null
+          certificado_trabajo: string | null
         }
         Insert: {
           id?: string
@@ -102,6 +105,9 @@ export interface Database {
           nombre_separado?: string | null
           apellido_separado?: string | null
           fecha_nacimiento?: string | null
+          // Add missing fields to Insert
+          trabaja?: boolean | null
+          certificado_trabajo?: string | null
         }
         Update: {
           id?: string
@@ -122,6 +128,9 @@ export interface Database {
           nombre_separado?: string | null
           apellido_separado?: string | null
           fecha_nacimiento?: string | null
+          // Add missing fields to Update
+          trabaja?: boolean | null
+          certificado_trabajo?: string | null
         }
       }
       practicas: {
@@ -532,6 +541,38 @@ export interface Database {
           horas_objetivo_orientacion?: number
           rotacion_objetivo?: number
           created_at?: string
+        }
+      }
+      auth_users: {
+        Row: {
+          id: string
+          created_at: string
+          legajo: string | null
+          nombre: string | null
+          password_hash: string | null
+          salt: string | null
+          role: string | null
+          orientaciones: string[] | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          legajo?: string | null
+          nombre?: string | null
+          password_hash?: string | null
+          salt?: string | null
+          role?: string | null
+          orientaciones?: string[] | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          legajo?: string | null
+          nombre?: string | null
+          password_hash?: string | null
+          salt?: string | null
+          role?: string | null
+          orientaciones?: string[] | null
         }
       }
     }

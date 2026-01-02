@@ -21,7 +21,10 @@ export function normalizeStringForComparison(str?: any): string {
   if (str === undefined || str === null) return '';
   if (typeof str === 'boolean') return str ? 'true' : 'false';
   
-  return String(str)
+  // Use the robust cleaner first
+  const cleanValue = cleanDbValue(str);
+  
+  return String(cleanValue)
     .toLowerCase()
     .trim()
     .normalize("NFD")
@@ -29,18 +32,9 @@ export function normalizeStringForComparison(str?: any): string {
 }
 
 /**
- * Cleans institution names that might come with brackets or braces.
- */
-export function cleanInstitutionName(val: any): string {
-  if (!val) return '';
-  const str = Array.isArray(val) ? val[0] : String(val);
-  return str.replace(/[\[\]\{\}"]/g, '').trim();
-}
-
-/**
  * Returns visual style configuration based on the specialty area.
  */
-export function getEspecialidadClasses(especialidad?: string) {
+export function getEspecialidadClasses(especialidad?: string | null) {
   const normalized = normalizeStringForComparison(especialidad);
   
   let config = {
@@ -49,7 +43,6 @@ export function getEspecialidadClasses(especialidad?: string) {
     headerBg: 'bg-slate-50 dark:bg-slate-800',
     headerText: 'text-slate-800 dark:text-slate-100',
     dot: 'bg-slate-400',
-    // Default neutral border
     leftBorder: 'border-l-slate-400 dark:border-l-slate-600'
   };
 
@@ -60,7 +53,6 @@ export function getEspecialidadClasses(especialidad?: string) {
       headerBg: 'bg-emerald-50 dark:bg-emerald-900/20',
       headerText: 'text-emerald-800 dark:text-emerald-300',
       dot: 'bg-emerald-500',
-      // Strong emerald for light/dark
       leftBorder: 'border-l-emerald-500 dark:border-l-emerald-400'
     };
   } else if (normalized.includes('educacional') || normalized.includes('educacion')) {
@@ -70,7 +62,6 @@ export function getEspecialidadClasses(especialidad?: string) {
       headerBg: 'bg-blue-50 dark:bg-blue-900/20',
       headerText: 'text-blue-800 dark:text-blue-300',
       dot: 'bg-blue-500',
-      // Strong blue for light/dark
       leftBorder: 'border-l-blue-500 dark:border-l-blue-400'
     };
   } else if (normalized.includes('laboral') || normalized.includes('trabajo')) {
@@ -80,7 +71,6 @@ export function getEspecialidadClasses(especialidad?: string) {
       headerBg: 'bg-rose-50 dark:bg-rose-900/20',
       headerText: 'text-rose-800 dark:text-rose-300',
       dot: 'bg-rose-500',
-      // Strong rose for light/dark
       leftBorder: 'border-l-rose-500 dark:border-l-rose-400'
     };
   } else if (normalized.includes('comunitaria') || normalized.includes('comunidad')) {
@@ -90,7 +80,6 @@ export function getEspecialidadClasses(especialidad?: string) {
       headerBg: 'bg-purple-50 dark:bg-purple-900/20',
       headerText: 'text-purple-800 dark:text-purple-300',
       dot: 'bg-purple-500',
-      // Strong purple for light/dark
       leftBorder: 'border-l-purple-500 dark:border-l-purple-400'
     };
   }
@@ -98,7 +87,7 @@ export function getEspecialidadClasses(especialidad?: string) {
   return config;
 }
 
-export function getStatusVisuals(status?: string) {
+export function getStatusVisuals(status?: string | null) {
   const normalized = normalizeStringForComparison(status);
   
   if (normalized === 'en curso' || normalized === 'pendiente' || normalized === 'en proceso') {
@@ -117,6 +106,15 @@ export function getStatusVisuals(status?: string) {
       iconContainerClass: 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20'
     };
   }
+  if (normalized === 'realizando convenio' || normalized === 'en conversaciones') {
+    return {
+        icon: 'handshake',
+        labelClass: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
+        accentBg: 'bg-indigo-500',
+        iconContainerClass: 'border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/20'
+    };
+  }
+
   if (normalized === 'cancelada' || normalized === 'rechazada' || normalized === 'no se pudo concretar' || normalized === 'no seleccionado') {
     return {
       icon: 'cancel',
@@ -136,8 +134,8 @@ export function getStatusVisuals(status?: string) {
 
 export function safeGetId(val: any): string | null {
   if (!val) return null;
-  if (Array.isArray(val)) return val[0] || null;
-  return String(val);
+  const clean = cleanDbValue(val);
+  return clean || null;
 }
 
 export function parseToUTCDate(dateStr?: string | null): Date | null {
@@ -167,92 +165,81 @@ export function simpleNameSplit(fullName: string): { nombre: string; apellido: s
   return { nombre, apellido };
 }
 
-export function isValidLocation(location?: string): boolean {
-  if (!location) return false;
-  const normalized = normalizeStringForComparison(location);
-  return normalized !== 'n/a' && normalized !== 'no especificada' && normalized !== '';
-}
-
-// --- LOGICA DE DÍAS HÁBILES Y FERIADOS ---
-
-// Lista de feriados inamovibles y turísticos (Formato YYYY-MM-DD)
-// Se incluyen feriados 2025 y proyección básica 2026
-const ARGENTINE_HOLIDAYS = new Set([
-  // 2025
-  '2025-01-01', // Año Nuevo (Aunque Enero es receso)
-  '2025-02-28', // Carnaval (Estimado o fijo según calendario oficial)
-  '2025-03-03', // Carnaval
-  '2025-03-04', // Carnaval
-  '2025-03-24', // Memoria
-  '2025-04-02', // Malvinas
-  '2025-04-18', // Viernes Santo
-  '2025-05-01', // Trabajador
-  '2025-05-25', // Revolución de Mayo
-  '2025-06-16', // Güemes (Paso a la Inmortalidad)
-  '2025-06-20', // Belgrano
-  '2025-07-09', // Independencia
-  '2025-08-17', // San Martín
-  '2025-10-12', // Diversidad Cultural
-  '2025-11-20', // Soberanía
-  '2025-12-08', // Inmaculada Concepción
-  '2025-12-25', // Navidad
-  
-  // Feriados Carnaval 2025 Específicos (Lunes 3 y Martes 4 de Marzo de 2025 es lo usual, 
-  // pero a veces cae fines de Febrero. Ajustar según calendario oficial vigente)
-  // Según calendario oficial 2025: 3 y 4 de Marzo. 
-  // Si el usuario mencionó febrero, quizás se refería a feriados puente o años anteriores.
-  // Agregamos fechas probables para asegurar cobertura si cambian.
-  '2025-02-24', // Posible feriado puente
-  '2025-02-25', 
-  
-  // 2026 (Proyección)
-  '2026-01-01',
-  '2026-02-16', // Carnaval
-  '2026-02-17', // Carnaval
-  '2026-03-24',
-  '2026-04-02',
-  '2026-04-03', // Viernes Santo
-  '2026-05-01',
-  '2026-05-25',
-  '2026-06-17',
-  '2026-06-20',
-  '2026-07-09',
-  '2026-08-17',
-  '2026-10-12',
-  '2026-11-20',
-  '2026-12-08',
-  '2026-12-25'
-]);
-
-function isBusinessDay(date: Date): boolean {
-  const day = date.getUTCDay();
-  const month = date.getUTCMonth(); // 0-indexed (0 = Enero)
-  
-  // 1. Fin de semana (Sábado=6, Domingo=0)
-  if (day === 0 || day === 6) return false;
-  
-  // 2. Receso Administrativo (Enero completo)
-  if (month === 0) return false;
-  
-  // 3. Feriados Nacionales
-  const isoDate = date.toISOString().split('T')[0];
-  if (ARGENTINE_HOLIDAYS.has(isoDate)) return false;
-  
-  return true;
+export function cleanInstitutionName(input?: any): string {
+  return cleanDbValue(input);
 }
 
 /**
- * Adds business days to a date, skipping weekends, January recess, and Argentine holidays.
+ * Función Maestra de Limpieza para BD SQL - Versión Definitiva
+ * Desmonta recursivamente estructuras de array/json/string hasta obtener el valor plano.
+ * Maneja casos extremos como: "{\"ISI College\"}" o "[\"ISI College\"]"
  */
-export function addBusinessDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  // Asegurar que trabajamos en UTC para evitar problemas de timezone
-  result.setUTCHours(12, 0, 0, 0); 
+export function cleanDbValue(input?: any): string {
+  if (input === null || input === undefined) return '';
+
+  // 1. Manejo inicial de tipos
+  if (typeof input === 'boolean') return input ? 'true' : 'false';
+  if (typeof input === 'number') return String(input);
+  if (Array.isArray(input)) return input.length > 0 ? cleanDbValue(input[0]) : '';
   
+  if (typeof input === 'object') {
+     // Intento desesperado de sacar valor de objeto
+     try {
+       return cleanDbValue(Object.values(input)[0]);
+     } catch (e) {
+       return '';
+     }
+  }
+
+  let str = String(input).trim();
+  
+  // Bucle de limpieza: Repetimos hasta que la cadena se estabilice
+  let previous = '';
+  let safetyCounter = 0;
+  
+  while (str !== previous && safetyCounter < 10) {
+      previous = str;
+      
+      // 1. Quitar comillas externas
+      if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+          str = str.substring(1, str.length - 1);
+      }
+      
+      // 2. Quitar llaves de Postgres Array {Element}
+      if (str.startsWith('{') && str.endsWith('}')) {
+          str = str.substring(1, str.length - 1);
+      }
+      
+      // 3. Quitar corchetes de JSON Array [Element]
+      if (str.startsWith('[') && str.endsWith(']')) {
+          str = str.substring(1, str.length - 1);
+      }
+      
+      // 4. Limpiar caracteres escapados \" -> "
+      str = str.replace(/\\"/g, '"').replace(/\\'/g, "'");
+
+      // 5. Si es CSV, tomar el primero (heurística simple para arrays serializados)
+      // Solo si no estamos rompiendo una frase normal. Asumimos arrays de IDs o nombres simples.
+      if (str.includes('","')) {
+          str = str.split('","')[0].replace(/"/g, '');
+      }
+      
+      str = str.trim();
+      safetyCounter++;
+  }
+
+  return str;
+}
+
+/**
+ * Adds business days to a date.
+ */
+export function addBusinessDays(date: Date | string, days: number): Date {
+  const result = new Date(date);
   let added = 0;
   while (added < days) {
     result.setUTCDate(result.getUTCDate() + 1);
-    if (isBusinessDay(result)) {
+    if (result.getUTCDay() !== 0 && result.getUTCDay() !== 6) {
       added++;
     }
   }
@@ -260,30 +247,31 @@ export function addBusinessDays(date: Date, days: number): Date {
 }
 
 /**
- * Calculates the number of business days between two dates.
+ * Calculates the difference in business days between two dates.
  */
-export function getBusinessDaysDiff(startDate: Date, endDate: Date): number {
+export function getBusinessDaysDiff(start: Date | string, end: Date | string): number {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
   let count = 0;
   const curDate = new Date(startDate);
-  curDate.setUTCHours(12, 0, 0, 0);
   
-  const target = new Date(endDate);
-  target.setUTCHours(12, 0, 0, 0);
-
-  const isNegative = target < curDate;
+  const isForward = endDate >= startDate;
   
-  if (isNegative) {
-      // Cuenta regresiva (días pasados)
-      while (curDate > target) {
-        curDate.setUTCDate(curDate.getUTCDate() - 1);
-        if (isBusinessDay(curDate)) count--;
+  if (isForward) {
+    while (curDate < endDate) {
+      curDate.setUTCDate(curDate.getUTCDate() + 1);
+      if (curDate.getUTCDay() !== 0 && curDate.getUTCDay() !== 6) {
+        count++;
       }
+    }
+    return count;
   } else {
-      // Cuenta progresiva (días faltantes)
-      while (curDate < target) {
-        curDate.setUTCDate(curDate.getUTCDate() + 1);
-        if (isBusinessDay(curDate)) count++;
+    while (curDate > endDate) {
+      curDate.setUTCDate(curDate.getUTCDate() - 1);
+      if (curDate.getUTCDay() !== 0 && curDate.getUTCDay() !== 6) {
+        count--;
       }
+    }
+    return count;
   }
-  return count;
 }

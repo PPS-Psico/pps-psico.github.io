@@ -88,6 +88,14 @@ const PersonalizationPanel: React.FC = () => {
                             checked={preferences.showReports} 
                             onChange={() => toggleModule('showReports')} 
                         />
+
+                        <Toggle 
+                            label="Herramientas de Integridad" 
+                            description="Limpieza de base de datos y reparación de registros."
+                            icon="health_and_safety"
+                            checked={preferences.showIntegrity} 
+                            onChange={() => toggleModule('showIntegrity')} 
+                        />
                     </div>
                 </div>
 

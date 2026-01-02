@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import CriteriosPanel from '../components/CriteriosPanel';
 import PracticasTable from '../components/PracticasTable';
@@ -8,6 +9,7 @@ import Tabs from '../components/Tabs';
 import Card from '../components/Card';
 import WelcomeBanner from '../components/WelcomeBanner';
 import WhatsAppExportButton from '../components/WhatsAppExportButton';
+import InformesList from '../components/InformesList';
 import { useAuth } from '../contexts/AuthContext';
 import type { AuthUser } from '../contexts/AuthContext';
 import type { TabId, Orientacion, SolicitudPPSFields } from '../types';
@@ -173,6 +175,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
     updateInternalNotes,
     updateNota,
     enrollStudent,
+    confirmInforme,
     refetchAll,
     criterios,
     enrollmentMap,
@@ -323,6 +326,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
     </ErrorBoundary>
   ), [enrollmentMap, allLanzamientos, informeTasks, lanzamientos, studentDetails, enrollStudent.mutate, institutionAddressMap, completedLanzamientoIds, criterios, handleOpenFinalization]);
   
+  const informesContent = useMemo(() => (
+    <ErrorBoundary>
+        <InformesList tasks={informeTasks} onConfirmar={confirmInforme.mutate} />
+    </ErrorBoundary>
+  ), [informeTasks, confirmInforme]);
+
   const solicitudesContent = useMemo(() => (
     <ErrorBoundary>
         <SolicitudesList 
@@ -396,7 +405,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
           <PrintableReport studentDetails={studentDetails} criterios={criterios} practicas={practicas} />
         </div>
         <div className="no-print">
-          <div className="space-y-8 animate-fade-in-up">
+          <div className="space-y-8 animate-fade-in-up mt-6">
             <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={false} />
             <CriteriosPanel 
                 criterios={criterios} 
@@ -477,13 +486,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
       </div>
 
       {/* --- VISTA DE ESCRITORIO --- */}
-      <div className="hidden md:block no-print space-y-8 animate-fade-in-up">
+      <div className="hidden md:block no-print space-y-8 animate-fade-in-up mt-6">
         <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
         
         {finalizacionRequest ? (
             <FinalizationStatusCard 
                 status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
-                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''} 
             />
         ) : (
             <ErrorBoundary>
@@ -498,7 +507,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
             </ErrorBoundary>
         )}
         
-        {/* REMOVED <Card> WRAPPER AROUND Tabs */}
+        {/* REMOVED CARD WRAPPER TO ALLOW TABS TO BREATHE */}
         <Tabs
             tabs={studentDataTabs}
             activeTabId={currentActiveTab}
@@ -507,14 +516,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
       </div>
 
       {/* --- VISTA MÓVIL --- */}
-      <div className="md:hidden no-print space-y-8 animate-fade-in-up">
+      <div className="md:hidden no-print space-y-8 animate-fade-in-up mt-4">
           {currentActiveTab === 'inicio' && (
               <>
                   <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
                   {finalizacionRequest && (
                       <FinalizationStatusCard 
                           status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
-                          requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+                          requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''} 
                       />
                   )}
                   {homeContent}
@@ -539,7 +548,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
           {currentActiveTab === 'profile' && (
                 <ErrorBoundary>
                   <MobileSectionHeader title="Mi Perfil" description="Administra tus datos personales y de contacto." />
-                  {profileContent}
+                  {/* Kept Card in Mobile Profile for grouping fields */}
+                  <Card>
+                    {profileContent}
+                  </Card>
                 </ErrorBoundary>
           )}
       </div>

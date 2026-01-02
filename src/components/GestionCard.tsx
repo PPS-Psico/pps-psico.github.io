@@ -14,7 +14,7 @@ import {
 } from '../constants';
 import { getEspecialidadClasses, formatDate, parseToUTCDate, normalizeStringForComparison } from '../utils/formatters';
 
-// Opciones Simplificadas (Removed "En Conversación")
+// Opciones Simplificadas
 const GESTION_STATUS_OPTIONS = [
     'Pendiente de Gestión', 
     'Relanzamiento Confirmado', 
@@ -38,12 +38,11 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
   const [status, setStatus] = useState(pps[FIELD_ESTADO_GESTION_LANZAMIENTOS] || 'Pendiente de Gestión');
   const [notes, setNotes] = useState(pps[FIELD_NOTAS_GESTION_LANZAMIENTOS] || '');
   
-  // Initialize date with Relaunch Date OR Start Date if it's already a 2026 record
+  // Initialize date
   const [relaunchDate, setRelaunchDate] = useState(() => {
       const rDate = pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS];
       if (rDate) return rDate;
       const sDate = pps[FIELD_FECHA_INICIO_LANZAMIENTOS];
-      // If start date is in the future (2026+), use it as the default display date
       if (sDate) {
           const d = parseToUTCDate(sDate);
           if (d && d.getUTCFullYear() >= 2026) return sDate;
@@ -63,7 +62,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
     const originalNotes = pps[FIELD_NOTAS_GESTION_LANZAMIENTOS] || '';
     const originalDate = pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS] || '';
     
-    // Only verify date change if we are explicitly confirming a relaunch, otherwise ignore auto-population
     const dateChanged = status === 'Relanzamiento Confirmado' ? relaunchDate !== originalDate : false;
     
     return status !== originalStatus || notes !== originalNotes || dateChanged;
@@ -78,7 +76,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
       [FIELD_NOTAS_GESTION_LANZAMIENTOS]: notes,
     };
 
-    // If confirming, save the date. If specifically marked 2026 via StartDate, we might want to update RelaunchDate too for consistency.
     if (status === 'Relanzamiento Confirmado') {
         updates[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS] = relaunchDate;
     }
@@ -87,7 +84,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
     const success = await onSave(pps.id, updates);
     if (success) {
       setTimeout(() => setIsJustSaved(false), 2000);
-      setIsExpanded(false); // Auto close on save for cleaner workflow
+      setIsExpanded(false); 
     } else {
         setIsJustSaved(false);
     }
@@ -128,14 +125,12 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
 
       if (daysLeft < 0) {
           if (isOpen) {
-              // CASO CRÍTICO: Vencida y Abierta
               return (
                   <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800 flex items-center gap-1 animate-pulse">
                       <span className="material-icons !text-[10px]">warning</span> VENCIDA
                   </span>
               );
           } else {
-              // CASO NORMAL: Vencida y Cerrada (Finalizada)
               return (
                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 flex items-center gap-1">
                       <span className="material-icons !text-[10px]">history</span> Ciclo Finalizado
@@ -154,33 +149,31 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
       return null;
   };
 
-  // Helper to display date if standard format or just text
   const displayRelaunchDate = () => {
       if (!relaunchDate) return null;
-      // If it parses to a valid date using standard format, show year, else show text
       const d = parseToUTCDate(relaunchDate);
       if (d) return d.getFullYear();
-      // If free text, just return it limited
       return relaunchDate.length > 15 ? relaunchDate.substring(0, 12) + '...' : relaunchDate;
   };
 
-  // Check if we should treat this as confirmed for display purposes (either by status or date)
   const isEffectivelyConfirmed = status === 'Relanzamiento Confirmado' || (relaunchDate && new Date(relaunchDate).getFullYear() >= 2026);
+  
+  // Dynamic Border Class based on Orientation
+  const cardBorderClass = isExpanded 
+    ? 'shadow-xl ring-1 ring-blue-500/20 border-blue-300 dark:border-blue-700' 
+    : `shadow-sm hover:shadow-md border-l-4 ${especialidadVisuals.leftBorder} border-t border-r border-b border-slate-200 dark:border-slate-700`;
 
   return (
     <div 
-        className={`relative bg-white dark:bg-gray-900 rounded-xl border transition-all duration-300 overflow-hidden ${isExpanded ? 'shadow-xl ring-1 ring-blue-500/20 border-blue-300 dark:border-blue-700' : 'shadow-sm hover:shadow-md border-slate-200 dark:border-slate-700'}`}
+        className={`relative bg-white dark:bg-gray-900 rounded-xl transition-all duration-300 overflow-hidden ${cardBorderClass}`}
         onClick={() => !isEditingPhone && setIsExpanded(!isExpanded)}
     >
-        {/* Status Stripe */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1.5 transition-colors duration-300 ${status === 'Relanzamiento Confirmado' ? 'bg-emerald-500' : status === 'No se Relanza' ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-
-        {/* Header Content (Always Visible) */}
-        <div className="p-4 pl-6 cursor-pointer">
+        {/* Header Content */}
+        <div className="p-4 pl-5 cursor-pointer">
             <div className="flex justify-between items-start gap-3">
                 <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className={`${especialidadVisuals.tag} text-[10px] py-0.5 px-2`}>{pps[FIELD_ORIENTACION_LANZAMIENTOS]}</span>
+                        <span className={`${especialidadVisuals.tag} text-[10px] py-0.5 px-2 font-bold`}>{pps[FIELD_ORIENTACION_LANZAMIENTOS]}</span>
                         {isEffectivelyConfirmed && relaunchDate && (
                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800">
                                 <span className="material-icons !text-[10px]">event</span>
@@ -218,7 +211,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
                 </div>
             </div>
             
-            {/* Phone Edit Overlay */}
             {isEditingPhone && (
                 <div className="absolute top-3 right-12 z-20 flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 animate-scale-in" onClick={e => e.stopPropagation()}>
                     <input
@@ -235,12 +227,11 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
             )}
         </div>
 
-        {/* Expanded Body (Animation) */}
+        {/* Expanded Body */}
         <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-800' : 'grid-rows-[0fr] opacity-0'}`}>
             <div className="overflow-hidden bg-slate-50/50 dark:bg-slate-800/20 cursor-default" onClick={e => e.stopPropagation()}>
                 <div className="p-4 space-y-4">
                     
-                    {/* Status Selector */}
                     <div>
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Estado de Gestión</label>
                         <select 
@@ -252,7 +243,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
                         </select>
                     </div>
 
-                    {/* Flexible Date Picker (Text) */}
                     {isEffectivelyConfirmed && (
                          <div className="animate-fade-in">
                             <label className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
@@ -269,7 +259,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
                         </div>
                     )}
 
-                    {/* Notes */}
                     <div>
                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Bitácora / Notas</label>
                          <textarea 
@@ -281,7 +270,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(({ pps, onSave, isUpd
                         />
                     </div>
 
-                    {/* Actions Footer */}
                     <div className="flex justify-end pt-2">
                         <button
                             onClick={handleSave}

@@ -114,16 +114,16 @@ const DirectivoView: React.FC = () => {
     }, [studentTabs, jefeOrientations, openStudentPanel, activeMetricsTabId]);
 
     return (
-        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200/60 animate-fade-in-up">
+        <div className="space-y-8 animate-fade-in-up">
             <WelcomeBannerAdmin name={authenticatedUser?.nombre || 'Directivo'} />
-            <div>
-                <Tabs
-                    tabs={allTabs}
-                    activeTabId={activeTabId}
-                    onTabChange={setActiveTabId}
-                    onTabClose={handleCloseTab}
-                />
-            </div>
+            
+            <Tabs
+                tabs={allTabs}
+                activeTabId={activeTabId}
+                onTabChange={setActiveTabId}
+                onTabClose={handleCloseTab}
+            />
+            
             <AppModals />
         </div>
     );

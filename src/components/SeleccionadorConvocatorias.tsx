@@ -53,9 +53,15 @@ const StudentRow: React.FC<{
                 </div>
 
                 <div className="flex-1 w-full lg:w-auto flex flex-wrap items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 pt-3 lg:pt-0 lg:pl-4 min-h-[32px]">
+                    
+                    {/* ESTADO ACADÉMICO (Excluyente) */}
                     {student.terminoCursar ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 whitespace-nowrap">
                             Terminó Cursada
+                        </span>
+                    ) : student.cursandoElectivas ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800 whitespace-nowrap">
+                            Cursando Electivas
                         </span>
                     ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 whitespace-nowrap">
@@ -63,13 +69,18 @@ const StudentRow: React.FC<{
                         </span>
                     )}
 
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border whitespace-nowrap ${student.finalesAdeuda ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700'}`}>
-                        {student.finalesAdeuda ? `Adeuda: ${student.finalesAdeuda}` : 'Sin Finales'}
-                    </span>
+                    {/* ALERTA: SIN PRÁCTICAS PREVIAS (Para mezclar avanzados con nuevos) */}
+                    {student.cantPracticas === 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 dark:bg-fuchsia-900/20 dark:text-fuchsia-300 dark:border-fuchsia-800 whitespace-nowrap shadow-sm">
+                            <span className="material-icons !text-[10px] mr-1">new_releases</span>
+                            Sin Prácticas
+                        </span>
+                    )}
 
-                    {student.cursandoElectivas && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap">
-                            Electivas
+                    {/* Solo mostrar "Adeuda finales" si terminó de cursar, para no ensuciar la vista de los que cursan */}
+                    {student.terminoCursar && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border whitespace-nowrap ${student.finalesAdeuda ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700'}`}>
+                            {student.finalesAdeuda ? `Adeuda: ${student.finalesAdeuda}` : 'Sin Finales'}
                         </span>
                     )}
                     
@@ -78,7 +89,7 @@ const StudentRow: React.FC<{
                              href={student.certificadoTrabajo || '#'} 
                              target="_blank" 
                              rel="noopener noreferrer"
-                             className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800 whitespace-nowrap hover:bg-indigo-100 transition-colors"
+                             className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap hover:bg-blue-100 transition-colors"
                              title="Ver certificado de trabajo"
                              onClick={(e) => !student.certificadoTrabajo && e.preventDefault()}
                          >
@@ -92,7 +103,7 @@ const StudentRow: React.FC<{
                              href={student.cvUrl} 
                              target="_blank" 
                              rel="noopener noreferrer"
-                             className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200 dark:bg-fuchsia-900/20 dark:text-fuchsia-300 dark:border-fuchsia-800 whitespace-nowrap hover:bg-fuchsia-100 transition-colors"
+                             className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800 whitespace-nowrap hover:bg-cyan-100 transition-colors"
                              title="Ver Curriculum Vitae"
                          >
                             <span className="material-icons !text-[10px] mr-1">description</span>

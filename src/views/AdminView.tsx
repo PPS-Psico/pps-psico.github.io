@@ -21,7 +21,7 @@ interface AdminViewProps {
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
-    const { authenticatedUser, logout } = useAuth();
+    const { authenticatedUser } = useAuth();
     const { preferences } = useAdminPreferences();
     const { resolvedTheme } = useTheme();
     const navigate = useNavigate();
@@ -117,7 +117,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
         // Mock routing for testing mode
         return (
             <React.Suspense fallback={<div className="flex justify-center p-20"><Loader /></div>}>
-                <div className="bg-white dark:bg-[#0B1120] rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-slate-800 p-8 min-h-[600px] animate-fade-in-up">
+                <div className="animate-fade-in-up">
                     {localTab === 'dashboard' && <AdminDashboard isTestingMode={true} />}
                     {localTab === 'lanzador' && <LanzadorView isTestingMode={true} />}
                     {localTab === 'gestion' && (preferences.showManagementTab ? <GestionView isTestingMode={true} /> : <div className="p-8 text-center text-slate-500">Módulo desactivado</div>)}
@@ -129,21 +129,25 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
         );
     }
 
-    return (
-        <div className="min-h-screen bg-white dark:bg-[#020617]">
-            {/* --- UNIFIED HEADER --- */}
-            <header className={`sticky top-0 z-40 transition-all duration-300 border-b ${scrolled ? 'bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-slate-200/50 dark:border-slate-800/50 shadow-sm py-2' : 'bg-transparent border-transparent py-4'}`}>
-                <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        
-                        {/* Logo Area */}
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                             <div className="md:hidden">
-                                 {/* Only Show simplified logo on mobile header if needed */}
-                             </div>
-                        </div>
+    // Estilos dinámicos para el header
+    const headerClasses = scrolled 
+        ? "bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-slate-200/50 dark:border-white/5 shadow-sm py-3" 
+        : "bg-transparent border-transparent py-6";
 
-                        {/* Centered Navigation */}
+    return (
+        <div className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
+            
+            {/* Background Ambient Glows (Subtle) */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-400/5 dark:bg-blue-900/10 blur-[120px]"></div>
+                 <div className="absolute top-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-indigo-400/5 dark:bg-indigo-900/10 blur-[120px]"></div>
+            </div>
+
+            {/* --- UNIFIED STICKY HEADER --- */}
+            <header className={`sticky top-0 z-40 transition-all duration-300 border-b ${headerClasses}`}>
+                <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-center relative">
+                        {/* Centered Navigation Capsule */}
                         <div className="flex-1 flex justify-center w-full md:w-auto overflow-x-auto no-scrollbar">
                             <UnifiedTabs 
                                 tabs={navItems}
@@ -151,41 +155,14 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
                                 onTabChange={handleTabChange}
                                 onTabClose={currentTabId === 'student-profile' ? handleCloseStudentTab : undefined}
                                 layoutIdPrefix="admin-main-nav"
+                                className="shadow-lg shadow-slate-200/30 dark:shadow-black/20"
                             />
                         </div>
-
-                        {/* Right Area (User/Actions) - REDESIGNED */}
-                        {!isTestingMode && (
-                           <div className="hidden md:flex items-center">
-                               <div className="flex items-center gap-3 pl-4 pr-2 py-1.5 bg-white/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-full backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 group">
-                                   <div className="text-right hidden lg:block">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">
-                                            {authenticatedUser?.role || 'Admin'}
-                                        </p>
-                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-none">
-                                            {authenticatedUser?.nombre?.split(' ')[0]}
-                                        </p>
-                                   </div>
-                                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md border border-white/10 group-hover:scale-105 transition-transform">
-                                       <span className="text-xs font-bold">{authenticatedUser?.nombre?.charAt(0)}</span>
-                                   </div>
-                                   <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                                   <button 
-                                        onClick={logout}
-                                        className="w-8 h-8 rounded-full bg-transparent hover:bg-rose-50 dark:hover:bg-rose-900/30 text-slate-400 hover:text-rose-600 transition-colors flex items-center justify-center"
-                                        title="Cerrar Sesión"
-                                    >
-                                        <span className="material-icons !text-base">logout</span>
-                                    </button>
-                               </div>
-                           </div>
-                        )}
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                {/* WelcomeBannerAdmin removed - now integrated into SmartBriefing */}
+            <main className="relative z-10 max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 {renderContent()}
             </main>
             

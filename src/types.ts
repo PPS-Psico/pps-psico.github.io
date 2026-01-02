@@ -1,33 +1,36 @@
 
-import { z } from 'zod';
 import { Database } from './types/supabase';
-import { 
-    ALL_ORIENTACIONES,
-    estudianteFieldsSchema,
-    practicaFieldsSchema,
-    solicitudPPSFieldsSchema,
-    lanzamientoPPSFieldsSchema,
-    convocatoriaFieldsSchema,
-    institucionFieldsSchema,
-    finalizacionPPSFieldsSchema,
-    penalizacionFieldsSchema,
-    authUserFieldsSchema
-} from './schemas';
 
-// --- Supabase Helpers ---
+// --- Supabase Tables Shortcuts ---
 type Tables = Database['public']['Tables'];
-export type TableRow<T extends keyof Tables> = Tables[T]['Row'];
-export type TableInsert<T extends keyof Tables> = Tables[T]['Insert'];
-export type TableUpdate<T extends keyof Tables> = Tables[T]['Update'];
 
-export type { Database };
-
-// --- Base Record Type ---
+// --- Base Record Type (Optional helper if you still use it) ---
 export type AppRecord<T> = T & {
   id: string;
-  createdTime?: string; // Legacy alias for created_at
+  createdTime?: string; // Legacy alias mapping to created_at
   [key: string]: any; 
 };
+
+// Map strict Database types to App types
+export type Estudiante = Tables['estudiantes']['Row'];
+export type Practica = Tables['practicas']['Row'];
+export type SolicitudPPS = Tables['solicitudes_pps']['Row'];
+export type LanzamientoPPS = Tables['lanzamientos_pps']['Row'];
+export type Convocatoria = Tables['convocatorias']['Row'];
+export type Institucion = Tables['instituciones']['Row'];
+export type FinalizacionPPS = Tables['finalizacion_pps']['Row'];
+export type Penalizacion = Tables['penalizaciones']['Row'];
+export type AuthUserRow = Tables['auth_users']['Row']; // If you use it
+
+// Helper aliases for components that expect "Fields" suffix
+export type EstudianteFields = Estudiante;
+export type PracticaFields = Practica;
+export type SolicitudPPSFields = SolicitudPPS;
+export type LanzamientoPPSFields = LanzamientoPPS;
+export type ConvocatoriaFields = Convocatoria;
+export type InstitucionFields = Institucion;
+export type FinalizacionPPSFields = FinalizacionPPS;
+export type PenalizacionFields = Penalizacion;
 
 export type AirtableRecord<T> = AppRecord<T>; 
 
@@ -40,10 +43,9 @@ export interface AppErrorResponse {
   error: AppError | string;
 }
 
+export const ALL_ORIENTACIONES = ['Clinica', 'Educacional', 'Laboral', 'Comunitaria'] as const;
 export type Orientacion = typeof ALL_ORIENTACIONES[number];
-export { ALL_ORIENTACIONES };
 
-// REMOVED 'informes' from TabId
 export type TabId = 'inicio' | 'solicitudes' | 'practicas' | 'profile' | 'calendario' | 'finalizacion' | 'informes';
 
 export interface CriteriosCalculados {
@@ -58,28 +60,6 @@ export interface CriteriosCalculados {
   cumpleRotacion: boolean;
   tienePracticasPendientes: boolean;
 }
-
-// --- Table Fields Interfaces (Inferred from Zod Schemas) ---
-export type EstudianteFields = z.infer<typeof estudianteFieldsSchema>;
-export type PracticaFields = z.infer<typeof practicaFieldsSchema>;
-export type SolicitudPPSFields = z.infer<typeof solicitudPPSFieldsSchema>;
-export type LanzamientoPPSFields = z.infer<typeof lanzamientoPPSFieldsSchema>;
-export type ConvocatoriaFields = z.infer<typeof convocatoriaFieldsSchema>;
-export type InstitucionFields = z.infer<typeof institucionFieldsSchema>;
-export type FinalizacionPPSFields = z.infer<typeof finalizacionPPSFieldsSchema>;
-export type PenalizacionFields = z.infer<typeof penalizacionFieldsSchema>;
-export type AuthUserFields = z.infer<typeof authUserFieldsSchema>;
-
-// --- Extended Types with ID ---
-export type Penalizacion = AppRecord<PenalizacionFields>;
-export type FinalizacionPPS = AppRecord<FinalizacionPPSFields>;
-export type Practica = AppRecord<PracticaFields>;
-export type SolicitudPPS = AppRecord<SolicitudPPSFields>;
-export type LanzamientoPPS = AppRecord<LanzamientoPPSFields>;
-export type Convocatoria = AppRecord<ConvocatoriaFields>;
-export type Institucion = AppRecord<InstitucionFields>;
-export type Estudiante = AppRecord<EstudianteFields>;
-
 
 // --- Component-specific Types ---
 export interface InformeTask {
@@ -108,6 +88,7 @@ export interface EnrichedStudent {
     finalesAdeuda: string;
     notasEstudiante: string;
     totalHoras: number;
+    cantPracticas: number; // Nuevo campo para detectar ingresantes absolutos
     penalizacionAcumulada: number;
     puntajeTotal: number;
     horarioSeleccionado: string;

@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
@@ -350,7 +351,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                                         onDoubleClick={() => setEditingRecord(i)}
                                     >
                                         <td className="px-6 py-4">
-                                            <div className="font-extrabold text-slate-800 dark:text-slate-100 text-base mb-1">{i[FIELD_NOMBRE_INSTITUCIONES]}</div>
+                                            <div className="font-extrabold text-slate-800 dark:text-slate-100 text-base mb-1">{cleanInstitutionName(i[FIELD_NOMBRE_INSTITUCIONES])}</div>
                                             <div className="text-xs text-slate-500">{i[FIELD_DIRECCION_INSTITUCIONES]}</div>
                                         </td>
                                         <td className="px-6 py-4">{renderOrientaciones(i[FIELD_ORIENTACIONES_INSTITUCIONES])}</td>

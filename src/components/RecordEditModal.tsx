@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { AirtableRecord } from '../types';
 import { 
@@ -7,6 +6,7 @@ import {
     FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
     FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS
 } from '../constants';
+import { cleanDbValue } from '../utils/formatters';
 
 interface FieldConfig {
     key: string;
@@ -35,25 +35,31 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({ isOpen, onClose, reco
     const [formData, setFormData] = useState<any>({});
     const isCreateMode = !record;
     
-    // Ref para rastrear dónde se inició el clic (para evitar cierre al seleccionar texto)
     const mouseDownTarget = useRef<EventTarget | null>(null);
 
     useEffect(() => {
         const data: { [key: string]: any } = {};
         
         tableConfig.fieldConfig.forEach(field => {
+            let rawVal;
             if (isCreateMode) {
-                // If initialData exists (duplication), use it. Otherwise use defaults.
                 if (initialData && initialData[field.key] !== undefined) {
-                    data[field.key] = initialData[field.key];
+                    rawVal = initialData[field.key];
                 } else {
-                    // Set default values for new records. 
-                    data[field.key] = field.type === 'checkbox' ? false : '';
+                    rawVal = field.type === 'checkbox' ? false : '';
                 }
             } else {
-                // Edit mode
-                const airtableKey = tableConfig.schema[field.key] || field.key;
-                data[field.key] = record ? record[airtableKey] : '';
+                // If the key is mapped in schema, use the mapped key, otherwise assume flat structure
+                // But generally RecordEditModal is used with mapped objects already.
+                const keyToCheck = field.key;
+                rawVal = record ? record[keyToCheck] : '';
+            }
+            
+            // CLEAN ON INIT: Ensure the form starts with clean string values
+            if (typeof rawVal === 'string' || Array.isArray(rawVal)) {
+                data[field.key] = cleanDbValue(rawVal);
+            } else {
+                data[field.key] = rawVal;
             }
         });
         setFormData(data);
@@ -70,16 +76,21 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({ isOpen, onClose, reco
     };
 
     const handleSave = () => {
-        // Sanitize data before saving
         const cleanedData = { ...formData };
         
         tableConfig.fieldConfig.forEach(field => {
-            // Ensure empty numbers are sent as null, not '' or 0
+            const val = cleanedData[field.key];
+            
+            // Garantizar tipos primitivos correctos
             if (field.type === 'number') {
-                const val = cleanedData[field.key];
                 if (val === '' || val === null || val === undefined) {
                     cleanedData[field.key] = null;
+                } else {
+                    cleanedData[field.key] = Number(val);
                 }
+            } else if (field.type === 'text' || field.type === 'textarea' || field.type === 'select') {
+                // DOUBLE CLEAN ON SAVE: Ensure we send clean string
+                cleanedData[field.key] = cleanDbValue(val);
             }
         });
 
@@ -93,7 +104,6 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({ isOpen, onClose, reco
         const isCheckbox = field.type === 'checkbox';
         const isTextarea = field.type === 'textarea';
         
-        // Updated Classes for Better Dark Mode Contrast (Matches Input.tsx)
         const inputClasses = `
             w-full rounded-xl border-2 
             border-slate-300 dark:border-slate-500 
@@ -106,7 +116,6 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({ isOpen, onClose, reco
             ${isCheckbox ? 'h-5 w-5 text-blue-600 rounded cursor-pointer' : ''}
         `;
 
-        // INTELLIGENT RELATION DISPLAY
         if (!isCreateMode && record) {
             let displayValue = null;
             let icon = 'link';
@@ -132,7 +141,6 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({ isOpen, onClose, reco
                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">ID: {value}</p>
                              </div>
                         </div>
-                        {/* Hidden input to maintain form state integrity */}
                         <input type="hidden" name={field.key} value={value} />
                     </div>
                 );
@@ -190,7 +198,6 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({ isOpen, onClose, reco
             className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in" 
             onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
             onMouseUp={(e) => {
-                // Solo cerramos si el clic empezó Y terminó en el fondo.
                 if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) {
                     onClose();
                 }

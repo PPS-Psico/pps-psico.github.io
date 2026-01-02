@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import CriteriosPanel from '../components/CriteriosPanel';
 import PracticasTable from '../components/PracticasTable';
@@ -411,7 +412,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
         {finalizacionRequest ? (
             <FinalizationStatusCard 
                 status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
-                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''} 
             />
         ) : (
             <ErrorBoundary>
@@ -436,7 +437,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
                   {finalizacionRequest && (
                       <FinalizationStatusCard 
                           status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
-                          requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.createdTime || ''} 
+                          requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''} 
                       />
                   )}
                   {homeContent}

@@ -60,20 +60,6 @@ interface StudentForReview {
     orientacion: string;
 }
 
-function getTextField(value: unknown): string {
-    if (value == null) return '';
-    if (Array.isArray(value)) {
-        const first = value[0];
-        if (first == null) return '';
-        if (typeof first === 'object') {
-            const maybeName = (first as any)?.name ?? (first as any)?.text ?? '';
-            return typeof maybeName === 'string' ? maybeName : String(maybeName ?? '');
-        }
-        return typeof first === 'string' ? first : String(first);
-    }
-    return typeof value === 'string' ? value : String(value);
-}
-
 function formatPhoneNumber(phone?: string): string {
   if (!phone) return '';
   return phone.replace(/^\+54\s?9?\s?/, '').trim();
@@ -104,7 +90,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
                 [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Seleccionado',
                 [FIELD_FECHA_INICIO_CONVOCATORIAS]: '2024-01-01',
                 [FIELD_FECHA_FIN_CONVOCATORIAS]: '2024-06-01',
-                [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: ['student_1', 'student_2']
+                [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'student_1'
             } as any]);
             setIsLoading(false);
             return;
@@ -120,10 +106,9 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
             const groupedConvocatorias = new Map<string, any>();
 
             records.forEach(record => {
-                const lanzId = safeGetId(record[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
-                
-                const name = getTextField(record[FIELD_NOMBRE_PPS_CONVOCATORIAS]);
-                const date = getTextField(record[FIELD_FECHA_INICIO_CONVOCATORIAS]);
+                const lanzId = record[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
+                const name = record[FIELD_NOMBRE_PPS_CONVOCATORIAS];
+                const date = record[FIELD_FECHA_INICIO_CONVOCATORIAS];
                 
                 // Usamos el ID de lanzamiento como clave primaria si existe, sino fallback
                 const key = lanzId || `${name}||${date}`; 
@@ -132,13 +117,13 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
                     groupedConvocatorias.set(key, { 
                         ...record, 
                         id: key, // Usamos la key como ID del grupo para la UI
-                        [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: [],
-                        [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: lanzId ? [lanzId] : [] 
+                        [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: [], // Array for aggregated students
+                        [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: lanzId
                     });
                 }
 
                 const group = groupedConvocatorias.get(key)!;
-                const studentId = safeGetId(record[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
+                const studentId = record[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
                 
                 if (studentId) {
                      const currentStudents = group[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string[] || [];
@@ -221,8 +206,8 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
             // Map studentID-launchID to specific fields like 'Horario'
             const convMap = new Map<string, any>();
             convocatoriasRes.forEach(c => {
-                 const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
-                 const lId = safeGetId(c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
+                 const sId = c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
+                 const lId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
                  
                  if(sId && lId) convMap.set(`${sId}-${lId}`, c);
             });
@@ -230,7 +215,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
             const compiledList: StudentForReview[] = [];
 
             for (const group of selectedGroups) {
-                const groupLanzamientoId = safeGetId(group[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
+                const groupLanzamientoId = group[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
                 const ppsData = groupLanzamientoId ? lanzamientoMap.get(groupLanzamientoId) : undefined;
                 const groupStudents = group[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string[] || [];
 
@@ -240,17 +225,17 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
 
                     const specificConv = convMap.get(`${sId}-${groupLanzamientoId}`);
                     
-                    const institucion = getTextField(ppsData?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || group[FIELD_NOMBRE_PPS_CONVOCATORIAS]);
-                    const direccion = getTextField(ppsData?.[FIELD_DIRECCION_LANZAMIENTOS] || group[FIELD_DIRECCION_CONVOCATORIAS]);
-                    const fechaInicio = getTextField(ppsData?.[FIELD_FECHA_INICIO_LANZAMIENTOS] || group[FIELD_FECHA_INICIO_CONVOCATORIAS]);
-                    const fechaFin = getTextField(ppsData?.[FIELD_FECHA_FIN_LANZAMIENTOS] || group[FIELD_FECHA_FIN_CONVOCATORIAS]);
+                    const institucion = ppsData?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || group[FIELD_NOMBRE_PPS_CONVOCATORIAS] || 'N/A';
+                    const direccion = ppsData?.[FIELD_DIRECCION_LANZAMIENTOS] || group[FIELD_DIRECCION_CONVOCATORIAS] || '';
+                    const fechaInicio = ppsData?.[FIELD_FECHA_INICIO_LANZAMIENTOS] || group[FIELD_FECHA_INICIO_CONVOCATORIAS];
+                    const fechaFin = ppsData?.[FIELD_FECHA_FIN_LANZAMIENTOS] || group[FIELD_FECHA_FIN_CONVOCATORIAS];
                     
-                    const horario = getTextField(specificConv?.[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || ppsData?.[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] || 'A definir');
-                    const orientacion = getTextField(ppsData?.[FIELD_ORIENTACION_LANZAMIENTOS] || group[FIELD_ORIENTACION_CONVOCATORIAS]);
+                    const horario = specificConv?.[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || ppsData?.[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] || 'A definir';
+                    const orientacion = ppsData?.[FIELD_ORIENTACION_LANZAMIENTOS] || group[FIELD_ORIENTACION_CONVOCATORIAS] || 'General';
 
                     const fullName = student[FIELD_NOMBRE_ESTUDIANTES] || '';
-                    let nombre = getTextField(String(student[FIELD_NOMBRE_SEPARADO_ESTUDIANTES] ?? ''));
-                    let apellido = getTextField(String(student[FIELD_APELLIDO_SEPARADO_ESTUDIANTES] ?? ''));
+                    let nombre = String(student[FIELD_NOMBRE_SEPARADO_ESTUDIANTES] ?? '');
+                    let apellido = String(student[FIELD_APELLIDO_SEPARADO_ESTUDIANTES] ?? '');
 
                     if (!nombre || !apellido) {
                         const split = simpleNameSplit(fullName);
@@ -468,7 +453,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
                                         />
                                     </td>
                                     <td className="p-3 font-medium text-slate-900 dark:text-white">
-                                        {getTextField(conv[FIELD_NOMBRE_PPS_CONVOCATORIAS])}
+                                        {conv[FIELD_NOMBRE_PPS_CONVOCATORIAS]}
                                     </td>
                                     <td className="p-3 text-center">
                                         <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-blue-100 bg-blue-600 rounded-full">
@@ -476,7 +461,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({ showModal, isTestingM
                                         </span>
                                     </td>
                                     <td className="p-3 text-slate-500 dark:text-slate-400">
-                                        {formatDate(getTextField(conv[FIELD_FECHA_INICIO_CONVOCATORIAS]))}
+                                        {formatDate(conv[FIELD_FECHA_INICIO_CONVOCATORIAS])}
                                     </td>
                                 </tr>
                             ))}

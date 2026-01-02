@@ -2,37 +2,22 @@
 import React from 'react';
 import type { SolicitudPPS } from '../types';
 import { FIELD_EMPRESA_PPS_SOLICITUD, FIELD_ESTADO_PPS, FIELD_ULTIMA_ACTUALIZACION_PPS, FIELD_NOTAS_PPS } from '../constants';
-import { formatDate, getStatusVisuals } from '../utils/formatters';
-
-// Helper function to clean Airtable array strings
-const cleanValue = (val: any): string => {
-    if (val === null || val === undefined) return '';
-    if (Array.isArray(val)) return cleanValue(val[0]);
-    let str = String(val);
-    if (str.startsWith('["') && str.endsWith('"]')) {
-        try {
-            const parsed = JSON.parse(str);
-            if (Array.isArray(parsed) && parsed.length > 0) return cleanValue(parsed[0]);
-        } catch (e) {}
-    }
-    return str.replace(/[\[\]"]/g, '').trim();
-}
+import { formatDate, getStatusVisuals, normalizeStringForComparison } from '../utils/formatters';
 
 interface SolicitudCardProps {
   solicitud: SolicitudPPS;
 }
 
 const SolicitudCard: React.FC<SolicitudCardProps> = ({ solicitud }) => {
-  const institucionRaw = solicitud[FIELD_EMPRESA_PPS_SOLICITUD];
-  const institucion = cleanValue(institucionRaw);
-
-  const statusRaw = solicitud[FIELD_ESTADO_PPS];
-  const status = cleanValue(statusRaw);
-  
+  const institucion = solicitud[FIELD_EMPRESA_PPS_SOLICITUD] || '';
+  const status = solicitud[FIELD_ESTADO_PPS] || 'Pendiente';
   const notas = solicitud[FIELD_NOTAS_PPS];
   const actualizacion = solicitud[FIELD_ULTIMA_ACTUALIZACION_PPS];
   
   const visuals = getStatusVisuals(status);
+
+  // Logic: Student only sees notes if the status is "No se pudo concretar" (to know why)
+  const showNotes = normalizeStringForComparison(status) === 'no se pudo concretar';
 
   return (
     <article className="group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 overflow-hidden relative">
@@ -46,7 +31,7 @@ const SolicitudCard: React.FC<SolicitudCardProps> = ({ solicitud }) => {
                  <div className="flex items-center gap-2 mb-1">
                     <span className={`${visuals.labelClass} shadow-sm border border-transparent`}>
                          <span className="material-icons !text-sm mr-1">{visuals.icon}</span>
-                         {status || 'Pendiente'}
+                         {status}
                     </span>
                 </div>
                 
@@ -62,9 +47,9 @@ const SolicitudCard: React.FC<SolicitudCardProps> = ({ solicitud }) => {
                     </div>
                 </div>
 
-                {notas && (
+                {showNotes && notas && (
                     <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                        "{notas}"
+                        <strong>Motivo:</strong> "{notas}"
                     </div>
                 )}
             </div>

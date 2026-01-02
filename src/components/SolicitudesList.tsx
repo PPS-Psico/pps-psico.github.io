@@ -1,19 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
 import EmptyState from './EmptyState';
-import ConfirmModal from './ConfirmModal';
 import type { SolicitudPPS, CriteriosCalculados, FinalizacionPPS, InformeTask } from '../types';
 import FinalizationStatusCard from './FinalizationStatusCard';
 import { FIELD_ESTADO_FINALIZACION, FIELD_FECHA_SOLICITUD_FINALIZACION, FIELD_ESTADO_PPS, FIELD_EMPRESA_PPS_SOLICITUD, FIELD_ULTIMA_ACTUALIZACION_PPS, FIELD_NOTAS_PPS } from '../constants';
 import { normalizeStringForComparison, getStatusVisuals, formatDate } from '../utils/formatters';
 import AcreditacionPreflightModal from './AcreditacionPreflightModal';
-
-const cleanValue = (val: any): string => {
-    if (val === null || val === undefined) return '';
-    if (Array.isArray(val)) return cleanValue(val[0]);
-    let str = String(val);
-    return str.replace(/[\[\]"]/g, '').trim();
-}
 
 interface SolicitudesListProps {
   solicitudes: SolicitudPPS[];
@@ -25,8 +17,8 @@ interface SolicitudesListProps {
 }
 
 const SolicitudItem: React.FC<{ solicitud: SolicitudPPS }> = ({ solicitud }) => {
-    const institucion = cleanValue(solicitud[FIELD_EMPRESA_PPS_SOLICITUD]);
-    const status = cleanValue(solicitud[FIELD_ESTADO_PPS]);
+    const institucion = solicitud[FIELD_EMPRESA_PPS_SOLICITUD] || '';
+    const status = solicitud[FIELD_ESTADO_PPS] || 'Pendiente';
     const notas = solicitud[FIELD_NOTAS_PPS];
     const actualizacion = solicitud[FIELD_ULTIMA_ACTUALIZACION_PPS];
     const visuals = getStatusVisuals(status);

@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import type { Practica } from '../types';
 import {
@@ -14,18 +16,13 @@ import {
   getEspecialidadClasses,
   getStatusVisuals,
   parseToUTCDate,
-  normalizeStringForComparison
+  normalizeStringForComparison,
+  cleanInstitutionName,
+  cleanDbValue
 } from '../utils/formatters';
 import EmptyState from './EmptyState';
 import NotaSelector from './NotaSelector';
 import { TableSkeleton } from './Skeletons';
-
-const cleanInstitutionName = (val: any): string => {
-    if (val === null || val === undefined) return 'N/A';
-    if (Array.isArray(val)) return cleanInstitutionName(val[0]);
-    let str = String(val);
-    return str.replace(/[\[\]\{\}"]/g, '').trim();
-}
 
 interface PracticasTableProps {
     practicas: Practica[];
@@ -131,7 +128,10 @@ const PracticaRow: React.FC<{
 }> = ({ practica, onNotaChange, onFechaFinChange, isSaving, isSuccess }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
-    const institucion = cleanInstitutionName(practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]);
+    const rawName = practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
+    // CLEAN NAME DISPLAY FORCEFULLY HERE AS WELL
+    const institucion = cleanDbValue(rawName) || 'Institución desconocida';
+    
     let status = practica[FIELD_ESTADO_PRACTICA];
 
     const now = new Date();

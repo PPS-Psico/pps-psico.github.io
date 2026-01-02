@@ -5,21 +5,21 @@ import { db } from '../lib/db';
 import { mockDb } from '../services/mockDb';
 import type { LanzamientoPPS } from '../types';
 import {
-  TABLE_LANZAMIENTOS,
-  TABLE_INSTITUCIONES,
-  COL_NOMBRE_PPS,
-  COL_FECHA_INICIO,
-  COL_FECHA_FIN,
-  COL_ORIENTACION,
-  COL_ESTADO_GESTION,
-  COL_ESTADO_CONVOCATORIA,
-  COL_CUPOS,
-  COL_NOTAS_GESTION,
-  COL_FECHA_RELANZAMIENTO,
-  COL_REQ_CERTIFICADO,
-  COL_REQ_CV,
-  COL_DIRECCION,
-  COL_CODIGO_CAMPUS_LANZAMIENTOS
+  TABLE_NAME_LANZAMIENTOS_PPS,
+  TABLE_NAME_INSTITUCIONES,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
+  FIELD_ESTADO_GESTION_LANZAMIENTOS,
+  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_NOTAS_GESTION_LANZAMIENTOS,
+  FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
+  FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
+  FIELD_REQ_CV_LANZAMIENTOS,
+  FIELD_DIRECCION_LANZAMIENTOS,
+  FIELD_CODIGO_CAMPUS_LANZAMIENTOS
 } from '../constants';
 import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
 import { mapLanzamiento } from '../utils/mappers';
@@ -30,7 +30,7 @@ export type FilterType = 'all' | 'vencidas' | 'proximas';
 const getGroupName = (name: unknown): string => {
     const strName = String(name || '');
     if (!strName) return 'Sin Nombre';
-    return strName.split(' - ')[0].trim();
+    return strName.split(/ [-–] /)[0].trim();
 };
 
 interface UseGestionConvocatoriasProps {
@@ -61,50 +61,40 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
 
         try {
             if (isTestingMode) {
-                const records = await mockDb.getAll(TABLE_LANZAMIENTOS);
+                const records = await mockDb.getAll(TABLE_NAME_LANZAMIENTOS_PPS);
                 setLanzamientos(records as unknown as LanzamientoPPS[]);
                 setLoadingState('loaded');
                 return;
             }
 
-            // SERVER-SIDE FILTERING STRATEGY
-            // We construct specific filters for Supabase based on the selected tab
             const now = new Date();
             const today = now.toISOString().split('T')[0];
-            const thirtyDaysFromNow = new Date();
-            thirtyDaysFromNow.setDate(now.getDate() + 30);
-            const futureDate = thirtyDaysFromNow.toISOString().split('T')[0];
-
+            
             let filters: Record<string, unknown> = {};
 
-            // Basic filters to ignore archived stuff
-            // Note: Supabase doesn't support 'neq' in simple object filters easily in this generic,
-            // so we might filter 'Archivado' client side if the generic service doesn't support it.
-            // But we can optimize date ranges.
-
+            // FILTROS BASADOS EN FECHA DE INICIO (fecha_inicio)
             if (filterType === 'vencidas') {
-                // End date < today
+                // Vencidas = Ya iniciaron (Fecha Inicio <= Hoy)
                 filters['endDate'] = today; 
             } else if (filterType === 'proximas') {
-                // End date >= today AND End date <= 30 days
-                // We don't have direct range support in the simple `filters` object of fetchAllData, 
-                // but we can fetch active ones and filter client side, reducing payload.
+                // Próximas = Van a iniciar (Fecha Inicio >= Hoy)
+                filters['startDate'] = today;
             }
 
             // Fetch Data
             const { records: lanzRecords, error: lanzError } = await fetchPaginatedData(
-                TABLE_LANZAMIENTOS,
+                TABLE_NAME_LANZAMIENTOS_PPS,
                 1, 
-                1000, // Fetch up to 1000 active items
+                1000, 
                 [],
                 searchTerm,
-                [COL_NOMBRE_PPS],
-                { field: COL_FECHA_FIN, direction: 'asc' },
+                [FIELD_NOMBRE_PPS_LANZAMIENTOS],
+                { field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: 'asc' }, // Ordenar por fecha inicio
                 filters
             );
             
             const { records: instRecords } = await fetchPaginatedData(
-                TABLE_INSTITUCIONES,
+                TABLE_NAME_INSTITUCIONES,
                 1,
                 1000,
                 ['nombre', 'telefono']
@@ -124,21 +114,21 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
             });
             setInstitutionsMap(newInstitutionsMap);
 
-            // Client-side refinement (complex logic like 'Archivado' exclusion if not supported by simple filter)
+            // Client-side refinement (Double check)
             const mappedRecords = lanzRecords.map(mapLanzamiento);
             
             const filteredRecords = mappedRecords.filter(pps => {
-                const status = pps[COL_ESTADO_GESTION];
+                const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
                 if (status === 'Archivado' || status === 'No se Relanza') return false;
                 
-                // Extra filtering for specific logic not easily done in simple SQL wrapper
+                // Client-side date check using FECHA_INICIO as requested
                 if (filterType === 'vencidas') {
-                    const endDate = parseToUTCDate(pps[COL_FECHA_FIN]);
-                    return endDate && endDate < now;
+                    const start = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+                    return start && start < now;
                 }
                 if (filterType === 'proximas') {
-                    const endDate = parseToUTCDate(pps[COL_FECHA_FIN]);
-                    return endDate && endDate >= now && endDate <= thirtyDaysFromNow;
+                    const start = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+                    return start && start >= now;
                 }
                 
                 return true;
@@ -162,7 +152,7 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
         setUpdatingIds(prev => new Set(prev).add(id));
         try {
             if (isTestingMode) {
-                await mockDb.update(TABLE_LANZAMIENTOS, id, updates);
+                await mockDb.update(TABLE_NAME_LANZAMIENTOS_PPS, id, updates);
                 setLanzamientos(prev => prev.map(pps => pps.id === id ? { ...pps, ...updates } : pps));
             } else {
                 await db.lanzamientos.update(id, updates);
@@ -179,7 +169,6 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
     }, [fetchData, isTestingMode]);
 
     const handleUpdateInstitutionPhone = useCallback(async (institutionId: string, phone: string): Promise<boolean> => {
-         // Re-use existing logic, simple wrapper
          if (isTestingMode) return true;
          try {
              await db.instituciones.update(institutionId, { telefono: phone });
@@ -192,35 +181,49 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
     }, [isTestingMode]);
 
     const filteredData = useMemo(() => {
-        // Group logic remains similar but operates on already filtered dataset
-        const relanzamientosConfirmados: LanzamientoPPS[] = [];
-        const pendientesDeGestion: (LanzamientoPPS & { daysLeft?: number })[] = [];
         const now = new Date();
+        
+        const uniqueConfirmed = new Map<string, LanzamientoPPS>();
+        const uniquePending = new Map<string, (LanzamientoPPS & { daysLeft?: number })>();
 
+        // 1. Process Confirmed
         lanzamientos.forEach(pps => {
-            const status = pps[COL_ESTADO_GESTION];
+            const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
             if (status === 'Relanzamiento Confirmado') {
-                relanzamientosConfirmados.push(pps);
-            } else {
-                // Calculate days left for sorting/display
-                const endDate = parseToUTCDate(pps[COL_FECHA_FIN]);
-                const daysLeft = endDate ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24)) : 999;
-                pendientesDeGestion.push({ ...pps, daysLeft });
+                const groupName = getGroupName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
+                if (!uniqueConfirmed.has(groupName)) {
+                    uniqueConfirmed.set(groupName, pps);
+                }
             }
         });
 
-        // Group by name deduplication logic for pending items
-        const uniquePending = new Map<string, typeof pendientesDeGestion[0]>();
-        pendientesDeGestion.forEach(item => {
-            const groupName = getGroupName(item[COL_NOMBRE_PPS]);
-            const existing = uniquePending.get(groupName);
+        // 2. Process Pending/Others
+        lanzamientos.forEach(pps => {
+            const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
             
-            // Keep the one expiring soonest
+            if (status === 'Relanzamiento Confirmado' || status === 'Archivado' || status === 'No se Relanza') {
+                return;
+            }
+
+            const groupName = getGroupName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
+            if (uniqueConfirmed.has(groupName)) {
+                return;
+            }
+
+            // Urgency calculation based on FECHA_INICIO (start date) as requested context implies
+            const startDate = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+            const daysLeft = startDate ? Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 3600 * 24)) : 999;
+            
+            const item = { ...pps, daysLeft };
+
+            const existing = uniquePending.get(groupName);
+            // Keep the one starting soonest
             if (!existing || (item.daysLeft || 999) < (existing.daysLeft || 999)) {
                 uniquePending.set(groupName, item);
             }
         });
 
+        const relanzamientosConfirmados = Array.from(uniqueConfirmed.values());
         const finalPending = Array.from(uniquePending.values()).sort((a, b) => (a.daysLeft || 999) - (b.daysLeft || 999));
 
         return { 
@@ -241,7 +244,7 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
         updatingIds,
         searchTerm,
         setSearchTerm,
-        orientationFilter: 'all', // Deprecated in UI but kept for interface
+        orientationFilter: 'all', 
         setOrientationFilter: () => {},
         filterType,
         setFilterType,

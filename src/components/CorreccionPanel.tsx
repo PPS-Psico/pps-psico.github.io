@@ -1,349 +1,400 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { db } from '../lib/db';
-import { fetchCorrectionPanelData } from '../services/dataService';
-import type { InformeCorreccionPPS, InformeCorreccionStudent, FlatCorreccionStudent } from '../types';
-import {
-  FIELD_NOTA_PRACTICAS,
-  FIELD_INFORME_SUBIDO_CONVOCATORIAS,
-  FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
-  FIELD_ESPECIALIDAD_PRACTICAS,
-  FIELD_FECHA_INICIO_PRACTICAS,
-  FIELD_FECHA_FIN_PRACTICAS
-} from '../constants';
-import Loader from './Loader';
-import EmptyState from './EmptyState';
-import Toast from './Toast';
-import InformeCorreccionCard from './InformeCorreccionCard';
-import CorreccionRapidaView from './CorreccionRapidaView';
-import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
-import { useAuth } from '../contexts/AuthContext';
-import ErrorState from './ErrorState';
 
-type LoadingState = 'initial' | 'loading' | 'loaded' | 'error';
-type Manager = 'Selva Estrella' | 'Franco Pedraza' | 'Cynthia Rossi';
-type ViewMode = 'byPps' | 'flatList';
+import React, { useMemo, useState } from 'react';
+import { HORAS_OBJETIVO_TOTAL, HORAS_OBJETIVO_ORIENTACION, ROTACION_OBJETIVO_ORIENTACIONES } from '../constants';
+import ProgressCircle from './ProgressCircle';
+import OrientacionSelector from './OrientacionSelector';
+import type { CriteriosCalculados, Orientacion, InformeTask } from '../types';
+import { CriteriosPanelSkeleton } from './Skeletons';
+import { normalizeStringForComparison } from '../utils/formatters';
+import AcreditacionPreflightModal from './AcreditacionPreflightModal';
 
-const managerConfig: Record<Manager, { orientations: string[], label: string }> = {
-  'Selva Estrella': { orientations: ['clinica'], label: 'Selva Estrella (Clínica)' },
-  'Franco Pedraza': { orientations: ['educacional'], label: 'Franco Pedraza (Educacional)' },
-  'Cynthia Rossi': { orientations: ['laboral', 'comunitaria'], label: 'Cynthia Rossi (Laboral & Comunitaria)' }
+// --- SUB-COMPONENTES PARA ESTILOS ---
+
+// Helper para colores de etiquetas
+const getAreaBadgeStyle = (areaName: string) => {
+    const normalized = normalizeStringForComparison(areaName);
+    
+    if (normalized.includes('clinica')) {
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20';
+    }
+    if (normalized.includes('educacional') || normalized.includes('educacion')) {
+        return 'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20';
+    }
+    if (normalized.includes('laboral') || normalized.includes('trabajo')) {
+        return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20';
+    }
+    if (normalized.includes('comunitaria') || normalized.includes('social')) {
+        return 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20';
+    }
+    // Default
+    return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
 };
 
-interface CorreccionPanelProps {
-  isTestingMode?: boolean;
-}
-
-const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false }) => {
-  const { isJefeMode } = useAuth();
-  const [loadingState, setLoadingState] = useState<LoadingState>('initial');
-  const [error, setError] = useState<string | null>(null);
-  const [allPpsGroups, setAllPpsGroups] = useState<Map<string, InformeCorreccionPPS>>(new Map());
-  const [activeManager, setActiveManager] = useState<Manager>('Selva Estrella');
-  const [updatingNotaId, setUpdatingNotaId] = useState<string | null>(null);
-  const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('byPps');
-
-  const [selectedStudents, setSelectedStudents] = useState<Map<string, Set<string>>>(new Map());
-  const [batchUpdatingLanzamientoId, setBatchUpdatingLanzamientoId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const fetchData = useCallback(async () => {
-    setLoadingState('loading');
-    setError(null);
-
-    if (isTestingMode) {
-      setAllPpsGroups(new Map());
-      setLoadingState('loaded');
-      return;
-    }
-
-    try {
-      // Use the new service function to fetch all correction data
-      const ppsGroups = await fetchCorrectionPanelData();
-      
-      setAllPpsGroups(ppsGroups);
-      setLoadingState('loaded');
-
-    } catch (e: any) {
-        console.error("Error fetching correction data:", e);
-        setError(e.message || 'Ocurrió un error inesperado al cargar los datos.');
-        setLoadingState('error');
-    }
-  }, [isTestingMode]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleNotaChange = useCallback(async (student: InformeCorreccionStudent, newNota: string) => {
-    if (isTestingMode) {
-      setToastInfo({ message: 'Modo de prueba: La nota no se guardará.', type: 'success' });
-      return;
-    }
-    setUpdatingNotaId(student.practicaId || `creating-${student.studentId}`);
-    try {
-        let practicaId = student.practicaId;
-
-        if (!practicaId) {
-            const ppsGroup = allPpsGroups.get(student.lanzamientoId);
-            if (!ppsGroup) {
-                throw new Error("No se pudo encontrar el grupo de PPS para crear el registro de la práctica.");
-            }
-            const newPractica = await db.practicas.create({
-                [FIELD_ESTUDIANTE_LINK_PRACTICAS]: [student.studentId],
-                [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: [student.lanzamientoId],
-                [FIELD_ESPECIALIDAD_PRACTICAS]: student.orientacion,
-                [FIELD_FECHA_INICIO_PRACTICAS]: student.fechaInicio || ppsGroup.fechaFinalizacion, 
-                [FIELD_FECHA_FIN_PRACTICAS]: student.fechaFinalizacionPPS,
-                [FIELD_NOTA_PRACTICAS]: newNota
-            } as any);
-            if (newPractica) {
-                practicaId = newPractica.id;
-            } else {
-                throw new Error("No se pudo crear el registro de la práctica.");
-            }
-        } else {
-            await db.practicas.update(practicaId, { [FIELD_NOTA_PRACTICAS]: newNota });
+const DetailCard = ({ 
+    icon, 
+    label, 
+    value, 
+    subValue, 
+    isCompleted,
+    children,
+    colorClass = "text-blue-600"
+}: { 
+    icon: string, 
+    label: string, 
+    value: React.ReactNode, 
+    subValue?: string, 
+    isCompleted: boolean,
+    children?: React.ReactNode,
+    colorClass?: string
+}) => (
+    <div className={`
+        relative overflow-hidden rounded-[2rem] p-6 flex flex-col justify-between h-full transition-all duration-300
+        glass-panel hover:shadow-lg group border
+        ${isCompleted 
+            ? 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-900/5 dark:border-emerald-900/30' 
+            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/40'
         }
-        
-        if (newNota === 'No Entregado') {
-            await db.convocatorias.update(student.convocatoriaId, { [FIELD_INFORME_SUBIDO_CONVOCATORIAS]: false });
-        }
-        
-        // Optimistic update
-        setAllPpsGroups((prev: Map<string, InformeCorreccionPPS>) => {
-            const newGroups = new Map<string, InformeCorreccionPPS>(prev);
-            const group = newGroups.get(student.lanzamientoId);
-            if (group) {
-                const studentToUpdate = group.students.find(s => s.studentId === student.studentId);
-                if (studentToUpdate) {
-                    studentToUpdate.nota = newNota;
-                    if (!studentToUpdate.practicaId) studentToUpdate.practicaId = practicaId;
-                    if (newNota === 'No Entregado') studentToUpdate.informeSubido = false;
+    `}>
+        <div className="flex justify-between items-start mb-4">
+             <div className={`
+                p-3 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 duration-300 shadow-sm
+                ${isCompleted 
+                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' 
+                    : 'bg-slate-50 dark:bg-slate-800 ' + colorClass
                 }
-            }
-            return newGroups;
-        });
-
-    } catch (e: any) {
-        setToastInfo({ message: `Error al guardar: ${e.message}`, type: 'error' });
-    } finally {
-        setUpdatingNotaId(null);
-    }
-  }, [isTestingMode, allPpsGroups]);
-  
-  const handleSelectionChange = (practicaId: string) => {
-    setSelectedStudents((prev: Map<string, Set<string>>) => {
-        const newSelection = new Map<string, Set<string>>(prev);
-        for (const [lanzamientoId, selectedSet] of newSelection.entries()) {
-            if (selectedSet.has(practicaId)) {
-                selectedSet.delete(practicaId);
-                if (selectedSet.size === 0) {
-                    newSelection.delete(lanzamientoId);
-                }
-                return newSelection;
-            }
-        }
-        
-        for (const [lanzamientoId, ppsGroup] of allPpsGroups) {
-            if (ppsGroup.students.some(s => s.practicaId === practicaId)) {
-                if (!newSelection.has(lanzamientoId)) {
-                    newSelection.set(lanzamientoId, new Set());
-                }
-                newSelection.get(lanzamientoId)!.add(practicaId);
-                break;
-            }
-        }
-        return newSelection;
-    });
-  };
-
-  const handleSelectAll = (practicaIds: string[], select: boolean) => {
-    if (practicaIds.length === 0) return;
-    const firstPracticaId = practicaIds[0];
-    let lanzamientoIdForGroup: string | null = null;
-    
-    for (const ppsGroup of allPpsGroups.values()) {
-        if (ppsGroup.students.some(s => s.practicaId === firstPracticaId)) {
-            lanzamientoIdForGroup = ppsGroup.lanzamientoId;
-            break;
-        }
-    }
-    
-    if (!lanzamientoIdForGroup) return;
-
-    setSelectedStudents((prev: Map<string, Set<string>>) => {
-        const newSelection = new Map<string, Set<string>>(prev);
-        if (select) {
-            newSelection.set(lanzamientoIdForGroup!, new Set(practicaIds));
-        } else {
-            newSelection.delete(lanzamientoIdForGroup!);
-        }
-        return newSelection;
-    });
-  };
-
-  const handleBatchUpdate = async (newNota: string) => {
-    const selectedEntries = Array.from(selectedStudents);
-    if (selectedEntries.length === 0) return;
-    
-    const [lanzamientoId, practicaIdSet] = selectedEntries[0] as [string, Set<string>];
-    const ppsGroup = allPpsGroups.get(lanzamientoId);
-    if (!ppsGroup) return;
-
-    setBatchUpdatingLanzamientoId(lanzamientoId);
-    try {
-        const updates = Array.from(practicaIdSet).map(practicaId => ({
-            id: practicaId,
-            fields: { [FIELD_NOTA_PRACTICAS]: newNota }
-        }));
-        
-        if (isTestingMode) {
-            console.log("TEST MODE: Batch updating:", updates);
-            await new Promise(res => setTimeout(res, 1000));
-        } else {
-            await db.practicas.updateMany(updates as any);
-        }
-
-        setAllPpsGroups((prev: Map<string, InformeCorreccionPPS>) => {
-            const newGroups = new Map<string, InformeCorreccionPPS>(prev);
-            const group = newGroups.get(lanzamientoId);
-            if (group) {
-                group.students.forEach(s => {
-                    if (s.practicaId && practicaIdSet.has(s.practicaId)) {
-                        s.nota = newNota;
-                    }
-                });
-            }
-            return newGroups;
-        });
-
-        setSelectedStudents(new Map());
-        setToastInfo({ message: `${practicaIdSet.size} notas actualizadas a "${newNota}".`, type: 'success' });
-    } catch (e: any) {
-        setToastInfo({ message: `Error en lote: ${e.message}`, type: 'error' });
-    } finally {
-        setBatchUpdatingLanzamientoId(null);
-    }
-  };
-
-
-  const filteredAndSortedGroups = useMemo<InformeCorreccionPPS[]>(() => {
-    let groups: InformeCorreccionPPS[] = Array.from(allPpsGroups.values());
-    const managerOrientations = isJefeMode
-      ? managerConfig[activeManager].orientations.map(normalizeStringForComparison)
-      : [];
-
-    if (isJefeMode) {
-      groups = groups.filter((g: InformeCorreccionPPS) => g.orientacion && managerOrientations.includes(normalizeStringForComparison(g.orientacion)));
-    }
-    
-    if (searchTerm) {
-      const lowerSearch = normalizeStringForComparison(searchTerm);
-      groups = groups.map((group: InformeCorreccionPPS) => {
-        const filteredStudents = group.students.filter(student => 
-          normalizeStringForComparison(student.studentName).includes(lowerSearch) ||
-          normalizeStringForComparison(group.ppsName || '').includes(lowerSearch)
-        );
-        return { ...group, students: filteredStudents };
-      }).filter(group => group.students.length > 0);
-    }
-    
-    return groups.sort((a: InformeCorreccionPPS, b: InformeCorreccionPPS) => {
-        const aDate = a.fechaFinalizacion ? new Date(a.fechaFinalizacion) : new Date(0);
-        const bDate = b.fechaFinalizacion ? new Date(b.fechaFinalizacion) : new Date(0);
-        return bDate.getTime() - aDate.getTime();
-    });
-  }, [allPpsGroups, isJefeMode, activeManager, searchTerm]);
-
-  const flatStudentList = useMemo(() => {
-    if (viewMode === 'byPps') return [];
-    
-    return filteredAndSortedGroups.flatMap((group: InformeCorreccionPPS) => {
-      return (group.students || []).filter(s => s.informeSubido && (s.nota === 'Sin calificar' || s.nota === 'Entregado (sin corregir)'))
-        .map((student): FlatCorreccionStudent => {
-            let deadline: string | undefined;
-            const baseDateString = student.fechaEntregaInforme || student.fechaFinalizacionPPS;
-            const baseDate = parseToUTCDate(baseDateString);
-            if(baseDate) {
-                const d = new Date(baseDate);
-                d.setDate(d.getDate() + 30);
-                deadline = d.toISOString();
-            }
-            return {
-                ...student,
-                ppsName: group.ppsName,
-                informeLink: group.informeLink,
-                correctionDeadline: deadline
-            }
-        })
-    });
-  }, [filteredAndSortedGroups, viewMode]);
-
-
-  if (loadingState === 'loading' || loadingState === 'initial') return <Loader />;
-  if (error) return <ErrorState error={error} />;
-
-  return (
-    <div className="animate-fade-in-up space-y-6">
-        {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-        
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slate-50/70 dark:bg-gray-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
-            <div className="relative w-full sm:w-72">
-                <input type="search" placeholder="Buscar por alumno o PPS..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors" />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 dark:text-slate-500 !text-lg pointer-events-none">search</span>
+            `}>
+                <span className="material-icons !text-2xl">{icon}</span>
             </div>
-            <div className="flex items-center gap-2 p-1 bg-slate-200 dark:bg-slate-800 rounded-lg">
-                <button onClick={() => setViewMode('byPps')} className={`px-3 py-1.5 text-sm font-semibold rounded-md flex items-center gap-2 ${viewMode === 'byPps' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-slate-50' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
-                    <span className="material-icons !text-base">view_agenda</span> Agrupado
-                </button>
-                <button onClick={() => setViewMode('flatList')} className={`px-3 py-1.5 text-sm font-semibold rounded-md flex items-center gap-2 ${viewMode === 'flatList' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-slate-50' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
-                    <span className="material-icons !text-base">view_list</span> Lista Rápida
-                </button>
-            </div>
-            {isJefeMode && (
-                <div className="relative w-full sm:w-64">
-                    <select value={activeManager} onChange={e => setActiveManager(e.target.value as Manager)} className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors appearance-none">
-                        {Object.entries(managerConfig).map(([key, { label }]) => <option key={key} value={key}>{label}</option>)}
-                    </select>
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 dark:text-slate-500 !text-lg pointer-events-none">supervisor_account</span>
+            {isCompleted && (
+                <div className="text-emerald-500 animate-fade-in bg-emerald-100 dark:bg-emerald-900/30 rounded-full p-1">
+                    <span className="material-icons !text-lg block">check</span>
                 </div>
             )}
         </div>
-
-        {filteredAndSortedGroups.length === 0 ? (
-            <EmptyState icon="task_alt" title="Todo Corregido" message="No hay informes pendientes de corrección que coincidan con los filtros actuales."/>
-        ) : (
-            viewMode === 'byPps' ? (
-                <div className="space-y-6">
-                    {filteredAndSortedGroups.map(group => (
-                        <InformeCorreccionCard
-                            key={group.lanzamientoId}
-                            ppsGroup={group}
-                            onNotaChange={handleNotaChange}
-                            updatingNotaId={updatingNotaId}
-                            selectedStudents={selectedStudents.get(group.lanzamientoId) || new Set()}
-                            onSelectionChange={handleSelectionChange}
-                            onSelectAll={(ids, select) => handleSelectAll(ids, select)}
-                            onBatchUpdate={(nota) => handleBatchUpdate(nota)}
-                            isBatchUpdating={batchUpdatingLanzamientoId === group.lanzamientoId}
-                            searchTerm={searchTerm}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <CorreccionRapidaView
-                    students={flatStudentList}
-                    onNotaChange={handleNotaChange}
-                    updatingNotaId={updatingNotaId}
-                    searchTerm={searchTerm}
-                />
-            )
-        )}
+        
+        <div>
+            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 truncate">
+                {label}
+            </h4>
+            <div className="flex items-baseline gap-1.5">
+                <span className={`text-3xl md:text-4xl font-black tracking-tight ${isCompleted ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                    {value}
+                </span>
+                {subValue && (
+                    <span className="text-sm font-bold text-slate-400 dark:text-slate-500">
+                        {subValue}
+                    </span>
+                )}
+            </div>
+            {children && <div className="mt-3">{children}</div>}
+        </div>
     </div>
+);
+
+interface CriteriosPanelProps {
+  criterios: CriteriosCalculados;
+  selectedOrientacion: Orientacion | "";
+  handleOrientacionChange: (orientacion: Orientacion | "") => void;
+  showSaveConfirmation: boolean;
+  onRequestFinalization: () => void;
+  isLoading?: boolean;
+  informeTasks?: InformeTask[]; // Nuevo prop
+}
+
+const CriteriosPanel: React.FC<CriteriosPanelProps> = ({ 
+    criterios, 
+    selectedOrientacion, 
+    handleOrientacionChange, 
+    showSaveConfirmation, 
+    onRequestFinalization,
+    isLoading = false,
+    informeTasks = []
+}) => {
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  
+  // Incluimos verificación de informes pendientes en la lógica
+  const hasPendingCorrections = useMemo(() => 
+      informeTasks.some(t => t.informeSubido && (t.nota === 'Sin calificar' || t.nota === 'Entregado (sin corregir)')),
+      [informeTasks]
+  );
+
+  const todosLosCriteriosCumplidos = useMemo(() => 
+    criterios.cumpleHorasTotales && 
+    criterios.cumpleRotacion && 
+    criterios.cumpleHorasOrientacion && 
+    !criterios.tienePracticasPendientes &&
+    !hasPendingCorrections, // Nuevo criterio
+    [criterios, hasPendingCorrections]
+  );
+
+  // Asegurar que no hay duplicados para la visualización en tarjetas
+  const uniqueAreas = useMemo(() => {
+      // Normalizamos y usamos un Set para unicidad real
+      const uniqueNormalized = new Set();
+      const uniqueDisplay = [];
+      
+      for (const area of criterios.orientacionesUnicas) {
+          const norm = normalizeStringForComparison(area);
+          if (!uniqueNormalized.has(norm)) {
+              uniqueNormalized.add(norm);
+              uniqueDisplay.push(area);
+          }
+      }
+      return uniqueDisplay;
+  }, [criterios.orientacionesUnicas]);
+
+  const handleButtonClick = () => {
+      // Siempre mostramos el modal "bonito" ahora, que sirve tanto de confirmación exitosa como de advertencia
+      setShowWarningModal(true);
+  };
+
+  if (isLoading) {
+      return <CriteriosPanelSkeleton />;
+  }
+
+  // Calculate percentages
+  const progressPercent = Math.min(100, Math.round((criterios.horasTotales / HORAS_OBJETIVO_TOTAL) * 100));
+
+  // --- VISTA MÓVIL OPTIMIZADA (COMPACTA) ---
+  const MobileView = () => (
+      <div className="bg-white/80 dark:bg-[#0F172A]/80 backdrop-blur-xl rounded-[2rem] p-6 border border-slate-200/60 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none relative overflow-hidden mb-6">
+           {/* Background Ambience */}
+           <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+           <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+
+           <div className="relative z-10">
+              <div className="flex justify-between items-end mb-4 pb-4 border-b border-slate-100 dark:border-white/5">
+                  <div>
+                      <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Horas Acumuladas</p>
+                      <div className="flex items-baseline gap-1.5">
+                          <span className={`text-6xl font-black tracking-tighter leading-none ${todosLosCriteriosCumplidos ? 'text-transparent bg-clip-text bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-400 dark:to-teal-500' : 'text-slate-900 dark:text-white'}`}>
+                              {Math.round(criterios.horasTotales)}
+                          </span>
+                          <span className="text-lg font-bold text-slate-400 dark:text-slate-600">hs</span>
+                      </div>
+                  </div>
+                  
+                  {/* Indicador Global de Estado */}
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-sm ${todosLosCriteriosCumplidos ? 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-100 text-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'}`}>
+                      <span className="material-icons !text-2xl">
+                          {todosLosCriteriosCumplidos ? 'verified' : 'hourglass_top'}
+                      </span>
+                  </div>
+              </div>
+
+              {/* Status Text (Matches Desktop logic) */}
+              <div className="mb-4">
+                  {todosLosCriteriosCumplidos ? (
+                       <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold leading-tight flex items-start gap-1.5">
+                           <span className="material-icons !text-sm mt-0.5">check_circle</span>
+                           <span>¡Felicitaciones! Has completado todos los requisitos.</span>
+                       </p>
+                  ) : (
+                       <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-tight">
+                           Has completado el <strong className="text-blue-600 dark:text-blue-400">{progressPercent}%</strong> de las horas requeridas para tu acreditación.
+                       </p>
+                  )}
+              </div>
+
+              <div className="space-y-3">
+                  {/* Badge Rotación */}
+                   <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors ${criterios.cumpleRotacion 
+                      ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300' 
+                      : 'bg-white/60 border-slate-100 text-slate-700 dark:bg-indigo-900/10 dark:border-indigo-800 dark:text-indigo-200'
+                    }`}>
+                      <div>
+                        <span className="text-xs font-bold uppercase tracking-wider block">Rotación de Áreas</span>
+                      </div>
+                      <span className="text-sm font-black font-mono opacity-100">
+                         {criterios.orientacionesCursadasCount} / {ROTACION_OBJETIVO_ORIENTACIONES}
+                      </span>
+                    </div>
+
+                    {/* Badge Especialidad */}
+                    <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-colors ${criterios.cumpleHorasOrientacion 
+                      ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300' 
+                      : 'bg-white/60 border-slate-100 text-slate-700 dark:bg-indigo-900/10 dark:border-indigo-800 dark:text-indigo-200'
+                    }`}>
+                       <div>
+                         <span className="text-xs font-bold uppercase tracking-wider block">{selectedOrientacion || "Especialidad"}</span>
+                       </div>
+                       <span className="text-sm font-black font-mono opacity-100">
+                          {selectedOrientacion ? `${Math.round(criterios.horasOrientacionElegida)}hs` : "-"}
+                       </span>
+                    </div>
+              </div>
+           </div>
+      </div>
+  );
+
+  return (
+    <section className="animate-fade-in-up">
+      
+      {/* --- MÓVIL --- */}
+      <div className="block lg:hidden">
+          <MobileView />
+      </div>
+
+      {/* --- DESKTOP --- */}
+      <div className="hidden lg:grid grid-cols-3 gap-6">
+          
+          {/* 1. HERO CARD (Recorrido Principal) */}
+          <div className="col-span-2 relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-white to-slate-50 dark:from-[#0B1120] dark:to-[#0f172a] text-slate-900 dark:text-white shadow-xl shadow-slate-200/50 dark:shadow-black/50 border border-slate-200/80 dark:border-slate-800">
+               
+               {/* Background Effects */}
+               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-blue-100/60 to-transparent dark:from-blue-900/20 rounded-full blur-[120px] -mr-40 -mt-40 pointer-events-none opacity-80"></div>
+               <div className="absolute bottom-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] dark:opacity-[0.07] mix-blend-overlay pointer-events-none"></div>
+
+               {/* Grid Layout for Hero Content */}
+               <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center p-8 sm:p-10 h-full">
+                   
+                   {/* Left Side: Text & Actions (More span) */}
+                   <div className="md:col-span-7 flex flex-col justify-center h-full space-y-8">
+                       
+                       <div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/60 dark:bg-white/5 border border-slate-200 dark:border-white/10 backdrop-blur-md shadow-sm mb-4">
+                                <span className={`w-2 h-2 rounded-full ${todosLosCriteriosCumplidos ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`}></span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Progreso General</span>
+                            </div>
+
+                           <div className="flex items-baseline gap-1">
+                               <span className="text-7xl sm:text-8xl font-black tracking-tighter leading-none text-slate-900 dark:text-white drop-shadow-sm">
+                                   {Math.round(criterios.horasTotales)}
+                               </span>
+                               <span className="text-2xl sm:text-3xl text-slate-400 dark:text-slate-500 font-bold">hs</span>
+                           </div>
+                           
+                           {/* Texto condicional */}
+                           {todosLosCriteriosCumplidos ? (
+                               <p className="text-lg text-emerald-600 dark:text-emerald-400 font-bold mt-2 max-w-sm leading-relaxed flex items-start gap-2">
+                                   <span className="material-icons mt-1 !text-lg">check_circle</span>
+                                   ¡Felicitaciones! Has completado todos los requisitos para tu acreditación.
+                               </p>
+                           ) : (
+                               <p className="text-lg text-slate-600 dark:text-slate-400 font-medium mt-2 max-w-sm leading-relaxed">
+                                   Has completado el <strong className="text-blue-600 dark:text-blue-400">{progressPercent}%</strong> de las horas requeridas para tu acreditación.
+                               </p>
+                           )}
+                       </div>
+
+                       {/* Action Button */}
+                       <div className="pt-2">
+                           <button
+                                onClick={handleButtonClick}
+                                className={`
+                                    group relative inline-flex items-center justify-center gap-3 px-8 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-95 border w-full sm:w-auto
+                                    ${todosLosCriteriosCumplidos 
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' 
+                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
+                                    }
+                                `}
+                            >
+                                {todosLosCriteriosCumplidos ? (
+                                    <>
+                                        <span className="material-icons text-emerald-400 !text-xl">verified</span>
+                                        <span>Solicitar Acreditación</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Trámite de Acreditación</span>
+                                        <span className="material-icons !text-lg text-slate-400 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                    </>
+                                )}
+                            </button>
+                       </div>
+                   </div>
+
+                   {/* Right Side: Chart (Less span, centered) */}
+                   <div className="md:col-span-5 flex items-center justify-center relative">
+                        {/* Decorative Circle Background */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-50 to-indigo-50 dark:from-slate-800/50 dark:to-slate-900/50 rounded-full blur-2xl transform scale-90"></div>
+                        
+                        <div className="relative z-10 scale-110">
+                             <ProgressCircle 
+                                value={criterios.horasTotales} 
+                                max={HORAS_OBJETIVO_TOTAL} 
+                                size={220} 
+                                strokeWidth={16} 
+                                className="drop-shadow-lg"
+                            />
+                        </div>
+                   </div>
+               </div>
+          </div>
+
+          {/* 2. COLUMNA LATERAL (Tarjetas Apiladas) */}
+          <div className="col-span-1 flex flex-col gap-6">
+              
+              {/* Tarjeta Especialidad */}
+              <div className="flex-1">
+                  {selectedOrientacion ? (
+                       <DetailCard 
+                          icon="psychology"
+                          label={`Especialidad: ${selectedOrientacion}`}
+                          value={Math.round(criterios.horasOrientacionElegida)}
+                          subValue={`/ ${HORAS_OBJETIVO_ORIENTACION}`}
+                          isCompleted={criterios.cumpleHorasOrientacion}
+                          colorClass="text-purple-600 dark:text-purple-400"
+                       />
+                  ) : (
+                      <div className="h-full glass-panel rounded-[2rem] p-6 flex flex-col justify-center items-center text-center hover:border-blue-300 dark:hover:border-blue-700 transition-all group cursor-pointer relative overflow-hidden border-dashed border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                          <div className="relative z-10 w-full">
+                              <div className="mb-4 text-slate-400 group-hover:text-blue-500 transition-colors transform group-hover:scale-110 duration-300">
+                                  <span className="material-icons !text-5xl">add_task</span>
+                              </div>
+                              <OrientacionSelector
+                                  selectedOrientacion={selectedOrientacion}
+                                  onOrientacionChange={handleOrientacionChange}
+                                  showSaveConfirmation={showSaveConfirmation}
+                              />
+                          </div>
+                      </div>
+                  )}
+              </div>
+
+              {/* Tarjeta Rotación */}
+              <div className="flex-1">
+                  <DetailCard 
+                      icon="cached"
+                      label="Áreas Rotadas"
+                      value={criterios.orientacionesCursadasCount}
+                      subValue={`/ ${ROTACION_OBJETIVO_ORIENTACIONES}`}
+                      isCompleted={criterios.cumpleRotacion}
+                      colorClass="text-amber-600 dark:text-amber-500"
+                  >
+                      {/* Unique badges list */}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                          {uniqueAreas.length > 0 ? (
+                              uniqueAreas.map(area => (
+                                  <span 
+                                    key={area} 
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide shadow-sm ${getAreaBadgeStyle(area)}`}
+                                  >
+                                      {area}
+                                  </span>
+                              ))
+                          ) : (
+                              <span className="text-xs text-slate-400 italic">Sin áreas registradas</span>
+                          )}
+                      </div>
+                  </DetailCard>
+              </div>
+          </div>
+      </div>
+
+      <AcreditacionPreflightModal 
+        isOpen={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        onConfirm={() => {
+            setShowWarningModal(false);
+            onRequestFinalization();
+        }}
+        criterios={criterios}
+        informeTasks={informeTasks}
+      />
+    </section>
   );
 };
 
-export default CorreccionPanel;
+export default React.memo(CriteriosPanel);

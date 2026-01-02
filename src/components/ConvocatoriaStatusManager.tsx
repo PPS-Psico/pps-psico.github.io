@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { fetchAllData, updateRecord } from '../services/supabaseService';
 import type { LanzamientoPPS } from '../types';
 import {
@@ -9,6 +9,7 @@ import {
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+  FIELD_ESTADO_GESTION_LANZAMIENTOS,
 } from '../constants';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
@@ -24,23 +25,6 @@ const mockLanzamientosStatus: LanzamientoPPS[] = [
 type LoadingState = 'initial' | 'loading' | 'loaded' | 'error';
 const STATUS_OPTIONS = ['Abierta', 'Cerrado', 'Oculto'];
 
-const sanitizeAirtableStatus = (statusFromAirtable?: string): string => {
-  if (!statusFromAirtable) {
-    return 'Cerrado';
-  }
-  // Remove quotes, trim whitespace, and handle "Abierto" vs "Abierta"
-  const cleaned = statusFromAirtable.replace(/"/g, '').trim();
-  if (cleaned.toLowerCase() === 'abierto') {
-    return 'Abierta';
-  }
-  // Check if it's one of the valid options
-  if (STATUS_OPTIONS.includes(cleaned as 'Abierta' | 'Cerrado' | 'Oculto')) {
-    return cleaned;
-  }
-  // If it's something else unexpected, default to Cerrado
-  return 'Cerrado';
-};
-
 interface StatusCardProps {
   pps: LanzamientoPPS;
   onStatusChange: (id: string, newStatus: string) => Promise<boolean>;
@@ -48,7 +32,8 @@ interface StatusCardProps {
 }
 
 const StatusCard: React.FC<StatusCardProps> = React.memo(({ pps, onStatusChange, isUpdating }) => {
-  const [status, setStatus] = useState(sanitizeAirtableStatus(pps[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]));
+  // Use direct value, defaulting to 'Cerrado' only if null/undefined
+  const [status, setStatus] = useState(pps[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] || 'Cerrado');
   const [justSaved, setJustSaved] = useState(false);
   const especialidadVisuals = getEspecialidadClasses(pps[FIELD_ORIENTACION_LANZAMIENTOS]);
 
@@ -156,9 +141,6 @@ const ConvocatoriaStatusManager: React.FC<ConvocatoriaStatusManagerProps> = ({ i
             setError('No se pudieron cargar las convocatorias. ' + (typeof fetchError.error === 'string' ? fetchError.error : fetchError.error.message));
             setLoadingState('error');
         } else {
-            // Ensure records are treated as flat objects. 
-            // fetchAllData via supabaseService already returns flat records, 
-            // so spreading `r` works. `r.id` is standard.
             const mappedRecords = records.map(r => ({ ...r, id: r.id } as LanzamientoPPS));
             setLanzamientos(mappedRecords);
             setLoadingState('loaded');
@@ -181,17 +163,23 @@ const ConvocatoriaStatusManager: React.FC<ConvocatoriaStatusManagerProps> = ({ i
             return true;
         }
 
-        const { error: updateError } = await updateRecord(TABLE_NAME_LANZAMIENTOS_PPS, id, {
+        // FIX: Update estado_gestion to un-archive if needed
+        const updates: any = {
             [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus
-        });
+        };
+        
+        // Si abrimos la convocatoria, nos aseguramos de que no esté archivada internamente
+        if (newStatus === 'Abierta') {
+             updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = 'Relanzamiento Confirmado';
+        }
+
+        const { error: updateError } = await updateRecord(TABLE_NAME_LANZAMIENTOS_PPS, id, updates);
         
         let success = false;
         if (updateError) {
             setToastInfo({ message: 'Error al actualizar el estado.', type: 'error' });
-            // Revert local state handled implicitly by failure to update local state below
         } else {
             setToastInfo({ message: 'Estado actualizado exitosamente.', type: 'success' });
-            // Correctly update flat local state
             setLanzamientos(prev => prev.map(pps => pps.id === id ? { ...pps, [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus } : pps));
             success = true;
         }
@@ -206,10 +194,11 @@ const ConvocatoriaStatusManager: React.FC<ConvocatoriaStatusManagerProps> = ({ i
         const ocultas: LanzamientoPPS[] = [];
 
         lanzamientos.forEach(pps => {
-            const status = sanitizeAirtableStatus(pps[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
+            const status = pps[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS];
+            // No sanitization needed, use exact value
             if (status === 'Abierta') abiertas.push(pps);
             else if (status === 'Oculto') ocultas.push(pps);
-            else cerradas.push(pps); // Default to Cerrado
+            else cerradas.push(pps);
         });
         return { abiertas, cerradas, ocultas };
     }, [lanzamientos]);

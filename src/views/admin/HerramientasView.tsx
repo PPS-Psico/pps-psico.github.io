@@ -16,6 +16,7 @@ import {
     FIELD_NOTAS_INTERNAS_ESTUDIANTES
 } from '../../constants';
 import { useAdminPreferences } from '../../contexts/AdminPreferencesContext';
+import Button from '../../components/Button';
 
 // Lazy load heavy components
 const DatabaseEditor = lazy(() => import('../../components/DatabaseEditor'));
@@ -26,9 +27,6 @@ const ExecutiveReportGenerator = lazy(() => import('../../components/ExecutiveRe
 const ActiveInstitutionsReport = lazy(() => import('../../components/ActiveInstitutionsReport'));
 const PersonalizationPanel = lazy(() => import('../../components/PersonalizationPanel'));
 const DataIntegrityTool = lazy(() => import('../../components/DataIntegrityTool'));
-const OrphanFixer = lazy(() => import('../../components/OrphanFixer'));
-const YearEndResetTool = lazy(() => import('../../components/YearEndResetTool'));
-const StudentDiagnostics = lazy(() => import('../../components/StudentDiagnostics'));
 
 const QUICK_STUDENT_CONFIG = {
     label: 'Estudiante',
@@ -77,7 +75,10 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
       if (preferences.showAutomation) availableTabs.push({ id: 'automation', label: 'Automatizaciones', icon: 'auto_fix_high' });
       if (preferences.showReports) availableTabs.push({ id: 'reportes', label: 'Reportes', icon: 'summarize' });
       
-      availableTabs.push({ id: 'mantenimiento', label: 'Mantenimiento', icon: 'cleaning_services' });
+      // Mantenimiento (Integridad)
+      if (preferences.showIntegrity) availableTabs.push({ id: 'integrity', label: 'Integridad', icon: 'health_and_safety' });
+      
+      // Siempre al final
       availableTabs.push({ id: 'personalization', label: 'Personalización', icon: 'tune' });
 
       return availableTabs;
@@ -96,19 +97,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
               <DatabaseEditor isTestingMode={isTestingMode} />
             </ErrorBoundary>
           )}
-
-          {activeTabId === 'mantenimiento' && (
-            <ErrorBoundary>
-              <div className="space-y-8 animate-fade-in">
-                  <DataIntegrityTool />
-                  <OrphanFixer />
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <StudentDiagnostics />
-                      <YearEndResetTool />
-                  </div>
-              </div>
-            </ErrorBoundary>
-          )}
           
           {activeTabId === 'convenios' && preferences.showNewAgreements && (
             <ErrorBoundary>
@@ -125,6 +113,12 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
           {activeTabId === 'automation' && preferences.showAutomation && (
             <ErrorBoundary>
               <EmailAutomationManager />
+            </ErrorBoundary>
+          )}
+
+          {activeTabId === 'integrity' && preferences.showIntegrity && (
+            <ErrorBoundary>
+              <DataIntegrityTool />
             </ErrorBoundary>
           )}
 

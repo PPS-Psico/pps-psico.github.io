@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
@@ -7,9 +8,9 @@ import { supabase } from '../lib/supabaseClient';
 import { mockDb } from '../services/mockDb';
 import type { SolicitudPPSFields } from '../types';
 import {
-    COL_NOMBRE_INSTITUCION_SOLICITUD,
-    COL_ESTADO_SEGUIMIENTO,
-    COL_ESTADO_FINALIZACION,
+    FIELD_EMPRESA_PPS_SOLICITUD,
+    FIELD_ESTADO_PPS,
+    FIELD_ESTADO_FINALIZACION,
     TABLE_PPS,
     TABLE_FINALIZACION
 } from '../constants';
@@ -23,14 +24,18 @@ import { sendSmartEmail } from '../utils/emailService';
 import CollapsibleSection from './CollapsibleSection';
 import ConfirmModal from './ConfirmModal';
 
-// Clean helper now handled by mappers or simple checks
-const clean = (val: any) => val || '';
+// Helper to extract nested values safely
+const safeVal = (val: any) => val || <span className="text-slate-300 dark:text-slate-600 italic text-xs">No especificado</span>;
 
-const InfoField: React.FC<{ label: string; value?: string | null; fullWidth?: boolean }> = ({ label, value, fullWidth }) => (
-    <div className={`${fullWidth ? 'col-span-full' : ''} group`}>
-        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5 group-hover:text-blue-500 transition-colors">{label}</p>
-        <p className="text-slate-800 dark:text-slate-200 text-sm font-medium whitespace-pre-wrap break-words">
-            {value || <span className="text-slate-300 dark:text-slate-600 italic">Sin datos</span>}
+// Grid Item Component
+const GridItem: React.FC<{ label: string; value: any; icon?: string; fullWidth?: boolean }> = ({ label, value, icon, fullWidth }) => (
+    <div className={`${fullWidth ? 'col-span-full' : ''} bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50 shadow-sm`}>
+        <div className="flex items-center gap-1.5 mb-1">
+            {icon && <span className="material-icons text-slate-400 !text-sm">{icon}</span>}
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+        </div>
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 break-words whitespace-pre-wrap leading-snug">
+            {safeVal(value)}
         </p>
     </div>
 );
@@ -107,27 +112,97 @@ const RequestListItem: React.FC<{
             </div>
             {isExpanded && (
                 <div className="border-t border-slate-100 dark:border-slate-800 p-5 bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <h5 className="font-bold text-xs uppercase text-slate-500">Detalles de la Solicitud</h5>
-                            <InfoField label="Localidad" value={req.localidad} />
-                            <InfoField label="Dirección" value={req.direccion_completa} />
-                            <InfoField label="Referente" value={req.referente_institucion} />
-                            <InfoField label="Contacto" value={req.contacto_tutor} fullWidth />
+                    <div className="flex flex-col lg:flex-row gap-8">
+                        
+                        {/* LEFT COLUMN: INSTITUTIONAL DETAILS */}
+                        <div className="flex-1 space-y-4">
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                                <span className="material-icons text-slate-400 !text-lg">business</span>
+                                <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-300">Datos Institucionales</h5>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <GridItem label="Localidad" value={req.localidad} icon="location_on" />
+                                <GridItem label="Dirección" value={req.direccion_completa} icon="map" />
+                                <GridItem label="Referente" value={req.referente_institucion} icon="person" />
+                                <GridItem label="Email Contacto" value={req.email_institucion} icon="email" />
+                                <GridItem label="Teléfono" value={req.telefono_institucion} icon="phone" />
+                                <GridItem label="Lic. Psicología (Tutor)" value={req.contacto_tutor} icon="psychology" />
+                            </div>
+
+                            <div className="flex gap-4 mt-2">
+                                <div className={`flex-1 p-3 rounded-lg border flex items-center justify-between ${req.convenio_uflo === 'Sí' || req.convenio_uflo === 'Si' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                    <span className="text-xs font-bold uppercase">Convenio UFLO</span>
+                                    <span className="material-icons !text-lg">{req.convenio_uflo === 'Sí' || req.convenio_uflo === 'Si' ? 'check_circle' : 'help_outline'}</span>
+                                </div>
+                                <div className={`flex-1 p-3 rounded-lg border flex items-center justify-between ${req.tutor_disponible === 'Sí' || req.tutor_disponible === 'Si' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+                                    <span className="text-xs font-bold uppercase">Tutor Disponible</span>
+                                    <span className="material-icons !text-lg">{req.tutor_disponible === 'Sí' || req.tutor_disponible === 'Si' ? 'check_circle' : 'cancel'}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-4">
-                            <h5 className="font-bold text-xs uppercase text-slate-500">Gestión</h5>
-                             <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Estado Actual</label>
-                                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"><option value="Pendiente">Pendiente</option><option value="En conversaciones">En conversaciones</option><option value="Realizada">Realizada</option><option value="No se pudo concretar">No se pudo concretar</option><option value="Archivado">Archivado</option></select>
+
+                        {/* RIGHT COLUMN: PROPOSAL DETAILS & MANAGEMENT */}
+                        <div className="flex-1 space-y-4">
+                            
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                                <span className="material-icons text-slate-400 !text-lg">description</span>
+                                <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-300">Detalles de la Práctica</h5>
                             </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Notas</label>
-                                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                            
+                            <div className="grid grid-cols-1 gap-3">
+                                <GridItem label="Modalidad" value={req.tipo_practica} icon="group_work" />
+                                <GridItem label="Descripción de Actividades" value={req.descripcion_institucion} icon="article" fullWidth />
                             </div>
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button onClick={handleCancel} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700">Cancelar</button>
-                                <button onClick={handleSave} disabled={!hasChanges || isLocalSaving} className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50 transition-all">{isLocalSaving ? 'Guardando...' : 'Guardar'}</button>
+
+                            <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="material-icons text-slate-400 !text-lg">tune</span>
+                                    <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-300">Gestión Interna</h5>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Estado</label>
+                                        <select 
+                                            value={status} 
+                                            onChange={(e) => setStatus(e.target.value)} 
+                                            className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                                        >
+                                            <option value="Pendiente">Pendiente</option>
+                                            <option value="En conversaciones">En conversaciones</option>
+                                            <option value="Realizando convenio">Realizando convenio</option>
+                                            <option value="Realizada">Realizada</option>
+                                            <option value="No se pudo concretar">No se pudo concretar</option>
+                                            <option value="Archivado">Archivado</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                            Notas Internas (Visible al alumno solo si falla)
+                                        </label>
+                                        <textarea 
+                                            value={notes} 
+                                            onChange={(e) => setNotes(e.target.value)} 
+                                            rows={3} 
+                                            className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none placeholder:text-slate-400"
+                                            placeholder="Bitácora de gestión..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex justify-end gap-3 pt-4 border-t border-transparent">
+                                {req.email_institucion && (
+                                    <button onClick={handleDraftEmail} className="mr-auto px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 transition-colors">
+                                        <span className="material-icons !text-sm">mail</span> Contactar
+                                    </button>
+                                )}
+                                <button onClick={handleCancel} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
+                                <button onClick={handleSave} disabled={!hasChanges || isLocalSaving} className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50 transition-all flex items-center gap-2">
+                                    {isLocalSaving ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"/> : <span className="material-icons !text-lg">save</span>}
+                                    Guardar
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -199,12 +274,12 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
              const originalRecord = requestsData?.find(r => r.id === recordId);
              
              // Email Trigger
-             if (originalRecord && fields[COL_ESTADO_SEGUIMIENTO] && fields[COL_ESTADO_SEGUIMIENTO] !== originalRecord[COL_ESTADO_SEGUIMIENTO]) {
+             if (originalRecord && fields[FIELD_ESTADO_PPS] && fields[FIELD_ESTADO_PPS] !== originalRecord[FIELD_ESTADO_PPS]) {
                  await sendSmartEmail('solicitud', { 
                     studentName: (originalRecord as any)._studentName, 
                     studentEmail: (originalRecord as any)._studentEmail, 
                     institution: originalRecord.nombre_institucion, 
-                    newState: fields[COL_ESTADO_SEGUIMIENTO], 
+                    newState: fields[FIELD_ESTADO_PPS], 
                     notes: fields.notas || originalRecord.notas 
                 });
              }
@@ -265,6 +340,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
                                 <option value="requieren_atencion">⚠️ Requieren Atención</option>
                                 <option value="Pendiente">Pendiente</option>
                                 <option value="En conversaciones">En conversaciones</option>
+                                <option value="Realizando convenio">Realizando convenio</option>
                                 <option value="Realizada">Realizada</option>
                             </select>
                         </div>

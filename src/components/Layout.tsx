@@ -60,7 +60,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
 
     return (
-        <div className="flex flex-col min-h-screen">
+        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#020617]">
              {!isOnline && (
                 <div className="bg-red-500 text-white text-center text-xs font-bold py-1 px-4 fixed top-0 left-0 right-0 z-[2000] animate-pulse shadow-md flex items-center justify-center gap-2">
                     <span className="material-icons !text-sm">wifi_off</span>
@@ -68,7 +68,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
             )}
             <AppHeader />
-            <main className={`flex-grow w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-8 ${
+            {/* Removed pt-4/pt-8 to remove gap between header and content cards */}
+            <main className={`flex-grow w-full px-4 sm:px-6 lg:px-8 pb-8 ${
                 isFullWidth ? '' : 'max-w-7xl mx-auto'
             }`}>
                 {children}

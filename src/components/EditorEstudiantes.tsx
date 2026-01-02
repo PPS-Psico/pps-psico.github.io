@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { schema } from '../lib/dbSchema';
-import type { AppRecord, EstudianteFields } from '../types';
 import { 
     FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES, FIELD_DNI_ESTUDIANTES, 
     FIELD_CORREO_ESTUDIANTES, FIELD_TELEFONO_ESTUDIANTES, FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
@@ -19,12 +18,15 @@ import PaginationControls from './PaginationControls';
 import ContextMenu from './ContextMenu';
 import Button from './Button';
 import ConfirmModal from './ConfirmModal';
+import EmptyState from './EmptyState';
 
 const TABLE_CONFIG = {
     label: 'Estudiantes',
     tableName: TABLE_NAME_ESTUDIANTES,
     schema: schema.estudiantes,
-    searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES, FIELD_DNI_ESTUDIANTES],
+    // FIX: Eliminar DNI de searchFields para evitar errores de tipo en la búsqueda simple.
+    // DNI es numérico y ilike falla. Búsqueda por Legajo y Nombre es suficiente para la mayoría de casos.
+    searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES],
     fieldConfig: [
         { key: FIELD_LEGAJO_ESTUDIANTES, label: 'Legajo', type: 'text' as const },
         { key: FIELD_NOMBRE_SEPARADO_ESTUDIANTES, label: 'Nombre', type: 'text' as const },
@@ -45,8 +47,8 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     const [filterEstado, setFilterEstado] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
     
-    // Actions State
     const [editingRecord, setEditingRecord] = useState<any>(null);
     const [menu, setMenu] = useState<{ x: number, y: number, record: any } | null>(null);
     const [toastInfo, setToastInfo] = useState<any>(null);
@@ -54,8 +56,12 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
 
     const queryClient = useQueryClient();
 
+    // Debounce para no saturar la API mientras escribes
     useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            setCurrentPage(1);
+        }, 400);
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
@@ -67,21 +73,29 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
 
             const { records, total, error } = await db.estudiantes.getPage(currentPage, itemsPerPage, {
                 searchTerm: debouncedSearch,
-                searchFields: TABLE_CONFIG.searchFields,
+                searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES],
                 filters
             });
             if (error) throw error;
 
-            // Enriquecer con horas totales
+            // Enriquecer con horas totales para visibilidad inmediata
             const studentIds = records.map(r => r.id);
-            const practicas = await db.practicas.getAll({ filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds }, fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS] });
+            if (studentIds.length === 0) return { records: [], total: 0 };
+
+            const practicas = await db.practicas.getAll({ 
+                filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds }, 
+                fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS] 
+            });
             
             const enriched = records.map(s => {
                 const sPracticas = practicas.filter(p => {
                     const link = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
                     return Array.isArray(link) ? link.includes(s.id) : link === s.id;
                 });
-                return { ...s, __totalHours: sPracticas.reduce((sum, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0) };
+                return { 
+                    ...s, 
+                    __totalHours: sPracticas.reduce((sum, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0) 
+                };
             });
 
             return { records: enriched, total };
@@ -112,6 +126,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             queryClient.invalidateQueries({ queryKey: ['editor-students'] });
             setToastInfo({ message: 'Estudiante eliminado', type: 'success' });
             setIdToDelete(null);
+            setSelectedRowId(null);
         },
         onError: (err: any) => {
             setToastInfo({ message: `Error al eliminar: ${err.message}`, type: 'error' });
@@ -119,8 +134,13 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         }
     });
 
+    const handleRowClick = (id: string) => {
+        setSelectedRowId(prev => prev === id ? null : id);
+    };
+
     const handleRowContextMenu = (e: React.MouseEvent, record: any) => {
         e.preventDefault();
+        setSelectedRowId(record.id);
         setMenu({ x: e.clientX, y: e.clientY, record });
     };
 
@@ -141,98 +161,117 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             <ConfirmModal
                 isOpen={!!idToDelete}
                 title="¿Eliminar Estudiante?"
-                message="Esta acción eliminará al estudiante y sus datos asociados. No se puede deshacer."
-                confirmText="Eliminar Definitivamente"
-                cancelText="Cancelar"
+                message="Esta acción eliminará permanentemente al estudiante y sus registros. ¿Confirmar?"
+                confirmText="Eliminar"
                 type="danger"
                 onConfirm={() => idToDelete && deleteMutation.mutate(idToDelete)}
                 onClose={() => setIdToDelete(null)}
             />
 
-            {/* --- FILTROS --- */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-4 gap-6 items-end shadow-sm">
-                <div className="relative md:col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">Buscador</label>
-                    <div className="relative">
+            {/* BARRA DE FILTROS */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 items-end shadow-sm">
+                <div className="flex-1 w-full space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Buscador Inteligente</label>
+                    <div className="relative group">
                         <input 
                             type="search" 
-                            placeholder="Buscar por nombre, legajo o DNI..." 
+                            placeholder="Nombre o legajo..." 
                             value={searchTerm} 
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-100"
+                            className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-200"
                         />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 text-lg">search</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors">search</span>
                     </div>
                 </div>
                 
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">Estado</label>
-                    <div className="relative">
-                        <select 
-                            value={filterEstado} 
-                            onChange={e => setFilterEstado(e.target.value)}
-                            className="w-full h-11 pl-4 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none cursor-pointer transition-colors"
-                        >
-                            <option value="">Todos los Estados</option>
-                            {ALL_ESTADOS_ESTUDIANTE.map(e => <option key={e} value={e}>{e}</option>)}
-                        </select>
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 pointer-events-none">expand_more</span>
-                    </div>
+                <div className="w-full md:w-56 space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar Estado</label>
+                    <select 
+                        value={filterEstado} 
+                        onChange={e => setFilterEstado(e.target.value)}
+                        className="w-full h-11 px-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-slate-700 dark:text-slate-200"
+                    >
+                        <option value="">Todos</option>
+                        {ALL_ESTADOS_ESTUDIANTE.map(e => <option key={e} value={e}>{e}</option>)}
+                    </select>
                 </div>
 
-                <div>
-                    <Button onClick={() => setEditingRecord({ isCreating: true })} icon="person_add" className="h-11 w-full bg-indigo-600 hover:bg-indigo-700">Nuevo</Button>
+                <div className="flex gap-2 w-full md:w-auto">
+                    <Button onClick={() => setEditingRecord({ isCreating: true })} icon="person_add" className="h-11 shadow-md bg-blue-600 hover:bg-blue-700 w-full sm:w-auto px-6">Nuevo</Button>
                 </div>
             </div>
 
-            {/* --- TABLA --- */}
+            {/* ACCIONES RÁPIDAS */}
+            <div className="flex justify-end h-10">
+                {selectedRowId && (
+                    <div className="flex gap-2 animate-fade-in">
+                        <button 
+                            onClick={() => setIdToDelete(selectedRowId)} 
+                            className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-rose-100 border border-rose-200 transition-all"
+                        >
+                            <span className="material-icons !text-base">delete</span> Eliminar Selección
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* TABLA */}
             {isLoading ? <div className="py-12"><Loader /></div> : (
-                <div className="border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 shadow-lg">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-indigo-50/70 dark:bg-indigo-900/10 border-b border-indigo-100 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 uppercase text-[10px] font-black tracking-widest">
+                            <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
                                 <tr>
                                     <th className="px-6 py-4">Estudiante</th>
-                                    <th className="px-6 py-4 font-mono">Legajo</th>
+                                    <th className="px-6 py-4">Legajo</th>
                                     <th className="px-6 py-4">Estado</th>
-                                    <th className="px-6 py-4 text-center">Horas Acumuladas</th>
+                                    <th className="px-6 py-4 text-center">Horas</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {data?.records.map((s: any) => (
-                                    <tr 
-                                        key={s.id} 
-                                        className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
-                                        onDoubleClick={() => setEditingRecord(s)}
-                                        onContextMenu={(e) => handleRowContextMenu(e, s)}
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-white dark:from-indigo-900 dark:to-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-sm font-bold border border-indigo-100 dark:border-indigo-800 shadow-sm">
-                                                    {(s[FIELD_NOMBRE_ESTUDIANTES] || '?').charAt(0)}
+                                {data?.records.map((s: any) => {
+                                    const isSelected = selectedRowId === s.id;
+                                    return (
+                                        <tr 
+                                            key={s.id} 
+                                            onClick={() => handleRowClick(s.id)}
+                                            onDoubleClick={() => setEditingRecord(s)}
+                                            onContextMenu={(e) => handleRowContextMenu(e, s)}
+                                            className={`transition-all cursor-pointer group ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-200 dark:ring-blue-800' : 'hover:bg-slate-50/80 dark:hover:bg-slate-900/40'}`}
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shadow-sm border transition-transform group-hover:scale-110 ${isSelected ? 'bg-blue-600 text-white border-blue-400' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+                                                        {(s[FIELD_NOMBRE_ESTUDIANTES] || '?').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className={`font-bold transition-colors ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200 group-hover:text-blue-600'}`}>
+                                                        {s[FIELD_NOMBRE_ESTUDIANTES]}
+                                                    </span>
                                                 </div>
-                                                <span className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                                    {s[FIELD_NOMBRE_ESTUDIANTES]}
+                                            </td>
+                                            <td className="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">
+                                                {s[FIELD_LEGAJO_ESTUDIANTES]}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wide ${getStatusStyle(s[FIELD_ESTADO_ESTUDIANTES])}`}>
+                                                    {s[FIELD_ESTADO_ESTUDIANTES] || 'N/A'}
                                                 </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">
-                                            {s[FIELD_LEGAJO_ESTUDIANTES]}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide ${getStatusStyle(s[FIELD_ESTADO_ESTUDIANTES])}`}>
-                                                {s[FIELD_ESTADO_ESTUDIANTES] || 'Desconocido'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className="font-black text-slate-700 dark:text-slate-200 text-base">{s.__totalHours}</span>
-                                            <span className="text-[10px] text-slate-400 ml-1 font-bold uppercase">hs</span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`text-sm font-black ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>{Math.round(s.__totalHours || 0)}</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 font-bold uppercase">hs</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
+                    {data?.records.length === 0 && (
+                        <div className="py-20 bg-slate-50/30 dark:bg-black/10">
+                            <EmptyState icon="search_off" title="Sin coincidencias" message="No encontramos alumnos con esos criterios." />
+                        </div>
+                    )}
                     <PaginationControls 
                         currentPage={currentPage}
                         totalPages={Math.ceil((data?.total || 0) / itemsPerPage)}
@@ -244,20 +283,17 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
                 </div>
             )}
 
-            {/* --- MENÚ CONTEXTUAL --- */}
             {menu && (
                 <ContextMenu 
-                    x={menu.x} 
-                    y={menu.y} 
+                    x={menu.x} y={menu.y} 
                     onClose={() => setMenu(null)}
                     options={[
-                        { label: 'Editar Estudiante', icon: 'edit', onClick: () => setEditingRecord(menu.record) },
-                        { label: 'Eliminar', icon: 'delete', variant: 'danger', onClick: () => setIdToDelete(menu.record.id) }
+                        { label: 'Editar Perfil', icon: 'edit', onClick: () => setEditingRecord(menu.record) },
+                        { label: 'Eliminar Registro', icon: 'delete', variant: 'danger', onClick: () => setIdToDelete(menu.record.id) }
                     ]}
                 />
             )}
 
-            {/* --- MODAL DE EDICIÓN --- */}
             {editingRecord && (
                 <RecordEditModal 
                     isOpen={!!editingRecord}

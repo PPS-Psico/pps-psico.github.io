@@ -390,11 +390,12 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
     });
     
     const updateStatusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string, status: string }) => {
-             return db.lanzamientos.update(id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: status });
+        mutationFn: ({ id, updates }: { id: string, updates: any }) => {
+             return db.lanzamientos.update(id, updates);
         },
         onSuccess: (_, variables) => {
-             setToastInfo({ message: `Estado actualizado a "${variables.status}".`, type: 'success' });
+            const newStatus = variables.updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS];
+             setToastInfo({ message: `Estado actualizado a "${newStatus}".`, type: 'success' });
              queryClient.invalidateQueries({ queryKey: ['launchHistory'] });
         },
         onError: (error: any) => {
@@ -617,11 +618,19 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
     };
 
     const handleStatusAction = (id: string, currentStatus: string, action: 'cerrar' | 'abrir' | 'ocultar') => {
-        let newStatus = currentStatus;
-        if (action === 'cerrar') newStatus = 'Cerrado';
-        if (action === 'abrir') newStatus = 'Abierta';
-        if (action === 'ocultar') newStatus = 'Oculto';
-        updateStatusMutation.mutate({ id, status: newStatus });
+        let updates: any = {};
+        
+        if (action === 'cerrar') {
+            updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = 'Cerrado';
+        } else if (action === 'abrir') {
+            updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = 'Abierta';
+            // CRITICAL FIX: Ensure it is not Archived, otherwise it won't show up in student view
+            updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = 'Relanzamiento Confirmado'; 
+        } else if (action === 'ocultar') {
+            updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = 'Oculto';
+        }
+        
+        updateStatusMutation.mutate({ id, updates });
     };
 
     const renderLaunchItem = useCallback((launch: LanzamientoPPS) => {

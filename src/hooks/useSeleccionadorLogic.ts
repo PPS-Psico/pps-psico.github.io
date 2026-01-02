@@ -23,7 +23,6 @@ import {
     FIELD_PENALIZACION_ESTUDIANTE_LINK,
     FIELD_PENALIZACION_PUNTAJE,
     FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-    FIELD_ORIENTACION_LANZAMIENTOS,
     FIELD_TRABAJA_CONVOCATORIAS,
     FIELD_TRABAJA_ESTUDIANTES,
     FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES,
@@ -31,7 +30,7 @@ import {
     FIELD_CV_CONVOCATORIAS
 } from '../constants';
 import { normalizeStringForComparison } from '../utils/formatters';
-import type { LanzamientoPPS, ConvocatoriaFields, AirtableRecord, EnrichedStudent, EstudianteFields } from '../types';
+import type { LanzamientoPPS, AirtableRecord, EnrichedStudent, ConvocatoriaFields } from '../types';
 import { sendSmartEmail } from '../utils/emailService';
 
 const SCORE_WEIGHTS = {
@@ -111,22 +110,21 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
         queryFn: async () => {
             if (!selectedLanzamiento) return [];
             const launchId = selectedLanzamiento.id;
+            
             let allEnrollments: any[] = [];
             if (isTestingMode) {
                  allEnrollments = await mockDb.getAll('convocatorias');
             } else {
                  allEnrollments = await db.convocatorias.getAll();
             }
-            const enrollments = allEnrollments.filter(c => {
-                 const linked = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-                 if (Array.isArray(linked)) return linked.includes(launchId);
-                 return linked === launchId;
-            });
+
+            // FILTER: Enrollments for this launch
+            const enrollments = allEnrollments.filter(c => c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === launchId);
+            
             if (enrollments.length === 0) return [];
-            const studentIds = enrollments.map(e => {
-                const raw = e[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
-                return Array.isArray(raw) ? raw[0] : raw;
-            }).filter(Boolean) as string[];
+
+            const studentIds = enrollments.map(e => e[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]).filter(Boolean) as string[];
+            
             let studentsRes: any[] = [], practicasRes: any[] = [], penaltiesRes: any[] = [];
             if (isTestingMode) {
                 [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
@@ -135,35 +133,40 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
                     mockDb.getAll('penalizaciones', { [FIELD_PENALIZACION_ESTUDIANTE_LINK]: studentIds })
                 ]);
             } else {
+                // Using 'in' filter for array of IDs
                 [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
                     db.estudiantes.getAll({ filters: { id: studentIds } }),
                     db.practicas.getAll({ filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds } }),
                     db.penalizaciones.getAll({ filters: { [FIELD_PENALIZACION_ESTUDIANTE_LINK]: studentIds } })
                 ]);
             }
+
             const studentMap = new Map(studentsRes.map(s => [s.id, s]));
+            
             const enrichedList: EnrichedStudent[] = enrollments.map(enrollment => {
-                const sIdRaw = enrollment[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
-                const sId = Array.isArray(sIdRaw) ? sIdRaw[0] : sIdRaw;
-                const studentDetails = sId ? studentMap.get(String(sId)) : null;
+                const sId = enrollment[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string;
+                const studentDetails = sId ? studentMap.get(sId) : null;
+                
                 if (!studentDetails) return null;
-                const studentPractices = practicasRes.filter(p => {
-                     const links = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
-                     return Array.isArray(links) ? links.includes(String(sId)) : links === String(sId);
-                });
+
+                // Calc total hours & count
+                const studentPractices = practicasRes.filter(p => p[FIELD_ESTUDIANTE_LINK_PRACTICAS] === sId);
                 const totalHoras = studentPractices.reduce((sum: number, p: any) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
-                const studentPenalties = penaltiesRes.filter(p => {
-                    const links = p[FIELD_PENALIZACION_ESTUDIANTE_LINK];
-                    return Array.isArray(links) ? links.includes(String(sId)) : links === String(sId);
-                });
+                const cantPracticas = studentPractices.length;
+
+                // Calc penalties
+                const studentPenalties = penaltiesRes.filter(p => p[FIELD_PENALIZACION_ESTUDIANTE_LINK] === sId);
                 const penalizacionAcumulada = studentPenalties.reduce((sum: number, p: any) => sum + (p[FIELD_PENALIZACION_PUNTAJE] || 0), 0);
+
                 const works = !!enrollment[FIELD_TRABAJA_CONVOCATORIAS] || !!studentDetails[FIELD_TRABAJA_ESTUDIANTES];
                 const cert = enrollment[FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS] || studentDetails[FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES];
                 const cvUrl = enrollment[FIELD_CV_CONVOCATORIAS] as string | null;
+
                 const puntajeTotal = calculateScore(enrollment, totalHoras, penalizacionAcumulada, works);
+
                 return {
                     enrollmentId: enrollment.id,
-                    studentId: String(sId),
+                    studentId: sId,
                     nombre: studentDetails[FIELD_NOMBRE_ESTUDIANTES] || 'Desconocido',
                     legajo: String(studentDetails[FIELD_LEGAJO_ESTUDIANTES] || ''),
                     correo: studentDetails[FIELD_CORREO_ESTUDIANTES] || '',
@@ -174,6 +177,7 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
                     notasEstudiante: enrollment[FIELD_OTRA_SITUACION_CONVOCATORIAS] || '',
                     horarioSeleccionado: enrollment[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || '',
                     totalHoras,
+                    cantPracticas,
                     penalizacionAcumulada,
                     puntajeTotal,
                     trabaja: works,
@@ -181,6 +185,7 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
                     cvUrl: cvUrl
                 };
             }).filter((item): item is EnrichedStudent => item !== null);
+
             return enrichedList.sort((a, b) => b.puntajeTotal - a.puntajeTotal);
         },
         enabled: !!selectedLanzamiento
@@ -194,18 +199,27 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
         mutationFn: async (student: EnrichedStudent) => {
             if (!selectedLanzamiento) return;
             const isCurrentlySelected = normalizeStringForComparison(student.status) === 'seleccionado';
+            
             if (isTestingMode) {
                 await new Promise(resolve => setTimeout(resolve, 300));
                 const newStatus = isCurrentlySelected ? 'Inscripto' : 'Seleccionado';
                 await mockDb.update('convocatorias', student.enrollmentId, { [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: newStatus });
                 return { success: true, student };
             }
-            const result = await toggleStudentSelection(student.enrollmentId, !isCurrentlySelected, student.studentId, selectedLanzamiento);
+
+            const result = await toggleStudentSelection(
+                student.enrollmentId, 
+                !isCurrentlySelected, 
+                student.studentId, 
+                selectedLanzamiento
+            );
             return { ...result, student };
         },
         onMutate: async (student) => {
             await queryClient.cancelQueries({ queryKey: candidatesQueryKey });
             const previousCandidates = queryClient.getQueryData<EnrichedStudent[]>(candidatesQueryKey);
+            
+            // Optimistic Update
             queryClient.setQueryData(candidatesQueryKey, (old: EnrichedStudent[] | undefined) => {
                 if (!old) return [];
                 return old.map(c => {
@@ -272,6 +286,7 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
         setIsClosingTable(true);
         try {
             if (!isTestingMode) {
+                // Email notification loop
                 const emailPromises = selectedCandidates.map(async (student) => {
                      return sendSmartEmail('seleccion', {
                          studentName: student.nombre,
@@ -281,6 +296,8 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
                      });
                 });
                 await Promise.all(emailPromises);
+                
+                // Close Launch
                 await db.lanzamientos.update(selectedLanzamiento.id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado' });
             } else {
                  await mockDb.update('lanzamientos_pps', selectedLanzamiento.id, { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado' });

@@ -9,6 +9,7 @@ export interface AdminModuleConfig {
     showAutomation: boolean;      // Herramienta Automatización
     showNewAgreements: boolean;   // Herramienta Nuevos Convenios
     showReports: boolean;         // Herramienta Reportes
+    showIntegrity: boolean;       // Herramienta Integridad de Datos
 }
 
 const DEFAULT_PREFERENCES: AdminModuleConfig = {
@@ -19,6 +20,7 @@ const DEFAULT_PREFERENCES: AdminModuleConfig = {
     showAutomation: true,
     showNewAgreements: true,
     showReports: true,
+    showIntegrity: true,
 };
 
 interface AdminPreferencesContextType {

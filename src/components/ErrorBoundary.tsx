@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { logger } from '../utils/logger';
 
 interface ErrorBoundaryProps {
@@ -14,7 +14,7 @@ interface ErrorBoundaryState {
 /**
  * Standard React Error Boundary component to catch rendering errors and show a fallback UI.
  */
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
@@ -110,6 +110,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         </div>
       );
     }
+    
     return this.props.children;
   }
 }

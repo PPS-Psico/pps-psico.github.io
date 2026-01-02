@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Tabs from '../components/Tabs';
@@ -46,7 +47,7 @@ const ReporteroView: React.FC = () => {
     }, [activeMetricsTabId, isTestingMode]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 animate-fade-in-up">
             <WelcomeBannerAdmin name={authenticatedUser?.nombre || 'Reportero'} />
             <Tabs
                 tabs={tabs}

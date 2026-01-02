@@ -1,4 +1,3 @@
-
 import type { Database } from '../types/supabase';
 import type { 
     AppRecord, 
@@ -11,6 +10,7 @@ import type {
     PenalizacionFields, 
     FinalizacionPPSFields 
 } from '../types';
+import { cleanDbValue } from './formatters'; // Import cleanDbValue
 
 type Tables = Database['public']['Tables'];
 
@@ -21,33 +21,59 @@ const toAppRecord = <T extends { id: string; created_at: string }>(row: T): T & 
     return {
         ...row,
         createdTime: row.created_at,
-        // Ensure id is string (Supabase IDs are strings/UUIDs, but just in case)
         id: String(row.id)
     };
 };
 
 export const mapEstudiante = (row: Tables['estudiantes']['Row']): AppRecord<EstudianteFields> => {
-    return toAppRecord(row) as unknown as AppRecord<EstudianteFields>;
+    const cleanRow = { ...row };
+    // Asegurar campos críticos
+    cleanRow.legajo = cleanDbValue(row.legajo);
+    cleanRow.nombre = cleanDbValue(row.nombre);
+    cleanRow.correo = cleanDbValue(row.correo);
+    return toAppRecord(cleanRow) as unknown as AppRecord<EstudianteFields>;
 };
 
 export const mapPractica = (row: Tables['practicas']['Row']): AppRecord<PracticaFields> => {
-    return toAppRecord(row) as unknown as AppRecord<PracticaFields>;
+    const cleanRow = { ...row };
+    // Aplanar campos de texto que suelen venir como arrays de Airtable
+    cleanRow.nombre_institucion = cleanDbValue(row.nombre_institucion);
+    cleanRow.especialidad = cleanDbValue(row.especialidad);
+    cleanRow.estado = cleanDbValue(row.estado);
+    cleanRow.nota = cleanDbValue(row.nota);
+    return toAppRecord(cleanRow) as unknown as AppRecord<PracticaFields>;
 };
 
 export const mapSolicitud = (row: Tables['solicitudes_pps']['Row']): AppRecord<SolicitudPPSFields> => {
-    return toAppRecord(row) as unknown as AppRecord<SolicitudPPSFields>;
+    const cleanRow = { ...row };
+    cleanRow.nombre_institucion = cleanDbValue(row.nombre_institucion);
+    cleanRow.nombre_alumno = cleanDbValue(row.nombre_alumno);
+    cleanRow.estado_seguimiento = cleanDbValue(row.estado_seguimiento);
+    return toAppRecord(cleanRow) as unknown as AppRecord<SolicitudPPSFields>;
 };
 
 export const mapLanzamiento = (row: Tables['lanzamientos_pps']['Row']): AppRecord<LanzamientoPPSFields> => {
-    return toAppRecord(row) as unknown as AppRecord<LanzamientoPPSFields>;
+    const cleanRow = { ...row };
+    cleanRow.nombre_pps = cleanDbValue(row.nombre_pps);
+    cleanRow.orientacion = cleanDbValue(row.orientacion);
+    cleanRow.estado_convocatoria = cleanDbValue(row.estado_convocatoria);
+    return toAppRecord(cleanRow) as unknown as AppRecord<LanzamientoPPSFields>;
 };
 
 export const mapConvocatoria = (row: Tables['convocatorias']['Row']): AppRecord<ConvocatoriaFields> => {
-    return toAppRecord(row) as unknown as AppRecord<ConvocatoriaFields>;
+    const cleanRow = { ...row };
+    cleanRow.nombre_pps = cleanDbValue(row.nombre_pps);
+    cleanRow.estado_inscripcion = cleanDbValue(row.estado_inscripcion);
+    cleanRow.horario_seleccionado = cleanDbValue(row.horario_seleccionado);
+    return toAppRecord(cleanRow) as unknown as AppRecord<ConvocatoriaFields>;
 };
 
 export const mapInstitucion = (row: Tables['instituciones']['Row']): AppRecord<InstitucionFields> => {
-    return toAppRecord(row) as unknown as AppRecord<InstitucionFields>;
+    const cleanRow = { ...row };
+    cleanRow.nombre = cleanDbValue(row.nombre);
+    cleanRow.direccion = cleanDbValue(row.direccion);
+    cleanRow.tutor = cleanDbValue(row.tutor);
+    return toAppRecord(cleanRow) as unknown as AppRecord<InstitucionFields>;
 };
 
 export const mapPenalizacion = (row: Tables['penalizaciones']['Row']): AppRecord<PenalizacionFields> => {
@@ -55,5 +81,7 @@ export const mapPenalizacion = (row: Tables['penalizaciones']['Row']): AppRecord
 };
 
 export const mapFinalizacion = (row: Tables['finalizacion_pps']['Row']): AppRecord<FinalizacionPPSFields> => {
-    return toAppRecord(row) as unknown as AppRecord<FinalizacionPPSFields>;
+    const cleanRow = { ...row };
+    cleanRow.estado = cleanDbValue(row.estado);
+    return toAppRecord(cleanRow) as unknown as AppRecord<FinalizacionPPSFields>;
 };

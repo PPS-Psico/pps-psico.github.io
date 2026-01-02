@@ -10,7 +10,7 @@ import {
     FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_NOMBRE_PPS_CONVOCATORIAS,
     FIELD_FECHA_INICIO_LANZAMIENTOS, FIELD_FECHA_INICIO_CONVOCATORIAS
 } from '../constants';
-import { formatDate, safeGetId } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
 import Loader from './Loader';
 import RecordEditModal from './RecordEditModal';
 import Toast from './Toast';
@@ -93,8 +93,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             if (error) throw error;
 
             // Enriquecer datos (Nombre estudiante y Nombre PPS)
-            const studentIds = records.map(r => safeGetId(r[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS])).filter(Boolean) as string[];
-            const launchIds = records.map(r => safeGetId(r[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS])).filter(Boolean) as string[];
+            const studentIds = records.map(r => r[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string).filter(Boolean);
+            const launchIds = records.map(r => r[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] as string).filter(Boolean);
             
             const [students, fetchedLaunches] = await Promise.all([
                 db.estudiantes.getAll({ filters: { id: studentIds }, fields: [FIELD_NOMBRE_ESTUDIANTES] }),
@@ -105,8 +105,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             const launchMap = new Map(fetchedLaunches.map(l => [l.id, l]));
 
             const enriched = records.map(c => {
-                const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
-                const lId = safeGetId(c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
+                const sId = c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string;
+                const lId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] as string;
                 
                 const s = sId ? studentMap.get(sId) : null;
                 const l = lId ? launchMap.get(lId) : null;
@@ -304,7 +304,6 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 </div>
             )}
 
-            {/* --- MENÚ CONTEXTUAL --- */}
             {menu && (
                 <ContextMenu 
                     x={menu.x} 
