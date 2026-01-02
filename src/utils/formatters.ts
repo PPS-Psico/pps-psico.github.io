@@ -170,65 +170,53 @@ export function cleanInstitutionName(input?: any): string {
 }
 
 /**
- * Función Maestra de Limpieza para BD SQL - Versión Definitiva
- * Desmonta recursivamente estructuras de array/json/string hasta obtener el valor plano.
- * Maneja casos extremos como: "{\"ISI College\"}" o "[\"ISI College\"]"
+ * Función Maestra de Limpieza: Estrategia de FUERZA BRUTA + REGEX POSTGRES
+ * Elimina cualquier llave, corchete o comilla envolvente, sin importar si es JSON válido o Postgres Array.
  */
 export function cleanDbValue(input?: any): string {
   if (input === null || input === undefined) return '';
 
-  // 1. Manejo inicial de tipos
-  if (typeof input === 'boolean') return input ? 'true' : 'false';
-  if (typeof input === 'number') return String(input);
-  if (Array.isArray(input)) return input.length > 0 ? cleanDbValue(input[0]) : '';
-  
-  if (typeof input === 'object') {
-     // Intento desesperado de sacar valor de objeto
-     try {
-       return cleanDbValue(Object.values(input)[0]);
-     } catch (e) {
-       return '';
-     }
+  let str = String(input);
+
+  // Recursividad para Arrays reales JS
+  if (Array.isArray(input) && input.length > 0) {
+      return cleanDbValue(input[0]);
   }
 
-  let str = String(input).trim();
-  
-  // Bucle de limpieza: Repetimos hasta que la cadena se estabilice
-  let previous = '';
-  let safetyCounter = 0;
-  
-  while (str !== previous && safetyCounter < 10) {
-      previous = str;
-      
-      // 1. Quitar comillas externas
-      if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
-          str = str.substring(1, str.length - 1);
-      }
-      
-      // 2. Quitar llaves de Postgres Array {Element}
-      if (str.startsWith('{') && str.endsWith('}')) {
-          str = str.substring(1, str.length - 1);
-      }
-      
-      // 3. Quitar corchetes de JSON Array [Element]
-      if (str.startsWith('[') && str.endsWith(']')) {
-          str = str.substring(1, str.length - 1);
-      }
-      
-      // 4. Limpiar caracteres escapados \" -> "
-      str = str.replace(/\\"/g, '"').replace(/\\'/g, "'");
-
-      // 5. Si es CSV, tomar el primero (heurística simple para arrays serializados)
-      // Solo si no estamos rompiendo una frase normal. Asumimos arrays de IDs o nombres simples.
-      if (str.includes('","')) {
-          str = str.split('","')[0].replace(/"/g, '');
-      }
-      
-      str = str.trim();
-      safetyCounter++;
+  // 1. Detectar patrón especifico Postgres: {"Value"} o {Value}
+  // Esto maneja casos como {"ISI College"} o {ISI College}
+  const postgresMatch = str.match(/^\{"?([^"}]+)"?\}$/);
+  if (postgresMatch) {
+      return cleanDbValue(postgresMatch[1]);
   }
 
-  return str;
+  // 2. Intentar Parseo JSON primero (para casos como ["Valor"])
+  try {
+      if ((str.startsWith('[') && str.endsWith(']')) || (str.startsWith('"') && str.endsWith('"'))) {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed) && parsed.length > 0) return cleanDbValue(parsed[0]);
+          if (typeof parsed === 'string') return cleanDbValue(parsed);
+      }
+  } catch (e) {
+      // Si falla, es string sucio, continuamos a limpieza manual
+  }
+
+  // 3. Limpieza Fuerza Bruta: Elimina { } [ ] " ' del inicio y final recursivamente
+  // Ej: {"ISI College"} -> "ISI College" -> ISI College
+  let cleaned = str.trim();
+  
+  // Loop mientras siga teniendo envoltorios sucios
+  while (true) {
+      const original = cleaned;
+      // Remover llaves y comillas externas, incluyendo espacios accidentales
+      cleaned = cleaned.replace(/^[\s\{\[\"']+|[\s\}\]\"']+$/g, '');
+      
+      // Si no cambió en esta iteración, terminamos
+      if (cleaned === original) break;
+  }
+
+  // 4. Desescapar comillas internas si quedaron (ej: O\'Connor)
+  return cleaned.replace(/\\"/g, '"').replace(/\\'/g, "'").trim();
 }
 
 /**

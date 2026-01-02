@@ -29,7 +29,7 @@ import {
     FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS,
     FIELD_CV_CONVOCATORIAS
 } from '../constants';
-import { normalizeStringForComparison } from '../utils/formatters';
+import { normalizeStringForComparison, cleanDbValue } from '../utils/formatters';
 import type { LanzamientoPPS, AirtableRecord, EnrichedStudent, ConvocatoriaFields } from '../types';
 import { sendSmartEmail } from '../utils/emailService';
 
@@ -86,7 +86,12 @@ export const useSeleccionadorLogic = (isTestingMode = false, onNavigateToInsuran
             }
             
             return records
-                .map(r => r as LanzamientoPPS) 
+                .map(r => {
+                    // PRE-CLEAN DATA ON FETCH
+                    const cleaned = { ...r };
+                    cleaned[FIELD_NOMBRE_PPS_LANZAMIENTOS] = cleanDbValue(r[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
+                    return cleaned as LanzamientoPPS;
+                })
                 .filter(l => {
                     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
                     return status === 'abierta' || status === 'abierto';

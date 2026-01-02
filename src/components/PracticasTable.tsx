@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import type { Practica } from '../types';
 import {

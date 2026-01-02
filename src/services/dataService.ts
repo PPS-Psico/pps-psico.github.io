@@ -51,7 +51,6 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
   return data.map((row: any) => {
       const lanzamiento = Array.isArray(row.lanzamiento) ? row.lanzamiento[0] : row.lanzamiento;
       
-      // Aplicar limpieza profunda al leer
       const rawName = row[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] || lanzamiento?.nombre_pps || 'Institución desconocida';
       const finalName = cleanDbValue(rawName);
       
@@ -192,7 +191,13 @@ export const fetchConvocatoriasData = async (legajo: string, studentAirtableId: 
       } as Convocatoria;
   });
 
-  const lanzamientos = openLaunches.filter(l => {
+  // CLEAN LAUNCHES FOR UI: Clean the name right here so components get clean data
+  const cleanedOpenLaunches = openLaunches.map(l => ({
+      ...l,
+      [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS])
+  }));
+
+  const lanzamientos = cleanedOpenLaunches.filter(l => {
       const estadoConv = normalizeStringForComparison(l[C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
       const estadoGestion = l[C.FIELD_ESTADO_GESTION_LANZAMIENTOS];
       
@@ -203,7 +208,7 @@ export const fetchConvocatoriasData = async (legajo: string, studentAirtableId: 
 
   const institutionAddressMap = new Map<string, string>();
   allRawLanzamientos.forEach(l => {
-      const name = l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS];
+      const name = cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]);
       const address = l[C.FIELD_DIRECCION_LANZAMIENTOS];
       if (name && address) {
           institutionAddressMap.set(normalizeStringForComparison(name), address);
@@ -246,7 +251,9 @@ export const fetchSeleccionados = async (lanzamiento: LanzamientoPPS): Promise<G
             }
             return grouped;
         }
-    } catch (e) {}
+    } catch (e) {
+        // Fallback or ignore RPC error
+    }
 
     const enrollments = await db.convocatorias.getAll({
         filters: { [C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: lanzamientoId }
@@ -284,6 +291,7 @@ export const toggleStudentSelection = async (
     studentId: string,
     lanzamiento: LanzamientoPPS
 ): Promise<{ success: boolean, error?: string }> => {
+    
     const newStatus = isSelecting ? 'Seleccionado' : 'Inscripto';
     try {
         // 1. Actualizar estado en convocatoria
@@ -291,29 +299,37 @@ export const toggleStudentSelection = async (
         
         // 2. Sincronizar registro de Práctica automáticamente
         if (isSelecting) {
+            
+            // CLEAN NAME FOR DB
+            let rawName = lanzamiento[C.FIELD_NOMBRE_PPS_LANZAMIENTOS];
+            if (Array.isArray(rawName)) rawName = rawName[0];
+            const cleanName = cleanDbValue(rawName);
+            const cleanOrientacion = cleanDbValue(lanzamiento[C.FIELD_ORIENTACION_LANZAMIENTOS]);
+
+            // ROOT CAUSE FIX: Check if the source Lanzamiento is dirty in the DB (contains { "Name" })
+            // If so, attempt to clean the source record to prevent future issues
+            if (rawName && rawName !== cleanName && cleanName.length > 2) {
+                console.log(`[DATA SERVICE] 🚨 DETECTED DIRTY ROOT: Lanzamiento ${lanzamiento.id} has dirty name. Cleaning source...`);
+                // Fire and forget update to clean the source table
+                db.lanzamientos.update(lanzamiento.id, { [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanName }).catch(err => console.warn("Failed to clean source launch", err));
+            }
+
             // Verificar si ya existe para no duplicar
             const { data: existing } = await supabase
                 .from(C.TABLE_NAME_PRACTICAS)
-                .select('id')
+                .select(`id, ${C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS}`)
                 .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId)
                 .eq(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, lanzamiento.id)
                 .maybeSingle();
 
             if (!existing) {
-                // --- DEBUG DE INYECCIÓN DE DATOS ---
-                const rawName = lanzamiento[C.FIELD_NOMBRE_PPS_LANZAMIENTOS];
-                const cleanName = cleanDbValue(rawName);
-                
-                console.group("🔍 DEBUG: Creando Práctica Automática");
-                console.log("1. Objeto Lanzamiento Fuente:", lanzamiento);
-                console.log("2. Nombre CRUDO (Raw):", rawName, "Tipo:", typeof rawName);
-                console.log("3. Nombre LIMPIO (Clean):", cleanName, "Tipo:", typeof cleanName);
-                
+                console.log(`[DATA SERVICE] Creating Practica. Name="${cleanName}"`);
+
                 const payload = {
                     [C.FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentId,
                     [C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: lanzamiento.id,
                     [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName, 
-                    [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanDbValue(lanzamiento[C.FIELD_ORIENTACION_LANZAMIENTOS]),
+                    [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion,
                     [C.FIELD_FECHA_INICIO_PRACTICAS]: lanzamiento[C.FIELD_FECHA_INICIO_LANZAMIENTOS],
                     [C.FIELD_FECHA_FIN_PRACTICAS]: lanzamiento[C.FIELD_FECHA_FIN_LANZAMIENTOS],
                     [C.FIELD_HORAS_PRACTICAS]: 0,
@@ -321,13 +337,18 @@ export const toggleStudentSelection = async (
                     [C.FIELD_NOTA_PRACTICAS]: 'Sin calificar'
                 };
                 
-                console.log("4. PAYLOAD FINAL a Supabase:", payload);
-                console.groupEnd();
-                // -------------------------------------
-
-                const { data: newRec, error: createError } = await db.practicas.create(payload);
-                if (createError) console.error("❌ Error creando práctica:", createError);
-                else console.log("✅ Práctica creada OK:", newRec);
+                await db.practicas.create(payload);
+            } else {
+                console.log(`[DATA SERVICE] Practica already exists. Checking data integrity...`);
+                // SELF-HEALING: If exists but has dirty name, fix it now.
+                const currentName = existing[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
+                if (currentName !== cleanName) {
+                    console.log(`[DATA SERVICE] Fixing dirty name: ${currentName} -> ${cleanName}`);
+                    await db.practicas.update(existing.id, {
+                        [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName,
+                        [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion
+                    });
+                }
             }
         } else {
             // Si deselecciona, borrar la práctica asociada
@@ -346,6 +367,7 @@ export const toggleStudentSelection = async (
 
         return { success: true };
     } catch (e: any) {
+        console.error(`[DATA SERVICE] ERROR:`, e);
         return { success: false, error: e.message };
     }
 };
@@ -399,7 +421,7 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
         if (!ppsGroups.has(lId)) {
             ppsGroups.set(lId, {
                 lanzamientoId: lId,
-                // CRITICAL FIX: Clean the name right at the source to ensure consistent display and future saving
+                // Ensure clean name display for groups
                 ppsName: cleanInstitutionName(lanzamiento.nombre_pps),
                 orientacion: lanzamiento.orientacion,
                 informeLink: lanzamiento.informe,
