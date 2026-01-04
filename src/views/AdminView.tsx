@@ -1,12 +1,12 @@
 
 import React, { useState, lazy, useEffect, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../contexts/AuthContext';
 import { useAdminPreferences } from '../contexts/AdminPreferencesContext';
 import Loader from '../components/Loader';
 import AppModals from '../components/AppModals';
 import UnifiedTabs, { TabItem } from '../components/UnifiedTabs';
-import { useTheme } from '../contexts/ThemeContext';
+// import { useTheme } from '../contexts/ThemeContext';
 
 // Components for Testing Mode
 const AdminDashboard = lazy(() => import('../components/AdminDashboard'));
@@ -21,13 +21,13 @@ interface AdminViewProps {
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
-    const { authenticatedUser } = useAuth();
+    // const { authenticatedUser } = useAuth();
     const { preferences } = useAdminPreferences();
-    const { resolvedTheme } = useTheme();
+    // const { resolvedTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const params = useParams();
-    
+
     const [localTab, setLocalTab] = useState('dashboard');
     const [scrolled, setScrolled] = useState(false);
 
@@ -80,7 +80,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
                 id: 'student-profile',
                 label: `Alumno ${params.legajo}`,
                 icon: 'school',
-                path: location.pathname 
+                path: location.pathname
             });
         }
 
@@ -130,17 +130,17 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     }
 
     // Estilos dinámicos para el header
-    const headerClasses = scrolled 
-        ? "bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-slate-200/50 dark:border-white/5 shadow-sm py-3" 
+    const headerClasses = scrolled
+        ? "bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-slate-200/50 dark:border-white/5 shadow-sm py-3"
         : "bg-transparent border-transparent py-6";
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
-            
+
             {/* Background Ambient Glows (Subtle) */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-400/5 dark:bg-blue-900/10 blur-[120px]"></div>
-                 <div className="absolute top-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-indigo-400/5 dark:bg-indigo-900/10 blur-[120px]"></div>
+                <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-400/5 dark:bg-blue-900/10 blur-[120px]"></div>
+                <div className="absolute top-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-indigo-400/5 dark:bg-indigo-900/10 blur-[120px]"></div>
             </div>
 
             {/* --- UNIFIED STICKY HEADER --- */}
@@ -149,7 +149,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
                     <div className="flex items-center justify-center relative">
                         {/* Centered Navigation Capsule */}
                         <div className="flex-1 flex justify-center w-full md:w-auto overflow-x-auto no-scrollbar">
-                            <UnifiedTabs 
+                            <UnifiedTabs
                                 tabs={navItems}
                                 activeTabId={currentTabId}
                                 onTabChange={handleTabChange}
@@ -165,7 +165,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
             <main className="relative z-10 max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 {renderContent()}
             </main>
-            
+
             <AppModals />
         </div>
     );

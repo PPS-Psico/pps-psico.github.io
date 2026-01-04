@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { schema } from '../lib/dbSchema';
-import { 
-    FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, 
-    FIELD_ESPECIALIDAD_PRACTICAS, FIELD_HORAS_PRACTICAS, FIELD_FECHA_INICIO_PRACTICAS, 
+import {
+    FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+    FIELD_ESPECIALIDAD_PRACTICAS, FIELD_HORAS_PRACTICAS, FIELD_FECHA_INICIO_PRACTICAS,
     FIELD_FECHA_FIN_PRACTICAS, FIELD_ESTADO_PRACTICA, FIELD_NOTA_PRACTICAS,
     TABLE_NAME_PRACTICAS, FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES,
     FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_NOMBRE_INSTITUCIONES, FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
@@ -17,10 +17,11 @@ import RecordEditModal from './RecordEditModal';
 import ContextMenu from './ContextMenu';
 import DuplicateToStudentModal from './DuplicateToStudentModal';
 import AdminSearch from './AdminSearch';
-import Toast from './Toast';
-import Button from './Button';
+import Toast from './ui/Toast';
+import Button from './ui/Button';
 import PaginationControls from './PaginationControls';
 import ConfirmModal from './ConfirmModal';
+import SearchableSelect from './SearchableSelect';
 
 const TABLE_CONFIG = {
     label: 'Prácticas',
@@ -35,7 +36,6 @@ const TABLE_CONFIG = {
         { key: FIELD_FECHA_FIN_PRACTICAS, label: 'Fin', type: 'date' as const },
         { key: FIELD_ESTADO_PRACTICA, label: 'Estado', type: 'select' as const, options: ['En curso', 'Finalizada', 'Convenio Realizado', 'No se pudo concretar'] },
         { key: FIELD_NOTA_PRACTICAS, label: 'Nota', type: 'text' as const },
-        // Campo oculto pero importante para limpiar
         { key: FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS, label: 'Nombre Institución', type: 'text' as const }
     ]
 };
@@ -69,7 +69,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
             if (!inst) return [];
             const rawName = cleanInstitutionName(inst[FIELD_NOMBRE_INSTITUCIONES]);
             const searchName = rawName.split(/ [-–—] /)[0].split('(')[0].trim();
-            return db.lanzamientos.getAll({ 
+            return db.lanzamientos.getAll({
                 filters: { [FIELD_NOMBRE_PPS_LANZAMIENTOS]: `%${searchName}%` },
                 fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS]
             });
@@ -81,11 +81,26 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         queryKey: ['editor-practicas', currentPage, itemsPerPage, filterStudentId, selectedInstId, selectedLaunchId],
         queryFn: async () => {
             const filters: any = {};
+
+            // Filtro por Estudiante (Exacto UUID)
             if (filterStudentId) filters[FIELD_ESTUDIANTE_LINK_PRACTICAS] = filterStudentId;
-            if (selectedLaunchId) filters[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = `%${selectedLaunchId.split('|')[0]}%`;
-            else if (selectedInstId) {
+
+            // --- ESTRATEGIA HÍBRIDA DE FILTRADO ---
+            if (selectedInstId) {
                 const inst = institutions.find(i => i.id === selectedInstId);
-                if (inst) filters[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = `%${cleanInstitutionName(inst[FIELD_NOMBRE_INSTITUCIONES]).split(' - ')[0]}%`;
+                if (inst) {
+                    const searchName = cleanInstitutionName(inst[FIELD_NOMBRE_INSTITUCIONES]).split(' - ')[0].trim();
+                    filters[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = `%${searchName}%`;
+                }
+            }
+
+            if (selectedLaunchId) {
+                const launch = launches.find(l => l.id === selectedLaunchId);
+                if (launch && launch[FIELD_FECHA_INICIO_LANZAMIENTOS]) {
+                    filters[FIELD_FECHA_INICIO_PRACTICAS] = launch[FIELD_FECHA_INICIO_LANZAMIENTOS];
+                } else {
+                    filters[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = selectedLaunchId;
+                }
             }
 
             const { records, total, error } = await db.practicas.getPage(currentPage, itemsPerPage, { filters });
@@ -97,7 +112,6 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
 
             const enriched = records.map(p => ({
                 ...p,
-                // Limpieza al leer para visualización
                 [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanInstitutionName(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]),
                 __student: studentMap.get(safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]) || '') || { nombre: 'Desconocido', legajo: '---' }
             }));
@@ -106,27 +120,16 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         }
     });
 
-    // Sanitization function for both create and update
     const sanitizeFields = (fields: any) => {
         const clean: any = { ...fields };
-        if (clean[FIELD_ESTUDIANTE_LINK_PRACTICAS]) {
-            clean[FIELD_ESTUDIANTE_LINK_PRACTICAS] = safeGetId(clean[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
-        }
-        if (clean[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]) {
-            clean[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = safeGetId(clean[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]);
-        }
-        // CLEANUP: Ensure name is clean string
-        if (clean[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) {
-             clean[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = cleanInstitutionName(clean[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]);
-        }
+        if (clean[FIELD_ESTUDIANTE_LINK_PRACTICAS]) clean[FIELD_ESTUDIANTE_LINK_PRACTICAS] = safeGetId(clean[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
+        if (clean[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]) clean[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = safeGetId(clean[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]);
+        if (clean[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) clean[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = cleanInstitutionName(clean[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]);
         return clean;
     };
 
     const updateMutation = useMutation({
-        mutationFn: (vars: any) => {
-            const cleanFields = sanitizeFields(vars.fields);
-            return db.practicas.update(vars.id, cleanFields);
-        },
+        mutationFn: (vars: any) => db.practicas.update(vars.id, sanitizeFields(vars.fields)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['editor-practicas'] });
             setToastInfo({ message: 'Registro actualizado', type: 'success' });
@@ -135,10 +138,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
     });
 
     const createMutation = useMutation({
-        mutationFn: (fields: any) => {
-            const cleanFields = sanitizeFields(fields);
-            return db.practicas.create(cleanFields);
-        },
+        mutationFn: (fields: any) => db.practicas.create(sanitizeFields(fields)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['editor-practicas'] });
             setToastInfo({ message: 'Registro creado', type: 'success' });
@@ -150,13 +150,9 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         mutationFn: async ({ record, targetStudentId }: { record: any, targetStudentId: string }) => {
             const { id, created_at, createdTime, ...fields } = record;
             const cleanFields = sanitizeFields(fields);
-            
-            // Explicitly set the new student ID
             cleanFields[FIELD_ESTUDIANTE_LINK_PRACTICAS] = targetStudentId;
-            
             delete cleanFields.__student;
             delete cleanFields.__studentName;
-
             return db.practicas.create(cleanFields);
         },
         onSuccess: () => {
@@ -182,10 +178,20 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         setSelectedRowId(record.id);
     };
 
+    const institutionOptions = institutions.map(i => ({
+        value: i.id,
+        label: cleanInstitutionName(i[FIELD_NOMBRE_INSTITUCIONES])
+    })).sort((a, b) => a.label.localeCompare(b.label));
+
+    const launchOptions = launches.map(l => ({
+        value: l.id,
+        label: formatDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]) + (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] ? ` - ${l[FIELD_NOMBRE_PPS_LANZAMIENTOS]}` : '')
+    }));
+
     return (
         <div className="space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             <ConfirmModal
                 isOpen={!!idToDelete}
                 title="¿Eliminar Práctica?"
@@ -197,42 +203,59 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
             />
 
             {/* FILTROS */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-4 items-end shadow-sm">
-                <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alumno</label>
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12 gap-4 items-end shadow-sm">
+
+                <div className="md:col-span-3 space-y-1.5 h-full">
                     {!filterStudentId ? (
-                        <div className="h-11"><AdminSearch onStudentSelect={(s) => { setFilterStudentId(s.id); setStudentLabel(s[FIELD_NOMBRE_ESTUDIANTES] || ''); }} /></div>
+                        <div className="h-full">
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 mb-1.5 block">Alumno</label>
+                            <div className="h-11">
+                                <AdminSearch onStudentSelect={(s) => { setFilterStudentId(s.id); setStudentLabel(s[FIELD_NOMBRE_ESTUDIANTES] || ''); }} />
+                            </div>
+                        </div>
                     ) : (
-                        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 h-11 px-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                            <span className="text-xs font-bold truncate text-blue-800 dark:text-blue-300">{studentLabel}</span>
-                            <button onClick={() => setFilterStudentId('')} className="material-icons !text-sm">close</button>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Alumno</label>
+                            <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 h-11 px-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                                <span className="text-xs font-bold truncate text-blue-800 dark:text-blue-300">{studentLabel}</span>
+                                <button onClick={() => setFilterStudentId('')} className="material-icons !text-sm text-blue-500 hover:text-blue-700">close</button>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Institución</label>
-                    <select value={selectedInstId} onChange={e => { setSelectedInstId(e.target.value); setSelectedLaunchId(''); }} className="w-full h-11 px-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 outline-none">
-                        <option value="">Todas</option>
-                        {institutions.map(i => <option key={i.id} value={i.id}>{cleanInstitutionName(i[FIELD_NOMBRE_INSTITUCIONES])}</option>)}
-                    </select>
+                <div className="md:col-span-4">
+                    <SearchableSelect
+                        label="Institución"
+                        options={[{ value: '', label: 'Todas' }, ...institutionOptions]}
+                        value={selectedInstId}
+                        onChange={(val) => { setSelectedInstId(val); setSelectedLaunchId(''); }}
+                        placeholder="Buscar institución..."
+                        className="w-full"
+                    />
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Convocatoria</label>
-                    <select value={selectedLaunchId} onChange={e => setSelectedLaunchId(e.target.value)} disabled={!selectedInstId} className="w-full h-11 px-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 outline-none disabled:opacity-50">
-                        <option value="">Todas</option>
-                        {launches.map(l => <option key={l.id} value={l.id}>{formatDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS])}</option>)}
-                    </select>
+                <div className="md:col-span-3">
+                    <SearchableSelect
+                        label="Fecha / Convocatoria"
+                        options={[{ value: '', label: 'Todas' }, ...launchOptions]}
+                        value={selectedLaunchId}
+                        onChange={setSelectedLaunchId}
+                        placeholder={selectedInstId ? "Seleccionar fecha..." : "Selecciona Inst. primero"}
+                        disabled={!selectedInstId}
+                        className="w-full"
+                    />
                 </div>
 
-                <Button onClick={() => setEditingRecord({ isCreating: true })} icon="add_circle" className="h-11 bg-blue-600">Nueva</Button>
+                <div className="md:col-span-2">
+                    <Button onClick={() => setEditingRecord({ isCreating: true })} icon="add_circle" className="h-11 bg-blue-600 hover:bg-blue-700 w-full shadow-md">Nueva</Button>
+                </div>
             </div>
-            
-            <div className="flex justify-end h-10">
+
+            <div className="flex justify-end h-8">
                 {selectedRowId && (
-                    <button onClick={() => setIdToDelete(selectedRowId)} className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-black uppercase border border-rose-200 animate-fade-in">
-                        <span className="material-icons !text-base">delete</span> Eliminar
+                    <button onClick={() => setIdToDelete(selectedRowId)} className="flex items-center gap-2 px-4 py-1.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-lg text-xs font-black uppercase border border-rose-200 dark:border-rose-800 animate-fade-in hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">
+                        <span className="material-icons !text-sm">delete</span> Eliminar
                     </button>
                 )}
             </div>
@@ -242,7 +265,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                 <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-50 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                            <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
                                 <tr>
                                     <th className="px-6 py-4">Institución</th>
                                     <th className="px-6 py-4">Estudiante</th>
@@ -255,7 +278,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                                 {data?.records.map((p: any) => {
                                     const isSelected = selectedRowId === p.id;
                                     const espVisuals = getEspecialidadClasses(p[FIELD_ESPECIALIDAD_PRACTICAS]);
-                                    
+
                                     return (
                                         <tr key={p.id} onClick={() => setSelectedRowId(isSelected ? null : p.id)} onContextMenu={(e) => handleRowContextMenu(e, p)} onDoubleClick={() => setEditingRecord(p)} className={`transition-all cursor-pointer group ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50/80 dark:hover:bg-slate-900/40'}`}>
                                             <td className="px-6 py-4">
@@ -265,9 +288,9 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="font-bold text-slate-700 dark:text-slate-300">{p.__student.nombre}</div>
-                                                <div className="text-[10px] font-mono text-slate-500">{p.__student.legajo}</div>
+                                                <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">{p.__student.legajo}</div>
                                             </td>
-                                            <td className="px-6 py-4 font-mono text-xs">{formatDate(p[FIELD_FECHA_INICIO_PRACTICAS])}</td>
+                                            <td className="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">{formatDate(p[FIELD_FECHA_INICIO_PRACTICAS])}</td>
                                             <td className="px-6 py-4 text-center font-black text-blue-600 dark:text-blue-400">{p[FIELD_HORAS_PRACTICAS]} hs</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded-full text-[10px] font-black border uppercase ${getStatusVisuals(p[FIELD_ESTADO_PRACTICA]).labelClass}`}>
@@ -284,8 +307,8 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                 </div>
             )}
 
-            {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} options={[{ label: 'Editar', icon: 'edit', onClick: () => setEditingRecord(menu.record) }, { label: 'Duplicar a otro', icon: 'content_copy', onClick: () => setDuplicatingRecord(menu.record) }, { label: 'Eliminar', icon: 'delete', variant: 'danger', onClick: () => setIdToDelete(menu.record.id) }]}/>}
-            {editingRecord && <RecordEditModal isOpen={!!editingRecord} onClose={() => setEditingRecord(null)} record={editingRecord.isCreating ? null : editingRecord} tableConfig={TABLE_CONFIG} onSave={(id, fields) => id ? updateMutation.mutate({ id, fields }) : createMutation.mutate(fields)} isSaving={updateMutation.isPending || createMutation.isPending}/>}
+            {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} options={[{ label: 'Editar', icon: 'edit', onClick: () => setEditingRecord(menu.record) }, { label: 'Duplicar a otro', icon: 'content_copy', onClick: () => setDuplicatingRecord(menu.record) }, { label: 'Eliminar', icon: 'delete', variant: 'danger', onClick: () => setIdToDelete(menu.record.id) }]} />}
+            {editingRecord && <RecordEditModal isOpen={!!editingRecord} onClose={() => setEditingRecord(null)} record={editingRecord.isCreating ? null : editingRecord} tableConfig={TABLE_CONFIG} onSave={(id, fields) => id ? updateMutation.mutate({ id, fields }) : createMutation.mutate(fields)} isSaving={updateMutation.isPending || createMutation.isPending} />}
             {duplicatingRecord && <DuplicateToStudentModal isOpen={!!duplicatingRecord} onClose={() => setDuplicatingRecord(null)} sourceRecordLabel={cleanInstitutionName(duplicatingRecord[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS])} onConfirm={(targetId) => duplicateMutation.mutate({ record: duplicatingRecord, targetStudentId: targetId })} isSaving={duplicateMutation.isPending} />}
         </div>
     );

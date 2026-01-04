@@ -1,14 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Card from './Card';
-import Input from './Input';
-import Toast from './Toast';
-import Button from './Button';
+import Card from './ui/Card';
+import Input from './ui/Input';
+import Toast from './ui/Toast';
+import Button from './ui/Button';
 import { supabase } from '../lib/supabaseClient';
 import Loader from './Loader';
 import { generateHtmlTemplate, stripGreeting } from '../utils/emailService';
-import Select from './Select';
+import Select from './ui/Select';
 
 interface AutomationScenario {
     id: string; // Used as Primary Key in DB
@@ -151,10 +151,10 @@ const EmailAutomationManager: React.FC = () => {
                     subject: vars.subject, // Upsert requires non-null fields
                     body: vars.body
                 });
-             if (error) throw error;
+            if (error) throw error;
         },
         onSuccess: () => {
-             queryClient.invalidateQueries({ queryKey: ['emailTemplates'] });
+            queryClient.invalidateQueries({ queryKey: ['emailTemplates'] });
         },
         onError: (err: any) => setToastInfo({ message: `Error cambiando estado: ${err.message}`, type: 'error' })
     });
@@ -181,7 +181,7 @@ const EmailAutomationManager: React.FC = () => {
         try {
             const scenario = SCENARIOS.find(s => s.id === testScenarioId) || SCENARIOS[0];
             const { subject, body } = getTemplateData(scenario.id);
-            
+
             const studentName = 'Estudiante de Prueba';
             let rawTextBody = body.replace('{{nombre_alumno}}', studentName);
             let finalSubject = subject;
@@ -199,7 +199,7 @@ const EmailAutomationManager: React.FC = () => {
                     .replace('{{notas}}', 'Hemos contactado a la institución y esperamos respuesta.');
                 finalSubject = finalSubject.replace('{{institucion}}', 'Hospital Modelo');
             } else if (scenario.id === 'sac') {
-                 rawTextBody = rawTextBody.replace('{{nombre_pps}}', 'Práctica Profesional Supervisada');
+                rawTextBody = rawTextBody.replace('{{nombre_pps}}', 'Práctica Profesional Supervisada');
             }
 
             const firstName = studentName.split(' ')[0];
@@ -211,7 +211,7 @@ const EmailAutomationManager: React.FC = () => {
                 body: {
                     to: testEmail,
                     subject: `[PRUEBA] ${finalSubject}`,
-                    text: cleanTextBody, 
+                    text: cleanTextBody,
                     html: htmlBody,
                     name: studentName
                 }
@@ -268,7 +268,7 @@ const EmailAutomationManager: React.FC = () => {
                 textarea.selectionStart = textarea.selectionEnd = start + variable.length;
             }, 0);
         } else {
-             setCurrentBody(prev => prev + variable);
+            setCurrentBody(prev => prev + variable);
         }
     };
 
@@ -277,7 +277,7 @@ const EmailAutomationManager: React.FC = () => {
     return (
         <div className="space-y-8 animate-fade-in-up pb-10">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="p-3 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
@@ -295,15 +295,15 @@ const EmailAutomationManager: React.FC = () => {
                     <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Diagnóstico y Pruebas</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                         <div>
-                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Plantilla a probar:</label>
-                             <Select value={testScenarioId} onChange={e => setTestScenarioId(e.target.value)} className="w-full text-sm">
-                                 {SCENARIOS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                             </Select>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Plantilla a probar:</label>
+                            <Select value={testScenarioId} onChange={e => setTestScenarioId(e.target.value)} className="w-full text-sm">
+                                {SCENARIOS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                            </Select>
                         </div>
                         <div className="flex gap-2 w-full">
                             <div className="flex-grow">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Enviar a:</label>
-                                    <Input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="tu_correo@ejemplo.com" className="text-sm" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Enviar a:</label>
+                                <Input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="tu_correo@ejemplo.com" className="text-sm" />
                             </div>
                             <Button onClick={handleSendTest} disabled={isSendingTest} size="md" icon="send" variant="secondary">
                                 {isSendingTest ? '...' : 'Probar'}
@@ -332,13 +332,13 @@ const EmailAutomationManager: React.FC = () => {
                                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">{scenario.description}</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-center gap-4 self-end sm:self-center">
                                         <div className="flex items-center gap-2">
                                             <span className={`text-xs font-bold ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
                                                 {isActive ? 'ACTIVADO' : 'DESACTIVADO'}
                                             </span>
-                                            <button 
+                                            <button
                                                 onClick={() => toggleActive(scenario)}
                                                 disabled={toggleActiveMutation.isPending}
                                                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isActive ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}
@@ -346,7 +346,7 @@ const EmailAutomationManager: React.FC = () => {
                                                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isActive ? 'translate-x-6' : 'translate-x-1'}`} />
                                             </button>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => isEditing ? setEditingScenarioId(null) : handleEditClick(scenario)}
                                             className={`p-2 rounded-lg border transition-colors ${isEditing ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-300'}`}
                                         >
@@ -364,30 +364,30 @@ const EmailAutomationManager: React.FC = () => {
                                             </div>
                                             <div>
                                                 <div className="flex justify-between items-center mb-1.5">
-                                                     <label className="block text-xs font-bold text-slate-500 uppercase">Cuerpo del Mensaje (Soporta **negrita** para títulos)</label>
-                                                     <div className="flex gap-1">
-                                                         {scenario.variables.map(v => (
-                                                             <button 
-                                                                key={v} 
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase">Cuerpo del Mensaje (Soporta **negrita** para títulos)</label>
+                                                    <div className="flex gap-1">
+                                                        {scenario.variables.map(v => (
+                                                            <button
+                                                                key={v}
                                                                 onClick={() => insertVariable(v)}
                                                                 className="text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/50 dark:hover:text-blue-300 px-2 py-0.5 rounded cursor-pointer transition-colors"
                                                                 title="Insertar variable"
-                                                             >
-                                                                 {v}
-                                                             </button>
-                                                         ))}
-                                                     </div>
+                                                            >
+                                                                {v}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                                 <div className="text-xs text-slate-400 mb-2 px-2 border-l-2 border-blue-200">
                                                     Tip: Usa <strong>**Título:**</strong> para crear cajas de alerta visuales con íconos.
-                                                    <br/>
+                                                    <br />
                                                     Nota: No incluyas el saludo inicial ("Hola..."), el sistema lo agrega automáticamente.
                                                 </div>
-                                                <textarea 
+                                                <textarea
                                                     id="body-editor"
                                                     value={currentBody}
                                                     onChange={e => setCurrentBody(e.target.value)}
-                                                    rows={16} 
+                                                    rows={16}
                                                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono leading-relaxed"
                                                 />
                                             </div>

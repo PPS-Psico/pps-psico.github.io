@@ -6,9 +6,9 @@ export const ALL_ORIENTACIONES = ['Clinica', 'Educacional', 'Laboral', 'Comunita
 export const ALL_ESTADOS_ESTUDIANTE = ['Activo', 'Finalizado', 'Inactivo', 'Nuevo (Sin cuenta)'] as const;
 
 const baseRecordSchema = z.object({
-  id: z.string(),
-  createdTime: z.string().optional(),
-  created_at: z.string().optional(),
+    id: z.string(),
+    createdTime: z.string().optional(),
+    created_at: z.string().optional(),
 });
 
 export const estudianteFieldsSchema = z.object({
@@ -86,7 +86,7 @@ export const lanzamientoPPSFieldsSchema = z.object({
     [C.FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS]: z.string().optional().nullable(),
     [C.FIELD_TELEFONO_INSTITUCION_LANZAMIENTOS]: z.string().optional().nullable(),
     [C.FIELD_PERMITE_CERTIFICADO_LANZAMIENTOS]: z.boolean().optional().nullable(),
-    [C.FIELD_AIRTABLE_ID]: z.string().optional().nullable(),
+
     [C.FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: z.string().optional().nullable(),
 });
 

@@ -4,17 +4,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import type { InstitucionFields, LanzamientoPPSFields, AirtableRecord } from '../types';
 import {
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_TUTOR_INSTITUCIONES,
+    FIELD_NOMBRE_INSTITUCIONES,
+    FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+    FIELD_NOMBRE_PPS_LANZAMIENTOS,
+    FIELD_FECHA_INICIO_LANZAMIENTOS,
+    FIELD_TUTOR_INSTITUCIONES,
 } from '../constants';
-import Card from './Card';
+import Card from './ui/Card';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
-import Button from './Button';
+import Toast from './ui/Toast';
+import Button from './ui/Button';
 import { normalizeStringForComparison, parseToUTCDate, formatDate } from '../utils/formatters';
 
 const getGroupName = (name: string | undefined): string => {
@@ -49,7 +49,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
             return { instituciones: institucionesRes, lanzamientos: lanzamientosRes };
         },
     });
-    
+
     const confirmMutation = useMutation({
         mutationFn: (institutionId: string) => {
             const currentYear = new Date().getFullYear();
@@ -89,7 +89,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                 });
             }
         });
-        
+
         const launchesThisYear = data.lanzamientos
             .filter(l => {
                 const date = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
@@ -144,7 +144,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
 
         return {
             confirmed,
-            potentials: Array.from(potentialsMap.values()).sort((a,b) => a.institutionName.localeCompare(b.institutionName))
+            potentials: Array.from(potentialsMap.values()).sort((a, b) => a.institutionName.localeCompare(b.institutionName))
         };
     }, [data]);
 
@@ -154,7 +154,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
     return (
         <div className="space-y-8">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             <Card icon="verified" title={`Convenios Nuevos Confirmados (${new Date().getFullYear()})`} description="Instituciones marcadas como 'Convenio Nuevo' que tuvieron lanzamientos este año.">
                 {confirmed.length > 0 ? (
                     <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
@@ -181,7 +181,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                                         {item.launches.map(l => <li key={l.id}>- {l.name} ({formatDate(l.date)})</li>)}
                                     </ul>
                                 </div>
-                                <Button 
+                                <Button
                                     size="sm"
                                     onClick={() => confirmMutation.mutate(item.institutionId)}
                                     isLoading={confirmMutation.isPending && confirmMutation.variables === item.institutionId}

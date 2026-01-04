@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { InformeCorreccionPPS, InformeCorreccionStudent } from '../types';
-import Checkbox from './Checkbox';
+import Checkbox from './ui/Checkbox';
 import { formatDate, parseToUTCDate } from '../utils/formatters';
 
 const NOTA_OPTIONS = ['Sin calificar', 'Entregado (sin corregir)', 'No Entregado', 'Desaprobado', '4', '5', '6', '7', '8', '9', '10'];
@@ -39,9 +39,9 @@ const HighlightedName: React.FC<{ text: string; highlight: string }> = ({ text, 
   );
 };
 
-const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({ 
-  ppsGroup, 
-  onNotaChange, 
+const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
+  ppsGroup,
+  onNotaChange,
   updatingNotaId,
   selectedStudents,
   onSelectionChange,
@@ -97,7 +97,7 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
   const handleNotaChange = async (student: InformeCorreccionStudent, newNota: string) => {
     await onNotaChange(student, newNota);
     setJustUpdatedPracticaId(student.practicaId || null);
-    setTimeout(() => setJustUpdatedPracticaId(null), 1500); 
+    setTimeout(() => setJustUpdatedPracticaId(null), 1500);
   };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,7 +105,7 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
     const allPracticaIds = stats.qualifiableStudents.map(s => s.practicaId).filter((id): id is string => !!id);
     onSelectAll(allPracticaIds, isChecked);
   };
-  
+
   const handleBatchUpdateClick = async () => {
     if (selectedStudents.size > 0) {
       await onBatchUpdate(batchNota);
@@ -120,10 +120,10 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
           <p className="text-sm text-slate-500 dark:text-slate-400">{orientacion}</p>
           {correctionDeadlineInfo && (
             <p className={`text-xs font-semibold px-2 py-1 rounded-md inline-flex items-center gap-1 mt-2 ${correctionDeadlineInfo.className}`}>
-                <span className="material-icons !text-sm">{correctionDeadlineInfo.icon}</span>
-                <span>
-                    Límite de corrección: {formatDate(correctionDeadlineInfo.date.toISOString())}
-                </span>
+              <span className="material-icons !text-sm">{correctionDeadlineInfo.icon}</span>
+              <span>
+                Límite de corrección: {formatDate(correctionDeadlineInfo.date.toISOString())}
+              </span>
             </p>
           )}
         </div>
@@ -133,7 +133,7 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
               href={informeLink}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
               className="hidden sm:inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold text-xs py-2 px-3 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
               aria-label={`Ir a la tarea del campus para ${ppsName}`}
             >
@@ -149,38 +149,38 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
           </div>
         </div>
       </summary>
-      
+
       {/* Batch Actions */}
       {selectedStudents.size > 0 && (
-          <div className="border-t border-b border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/20 p-3 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in-up">
-              <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                  {selectedStudents.size} alumno{selectedStudents.size > 1 ? 's' : ''} seleccionado{selectedStudents.size > 1 ? 's' : ''}
-              </p>
-              <div className="flex items-center gap-2">
-                  <select
-                      value={batchNota}
-                      onChange={(e) => setBatchNota(e.target.value)}
-                      className="text-sm rounded-lg border border-slate-300/80 dark:border-slate-600 p-2 bg-white dark:bg-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                      aria-label="Seleccionar nota para el lote"
-                  >
-                      {NOTA_OPTIONS.filter(o => o !== 'Sin calificar' && o !== 'No Entregado' && o !== 'Entregado (sin corregir)').map(option => (
-                          <option key={option} value={option}>{option}</option>
-                      ))}
-                  </select>
-                  <button 
-                    onClick={handleBatchUpdateClick} 
-                    disabled={isBatchUpdating}
-                    className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-md hover:bg-blue-700 disabled:bg-slate-400 flex items-center gap-2"
-                  >
-                     {isBatchUpdating ? (
-                         <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"/>
-                     ) : (
-                         <span className="material-icons !text-base">done_all</span>
-                     )}
-                     <span>Aplicar</span>
-                  </button>
-              </div>
+        <div className="border-t border-b border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/20 p-3 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in-up">
+          <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+            {selectedStudents.size} alumno{selectedStudents.size > 1 ? 's' : ''} seleccionado{selectedStudents.size > 1 ? 's' : ''}
+          </p>
+          <div className="flex items-center gap-2">
+            <select
+              value={batchNota}
+              onChange={(e) => setBatchNota(e.target.value)}
+              className="text-sm rounded-lg border border-slate-300/80 dark:border-slate-600 p-2 bg-white dark:bg-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              aria-label="Seleccionar nota para el lote"
+            >
+              {NOTA_OPTIONS.filter(o => o !== 'Sin calificar' && o !== 'No Entregado' && o !== 'Entregado (sin corregir)').map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleBatchUpdateClick}
+              disabled={isBatchUpdating}
+              className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-md hover:bg-blue-700 disabled:bg-slate-400 flex items-center gap-2"
+            >
+              {isBatchUpdating ? (
+                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+              ) : (
+                <span className="material-icons !text-base">done_all</span>
+              )}
+              <span>Aplicar</span>
+            </button>
           </div>
+        </div>
       )}
 
       <div className="border-t border-slate-200 dark:border-slate-700">
@@ -189,14 +189,14 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
             <thead className="bg-slate-50/70 dark:bg-slate-900/50">
               <tr>
                 <th className="p-3 w-12 text-center">
-                   <Checkbox
-                        id={`select-all-${ppsGroup.lanzamientoId}`}
-                        name="selectAll"
-                        checked={stats.isAllSelected}
-                        onChange={handleSelectAll}
-                        label=""
-                        disabled={stats.qualifiableStudents.length === 0}
-                    />
+                  <Checkbox
+                    id={`select-all-${ppsGroup.lanzamientoId}`}
+                    name="selectAll"
+                    checked={stats.isAllSelected}
+                    onChange={handleSelectAll}
+                    label=""
+                    disabled={stats.qualifiableStudents.length === 0}
+                  />
                 </th>
                 <th className="p-3 text-left font-semibold text-slate-500 dark:text-slate-400">Alumno</th>
                 <th className="p-3 text-left font-semibold text-slate-500 dark:text-slate-400 w-56">Nota</th>
@@ -210,15 +210,15 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
                 return (
                   <tr key={student.studentId} className={`transition-colors duration-1000 ${justUpdatedPracticaId === student.practicaId ? 'bg-green-100 dark:bg-green-900/30' : (isSelected ? 'bg-blue-50/50 dark:bg-blue-900/30' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50')}`}>
                     <td className="p-3 text-center">
-                       {student.practicaId && (
-                           <Checkbox
-                                id={`select-${student.practicaId}`}
-                                name="selectStudent"
-                                checked={isSelected}
-                                onChange={() => onSelectionChange(student.practicaId!)}
-                                label=""
-                           />
-                       )}
+                      {student.practicaId && (
+                        <Checkbox
+                          id={`select-${student.practicaId}`}
+                          name="selectStudent"
+                          checked={isSelected}
+                          onChange={() => onSelectionChange(student.practicaId!)}
+                          label=""
+                        />
+                      )}
                     </td>
                     <td className="p-3 font-medium text-slate-800 dark:text-slate-100">
                       <HighlightedName text={student.studentName} highlight={searchTerm} />
@@ -226,28 +226,28 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <div className="relative w-full max-w-[150px]">
-                           <select
-                              value={student.nota || 'Sin calificar'}
-                              onChange={(e) => handleNotaChange(student, e.target.value)}
-                              disabled={isSaving}
-                              className="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 p-2 bg-white dark:bg-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 text-slate-800 dark:text-slate-200 cursor-pointer appearance-none pr-8"
-                              aria-label={`Nota para ${student.studentName}`}
-                            >
-                               {NOTA_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500 dark:text-slate-400">
-                                {isSaving ? (
-                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <span className="material-icons !text-lg">expand_more</span>
-                                )}
+                          <select
+                            value={student.nota || 'Sin calificar'}
+                            onChange={(e) => handleNotaChange(student, e.target.value)}
+                            disabled={isSaving}
+                            className="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 p-2 bg-white dark:bg-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 text-slate-800 dark:text-slate-200 cursor-pointer appearance-none pr-8"
+                            aria-label={`Nota para ${student.studentName}`}
+                          >
+                            {NOTA_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500 dark:text-slate-400">
+                            {isSaving ? (
+                              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <span className="material-icons !text-lg">expand_more</span>
+                            )}
                           </div>
                         </div>
-                         {justUpdatedPracticaId === student.practicaId && (
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-fade-in-up" style={{ animationDuration: '300ms' }}>
-                                Guardado ✓
-                            </span>
-                         )}
+                        {justUpdatedPracticaId === student.practicaId && (
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-fade-in-up" style={{ animationDuration: '300ms' }}>
+                            Guardado ✓
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3 text-center">
@@ -258,8 +258,8 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 text-xs font-semibold px-2.5 py-1 rounded-full" title="Informe no subido o marcado como 'No Entregado'">
-                           <span className="material-icons !text-sm">close</span>
-                           <span>No</span>
+                          <span className="material-icons !text-sm">close</span>
+                          <span>No</span>
                         </span>
                       )}
                     </td>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ALERT_PRACTICAS_TITLE, ALERT_PRACTICAS_TEXT, ALERT_INFORMES_TITLE } from '../constants';
-import Card from './Card';
+import Card from './ui/Card';
 import type { TabId } from '../types';
 
 interface FooterProps {
@@ -59,7 +59,7 @@ const Footer: React.FC<FooterProps> = ({ activeTab }) => {
   if (!currentNotice) {
     return null;
   }
-  
+
   const mailToLink = `mailto:blas.rivera@uflouniversidad.edu.ar?subject=${encodeURIComponent(currentNotice.mailToSubject)}&body=${encodeURIComponent(currentNotice.mailToBody)}`;
 
   return (

@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
 import SubTabs from './SubTabs';
-import Card from './Card';
+import Card from './ui/Card';
 import EditorEstudiantes from './EditorEstudiantes';
 import EditorPracticas from './EditorPracticas';
 import EditorConvocatorias from './EditorConvocatorias';
 import EditorInstituciones from './EditorInstituciones';
 
 interface DatabaseEditorProps {
-  isTestingMode?: boolean;
+    isTestingMode?: boolean;
 }
 
 type TableKey = 'estudiantes' | 'practicas' | 'convocatorias' | 'instituciones';
@@ -26,10 +26,10 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     return (
         <Card title="Editor de Base de Datos" icon="storage" className="border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0F172A] shadow-lg">
             <div className="mt-4">
-                <SubTabs 
-                    tabs={tableTabs} 
-                    activeTabId={activeTable} 
-                    onTabChange={(id) => setActiveTable(id as TableKey)} 
+                <SubTabs
+                    tabs={tableTabs}
+                    activeTabId={activeTable}
+                    onTabChange={(id) => setActiveTable(id as TableKey)}
                 />
             </div>
 

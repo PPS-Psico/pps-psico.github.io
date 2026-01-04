@@ -10,13 +10,13 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import App from '@/App'; // Renderizar App es más fácil para obtener todos los contextos
 import * as airtableService from '@/services/airtableService';
 import {
-    AIRTABLE_TABLE_NAME_ESTUDIANTES,
-    AIRTABLE_TABLE_NAME_PRACTICAS,
-    AIRTABLE_TABLE_NAME_PPS,
-    AIRTABLE_TABLE_NAME_CONVOCATORIAS,
-    AIRTABLE_TABLE_NAME_LANZAMIENTOS_PPS,
-    AIRTABLE_TABLE_NAME_INSTITUCIONES,
-    AIRTABLE_TABLE_NAME_FINALIZACION,
+    TABLE_NAME_ESTUDIANTES,
+    TABLE_NAME_PRACTICAS,
+    TABLE_NAME_PPS,
+    TABLE_NAME_CONVOCATORIAS,
+    TABLE_NAME_LANZAMIENTOS_PPS,
+    TABLE_NAME_INSTITUCIONES,
+    TABLE_NAME_FINALIZACION,
 } from '@/constants';
 
 // Simular todo el módulo de airtableService
@@ -25,18 +25,18 @@ const mockedAirtable = airtableService as jest.Mocked<typeof airtableService>;
 
 // Mock exceljs to prevent ESM issues in Jest
 jest.mock('exceljs', () => ({
-  Workbook: jest.fn().mockImplementation(() => ({
-    xlsx: {
-      writeBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
-    },
-    addWorksheet: jest.fn().mockReturnValue({
-      columns: [],
-      addRows: jest.fn(),
-      getRow: jest.fn().mockReturnValue({
-        eachCell: jest.fn(),
-      }),
-    }),
-  })),
+    Workbook: jest.fn().mockImplementation(() => ({
+        xlsx: {
+            writeBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+        },
+        addWorksheet: jest.fn().mockReturnValue({
+            columns: [],
+            addRows: jest.fn(),
+            getRow: jest.fn().mockReturnValue({
+                eachCell: jest.fn(),
+            }),
+        }),
+    })),
 }));
 
 // --- Datos Simulados ---
@@ -88,7 +88,7 @@ describe('Flujo de Integración del Administrador', () => {
     beforeEach(() => {
         // Limpiar mocks antes de cada prueba
         jest.clearAllMocks();
-        
+
         // Simular sessionStorage para AuthContext para que el usuario admin esté logueado
         Storage.prototype.getItem = jest.fn((key) => {
             if (key === 'authenticatedUser') {
@@ -100,11 +100,11 @@ describe('Flujo de Integración del Administrador', () => {
         // Configurar la simulación de la API para todas las llamadas esperadas
         mockedAirtable.fetchAllAirtableData.mockImplementation(async (tableName: string, zodSchema: any, fields?: string[], filterByFormula?: string): Promise<any> => {
             // useStudentPracticas
-            if (tableName === AIRTABLE_TABLE_NAME_PRACTICAS && filterByFormula?.includes('12345')) {
+            if (tableName === TABLE_NAME_PRACTICAS && filterByFormula?.includes('12345')) {
                 return { records: mockPracticas, error: null };
             }
             // Llamadas para solicitudes, convocatorias, etc., que pueden estar vacías para esta prueba
-            if ([AIRTABLE_TABLE_NAME_PPS, AIRTABLE_TABLE_NAME_CONVOCATORIAS, AIRTABLE_TABLE_NAME_LANZAMIENTOS_PPS, AIRTABLE_TABLE_NAME_INSTITUCIONES, AIRTABLE_TABLE_NAME_FINALIZACION].includes(tableName)) {
+            if ([TABLE_NAME_PPS, TABLE_NAME_CONVOCATORIAS, TABLE_NAME_LANZAMIENTOS_PPS, TABLE_NAME_INSTITUCIONES, TABLE_NAME_FINALIZACION].includes(tableName)) {
                 return { records: [], error: null };
             }
             // Respuesta por defecto para las métricas iniciales y otras llamadas no especificadas
@@ -113,14 +113,14 @@ describe('Flujo de Integración del Administrador', () => {
 
         mockedAirtable.fetchAirtableData.mockImplementation(async (tableName: string, zodSchema: any, fields?: string[], filterByFormula?: string): Promise<any> => {
             // Búsqueda de AdminSearch
-            if (tableName === AIRTABLE_TABLE_NAME_ESTUDIANTES && filterByFormula?.includes('juana molina')) {
+            if (tableName === TABLE_NAME_ESTUDIANTES && filterByFormula?.includes('juana molina')) {
                 return { records: [mockStudentForSearch], error: null };
             }
             // useStudentData para el dashboard del alumno
-            if (tableName === AIRTABLE_TABLE_NAME_ESTUDIANTES && filterByFormula?.includes("'12345'")) {
+            if (tableName === TABLE_NAME_ESTUDIANTES && filterByFormula?.includes("'12345'")) {
                 return { records: [mockStudentDetails], error: null };
             }
-             return { records: [], error: null };
+            return { records: [], error: null };
         });
 
         // Simular la operación de actualización de la nota
@@ -141,7 +141,7 @@ describe('Flujo de Integración del Administrador', () => {
         // 1. Navegar a la herramienta de búsqueda
         const herramientasTab = await screen.findByRole('tab', { name: /Herramientas/i }, { timeout: 10000 });
         await user.click(herramientasTab);
-        
+
         // 2. Buscar al alumno
         const searchInput = await screen.findByPlaceholderText(/Buscar por Legajo o Nombre.../i);
         await user.type(searchInput, 'Juana Molina');
@@ -159,25 +159,25 @@ describe('Flujo de Integración del Administrador', () => {
         expect(panelId).not.toBeNull();
         const studentDashboard = document.getElementById(panelId!);
         if (!studentDashboard) throw new Error("No se encontró el panel del dashboard del alumno.");
-        
+
         // Verificar que el banner de bienvenida se renderizó para el alumno correcto
         await within(studentDashboard).findByRole('heading', { name: /Juana/i, level: 1 });
 
         // 5. Navegar a la pestaña "Mis Prácticas" dentro del panel del alumno
         const practicasTab = await within(studentDashboard).findByRole('tab', { name: /Mis Prácticas/i });
         await user.click(practicasTab);
-        
+
         // 6. Encontrar el selector de nota y cambiarlo
         const gradeSelector = await within(studentDashboard).findByLabelText('Calificación para Hospital Central');
         expect(gradeSelector).toHaveValue('Sin calificar');
-        
+
         await user.selectOptions(gradeSelector, '10');
 
         // 7. Verificar que la API de actualización fue llamada y la UI refleja el cambio
         await waitFor(() => {
             expect(mockedAirtable.updateAirtableRecord).toHaveBeenCalledTimes(1);
             expect(mockedAirtable.updateAirtableRecord).toHaveBeenCalledWith(
-                AIRTABLE_TABLE_NAME_PRACTICAS,
+                TABLE_NAME_PRACTICAS,
                 'recPracticaABC',
                 { 'Nota': '10' }
             );

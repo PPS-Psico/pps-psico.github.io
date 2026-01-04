@@ -4,9 +4,9 @@ import PracticasTable from '../components/PracticasTable';
 import SolicitudesList from '../components/SolicitudesList';
 import EmptyState from '../components/EmptyState';
 import Tabs from '../components/Tabs';
-import Card from '../components/Card';
+import Card from './ui/Card';
 /* Fixed missing Button import */
-import Button from './Button';
+import Button from './ui/Button';
 import WelcomeBanner from '../components/WelcomeBanner';
 import InformesList from '../components/InformesList';
 import WhatsAppExportButton from '../components/WhatsAppExportButton';
@@ -20,30 +20,30 @@ import HomeView from '../components/HomeView';
 import PrintableReport from '../components/PrintableReport';
 import { useStudentPanel } from '../contexts/StudentPanelContext';
 import FinalizacionForm from '../components/FinalizacionForm';
-import { 
-    FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES, 
-    FIELD_NOMBRE_ESTUDIANTES, 
-    FIELD_LEGAJO_PPS,
-    FIELD_ESTADO_PPS,
-    FIELD_ULTIMA_ACTUALIZACION_PPS,
-    FIELD_EMPRESA_PPS_SOLICITUD,
-    FIELD_SOLICITUD_LEGAJO_ALUMNO,
-    FIELD_SOLICITUD_NOMBRE_ALUMNO,
-    FIELD_SOLICITUD_EMAIL_ALUMNO,
-    FIELD_SOLICITUD_LOCALIDAD,
-    FIELD_SOLICITUD_DIRECCION,
-    FIELD_SOLICITUD_REFERENTE,
-    FIELD_SOLICITUD_TIENE_CONVENIO,
-    FIELD_SOLICITUD_TIENE_TUTOR,
-    FIELD_SOLICITUD_CONTACTO_TUTOR,
-    FIELD_SOLICITUD_TIPO_PRACTICA,
-    FIELD_SOLICITUD_DESCRIPCION,
-    FIELD_SOLICITUD_EMAIL_INSTITUCION,
-    FIELD_SOLICITUD_TELEFONO_INSTITUCION,
-    FIELD_LEGAJO_ESTUDIANTES,
-    FIELD_CORREO_ESTUDIANTES,
-    FIELD_FECHA_SOLICITUD_FINALIZACION,
-    FIELD_ESTADO_FINALIZACION
+import {
+  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_LEGAJO_PPS,
+  FIELD_ESTADO_PPS,
+  FIELD_ULTIMA_ACTUALIZACION_PPS,
+  FIELD_EMPRESA_PPS_SOLICITUD,
+  FIELD_SOLICITUD_LEGAJO_ALUMNO,
+  FIELD_SOLICITUD_NOMBRE_ALUMNO,
+  FIELD_SOLICITUD_EMAIL_ALUMNO,
+  FIELD_SOLICITUD_LOCALIDAD,
+  FIELD_SOLICITUD_DIRECCION,
+  FIELD_SOLICITUD_REFERENTE,
+  FIELD_SOLICITUD_TIENE_CONVENIO,
+  FIELD_SOLICITUD_TIENE_TUTOR,
+  FIELD_SOLICITUD_CONTACTO_TUTOR,
+  FIELD_SOLICITUD_TIPO_PRACTICA,
+  FIELD_SOLICITUD_DESCRIPCION,
+  FIELD_SOLICITUD_EMAIL_INSTITUCION,
+  FIELD_SOLICITUD_TELEFONO_INSTITUCION,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_CORREO_ESTUDIANTES,
+  FIELD_FECHA_SOLICITUD_FINALIZACION,
+  FIELD_ESTADO_FINALIZACION
 } from '../constants';
 import { useNavigate } from 'react-router-dom';
 import { useModal } from '../contexts/ModalContext';
@@ -60,79 +60,79 @@ export { default as StudentSolicitudes } from '../components/SolicitudesList';
 
 // --- COMPONENT: Simulation Banner ---
 const SimulationBanner: React.FC<{ onExit?: () => void }> = ({ onExit }) => (
-    <div className="bg-amber-100 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100 px-4 py-2 flex items-center justify-between shadow-sm sticky top-[60px] md:top-[80px] z-40">
-        <div className="flex items-center gap-2">
-            <span className="material-icons text-amber-600 dark:text-amber-400 !text-xl animate-pulse">visibility</span>
-            <span className="text-xs font-bold uppercase tracking-wide">Modo Simulación: Estás actuando como este estudiante</span>
-        </div>
-        {onExit && (
-            <button 
-                onClick={onExit}
-                className="text-xs font-bold underline hover:text-amber-700 dark:hover:text-amber-300"
-            >
-                Salir
-            </button>
-        )}
+  <div className="bg-amber-100 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100 px-4 py-2 flex items-center justify-between shadow-sm sticky top-[60px] md:top-[80px] z-40">
+    <div className="flex items-center gap-2">
+      <span className="material-icons text-amber-600 dark:text-amber-400 !text-xl animate-pulse">visibility</span>
+      <span className="text-xs font-bold uppercase tracking-wide">Modo Simulación: Estás actuando como este estudiante</span>
     </div>
+    {onExit && (
+      <button
+        onClick={onExit}
+        className="text-xs font-bold underline hover:text-amber-700 dark:hover:text-amber-300"
+      >
+        Salir
+      </button>
+    )}
+  </div>
 );
 
 // --- COMPONENT: StudentHome (For Router Index) ---
 export const StudentHome: React.FC = () => {
-    const navigate = useNavigate();
-    const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
-    
-    const {
-        studentDetails,
-        studentAirtableId, // Retrieved from context
-        lanzamientos,
-        allLanzamientos,
-        institutionAddressMap,
-        enrollStudent,
-        criterios,
-        enrollmentMap,
-        completedLanzamientoIds,
-        informeTasks
-    } = useStudentPanel();
+  const navigate = useNavigate();
+  const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
 
-    const handleOpenFinalization = useCallback(() => {
-        setIsFinalizationModalOpen(true);
-    }, []);
+  const {
+    studentDetails,
+    studentAirtableId, // Retrieved from context
+    lanzamientos,
+    allLanzamientos,
+    institutionAddressMap,
+    enrollStudent,
+    criterios,
+    enrollmentMap,
+    completedLanzamientoIds,
+    informeTasks
+  } = useStudentPanel();
 
-    return (
-        <ErrorBoundary>
-             {isFinalizationModalOpen && (
-                <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-                <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
-                    <button 
-                        onClick={() => setIsFinalizationModalOpen(false)}
-                        className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
-                    >
-                        <span className="material-icons">close</span>
-                    </button>
-                    {/* Use context ID directly */}
-                    <FinalizacionForm 
-                        studentAirtableId={studentAirtableId} 
-                        onClose={() => setIsFinalizationModalOpen(false)}
-                    />
-                </div>
-                </div>
-            )}
-            <HomeView 
-                myEnrollments={enrollmentMap ? Array.from(enrollmentMap.values()) : []} 
-                allLanzamientos={allLanzamientos} 
-                informeTasks={informeTasks} 
-                lanzamientos={lanzamientos} 
-                onNavigate={(id) => navigate(`/student/${id === 'inicio' ? '' : id}`)}
-                student={studentDetails}
-                onInscribir={enrollStudent.mutate}
-                institutionAddressMap={institutionAddressMap}
-                enrollmentMap={enrollmentMap}
-                completedLanzamientoIds={completedLanzamientoIds}
-                criterios={criterios}
-                onOpenFinalization={handleOpenFinalization}
+  const handleOpenFinalization = useCallback(() => {
+    setIsFinalizationModalOpen(true);
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      {isFinalizationModalOpen && (
+        <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
+            <button
+              onClick={() => setIsFinalizationModalOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
+            >
+              <span className="material-icons">close</span>
+            </button>
+            {/* Use context ID directly */}
+            <FinalizacionForm
+              studentAirtableId={studentAirtableId}
+              onClose={() => setIsFinalizationModalOpen(false)}
             />
-        </ErrorBoundary>
-    );
+          </div>
+        </div>
+      )}
+      <HomeView
+        myEnrollments={enrollmentMap ? Array.from(enrollmentMap.values()) : []}
+        allLanzamientos={allLanzamientos}
+        informeTasks={informeTasks}
+        lanzamientos={lanzamientos}
+        onNavigate={(id) => navigate(`/student/${id === 'inicio' ? '' : id}`)}
+        student={studentDetails}
+        onInscribir={enrollStudent.mutate}
+        institutionAddressMap={institutionAddressMap}
+        enrollmentMap={enrollmentMap}
+        completedLanzamientoIds={completedLanzamientoIds}
+        criterios={criterios}
+        onOpenFinalization={handleOpenFinalization}
+      />
+    </ErrorBoundary>
+  );
 };
 
 // --- COMPONENT: StudentDashboard (Standalone Widget) ---
@@ -181,13 +181,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   const [internalActiveTab, setInternalActiveTab] = useState<TabId>(showExportButton ? 'practicas' : 'inicio');
   const currentActiveTab = activeTab ?? internalActiveTab;
   const setCurrentActiveTab = onTabChange ?? setInternalActiveTab;
-  
+
   const selectedOrientacion = (studentDetails?.[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "") as Orientacion | "";
   const studentNameForPanel = studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || currentUser?.nombre || 'Estudiante';
 
   // Helper to safely get student ID - prioritize context ID
   const getStudentId = () => {
-      return studentAirtableId || currentUser?.id || null;
+    return studentAirtableId || currentUser?.id || null;
   };
 
   const handleOrientacionChange = useCallback((orientacion: Orientacion | "") => {
@@ -204,95 +204,95 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   }, [updateNota]);
 
   const handleOpenFinalization = useCallback(() => {
-      setIsFinalizationModalOpen(true);
+    setIsFinalizationModalOpen(true);
   }, []);
 
   // Create new PPS Request Mutation
   const createSolicitudMutation = useMutation({
-      mutationFn: async (formData: any) => {
-          const studentId = getStudentId();
-          if (!studentId) throw new Error("Error identificando al estudiante.");
+    mutationFn: async (formData: any) => {
+      const studentId = getStudentId();
+      if (!studentId) throw new Error("Error identificando al estudiante.");
 
-          const newRecord: Partial<SolicitudPPSFields> = {
-              [FIELD_LEGAJO_PPS]: studentId,
-              [FIELD_SOLICITUD_LEGAJO_ALUMNO]: studentDetails?.[FIELD_LEGAJO_ESTUDIANTES],
-              [FIELD_SOLICITUD_NOMBRE_ALUMNO]: studentDetails?.[FIELD_NOMBRE_ESTUDIANTES],
-              [FIELD_SOLICITUD_EMAIL_ALUMNO]: studentDetails?.[FIELD_CORREO_ESTUDIANTES],
-              
-              [FIELD_EMPRESA_PPS_SOLICITUD]: formData.nombreInstitucion,
-              [FIELD_SOLICITUD_LOCALIDAD]: formData.localidad,
-              [FIELD_SOLICITUD_DIRECCION]: formData.direccion,
-              [FIELD_SOLICITUD_EMAIL_INSTITUCION]: formData.emailInstitucion,
-              [FIELD_SOLICITUD_TELEFONO_INSTITUCION]: formData.telefonoInstitucion,
-              [FIELD_SOLICITUD_REFERENTE]: formData.referente,
-              [FIELD_SOLICITUD_TIENE_CONVENIO]: formData.tieneConvenio,
-              [FIELD_SOLICITUD_TIENE_TUTOR]: formData.tieneTutor,
-              [FIELD_SOLICITUD_CONTACTO_TUTOR]: formData.contactoTutor,
-              [FIELD_SOLICITUD_TIPO_PRACTICA]: formData.tipoPractica,
-              [FIELD_SOLICITUD_DESCRIPCION]: formData.descripcion,
-              
-              [FIELD_ESTADO_PPS]: 'Pendiente',
-              [FIELD_ULTIMA_ACTUALIZACION_PPS]: new Date().toISOString().split('T')[0]
-          };
+      const newRecord: Partial<SolicitudPPSFields> = {
+        [FIELD_LEGAJO_PPS]: studentId,
+        [FIELD_SOLICITUD_LEGAJO_ALUMNO]: studentDetails?.[FIELD_LEGAJO_ESTUDIANTES],
+        [FIELD_SOLICITUD_NOMBRE_ALUMNO]: studentDetails?.[FIELD_NOMBRE_ESTUDIANTES],
+        [FIELD_SOLICITUD_EMAIL_ALUMNO]: studentDetails?.[FIELD_CORREO_ESTUDIANTES],
 
-          await db.solicitudes.create(newRecord as any);
-      },
-      onSuccess: () => {
-          showModal('Solicitud Enviada', 'Tu solicitud de PPS ha sido registrada. Te notificaremos cuando haya novedades.');
-          queryClient.invalidateQueries({ queryKey: ['solicitudes'] }); // Refresh list
-      },
-      onError: (err: any) => {
-          showModal('Error', `Hubo un problema al enviar la solicitud: ${err.message}`);
-      }
+        [FIELD_EMPRESA_PPS_SOLICITUD]: formData.nombreInstitucion,
+        [FIELD_SOLICITUD_LOCALIDAD]: formData.localidad,
+        [FIELD_SOLICITUD_DIRECCION]: formData.direccion,
+        [FIELD_SOLICITUD_EMAIL_INSTITUCION]: formData.emailInstitucion,
+        [FIELD_SOLICITUD_TELEFONO_INSTITUCION]: formData.telefonoInstitucion,
+        [FIELD_SOLICITUD_REFERENTE]: formData.referente,
+        [FIELD_SOLICITUD_TIENE_CONVENIO]: formData.tieneConvenio,
+        [FIELD_SOLICITUD_TIENE_TUTOR]: formData.tieneTutor,
+        [FIELD_SOLICITUD_CONTACTO_TUTOR]: formData.contactoTutor,
+        [FIELD_SOLICITUD_TIPO_PRACTICA]: formData.tipoPractica,
+        [FIELD_SOLICITUD_DESCRIPCION]: formData.descripcion,
+
+        [FIELD_ESTADO_PPS]: 'Pendiente',
+        [FIELD_ULTIMA_ACTUALIZACION_PPS]: new Date().toISOString().split('T')[0]
+      };
+
+      await db.solicitudes.create(newRecord as any);
+    },
+    onSuccess: () => {
+      showModal('Solicitud Enviada', 'Tu solicitud de PPS ha sido registrada. Te notificaremos cuando haya novedades.');
+      queryClient.invalidateQueries({ queryKey: ['solicitudes'] }); // Refresh list
+    },
+    onError: (err: any) => {
+      showModal('Error', `Hubo un problema al enviar la solicitud: ${err.message}`);
+    }
   });
 
   const handleCreateSolicitud = useCallback(() => {
-      openSolicitudPPSModal(async (data) => {
-          await createSolicitudMutation.mutateAsync(data);
-      });
+    openSolicitudPPSModal(async (data) => {
+      await createSolicitudMutation.mutateAsync(data);
+    });
   }, [openSolicitudPPSModal, createSolicitudMutation]);
-  
+
   // Tab Contents Wrappers with ErrorBoundary
   const homeContent = useMemo(() => (
     <ErrorBoundary>
-        <HomeView 
-            myEnrollments={enrollmentMap ? Array.from(enrollmentMap.values()) : []} 
-            allLanzamientos={allLanzamientos} 
-            informeTasks={informeTasks} 
-            lanzamientos={lanzamientos} 
-            onNavigate={(id) => setCurrentActiveTab(id)}
-            student={studentDetails}
-            onInscribir={enrollStudent.mutate}
-            institutionAddressMap={institutionAddressMap}
-            enrollmentMap={enrollmentMap}
-            completedLanzamientoIds={completedLanzamientoIds}
-            criterios={criterios}
-            onOpenFinalization={handleOpenFinalization}
-        />
+      <HomeView
+        myEnrollments={enrollmentMap ? Array.from(enrollmentMap.values()) : []}
+        allLanzamientos={allLanzamientos}
+        informeTasks={informeTasks}
+        lanzamientos={lanzamientos}
+        onNavigate={(id) => setCurrentActiveTab(id)}
+        student={studentDetails}
+        onInscribir={enrollStudent.mutate}
+        institutionAddressMap={institutionAddressMap}
+        enrollmentMap={enrollmentMap}
+        completedLanzamientoIds={completedLanzamientoIds}
+        criterios={criterios}
+        onOpenFinalization={handleOpenFinalization}
+      />
     </ErrorBoundary>
   ), [enrollmentMap, allLanzamientos, informeTasks, lanzamientos, studentDetails, enrollStudent.mutate, institutionAddressMap, completedLanzamientoIds, criterios, handleOpenFinalization]);
-  
+
   const informesContent = useMemo(() => (
     <ErrorBoundary>
-        <InformesList tasks={informeTasks} onConfirmar={confirmInforme.mutate} />
+      <InformesList tasks={informeTasks} onConfirmar={confirmInforme.mutate} />
     </ErrorBoundary>
   ), [informeTasks, confirmInforme]);
 
   const solicitudesContent = useMemo(() => (
     <ErrorBoundary>
-        <SolicitudesList solicitudes={solicitudes} onCreateSolicitud={handleCreateSolicitud} onRequestFinalization={handleOpenFinalization} criterios={criterios} />
+      <SolicitudesList solicitudes={solicitudes} onCreateSolicitud={handleCreateSolicitud} onRequestFinalization={handleOpenFinalization} criterios={criterios} />
     </ErrorBoundary>
   ), [solicitudes, handleCreateSolicitud, handleOpenFinalization, criterios]);
 
   const practicasContent = useMemo(() => (
     <ErrorBoundary>
-        <PracticasTable practicas={practicas} handleNotaChange={handleNotaChange} />
+      <PracticasTable practicas={practicas} handleNotaChange={handleNotaChange} />
     </ErrorBoundary>
   ), [practicas, handleNotaChange]);
 
   const profileContent = useMemo(() => (
     <ErrorBoundary>
-        <ProfileView studentDetails={studentDetails} isLoading={isLoading} updateInternalNotes={updateInternalNotes} />
+      <ProfileView studentDetails={studentDetails} isLoading={isLoading} updateInternalNotes={updateInternalNotes} />
     </ErrorBoundary>
   ), [studentDetails, isLoading, updateInternalNotes]);
 
@@ -305,19 +305,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
     ];
 
     tabs.push({
-        id: 'profile' as TabId,
-        label: 'Mi Perfil',
-        icon: 'person',
-        content: profileContent,
-        badge: undefined
+      id: 'profile' as TabId,
+      label: 'Mi Perfil',
+      icon: 'person',
+      content: profileContent,
+      badge: undefined
     });
     return tabs;
 
   }, [
-      informeTasks.length, solicitudes.length, practicas.length, showExportButton,
-      homeContent, informesContent, solicitudesContent, practicasContent, profileContent
+    informeTasks.length, solicitudes.length, practicas.length, showExportButton,
+    homeContent, informesContent, solicitudesContent, practicasContent, profileContent
   ]);
-  
+
   useEffect(() => {
     const isCurrentTabValid = studentDataTabs.some(tab => tab.id === currentActiveTab);
     if (!isCurrentTabValid && studentDataTabs.length > 0) {
@@ -326,7 +326,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
   }, [studentDataTabs, currentActiveTab, setCurrentActiveTab]);
 
   const hasData = useMemo(() => practicas.length > 0 || solicitudes.length > 0 || lanzamientos.length > 0 || informeTasks.length > 0, [practicas, solicitudes, lanzamientos, informeTasks]);
-  
+
   // Logic updated: Allow forceInteractiveMode to override the Empty State
   const showEmptyState = useMemo(() => !isLoading && !hasData && isAdminViewing && !forceInteractiveMode, [isLoading, hasData, isAdminViewing, forceInteractiveMode]);
 
@@ -345,141 +345,141 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
             <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={false} />
             <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} />
             <Card className="border-slate-300/50 bg-slate-50/30">
-              <EmptyState 
-                  icon="search_off" 
-                  title="Sin Resultados" 
-                  message="No se encontró información de prácticas o solicitudes para este estudiante." 
-                  action={
-                    <div className="flex gap-3 justify-center mt-4">
-                        <button onClick={refetchAll} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm">
-                            Actualizar Datos
-                        </button>
-                        <button 
-                            onClick={() => setForceInteractiveMode(true)} 
-                            className="px-6 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm flex items-center gap-2"
-                        >
-                            <span className="material-icons !text-base">input</span>
-                            Gestionar / Inscribir
-                        </button>
-                    </div>
-                  } 
+              <EmptyState
+                icon="search_off"
+                title="Sin Resultados"
+                message="No se encontró información de prácticas o solicitudes para este estudiante."
+                action={
+                  <div className="flex gap-3 justify-center mt-4">
+                    <button onClick={refetchAll} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm">
+                      Actualizar Datos
+                    </button>
+                    <button
+                      onClick={() => setForceInteractiveMode(true)}
+                      className="px-6 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm flex items-center gap-2"
+                    >
+                      <span className="material-icons !text-base">input</span>
+                      Gestionar / Inscribir
+                    </button>
+                  </div>
+                }
               />
             </Card>
           </div>
           <WhatsAppExportButton practicas={practicas} criterios={criterios} selectedOrientacion={selectedOrientacion} studentNameForPanel={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
-           <button onClick={() => window.print()} className="fixed bottom-6 right-24 z-50 w-14 h-14 bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out transform hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-slate-400" aria-label="Imprimir reporte">
-             <span className="material-icons !text-2xl">print</span>
-           </button>
+          <button onClick={() => window.print()} className="fixed bottom-6 right-24 z-50 w-14 h-14 bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out transform hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-slate-400" aria-label="Imprimir reporte">
+            <span className="material-icons !text-2xl">print</span>
+          </button>
         </div>
       </>
     );
   }
-  
+
   return (
     <>
       {/* Banner de Simulación para Admins */}
       {isAdminViewing && <SimulationBanner />}
-      
+
       {isFinalizationModalOpen && (
         <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
-              <button 
-                onClick={() => setIsFinalizationModalOpen(false)}
-                className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
-              >
-                  <span className="material-icons">close</span>
-              </button>
-              <FinalizacionForm 
-                studentAirtableId={getStudentId()} 
-                onClose={() => setIsFinalizationModalOpen(false)}
-              />
+            <button
+              onClick={() => setIsFinalizationModalOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
+            >
+              <span className="material-icons">close</span>
+            </button>
+            <FinalizacionForm
+              studentAirtableId={getStudentId()}
+              onClose={() => setIsFinalizationModalOpen(false)}
+            />
           </div>
         </div>
       )}
 
       <div className="print-only">
-          <PrintableReport 
-              studentDetails={studentDetails} 
-              criterios={criterios} 
-              practicas={practicas} 
-          />
+        <PrintableReport
+          studentDetails={studentDetails}
+          criterios={criterios}
+          practicas={practicas}
+        />
       </div>
 
       {/* --- VISTA DE ESCRITORIO --- */}
       <div className="hidden md:block no-print space-y-8 animate-fade-in-up">
         <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
-        
+
         {finalizacionRequest ? (
-            <FinalizationStatusCard 
-                status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
-                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''} 
-            />
+          <FinalizationStatusCard
+            status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'}
+            requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''}
+          />
         ) : (
-            <ErrorBoundary>
-                <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} informeTasks={informeTasks} />
-            </ErrorBoundary>
+          <ErrorBoundary>
+            <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} informeTasks={informeTasks} />
+          </ErrorBoundary>
         )}
-        
+
         <Card>
-            <Tabs
-                tabs={studentDataTabs}
-                activeTabId={currentActiveTab}
-                onTabChange={(id) => setCurrentActiveTab(id as TabId)}
-            />
+          <Tabs
+            tabs={studentDataTabs}
+            activeTabId={currentActiveTab}
+            onTabChange={(id) => setCurrentActiveTab(id as TabId)}
+          />
         </Card>
       </div>
 
       {/* --- VISTA MÓVIL --- */}
       <div className="md:hidden no-print space-y-8 animate-fade-in-up">
-          {currentActiveTab === 'inicio' && (
-              <>
-                  <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
-                  {finalizacionRequest && (
-                      <FinalizationStatusCard 
-                          status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'} 
-                          requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''} 
-                      />
-                  )}
-                  {homeContent}
-              </>
-          )}
+        {currentActiveTab === 'inicio' && (
+          <>
+            <WelcomeBanner studentName={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
+            {finalizacionRequest && (
+              <FinalizationStatusCard
+                status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || 'Pendiente'}
+                requestDate={finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] || finalizacionRequest.created_at || ''}
+              />
+            )}
+            {homeContent}
+          </>
+        )}
 
-          {currentActiveTab === 'informes' && (
-              <ErrorBoundary>
-                <MobileSectionHeader title="Entrega de Informes Finales" description="Sube tu informe final al campus y luego confirma la entrega aquí." />
-                {informesContent}
-              </ErrorBoundary>
-          )}
+        {currentActiveTab === 'informes' && (
+          <ErrorBoundary>
+            <MobileSectionHeader title="Entrega de Informes Finales" description="Sube tu informe final al campus y luego confirma la entrega aquí." />
+            {informesContent}
+          </ErrorBoundary>
+        )}
 
-          {currentActiveTab === 'solicitudes' && (
-              <ErrorBoundary>
-                 <MobileSectionHeader title="Mis Solicitudes de PPS" description="Seguimiento del estado de las Prácticas Profesionales Supervisadas que has solicitado." />
-                 {solicitudesContent}
-              </ErrorBoundary>
-          )}
-          
-          {currentActiveTab === 'practicas' && (
-              <ErrorBoundary>
-                  {!finalizacionRequest && <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} informeTasks={informeTasks} />}
-                  <MobileSectionHeader title="Historial de Prácticas" description="Detalle de todas las prácticas que has realizado y sus calificaciones." />
-                  {practicasContent}
-              </ErrorBoundary>
-          )}
+        {currentActiveTab === 'solicitudes' && (
+          <ErrorBoundary>
+            <MobileSectionHeader title="Mis Solicitudes de PPS" description="Seguimiento del estado de las Prácticas Profesionales Supervisadas que has solicitado." />
+            {solicitudesContent}
+          </ErrorBoundary>
+        )}
 
-          {currentActiveTab === 'profile' && (
-                <ErrorBoundary>
-                  <MobileSectionHeader title="Mi Perfil" />
-                  <Card>
-                    {profileContent}
-                  </Card>
-                </ErrorBoundary>
-          )}
+        {currentActiveTab === 'practicas' && (
+          <ErrorBoundary>
+            {!finalizacionRequest && <CriteriosPanel criterios={criterios} selectedOrientacion={selectedOrientacion} handleOrientacionChange={handleOrientacionChange} showSaveConfirmation={showSaveConfirmation} onRequestFinalization={handleOpenFinalization} informeTasks={informeTasks} />}
+            <MobileSectionHeader title="Historial de Prácticas" description="Detalle de todas las prácticas que has realizado y sus calificaciones." />
+            {practicasContent}
+          </ErrorBoundary>
+        )}
+
+        {currentActiveTab === 'profile' && (
+          <ErrorBoundary>
+            <MobileSectionHeader title="Mi Perfil" />
+            <Card>
+              {profileContent}
+            </Card>
+          </ErrorBoundary>
+        )}
       </div>
-      
+
       {showExportButton && (
         <>
           <WhatsAppExportButton practicas={practicas} criterios={criterios} selectedOrientacion={selectedOrientacion} studentNameForPanel={studentNameForPanel} studentDetails={studentDetails} isLoading={isLoading} />
-            <button
+          <button
             onClick={() => window.print()}
             className="fixed bottom-6 right-24 z-50 w-14 h-14 bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center
                         transition-all duration-300 ease-in-out transform hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-slate-400"

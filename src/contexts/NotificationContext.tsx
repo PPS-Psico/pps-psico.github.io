@@ -3,9 +3,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
-import { 
-    TABLE_NAME_PPS, 
-    TABLE_NAME_FINALIZACION, 
+import {
+    TABLE_NAME_PPS,
+    TABLE_NAME_FINALIZACION,
     FIELD_SOLICITUD_NOMBRE_ALUMNO,
     FIELD_EMPRESA_PPS_SOLICITUD,
     TABLE_NAME_ESTUDIANTES,
@@ -26,7 +26,7 @@ import {
     FIELD_FECHA_SOLICITUD_FINALIZACION,
     FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS
 } from '../constants';
-import Toast from '../components/Toast';
+import Toast from '../components/ui/Toast';
 
 export interface AppNotification {
     id: string;
@@ -46,6 +46,7 @@ interface NotificationContextType {
     clearNotifications: () => void;
     subscribeToPush: () => Promise<void>;
     isPushEnabled: boolean;
+    showToast: (message: string, type: 'success' | 'error' | 'warning') => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -53,9 +54,9 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { authenticatedUser, isSuperUserMode, isJefeMode, isDirectivoMode } = useAuth();
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
-    const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'warning' } | null>(null);
     const [isPushEnabled, setIsPushEnabled] = useState(false);
-    
+
     // Persistencia Local: Set de IDs leídos
     const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
 
@@ -80,7 +81,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 });
             });
         }
-        
+
         // 2. Check local storage override if permission is already granted but no active sub retrieved yet
         const storedPush = localStorage.getItem(PUSH_STORAGE_KEY);
         if (storedPush === 'true' && Notification.permission === 'granted') {
@@ -90,16 +91,16 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     const subscribeToPush = async () => {
         if (!authenticatedUser) return;
-        
+
         try {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
                 throw new Error('Tu navegador no soporta notificaciones push.');
             }
-            
+
             // Check for iOS
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
             if (isIOS && !('standalone' in window.navigator) && !(window.navigator as any).standalone) {
-                 // In iOS, push usually requires PWA installation, but we proceed to request permission anyway
+                // In iOS, push usually requires PWA installation, but we proceed to request permission anyway
             }
 
             const permission = await Notification.requestPermission();
@@ -112,15 +113,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             localStorage.setItem(PUSH_STORAGE_KEY, 'true');
 
             const registration = await navigator.serviceWorker.ready;
-            
+
             // NOTE: In a real production environment, you would subscribe here with VAPID keys:
             // const subscription = await registration.pushManager.subscribe({
             //    userVisibleOnly: true,
             //    applicationServerKey: 'YOUR_VAPID_PUBLIC_KEY'
             // });
-            
+
             setToast({ message: 'Notificaciones activadas correctamente.', type: 'success' });
-            
+
             // Send a test notification immediately if supported to confirm
             if (registration.showNotification) {
                 registration.showNotification('¡Activado!', {
@@ -213,7 +214,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                             const notifId = `fin-${req.id}`;
                             const studentData = Array.isArray(req.estudiante) ? req.estudiante[0] : req.estudiante;
                             const studentName = studentData?.[FIELD_NOMBRE_ESTUDIANTES] || 'Estudiante';
-                            
+
                             loadedNotifications.push({
                                 id: notifId,
                                 title: 'Acreditación Pendiente',
@@ -225,34 +226,34 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                             });
                         });
                     }
-                    
+
                 } else if (isStudent) {
-                     // --- C. Nuevos Lanzamientos (Student) ---
-                     // Fetch recent launches (last 7 days) that are 'Abierta'
-                     const sevenDaysAgo = new Date();
-                     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                     
-                     const { data: newLaunches } = await supabase
+                    // --- C. Nuevos Lanzamientos (Student) ---
+                    // Fetch recent launches (last 7 days) that are 'Abierta'
+                    const sevenDaysAgo = new Date();
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+                    const { data: newLaunches } = await supabase
                         .from(TABLE_NAME_LANZAMIENTOS_PPS)
                         .select(`id, created_at, ${FIELD_NOMBRE_PPS_LANZAMIENTOS}, ${FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS}`)
                         .eq(FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS, 'Abierta')
                         .gt('created_at', sevenDaysAgo.toISOString())
                         .order('created_at', { ascending: false });
 
-                     if (newLaunches) {
-                         newLaunches.forEach((l: any) => {
-                             const notifId = `launch-${l.id}`;
-                             loadedNotifications.push({
-                                 id: notifId,
-                                 title: 'Nueva Convocatoria',
-                                 message: `${l[FIELD_NOMBRE_PPS_LANZAMIENTOS]} está abierta para inscripción.`,
-                                 timestamp: new Date(l.created_at),
-                                 type: 'lanzamiento',
-                                 link: '/student',
-                                 isRead: readNotificationIds.has(notifId)
-                             });
-                         });
-                     }
+                    if (newLaunches) {
+                        newLaunches.forEach((l: any) => {
+                            const notifId = `launch-${l.id}`;
+                            loadedNotifications.push({
+                                id: notifId,
+                                title: 'Nueva Convocatoria',
+                                message: `${l[FIELD_NOMBRE_PPS_LANZAMIENTOS]} está abierta para inscripción.`,
+                                timestamp: new Date(l.created_at),
+                                type: 'lanzamiento',
+                                link: '/student',
+                                isRead: readNotificationIds.has(notifId)
+                            });
+                        });
+                    }
                 }
 
                 // Sort merged list by date desc
@@ -272,7 +273,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         if (!authenticatedUser) return;
 
         const channelName = `notifications-${authenticatedUser.id}`;
-        
+
         const channel = supabase.channel(channelName)
             .on(
                 'postgres_changes',
@@ -280,10 +281,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 async (payload: any) => {
                     if (!isAdmin) return; // Only admins see new requests
                     if (!payload || !payload.new) return;
-                    
+
                     const newRecord = payload.new;
                     const notifId = `pps-${newRecord.id}`;
-                    
+
                     const newNotif: AppNotification = {
                         id: notifId,
                         title: 'Nueva Solicitud de PPS',
@@ -293,7 +294,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                         link: '/admin/solicitudes?tab=ingreso',
                         isRead: false
                     };
-                    
+
                     addNotification(newNotif);
                 }
             )
@@ -303,10 +304,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 async (payload: any) => {
                     if (!isAdmin) return; // Only admins see new accreditation requests
                     if (!payload || !payload.new) return;
-                    
+
                     const newRecord = payload.new;
                     const notifId = `fin-${newRecord.id}`;
-                    
+
                     // We might not have the student name immediately available in the INSERT payload
                     // but we can show a generic message or fetch details if critical.
                     const newNotif: AppNotification = {
@@ -318,7 +319,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                         link: '/admin/solicitudes?tab=egreso',
                         isRead: false
                     };
-                    
+
                     addNotification(newNotif);
                 }
             )
@@ -327,15 +328,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 { event: '*', schema: 'public', table: TABLE_NAME_LANZAMIENTOS_PPS }, // Listen to INSERT and UPDATE
                 async (payload: any) => {
                     if (!isStudent) return; // Only students get notified of new launches
-                    
+
                     const newRecord = payload.new;
                     if (!newRecord) return;
-                    
+
                     // Trigger if it's a NEW active launch OR an update that sets it to 'Abierta'
                     const isNewActive = payload.eventType === 'INSERT' && newRecord[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === 'Abierta';
-                    const isBecameActive = payload.eventType === 'UPDATE' && 
-                                           newRecord[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === 'Abierta' && 
-                                           payload.old?.[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] !== 'Abierta';
+                    const isBecameActive = payload.eventType === 'UPDATE' &&
+                        newRecord[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === 'Abierta' &&
+                        payload.old?.[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] !== 'Abierta';
 
                     if (isNewActive || isBecameActive) {
                         const notifId = `launch-realtime-${newRecord.id}`;
@@ -357,21 +358,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 { event: 'UPDATE', schema: 'public', table: TABLE_NAME_CONVOCATORIAS },
                 async (payload: any) => {
                     if (!isStudent) return; // Only students care about their status changes here
-                    
+
                     const newRecord = payload.new;
                     const oldRecord = payload.old;
-                    
+
                     const studentIdInRecord = newRecord[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
                     // Clean array format if necessary
                     const cleanId = Array.isArray(studentIdInRecord) ? studentIdInRecord[0] : studentIdInRecord;
 
                     // If we have the current user ID, compare.
                     if (authenticatedUser && cleanId === authenticatedUser.id) {
-                         if (newRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] !== oldRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) {
+                        if (newRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] !== oldRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) {
                             const newState = newRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS];
                             let msg = `Tu estado ha cambiado a: ${newState}`;
                             if (newState === 'Seleccionado') msg = '¡Felicitaciones! Has sido Seleccionado para la PPS.';
-                            
+
                             const newNotif: AppNotification = {
                                 id: `conv-update-${newRecord.id}-${Date.now()}`,
                                 title: 'Actualización de Postulación',
@@ -392,28 +393,28 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             supabase.removeChannel(channel);
         };
     }, [isAdmin, isStudent, authenticatedUser]);
-    
+
     const addNotification = (notif: AppNotification) => {
         setNotifications(prev => [notif, ...prev]);
         setToast({ message: notif.title, type: 'success' });
-        
+
         // System Notification Bridge (Native Android/Desktop)
         if (isPushEnabled && 'serviceWorker' in navigator) {
-             navigator.serviceWorker.ready.then(registration => {
-                 if (registration.showNotification) {
-                     registration.showNotification(notif.title, {
-                         body: notif.message,
-                         icon: '/icons/icon-192x192.png',
-                         data: { url: notif.link } // Used by SW click handler
-                     });
-                 }
-             });
+            navigator.serviceWorker.ready.then(registration => {
+                if (registration.showNotification) {
+                    registration.showNotification(notif.title, {
+                        body: notif.message,
+                        icon: '/icons/icon-192x192.png',
+                        data: { url: notif.link } // Used by SW click handler
+                    });
+                }
+            });
         } else if (Notification.permission === 'granted' && document.hidden) {
             // Fallback for non-SW environments or desktop if SW fails
             new Notification(notif.title, { body: notif.message, icon: '/icons/icon-192x192.png' });
         }
-        
-        try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(() => {}); } catch (e) {}
+
+        try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(() => { }); } catch (e) { }
     };
 
     const markAsRead = (id: string) => {
@@ -439,14 +440,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
+    const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning') => {
+        setToast({ message, type });
+    }, []);
+
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, subscribeToPush, isPushEnabled }}>
+        <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, subscribeToPush, isPushEnabled, showToast }}>
             {children}
             {toast && (
-                <Toast 
-                    message={toast.message} 
-                    type={toast.type} 
-                    onClose={() => setToast(null)} 
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
                     duration={5000}
                 />
             )}

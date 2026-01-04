@@ -5,11 +5,11 @@ export function formatDate(dateStr?: string | null): string {
   if (!dateStr) return 'N/A';
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return 'Fecha inválida';
-  
+
   const day = String(date.getUTCDate()).padStart(2, '0');
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const year = date.getUTCFullYear();
-  
+
   return `${day}/${month}/${year}`;
 }
 
@@ -19,9 +19,9 @@ export function formatDate(dateStr?: string | null): string {
 export function normalizeStringForComparison(str?: any): string {
   if (str === undefined || str === null) return '';
   if (typeof str === 'boolean') return str ? 'true' : 'false';
-  
+
   const cleanValue = cleanDbValue(str);
-  
+
   return String(cleanValue)
     .toLowerCase()
     .trim()
@@ -34,7 +34,7 @@ export function normalizeStringForComparison(str?: any): string {
  */
 export function getEspecialidadClasses(especialidad?: string | null) {
   const normalized = normalizeStringForComparison(especialidad);
-  
+
   let config = {
     tag: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
     gradient: 'from-slate-400 to-slate-600',
@@ -81,13 +81,13 @@ export function getEspecialidadClasses(especialidad?: string | null) {
       leftBorder: 'border-l-purple-500 dark:border-l-purple-400'
     };
   }
-  
+
   return config;
 }
 
 export function getStatusVisuals(status?: string | null) {
   const normalized = normalizeStringForComparison(status);
-  
+
   if (normalized === 'en curso' || normalized === 'pendiente' || normalized === 'en proceso') {
     return {
       icon: 'sync',
@@ -106,10 +106,10 @@ export function getStatusVisuals(status?: string | null) {
   }
   if (normalized === 'realizando convenio' || normalized === 'en conversaciones') {
     return {
-        icon: 'handshake',
-        labelClass: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
-        accentBg: 'bg-indigo-500',
-        iconContainerClass: 'border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/20'
+      icon: 'handshake',
+      labelClass: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
+      accentBg: 'bg-indigo-500',
+      iconContainerClass: 'border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/20'
     };
   }
 
@@ -173,15 +173,6 @@ export function cleanInstitutionName(input?: any): string {
  */
 export function cleanDbValue(input?: any): string {
   if (input === null || input === undefined) return '';
-
-  // Si es un array (por un posible lookup fallido), tomamos el primero
-  if (Array.isArray(input)) {
-    return input.length > 0 ? cleanDbValue(input[0]) : '';
-  }
-
-  // Ahora simplemente retornamos el string limpio. 
-  // La lógica de quitar corchetes ya no es necesaria pero se deja 
-  // una mínima seguridad de trim y string cast.
   return String(input).trim();
 }
 
@@ -208,9 +199,9 @@ export function getBusinessDaysDiff(start: Date | string, end: Date | string): n
   const endDate = new Date(end);
   let count = 0;
   const curDate = new Date(startDate);
-  
+
   const isForward = endDate >= startDate;
-  
+
   if (isForward) {
     while (curDate < endDate) {
       curDate.setUTCDate(curDate.getUTCDate() + 1);

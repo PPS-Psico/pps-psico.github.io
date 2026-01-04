@@ -6,7 +6,7 @@ import { useAdminPreferences } from '../contexts/AdminPreferencesContext'; // Im
 import { useSmartAnalysis } from '../hooks/useSmartAnalysis';
 import { useOperationalData } from '../hooks/useOperationalData';
 import SmartBriefing from './SmartBriefing';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import { AdminDashboardSkeleton } from './Skeletons';
 import EmptyState from './EmptyState';
 import ActivityFeed from './ActivityFeed';
@@ -27,7 +27,7 @@ const ManagementCard: React.FC<{
     subCount?: number;
     subLabel?: string;
 }> = ({ title, count, icon, color, onClick, label, subCount, subLabel }) => {
-    
+
     const styles = {
         red: {
             hoverBorder: 'group-hover:border-rose-300 dark:group-hover:border-rose-700',
@@ -58,7 +58,7 @@ const ManagementCard: React.FC<{
     const style = styles[color];
 
     return (
-        <button 
+        <button
             onClick={onClick}
             className={`flex flex-col p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg text-left group ${style.hoverBorder} ${style.hoverBg}`}
         >
@@ -70,7 +70,7 @@ const ManagementCard: React.FC<{
                     <span className="material-icons !text-xl">arrow_forward</span>
                 </div>
             </div>
-            
+
             <div className="mt-auto w-full">
                 <div className="flex justify-between items-end mb-1">
                     <span className={`text-4xl font-black tracking-tight ${style.countText}`}>
@@ -94,28 +94,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
     const { preferences } = useAdminPreferences(); // Access prefs
     const navigate = useNavigate();
     const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    
+
     const { data: opData, isLoading: isOpLoading, error: opError } = useOperationalData(isTestingMode);
-    
+
     // Only call AI analysis if feature is enabled
     const analysis = useSmartAnalysis(opData, isOpLoading && preferences.showAiInsights);
 
     if (isOpLoading) return <AdminDashboardSkeleton />;
-    
+
     if (opError) {
         return <EmptyState icon="error" title="Error" message={(opError as any)?.message} />;
     }
-    
+
     const now = new Date();
-    
+
     // --- LÓGICA DE AGRUPACIÓN ---
     const overdueLaunches = (opData?.endingLaunches || []).filter((l: any) => l.daysLeft < 0);
-    
+
     const uniqueOverdueInstitutions = new Set(overdueLaunches.map((l: any) => {
         const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '';
         return name.split(' - ')[0].trim();
     }));
-    
+
     const overdueCount = uniqueOverdueInstitutions.size;
 
     let stagnantCount = 0;
@@ -134,7 +134,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
             {/* --- SECCIÓN IA: CONDITIONAL RENDERING --- */}
             {preferences.showAiInsights && (
                 <section className="px-1">
-                    <SmartBriefing 
+                    <SmartBriefing
                         status={analysis.status === 'loading' ? 'stable' : analysis.status}
                         summary={analysis.summary}
                         insights={analysis.insights}
@@ -143,7 +143,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
                     />
                 </section>
             )}
-            
+
             {/* --- SECCIÓN GESTIÓN: GRID DE TARJETAS --- */}
             <section className="space-y-6">
                 <div className="flex items-center gap-3 px-4">
@@ -190,7 +190,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
 
             {/* --- SECCIÓN FEED: ACTIVIDAD RECIENTE --- */}
             <section className="pt-4">
-                 <ActivityFeed isTestingMode={isTestingMode} />
+                <ActivityFeed isTestingMode={isTestingMode} />
             </section>
         </div>
     );

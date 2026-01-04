@@ -3,33 +3,33 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import type { InstitucionFields, LanzamientoPPSFields, AirtableRecord, LanzamientoPPS } from '../types';
 import {
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_INFORME_LANZAMIENTOS,
-  FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_FIN_LANZAMIENTOS,
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
-  FIELD_ESTADO_GESTION_LANZAMIENTOS,
-  FIELD_NOTAS_GESTION_LANZAMIENTOS,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-  FIELD_DIRECCION_INSTITUCIONES,
-  FIELD_TELEFONO_INSTITUCIONES,
-  FIELD_TUTOR_INSTITUCIONES,
-  TABLE_NAME_INSTITUCIONES,
-  FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
-  FIELD_REQ_CV_LANZAMIENTOS,
-  FIELD_CODIGO_CAMPUS_LANZAMIENTOS,
-  FIELD_DIRECCION_LANZAMIENTOS,
-  FIELD_CODIGO_CAMPUS_INSTITUCIONES
+    FIELD_NOMBRE_INSTITUCIONES,
+    FIELD_NOMBRE_PPS_LANZAMIENTOS,
+    FIELD_ORIENTACION_LANZAMIENTOS,
+    FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
+    FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+    FIELD_INFORME_LANZAMIENTOS,
+    FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+    TABLE_NAME_LANZAMIENTOS_PPS,
+    FIELD_FECHA_INICIO_LANZAMIENTOS,
+    FIELD_FECHA_FIN_LANZAMIENTOS,
+    FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+    FIELD_ESTADO_GESTION_LANZAMIENTOS,
+    FIELD_NOTAS_GESTION_LANZAMIENTOS,
+    FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+    FIELD_DIRECCION_INSTITUCIONES,
+    FIELD_TELEFONO_INSTITUCIONES,
+    FIELD_TUTOR_INSTITUCIONES,
+    TABLE_NAME_INSTITUCIONES,
+    FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
+    FIELD_REQ_CV_LANZAMIENTOS,
+    FIELD_CODIGO_CAMPUS_LANZAMIENTOS,
+    FIELD_DIRECCION_LANZAMIENTOS,
+    FIELD_CODIGO_CAMPUS_INSTITUCIONES
 } from '../constants';
-import Card from './Card';
+import Card from './ui/Card';
 import Loader from './Loader';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import { ALL_ORIENTACIONES, Orientacion } from '../types';
 import { normalizeStringForComparison, formatDate, getEspecialidadClasses } from '../utils/formatters';
 import SubTabs from './SubTabs';
@@ -37,30 +37,30 @@ import EmptyState from './EmptyState';
 import RecordEditModal from './RecordEditModal';
 import { schema } from '../lib/dbSchema';
 import CollapsibleSection from './CollapsibleSection';
-import Input from './Input';
-import Select from './Select';
-import Button from './Button';
-import Checkbox from './Checkbox';
+import Input from './ui/Input';
+import Select from './ui/Select';
+import Button from './ui/Button';
+import Checkbox from './ui/Checkbox';
 import { GoogleGenAI } from "@google/genai";
 
 const mockInstitutions = [
-  { id: 'recInstMock1', [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital de Juguete' },
-  { id: 'recInstMock1', [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital de Juguete' },
-  { id: 'recInstMock2', [FIELD_NOMBRE_INSTITUCIONES]: 'Escuela de Pruebas' },
-  { id: 'recInstMock3', [FIELD_NOMBRE_INSTITUCIONES]: 'Empresa Ficticia S.A.' },
+    { id: 'recInstMock1', [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital de Juguete' },
+    { id: 'recInstMock1', [FIELD_NOMBRE_INSTITUCIONES]: 'Hospital de Juguete' },
+    { id: 'recInstMock2', [FIELD_NOMBRE_INSTITUCIONES]: 'Escuela de Pruebas' },
+    { id: 'recInstMock3', [FIELD_NOMBRE_INSTITUCIONES]: 'Empresa Ficticia S.A.' },
 ];
 
 const mockLastLanzamiento = {
-  id: 'recLanzMock1',
-  [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica',
-  [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 120,
-  [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 5,
-  [FIELD_INFORME_LANZAMIENTOS]: 'http://example.com/informe-mock',
-  [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Lunes 9 a 13hs; Miércoles 14 a 18hs',
-  [FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS]: true,
-  [FIELD_REQ_CV_LANZAMIENTOS]: false,
-  [FIELD_DIRECCION_LANZAMIENTOS]: 'Calle Falsa 123',
-  [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: '<div class="card">Ejemplo de código</div>'
+    id: 'recLanzMock1',
+    [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica',
+    [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 120,
+    [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 5,
+    [FIELD_INFORME_LANZAMIENTOS]: 'http://example.com/informe-mock',
+    [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Lunes 9 a 13hs; Miércoles 14 a 18hs',
+    [FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS]: true,
+    [FIELD_REQ_CV_LANZAMIENTOS]: false,
+    [FIELD_DIRECCION_LANZAMIENTOS]: 'Calle Falsa 123',
+    [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: '<div class="card">Ejemplo de código</div>'
 };
 
 type FormData = {
@@ -93,8 +93,8 @@ const initialState: FormData = {
 };
 
 interface LanzadorConvocatoriasProps {
-  isTestingMode?: boolean;
-  forcedTab?: 'new' | 'history';
+    isTestingMode?: boolean;
+    forcedTab?: 'new' | 'history';
 }
 
 const InputWrapper: React.FC<{ label: string; icon: string; children: React.ReactNode; className?: string }> = ({ label, icon, children, className = "" }) => (
@@ -108,10 +108,10 @@ const InputWrapper: React.FC<{ label: string; icon: string; children: React.Reac
 );
 
 // --- MODAL PARA NUEVA INSTITUCIÓN ---
-const NewInstitutionModal: React.FC<{ 
-    isOpen: boolean; 
-    onClose: () => void; 
-    onConfirm: (data: any) => void; 
+const NewInstitutionModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (data: any) => void;
     isLoading: boolean;
 }> = ({ isOpen, onClose, onConfirm, isLoading }) => {
     const [newData, setNewData] = useState({
@@ -144,50 +144,50 @@ const NewInstitutionModal: React.FC<{
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Nombre Institución *</label>
-                        <Input 
-                            value={newData.nombre} 
-                            onChange={e => setNewData({...newData, nombre: e.target.value})} 
-                            placeholder="Ej: Fundación Crecer" 
-                            required 
+                        <Input
+                            value={newData.nombre}
+                            onChange={e => setNewData({ ...newData, nombre: e.target.value })}
+                            placeholder="Ej: Fundación Crecer"
+                            required
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Dirección</label>
-                            <Input 
-                                value={newData.direccion} 
-                                onChange={e => setNewData({...newData, direccion: e.target.value})} 
-                                placeholder="Calle y Altura" 
+                            <Input
+                                value={newData.direccion}
+                                onChange={e => setNewData({ ...newData, direccion: e.target.value })}
+                                placeholder="Calle y Altura"
                             />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Teléfono</label>
-                            <Input 
-                                value={newData.telefono} 
-                                onChange={e => setNewData({...newData, telefono: e.target.value})} 
-                                placeholder="Cod. Área + Nro" 
+                            <Input
+                                value={newData.telefono}
+                                onChange={e => setNewData({ ...newData, telefono: e.target.value })}
+                                placeholder="Cod. Área + Nro"
                             />
                         </div>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Tutor (Lic. en Psicología)</label>
-                        <Input 
-                            value={newData.tutor} 
-                            onChange={e => setNewData({...newData, tutor: e.target.value})} 
-                            placeholder="Nombre y Apellido" 
+                        <Input
+                            value={newData.tutor}
+                            onChange={e => setNewData({ ...newData, tutor: e.target.value })}
+                            placeholder="Nombre y Apellido"
                         />
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1">Orientación Sugerida</label>
-                        <Select 
-                            value={newData.orientacionSugerida} 
-                            onChange={e => setNewData({...newData, orientacionSugerida: e.target.value as any})}
+                        <Select
+                            value={newData.orientacionSugerida}
+                            onChange={e => setNewData({ ...newData, orientacionSugerida: e.target.value as any })}
                         >
                             <option value="">Seleccionar para pre-llenar...</option>
                             {ALL_ORIENTACIONES.map(o => <option key={o} value={o}>{o}</option>)}
                         </Select>
                     </div>
-                    
+
                     <div className="pt-4 flex justify-end gap-3">
                         <Button variant="secondary" onClick={onClose} type="button">Cancelar</Button>
                         <Button variant="primary" type="submit" isLoading={isLoading} disabled={!newData.nombre}>Guardar Institución</Button>
@@ -228,13 +228,13 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
     const [campusCode, setCampusCode] = useState<string>(''); // Nuevo estado para el código HTML
     const [showCampusPreview, setShowCampusPreview] = useState(false);
     const [isGeneratingCode, setIsGeneratingCode] = useState(false);
-    
+
     const [instiSearch, setInstiSearch] = useState('');
     const [selectedInstitution, setSelectedInstitution] = useState<AirtableRecord<InstitucionFields> | null>(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const queryClient = useQueryClient();
-    
+
     // UI States
     const [isNewInstitutionModalOpen, setIsNewInstitutionModalOpen] = useState(false);
     const [editingLaunch, setEditingLaunch] = useState<AirtableRecord<LanzamientoPPSFields> | null>(null);
@@ -259,7 +259,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                 }
                 return null;
             }
-            
+
             const records = await db.lanzamientos.get({
                 filters: {
                     [FIELD_NOMBRE_PPS_LANZAMIENTOS]: selectedInstitution[FIELD_NOMBRE_INSTITUCIONES]
@@ -271,7 +271,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
         },
         enabled: !!selectedInstitution,
     });
-    
+
     const { data: launchHistory = [], isLoading: isLoadingHistory } = useQuery({
         queryKey: ['launchHistory', isTestingMode],
         queryFn: async () => {
@@ -287,16 +287,16 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
         const sorted = [...launchHistory].sort((a, b) => {
             const statusA = normalizeStringForComparison(a[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
             const statusB = normalizeStringForComparison(b[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-            
+
             const isOpenA = statusA === 'abierta' || statusA === 'abierto';
             const isOpenB = statusB === 'abierta' || statusB === 'abierto';
-            
+
             if (isOpenA && !isOpenB) return -1;
             if (!isOpenA && isOpenB) return 1;
-            
+
             const dateA = new Date(a[FIELD_FECHA_INICIO_LANZAMIENTOS] || 0).getTime();
             const dateB = new Date(b[FIELD_FECHA_INICIO_LANZAMIENTOS] || 0).getTime();
-            
+
             return dateB - dateA;
         });
 
@@ -318,36 +318,36 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
     // MUTATIONS
     const createInstitutionMutation = useMutation({
         mutationFn: async (data: any) => {
-             if (isTestingMode) {
-                 return { id: 'new-mock', ...data, [FIELD_NOMBRE_INSTITUCIONES]: data.nombre };
-             }
-             return db.instituciones.create({
-                 [FIELD_NOMBRE_INSTITUCIONES]: data.nombre,
-                 [FIELD_DIRECCION_INSTITUCIONES]: data.direccion,
-                 [FIELD_TELEFONO_INSTITUCIONES]: data.telefono,
-                 [FIELD_TUTOR_INSTITUCIONES]: data.tutor,
-                 [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true
-             });
+            if (isTestingMode) {
+                return { id: 'new-mock', ...data, [FIELD_NOMBRE_INSTITUCIONES]: data.nombre };
+            }
+            return db.instituciones.create({
+                [FIELD_NOMBRE_INSTITUCIONES]: data.nombre,
+                [FIELD_DIRECCION_INSTITUCIONES]: data.direccion,
+                [FIELD_TELEFONO_INSTITUCIONES]: data.telefono,
+                [FIELD_TUTOR_INSTITUCIONES]: data.tutor,
+                [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: true
+            });
         },
         onSuccess: (newInst, variables) => {
-             setToastInfo({ message: 'Institución registrada con éxito.', type: 'success' });
-             setSelectedInstitution(newInst as any);
-             setInstiSearch(newInst[FIELD_NOMBRE_INSTITUCIONES] as string);
-             
-             // Auto-fill launch form
-             setFormData(prev => ({
-                 ...prev,
-                 nombrePPS: newInst[FIELD_NOMBRE_INSTITUCIONES] as string,
-                 orientacion: variables.orientacionSugerida,
-                 direccion: newInst[FIELD_DIRECCION_INSTITUCIONES] as string // Pre-fill address from new institution
-             }));
-             
-             setIsNewInstitutionModalOpen(false);
-             if (!isTestingMode) queryClient.invalidateQueries({ queryKey: ['allInstitutionsForLauncher'] });
+            setToastInfo({ message: 'Institución registrada con éxito.', type: 'success' });
+            setSelectedInstitution(newInst as any);
+            setInstiSearch(newInst[FIELD_NOMBRE_INSTITUCIONES] as string);
+
+            // Auto-fill launch form
+            setFormData(prev => ({
+                ...prev,
+                nombrePPS: newInst[FIELD_NOMBRE_INSTITUCIONES] as string,
+                orientacion: variables.orientacionSugerida,
+                direccion: newInst[FIELD_DIRECCION_INSTITUCIONES] as string // Pre-fill address from new institution
+            }));
+
+            setIsNewInstitutionModalOpen(false);
+            if (!isTestingMode) queryClient.invalidateQueries({ queryKey: ['allInstitutionsForLauncher'] });
         },
         onError: (err: any) => setToastInfo({ message: `Error: ${err.message}`, type: 'error' })
     });
-    
+
     // Mutation to save ONLY the institution template code
     const updateInstitutionMutation = useMutation({
         mutationFn: async ({ id, code }: { id: string, code: string }) => {
@@ -355,8 +355,8 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             return db.instituciones.update(id, { [FIELD_CODIGO_CAMPUS_INSTITUCIONES]: code });
         },
         onSuccess: () => {
-             setToastInfo({ message: 'Plantilla HTML guardada en la institución.', type: 'success' });
-             if (!isTestingMode) queryClient.invalidateQueries({ queryKey: ['allInstitutionsForLauncher'] });
+            setToastInfo({ message: 'Plantilla HTML guardada en la institución.', type: 'success' });
+            if (!isTestingMode) queryClient.invalidateQueries({ queryKey: ['allInstitutionsForLauncher'] });
         },
         onError: (err: any) => setToastInfo({ message: `Error guardando plantilla: ${err.message}`, type: 'error' })
     });
@@ -387,18 +387,18 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             setToastInfo({ message: `Error al lanzar: ${msg}`, type: 'error' });
         },
     });
-    
+
     const updateStatusMutation = useMutation({
         mutationFn: ({ id, updates }: { id: string, updates: any }) => {
-             return db.lanzamientos.update(id, updates);
+            return db.lanzamientos.update(id, updates);
         },
         onSuccess: (_, variables) => {
             const newStatus = variables.updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS];
-             setToastInfo({ message: `Estado actualizado a "${newStatus}".`, type: 'success' });
-             queryClient.invalidateQueries({ queryKey: ['launchHistory'] });
+            setToastInfo({ message: `Estado actualizado a "${newStatus}".`, type: 'success' });
+            queryClient.invalidateQueries({ queryKey: ['launchHistory'] });
         },
         onError: (error: any) => {
-             setToastInfo({ message: `Error al actualizar estado: ${error.message}`, type: 'error' });
+            setToastInfo({ message: `Error al actualizar estado: ${error.message}`, type: 'error' });
         }
     });
 
@@ -427,34 +427,34 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
     const handleSelectInstitution = (inst: AirtableRecord<InstitucionFields>) => {
         setSelectedInstitution(inst);
         setInstiSearch(inst[FIELD_NOMBRE_INSTITUCIONES] || '');
-        setFormData(prev => ({ 
-            ...prev, 
+        setFormData(prev => ({
+            ...prev,
             nombrePPS: inst[FIELD_NOMBRE_INSTITUCIONES] || '',
             direccion: inst[FIELD_DIRECCION_INSTITUCIONES] || prev.direccion // Auto-fill address if available in institution
         }));
-        
+
         // Priority: Load from Institution Template if exists
         const institutionTemplate = inst[FIELD_CODIGO_CAMPUS_INSTITUCIONES];
         if (institutionTemplate) {
             setCampusCode(String(institutionTemplate));
         } else {
-             // If not, clear it or it will be populated by "Last Launch" effect later
-             setCampusCode('');
+            // If not, clear it or it will be populated by "Last Launch" effect later
+            setCampusCode('');
         }
-        
+
         setIsDropdownOpen(false);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         const checked = (e.target as HTMLInputElement).checked;
-        
+
         // Explicitly cast the value to any to avoid TS error about boolean vs string assignment on dynamic keys
         const newValue = type === 'checkbox' ? checked : value;
 
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: newValue as any 
+        setFormData(prev => ({
+            ...prev,
+            [name]: newValue as any
         }));
     };
 
@@ -469,7 +469,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
         const newSchedules = schedules.filter((_, i) => i !== index);
         setSchedules(newSchedules.length ? newSchedules : ['']);
     };
-    
+
     const handleLoadLastData = useCallback(() => {
         if (!lastLanzamiento) return;
         const prevSchedulesString = lastLanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS];
@@ -489,13 +489,13 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             direccion: lastLanzamiento[FIELD_DIRECCION_LANZAMIENTOS] || prev.direccion // Load address from last launch
         }));
         setSchedules(prevSchedulesList);
-        
+
         // Load campus code from last launch IF AVAILABLE AND NO TEMPLATE LOADED YET
         // (If user manually cleared it, this re-populates it, which is fine)
         if (lastLanzamiento[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] && !campusCode) {
             setCampusCode(lastLanzamiento[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string);
         }
-        
+
         setToastInfo({ message: 'Datos de la última convocatoria cargados.', type: 'success' });
     }, [lastLanzamiento, campusCode]);
 
@@ -573,7 +573,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             // FIX: Directly access the .text property from the response object, don't call it as a function.
             const newCode = (response.text || '').replace(/```html/g, '').replace(/```/g, '').trim();
             setCampusCode(newCode);
-            
+
             // Auto-copy
             navigator.clipboard.writeText(newCode);
             setToastInfo({ message: 'Código actualizado y copiado al portapapeles.', type: 'success' });
@@ -609,33 +609,33 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: campusCode, // Save the code to launch
         };
         createLaunchMutation.mutate(finalPayload);
-        
+
         // Also update the template if it changed (optional but good practice)
         if (selectedInstitution && campusCode) {
-             updateInstitutionMutation.mutate({ id: selectedInstitution.id, code: campusCode });
+            updateInstitutionMutation.mutate({ id: selectedInstitution.id, code: campusCode });
         }
     };
 
     const handleStatusAction = (id: string, currentStatus: string, action: 'cerrar' | 'abrir' | 'ocultar') => {
         let updates: any = {};
-        
+
         if (action === 'cerrar') {
             updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = 'Cerrado';
         } else if (action === 'abrir') {
             updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = 'Abierta';
             // CRITICAL FIX: Ensure it is not Archived, otherwise it won't show up in student view
-            updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = 'Relanzamiento Confirmado'; 
+            updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = 'Relanzamiento Confirmado';
         } else if (action === 'ocultar') {
             updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = 'Oculto';
         }
-        
+
         updateStatusMutation.mutate({ id, updates });
     };
 
     const renderLaunchItem = useCallback((launch: LanzamientoPPS) => {
         const isAbierta = normalizeStringForComparison(launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]) === 'abierta' || normalizeStringForComparison(launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]) === 'abierto';
         const isOculta = normalizeStringForComparison(launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]) === 'oculto';
-        
+
         return (
             <div key={launch.id} className={`bg-white dark:bg-slate-800/50 p-4 rounded-xl border transition-shadow hover:shadow-md ${isAbierta ? 'border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-100 dark:ring-emerald-900/30' : (isOculta ? 'border-slate-200 dark:border-slate-700 opacity-75' : 'border-slate-200 dark:border-slate-700')} flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}>
                 <div>
@@ -668,7 +668,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                     )}
                     {!isOculta && (
                         <button onClick={() => handleStatusAction(launch.id, launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS], 'ocultar')} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" title="Ocultar">
-                             <span className="material-icons !text-xl">visibility_off</span>
+                            <span className="material-icons !text-xl">visibility_off</span>
                         </button>
                     )}
                 </div>
@@ -679,16 +679,16 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
     const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-slate-800/50 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all";
 
     return (
-        <Card 
-            title={activeTab === 'new' ? "Nuevo Lanzamiento" : "Historial de Lanzamientos"} 
+        <Card
+            title={activeTab === 'new' ? "Nuevo Lanzamiento" : "Historial de Lanzamientos"}
             icon={activeTab === 'new' ? "rocket_launch" : "history"}
             description={activeTab === 'new' ? "Configura y publica una nueva convocatoria." : "Visualiza y administra convocatorias anteriores."}
             className="border-blue-200 dark:border-blue-800/30"
         >
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             {/* NEW INSTITUTION MODAL */}
-            <NewInstitutionModal 
+            <NewInstitutionModal
                 isOpen={isNewInstitutionModalOpen}
                 onClose={() => setIsNewInstitutionModalOpen(false)}
                 onConfirm={createInstitutionMutation.mutate}
@@ -697,7 +697,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
             {!forcedTab && (
                 <div className="mt-4">
-                    <SubTabs 
+                    <SubTabs
                         tabs={[
                             { id: 'new', label: 'Nuevo Lanzamiento', icon: 'add_circle' },
                             { id: 'history', label: 'Historial', icon: 'history' }
@@ -711,11 +711,11 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             {/* USE CSS DISPLAY TO KEEP STATE ALIVE WHEN SWITCHING TABS WITHIN THE COMPONENT */}
             <div className={activeTab === 'new' ? 'block' : 'hidden'}>
                 <form onSubmit={handleSubmit} className="mt-8 space-y-8 animate-fade-in">
-                    
+
                     {/* BLOQUE 1: SELECCIÓN DE INSTITUCIÓN (PREMIUM UI) */}
                     <div className={`relative group ${isDropdownOpen ? 'z-50' : 'z-30'}`}>
                         <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
                         </div>
 
                         <div className="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-600 rounded-l-md shadow-sm"></div>
@@ -724,7 +724,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 text-sm font-bold shadow-sm border border-blue-200 dark:border-blue-800">1</span>
                                 Institución
                             </h3>
-                            
+
                             <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative">
 
                                 <div className="flex flex-col md:flex-row gap-4 items-end">
@@ -754,9 +754,9 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                             <div className="absolute z-[100] mt-2 w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-600 overflow-hidden animate-fade-in-up max-h-60 overflow-y-auto">
                                                 <ul>
                                                     {filteredInstitutions.map(inst => (
-                                                        <li 
-                                                            key={inst.id} 
-                                                            onClick={() => handleSelectInstitution(inst)} 
+                                                        <li
+                                                            key={inst.id}
+                                                            onClick={() => handleSelectInstitution(inst)}
                                                             className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors flex items-center gap-3"
                                                         >
                                                             <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-300">
@@ -772,10 +772,10 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <div className="flex-shrink-0 w-full md:w-auto">
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => setIsNewInstitutionModalOpen(true)}
                                             className="w-full md:w-auto h-[52px] px-6 bg-white dark:bg-slate-700 border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300 rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-400 transition-all flex items-center justify-center gap-2"
                                         >
@@ -787,9 +787,9 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
                                 {lastLanzamiento && (
                                     <div className="mt-4 flex justify-end">
-                                        <button 
-                                            type="button" 
-                                            onClick={handleLoadLastData} 
+                                        <button
+                                            type="button"
+                                            onClick={handleLoadLastData}
                                             className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center gap-2 shadow-sm border border-indigo-100 dark:border-indigo-800"
                                         >
                                             <span className="material-icons !text-sm">auto_fix_high</span>
@@ -803,19 +803,19 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
                     {/* BLOQUE 2: DETALLES ACADÉMICOS (PREMIUM UI) */}
                     <div className="relative group z-20">
-                         <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-                             <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/5 rounded-full -ml-10 -mb-10 pointer-events-none"></div>
-                         </div>
-                        
+                        <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/5 rounded-full -ml-10 -mb-10 pointer-events-none"></div>
+                        </div>
+
                         <div className="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-400 to-indigo-600 rounded-l-md shadow-sm"></div>
                         <div className="pl-6 relative z-20">
                             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 text-sm font-bold shadow-sm border border-indigo-200 dark:border-indigo-800">2</span>
                                 Detalles Académicos
                             </h3>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative">
-                                
+
                                 <InputWrapper label="Orientación" icon="school">
                                     <select name="orientacion" value={formData.orientacion as string} onChange={handleChange} className={inputClass} required>
                                         <option value="">Seleccionar...</option>
@@ -836,19 +836,19 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                 <div className="col-span-1 md:col-span-2 space-y-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Requisitos de Documentación</label>
                                     <div className="flex flex-col sm:flex-row gap-6">
-                                        <Checkbox 
-                                            id="check-certificado" 
-                                            name="reqCertificadoTrabajo" 
-                                            label="Solicitar Certificado de Trabajo (si aplica)" 
-                                            checked={formData.reqCertificadoTrabajo as boolean} 
-                                            onChange={handleChange} 
+                                        <Checkbox
+                                            id="check-certificado"
+                                            name="reqCertificadoTrabajo"
+                                            label="Solicitar Certificado de Trabajo (si aplica)"
+                                            checked={formData.reqCertificadoTrabajo as boolean}
+                                            onChange={handleChange}
                                         />
-                                        <Checkbox 
-                                            id="check-cv" 
-                                            name="reqCv" 
-                                            label="Solicitar Curriculum Vitae (CV)" 
-                                            checked={formData.reqCv as boolean} 
-                                            onChange={handleChange} 
+                                        <Checkbox
+                                            id="check-cv"
+                                            name="reqCv"
+                                            label="Solicitar Curriculum Vitae (CV)"
+                                            checked={formData.reqCv as boolean}
+                                            onChange={handleChange}
                                         />
                                     </div>
                                 </div>
@@ -858,13 +858,13 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
                     {/* BLOQUE 3: LOGÍSTICA (PREMIUM UI) */}
                     <div className="relative group z-10">
-                         <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-                              <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
-                         </div>
+                        <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+                        </div>
 
                         <div className="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-md shadow-sm"></div>
                         <div className="pl-6 relative z-20">
-                             <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 text-sm font-bold shadow-sm border border-emerald-200 dark:border-emerald-800">3</span>
                                 Cronograma y Logística
                             </h3>
@@ -880,16 +880,16 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                         <input type="date" name="fechaFin" value={formData.fechaFin as string} onChange={handleChange} className={inputClass} required />
                                     </InputWrapper>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                                     <InputWrapper label="Dirección / Lugar" icon="location_on">
-                                        <input 
-                                            type="text" 
-                                            name="direccion" 
-                                            value={formData.direccion as string} 
-                                            onChange={handleChange} 
+                                        <input
+                                            type="text"
+                                            name="direccion"
+                                            value={formData.direccion as string}
+                                            onChange={handleChange}
                                             placeholder="Calle Falsa 123"
-                                            className={inputClass} 
+                                            className={inputClass}
                                         />
                                     </InputWrapper>
                                     <InputWrapper label="Link al Programa / Informe (Opcional)" icon="link">
@@ -905,7 +905,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                     {schedules.map((schedule, idx) => (
                                         <div key={idx} className="flex gap-2 items-center">
                                             <div className="flex-grow">
-                                                 <input
+                                                <input
                                                     type="text"
                                                     value={schedule}
                                                     onChange={(e) => handleScheduleChange(idx, e.target.value)}
@@ -928,7 +928,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                             </div>
                         </div>
                     </div>
-                    
+
                     {/* BLOQUE 4: TARJETA CAMPUS (AI FEATURE) */}
                     <div className="relative group z-10">
                         <div className="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-orange-500 rounded-l-md shadow-sm"></div>
@@ -937,63 +937,63 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-sm font-bold shadow-sm border border-amber-200 dark:border-amber-800">4</span>
                                 Tarjeta del Campus (HTML)
                             </h3>
-                            
+
                             <div className="bg-white dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4 shadow-sm relative">
                                 <p className="text-sm text-slate-600 dark:text-slate-400">
                                     Aquí puedes pegar el código HTML de la tarjeta que se muestra en el campus. Usa la IA para actualizar fechas y horarios automáticamente.
                                 </p>
-                                
+
                                 <div className="flex flex-wrap gap-2 mb-2 items-center">
-                                     <button
+                                    <button
                                         type="button"
                                         onClick={() => setShowCampusPreview(!showCampusPreview)}
                                         className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                     >
-                                         {showCampusPreview ? 'Ocultar Vista Previa' : 'Ver Vista Previa'}
-                                     </button>
-                                     <button
+                                    >
+                                        {showCampusPreview ? 'Ocultar Vista Previa' : 'Ver Vista Previa'}
+                                    </button>
+                                    <button
                                         type="button"
                                         onClick={handleGenerateCampusCode}
                                         disabled={isGeneratingCode || !campusCode}
                                         className="text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-1.5 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                                     >
-                                         {isGeneratingCode ? (
-                                             <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin"/>
-                                         ) : (
-                                             <span className="material-icons !text-xs">auto_awesome</span>
-                                         )}
-                                         Actualizar con IA
-                                     </button>
-                                     <div className="flex-1"></div>
-                                     {selectedInstitution && (
-                                         <button
-                                             type="button"
-                                             onClick={handleSaveTemplate}
-                                             disabled={!campusCode || updateInstitutionMutation.isPending}
-                                             className="text-xs font-bold text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-1"
-                                         >
-                                             <span className="material-icons !text-xs">save</span>
-                                             Guardar Plantilla
-                                         </button>
-                                     )}
-                                     <button
-                                         type="button"
-                                         onClick={handleCopyToClipboard}
-                                         disabled={!campusCode}
-                                         className="text-xs font-bold text-slate-700 bg-slate-200 dark:bg-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-300 transition-colors flex items-center gap-1"
-                                     >
-                                         <span className="material-icons !text-xs">content_copy</span>
-                                         Copiar
-                                     </button>
+                                    >
+                                        {isGeneratingCode ? (
+                                            <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <span className="material-icons !text-xs">auto_awesome</span>
+                                        )}
+                                        Actualizar con IA
+                                    </button>
+                                    <div className="flex-1"></div>
+                                    {selectedInstitution && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveTemplate}
+                                            disabled={!campusCode || updateInstitutionMutation.isPending}
+                                            className="text-xs font-bold text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-1"
+                                        >
+                                            <span className="material-icons !text-xs">save</span>
+                                            Guardar Plantilla
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyToClipboard}
+                                        disabled={!campusCode}
+                                        className="text-xs font-bold text-slate-700 bg-slate-200 dark:bg-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-300 transition-colors flex items-center gap-1"
+                                    >
+                                        <span className="material-icons !text-xs">content_copy</span>
+                                        Copiar
+                                    </button>
                                 </div>
-                                
+
                                 {showCampusPreview && campusCode && (
                                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-100 text-black overflow-auto max-h-60 mb-4">
                                         <div dangerouslySetInnerHTML={{ __html: campusCode }} />
                                     </div>
                                 )}
 
-                                <textarea 
+                                <textarea
                                     value={campusCode}
                                     onChange={(e) => setCampusCode(e.target.value)}
                                     rows={6}
@@ -1006,13 +1006,13 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
                     {/* ACTION FOOTER */}
                     <div className="pt-6 flex justify-end sticky bottom-6 z-40">
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={createLaunchMutation.isPending}
                             className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 px-10 rounded-xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-3 ring-4 ring-white dark:ring-slate-950"
                         >
                             {createLaunchMutation.isPending ? (
-                                <><div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"/> Procesando...</>
+                                <><div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Procesando...</>
                             ) : (
                                 <><span className="material-icons !text-xl">rocket_launch</span> Publicar Convocatoria</>
                             )}
@@ -1025,15 +1025,15 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                 <div className="mt-6 space-y-8">
                     {isLoadingHistory ? <Loader /> : (visibleHistory.length === 0 && hiddenHistory.length === 0) ? <EmptyState icon="history_toggle_off" title="Sin Historial" message="No hay lanzamientos registrados." /> : (
                         <>
-                             {/* LISTA VISIBLE (Abiertas / Cerradas) */}
-                             <div className="space-y-4">
+                            {/* LISTA VISIBLE (Abiertas / Cerradas) */}
+                            <div className="space-y-4">
                                 {visibleHistory.map(renderLaunchItem)}
-                             </div>
+                            </div>
 
-                             {/* LISTA OCULTA (Colapsable) */}
-                             {hiddenHistory.length > 0 && (
-                                <CollapsibleSection 
-                                    title="Archivados / Ocultos" 
+                            {/* LISTA OCULTA (Colapsable) */}
+                            {hiddenHistory.length > 0 && (
+                                <CollapsibleSection
+                                    title="Archivados / Ocultos"
                                     count={hiddenHistory.length}
                                     icon="visibility_off"
                                     iconBgColor="bg-slate-100 dark:bg-slate-800"
@@ -1045,21 +1045,21 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                         {hiddenHistory.map(renderLaunchItem)}
                                     </div>
                                 </CollapsibleSection>
-                             )}
+                            )}
                         </>
                     )}
                 </div>
             </div>
-            
+
             {editingLaunch && (
-                 <RecordEditModal
+                <RecordEditModal
                     isOpen={!!editingLaunch}
                     onClose={() => setEditingLaunch(null)}
                     record={editingLaunch}
                     tableConfig={LAUNCH_TABLE_CONFIG}
                     onSave={(id, fields) => updateDetailsMutation.mutate({ id: id!, fields })}
                     isSaving={updateDetailsMutation.isPending}
-                 />
+                />
             )}
         </Card>
     );

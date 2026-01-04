@@ -1,38 +1,39 @@
-
 import { db } from '../lib/db';
 import { supabase } from '../lib/supabaseClient';
+import { Database } from '../types/supabase';
 import {
-  Practica, SolicitudPPS, LanzamientoPPS, Convocatoria,
-  GroupedSeleccionados,
-  FinalizacionPPS,
-  Estudiante,
-  InformeCorreccionPPS
+    Practica, SolicitudPPS, LanzamientoPPS, Convocatoria,
+    GroupedSeleccionados,
+    FinalizacionPPS,
+    Estudiante,
+    InformeCorreccionPPS
 } from '../types';
 import * as C from '../constants';
 import { normalizeStringForComparison, safeGetId, cleanInstitutionName, cleanDbValue } from '../utils/formatters';
 
 export const fetchStudentData = async (legajo: string): Promise<{ studentDetails: Estudiante | null; studentAirtableId: string | null; }> => {
-  const { data, error } = await supabase
-      .from(C.TABLE_NAME_ESTUDIANTES)
-      .select('*')
-      .eq(C.FIELD_LEGAJO_ESTUDIANTES, legajo)
-      .maybeSingle();
-  
-  if (error || !data) {
-      console.warn("Estudiante no encontrado por legajo:", legajo);
-      return { studentDetails: null, studentAirtableId: null };
-  }
+    const { data, error } = await supabase
+        .from('estudiantes')
+        .select('*')
+        .eq(C.FIELD_LEGAJO_ESTUDIANTES, legajo)
+        .maybeSingle();
 
-  return { studentDetails: data, studentAirtableId: data.id };
+    const studentData = data as unknown as Estudiante | null;
+    if (error || !studentData) {
+        console.warn("Estudiante no encontrado por legajo:", legajo);
+        return { studentDetails: null, studentAirtableId: null };
+    }
+
+    return { studentDetails: studentData, studentAirtableId: studentData.id };
 };
 
 export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
-  const { studentAirtableId } = await fetchStudentData(legajo);
-  if (!studentAirtableId) return [];
+    const { studentAirtableId } = await fetchStudentData(legajo);
+    if (!studentAirtableId) return [];
 
-  const { data, error } = await supabase
-      .from(C.TABLE_NAME_PRACTICAS)
-      .select(`
+    const { data, error } = await supabase
+        .from('practicas')
+        .select(`
           *,
           lanzamiento:lanzamientos_pps!fk_practica_lanzamiento (
               nombre_pps,
@@ -41,94 +42,104 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
               fecha_finalizacion
           )
       `)
-      .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentAirtableId);
+        .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentAirtableId);
 
-  if (error || !data) {
-      console.error("Error fetching practicas:", error);
-      return [];
-  }
+    if (error || !data) {
+        console.error("Error fetching practicas:", error);
+        return [];
+    }
 
-  return data.map((row: any) => {
-      const lanzamiento = Array.isArray(row.lanzamiento) ? row.lanzamiento[0] : row.lanzamiento;
-      
-      const rawName = row[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] || lanzamiento?.nombre_pps || 'Institución desconocida';
-      const finalName = cleanDbValue(rawName);
-      
-      if (!row[C.FIELD_FECHA_INICIO_PRACTICAS] && lanzamiento?.fecha_inicio) {
-          row[C.FIELD_FECHA_INICIO_PRACTICAS] = lanzamiento.fecha_inicio;
-      }
-      if (!row[C.FIELD_FECHA_FIN_PRACTICAS] && lanzamiento?.fecha_finalizacion) {
-          row[C.FIELD_FECHA_FIN_PRACTICAS] = lanzamiento.fecha_finalizacion;
-      }
-      if (!row[C.FIELD_ESPECIALIDAD_PRACTICAS] && lanzamiento?.orientacion) {
-          row[C.FIELD_ESPECIALIDAD_PRACTICAS] = lanzamiento.orientacion;
-      }
+    // Define specific type for the join result
+    type PracticaWithJoin = Practica & {
+        lanzamiento: Partial<LanzamientoPPS> | Partial<LanzamientoPPS>[] | null;
+    };
 
-      return {
-          ...row,
-          [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: finalName,
-      } as Practica;
-  });
+    return (data as unknown as PracticaWithJoin[]).map((row) => {
+        const lanzamiento = Array.isArray(row.lanzamiento) ? row.lanzamiento[0] : row.lanzamiento;
+
+        const rawName = row[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] || lanzamiento?.nombre_pps || 'Institución desconocida';
+        const finalName = cleanDbValue(rawName);
+
+        if (!row[C.FIELD_FECHA_INICIO_PRACTICAS] && lanzamiento?.fecha_inicio) {
+            row[C.FIELD_FECHA_INICIO_PRACTICAS] = lanzamiento.fecha_inicio;
+        }
+        if (!row[C.FIELD_FECHA_FIN_PRACTICAS] && lanzamiento?.fecha_finalizacion) {
+            row[C.FIELD_FECHA_FIN_PRACTICAS] = lanzamiento.fecha_finalizacion;
+        }
+        if (!row[C.FIELD_ESPECIALIDAD_PRACTICAS] && lanzamiento?.orientacion) {
+            row[C.FIELD_ESPECIALIDAD_PRACTICAS] = lanzamiento.orientacion;
+        }
+
+        return {
+            ...row,
+            [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: finalName,
+        } as Practica;
+    });
 };
 
 export const fetchSolicitudes = async (legajo: string, studentAirtableId: string | null): Promise<SolicitudPPS[]> => {
-  let targetId = studentAirtableId;
-  if (!targetId) {
-       const { studentAirtableId: fetchedId } = await fetchStudentData(legajo);
-       targetId = fetchedId;
-  }
-  if (!targetId) return [];
+    let targetId = studentAirtableId;
+    if (!targetId) {
+        const { studentAirtableId: fetchedId } = await fetchStudentData(legajo);
+        targetId = fetchedId;
+    }
+    if (!targetId) return [];
 
-  const { data, error } = await supabase
-      .from(C.TABLE_NAME_PPS)
-      .select(`
+    const { data, error } = await supabase
+        .from(C.TABLE_NAME_PPS)
+        .select(`
           *,
           estudiante:estudiantes!fk_solicitud_estudiante (
             nombre, legajo, correo
           )
       `)
-      .eq(C.FIELD_LEGAJO_PPS, targetId)
-      .order('created_at', { ascending: false });
+        .eq(C.FIELD_LEGAJO_PPS, targetId)
+        .order('created_at', { ascending: false });
 
-  if (error || !data) {
-      console.error("Error fetching solicitudes:", error);
-      return [];
-  }
-  
-  const mappedRecords = data.map((r: any) => {
-      const student = Array.isArray(r.estudiante) ? r.estudiante[0] : r.estudiante;
-      return {
-          ...r,
-          [C.FIELD_SOLICITUD_NOMBRE_ALUMNO]: student?.nombre || r[C.FIELD_SOLICITUD_NOMBRE_ALUMNO] || 'Estudiante',
-          [C.FIELD_SOLICITUD_LEGAJO_ALUMNO]: student?.legajo || r[C.FIELD_SOLICITUD_LEGAJO_ALUMNO],
-          [C.FIELD_SOLICITUD_EMAIL_ALUMNO]: student?.correo || r[C.FIELD_SOLICITUD_EMAIL_ALUMNO]
-      };
-  });
+    if (error || !data) {
+        console.error("Error fetching solicitudes:", error);
+        return [];
+    }
 
-  return mappedRecords.filter(r => r[C.FIELD_ESTADO_PPS] !== 'Archivado') as SolicitudPPS[];
+    // Define specific type for the join result
+    type SolicitudWithJoin = SolicitudPPS & {
+        estudiante: Partial<Estudiante> | Partial<Estudiante>[] | null;
+    };
+
+    const mappedRecords = (data as unknown as SolicitudWithJoin[]).map((r) => {
+        const student = Array.isArray(r.estudiante) ? r.estudiante[0] : r.estudiante;
+        return {
+            ...r,
+            [C.FIELD_SOLICITUD_NOMBRE_ALUMNO]: student?.nombre || r[C.FIELD_SOLICITUD_NOMBRE_ALUMNO] || 'Estudiante',
+            [C.FIELD_SOLICITUD_LEGAJO_ALUMNO]: student?.legajo || r[C.FIELD_SOLICITUD_LEGAJO_ALUMNO],
+            [C.FIELD_SOLICITUD_EMAIL_ALUMNO]: student?.correo || r[C.FIELD_SOLICITUD_EMAIL_ALUMNO]
+        };
+    });
+
+    return mappedRecords.filter(r => r[C.FIELD_ESTADO_PPS] !== 'Archivado') as SolicitudPPS[];
 };
 
 export const fetchFinalizacionRequest = async (legajo: string, studentAirtableId: string | null): Promise<FinalizacionPPS | null> => {
-  try {
-      let targetId = studentAirtableId;
-      if (!targetId) {
-           const { studentAirtableId: fetchedId } = await fetchStudentData(legajo);
-           targetId = fetchedId;
-      }
-      if (!targetId) return null;
+    try {
+        let targetId = studentAirtableId;
+        if (!targetId) {
+            const { studentAirtableId: fetchedId } = await fetchStudentData(legajo);
+            targetId = fetchedId;
+        }
+        if (!targetId) return null;
 
-      const records = await db.finalizacion.get({
-          filters: { [C.FIELD_ESTUDIANTE_FINALIZACION]: targetId },
-          sort: [{ field: 'created_at', direction: 'desc' }],
-          maxRecords: 1
-      });
-          
-      if (!records || records.length === 0) return null;
-      return records[0];
-  } catch (error) {
-      console.warn("Suppressing error in fetchFinalizacionRequest:", error);
-      return null;
-  }
+        const records = await db.finalizacion.get({
+            filters: { [C.FIELD_ESTUDIANTE_FINALIZACION]: targetId },
+            sort: [{ field: 'created_at', direction: 'desc' }],
+            maxRecords: 1
+        });
+
+        if (!records || records.length === 0) return null;
+        return records[0];
+    } catch (error) {
+        console.warn("Suppressing error in fetchFinalizacionRequest:", error);
+        return null;
+    }
 }
 
 export const fetchConvocatoriasData = async (legajo: string, studentAirtableId: string | null, isSuperUserMode: boolean): Promise<{
@@ -137,90 +148,90 @@ export const fetchConvocatoriasData = async (legajo: string, studentAirtableId: 
     allLanzamientos: LanzamientoPPS[],
     institutionAddressMap: Map<string, string>,
 }> => {
-    
-  let myEnrollments: Convocatoria[] = [];
-  const enrolledLaunchIds = new Set<string>();
 
-  if (studentAirtableId) {
-      const enrollments = await db.convocatorias.getAll({
-          filters: { [C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentAirtableId }
-      });
-      myEnrollments = enrollments;
+    let myEnrollments: Convocatoria[] = [];
+    const enrolledLaunchIds = new Set<string>();
 
-      myEnrollments.forEach(e => {
-          const lid = e[C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-          if (lid) {
-             if (Array.isArray(lid)) lid.forEach((id: string) => enrolledLaunchIds.add(id));
-             else enrolledLaunchIds.add(lid as string);
-          }
-      });
-  }
+    if (studentAirtableId) {
+        const enrollments = await db.convocatorias.getAll({
+            filters: { [C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentAirtableId }
+        });
+        myEnrollments = enrollments;
 
-  const openLaunches = await db.lanzamientos.getAll({
-      filters: { 
-        [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: ['Abierta', 'Abierto', 'Cerrado'] 
-      },
-      sort: [{ field: C.FIELD_FECHA_INICIO_LANZAMIENTOS, direction: 'desc' }]
-  });
+        myEnrollments.forEach(e => {
+            const lid = e[C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
+            if (lid) {
+                if (Array.isArray(lid)) lid.forEach((id: string) => enrolledLaunchIds.add(id));
+                else enrolledLaunchIds.add(lid as string);
+            }
+        });
+    }
 
-  const openLaunchIds = new Set(openLaunches.map(l => l.id));
-  const missingLaunchIds = Array.from(enrolledLaunchIds).filter(id => !openLaunchIds.has(id));
+    const openLaunches = await db.lanzamientos.getAll({
+        filters: {
+            [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: ['Abierta', 'Abierto', 'Cerrado']
+        },
+        sort: [{ field: C.FIELD_FECHA_INICIO_LANZAMIENTOS, direction: 'desc' }]
+    });
 
-  let historicalLaunches: LanzamientoPPS[] = [];
-  if (missingLaunchIds.length > 0) {
-      historicalLaunches = await db.lanzamientos.getAll({
-          filters: { id: missingLaunchIds }
-      });
-  }
+    const openLaunchIds = new Set(openLaunches.map(l => l.id));
+    const missingLaunchIds = Array.from(enrolledLaunchIds).filter(id => !openLaunchIds.has(id));
 
-  const allRawLanzamientos = [...openLaunches, ...historicalLaunches];
-  const launchesMap = new Map(allRawLanzamientos.map(l => [l.id, l]));
+    let historicalLaunches: LanzamientoPPS[] = [];
+    if (missingLaunchIds.length > 0) {
+        historicalLaunches = await db.lanzamientos.getAll({
+            filters: { id: missingLaunchIds }
+        });
+    }
 
-  const hydratedEnrollments = myEnrollments.map(row => {
-      const launchId = row[C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-      const launch = launchId ? (Array.isArray(launchId) ? launchesMap.get(launchId[0]) : launchesMap.get(launchId)) : null;
-      
-      return {
-          ...row,
-          [C.FIELD_NOMBRE_PPS_CONVOCATORIAS]: cleanInstitutionName(row[C.FIELD_NOMBRE_PPS_CONVOCATORIAS] || launch?.[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]),
-          [C.FIELD_FECHA_INICIO_CONVOCATORIAS]: row[C.FIELD_FECHA_INICIO_CONVOCATORIAS] || launch?.[C.FIELD_FECHA_INICIO_LANZAMIENTOS],
-          [C.FIELD_FECHA_FIN_CONVOCATORIAS]: row[C.FIELD_FECHA_FIN_CONVOCATORIAS] || launch?.[C.FIELD_FECHA_FIN_LANZAMIENTOS],
-          [C.FIELD_DIRECCION_CONVOCATORIAS]: row[C.FIELD_DIRECCION_CONVOCATORIAS] || launch?.[C.FIELD_DIRECCION_LANZAMIENTOS],
-          [C.FIELD_ORIENTACION_CONVOCATORIAS]: row[C.FIELD_ORIENTACION_CONVOCATORIAS] || launch?.[C.FIELD_ORIENTACION_LANZAMIENTOS],
-          [C.FIELD_HORAS_ACREDITADAS_CONVOCATORIAS]: row[C.FIELD_HORAS_ACREDITADAS_CONVOCATORIAS] || launch?.[C.FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]
-      } as Convocatoria;
-  });
+    const allRawLanzamientos = [...openLaunches, ...historicalLaunches];
+    const launchesMap = new Map(allRawLanzamientos.map(l => [l.id, l]));
 
-  // CLEAN LAUNCHES FOR UI: Clean the name right here so components get clean data
-  const cleanedOpenLaunches = openLaunches.map(l => ({
-      ...l,
-      [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS])
-  }));
+    const hydratedEnrollments = myEnrollments.map(row => {
+        const launchId = row[C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
+        const launch = launchId ? (Array.isArray(launchId) ? launchesMap.get(launchId[0]) : launchesMap.get(launchId)) : null;
 
-  const lanzamientos = cleanedOpenLaunches.filter(l => {
-      const estadoConv = normalizeStringForComparison(l[C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-      const estadoGestion = l[C.FIELD_ESTADO_GESTION_LANZAMIENTOS];
-      
-      return estadoConv !== 'oculto' && 
-             estadoGestion !== 'Archivado' &&
-             estadoGestion !== 'No se Relanza';
-  });
+        return {
+            ...row,
+            [C.FIELD_NOMBRE_PPS_CONVOCATORIAS]: cleanInstitutionName(row[C.FIELD_NOMBRE_PPS_CONVOCATORIAS] || launch?.[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]),
+            [C.FIELD_FECHA_INICIO_CONVOCATORIAS]: row[C.FIELD_FECHA_INICIO_CONVOCATORIAS] || launch?.[C.FIELD_FECHA_INICIO_LANZAMIENTOS],
+            [C.FIELD_FECHA_FIN_CONVOCATORIAS]: row[C.FIELD_FECHA_FIN_CONVOCATORIAS] || launch?.[C.FIELD_FECHA_FIN_LANZAMIENTOS],
+            [C.FIELD_DIRECCION_CONVOCATORIAS]: row[C.FIELD_DIRECCION_CONVOCATORIAS] || launch?.[C.FIELD_DIRECCION_LANZAMIENTOS],
+            [C.FIELD_ORIENTACION_CONVOCATORIAS]: row[C.FIELD_ORIENTACION_CONVOCATORIAS] || launch?.[C.FIELD_ORIENTACION_LANZAMIENTOS],
+            [C.FIELD_HORAS_ACREDITADAS_CONVOCATORIAS]: row[C.FIELD_HORAS_ACREDITADAS_CONVOCATORIAS] || launch?.[C.FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]
+        } as Convocatoria;
+    });
 
-  const institutionAddressMap = new Map<string, string>();
-  allRawLanzamientos.forEach(l => {
-      const name = cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]);
-      const address = l[C.FIELD_DIRECCION_LANZAMIENTOS];
-      if (name && address) {
-          institutionAddressMap.set(normalizeStringForComparison(name), address);
-      }
-  });
+    // CLEAN LAUNCHES FOR UI: Clean the name right here so components get clean data
+    const cleanedOpenLaunches = openLaunches.map(l => ({
+        ...l,
+        [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS])
+    }));
 
-  return { 
-      lanzamientos, 
-      myEnrollments: hydratedEnrollments, 
-      allLanzamientos: allRawLanzamientos, 
-      institutionAddressMap 
-  };
+    const lanzamientos = cleanedOpenLaunches.filter(l => {
+        const estadoConv = normalizeStringForComparison(l[C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
+        const estadoGestion = l[C.FIELD_ESTADO_GESTION_LANZAMIENTOS];
+
+        return estadoConv !== 'oculto' &&
+            estadoGestion !== 'Archivado' &&
+            estadoGestion !== 'No se Relanza';
+    });
+
+    const institutionAddressMap = new Map<string, string>();
+    allRawLanzamientos.forEach(l => {
+        const name = cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]);
+        const address = l[C.FIELD_DIRECCION_LANZAMIENTOS];
+        if (name && address) {
+            institutionAddressMap.set(normalizeStringForComparison(name), address);
+        }
+    });
+
+    return {
+        lanzamientos,
+        myEnrollments: hydratedEnrollments,
+        allLanzamientos: allRawLanzamientos,
+        institutionAddressMap
+    };
 };
 
 export const fetchSeleccionados = async (lanzamiento: LanzamientoPPS): Promise<GroupedSeleccionados | null> => {
@@ -228,22 +239,29 @@ export const fetchSeleccionados = async (lanzamiento: LanzamientoPPS): Promise<G
     if (!lanzamientoId) return null;
 
     try {
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_postulantes_seleccionados', { 
-            lanzamiento_uuid: lanzamientoId 
-        });
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_postulantes_seleccionados', {
+            lanzamiento_uuid: lanzamientoId
+        } as any);
 
         if (!rpcError && rpcData) {
             const grouped: GroupedSeleccionados = {};
-            (rpcData as any[]).forEach((row: any) => {
+            // Define RPC result type
+            interface PostulanteRPC {
+                horario?: string;
+                nombre?: string;
+                legajo?: string;
+            }
+
+            (rpcData as unknown as PostulanteRPC[]).forEach((row) => {
                 const horario = row.horario || 'No especificado';
                 if (!grouped[horario]) grouped[horario] = [];
-                
+
                 grouped[horario].push({
                     nombre: row.nombre || 'Estudiante',
                     legajo: row.legajo || '---'
                 });
             });
-            
+
             if (Object.keys(grouped).length === 0) return null;
 
             for (const horario in grouped) {
@@ -280,7 +298,7 @@ export const fetchSeleccionados = async (lanzamiento: LanzamientoPPS): Promise<G
         if (!grouped[horario]) grouped[horario] = [];
         grouped[horario].push({ nombre, legajo });
     });
-    
+
     for (const h in grouped) grouped[h].sort((a, b) => a.nombre.localeCompare(b.nombre));
     return grouped;
 };
@@ -291,15 +309,15 @@ export const toggleStudentSelection = async (
     studentId: string,
     lanzamiento: LanzamientoPPS
 ): Promise<{ success: boolean, error?: string }> => {
-    
+
     const newStatus = isSelecting ? 'Seleccionado' : 'Inscripto';
     try {
         // 1. Actualizar estado en convocatoria
         await db.convocatorias.update(convocatoriaId, { [C.FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: newStatus });
-        
+
         // 2. Sincronizar registro de Práctica automáticamente
         if (isSelecting) {
-            
+
             // CLEAN NAME FOR DB
             let rawName = lanzamiento[C.FIELD_NOMBRE_PPS_LANZAMIENTOS];
             if (Array.isArray(rawName)) rawName = rawName[0];
@@ -316,7 +334,7 @@ export const toggleStudentSelection = async (
 
             // Verificar si ya existe para no duplicar
             const { data: existing } = await supabase
-                .from(C.TABLE_NAME_PRACTICAS)
+                .from('practicas')
                 .select(`id, ${C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS}`)
                 .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId)
                 .eq(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, lanzamiento.id)
@@ -328,7 +346,7 @@ export const toggleStudentSelection = async (
                 const payload = {
                     [C.FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentId,
                     [C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: lanzamiento.id,
-                    [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName, 
+                    [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName,
                     [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion,
                     [C.FIELD_FECHA_INICIO_PRACTICAS]: lanzamiento[C.FIELD_FECHA_INICIO_LANZAMIENTOS],
                     [C.FIELD_FECHA_FIN_PRACTICAS]: lanzamiento[C.FIELD_FECHA_FIN_LANZAMIENTOS],
@@ -336,15 +354,16 @@ export const toggleStudentSelection = async (
                     [C.FIELD_ESTADO_PRACTICA]: 'En curso',
                     [C.FIELD_NOTA_PRACTICAS]: 'Sin calificar'
                 };
-                
+
                 await db.practicas.create(payload);
             } else {
                 console.log(`[DATA SERVICE] Practica already exists. Checking data integrity...`);
                 // SELF-HEALING: If exists but has dirty name, fix it now.
-                const currentName = existing[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
+                const existingPractica = existing as unknown as Practica;
+                const currentName = existingPractica[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
                 if (currentName !== cleanName) {
                     console.log(`[DATA SERVICE] Fixing dirty name: ${currentName} -> ${cleanName}`);
-                    await db.practicas.update(existing.id, {
+                    await db.practicas.update(existingPractica.id, {
                         [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName,
                         [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion
                     });
@@ -353,22 +372,23 @@ export const toggleStudentSelection = async (
         } else {
             // Si deselecciona, borrar la práctica asociada
             const { data: existing } = await supabase
-                .from(C.TABLE_NAME_PRACTICAS)
+                .from('practicas')
                 .select('id')
                 .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId)
                 .eq(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, lanzamiento.id);
-            
+
             if (existing && existing.length > 0) {
-                for (const rec of existing) {
-                     await db.practicas.delete(rec.id);
+                const duplicates = existing as unknown as { id: string }[];
+                for (const rec of duplicates) {
+                    await db.practicas.delete(rec.id);
                 }
             }
         }
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e) {
         console.error(`[DATA SERVICE] ERROR:`, e);
-        return { success: false, error: e.message };
+        return { success: false, error: (e as Error).message };
     }
 };
 
@@ -459,8 +479,9 @@ export const uploadFinalizationFile = async (file: File, studentId: string, type
 };
 
 export const submitFinalizationRequest = async (studentId: string, data: any) => {
-    const record = {
-        [C.FIELD_ESTUDIANTE_FINALIZACION]: studentId, 
+    // Use correct Insert type
+    const record: Database['public']['Tables']['finalizacion_pps']['Insert'] = {
+        [C.FIELD_ESTUDIANTE_FINALIZACION]: studentId,
         [C.FIELD_FECHA_SOLICITUD_FINALIZACION]: new Date().toISOString(),
         [C.FIELD_ESTADO_FINALIZACION]: 'Pendiente',
         [C.FIELD_INFORME_FINAL_FINALIZACION]: JSON.stringify(data.informes),
@@ -468,7 +489,7 @@ export const submitFinalizationRequest = async (studentId: string, data: any) =>
         [C.FIELD_PLANILLA_ASISTENCIA_FINALIZACION]: JSON.stringify(data.asistencias),
         [C.FIELD_SUGERENCIAS_MEJORAS_FINALIZACION]: data.sugerencias
     };
-    await db.finalizacion.create(record as any);
+    await db.finalizacion.create(record);
 };
 
 export const deleteFinalizationRequest = async (id: string, record: any): Promise<{ success: boolean, error: any }> => {

@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/db';
-import { 
-    TABLE_NAME_ESTUDIANTES, 
+import {
+    TABLE_NAME_ESTUDIANTES,
     FIELD_ESTADO_ESTUDIANTES,
     FIELD_DNI_ESTUDIANTES,
     FIELD_CORREO_ESTUDIANTES,
@@ -16,9 +16,9 @@ import {
     TABLE_NAME_PRACTICAS,
     FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS
 } from '../constants';
-import Card from './Card';
-import Button from './Button';
-import Toast from './Toast';
+import Card from './ui/Card';
+import Button from './ui/Button';
+import Toast from './ui/Toast';
 
 const isRealData = (val: any): boolean => {
     if (val === null || val === undefined) return false;
@@ -41,7 +41,7 @@ const cleanNameArtifacts = (input: any): string => {
         // Si es un objeto, intentamos obtener valores o stringify
         const values = Object.values(input);
         if (values.length > 0) return cleanNameArtifacts(values[0]);
-        str = JSON.stringify(input); 
+        str = JSON.stringify(input);
     }
 
     str = String(str);
@@ -59,7 +59,7 @@ const cleanNameArtifacts = (input: any): string => {
     // 3. Limpieza manual de caracteres basura de sintaxis ({}, [], "")
     // Se eliminan llaves, corchetes y comillas dobles/simples.
     let clean = str.replace(/[\[\]\{\}"']/g, '').trim();
-    
+
     // 4. Limpieza final de espacios o prefijos técnicos raros si hubieran
     return clean;
 };
@@ -82,7 +82,7 @@ const DataIntegrityTool: React.FC = () => {
                 const hasMail = isRealData(s[FIELD_CORREO_ESTUDIANTES]);
                 const hasDni = isRealData(s[FIELD_DNI_ESTUDIANTES]);
                 const hasTel = isRealData(s[FIELD_TELEFONO_ESTUDIANTES]);
-                
+
                 return (dbStatus === 'Nuevo (Sin cuenta)' || !dbStatus) && (hasMail || hasDni || hasTel);
             });
 
@@ -91,7 +91,7 @@ const DataIntegrityTool: React.FC = () => {
                 return;
             }
 
-            const promises = zombies.map(z => 
+            const promises = zombies.map(z =>
                 supabase
                     .from(TABLE_NAME_ESTUDIANTES)
                     .update({ [FIELD_ESTADO_ESTUDIANTES]: 'Inactivo' })
@@ -99,7 +99,7 @@ const DataIntegrityTool: React.FC = () => {
             );
 
             await Promise.all(promises);
-            
+
             setToast({ m: `¡Éxito! Se corrigieron ${zombies.length} estados "Nuevo" a "Inactivo".`, t: 'success' });
             queryClient.invalidateQueries();
         } catch (e: any) {
@@ -113,7 +113,7 @@ const DataIntegrityTool: React.FC = () => {
     const sanitizeNames = async () => {
         setIsSanitizing(true);
         let fixedCount = 0;
-        
+
         try {
             // A. Limpiar Instituciones
             const instituciones = await db.instituciones.getAll({ fields: [FIELD_NOMBRE_INSTITUCIONES] });
@@ -193,9 +193,9 @@ const DataIntegrityTool: React.FC = () => {
     return (
         <Card title="Mantenimiento de Base de Datos" icon="auto_fix_high">
             {toast && <Toast message={toast.m} type={toast.t} onClose={() => setToast(null)} />}
-            
+
             <div className="p-4 space-y-6">
-                
+
                 {/* Bloque 1: Estados */}
                 <div className="space-y-3">
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
@@ -204,8 +204,8 @@ const DataIntegrityTool: React.FC = () => {
                             Analiza si un alumno tiene datos de contacto (Mail/DNI) pero figura como "Nuevo". Actualiza a "Inactivo" para que pueda operar.
                         </p>
                     </div>
-                    <Button 
-                        onClick={fixDatabaseStates} 
+                    <Button
+                        onClick={fixDatabaseStates}
                         isLoading={isFixing}
                         disabled={isSanitizing}
                         icon="cleaning_services"
@@ -224,8 +224,8 @@ const DataIntegrityTool: React.FC = () => {
                             Escanea <strong>Instituciones, Lanzamientos y Prácticas</strong> y elimina caracteres basura como <code>["..."]</code>, <code>&#123;...&#125;</code> o comillas extra que quedaron de la importación.
                         </p>
                     </div>
-                    <Button 
-                        onClick={sanitizeNames} 
+                    <Button
+                        onClick={sanitizeNames}
                         isLoading={isSanitizing}
                         disabled={isFixing}
                         icon="spellcheck"

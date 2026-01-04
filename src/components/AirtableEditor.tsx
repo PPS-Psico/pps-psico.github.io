@@ -7,18 +7,18 @@ import type { AppRecord } from '../types';
 import SubTabs from './SubTabs';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import RecordEditModal from './RecordEditModal';
 import { formatDate, normalizeStringForComparison, getEspecialidadClasses } from '../utils/formatters';
-import Card from './Card';
+import Card from './ui/Card';
 import { ALL_ORIENTACIONES } from '../types';
-import { 
-    FIELD_NOMBRE_ESTUDIANTES, 
-    FIELD_LEGAJO_ESTUDIANTES, 
-    FIELD_NOMBRE_PPS_LANZAMIENTOS, 
-    FIELD_ESTUDIANTE_LINK_PRACTICAS, 
-    FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, 
-    FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS, 
+import {
+    FIELD_NOMBRE_ESTUDIANTES,
+    FIELD_LEGAJO_ESTUDIANTES,
+    FIELD_NOMBRE_PPS_LANZAMIENTOS,
+    FIELD_ESTUDIANTE_LINK_PRACTICAS,
+    FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+    FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
     FIELD_FECHA_INICIO_PRACTICAS,
     FIELD_DNI_ESTUDIANTES,
     FIELD_CORREO_ESTUDIANTES,
@@ -54,9 +54,9 @@ interface TableConfig {
 }
 
 const EDITABLE_TABLES: Record<string, TableConfig & { icon: string }> = {
-    estudiantes: { 
-        label: 'Estudiantes', 
-        icon: 'school', 
+    estudiantes: {
+        label: 'Estudiantes',
+        icon: 'school',
         schema: schema.estudiantes,
         displayFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES, FIELD_DNI_ESTUDIANTES, FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES],
         searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES, FIELD_DNI_ESTUDIANTES],
@@ -89,9 +89,9 @@ const EDITABLE_TABLES: Record<string, TableConfig & { icon: string }> = {
             { key: FIELD_NOTA_PRACTICAS, label: 'Nota', type: 'select', options: ['Sin calificar', 'Entregado (sin corregir)', 'No Entregado', 'Desaprobado', '4', '5', '6', '7', '8', '9', '10'] },
         ]
     },
-    instituciones: { 
-        label: 'Instituciones', 
-        icon: 'apartment', 
+    instituciones: {
+        label: 'Instituciones',
+        icon: 'apartment',
         schema: schema.instituciones,
         displayFields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_TELEFONO_INSTITUCIONES, FIELD_CONVENIO_NUEVO_INSTITUCIONES, FIELD_ORIENTACIONES_INSTITUCIONES],
         searchFields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_DIRECCION_INSTITUCIONES],
@@ -131,7 +131,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onEdit, onDuplicate, on
     }, [onClose]);
 
     return (
-        <div 
+        <div
             ref={menuRef}
             className="fixed z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl py-1 min-w-[160px] animate-fade-in text-sm"
             style={{ top: y, left: x }}
@@ -151,33 +151,33 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onEdit, onDuplicate, on
 };
 
 interface DatabaseEditorProps {
-  isTestingMode?: boolean;
+    isTestingMode?: boolean;
 }
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50];
 
 const SortableHeader: React.FC<{
-  label: string;
-  sortKey: string;
-  sortConfig: { key: string; direction: 'asc' | 'desc' };
-  requestSort: (key: string) => void;
-  className?: string;
+    label: string;
+    sortKey: string;
+    sortConfig: { key: string; direction: 'asc' | 'desc' };
+    requestSort: (key: string) => void;
+    className?: string;
 }> = ({ label, sortKey, sortConfig, requestSort, className = "text-left" }) => {
-  const isActive = sortConfig.key === sortKey;
-  const icon = isActive ? (sortConfig.direction === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more';
-  
-  return (
-    <th
-      scope="col"
-      className={`px-6 py-3 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${className}`}
-      onClick={() => requestSort(sortKey)}
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
-        <span className={`material-icons !text-sm transition-opacity ${isActive ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-30 group-hover:opacity-70'}`}>{icon}</span>
-      </div>
-    </th>
-  );
+    const isActive = sortConfig.key === sortKey;
+    const icon = isActive ? (sortConfig.direction === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more';
+
+    return (
+        <th
+            scope="col"
+            className={`px-6 py-3 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${className}`}
+            onClick={() => requestSort(sortKey)}
+        >
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
+                <span className={`material-icons !text-sm transition-opacity ${isActive ? 'opacity-100 text-blue-600 dark:text-blue-400' : 'opacity-30 group-hover:opacity-70'}`}>{icon}</span>
+            </div>
+        </th>
+    );
 };
 
 const PaginationControls: React.FC<{
@@ -191,8 +191,8 @@ const PaginationControls: React.FC<{
     <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 px-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
         <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
             <span>Filas por pág:</span>
-            <select 
-                value={itemsPerPage} 
+            <select
+                value={itemsPerPage}
                 onChange={(e) => { onItemsPerPageChange(Number(e.target.value)); onPageChange(1); }}
                 className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none"
             >
@@ -204,8 +204,8 @@ const PaginationControls: React.FC<{
         </div>
 
         <div className="flex items-center gap-2">
-            <button 
-                onClick={() => onPageChange(currentPage - 1)} 
+            <button
+                onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             >
@@ -214,8 +214,8 @@ const PaginationControls: React.FC<{
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Pág {currentPage} de {totalPages || 1}
             </span>
-            <button 
-                onClick={() => onPageChange(currentPage + 1)} 
+            <button
+                onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages || totalPages === 0}
                 className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             >
@@ -238,16 +238,16 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     const [editingRecord, setEditingRecord] = useState<AppRecord<any> | { isCreating: true } | null>(null);
     const [toastInfo, setToastInfo] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: AppRecord<any> } | null>(null);
-    
+
     // Server-side state
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    
+
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-    
+
     const queryClient = useQueryClient();
 
     // Debounce search to avoid too many requests
@@ -265,7 +265,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     const { data: queryResult, isLoading, error } = useQuery({
         queryKey,
         queryFn: async () => {
-             if (isTestingMode) return { records: [], total: 0 };
+            if (isTestingMode) return { records: [], total: 0 };
 
             const { records, total, error } = await db[activeTable].getPage(
                 currentPage,
@@ -286,23 +286,23 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                     db.estudiantes.getAll({ fields: [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES] }),
                     db.lanzamientos.getAll({ fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS] })
                 ]);
-    
+
                 const estudiantesMap = new Map(estudiantesRes.map(r => [r.id, r]));
                 const lanzamientosMap = new Map(lanzamientosRes.map(r => [r.id, r]));
-    
+
                 const enrichedRecords = records.map(p => {
                     const rawStudentId = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
                     const studentId = Array.isArray(rawStudentId) ? rawStudentId[0] : rawStudentId;
-                    
+
                     const rawLanzamientoId = p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
                     const lanzamientoId = Array.isArray(rawLanzamientoId) ? rawLanzamientoId[0] : rawLanzamientoId;
-                    
+
                     const student = estudiantesMap.get(studentId as string);
                     const studentName = student?.[FIELD_NOMBRE_ESTUDIANTES] || 'Desconocido';
                     const studentLegajo = student?.[FIELD_LEGAJO_ESTUDIANTES] || '---';
-                    
+
                     const lanzamientoName = lanzamientosMap.get(lanzamientoId as string)?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || cleanDisplayValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || 'N/A';
-    
+
                     return {
                         ...p,
                         __studentName: `${studentName} (${studentLegajo})`,
@@ -311,7 +311,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                 });
                 return { records: enrichedRecords, total };
             }
-            
+
             return { records, total };
         },
         placeholderData: (previousData: any) => previousData, // Keep showing old data while fetching new page
@@ -323,7 +323,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
 
     const updateMutation = useMutation({
         mutationFn: ({ recordId, fields }: { recordId: string, fields: any }) => {
-             if (isTestingMode) return new Promise(resolve => setTimeout(() => resolve(null), 500));
+            if (isTestingMode) return new Promise(resolve => setTimeout(() => resolve(null), 500));
             return db[activeTable].update(recordId, fields);
         },
         onSuccess: () => {
@@ -340,9 +340,9 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
             return db[activeTable].create(fields);
         },
         onSuccess: () => {
-             setToastInfo({ message: 'Registro creado.', type: 'success' });
-             setEditingRecord(null);
-             queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] }); 
+            setToastInfo({ message: 'Registro creado.', type: 'success' });
+            setEditingRecord(null);
+            queryClient.invalidateQueries({ queryKey: ['databaseEditor', activeTable] });
         },
         onError: (e) => setToastInfo({ message: `Error: ${e.message}`, type: 'error' }),
     });
@@ -369,11 +369,11 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
             // Append (Copia) to primary field
             const primaryFieldKey = EDITABLE_TABLES[activeTable].displayFields[0];
             if (newFields[primaryFieldKey]) {
-                 newFields[primaryFieldKey] = `${newFields[primaryFieldKey]} (Copia)`;
+                newFields[primaryFieldKey] = `${newFields[primaryFieldKey]} (Copia)`;
             }
             // Remove computed fields
-             delete newFields['__studentName'];
-             delete newFields['__lanzamientoName'];
+            delete newFields['__studentName'];
+            delete newFields['__lanzamientoName'];
 
             if (isTestingMode) return new Promise(resolve => setTimeout(() => resolve(null), 500));
             return db[activeTable].create(newFields);
@@ -394,7 +394,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         setContextMenu(null);
         setSelectedRowId(null);
     }, [activeTable]);
-    
+
     // Keyboard support for deletion
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -418,7 +418,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         setSortConfig({ key, direction });
         setCurrentPage(1); // Reset to first page on sort change
     };
-    
+
     const handleRowContextMenu = (e: React.MouseEvent, record: AppRecord<any>) => {
         e.preventDefault();
         setSelectedRowId(record.id);
@@ -446,7 +446,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
         if (fieldConfig.type === 'date') {
             return <span className="font-mono text-xs whitespace-nowrap">{formatDate(value)}</span>;
         }
-        
+
         if (key === FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES || key === FIELD_ESPECIALIDAD_PRACTICAS || key === FIELD_ORIENTACIONES_INSTITUCIONES) {
             if (!value) return <span className="text-slate-400">-</span>;
             // Handle CSV for orientations
@@ -471,7 +471,7 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
     return (
         <Card title="Editor de Base de Datos" icon="storage">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             {contextMenu && (
                 <ContextMenu
                     x={contextMenu.x}
@@ -484,25 +484,25 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
             )}
 
             <div className="mt-4">
-                <SubTabs 
-                    tabs={tableTabs} 
-                    activeTabId={activeTable} 
-                    onTabChange={(id) => { setActiveTable(id as TableKey); setSearchTerm(''); setSortConfig({ key: '', direction: 'asc' }); }} 
+                <SubTabs
+                    tabs={tableTabs}
+                    activeTabId={activeTable}
+                    onTabChange={(id) => { setActiveTable(id as TableKey); setSearchTerm(''); setSortConfig({ key: '', direction: 'asc' }); }}
                 />
             </div>
 
             <div className="mt-6 border-t border-slate-200/60 dark:border-slate-700/60 pt-6">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-wrap">
-                        
+
                         {/* Search */}
                         <div className="relative w-full md:w-72 group">
-                            <input 
-                                type="search" 
-                                placeholder="Buscar..." 
-                                value={searchTerm} 
-                                onChange={e => setSearchTerm(e.target.value)} 
-                                className="w-full pl-10 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
+                            <input
+                                type="search"
+                                placeholder="Buscar..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-10 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm"
                             />
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-lg pointer-events-none">search</span>
                             {searchTerm && (
@@ -512,10 +512,10 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                             )}
                         </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 w-full md:w-auto">
-                        <button 
-                            onClick={() => selectedRowId && handleDelete(selectedRowId)} 
+                        <button
+                            onClick={() => selectedRowId && handleDelete(selectedRowId)}
                             disabled={!selectedRowId}
                             className={`w-full md:w-auto bg-white border border-rose-300 text-rose-600 font-bold py-2.5 px-5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all shrink-0 ${!selectedRowId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-rose-50 shadow-sm'}`}
                         >
@@ -529,10 +529,10 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                         </button>
                     </div>
                 </div>
-                
+
                 {isLoading && records.length === 0 && <div className="py-10"><Loader /></div>}
                 {error && <EmptyState icon="error" title="Error de Carga" message={error.message} />}
-                
+
                 {(!isLoading || records.length > 0) && !error && (
                     <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
@@ -551,16 +551,15 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                                     {records.length > 0 ? records.map((record, idx) => {
                                         const isSelected = selectedRowId === record.id;
                                         return (
-                                            <tr 
-                                                key={record.id} 
+                                            <tr
+                                                key={record.id}
                                                 onClick={() => setSelectedRowId(isSelected ? null : record.id)}
                                                 onDoubleClick={() => setEditingRecord(record)}
                                                 onContextMenu={(e) => handleRowContextMenu(e, record)}
-                                                className={`transition-colors cursor-pointer ${
-                                                    isSelected 
-                                                        ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-inset ring-blue-300 dark:ring-blue-700' 
-                                                        : idx % 2 === 0 ? 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50' : 'bg-slate-50/30 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/70'
-                                                }`}
+                                                className={`transition-colors cursor-pointer ${isSelected
+                                                    ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-inset ring-blue-300 dark:ring-blue-700'
+                                                    : idx % 2 === 0 ? 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50' : 'bg-slate-50/30 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/70'
+                                                    }`}
                                             >
                                                 {activeTableConfig.displayFields.map(key => {
                                                     const fieldConfig = activeTableConfig.fieldConfig.find(f => f.key === key) || { key };
@@ -582,29 +581,29 @@ const DatabaseEditor: React.FC<DatabaseEditorProps> = ({ isTestingMode = false }
                                 </tbody>
                             </table>
                         </div>
-                        
-                        <PaginationControls 
-                            currentPage={currentPage} 
-                            totalPages={totalPages} 
-                            onPageChange={setCurrentPage} 
-                            itemsPerPage={itemsPerPage} 
-                            onItemsPerPageChange={setItemsPerPage} 
-                            totalItems={totalItems} 
+
+                        <PaginationControls
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            itemsPerPage={itemsPerPage}
+                            onItemsPerPageChange={setItemsPerPage}
+                            totalItems={totalItems}
                         />
                     </div>
                 )}
             </div>
 
             {editingRecord && (
-                <RecordEditModal 
-                    isOpen={!!editingRecord} 
-                    onClose={() => setEditingRecord(null)} 
-                    record={'isCreating' in editingRecord ? null : editingRecord} 
-                    tableConfig={activeTableConfig} 
+                <RecordEditModal
+                    isOpen={!!editingRecord}
+                    onClose={() => setEditingRecord(null)}
+                    record={'isCreating' in editingRecord ? null : editingRecord}
+                    tableConfig={activeTableConfig}
                     onSave={(recordId, fields) => {
                         if (recordId) { updateMutation.mutate({ recordId, fields }); } else { createMutation.mutate(fields); }
-                    }} 
-                    isSaving={updateMutation.isPending || createMutation.isPending} 
+                    }}
+                    isSaving={updateMutation.isPending || createMutation.isPending}
                 />
             )}
         </Card>

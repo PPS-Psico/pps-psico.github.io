@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import AdminSearch from './AdminSearch';
 import { AirtableRecord, EstudianteFields } from '../types';
 import { FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES } from '../constants';
-import Button from './Button';
+import Button from './ui/Button';
 
 interface DuplicateToStudentModalProps {
     isOpen: boolean;
@@ -13,8 +13,8 @@ interface DuplicateToStudentModalProps {
     isSaving: boolean;
 }
 
-const DuplicateToStudentModal: React.FC<DuplicateToStudentModalProps> = ({ 
-    isOpen, onClose, onConfirm, sourceRecordLabel, isSaving 
+const DuplicateToStudentModal: React.FC<DuplicateToStudentModalProps> = ({
+    isOpen, onClose, onConfirm, sourceRecordLabel, isSaving
 }) => {
     const [selectedStudent, setSelectedStudent] = useState<AirtableRecord<EstudianteFields> | null>(null);
 
@@ -22,7 +22,7 @@ const DuplicateToStudentModal: React.FC<DuplicateToStudentModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
-            <div 
+            <div
                 onClick={e => e.stopPropagation()}
                 className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-in"
             >
@@ -61,7 +61,7 @@ const DuplicateToStudentModal: React.FC<DuplicateToStudentModalProps> = ({
                     <button onClick={onClose} className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
                         Cancelar
                     </button>
-                    <Button 
+                    <Button
                         onClick={() => selectedStudent && onConfirm(selectedStudent.id)}
                         disabled={!selectedStudent || isSaving}
                         isLoading={isSaving}

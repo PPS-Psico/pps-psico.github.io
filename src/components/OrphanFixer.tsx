@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { 
+import {
     TABLE_NAME_CONVOCATORIAS,
     FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
     TABLE_NAME_ESTUDIANTES,
@@ -12,9 +12,9 @@ import {
     FIELD_FECHA_INICIO_LANZAMIENTOS,
     TABLE_NAME_LANZAMIENTOS_PPS
 } from '../constants';
-import Card from './Card';
+import Card from './ui/Card';
 import Loader from './Loader';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import { safeGetId, parseToUTCDate } from '../utils/formatters';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -30,7 +30,7 @@ const OrphanFixer: React.FC = () => {
         setIsScanning(true);
         try {
             const currentYear = new Date().getFullYear();
-            
+
             // 1. Obtener lanzamientos del año para saber qué inscripciones son de este año
             const { data: launches } = await supabase.from(TABLE_NAME_LANZAMIENTOS_PPS).select('id, fecha_inicio');
             const validLaunchIds = new Set(
@@ -44,7 +44,7 @@ const OrphanFixer: React.FC = () => {
             ]);
 
             const activeStudents = new Set<string>();
-            
+
             convRes.data?.forEach(c => {
                 const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
                 const lId = safeGetId(c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
@@ -101,7 +101,7 @@ const OrphanFixer: React.FC = () => {
     return (
         <Card title="Sincronizador de Estados (Métricas)" icon="sync_alt">
             {toast && <Toast message={toast.m} type={toast.t} onClose={() => setToast(null)} />}
-            
+
             <div className="p-4 space-y-4">
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                     Esta herramienta detecta alumnos que tienen trámites en {new Date().getFullYear()} pero figuran como 'Inactivos' en la base de datos.
@@ -116,12 +116,12 @@ const OrphanFixer: React.FC = () => {
                                 Se detectaron {mismatchedCount} estudiantes que deberían figurar como 'Activos'.
                             </p>
                         </div>
-                        <button 
+                        <button
                             onClick={fixStatuses}
                             disabled={isFixing}
                             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
                         >
-                            {isFixing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <span className="material-icons">auto_fix_high</span>}
+                            {isFixing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span className="material-icons">auto_fix_high</span>}
                             Sincronizar Estados a 'Activo'
                         </button>
                     </div>

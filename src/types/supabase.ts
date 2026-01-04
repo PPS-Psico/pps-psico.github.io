@@ -198,7 +198,8 @@ export interface Database {
           notas_gestion: string | null
           fecha_relanzamiento: string | null
           permite_certificado: boolean | null
-          airtable_id: string | null
+          plantilla_seguro_url: string | null
+
           req_certificado_trabajo: boolean | null
           req_cv: boolean | null
           codigo_tarjeta_campus: string | null
@@ -220,7 +221,7 @@ export interface Database {
           notas_gestion?: string | null
           fecha_relanzamiento?: string | null
           permite_certificado?: boolean | null
-          airtable_id?: string | null
+
           req_certificado_trabajo?: boolean | null
           req_cv?: boolean | null
           codigo_tarjeta_campus?: string | null
@@ -242,7 +243,7 @@ export interface Database {
           notas_gestion?: string | null
           fecha_relanzamiento?: string | null
           permite_certificado?: boolean | null
-          airtable_id?: string | null
+
           req_certificado_trabajo?: boolean | null
           req_cv?: boolean | null
           codigo_tarjeta_campus?: string | null
@@ -263,7 +264,7 @@ export interface Database {
           finales_adeuda: string | null
           otra_situacion_academica: string | null
           certificado_url: Json | null
-          airtable_id: string | null
+
           // Snapshot fields
           nombre_pps: string | null
           fecha_inicio: string | null
@@ -293,7 +294,7 @@ export interface Database {
           finales_adeuda?: string | null
           otra_situacion_academica?: string | null
           certificado_url?: Json | null
-          airtable_id?: string | null
+
           nombre_pps?: string | null
           fecha_inicio?: string | null
           fecha_finalizacion?: string | null
@@ -322,7 +323,7 @@ export interface Database {
           finales_adeuda?: string | null
           otra_situacion_academica?: string | null
           certificado_url?: Json | null
-          airtable_id?: string | null
+
           nombre_pps?: string | null
           fecha_inicio?: string | null
           fecha_finalizacion?: string | null
@@ -396,7 +397,7 @@ export interface Database {
           contacto_tutor: string | null
           tipo_practica: string | null
           descripcion_institucion: string | null
-          airtable_id: string | null
+
         }
         Insert: {
           id?: string
@@ -420,7 +421,7 @@ export interface Database {
           contacto_tutor?: string | null
           tipo_practica?: string | null
           descripcion_institucion?: string | null
-          airtable_id?: string | null
+
         }
         Update: {
           id?: string
@@ -444,7 +445,7 @@ export interface Database {
           contacto_tutor?: string | null
           tipo_practica?: string | null
           descripcion_institucion?: string | null
-          airtable_id?: string | null
+
         }
       }
       finalizacion_pps: {
@@ -457,8 +458,9 @@ export interface Database {
           informe_final_url: Json | null
           planilla_horas_url: Json | null
           planilla_asistencia_url: Json | null
+          certificado_url: Json | null
           sugerencias_mejoras: string | null
-          airtable_id: string | null
+
         }
         Insert: {
           id?: string
@@ -470,7 +472,7 @@ export interface Database {
           planilla_horas_url?: Json | null
           planilla_asistencia_url?: Json | null
           sugerencias_mejoras?: string | null
-          airtable_id?: string | null
+
         }
         Update: {
           id?: string
@@ -482,7 +484,7 @@ export interface Database {
           planilla_horas_url?: Json | null
           planilla_asistencia_url?: Json | null
           sugerencias_mejoras?: string | null
-          airtable_id?: string | null
+
         }
       }
       penalizaciones: {
@@ -495,7 +497,7 @@ export interface Database {
           notas: string | null
           puntaje_penalizacion: number | null
           convocatoria_afectada: string | null
-          airtable_id: string | null
+
         }
         Insert: {
           id?: string
@@ -506,7 +508,7 @@ export interface Database {
           notas?: string | null
           puntaje_penalizacion?: number | null
           convocatoria_afectada?: string | null
-          airtable_id?: string | null
+
         }
         Update: {
           id?: string
@@ -517,7 +519,7 @@ export interface Database {
           notas?: string | null
           puntaje_penalizacion?: number | null
           convocatoria_afectada?: string | null
-          airtable_id?: string | null
+
         }
       }
       app_config: {
@@ -543,44 +545,18 @@ export interface Database {
           created_at?: string
         }
       }
-      auth_users: {
-        Row: {
-          id: string
-          created_at: string
-          legajo: string | null
-          nombre: string | null
-          password_hash: string | null
-          salt: string | null
-          role: string | null
-          orientaciones: string[] | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          legajo?: string | null
-          nombre?: string | null
-          password_hash?: string | null
-          salt?: string | null
-          role?: string | null
-          orientaciones?: string[] | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          legajo?: string | null
-          nombre?: string | null
-          password_hash?: string | null
-          salt?: string | null
-          role?: string | null
-          orientaciones?: string[] | null
-        }
-      }
+
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_postulantes_seleccionados: {
+        Args: {
+          lanzamiento_uuid: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

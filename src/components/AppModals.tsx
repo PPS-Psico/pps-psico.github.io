@@ -1,12 +1,12 @@
 
 import React from 'react';
 import { useModal } from '../contexts/ModalContext';
-import Modal from './Modal';
+import Modal from './ui/Modal';
 import { EnrollmentForm } from './EnrollmentForm';
 import SeleccionadosModal from './SeleccionadosModal';
 import SolicitudPPSForm from './SolicitudPPSForm'; // Import the new form
-import { 
-    FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS, 
+import {
+    FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
     FIELD_PERMITE_CERTIFICADO_LANZAMIENTOS,
     FIELD_NOMBRE_PPS_LANZAMIENTOS,
     FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
@@ -14,7 +14,7 @@ import {
 } from '../constants';
 
 const AppModals: React.FC = () => {
-    const { 
+    const {
         modalInfo,
         closeModal,
         isEnrollmentFormOpen,
@@ -27,7 +27,7 @@ const AppModals: React.FC = () => {
         convocatoriaForModal,
         isSubmittingEnrollment,
         onSubmitEnrollment,
-        
+
         // New Solicitud Props
         isSolicitudPPSModalOpen,
         closeSolicitudPPSModal,
@@ -37,11 +37,11 @@ const AppModals: React.FC = () => {
     const horariosStr = selectedLanzamientoForEnrollment?.[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] || '';
     const horariosArray = horariosStr ? horariosStr.split(';').map(h => h.trim()).filter(Boolean) : [];
     const permiteCertificado = !!selectedLanzamientoForEnrollment?.[FIELD_PERMITE_CERTIFICADO_LANZAMIENTOS];
-    
+
     // New Config Flags
     const reqCertificadoTrabajo = selectedLanzamientoForEnrollment?.[FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS] !== false; // Default true for legacy
     const reqCv = !!selectedLanzamientoForEnrollment?.[FIELD_REQ_CV_LANZAMIENTOS];
-    
+
     // Fix: Use constant key instead of hardcoded string to ensure compatibility with snake_case DB response
     const convocatoriaName = selectedLanzamientoForEnrollment?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || 'Convocatoria';
 
@@ -53,18 +53,18 @@ const AppModals: React.FC = () => {
                 message={modalInfo?.message || ''}
                 onClose={closeModal}
             />
-            
+
             <EnrollmentForm
-              isOpen={isEnrollmentFormOpen}
-              onClose={closeEnrollmentForm}
-              onSubmit={onSubmitEnrollment || (() => Promise.resolve())} // Proporciona una función vacía como fallback
-              convocatoriaName={convocatoriaName}
-              horariosDisponibles={horariosArray}
-              isSubmitting={isSubmittingEnrollment}
-              permiteCertificado={permiteCertificado}
-              studentProfile={studentProfileForEnrollment} 
-              reqCertificadoTrabajo={reqCertificadoTrabajo}
-              reqCv={reqCv}
+                isOpen={isEnrollmentFormOpen}
+                onClose={closeEnrollmentForm}
+                onSubmit={onSubmitEnrollment || (() => Promise.resolve())} // Proporciona una función vacía como fallback
+                convocatoriaName={convocatoriaName}
+                horariosDisponibles={horariosArray}
+                isSubmitting={isSubmittingEnrollment}
+                permiteCertificado={permiteCertificado}
+                studentProfile={studentProfileForEnrollment}
+                reqCertificadoTrabajo={reqCertificadoTrabajo}
+                reqCv={reqCv}
             />
 
             <SeleccionadosModal

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import Input from './Input';
-import Button from './Button';
+import Input from './ui/Input';
+import Button from './ui/Button';
 import { normalizeStringForComparison } from '../utils/formatters';
 
 interface PreSolicitudCheckModalProps {
@@ -22,7 +22,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
   const filteredInstitutions = useMemo(() => {
     // Return all if no search term, otherwise filter
     if (!searchTerm) return existingInstitutions;
-    
+
     const lowerSearch = normalizeStringForComparison(searchTerm);
     return existingInstitutions.filter((inst) =>
       normalizeStringForComparison(inst).includes(lowerSearch)
@@ -57,7 +57,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 bg-white dark:bg-slate-900">
-          
+
           {/* Requisito 1: Psicólogo */}
           <div className="flex gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl items-start">
             <span className="material-icons text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5">psychology</span>
@@ -72,44 +72,44 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
           {/* Requisito 2: Espacios Nuevos */}
           <div className="space-y-3">
             <div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
-                    <span className="material-icons text-emerald-500 !text-lg">new_releases</span>
-                    Solo para Nuevos Espacios
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                    El objetivo de este trámite es la apertura de convenios en instituciones donde <strong>no tenemos oferta actual</strong>. 
-                    Por favor, verifica que la institución que propones <strong>NO</strong> esté en el siguiente listado.
-                </p>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
+                <span className="material-icons text-emerald-500 !text-lg">new_releases</span>
+                Solo para Nuevos Espacios
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                El objetivo de este trámite es la apertura de convenios en instituciones donde <strong>no tenemos oferta actual</strong>.
+                Por favor, verifica que la institución que propones <strong>NO</strong> esté en el siguiente listado.
+              </p>
             </div>
 
             <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col h-96">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
-                    <Input 
-                        placeholder="Buscar institución en el listado actual..." 
-                        icon="search"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-white dark:bg-slate-900"
-                    />
-                </div>
-                <div className="overflow-y-auto p-2 bg-slate-50/30 dark:bg-slate-900/30 custom-scrollbar flex-grow">
-                    {filteredInstitutions && filteredInstitutions.length > 0 ? (
-                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {filteredInstitutions.map((inst, idx) => (
-                                <li key={idx} className="text-xs px-3 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2 truncate" title={inst}>
-                                    <span className="material-icons !text-sm text-slate-400 shrink-0">apartment</span>
-                                    <span className="truncate font-medium">{inst}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-center text-sm text-slate-500 py-10 italic font-medium">
-                            {existingInstitutions.length === 0 
-                                ? "Cargando lista de instituciones..." 
-                                : "No se encontraron instituciones con ese nombre en el listado actual."}
-                        </p>
-                    )}
-                </div>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <Input
+                  placeholder="Buscar institución en el listado actual..."
+                  icon="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-white dark:bg-slate-900"
+                />
+              </div>
+              <div className="overflow-y-auto p-2 bg-slate-50/30 dark:bg-slate-900/30 custom-scrollbar flex-grow">
+                {filteredInstitutions && filteredInstitutions.length > 0 ? (
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {filteredInstitutions.map((inst, idx) => (
+                      <li key={idx} className="text-xs px-3 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2 truncate" title={inst}>
+                        <span className="material-icons !text-sm text-slate-400 shrink-0">apartment</span>
+                        <span className="truncate font-medium">{inst}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-center text-sm text-slate-500 py-10 italic font-medium">
+                    {existingInstitutions.length === 0
+                      ? "Cargando lista de instituciones..."
+                      : "No se encontraron instituciones con ese nombre en el listado actual."}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

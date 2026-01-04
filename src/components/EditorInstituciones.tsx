@@ -4,17 +4,17 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { schema } from '../lib/dbSchema';
-import { 
-    FIELD_NOMBRE_INSTITUCIONES, FIELD_TELEFONO_INSTITUCIONES, 
+import {
+    FIELD_NOMBRE_INSTITUCIONES, FIELD_TELEFONO_INSTITUCIONES,
     FIELD_DIRECCION_INSTITUCIONES, FIELD_CONVENIO_NUEVO_INSTITUCIONES,
     TABLE_NAME_INSTITUCIONES, FIELD_TUTOR_INSTITUCIONES, FIELD_ORIENTACIONES_INSTITUCIONES,
     FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS, FIELD_ESPECIALIDAD_PRACTICAS
 } from '../constants';
 import Loader from './Loader';
 import RecordEditModal from './RecordEditModal';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import ContextMenu from './ContextMenu';
-import Button from './Button';
+import Button from './ui/Button';
 import PaginationControls from './PaginationControls';
 import { normalizeStringForComparison, getEspecialidadClasses, cleanInstitutionName, toTitleCase } from '../utils/formatters';
 import ConfirmModal from './ConfirmModal';
@@ -63,7 +63,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    
+
     const [editingRecord, setEditingRecord] = useState<any>(null);
     const [menu, setMenu] = useState<{ x: number, y: number, record: any } | null>(null);
     const [toastInfo, setToastInfo] = useState<any>(null);
@@ -81,10 +81,10 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 searchFields: TABLE_CONFIG.searchFields,
                 sort: { field: FIELD_CONVENIO_NUEVO_INSTITUCIONES, direction: 'desc' }
             });
-            
+
             // FILTRO DE SEGURIDAD: Ocultar registros que empiezan con "UFLO -"
             if (result.records) {
-                result.records = result.records.filter((r: any) => 
+                result.records = result.records.filter((r: any) =>
                     !String(r[FIELD_NOMBRE_INSTITUCIONES] || '').toUpperCase().startsWith('UFLO -')
                 );
             }
@@ -102,7 +102,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             let val = vars.fields[FIELD_CONVENIO_NUEVO_INSTITUCIONES];
             if (val === 'No' || val === 'false') val = null;
             if (val === 'Legacy' || val === 'true') val = 'Legacy';
-            
+
             const cleanFields = {
                 ...vars.fields,
                 [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: val
@@ -135,18 +135,18 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             setIdToDelete(null);
         },
         onError: (err) => {
-             handleError(err as Error);
-             setIdToDelete(null);
+            handleError(err as Error);
+            setIdToDelete(null);
         }
     });
 
     const handleBatchFix = async () => {
         setIsFixingData(true);
         try {
-            const allInstitutions = await db.instituciones.getAll({ 
-                fields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_CONVENIO_NUEVO_INSTITUCIONES] 
+            const allInstitutions = await db.instituciones.getAll({
+                fields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_CONVENIO_NUEVO_INSTITUCIONES]
             });
-            
+
             const updates: any[] = [];
             const processList = (list: string[], year: string) => {
                 for (const instNameFromList of list) {
@@ -159,22 +159,22 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                         return dbNameNorm.includes(targetNorm) || targetNorm.includes(dbNameNorm);
                     });
                     for (const match of matches) {
-                         if (String(match[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) !== year) {
-                             updates.push({ id: match.id, fields: { [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: year } });
-                         }
+                        if (String(match[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) !== year) {
+                            updates.push({ id: match.id, fields: { [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: year } });
+                        }
                     }
                 }
             };
             processList(LISTA_CONVENIOS_2024, '2024');
             processList(LISTA_CONVENIOS_2025, '2025');
-            
+
             const uniqueUpdates = Array.from(new Map(updates.map(item => [item.id, item])).values());
             if (uniqueUpdates.length > 0) {
-                 await db.instituciones.updateMany(uniqueUpdates as any);
-                 queryClient.invalidateQueries({ queryKey: ['editor-instituciones'] });
-                 setToastInfo({ message: `Se actualizaron ${uniqueUpdates.length} convenios.`, type: 'success' });
+                await db.instituciones.updateMany(uniqueUpdates as any);
+                queryClient.invalidateQueries({ queryKey: ['editor-instituciones'] });
+                setToastInfo({ message: `Se actualizaron ${uniqueUpdates.length} convenios.`, type: 'success' });
             } else {
-                 setToastInfo({ message: `No hay nuevas instituciones para actualizar.`, type: 'info' });
+                setToastInfo({ message: `No hay nuevas instituciones para actualizar.`, type: 'info' });
             }
         } catch (e: any) { handleError(e); } finally { setIsFixingData(false); }
     };
@@ -188,14 +188,14 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             ]);
 
             const orientationsMap = new Map<string, Set<string>>();
-            
+
             allPracticas.forEach((p: any) => {
                 const name = cleanInstitutionName(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]);
                 const especialidad = p[FIELD_ESPECIALIDAD_PRACTICAS];
                 if (name && especialidad) {
                     const normName = normalizeStringForComparison(name.split('-')[0].trim());
-                    const normEsp = toTitleCase(especialidad.trim()); 
-                    
+                    const normEsp = toTitleCase(especialidad.trim());
+
                     if (!orientationsMap.has(normName)) orientationsMap.set(normName, new Set());
                     orientationsMap.get(normName)!.add(normEsp);
                 }
@@ -205,25 +205,25 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             for (const inst of allInstitutions) {
                 const name = inst[FIELD_NOMBRE_INSTITUCIONES];
                 if (!name) continue;
-                
+
                 if (String(name).toUpperCase().startsWith('UFLO -')) continue;
 
                 const normName = normalizeStringForComparison(name);
                 let foundOrientations = new Set<string>();
-                
+
                 if (orientationsMap.has(normName)) {
                     foundOrientations = orientationsMap.get(normName)!;
                 } else {
-                     for (const [key, val] of orientationsMap.entries()) {
-                         if (key.length > 3 && normName.includes(key)) val.forEach(o => foundOrientations.add(o));
-                     }
+                    for (const [key, val] of orientationsMap.entries()) {
+                        if (key.length > 3 && normName.includes(key)) val.forEach(o => foundOrientations.add(o));
+                    }
                 }
 
                 if (foundOrientations.size > 0) {
                     const uniqueArray = Array.from(foundOrientations).sort();
-                    const limitedArray = uniqueArray.slice(0, 4); 
+                    const limitedArray = uniqueArray.slice(0, 4);
                     const newString = limitedArray.join(', ');
-                    
+
                     const currentStr = String(inst[FIELD_ORIENTACIONES_INSTITUCIONES] || '').trim();
                     if (currentStr !== newString) {
                         updates.push({ id: inst.id, fields: { [FIELD_ORIENTACIONES_INSTITUCIONES]: newString } });
@@ -264,7 +264,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         let display = String(val);
         if (display === 'true') display = 'Legacy';
         return (
-             <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black border shadow-sm ${getYearBadgeStyle(display)}`}>
+            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black border shadow-sm ${getYearBadgeStyle(display)}`}>
                 <span className="material-icons !text-xs">verified</span>
                 {display}
             </span>
@@ -288,7 +288,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     return (
         <div className="space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             <ConfirmModal
                 isOpen={!!idToDelete}
                 title="¿Eliminar Institución?"
@@ -305,24 +305,24 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 <div className="relative flex-1 w-full md:w-auto space-y-2">
                     <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">Buscador</label>
                     <div className="relative">
-                        <input 
-                            type="search" 
-                            placeholder="Buscar Institución..." 
-                            value={searchTerm} 
-                            onChange={e => setSearchTerm(e.target.value)} 
+                        <input
+                            type="search"
+                            placeholder="Buscar Institución..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
                             className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-100"
                         />
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-lg">search</span>
                     </div>
                 </div>
-                
+
                 <div className="flex gap-3 w-full md:w-auto flex-wrap justify-end">
-                     <button onClick={handleSyncOrientations} disabled={isSyncingOrientations} className="h-11 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-xl font-bold text-xs border border-blue-100 dark:border-blue-800 flex items-center gap-2 hover:bg-blue-100 transition-colors">
-                        {isSyncingOrientations ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <span className="material-icons !text-base">sync</span>}
+                    <button onClick={handleSyncOrientations} disabled={isSyncingOrientations} className="h-11 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-xl font-bold text-xs border border-blue-100 dark:border-blue-800 flex items-center gap-2 hover:bg-blue-100 transition-colors">
+                        {isSyncingOrientations ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons !text-base">sync</span>}
                         Sincronizar Orientaciones
                     </button>
-                     <button onClick={handleBatchFix} disabled={isFixingData} className="h-11 px-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-xl font-bold text-xs border border-indigo-100 dark:border-indigo-800 flex items-center gap-2 hover:bg-indigo-100 transition-colors">
-                        {isFixingData ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <span className="material-icons !text-base">auto_fix_high</span>}
+                    <button onClick={handleBatchFix} disabled={isFixingData} className="h-11 px-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-xl font-bold text-xs border border-indigo-100 dark:border-indigo-800 flex items-center gap-2 hover:bg-indigo-100 transition-colors">
+                        {isFixingData ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons !text-base">auto_fix_high</span>}
                         Asignar Años
                     </button>
                     <Button onClick={() => setEditingRecord({ isCreating: true })} icon="add_business" className="h-11 bg-indigo-600 hover:bg-indigo-700">Nueva</Button>
@@ -344,9 +344,9 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {data?.records.map((i: any) => (
-                                    <tr 
-                                        key={i.id} 
-                                        onContextMenu={(e) => handleRowContextMenu(e, i)} 
+                                    <tr
+                                        key={i.id}
+                                        onContextMenu={(e) => handleRowContextMenu(e, i)}
                                         className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-context-menu group"
                                         onDoubleClick={() => setEditingRecord(i)}
                                     >
@@ -364,19 +364,19 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                             </tbody>
                         </table>
                     </div>
-                    <PaginationControls 
-                        currentPage={currentPage} 
-                        totalPages={Math.ceil((data?.total || 0) / itemsPerPage)} 
-                        onPageChange={setCurrentPage} 
-                        itemsPerPage={itemsPerPage} 
-                        onItemsPerPageChange={setItemsPerPage} 
+                    <PaginationControls
+                        currentPage={currentPage}
+                        totalPages={Math.ceil((data?.total || 0) / itemsPerPage)}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        onItemsPerPageChange={setItemsPerPage}
                         totalItems={data?.total || 0}
                     />
                 </div>
             )}
 
-            {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} options={[{ label: 'Editar', icon: 'edit', onClick: () => setEditingRecord(menu.record) }, { label: 'Eliminar', icon: 'delete', variant: 'danger', onClick: () => setIdToDelete(menu.record.id) }]}/>}
-            {editingRecord && <RecordEditModal isOpen={!!editingRecord} onClose={() => setEditingRecord(null)} record={editingRecord.isCreating ? null : editingRecord} tableConfig={TABLE_CONFIG} onSave={(id, fields) => id ? updateMutation.mutate({ id, fields }) : createMutation.mutate(fields)} isSaving={updateMutation.isPending || createMutation.isPending}/>}
+            {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} options={[{ label: 'Editar', icon: 'edit', onClick: () => setEditingRecord(menu.record) }, { label: 'Eliminar', icon: 'delete', variant: 'danger', onClick: () => setIdToDelete(menu.record.id) }]} />}
+            {editingRecord && <RecordEditModal isOpen={!!editingRecord} onClose={() => setEditingRecord(null)} record={editingRecord.isCreating ? null : editingRecord} tableConfig={TABLE_CONFIG} onSave={(id, fields) => id ? updateMutation.mutate({ id, fields }) : createMutation.mutate(fields)} isSaving={updateMutation.isPending || createMutation.isPending} />}
         </div>
     );
 };

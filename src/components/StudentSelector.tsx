@@ -29,8 +29,8 @@ import { normalizeStringForComparison, getEspecialidadClasses, formatDate } from
 import type { LanzamientoPPS, ConvocatoriaFields, EstudianteFields, PracticaFields, PenalizacionFields, AirtableRecord } from '../types';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
-import Card from './Card';
+import Toast from './ui/Toast';
+import Card from './ui/Card';
 import { sendSmartEmail } from '../utils/emailService';
 
 // --- Tipos y Constantes Auxiliares ---
@@ -42,18 +42,18 @@ interface EnrichedStudent {
     legajo: string;
     correo: string;
     status: string;
-    
+
     // Datos Académicos
     terminoCursar: boolean;
     cursandoElectivas: boolean;
     finalesAdeuda: string;
     notasEstudiante: string;
-    
+
     // Datos Calculados
     totalHoras: number;
     penalizacionAcumulada: number;
     puntajeTotal: number;
-    
+
     // Gestión
     horarioSeleccionado: string;
 }
@@ -73,7 +73,7 @@ const calculateScore = (
     let academicScore = 0;
     const termino = enrollment[FIELD_TERMINO_CURSAR_CONVOCATORIAS] === 'Sí';
     const electivas = enrollment[FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS] === 'Sí';
-    
+
     if (termino) {
         academicScore = SCORE_WEIGHTS.TERMINO_CURSAR;
     } else if (electivas) {
@@ -83,15 +83,15 @@ const calculateScore = (
     }
 
     const hoursScore = hours * SCORE_WEIGHTS.PER_HOUR;
-    
+
     // Penalties are usually stored as positive numbers representing demerits, so we subtract.
-    const penaltyScore = penalties; 
+    const penaltyScore = penalties;
 
     return Math.round(academicScore + hoursScore - penaltyScore);
 };
 
-const StudentRow: React.FC<{ 
-    student: EnrichedStudent; 
+const StudentRow: React.FC<{
+    student: EnrichedStudent;
     onToggleSelection: (student: EnrichedStudent) => void;
     onUpdateSchedule: (id: string, newSchedule: string) => void;
     isUpdating: boolean;
@@ -108,14 +108,14 @@ const StudentRow: React.FC<{
     };
 
     // Lógica para mostrar "Adeuda: X Finales" de forma limpia
-    const finalesText = student.finalesAdeuda 
-        ? `Adeuda: ${student.finalesAdeuda}` 
+    const finalesText = student.finalesAdeuda
+        ? `Adeuda: ${student.finalesAdeuda}`
         : 'Adeuda finales';
 
     return (
         <div className={`p-4 rounded-xl border transition-all duration-300 ${isSelected ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'}`}>
             <div className="flex flex-col lg:flex-row gap-4 lg:items-center">
-                
+
                 {/* Columna 1: Datos Personales y Puntaje */}
                 <div className="flex-1 min-w-[200px]">
                     <div className="flex items-center gap-3 mb-2">
@@ -143,9 +143,9 @@ const StudentRow: React.FC<{
                     <div className="flex items-center gap-2">
                         <span className="text-slate-500 text-xs uppercase font-semibold">Estado:</span>
                         <span className="font-medium text-slate-800 dark:text-slate-200">
-                            {student.terminoCursar ? 'Terminó de Cursar' : 
-                             student.cursandoElectivas ? 'Cursando Electivas' : 
-                             finalesText}
+                            {student.terminoCursar ? 'Terminó de Cursar' :
+                                student.cursandoElectivas ? 'Cursando Electivas' :
+                                    finalesText}
                         </span>
                     </div>
                     {student.notasEstudiante && (
@@ -158,7 +158,7 @@ const StudentRow: React.FC<{
                 {/* Columna 3: Horario */}
                 <div className="flex-1 min-w-[250px]">
                     <label className="text-xs font-semibold text-slate-500 block mb-1">Horario Preferido</label>
-                    <input 
+                    <input
                         type="text"
                         value={localSchedule}
                         onChange={(e) => { setLocalSchedule(e.target.value); setIsScheduleDirty(true); }}
@@ -173,11 +173,10 @@ const StudentRow: React.FC<{
                     <button
                         onClick={() => onToggleSelection(student)}
                         disabled={isUpdating}
-                        className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 ${
-                            isSelected 
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700'
-                        }`}
+                        className={`w-full py-2 px-4 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 ${isSelected
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700'
+                            }`}
                     >
                         {isUpdating ? (
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -205,11 +204,11 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
         queryKey: ['openLaunchesForSelector', isTestingMode],
         queryFn: async () => {
             if (isTestingMode) return [];
-            
+
             const records = await db.lanzamientos.getAll({
                 filters: { [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: ['Abierta', 'Abierto'] }
             });
-            
+
             return records.map(r => ({ ...r, id: r.id } as LanzamientoPPS));
         }
     });
@@ -219,21 +218,21 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
         queryKey: ['candidatesForLaunch', selectedLanzamiento?.id],
         queryFn: async () => {
             if (!selectedLanzamiento) return [];
-            
+
             const launchId = selectedLanzamiento.id;
-            
+
             // Fetch Enrollments
             const enrollments = await db.convocatorias.getAll({
                 filters: { [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: launchId }
             });
-            
+
             if (enrollments.length === 0) return [];
 
             const studentIds = enrollments.map(e => {
                 const raw = e[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
                 return Array.isArray(raw) ? raw[0] : raw;
             }).filter(Boolean) as string[];
-            
+
             // Parallel fetch for details
             const [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
                 db.estudiantes.getAll({
@@ -248,19 +247,19 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
             ]);
 
             const studentMap = new Map(studentsRes.map(s => [s.id, s]));
-            
+
             // Aggregate Data
             const enrichedList: EnrichedStudent[] = enrollments.map(enrollment => {
                 const sIdRaw = enrollment[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
                 const sId = Array.isArray(sIdRaw) ? sIdRaw[0] : sIdRaw;
                 const studentDetails = sId ? studentMap.get(String(sId)) : null;
-                
+
                 if (!studentDetails) return null;
 
                 // Calc total hours
                 const studentPractices = practicasRes.filter(p => {
-                     const links = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
-                     return Array.isArray(links) ? links.includes(String(sId)) : links === String(sId);
+                    const links = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
+                    return Array.isArray(links) ? links.includes(String(sId)) : links === String(sId);
                 });
                 const totalHoras = studentPractices.reduce((sum, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
 
@@ -297,27 +296,27 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
         enabled: !!selectedLanzamiento
     });
 
-    const selectedCandidates = useMemo(() => 
+    const selectedCandidates = useMemo(() =>
         candidates.filter(c => normalizeStringForComparison(c.status) === 'seleccionado'),
-    [candidates]);
+        [candidates]);
 
     const toggleMutation = useMutation({
         mutationFn: async (student: EnrichedStudent) => {
             if (!selectedLanzamiento) return;
             const isCurrentlySelected = normalizeStringForComparison(student.status) === 'seleccionado';
             const result = await toggleStudentSelection(
-                student.enrollmentId, 
-                !isCurrentlySelected, 
-                student.studentId, 
+                student.enrollmentId,
+                !isCurrentlySelected,
+                student.studentId,
                 selectedLanzamiento
             );
             return { ...result, student };
         },
         onSuccess: (data) => {
-             if (!data?.success) {
-                 setToastInfo({ message: `Error: ${data?.error}`, type: 'error' });
-                 refetchCandidates(); 
-             }
+            if (!data?.success) {
+                setToastInfo({ message: `Error: ${data?.error}`, type: 'error' });
+                refetchCandidates();
+            }
         },
         onError: (err) => setToastInfo({ message: `Error: ${err.message}`, type: 'error' }),
         onSettled: () => setUpdatingId(null)
@@ -328,8 +327,8 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
             return db.convocatorias.update(id, { [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: schedule });
         },
         onSuccess: () => {
-             setToastInfo({ message: 'Horario actualizado.', type: 'success' });
-             refetchCandidates();
+            setToastInfo({ message: 'Horario actualizado.', type: 'success' });
+            refetchCandidates();
         }
     });
 
@@ -345,7 +344,7 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
         onSuccess: () => {
             setToastInfo({ message: 'Convocatoria cerrada exitosamente.', type: 'success' });
             queryClient.invalidateQueries({ queryKey: ['openLaunchesForSelector'] });
-            setSelectedLanzamiento(null); 
+            setSelectedLanzamiento(null);
         },
         onError: (err: Error) => {
             setToastInfo({ message: `Error al cerrar: ${err.message}`, type: 'error' });
@@ -376,16 +375,16 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
                 {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
                 <h3 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-100">Seleccionar Convocatoria Abierta</h3>
                 <p className="text-slate-600 dark:text-slate-400 mb-6">Elige una convocatoria para gestionar sus postulantes.</p>
-                
+
                 {openLaunches.length === 0 ? (
-                     <EmptyState icon="event_busy" title="Sin Convocatorias Abiertas" message="No hay lanzamientos activos en este momento." />
+                    <EmptyState icon="event_busy" title="Sin Convocatorias Abiertas" message="No hay lanzamientos activos en este momento." />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {openLaunches.map(lanz => {
                             const visuals = getEspecialidadClasses(lanz[FIELD_ORIENTACION_LANZAMIENTOS]);
                             return (
-                                <button 
-                                    key={lanz.id} 
+                                <button
+                                    key={lanz.id}
                                     onClick={() => setSelectedLanzamiento(lanz)}
                                     className="text-left p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all group"
                                 >
@@ -415,7 +414,7 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
     return (
         <div className="animate-fade-in-up space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             {/* Header with Back Button, Info and Actions */}
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
@@ -430,24 +429,24 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
                             </p>
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={handleCloseLaunch}
                         disabled={closeLaunchMutation.isPending}
                         className="bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 font-bold py-2 px-4 rounded-lg text-sm transition-colors flex items-center gap-2"
                     >
-                         {closeLaunchMutation.isPending ? (
-                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                         ) : (
-                             <span className="material-icons !text-base">lock</span>
-                         )}
+                        {closeLaunchMutation.isPending ? (
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <span className="material-icons !text-base">lock</span>
+                        )}
                         Cerrar Convocatoria
                     </button>
                 </div>
                 <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-700 pt-3">
-                     <div className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2 group relative cursor-help">
+                    <div className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2 group relative cursor-help">
                         <span className="font-bold">Criterio:</span> Puntaje descendente
                         <span className="material-icons !text-sm opacity-70">help</span>
-                        
+
                         {/* Tooltip con la fórmula */}
                         <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                             <p className="font-bold mb-1 border-b border-slate-600 pb-1">Fórmula de Puntaje:</p>
@@ -460,7 +459,7 @@ const SeleccionadorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isT
                             </ul>
                             <div className="absolute -top-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
                         </div>
-                     </div>
+                    </div>
                 </div>
             </div>
 

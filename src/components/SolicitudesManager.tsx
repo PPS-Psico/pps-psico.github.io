@@ -16,7 +16,7 @@ import {
 } from '../constants';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import { formatDate, getStatusVisuals, normalizeStringForComparison } from '../utils/formatters';
 import SubTabs from './SubTabs';
 import FinalizacionReview from './FinalizacionReview';
@@ -105,22 +105,22 @@ const RequestListItem: React.FC<{
                         </div>
                     </div>
                     <div className="flex items-center gap-3 self-end sm:self-center pl-14 sm:pl-0">
-                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wide ${statusVisuals.labelClass}`}>{status}</span>
-                         <span className={`material-icons text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wide ${statusVisuals.labelClass}`}>{status}</span>
+                        <span className={`material-icons text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
                     </div>
                 </div>
             </div>
             {isExpanded && (
                 <div className="border-t border-slate-100 dark:border-slate-800 p-5 bg-slate-50/50 dark:bg-slate-900/50">
                     <div className="flex flex-col lg:flex-row gap-8">
-                        
+
                         {/* LEFT COLUMN: INSTITUTIONAL DETAILS */}
                         <div className="flex-1 space-y-4">
                             <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">
                                 <span className="material-icons text-slate-400 !text-lg">business</span>
                                 <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-300">Datos Institucionales</h5>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <GridItem label="Localidad" value={req.localidad} icon="location_on" />
                                 <GridItem label="Dirección" value={req.direccion_completa} icon="map" />
@@ -144,12 +144,12 @@ const RequestListItem: React.FC<{
 
                         {/* RIGHT COLUMN: PROPOSAL DETAILS & MANAGEMENT */}
                         <div className="flex-1 space-y-4">
-                            
+
                             <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">
                                 <span className="material-icons text-slate-400 !text-lg">description</span>
                                 <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-300">Detalles de la Práctica</h5>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 gap-3">
                                 <GridItem label="Modalidad" value={req.tipo_practica} icon="group_work" />
                                 <GridItem label="Descripción de Actividades" value={req.descripcion_institucion} icon="article" fullWidth />
@@ -160,13 +160,13 @@ const RequestListItem: React.FC<{
                                     <span className="material-icons text-slate-400 !text-lg">tune</span>
                                     <h5 className="font-bold text-xs uppercase text-slate-600 dark:text-slate-300">Gestión Interna</h5>
                                 </div>
-                                
+
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Estado</label>
-                                        <select 
-                                            value={status} 
-                                            onChange={(e) => setStatus(e.target.value)} 
+                                        <select
+                                            value={status}
+                                            onChange={(e) => setStatus(e.target.value)}
                                             className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                                         >
                                             <option value="Pendiente">Pendiente</option>
@@ -181,17 +181,17 @@ const RequestListItem: React.FC<{
                                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                                             Notas Internas (Visible al alumno solo si falla)
                                         </label>
-                                        <textarea 
-                                            value={notes} 
-                                            onChange={(e) => setNotes(e.target.value)} 
-                                            rows={3} 
+                                        <textarea
+                                            value={notes}
+                                            onChange={(e) => setNotes(e.target.value)}
+                                            rows={3}
                                             className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none placeholder:text-slate-400"
                                             placeholder="Bitácora de gestión..."
                                         />
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="flex justify-end gap-3 pt-4 border-t border-transparent">
                                 {req.email_institucion && (
                                     <button onClick={handleDraftEmail} className="mr-auto px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 transition-colors">
@@ -200,7 +200,7 @@ const RequestListItem: React.FC<{
                                 )}
                                 <button onClick={handleCancel} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
                                 <button onClick={handleSave} disabled={!hasChanges || isLocalSaving} className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm disabled:opacity-50 transition-all flex items-center gap-2">
-                                    {isLocalSaving ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"/> : <span className="material-icons !text-lg">save</span>}
+                                    {isLocalSaving ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <span className="material-icons !text-lg">save</span>}
                                     Guardar
                                 </button>
                             </div>
@@ -219,7 +219,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
     const [statusFilter, setStatusFilter] = useState('all');
     const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [idToDelete, setIdToDelete] = useState<string | null>(null);
-    
+
     const queryClient = useQueryClient();
 
     useEffect(() => {
@@ -238,10 +238,10 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
         queryKey: ['adminSolicitudes', isTestingMode],
         queryFn: async () => {
             if (isTestingMode) {
-                 const mockRequests = await mockDb.getAll('solicitudes_pps');
-                 return mockRequests.map((req: any) => ({ ...req, _studentName: req.nombre_alumno || 'Estudiante Mock', _studentLegajo: req.legajo || '12345', _studentEmail: req.email, _daysSinceUpdate: 0 }));
+                const mockRequests = await mockDb.getAll('solicitudes_pps');
+                return mockRequests.map((req: any) => ({ ...req, _studentName: req.nombre_alumno || 'Estudiante Mock', _studentLegajo: req.legajo || '12345', _studentEmail: req.email, _daysSinceUpdate: 0 }));
             }
-            
+
             // OPTIMIZED QUERY: Fetch everything (or paginate if too large)
             // Note: We're doing client-side filtering for search/status for responsiveness on moderate datasets
             // For huge datasets, move filtering to .eq() here.
@@ -255,14 +255,14 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
             return data.map((req: any) => {
                 const studentData = req.estudiantes;
                 const updatedAt = new Date(req.actualizacion || req.created_at || Date.now());
-                return { 
-                    ...req, 
-                    id: String(req.id), 
-                    createdTime: req.created_at, 
-                    _studentName: studentData?.nombre || req.nombre_alumno || 'Estudiante', 
-                    _studentLegajo: studentData?.legajo || req.legajo || '---', 
-                    _studentEmail: studentData?.correo || req.email, 
-                    _daysSinceUpdate: Math.floor((new Date().getTime() - updatedAt.getTime()) / (1000 * 3600 * 24)) 
+                return {
+                    ...req,
+                    id: String(req.id),
+                    createdTime: req.created_at,
+                    _studentName: studentData?.nombre || req.nombre_alumno || 'Estudiante',
+                    _studentLegajo: studentData?.legajo || req.legajo || '---',
+                    _studentEmail: studentData?.correo || req.email,
+                    _daysSinceUpdate: Math.floor((new Date().getTime() - updatedAt.getTime()) / (1000 * 3600 * 24))
                 };
             });
         }
@@ -270,20 +270,20 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
 
     const updateMutation = useMutation({
         mutationFn: async ({ recordId, fields }: { recordId: string, fields: any }) => {
-             if (isTestingMode) return await mockDb.update('solicitudes_pps', recordId, fields);
-             const originalRecord = requestsData?.find(r => r.id === recordId);
-             
-             // Email Trigger
-             if (originalRecord && fields[FIELD_ESTADO_PPS] && fields[FIELD_ESTADO_PPS] !== originalRecord[FIELD_ESTADO_PPS]) {
-                 await sendSmartEmail('solicitud', { 
-                    studentName: (originalRecord as any)._studentName, 
-                    studentEmail: (originalRecord as any)._studentEmail, 
-                    institution: originalRecord.nombre_institucion, 
-                    newState: fields[FIELD_ESTADO_PPS], 
-                    notes: fields.notas || originalRecord.notas 
+            if (isTestingMode) return await mockDb.update('solicitudes_pps', recordId, fields);
+            const originalRecord = requestsData?.find(r => r.id === recordId);
+
+            // Email Trigger
+            if (originalRecord && fields[FIELD_ESTADO_PPS] && fields[FIELD_ESTADO_PPS] !== originalRecord[FIELD_ESTADO_PPS]) {
+                await sendSmartEmail('solicitud', {
+                    studentName: (originalRecord as any)._studentName,
+                    studentEmail: (originalRecord as any)._studentEmail,
+                    institution: originalRecord.nombre_institucion,
+                    newState: fields[FIELD_ESTADO_PPS],
+                    notes: fields.notas || originalRecord.notas
                 });
-             }
-             return db.solicitudes.update(recordId, fields);
+            }
+            return db.solicitudes.update(recordId, fields);
         },
         onSuccess: () => { setToastInfo({ message: 'Solicitud actualizada.', type: 'success' }); queryClient.invalidateQueries({ queryKey: ['adminSolicitudes', isTestingMode] }); },
         onError: (err: any) => setToastInfo({ message: `Error: ${err.message}`, type: 'error' })
@@ -303,15 +303,15 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
         const searchLower = searchTerm.toLowerCase();
         const active: any[] = [], history: any[] = [];
         const historyStatuses = ['finalizada', 'cancelada', 'rechazada', 'archivado', 'realizada', 'no se pudo concretar'];
-        
+
         requestsData.forEach((req: any) => {
             if (searchTerm && !(String(req._studentName).toLowerCase().includes(searchLower) || String(req._studentLegajo).toLowerCase().includes(searchLower) || (req.nombre_institucion || '').toLowerCase().includes(searchLower))) return;
-            
+
             const status = normalizeStringForComparison(req.estado_seguimiento);
-            
+
             if (statusFilter === 'requieren_atencion' && (historyStatuses.includes(status) || req._daysSinceUpdate <= 4)) return;
             if (statusFilter !== 'all' && statusFilter !== 'requieren_atencion' && normalizeStringForComparison(statusFilter) !== status) return;
-            
+
             if (historyStatuses.includes(status)) history.push(req); else active.push(req);
         });
         return { activeList: active, historyList: history };
@@ -324,14 +324,14 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
         <div className="space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
             <ConfirmModal isOpen={!!idToDelete} title="¿Eliminar solicitud?" message="Esta acción es permanente y no se puede deshacer." confirmText="Eliminar" type="danger" onConfirm={() => idToDelete && deleteMutation.mutate(idToDelete)} onClose={() => setIdToDelete(null)} />
-            
+
             <SubTabs tabs={tabs} activeTabId={activeTabId} onTabChange={setActiveTabId} />
 
             {activeTabId === 'egreso' ? <FinalizacionReview isTestingMode={isTestingMode} /> : (
                 <div className="animate-fade-in-up space-y-6">
                     <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                         <div className="relative w-full md:w-96">
-                            <input type="text" placeholder="Buscar por alumno o institución..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-black/20 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white transition-all"/>
+                            <input type="text" placeholder="Buscar por alumno o institución..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-black/20 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white transition-all" />
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400">search</span>
                         </div>
                         <div className="flex items-center gap-2 w-full md:w-auto">
@@ -354,7 +354,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
                             </div>
                         )}
                         {historyList.length > 0 && (
-                             <CollapsibleSection title="Historial y Finalizadas" count={historyList.length} icon="history" iconBgColor="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-500 dark:text-slate-400" borderColor="border-slate-200 dark:border-slate-800" defaultOpen={false}>
+                            <CollapsibleSection title="Historial y Finalizadas" count={historyList.length} icon="history" iconBgColor="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-500 dark:text-slate-400" borderColor="border-slate-200 dark:border-slate-800" defaultOpen={false}>
                                 <div className="grid grid-cols-1 gap-4 mt-4">{historyList.map(req => <RequestListItem key={req.id} req={req} onDeleteRequest={setIdToDelete} onUpdate={async (id, fields) => { await updateMutation.mutateAsync({ recordId: id, fields }); }} isUpdatingParent={updateMutation.isPending} />)}</div>
                             </CollapsibleSection>
                         )}

@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { schema } from '../lib/dbSchema';
-import { 
-    FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES, FIELD_DNI_ESTUDIANTES, 
+import {
+    FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES, FIELD_DNI_ESTUDIANTES,
     FIELD_CORREO_ESTUDIANTES, FIELD_TELEFONO_ESTUDIANTES, FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
     FIELD_ESTADO_ESTUDIANTES, FIELD_FECHA_FINALIZACION_ESTUDIANTES, FIELD_NOTAS_INTERNAS_ESTUDIANTES,
     FIELD_NOMBRE_SEPARADO_ESTUDIANTES, FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
@@ -12,11 +12,11 @@ import {
 } from '../constants';
 import { ALL_ESTADOS_ESTUDIANTE } from '../schemas';
 import Loader from './Loader';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import RecordEditModal from './RecordEditModal';
 import PaginationControls from './PaginationControls';
 import ContextMenu from './ContextMenu';
-import Button from './Button';
+import Button from './ui/Button';
 import ConfirmModal from './ConfirmModal';
 import EmptyState from './EmptyState';
 
@@ -48,7 +48,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-    
+
     const [editingRecord, setEditingRecord] = useState<any>(null);
     const [menu, setMenu] = useState<{ x: number, y: number, record: any } | null>(null);
     const [toastInfo, setToastInfo] = useState<any>(null);
@@ -82,19 +82,19 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             const studentIds = records.map(r => r.id);
             if (studentIds.length === 0) return { records: [], total: 0 };
 
-            const practicas = await db.practicas.getAll({ 
-                filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds }, 
-                fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS] 
+            const practicas = await db.practicas.getAll({
+                filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds },
+                fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS]
             });
-            
+
             const enriched = records.map(s => {
                 const sPracticas = practicas.filter(p => {
                     const link = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
                     return Array.isArray(link) ? link.includes(s.id) : link === s.id;
                 });
-                return { 
-                    ...s, 
-                    __totalHours: sPracticas.reduce((sum, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0) 
+                return {
+                    ...s,
+                    __totalHours: sPracticas.reduce((sum, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0)
                 };
             });
 
@@ -157,7 +157,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     return (
         <div className="space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             <ConfirmModal
                 isOpen={!!idToDelete}
                 title="¿Eliminar Estudiante?"
@@ -173,21 +173,21 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
                 <div className="flex-1 w-full space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Buscador Inteligente</label>
                     <div className="relative group">
-                        <input 
-                            type="search" 
-                            placeholder="Nombre o legajo..." 
-                            value={searchTerm} 
+                        <input
+                            type="search"
+                            placeholder="Nombre o legajo..."
+                            value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-200"
                         />
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors">search</span>
                     </div>
                 </div>
-                
+
                 <div className="w-full md:w-56 space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar Estado</label>
-                    <select 
-                        value={filterEstado} 
+                    <select
+                        value={filterEstado}
                         onChange={e => setFilterEstado(e.target.value)}
                         className="w-full h-11 px-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-slate-700 dark:text-slate-200"
                     >
@@ -205,8 +205,8 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             <div className="flex justify-end h-10">
                 {selectedRowId && (
                     <div className="flex gap-2 animate-fade-in">
-                        <button 
-                            onClick={() => setIdToDelete(selectedRowId)} 
+                        <button
+                            onClick={() => setIdToDelete(selectedRowId)}
                             className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-rose-100 border border-rose-200 transition-all"
                         >
                             <span className="material-icons !text-base">delete</span> Eliminar Selección
@@ -232,8 +232,8 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
                                 {data?.records.map((s: any) => {
                                     const isSelected = selectedRowId === s.id;
                                     return (
-                                        <tr 
-                                            key={s.id} 
+                                        <tr
+                                            key={s.id}
                                             onClick={() => handleRowClick(s.id)}
                                             onDoubleClick={() => setEditingRecord(s)}
                                             onContextMenu={(e) => handleRowContextMenu(e, s)}
@@ -272,7 +272,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
                             <EmptyState icon="search_off" title="Sin coincidencias" message="No encontramos alumnos con esos criterios." />
                         </div>
                     )}
-                    <PaginationControls 
+                    <PaginationControls
                         currentPage={currentPage}
                         totalPages={Math.ceil((data?.total || 0) / itemsPerPage)}
                         onPageChange={setCurrentPage}
@@ -284,8 +284,8 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             )}
 
             {menu && (
-                <ContextMenu 
-                    x={menu.x} y={menu.y} 
+                <ContextMenu
+                    x={menu.x} y={menu.y}
                     onClose={() => setMenu(null)}
                     options={[
                         { label: 'Editar Perfil', icon: 'edit', onClick: () => setEditingRecord(menu.record) },
@@ -295,7 +295,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             )}
 
             {editingRecord && (
-                <RecordEditModal 
+                <RecordEditModal
                     isOpen={!!editingRecord}
                     onClose={() => setEditingRecord(null)}
                     record={editingRecord.isCreating ? null : editingRecord}

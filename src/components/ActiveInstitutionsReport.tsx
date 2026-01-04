@@ -3,18 +3,18 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import {
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_TUTOR_INSTITUCIONES,
+    FIELD_NOMBRE_INSTITUCIONES,
+    FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+    FIELD_NOMBRE_PPS_LANZAMIENTOS,
+    FIELD_FECHA_INICIO_LANZAMIENTOS,
+    FIELD_ORIENTACION_LANZAMIENTOS,
+    FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+    FIELD_TUTOR_INSTITUCIONES,
 } from '../constants';
 import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 
 const getGroupName = (name: string | undefined): string => {
     if (!name) return 'Sin Nombre';
@@ -53,14 +53,14 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
         if (!data) return [];
 
         const currentYear = new Date().getFullYear();
-        
+
         const launchesThisYearRaw = data.lanzamientos.filter(l => {
             const date = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
             return date && date.getUTCFullYear() === currentYear;
         });
 
         const excludedInstitutions = [
-            "relevamiento del ejercicio profesional", 
+            "relevamiento del ejercicio profesional",
             "jornada universitaria de salud mental"
         ];
 
@@ -78,7 +78,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
             if (!ppsName) return;
 
             const groupName = getGroupName(ppsName);
-            
+
             if (!reportMap.has(groupName)) {
                 reportMap.set(groupName, {
                     institucion: groupName,
@@ -93,7 +93,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
             const entry = reportMap.get(groupName)!;
             entry.lanzamientosCount++;
             entry.cuposTotal += launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0;
-            
+
             const orientacion = launch[FIELD_ORIENTACION_LANZAMIENTOS];
             if (orientacion && !entry.orientaciones.includes(orientacion)) {
                 entry.orientaciones = entry.orientaciones ? `${entry.orientaciones}, ${orientacion}` : orientacion;
@@ -118,14 +118,14 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                     }
                 }
             }
-            
+
             entry.tutor = foundTutor || 'No disponible';
             entry.anioConvenio = foundYear || '-';
         });
 
         return Array.from(reportMap.values()).sort((a, b) => a.institucion.localeCompare(b.institucion));
     }, [data]);
-    
+
     const handleDownload = async () => {
         if (reportData.length === 0) {
             setToastInfo({ message: 'No hay datos para exportar.', type: 'error' });
@@ -133,24 +133,24 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
         }
 
         setIsGenerating(true);
-        
+
         try {
             // Lazy load ExcelJS only when user clicks download
             const ExcelJS = (await import('exceljs')).default;
 
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet('Instituciones Activas');
-    
+
             // Main Title
             const titleRow = worksheet.addRow([`Reporte de Instituciones Activas ${new Date().getFullYear()}`]);
             worksheet.mergeCells('A1:F1');
             titleRow.font = { name: 'Calibri', size: 24, bold: true, color: { argb: 'FF1E40AF' } };
             titleRow.alignment = { vertical: 'middle', horizontal: 'center' };
             worksheet.getRow(1).height = 50;
-    
+
             // Spacer
             worksheet.addRow([]);
-    
+
             // Header Row
             const header = [
                 'Institución',
@@ -167,7 +167,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                 cell.fill = {
                     type: 'pattern',
                     pattern: 'solid',
-                    fgColor: { argb: 'FF2563EB' } 
+                    fgColor: { argb: 'FF2563EB' }
                 };
                 cell.border = {
                     top: { style: 'thin', color: { argb: 'FFBFDBFE' } },
@@ -177,7 +177,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                 };
                 cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
             });
-    
+
             // Data Rows
             reportData.forEach((row, index) => {
                 const dataRow = worksheet.addRow([
@@ -188,25 +188,25 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                     row.lanzamientosCount,
                     row.cuposTotal,
                 ]);
-                
+
                 dataRow.height = 35;
-    
+
                 dataRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                     cell.font = { name: 'Calibri', size: 13 };
-                    cell.border = { top: { style: 'thin', color: { argb: 'FFCBD5E1' } }, left: { style: 'thin', color: { argb: 'FFCBD5E1' } }, bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } }, right: { style: 'thin', color: { argb: 'FFCBD5E1' } }};
+                    cell.border = { top: { style: 'thin', color: { argb: 'FFCBD5E1' } }, left: { style: 'thin', color: { argb: 'FFCBD5E1' } }, bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } }, right: { style: 'thin', color: { argb: 'FFCBD5E1' } } };
                     cell.alignment = { vertical: 'middle', wrapText: true, indent: 1 };
-                    
+
                     if (index % 2 !== 0) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
                     }
-                    
+
                     // Colorear si el año es reciente (ej: actual o anterior)
                     if (colNumber === 2 && row.anioConvenio) {
-                       const year = Number(row.anioConvenio);
-                       if (!isNaN(year) && year >= 2024) {
-                           cell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FF15803D' } }; 
-                           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
-                       }
+                        const year = Number(row.anioConvenio);
+                        if (!isNaN(year) && year >= 2024) {
+                            cell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FF15803D' } };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+                        }
                     }
 
                     if ([2, 5, 6].includes(colNumber)) {
@@ -214,7 +214,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                     }
                 });
             });
-    
+
             worksheet.columns = [
                 { key: 'institucion', width: 60 },
                 { key: 'anioConvenio', width: 25 },
@@ -223,7 +223,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
                 { key: 'lanzamientos', width: 22 },
                 { key: 'cupos', width: 22 },
             ];
-            
+
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const link = document.createElement('a');
@@ -241,7 +241,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
             setIsGenerating(false);
         }
     };
-    
+
     if (isLoading) return <div className="flex justify-center p-8"><Loader /></div>;
     if (error) return <EmptyState icon="error" title="Error" message={error.message} />;
 
@@ -250,15 +250,15 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({ isTes
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
-                     <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Reporte de Instituciones Activas</h2>
-                     <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Instituciones con actividad durante {new Date().getFullYear()}.</p>
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Reporte de Instituciones Activas</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Instituciones con actividad durante {new Date().getFullYear()}.</p>
                 </div>
-                <button 
+                <button
                     onClick={handleDownload}
                     disabled={isGenerating}
                     className="inline-flex items-center gap-2 bg-emerald-600 text-white font-bold text-sm py-2 px-4 rounded-lg hover:bg-emerald-700 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:bg-slate-400 disabled:cursor-not-allowed"
                 >
-                    {isGenerating ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"/> : <span className="material-icons !text-base">download</span>}
+                    {isGenerating ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <span className="material-icons !text-base">download</span>}
                     Descargar Excel
                 </button>
             </div>

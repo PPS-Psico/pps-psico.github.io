@@ -11,11 +11,11 @@ import { normalizeStringForComparison, getEspecialidadClasses, formatDate } from
 import type { EnrichedStudent } from '../types';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import ConfirmModal from './ConfirmModal';
 
-const StudentRow: React.FC<{ 
-    student: EnrichedStudent; 
+const StudentRow: React.FC<{
+    student: EnrichedStudent;
     onToggleSelection: (student: EnrichedStudent) => void;
     onUpdateSchedule: (id: string, newSchedule: string) => void;
     isUpdating: boolean;
@@ -35,9 +35,9 @@ const StudentRow: React.FC<{
     return (
         <div className={`rounded-xl border transition-all duration-200 ${isSelected ? 'bg-emerald-50/60 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800 shadow-sm' : 'bg-white dark:bg-[#0B1120] border-slate-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800'}`}>
             <div className="p-3 sm:p-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-                
+
                 <div className="flex items-center gap-3 min-w-[200px]">
-                     <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-base font-black border shadow-sm ${student.puntajeTotal >= 100 ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`} title="Puntaje Total">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-base font-black border shadow-sm ${student.puntajeTotal >= 100 ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`} title="Puntaje Total">
                         {student.puntajeTotal}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -53,7 +53,7 @@ const StudentRow: React.FC<{
                 </div>
 
                 <div className="flex-1 w-full lg:w-auto flex flex-wrap items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 pt-3 lg:pt-0 lg:pl-4 min-h-[32px]">
-                    
+
                     {/* ESTADO ACADÉMICO (Excluyente) */}
                     {student.terminoCursar ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 whitespace-nowrap">
@@ -83,34 +83,34 @@ const StudentRow: React.FC<{
                             {student.finalesAdeuda ? `Adeuda: ${student.finalesAdeuda}` : 'Sin Finales'}
                         </span>
                     )}
-                    
+
                     {student.trabaja && (
-                         <a 
-                             href={student.certificadoTrabajo || '#'} 
-                             target="_blank" 
-                             rel="noopener noreferrer"
-                             className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap hover:bg-blue-100 transition-colors"
-                             title="Ver certificado de trabajo"
-                             onClick={(e) => !student.certificadoTrabajo && e.preventDefault()}
-                         >
+                        <a
+                            href={student.certificadoTrabajo || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap hover:bg-blue-100 transition-colors"
+                            title="Ver certificado de trabajo"
+                            onClick={(e) => !student.certificadoTrabajo && e.preventDefault()}
+                        >
                             <span className="material-icons !text-[10px] mr-1">work</span>
                             Trabaja
                         </a>
                     )}
-                    
+
                     {student.cvUrl && (
-                        <a 
-                             href={student.cvUrl} 
-                             target="_blank" 
-                             rel="noopener noreferrer"
-                             className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800 whitespace-nowrap hover:bg-cyan-100 transition-colors"
-                             title="Ver Curriculum Vitae"
-                         >
+                        <a
+                            href={student.cvUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800 whitespace-nowrap hover:bg-cyan-100 transition-colors"
+                            title="Ver Curriculum Vitae"
+                        >
                             <span className="material-icons !text-[10px] mr-1">description</span>
                             CV
                         </a>
                     )}
-                    
+
                     {student.penalizacionAcumulada > 0 && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800 whitespace-nowrap">
                             Penalización Activa
@@ -118,9 +118,9 @@ const StudentRow: React.FC<{
                     )}
 
                     {student.notasEstudiante && (
-                         <div 
+                        <div
                             className="inline-flex items-start gap-1.5 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-800/30 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300 w-full break-words mt-1"
-                         >
+                        >
                             <span className="font-bold text-[10px] uppercase text-yellow-700 dark:text-yellow-500 shrink-0 mt-[1px]">Nota:</span>
                             <span className="italic leading-tight whitespace-pre-wrap">
                                 "{student.notasEstudiante}"
@@ -131,28 +131,27 @@ const StudentRow: React.FC<{
 
                 <div className="flex items-center gap-2 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                     <div className="flex-grow lg:w-40">
-                        <input 
-                            type="text" 
-                            value={localSchedule} 
-                            onChange={(e) => {setLocalSchedule(e.target.value); setIsScheduleDirty(true);}} 
-                            onBlur={handleScheduleBlur} 
-                            className="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-black/30 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-400 dark:text-white" 
-                            placeholder="Asignar horario..." 
+                        <input
+                            type="text"
+                            value={localSchedule}
+                            onChange={(e) => { setLocalSchedule(e.target.value); setIsScheduleDirty(true); }}
+                            onBlur={handleScheduleBlur}
+                            className="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-black/30 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-400 dark:text-white"
+                            placeholder="Asignar horario..."
                         />
                     </div>
 
-                    <button 
-                        onClick={() => onToggleSelection(student)} 
-                        disabled={isUpdating} 
-                        className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm ${
-                            isSelected 
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-100 dark:ring-emerald-900' 
+                    <button
+                        onClick={() => onToggleSelection(student)}
+                        disabled={isUpdating}
+                        className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm ${isSelected
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-100 dark:ring-emerald-900'
                                 : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-400 hover:text-blue-600 hover:border-blue-300 dark:hover:border-blue-500 dark:hover:text-blue-400'
-                        }`}
+                            }`}
                         title={isSelected ? "Deseleccionar" : "Seleccionar Alumno"}
                     >
                         {isUpdating ? (
-                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                         ) : (
                             <span className="material-icons !text-xl">{isSelected ? 'check' : 'add'}</span>
                         )}
@@ -191,16 +190,16 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
                 {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
                 <h3 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-100">Seleccionar Convocatoria Abierta</h3>
                 <p className="text-slate-600 dark:text-slate-400 mb-6">Elige una convocatoria para gestionar sus postulantes.</p>
-                
+
                 {openLaunches.length === 0 ? (
-                     <EmptyState icon="event_busy" title="Sin Convocatorias Abiertas" message="No hay lanzamientos activos en este momento." />
+                    <EmptyState icon="event_busy" title="Sin Convocatorias Abiertas" message="No hay lanzamientos activos en este momento." />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {openLaunches.map(lanz => {
                             const visuals = getEspecialidadClasses(lanz[FIELD_ORIENTACION_LANZAMIENTOS]);
                             return (
-                                <button 
-                                    key={lanz.id} 
+                                <button
+                                    key={lanz.id}
                                     onClick={() => setSelectedLanzamiento(lanz)}
                                     className="text-left p-5 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#0F172A] shadow-sm hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-600 dark:hover:shadow-blue-900/10 transition-all group relative overflow-hidden"
                                 >
@@ -232,8 +231,8 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
     return (
         <div className="animate-fade-in-up space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
-            <ConfirmModal 
+
+            <ConfirmModal
                 isOpen={isConfirmOpen}
                 title="¿Cerrar Mesa de Inscripción?"
                 message={`Se enviarán correos automáticos de confirmación a los ${selectedCandidates.length} alumnos seleccionados. ¿Deseas proceder con el cierre definitivo de esta convocatoria?`}
@@ -260,36 +259,36 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
                         </div>
                     </div>
                     {viewMode === 'selection' ? (
-                         <div className="flex gap-2">
-                            <button 
-                                onClick={() => setViewMode('review')} 
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setViewMode('review')}
                                 className="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-md hover:bg-blue-700 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
                             >
                                 Revisar y Cerrar
                             </button>
-                         </div>
+                        </div>
                     ) : (
-                         <div className="flex gap-2">
+                        <div className="flex gap-2">
                             <button onClick={() => setViewMode('selection')} className="text-slate-600 dark:text-slate-300 font-bold px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                                 Volver
                             </button>
-                            <button 
-                                onClick={() => setIsConfirmOpen(true)} 
-                                disabled={isClosingTable} 
+                            <button
+                                onClick={() => setIsConfirmOpen(true)}
+                                disabled={isClosingTable}
                                 className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-colors disabled:opacity-70 dark:bg-emerald-700 dark:hover:bg-emerald-600"
                             >
                                 {isClosingTable ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <span className="material-icons !text-base">lock</span>}
                                 {isClosingTable ? 'Cerrando...' : 'Confirmar Cierre'}
                             </button>
-                         </div>
+                        </div>
                     )}
                 </div>
 
                 <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-                     <div className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2 group relative cursor-help">
+                    <div className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2 group relative cursor-help">
                         <span className="font-bold">Criterio:</span> Puntaje descendente
                         <span className="material-icons !text-sm opacity-70">help</span>
-                        
+
                         <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                             <p className="font-bold mb-1 border-b border-slate-600 pb-1">Fórmula de Puntaje:</p>
                             <ul className="space-y-1 list-disc pl-3">
@@ -302,20 +301,20 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({ isTestingMod
                             </ul>
                             <div className="absolute -top-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
                         </div>
-                     </div>
+                    </div>
                 </div>
             </div>
 
             {isLoadingCandidates ? <Loader /> : (
                 <div className="space-y-3">
                     {(viewMode === 'selection' ? candidates : selectedCandidates).map(student => (
-                        <StudentRow 
-                            key={student.enrollmentId} 
-                            student={student} 
-                            onToggleSelection={handleToggle} 
-                            onUpdateSchedule={handleUpdateSchedule} 
-                            isUpdating={updatingId === student.enrollmentId} 
-                            isReviewMode={viewMode === 'review'} 
+                        <StudentRow
+                            key={student.enrollmentId}
+                            student={student}
+                            onToggleSelection={handleToggle}
+                            onUpdateSchedule={handleUpdateSchedule}
+                            isUpdating={updatingId === student.enrollmentId}
+                            isReviewMode={viewMode === 'review'}
                         />
                     ))}
                     {viewMode === 'review' && selectedCandidates.length === 0 && (

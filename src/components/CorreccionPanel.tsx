@@ -4,7 +4,7 @@ import { fetchCorrectionPanelData } from '../services/dataService';
 import { db } from '../lib/db';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import SubTabs from './SubTabs';
 import InformeCorreccionCard from './InformeCorreccionCard';
 import CorreccionRapidaView from './CorreccionRapidaView';
@@ -12,7 +12,7 @@ import CorreccionRapidaView from './CorreccionRapidaView';
 import type { InformeCorreccionStudent, FlatCorreccionStudent, InformeCorreccionPPS } from '../types';
 
 interface CorreccionPanelProps {
-  isTestingMode?: boolean;
+    isTestingMode?: boolean;
 }
 
 const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false }) => {
@@ -66,9 +66,9 @@ const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false
         ppsGroups.forEach(group => {
             group.students.forEach(s => {
                 // Filter by search term locally for performance
-                const matchesSearch = !searchTerm || 
+                const matchesSearch = !searchTerm ||
                     s.studentName.toLowerCase().includes(searchTerm.toLowerCase());
-                
+
                 if (matchesSearch) {
                     list.push({
                         ...s,
@@ -87,22 +87,22 @@ const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false
     return (
         <div className="space-y-6 animate-fade-in">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <SubTabs 
+                <SubTabs
                     tabs={[
                         { id: 'grouped', label: 'Por Institución', icon: 'account_tree' },
                         { id: 'flat', label: 'Vista Rápida', icon: 'view_list' }
-                    ]} 
-                    activeTabId={activeTab} 
-                    onTabChange={setActiveTab} 
+                    ]}
+                    activeTabId={activeTab}
+                    onTabChange={setActiveTab}
                 />
-                
+
                 <div className="relative w-full md:w-72 group">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors !text-lg">search</span>
-                    <input 
-                        type="text" 
-                        placeholder="Buscar alumno..." 
+                    <input
+                        type="text"
+                        placeholder="Buscar alumno..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition-all shadow-sm"
@@ -113,9 +113,9 @@ const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false
             {activeTab === 'grouped' ? (
                 <div className="grid grid-cols-1 gap-6">
                     {ppsGroups.length > 0 ? ppsGroups.map(group => (
-                        <InformeCorreccionCard 
-                            key={group.lanzamientoId} 
-                            ppsGroup={group} 
+                        <InformeCorreccionCard
+                            key={group.lanzamientoId}
+                            ppsGroup={group}
                             onNotaChange={handleNotaChange}
                             updatingNotaId={updatingNotaId}
                             selectedStudents={selectedStudents}
@@ -146,8 +146,8 @@ const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false
                     )}
                 </div>
             ) : (
-                <CorreccionRapidaView 
-                    students={flatStudents} 
+                <CorreccionRapidaView
+                    students={flatStudents}
                     onNotaChange={handleNotaChange}
                     updatingNotaId={updatingNotaId}
                     searchTerm={searchTerm}

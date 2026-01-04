@@ -1,5 +1,5 @@
 import React from 'react';
-import Card from './Card';
+import Card from './ui/Card';
 import EmptyState from './EmptyState';
 
 interface ErrorStateProps {
@@ -10,9 +10,9 @@ interface ErrorStateProps {
 const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => (
   <div className="mt-8 animate-fade-in-up">
     <Card className="border-red-200 bg-red-50/50">
-      <EmptyState 
-        icon="error" 
-        title="Error al Cargar Datos" 
+      <EmptyState
+        icon="error"
+        title="Error al Cargar Datos"
         message={error}
         action={onRetry ? (
           <button

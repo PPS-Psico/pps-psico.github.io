@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { schema } from '../lib/dbSchema';
-import { 
+import {
     FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS, FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
     FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS, FIELD_HORARIO_FORMULA_CONVOCATORIAS,
     TABLE_NAME_CONVOCATORIAS, FIELD_NOMBRE_ESTUDIANTES,
@@ -13,11 +13,11 @@ import {
 import { formatDate } from '../utils/formatters';
 import Loader from './Loader';
 import RecordEditModal from './RecordEditModal';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import PaginationControls from './PaginationControls';
 import ContextMenu from './ContextMenu';
 import AdminSearch from './AdminSearch';
-import Button from './Button';
+import Button from './ui/Button';
 import ConfirmModal from './ConfirmModal';
 
 const TABLE_CONFIG = {
@@ -55,7 +55,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     const [filterStudentId, setFilterStudentId] = useState('');
     const [studentLabel, setStudentLabel] = useState('');
     const [filterLanzamientoId, setFilterLanzamientoId] = useState('');
-    
+
     // --- PAGINACIÓN ---
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -72,7 +72,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     // 1. Cargar Lanzamientos para el filtro
     const { data: launches = [] } = useQuery({
         queryKey: ['launches-filter-list'],
-        queryFn: () => db.lanzamientos.getAll({ 
+        queryFn: () => db.lanzamientos.getAll({
             fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS],
             sort: [{ field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: 'desc' }]
         })
@@ -95,7 +95,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             // Enriquecer datos (Nombre estudiante y Nombre PPS)
             const studentIds = records.map(r => r[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string).filter(Boolean);
             const launchIds = records.map(r => r[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] as string).filter(Boolean);
-            
+
             const [students, fetchedLaunches] = await Promise.all([
                 db.estudiantes.getAll({ filters: { id: studentIds }, fields: [FIELD_NOMBRE_ESTUDIANTES] }),
                 db.lanzamientos.getAll({ filters: { id: launchIds }, fields: [FIELD_NOMBRE_PPS_LANZAMIENTOS] })
@@ -107,7 +107,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             const enriched = records.map(c => {
                 const sId = c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string;
                 const lId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] as string;
-                
+
                 const s = sId ? studentMap.get(sId) : null;
                 const l = lId ? launchMap.get(lId) : null;
 
@@ -150,8 +150,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             setSelectedRowId(null);
         },
         onError: () => {
-             setToastInfo({ message: 'Error al eliminar', type: 'error' });
-             setIdToDelete(null);
+            setToastInfo({ message: 'Error al eliminar', type: 'error' });
+            setIdToDelete(null);
         }
     });
 
@@ -164,7 +164,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     return (
         <div className="space-y-6">
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             <ConfirmModal
                 isOpen={!!idToDelete}
                 title="¿Eliminar Inscripción?"
@@ -178,7 +178,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
 
             {/* --- FILTROS --- */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-6 items-end shadow-sm">
-                
+
                 {/* Filtro Estudiante */}
                 <div className="space-y-2">
                     <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">Estudiante</label>
@@ -196,8 +196,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 <div className="space-y-2">
                     <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">Lanzamiento / PPS</label>
                     <div className="relative">
-                        <select 
-                            value={filterLanzamientoId} 
+                        <select
+                            value={filterLanzamientoId}
                             onChange={e => setFilterLanzamientoId(e.target.value)}
                             className="w-full h-11 pl-4 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none transition-all text-slate-700 dark:text-slate-200"
                         >
@@ -213,13 +213,13 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 </div>
 
                 <div className="flex justify-end">
-                     <Button onClick={() => setEditingRecord({ isCreating: true })} icon="add_card" className="h-11 w-full md:w-auto bg-indigo-600 hover:bg-indigo-700">Nueva Inscripción</Button>
+                    <Button onClick={() => setEditingRecord({ isCreating: true })} icon="add_card" className="h-11 w-full md:w-auto bg-indigo-600 hover:bg-indigo-700">Nueva Inscripción</Button>
                 </div>
             </div>
 
             <div className="flex justify-end">
-                <button 
-                    onClick={() => selectedRowId && setIdToDelete(selectedRowId)} 
+                <button
+                    onClick={() => selectedRowId && setIdToDelete(selectedRowId)}
                     disabled={!selectedRowId}
                     className={`bg-white border border-rose-300 text-rose-600 font-bold py-2 px-5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all ${!selectedRowId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-rose-50 shadow-sm'}`}
                 >
@@ -247,13 +247,12 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                                     const isSelected = selectedRowId === c.id;
 
                                     return (
-                                        <tr 
-                                            key={c.id} 
-                                            className={`transition-colors cursor-pointer group ${
-                                                isSelected 
-                                                    ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-inset ring-blue-300 dark:ring-blue-700' 
-                                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                                            }`}
+                                        <tr
+                                            key={c.id}
+                                            className={`transition-colors cursor-pointer group ${isSelected
+                                                ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-inset ring-blue-300 dark:ring-blue-700'
+                                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                                }`}
                                             onClick={() => setSelectedRowId(isSelected ? null : c.id)}
                                             onDoubleClick={() => setEditingRecord(c)}
                                             onContextMenu={(e) => handleRowContextMenu(e, c)}
@@ -293,7 +292,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                             </tbody>
                         </table>
                     </div>
-                    <PaginationControls 
+                    <PaginationControls
                         currentPage={currentPage}
                         totalPages={Math.ceil((data?.total || 0) / itemsPerPage)}
                         onPageChange={setCurrentPage}
@@ -305,9 +304,9 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             )}
 
             {menu && (
-                <ContextMenu 
-                    x={menu.x} 
-                    y={menu.y} 
+                <ContextMenu
+                    x={menu.x}
+                    y={menu.y}
                     onClose={() => setMenu(null)}
                     options={[
                         { label: 'Editar Inscripción', icon: 'edit', onClick: () => setEditingRecord(menu.record) },
@@ -318,7 +317,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
 
             {/* --- MODAL DE EDICIÓN --- */}
             {editingRecord && (
-                <RecordEditModal 
+                <RecordEditModal
                     isOpen={!!editingRecord}
                     onClose={() => setEditingRecord(null)}
                     record={editingRecord.isCreating ? null : editingRecord}

@@ -13,13 +13,13 @@ import {
 } from '../constants';
 import Loader from './Loader';
 import EmptyState from './EmptyState';
-import Toast from './Toast';
+import Toast from './ui/Toast';
 import { getEspecialidadClasses, formatDate, getStatusVisuals } from '../utils/formatters';
 
 const mockLanzamientosStatus: LanzamientoPPS[] = [
-    { id: 'lanz_status_1', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Prueba Abierta', [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta', [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica' } as any,
-    { id: 'lanz_status_2', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Prueba Cerrada', [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado', [FIELD_ORIENTACION_LANZAMIENTOS]: 'Laboral' } as any,
-    { id: 'lanz_status_3', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Prueba Oculta', [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Oculto', [FIELD_ORIENTACION_LANZAMIENTOS]: 'Comunitaria' } as any,
+  { id: 'lanz_status_1', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Prueba Abierta', [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta', [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica' } as any,
+  { id: 'lanz_status_2', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Prueba Cerrada', [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado', [FIELD_ORIENTACION_LANZAMIENTOS]: 'Laboral' } as any,
+  { id: 'lanz_status_3', [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Prueba Oculta', [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Oculto', [FIELD_ORIENTACION_LANZAMIENTOS]: 'Comunitaria' } as any,
 ];
 
 type LoadingState = 'initial' | 'loading' | 'loaded' | 'error';
@@ -108,141 +108,141 @@ interface ConvocatoriaStatusManagerProps {
 }
 
 const ConvocatoriaStatusManager: React.FC<ConvocatoriaStatusManagerProps> = ({ isTestingMode = false }) => {
-    const [lanzamientos, setLanzamientos] = useState<LanzamientoPPS[]>([]);
-    const [loadingState, setLoadingState] = useState<LoadingState>('initial');
-    const [error, setError] = useState<string | null>(null);
-    const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [lanzamientos, setLanzamientos] = useState<LanzamientoPPS[]>([]);
+  const [loadingState, setLoadingState] = useState<LoadingState>('initial');
+  const [error, setError] = useState<string | null>(null);
+  const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-    const fetchData = useCallback(async () => {
-        setLoadingState('loading');
-        setError(null);
+  const fetchData = useCallback(async () => {
+    setLoadingState('loading');
+    setError(null);
 
-        if (isTestingMode) {
-            setLanzamientos(mockLanzamientosStatus);
-            setLoadingState('loaded');
-            return;
-        }
-        
-        const { records, error: fetchError } = await fetchAllData(
-            TABLE_NAME_LANZAMIENTOS_PPS,
-            [
-                FIELD_NOMBRE_PPS_LANZAMIENTOS,
-                FIELD_FECHA_INICIO_LANZAMIENTOS,
-                FIELD_FECHA_FIN_LANZAMIENTOS,
-                FIELD_ORIENTACION_LANZAMIENTOS,
-                FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
-            ],
-            undefined,
-            [{ field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: 'desc' }]
-        );
+    if (isTestingMode) {
+      setLanzamientos(mockLanzamientosStatus);
+      setLoadingState('loaded');
+      return;
+    }
 
-        if (fetchError) {
-            setError('No se pudieron cargar las convocatorias. ' + (typeof fetchError.error === 'string' ? fetchError.error : fetchError.error.message));
-            setLoadingState('error');
-        } else {
-            const mappedRecords = records.map(r => ({ ...r, id: r.id } as LanzamientoPPS));
-            setLanzamientos(mappedRecords);
-            setLoadingState('loaded');
-        }
-    }, [isTestingMode]);
+    const { records, error: fetchError } = await fetchAllData(
+      TABLE_NAME_LANZAMIENTOS_PPS,
+      [
+        FIELD_NOMBRE_PPS_LANZAMIENTOS,
+        FIELD_FECHA_INICIO_LANZAMIENTOS,
+        FIELD_FECHA_FIN_LANZAMIENTOS,
+        FIELD_ORIENTACION_LANZAMIENTOS,
+        FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+      ],
+      undefined,
+      [{ field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: 'desc' }]
+    );
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    if (fetchError) {
+      setError('No se pudieron cargar las convocatorias. ' + (typeof fetchError.error === 'string' ? fetchError.error : fetchError.error.message));
+      setLoadingState('error');
+    } else {
+      const mappedRecords = records.map(r => ({ ...r, id: r.id } as LanzamientoPPS));
+      setLanzamientos(mappedRecords);
+      setLoadingState('loaded');
+    }
+  }, [isTestingMode]);
 
-    const handleStatusChange = useCallback(async (id: string, newStatus: string): Promise<boolean> => {
-        setUpdatingId(id);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-        if (isTestingMode) {
-            console.log("TEST MODE: Simulating status change for", id, newStatus);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            setLanzamientos(prev => prev.map(pps => pps.id === id ? { ...pps, [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus } : pps));
-            setToastInfo({ message: 'Estado (simulado) actualizado.', type: 'success' });
-            setUpdatingId(null);
-            return true;
-        }
+  const handleStatusChange = useCallback(async (id: string, newStatus: string): Promise<boolean> => {
+    setUpdatingId(id);
 
-        // FIX: Update estado_gestion to un-archive if needed
-        const updates: any = {
-            [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus
-        };
-        
-        // Si abrimos la convocatoria, nos aseguramos de que no esté archivada internamente
-        if (newStatus === 'Abierta') {
-             updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = 'Relanzamiento Confirmado';
-        }
+    if (isTestingMode) {
+      console.log("TEST MODE: Simulating status change for", id, newStatus);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setLanzamientos(prev => prev.map(pps => pps.id === id ? { ...pps, [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus } : pps));
+      setToastInfo({ message: 'Estado (simulado) actualizado.', type: 'success' });
+      setUpdatingId(null);
+      return true;
+    }
 
-        const { error: updateError } = await updateRecord(TABLE_NAME_LANZAMIENTOS_PPS, id, updates);
-        
-        let success = false;
-        if (updateError) {
-            setToastInfo({ message: 'Error al actualizar el estado.', type: 'error' });
-        } else {
-            setToastInfo({ message: 'Estado actualizado exitosamente.', type: 'success' });
-            setLanzamientos(prev => prev.map(pps => pps.id === id ? { ...pps, [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus } : pps));
-            success = true;
-        }
-
-        setUpdatingId(null);
-        return success;
-    }, [isTestingMode]);
-
-    const groupedLanzamientos = useMemo(() => {
-        const abiertas: LanzamientoPPS[] = [];
-        const cerradas: LanzamientoPPS[] = [];
-        const ocultas: LanzamientoPPS[] = [];
-
-        lanzamientos.forEach(pps => {
-            const status = pps[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS];
-            // No sanitization needed, use exact value
-            if (status === 'Abierta') abiertas.push(pps);
-            else if (status === 'Oculto') ocultas.push(pps);
-            else cerradas.push(pps);
-        });
-        return { abiertas, cerradas, ocultas };
-    }, [lanzamientos]);
-
-    const renderContent = () => {
-        if (loadingState === 'loading' || loadingState === 'initial') return <Loader />;
-        if (loadingState === 'error') return <EmptyState icon="error" title="Error" message={error!} />;
-        if (lanzamientos.length === 0) return <EmptyState icon="folder_off" title="Sin Convocatorias" message="No se encontraron convocatorias para gestionar." />;
-
-        return (
-            <div className="space-y-8">
-                <CollapsibleSection title="Abiertas" count={groupedLanzamientos.abiertas.length} icon="door_open" defaultOpen>
-                    {groupedLanzamientos.abiertas.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {groupedLanzamientos.abiertas.map(pps => <StatusCard key={pps.id} pps={pps} onStatusChange={handleStatusChange} isUpdating={updatingId === pps.id} />)}
-                        </div>
-                    ) : <p className="text-slate-500 dark:text-slate-400 text-sm">No hay convocatorias abiertas.</p>}
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Cerradas" count={groupedLanzamientos.cerradas.length} icon="lock">
-                    {groupedLanzamientos.cerradas.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {groupedLanzamientos.cerradas.map(pps => <StatusCard key={pps.id} pps={pps} onStatusChange={handleStatusChange} isUpdating={updatingId === pps.id} />)}
-                        </div>
-                    ) : <p className="text-slate-500 dark:text-slate-400 text-sm">No hay convocatorias cerradas.</p>}
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Ocultas" count={groupedLanzamientos.ocultas.length} icon="visibility_off">
-                    {groupedLanzamientos.ocultas.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {groupedLanzamientos.ocultas.map(pps => <StatusCard key={pps.id} pps={pps} onStatusChange={handleStatusChange} isUpdating={updatingId === pps.id} />)}
-                        </div>
-                    ) : <p className="text-slate-500 dark:text-slate-400 text-sm">No hay convocatorias ocultas.</p>}
-                </CollapsibleSection>
-            </div>
-        );
+    // FIX: Update estado_gestion to un-archive if needed
+    const updates: any = {
+      [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus
     };
 
+    // Si abrimos la convocatoria, nos aseguramos de que no esté archivada internamente
+    if (newStatus === 'Abierta') {
+      updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = 'Relanzamiento Confirmado';
+    }
+
+    const { error: updateError } = await updateRecord(TABLE_NAME_LANZAMIENTOS_PPS, id, updates);
+
+    let success = false;
+    if (updateError) {
+      setToastInfo({ message: 'Error al actualizar el estado.', type: 'error' });
+    } else {
+      setToastInfo({ message: 'Estado actualizado exitosamente.', type: 'success' });
+      setLanzamientos(prev => prev.map(pps => pps.id === id ? { ...pps, [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: newStatus } : pps));
+      success = true;
+    }
+
+    setUpdatingId(null);
+    return success;
+  }, [isTestingMode]);
+
+  const groupedLanzamientos = useMemo(() => {
+    const abiertas: LanzamientoPPS[] = [];
+    const cerradas: LanzamientoPPS[] = [];
+    const ocultas: LanzamientoPPS[] = [];
+
+    lanzamientos.forEach(pps => {
+      const status = pps[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS];
+      // No sanitization needed, use exact value
+      if (status === 'Abierta') abiertas.push(pps);
+      else if (status === 'Oculto') ocultas.push(pps);
+      else cerradas.push(pps);
+    });
+    return { abiertas, cerradas, ocultas };
+  }, [lanzamientos]);
+
+  const renderContent = () => {
+    if (loadingState === 'loading' || loadingState === 'initial') return <Loader />;
+    if (loadingState === 'error') return <EmptyState icon="error" title="Error" message={error!} />;
+    if (lanzamientos.length === 0) return <EmptyState icon="folder_off" title="Sin Convocatorias" message="No se encontraron convocatorias para gestionar." />;
+
     return (
-        <div className="animate-fade-in-up space-y-6">
-            {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            {renderContent()}
-        </div>
+      <div className="space-y-8">
+        <CollapsibleSection title="Abiertas" count={groupedLanzamientos.abiertas.length} icon="door_open" defaultOpen>
+          {groupedLanzamientos.abiertas.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {groupedLanzamientos.abiertas.map(pps => <StatusCard key={pps.id} pps={pps} onStatusChange={handleStatusChange} isUpdating={updatingId === pps.id} />)}
+            </div>
+          ) : <p className="text-slate-500 dark:text-slate-400 text-sm">No hay convocatorias abiertas.</p>}
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Cerradas" count={groupedLanzamientos.cerradas.length} icon="lock">
+          {groupedLanzamientos.cerradas.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {groupedLanzamientos.cerradas.map(pps => <StatusCard key={pps.id} pps={pps} onStatusChange={handleStatusChange} isUpdating={updatingId === pps.id} />)}
+            </div>
+          ) : <p className="text-slate-500 dark:text-slate-400 text-sm">No hay convocatorias cerradas.</p>}
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Ocultas" count={groupedLanzamientos.ocultas.length} icon="visibility_off">
+          {groupedLanzamientos.ocultas.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {groupedLanzamientos.ocultas.map(pps => <StatusCard key={pps.id} pps={pps} onStatusChange={handleStatusChange} isUpdating={updatingId === pps.id} />)}
+            </div>
+          ) : <p className="text-slate-500 dark:text-slate-400 text-sm">No hay convocatorias ocultas.</p>}
+        </CollapsibleSection>
+      </div>
     );
+  };
+
+  return (
+    <div className="animate-fade-in-up space-y-6">
+      {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
+      {renderContent()}
+    </div>
+  );
 };
 
 export default ConvocatoriaStatusManager;

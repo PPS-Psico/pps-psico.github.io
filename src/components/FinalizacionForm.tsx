@@ -2,11 +2,11 @@
 import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadFinalizationFile, submitFinalizationRequest } from '../services/dataService';
-import Card from './Card';
-import Button from './Button';
-import Toast from './Toast';
+import Card from './ui/Card';
+import Button from './ui/Button';
 import EmptyState from './EmptyState';
 import { supabase } from '../lib/supabaseClient'; // Solo para downloadTemplate que es lectura publica
+import { useNotifications } from '../contexts/NotificationContext';
 
 interface FinalizacionFormProps {
     studentAirtableId: string | null;
@@ -22,18 +22,18 @@ interface FileCategoryState {
 }
 
 const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, onClose }) => {
-    const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const { showToast } = useNotifications();
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
     const [dragActive, setDragActive] = useState<string | null>(null);
     const queryClient = useQueryClient();
-    
+
     const [fileCategories, setFileCategories] = useState<Record<FileUploadType, FileCategoryState>>({
         horas: { files: [], uploading: false, uploadedData: [] },
         asistencia: { files: [], uploading: false, uploadedData: [] },
         informe: { files: [], uploading: false, uploadedData: [] },
     });
-    
+
     const [sugerencias, setSugerencias] = useState('');
 
     const fileInputRefs = {
@@ -48,8 +48,8 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
         const validFiles: File[] = [];
         for (let i = 0; i < newFiles.length; i++) {
             const file = newFiles[i];
-            if (file.size > 10 * 1024 * 1024) { 
-                setToastInfo({ message: `El archivo ${file.name} es demasiado grande (máx 10MB).`, type: 'error' });
+            if (file.size > 10 * 1024 * 1024) {
+                showToast(`El archivo ${file.name} es demasiado grande (máx 10MB).`, 'error');
                 continue;
             }
             validFiles.push(file);
@@ -101,9 +101,9 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
     const submitMutation = useMutation({
         mutationFn: async () => {
             if (!studentAirtableId) throw new Error("ID de estudiante no disponible.");
-            
+
             const categories = Object.keys(fileCategories) as FileUploadType[];
-            
+
             if (fileCategories.horas.files.length === 0) throw new Error("Falta la Planilla de Seguimiento.");
             if (fileCategories.asistencia.files.length === 0) throw new Error("Falta la Planilla de Asistencia.");
             if (fileCategories.informe.files.length === 0) throw new Error("Falta el Informe Final.");
@@ -116,7 +116,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                 if (categoryState.files.length === 0) continue;
 
                 setFileCategories(prev => ({ ...prev, [type]: { ...prev[type], uploading: true } }));
-                
+
                 const typeUploads = [];
                 try {
                     for (const file of categoryState.files) {
@@ -124,17 +124,17 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                         typeUploads.push({ url, filename: file.name });
                     }
                     uploadedResults[type] = typeUploads;
-                    
-                    setFileCategories(prev => ({ 
-                        ...prev, 
-                        [type]: { ...prev[type], uploading: false, uploadedData: typeUploads } 
+
+                    setFileCategories(prev => ({
+                        ...prev,
+                        [type]: { ...prev[type], uploading: false, uploadedData: typeUploads }
                     }));
                 } catch (e) {
                     setFileCategories(prev => ({ ...prev, [type]: { ...prev[type], uploading: false } }));
                     throw e;
                 }
             }
-            
+
             // 2. Create DB Record & Archive via Service
             await submitFinalizationRequest(studentAirtableId, {
                 informes: uploadedResults.informe || [],
@@ -149,12 +149,12 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
             setIsSubmitted(true);
             queryClient.invalidateQueries({ queryKey: ['finalizacionRequest'] });
             queryClient.invalidateQueries({ queryKey: ['solicitudes'] });
-            setToastInfo({ message: 'Solicitud enviada con éxito. Se procesará tu acreditación.', type: 'success' });
+            showToast('Solicitud enviada con éxito. Se procesará tu acreditación.', 'success');
         },
-        onError: (error: any) => {
+        onError: (error) => {
             console.error("Submission Error:", error);
             const errorMsg = error.message || "Error desconocido";
-            setToastInfo({ message: `Error al enviar: ${errorMsg}. Revisa tu conexión e intenta nuevamente.`, type: 'error' });
+            showToast(`Error al enviar: ${errorMsg}. Revisa tu conexión e intenta nuevamente.`, 'error');
         }
     });
 
@@ -176,11 +176,11 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            
-            setToastInfo({ message: 'Plantilla descargada.', type: 'success' });
+
+            showToast('Plantilla descargada.', 'success');
         } catch (error: any) {
             console.error("Error descargando plantilla", error);
-            setToastInfo({ message: 'No se pudo descargar la plantilla.', type: 'error' });
+            showToast('No se pudo descargar la plantilla.', 'error');
         } finally {
             setIsDownloadingTemplate(false);
         }
@@ -188,9 +188,9 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
 
     if (isSubmitted) {
         return (
-            <Card 
-                title="Solicitud Recibida" 
-                icon="check_circle" 
+            <Card
+                title="Solicitud Recibida"
+                icon="check_circle"
                 className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10 shadow-none border"
             >
                 <div className="dark:text-slate-200">
@@ -208,29 +208,29 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
     }
 
     const uploadSections = [
-        { 
-            key: 'horas' as FileUploadType, 
-            label: 'Planilla de Seguimiento', 
-            desc: 'Excel de seguimiento de horas completo.', 
+        {
+            key: 'horas' as FileUploadType,
+            label: 'Planilla de Seguimiento',
+            desc: 'Excel de seguimiento de horas completo.',
             icon: 'schedule',
             iconColor: 'text-blue-500',
             bgColor: 'bg-blue-100 dark:bg-blue-900/30',
             hasTemplate: true,
-            allowsMultiple: false 
+            allowsMultiple: false
         },
-        { 
-            key: 'asistencia' as FileUploadType, 
-            label: 'Planillas de Asistencia', 
-            desc: 'Registros diarios de todas tus PPS presenciales. Puedes subir fotos o PDFs.', 
+        {
+            key: 'asistencia' as FileUploadType,
+            label: 'Planillas de Asistencia',
+            desc: 'Registros diarios de todas tus PPS presenciales. Puedes subir fotos o PDFs.',
             icon: 'event_available',
             iconColor: 'text-purple-500',
             bgColor: 'bg-purple-100 dark:bg-purple-900/30',
             allowsMultiple: true
         },
-        { 
-            key: 'informe' as FileUploadType, 
-            label: 'Informes Finales', 
-            desc: 'Informes de todas las prácticas. Puedes subir múltiples archivos.', 
+        {
+            key: 'informe' as FileUploadType,
+            label: 'Informes Finales',
+            desc: 'Informes de todas las prácticas. Puedes subir múltiples archivos.',
             icon: 'description',
             iconColor: 'text-emerald-500',
             bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
@@ -240,8 +240,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
 
     return (
         <div className="animate-fade-in-up h-full flex flex-col bg-white dark:bg-slate-900">
-            {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
-            
+
             {/* Header Estilizado */}
             <div className="p-5 border-b border-indigo-100 dark:border-slate-800 bg-indigo-50/50 dark:bg-slate-900/50 flex justify-between items-start">
                 <div className="flex items-center gap-4">
@@ -253,8 +252,8 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Adjunta la documentación para cerrar el ciclo.</p>
                     </div>
                 </div>
-                <button 
-                    onClick={onClose} 
+                <button
+                    onClick={onClose}
                     className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
                 >
                     <span className="material-icons !text-xl">close</span>
@@ -262,7 +261,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
             </div>
 
             <div className="flex-grow overflow-y-auto p-6 space-y-6 custom-scrollbar">
-                
+
                 {uploadSections.map((section) => {
                     const categoryState = fileCategories[section.key];
                     const isActive = dragActive === section.key;
@@ -271,14 +270,14 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                     return (
                         <div key={section.key} className={`
                             relative rounded-2xl border-2 transition-all duration-300 overflow-hidden
-                            ${isActive 
-                                ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-lg scale-[1.01]' 
-                                : hasFiles 
-                                    ? 'border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-slate-800' 
+                            ${isActive
+                                ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-lg scale-[1.01]'
+                                : hasFiles
+                                    ? 'border-emerald-200 dark:border-emerald-800/50 bg-white dark:bg-slate-800'
                                     : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-blue-200 dark:hover:border-slate-600'
                             }
                         `}>
-                             <div className="p-5">
+                            <div className="p-5">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className={`p-2 rounded-xl ${section.bgColor} ${section.iconColor}`}>
@@ -287,7 +286,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                                         <div>
                                             <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{section.label}</h4>
                                             {section.hasTemplate && (
-                                                <button 
+                                                <button
                                                     onClick={handleDownloadTemplate}
                                                     disabled={isDownloadingTemplate}
                                                     className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5 mt-0.5"
@@ -305,15 +304,15 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                                         </span>
                                     )}
                                 </div>
-                                
+
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 pl-1">{section.desc}</p>
 
                                 {/* Drop Zone Area */}
-                                <div 
+                                <div
                                     className={`
                                         rounded-xl border-2 border-dashed p-4 text-center cursor-pointer transition-colors
-                                        ${isActive 
-                                            ? 'border-blue-400 bg-white/50 dark:bg-black/20' 
+                                        ${isActive
+                                            ? 'border-blue-400 bg-white/50 dark:bg-black/20'
                                             : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-700/30'
                                         }
                                     `}
@@ -348,7 +347,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                                                     <span className="material-icons text-slate-400 !text-base shrink-0">description</span>
                                                     <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{file.name}</span>
                                                 </div>
-                                                <button 
+                                                <button
                                                     onClick={() => handleFileRemove(section.key, idx)}
                                                     className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded transition-colors"
                                                 >
@@ -387,10 +386,10 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
                     </span>
                 )}
                 <div className="flex gap-3 w-full sm:w-auto">
-                    <button 
-                         onClick={() => onClose ? onClose() : window.location.reload()}
-                         className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-                         disabled={submitMutation.isPending}
+                    <button
+                        onClick={() => onClose ? onClose() : window.location.reload()}
+                        className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+                        disabled={submitMutation.isPending}
                     >
                         Cancelar
                     </button>
