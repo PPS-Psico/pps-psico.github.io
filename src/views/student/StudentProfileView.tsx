@@ -1,6 +1,6 @@
 import React from 'react';
-import PageWrapper from '../../components/PageWrapper';
-import ProfileView from '../../components/ProfileView';
+import PageWrapper from '../../components/layout/PageWrapper';
+import ProfileView from '../../components/student/ProfileView';
 import { useStudentPanel } from '../../contexts/StudentPanelContext';
 
 const StudentProfileView: React.FC = () => {

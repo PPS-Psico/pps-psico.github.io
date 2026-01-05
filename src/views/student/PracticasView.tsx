@@ -1,6 +1,6 @@
 import React from 'react';
-import PageWrapper from '../../components/PageWrapper';
-import PracticasTable from '../../components/PracticasTable';
+import PageWrapper from '../../components/layout/PageWrapper';
+import PracticasTable from '../../components/student/PracticasTable';
 import { useStudentPanel } from '../../contexts/StudentPanelContext';
 
 const PracticasView: React.FC = () => {

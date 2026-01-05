@@ -1,6 +1,6 @@
 import React from 'react';
-import PageWrapper from '../../components/PageWrapper';
-import InformesList from '../../components/InformesList';
+import PageWrapper from '../../components/layout/PageWrapper';
+import InformesList from '../../components/student/InformesList';
 import { useStudentPanel } from '../../contexts/StudentPanelContext';
 
 const InformesView: React.FC = () => {

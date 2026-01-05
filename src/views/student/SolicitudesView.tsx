@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import PageWrapper from '../../components/PageWrapper';
-import SolicitudesList from '../../components/SolicitudesList';
+import PageWrapper from '../../components/layout/PageWrapper';
+import SolicitudesList from '../../components/student/SolicitudesList';
 import PreSolicitudCheckModal from '../../components/PreSolicitudCheckModal';
-import FinalizacionForm from '../../components/FinalizacionForm';
+import FinalizacionForm from '../../components/student/FinalizacionForm';
 import { useStudentPanel } from '../../contexts/StudentPanelContext';
 import { useModal } from '../../contexts/ModalContext';
 import { useAuth } from '../../contexts/AuthContext';
