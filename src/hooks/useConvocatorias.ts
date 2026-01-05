@@ -4,13 +4,13 @@ import { useModal } from '../contexts/ModalContext';
 import { fetchConvocatoriasData } from '../services/dataService';
 import { db } from '../lib/db';
 import { mockDb } from '../services/mockDb';
-import type { LanzamientoPPS, InformeTask, Convocatoria, AirtableRecord, ConvocatoriaFields, Estudiante } from '../types';
-import { 
-    FIELD_NOMBRE_PPS_LANZAMIENTOS, 
-    FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, 
-    FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS, 
-    FIELD_NOMBRE_PPS_CONVOCATORIAS, 
-    FIELD_FECHA_INICIO_CONVOCATORIAS, 
+import type { LanzamientoPPS, InformeTask, AirtableRecord, ConvocatoriaFields, Estudiante } from '../types';
+import {
+    FIELD_NOMBRE_PPS_LANZAMIENTOS,
+    FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+    FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+    FIELD_NOMBRE_PPS_CONVOCATORIAS,
+    FIELD_FECHA_INICIO_CONVOCATORIAS,
     FIELD_FECHA_INICIO_LANZAMIENTOS,
     FIELD_LEGAJO_CONVOCATORIAS,
     FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
@@ -51,16 +51,16 @@ import { normalizeStringForComparison, cleanInstitutionName, safeGetId } from '.
 
 export const useConvocatorias = (legajo: string, studentAirtableId: string | null, studentDetails: Estudiante | null, isSuperUserMode: boolean) => {
     const queryClient = useQueryClient();
-    const { 
-        showModal, 
+    const {
+        showModal,
         openEnrollmentForm,
-        closeEnrollmentForm, 
+        closeEnrollmentForm,
         setIsSubmittingEnrollment,
     } = useModal();
 
-    const { 
-        data: convocatoriasData, 
-        isLoading: isConvocatoriasLoading, 
+    const {
+        data: convocatoriasData,
+        isLoading: isConvocatoriasLoading,
         error: convocatoriasError,
         refetch: refetchConvocatorias
     } = useQuery({
@@ -98,13 +98,13 @@ export const useConvocatorias = (legajo: string, studentAirtableId: string | nul
                 });
                 return { lanzamientos: availableLaunches, myEnrollments: hydratedEnrollments, allLanzamientos: allLanz, institutionAddressMap };
             }
-            return fetchConvocatoriasData(legajo, studentAirtableId, isSuperUserMode);
+            return fetchConvocatoriasData(studentAirtableId);
         },
         enabled: !!studentAirtableId || isSuperUserMode || legajo === '99999',
         staleTime: 1000 * 60 * 5,
         refetchOnWindowFocus: true,
     });
-    
+
     const { lanzamientos = [], myEnrollments = [], allLanzamientos = [], institutionAddressMap = new Map() } = convocatoriasData || {};
 
     const enrollmentMutation = useMutation<AirtableRecord<ConvocatoriaFields> | null, Error, { formData: any, selectedLanzamiento: LanzamientoPPS }>({
@@ -123,7 +123,7 @@ export const useConvocatorias = (legajo: string, studentAirtableId: string | nul
             }
 
             if (!studentAirtableId) throw new Error("No student ID");
-            
+
             if (formData.trabaja !== undefined || formData.certificadoTrabajoUrl) {
                 await db.estudiantes.update(studentAirtableId, {
                     [FIELD_TRABAJA_ESTUDIANTES]: formData.trabaja,
@@ -153,7 +153,7 @@ export const useConvocatorias = (legajo: string, studentAirtableId: string | nul
                 [FIELD_HORAS_ACREDITADAS_CONVOCATORIAS]: selectedLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS],
                 [FIELD_DIRECCION_CONVOCATORIAS]: selectedLanzamiento[FIELD_DIRECCION_LANZAMIENTOS],
             };
-            
+
             const legNum = parseInt(legajo, 10);
             if (!isNaN(legNum)) newRecordFields[FIELD_LEGAJO_CONVOCATORIAS] = legNum;
             if (studentDetails) {
@@ -184,9 +184,9 @@ export const useConvocatorias = (legajo: string, studentAirtableId: string | nul
         mutationFn: async (task: InformeTask) => {
             if (legajo === '99999') return;
             if (task.practicaId && task.convocatoriaId.startsWith('practica-')) {
-                 return db.practicas.update(task.practicaId, { [FIELD_NOTA_PRACTICAS]: 'Entregado (sin corregir)' });
+                return db.practicas.update(task.practicaId, { [FIELD_NOTA_PRACTICAS]: 'Entregado (sin corregir)' });
             } else if (task.convocatoriaId) {
-                return db.convocatorias.update(task.convocatoriaId, { 
+                return db.convocatorias.update(task.convocatoriaId, {
                     [FIELD_INFORME_SUBIDO_CONVOCATORIAS]: true,
                     [FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS]: new Date().toISOString()
                 });
@@ -197,7 +197,7 @@ export const useConvocatorias = (legajo: string, studentAirtableId: string | nul
             queryClient.invalidateQueries({ queryKey: ['practicas', legajo] });
         }
     });
-    
+
     const enrollStudent = {
         mutate: (lanzamiento: LanzamientoPPS) => {
             openEnrollmentForm(lanzamiento, studentDetails, async (fd) => { await enrollmentMutation.mutateAsync({ formData: fd, selectedLanzamiento: lanzamiento }); });

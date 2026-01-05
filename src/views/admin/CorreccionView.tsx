@@ -1,5 +1,5 @@
 import React from 'react';
-import CorreccionPanel from '../../components/CorreccionPanel';
+import CorreccionPanel from '../../components/admin/CorreccionPanel';
 
 interface CorreccionViewProps {
   isTestingMode?: boolean;

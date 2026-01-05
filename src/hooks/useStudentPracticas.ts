@@ -6,20 +6,21 @@ import { mockDb } from '../services/mockDb';
 import { useModal } from '../contexts/ModalContext';
 import { FIELD_NOTA_PRACTICAS, FIELD_INFORME_SUBIDO_CONVOCATORIAS, FIELD_ESTADO_PRACTICA, FIELD_FECHA_FIN_PRACTICAS, FIELD_ESTUDIANTE_LINK_PRACTICAS } from '../constants';
 import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
+import type { Practica } from '../types';
 
 export const useStudentPracticas = (legajo: string) => {
     const queryClient = useQueryClient();
     const { showModal } = useModal();
 
-    const { 
-        data: practicas = [], 
-        isLoading: isPracticasLoading, 
-        error: practicasError, 
-        refetch: refetchPracticas 
+    const {
+        data: practicas = [],
+        isLoading: isPracticasLoading,
+        error: practicasError,
+        refetch: refetchPracticas
     } = useQuery({
         queryKey: ['practicas', legajo],
         queryFn: async () => {
-            let data: any[] = [];
+            let data: Practica[] = [];
 
             if (legajo === '99999') {
                 // Testing Mode
@@ -28,7 +29,7 @@ export const useStudentPracticas = (legajo: string) => {
             } else {
                 data = await fetchPracticas(legajo);
             }
-            
+
             // --- AUTO-FIX LOGIC (Same for Mock and Prod) ---
             const now = new Date();
             now.setHours(0, 0, 0, 0);
@@ -56,7 +57,7 @@ export const useStudentPracticas = (legajo: string) => {
             if (updates.length > 0) {
                 await Promise.all(updates);
             }
-            
+
             return data;
         },
         staleTime: 1000 * 60 * 5,
@@ -75,7 +76,7 @@ export const useStudentPracticas = (legajo: string) => {
 
             const valueToSend = nota === 'Sin calificar' ? null : nota;
             const promises: Promise<any>[] = [db.practicas.update(practicaId, { [FIELD_NOTA_PRACTICAS]: valueToSend })];
-            
+
             if (nota === 'No Entregado' && convocatoriaId) {
                 promises.push(db.convocatorias.update(convocatoriaId, { [FIELD_INFORME_SUBIDO_CONVOCATORIAS]: false }));
             }

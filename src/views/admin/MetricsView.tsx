@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import SubTabs from '../../components/SubTabs';
-import { MetricsDashboard } from '../../components/MetricsDashboard';
+import { MetricsDashboard } from '../../components/admin/MetricsDashboard';
 import TimelineView from '../../components/TimelineView';
 import ErrorBoundary from '../../components/ErrorBoundary';
 

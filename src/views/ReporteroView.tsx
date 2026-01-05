@@ -2,7 +2,7 @@
 import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Tabs from '../components/Tabs';
-import { MetricsDashboard } from '../components/MetricsDashboard';
+import { MetricsDashboard } from '../components/admin/MetricsDashboard';
 import TimelineView from '../components/TimelineView';
 import SubTabs from '../components/SubTabs';
 import WelcomeBannerAdmin from '../components/WelcomeBannerAdmin';

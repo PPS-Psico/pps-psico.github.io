@@ -1,39 +1,35 @@
-import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import Loader from './components/Loader';
 import Auth from './components/Auth';
-import Layout from './components/Layout';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ModalProvider, useModal } from './contexts/ModalContext';
+import Layout from './components/layout/Layout';
+import { useAuth } from './contexts/AuthContext';
+import { ModalProvider } from './contexts/ModalContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { AdminPreferencesProvider } from './contexts/AdminPreferencesContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import { useStudentPanel, StudentPanelProvider } from './contexts/StudentPanelContext';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { db } from './lib/db';
-import FinalizacionForm from './components/FinalizacionForm';
-import PreSolicitudCheckModal from './components/PreSolicitudCheckModal';
+import { StudentPanelProvider } from './contexts/StudentPanelContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-/* Fixed missing Button import */
-import Button from './components/Button';
+import { FIELD_LEGAJO_ESTUDIANTES } from './constants';
 // Views
 const StudentView = lazy(() => import('./views/StudentView'));
-import StudentDashboard, { StudentHome } from './views/StudentDashboard';
-import PracticasView from './views/student/PracticasView';
-import SolicitudesView from './views/student/SolicitudesView';
-import InformesView from './views/student/InformesView';
-import StudentProfileView from './views/student/StudentProfileView';
+const StudentDashboard = lazy(() => import('./views/StudentDashboard'));
+const StudentHome = lazy(() => import('./views/StudentDashboard').then(module => ({ default: module.StudentHome })));
+const PracticasView = lazy(() => import('./views/student/PracticasView'));
+const SolicitudesView = lazy(() => import('./views/student/SolicitudesView'));
+const InformesView = lazy(() => import('./views/student/InformesView'));
+const StudentProfileView = lazy(() => import('./views/student/StudentProfileView'));
 
 const AdminView = lazy(() => import('./views/AdminView'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 const LanzadorView = lazy(() => import('./views/admin/LanzadorView'));
 const GestionView = lazy(() => import('./views/admin/GestionView'));
 const HerramientasView = lazy(() => import('./views/admin/HerramientasView'));
 const MetricsView = lazy(() => import('./views/admin/MetricsView'));
-const SolicitudesManager = lazy(() => import('./components/SolicitudesManager'));
+const SolicitudesManager = lazy(() => import('./components/admin/SolicitudesManager'));
 const JefeView = lazy(() => import('./views/JefeView'));
 const DirectivoView = lazy(() => import('./views/DirectivoView'));
 const ReporteroView = lazy(() => import('./views/ReporteroView'));
@@ -44,7 +40,7 @@ const AdminStudentWrapper = () => {
     if (!legajo) return null;
     return (
         <StudentPanelProvider legajo={legajo}>
-            <StudentDashboard key={legajo} user={{ legajo, nombre: 'Estudiante' } as any} showExportButton />
+            <StudentDashboard key={legajo} showExportButton />
         </StudentPanelProvider>
     );
 };
@@ -52,7 +48,6 @@ const AdminStudentWrapper = () => {
 
 const AppRoutes = () => {
     const { authenticatedUser } = useAuth();
-    const location = useLocation();
     const navigate = useNavigate();
 
     return (

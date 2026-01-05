@@ -5,21 +5,20 @@ import { db } from '../lib/db';
 import { mockDb } from '../services/mockDb';
 import type { LanzamientoPPS } from '../types';
 import {
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_INSTITUCIONES,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_FIN_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_ESTADO_GESTION_LANZAMIENTOS,
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_NOTAS_GESTION_LANZAMIENTOS,
-  FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
-  FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
-  FIELD_REQ_CV_LANZAMIENTOS,
-  FIELD_DIRECCION_LANZAMIENTOS,
-  FIELD_CODIGO_CAMPUS_LANZAMIENTOS
+    TABLE_NAME_LANZAMIENTOS_PPS,
+    TABLE_NAME_INSTITUCIONES,
+    FIELD_NOMBRE_PPS_LANZAMIENTOS,
+    FIELD_FECHA_INICIO_LANZAMIENTOS,
+    FIELD_FECHA_FIN_LANZAMIENTOS,
+    FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
+    FIELD_ESTADO_GESTION_LANZAMIENTOS,
+    FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+    FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+    FIELD_NOTAS_GESTION_LANZAMIENTOS,
+    FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
+    FIELD_REQ_CV_LANZAMIENTOS,
+    FIELD_DIRECCION_LANZAMIENTOS,
+    FIELD_CODIGO_CAMPUS_LANZAMIENTOS
 } from '../constants';
 import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
 import { mapLanzamiento } from '../utils/mappers';
@@ -39,7 +38,7 @@ interface UseGestionConvocatoriasProps {
     initialFilter?: FilterType;
 }
 
-export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = false, initialFilter = 'all' }: UseGestionConvocatoriasProps) => {
+export const useGestionConvocatorias = ({ isTestingMode = false, initialFilter = 'all' }: UseGestionConvocatoriasProps) => {
     const [lanzamientos, setLanzamientos] = useState<LanzamientoPPS[]>([]);
     const [institutionsMap, setInstitutionsMap] = useState<Map<string, { id: string; phone?: string }>>(new Map());
     const [loadingState, setLoadingState] = useState<LoadingState>('initial');
@@ -48,8 +47,6 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
     const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<FilterType>(initialFilter);
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [isLinking, setIsLinking] = useState(false);
 
     useEffect(() => {
         if (initialFilter) setFilterType(initialFilter);
@@ -69,13 +66,13 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
 
             const now = new Date();
             const today = now.toISOString().split('T')[0];
-            
+
             let filters: Record<string, unknown> = {};
 
             // FILTROS BASADOS EN FECHA DE INICIO (fecha_inicio)
             if (filterType === 'vencidas') {
                 // Vencidas = Ya iniciaron (Fecha Inicio <= Hoy)
-                filters['endDate'] = today; 
+                filters['endDate'] = today;
             } else if (filterType === 'proximas') {
                 // Próximas = Van a iniciar (Fecha Inicio >= Hoy)
                 filters['startDate'] = today;
@@ -84,15 +81,15 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
             // Fetch Data
             const { records: lanzRecords, error: lanzError } = await fetchPaginatedData(
                 TABLE_NAME_LANZAMIENTOS_PPS,
-                1, 
-                1000, 
+                1,
+                1000,
                 [],
                 searchTerm,
                 [FIELD_NOMBRE_PPS_LANZAMIENTOS],
                 { field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: 'asc' }, // Ordenar por fecha inicio
                 filters
             );
-            
+
             const { records: instRecords } = await fetchPaginatedData(
                 TABLE_NAME_INSTITUCIONES,
                 1,
@@ -116,11 +113,11 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
 
             // Client-side refinement (Double check)
             const mappedRecords = lanzRecords.map(mapLanzamiento);
-            
+
             const filteredRecords = mappedRecords.filter(pps => {
                 const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
                 if (status === 'Archivado' || status === 'No se Relanza') return false;
-                
+
                 // Client-side date check using FECHA_INICIO as requested
                 if (filterType === 'vencidas') {
                     const start = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
@@ -130,7 +127,7 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
                     const start = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
                     return start && start >= now;
                 }
-                
+
                 return true;
             });
 
@@ -138,9 +135,9 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
             setLoadingState('loaded');
 
         } catch (err: any) {
-             console.error(err);
-             setError(err.message || 'Error al cargar datos');
-             setLoadingState('error');
+            console.error(err);
+            setError(err.message || 'Error al cargar datos');
+            setLoadingState('error');
         }
     }, [isTestingMode, filterType, searchTerm]);
 
@@ -169,69 +166,113 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
     }, [fetchData, isTestingMode]);
 
     const handleUpdateInstitutionPhone = useCallback(async (institutionId: string, phone: string): Promise<boolean> => {
-         if (isTestingMode) return true;
-         try {
-             await db.instituciones.update(institutionId, { telefono: phone });
-             setToastInfo({ message: 'Teléfono actualizado.', type: 'success' });
-             return true;
-         } catch (e) {
-             setToastInfo({ message: 'Error al actualizar teléfono.', type: 'error' });
-             return false;
-         }
+        if (isTestingMode) return true;
+        try {
+            await db.instituciones.update(institutionId, { telefono: phone });
+            setToastInfo({ message: 'Teléfono actualizado.', type: 'success' });
+            return true;
+        } catch (e) {
+            setToastInfo({ message: 'Error al actualizar teléfono.', type: 'error' });
+            return false;
+        }
     }, [isTestingMode]);
 
     const filteredData = useMemo(() => {
         const now = new Date();
-        
-        const uniqueConfirmed = new Map<string, LanzamientoPPS>();
-        const uniquePending = new Map<string, (LanzamientoPPS & { daysLeft?: number })>();
+        const sevenDaysFromNow = new Date();
+        sevenDaysFromNow.setDate(now.getDate() + 7);
 
-        // 1. Process Confirmed
+        // Groups
+        const relanzamientosConfirmados: LanzamientoPPS[] = [];
+        const activasYPorFinalizar: (LanzamientoPPS & { daysLeft?: number, urgency?: 'high' | 'normal' })[] = [];
+        const finalizadasParaReactivar: (LanzamientoPPS & { daysSinceEnd?: number })[] = [];
+        const activasIndefinidas: LanzamientoPPS[] = []; // For Manual/Indefinite dates
+
+        // 1. Group by Institution Base Name to process lifecycle
+        const groups = new Map<string, LanzamientoPPS[]>();
         lanzamientos.forEach(pps => {
-            const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
-            if (status === 'Relanzamiento Confirmado') {
-                const groupName = getGroupName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
-                if (!uniqueConfirmed.has(groupName)) {
-                    uniqueConfirmed.set(groupName, pps);
-                }
-            }
+            const name = getGroupName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
+            if (!groups.has(name)) groups.set(name, []);
+            groups.get(name)!.push(pps);
         });
 
-        // 2. Process Pending/Others
-        lanzamientos.forEach(pps => {
-            const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
-            
-            if (status === 'Relanzamiento Confirmado' || status === 'Archivado' || status === 'No se Relanza') {
+        // 2. Analyze each Group
+        groups.forEach((history, _) => {
+            // Sort by Date Descending (Newest first)
+            history.sort((a, b) => {
+                const dateA = new Date(a[FIELD_FECHA_INICIO_LANZAMIENTOS] || '1900-01-01').getTime();
+                const dateB = new Date(b[FIELD_FECHA_INICIO_LANZAMIENTOS] || '1900-01-01').getTime();
+                return dateB - dateA;
+            });
+
+            // Check if there is ALREADY a confirmed future relaunch
+            const futureLaunch = history.find(pps => {
+                const status = normalizeStringForComparison(pps[FIELD_ESTADO_GESTION_LANZAMIENTOS]);
+                return status === 'relanzamiento confirmado' || (
+                    pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS] &&
+                    new Date(pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS]).getFullYear() >= 2026
+                );
+            });
+
+            if (futureLaunch) {
+                relanzamientosConfirmados.push(futureLaunch);
+                return; // Cycle handled
+            }
+
+            // If no future launch, look at the CURRENT active/latest one
+            // We ignore "Archived" or "No se Relanza" unless they are the *only* thing
+            const relevantPPS = history.find(pps => {
+                const status = normalizeStringForComparison(pps[FIELD_ESTADO_GESTION_LANZAMIENTOS]);
+                return status !== 'archivado' && status !== 'no se relanza';
+            }) || history[0];
+
+            if (!relevantPPS) return;
+
+            const status = normalizeStringForComparison(relevantPPS[FIELD_ESTADO_GESTION_LANZAMIENTOS]);
+            if (status === 'archivado' || status === 'no se relanza') return; // Explicitly dead
+
+            const startDate = parseToUTCDate(relevantPPS[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+            const endDate = parseToUTCDate(relevantPPS[FIELD_FECHA_FIN_LANZAMIENTOS]);
+
+            // Case A: No dates (Indefinite)
+            if (!startDate || !endDate) {
+                activasIndefinidas.push(relevantPPS);
                 return;
             }
 
-            const groupName = getGroupName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
-            if (uniqueConfirmed.has(groupName)) {
-                return;
-            }
+            // Case B: Active or Finished?
+            const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
 
-            // Urgency calculation based on FECHA_INICIO (start date) as requested context implies
-            const startDate = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
-            const daysLeft = startDate ? Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 3600 * 24)) : 999;
-            
-            const item = { ...pps, daysLeft };
-
-            const existing = uniquePending.get(groupName);
-            // Keep the one starting soonest
-            if (!existing || (item.daysLeft || 999) < (existing.daysLeft || 999)) {
-                uniquePending.set(groupName, item);
+            if (daysLeft < 0) {
+                // FINISHED - Needs Action
+                // But only if it finished recently (< 6 months) or we want to reactivate
+                // Let's include everything finished as "Reactivar" logic
+                finalizadasParaReactivar.push({
+                    ...relevantPPS,
+                    daysSinceEnd: Math.abs(daysLeft)
+                });
+            } else {
+                // ACTIVE
+                const urgency = daysLeft <= 7 ? 'high' : 'normal';
+                activasYPorFinalizar.push({
+                    ...relevantPPS,
+                    daysLeft,
+                    urgency
+                });
             }
         });
 
-        const relanzamientosConfirmados = Array.from(uniqueConfirmed.values());
-        const finalPending = Array.from(uniquePending.values()).sort((a, b) => (a.daysLeft || 999) - (b.daysLeft || 999));
+        // 3. Fallback for "Pendientes de Gestion" explicit status that might be old
+        // (If user manually tagged something as "Esperando Respuesta" but dates are old)
+        // The logic above covers lifecycle. "Pendientes" is implicitly "FinalizadasParaReactivar" or "Activas".
+        // We map the return to match component expectations.
 
-        return { 
-            relanzamientosConfirmados, 
-            pendientesDeGestion: finalPending,
-            activasYPorFinalizar: [], 
-            finalizadasParaReactivar: [], 
-            activasIndefinidas: [] 
+        return {
+            relanzamientosConfirmados,
+            pendientesDeGestion: [], // Deprecated in favor of clearer categories
+            activasYPorFinalizar: activasYPorFinalizar.sort((a, b) => (a.daysLeft || 999) - (b.daysLeft || 999)),
+            finalizadasParaReactivar: finalizadasParaReactivar.sort((a, b) => (a.daysSinceEnd || 0) - (b.daysSinceEnd || 0)),
+            activasIndefinidas
         };
     }, [lanzamientos]);
 
@@ -244,16 +285,14 @@ export const useGestionConvocatorias = ({ forcedOrientations, isTestingMode = fa
         updatingIds,
         searchTerm,
         setSearchTerm,
-        orientationFilter: 'all', 
-        setOrientationFilter: () => {},
+        orientationFilter: 'all',
+        setOrientationFilter: () => { },
         filterType,
         setFilterType,
-        isSyncing,
-        isLinking,
         handleSave,
         handleUpdateInstitutionPhone,
-        handleSync: async () => {},
-        handleLinkOrphans: async () => {},
+        handleSync: async () => { },
+        handleLinkOrphans: async () => { },
         filteredData,
     };
 };

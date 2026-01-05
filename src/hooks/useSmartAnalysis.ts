@@ -2,7 +2,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { differenceInDays } from 'date-fns';
 import { GoogleGenAI } from "@google/genai";
-import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from '../constants';
+import { FIELD_NOMBRE_PPS_LANZAMIENTOS, GEMINI_API_KEY } from '../constants';
+import { parseToUTCDate } from '../utils/formatters';
 
 interface DashboardData {
     endingLaunches: any[];
@@ -37,27 +38,59 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
 
         const getBaseName = (name: string) => name.split(' - ')[0].trim();
 
+        const endingSoonByInst = new Map<string, any>();
         const overdueByInst = new Map<string, any>();
+
         data.endingLaunches.forEach(l => {
             const status = l.estado_gestion;
             const isResolved = status === 'Relanzamiento Confirmado' || status === 'Archivado' || status === 'No se Relanza';
-            
-            if (l.daysLeft < 0 && !isResolved) {
-                const name = getBaseName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '');
-                overdueByInst.set(name, l);
+
+            if (isResolved) return;
+
+            // Calculate daysLeft if not present (Safety fallback)
+            let daysLeft = l.daysLeft;
+            if (daysLeft === undefined && l.fecha_fin) {
+                daysLeft = differenceInDays(parseToUTCDate(l.fecha_fin), now);
+            }
+            if (daysLeft === undefined && l.fecha_finalizacion) {
+                daysLeft = differenceInDays(new Date(l.fecha_finalizacion), now);
+            }
+
+            if (daysLeft !== undefined) {
+                if (daysLeft < 0) {
+                    const name = getBaseName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '');
+                    overdueByInst.set(name, l);
+                } else if (daysLeft <= 7) {
+                    const name = getBaseName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || '');
+                    endingSoonByInst.set(name, l);
+                }
             }
         });
 
         const overdueCount = overdueByInst.size;
-        
+        const endingSoonCount = endingSoonByInst.size;
+
+        // 1. CRITICAL: Overdue items (Management Required)
         if (overdueCount > 0) {
             score -= (overdueCount * 20);
-            signals.push('Gestión Vencida'); // Changed from Riesgo Legal
+            signals.push('Requiere Cierre/Renovación');
             insights.push({
                 type: 'critical',
-                message: `${overdueCount} instituciones requieren gestión de cierre o renovación.`,
+                message: `${overdueCount} instituciones finalizaron ciclo. Confirmar relanzamiento o archivar.`,
                 actionLink: '/admin/gestion?filter=vencidas',
-                icon: 'priority_high'
+                icon: 'assignment_late'
+            });
+        }
+
+        // 2. HIGH PRIORITY: Ending Soon (Proactive)
+        if (endingSoonCount > 0) {
+            score -= (endingSoonCount * 10);
+            signals.push('Vencimiento Inminente (7 días)');
+            insights.push({
+                type: 'warning',
+                message: `${endingSoonCount} finalizan esta semana. Contactar para asegurar continuidad.`,
+                actionLink: '/admin/gestion?filter=proximas',
+                icon: 'alarm'
             });
         }
 
@@ -67,22 +100,22 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
         });
         if (stagnant.length > 0) {
             score -= (stagnant.length * 5);
-            signals.push('Demora en Respuesta');
+            signals.push('Solicitudes en Espera');
             insights.push({
                 type: 'warning',
-                message: 'Atención al alumno: Solicitudes sin movimiento hace +7 días.',
+                message: 'Alumnos esperando respuesta hace +7 días.',
                 actionLink: '/admin/solicitudes?tab=ingreso',
                 icon: 'hourglass_empty'
             });
         }
 
         if (data.pendingFinalizations.length > 0) {
-            signals.push('Carga Administrativa');
+            signals.push('Acreditaciones Pendientes');
             insights.push({
                 type: 'stable',
-                message: 'Documentación de egreso lista para procesar en SAC.',
+                message: 'Egresos listos para cargar en SAC.',
                 actionLink: '/admin/solicitudes?tab=egreso',
-                icon: 'verified'
+                icon: 'school'
             });
         }
 
@@ -91,12 +124,13 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
         else if (score < 85) status = 'warning';
         else if (score < 95) status = 'stable';
 
-        return { 
-            status, 
-            insights, 
+        return {
+            status,
+            insights,
             signals,
             rawData: {
                 vencidasCount: overdueCount,
+                porVencerCount: endingSoonCount,
                 estancadasCount: stagnant.length,
                 acreditacionesCount: data.pendingFinalizations.length,
                 mesActual: currentMonth
@@ -106,34 +140,33 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
 
     useEffect(() => {
         const fetchAiInsight = async () => {
-            if (!algorithmicAnalysis.rawData || !process.env.API_KEY) return;
-            
+            if (!algorithmicAnalysis.rawData || !GEMINI_API_KEY) return;
+
             setIsAiLoading(true);
             try {
-                const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-                
-                // Prompt de Ingeniería Inversa: Enfocado en acción y estrategia, no en descripción.
-                const prompt = `
-                    Actúa como un Jefe de Operaciones Académicas Senior. 
-                    Analiza los siguientes métricas del tablero de control:
-                    ${JSON.stringify(algorithmicAnalysis.rawData)}
+                const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-                    TU OBJETIVO: Dar una única recomendación estratégica de alto impacto.
+                // Prompt de Ingeniería Inversa: Enfocado en acción y estrategia.
+                const prompt = `
+                    Actúa como un Coordinador de Vinculación Institucional. 
+                    Analiza métricas: ${JSON.stringify(algorithmicAnalysis.rawData)}
                     
-                    REGLAS ESTRICTAS:
-                    1. NO repitas los números (el usuario ya los ve en las tarjetas).
-                    2. NO uses frases genéricas como "Aquí tienes el resumen".
-                    3. Si hay 'vencidasCount' > 0: Tu prioridad es sugerir la gestión administrativa de cierre o renovación de convenios para mantener el orden. NO menciones riesgos legales ni términos alarmistas.
-                    4. Si hay muchas 'estancadasCount': Tu prioridad es la experiencia del alumno. Sugiere desbloquear trámites.
-                    5. Si hay muchas 'acreditacionesCount': Tu prioridad es la eficiencia administrativa de egreso.
-                    6. Considera que estamos en el mes de ${algorithmicAnalysis.rawData.mesActual}. Contextualiza la urgencia según la altura del año (ej: inicios o cierres de ciclo).
+                    OBJETIVO: Recomendación estratégica de una sola frase (max 25 palabras).
                     
-                    FORMATO DE SALIDA:
-                    Una sola frase, directa, imperativa y profesional. Máximo 25 palabras.
+                    PRIORIDADES (En orden):
+                    1. 'porVencerCount' > 0 (URGENTE): Hay convenios que caen en <7 días. Sugiere contactar YA para renovar y evitar baches ("Ciclo Continuo").
+                    2. 'vencidasCount' > 0: Sugiere regularizar administrativamente (Cerrar o Relanzar).
+                    3. 'estancadasCount' > 0: Foco en experiencia alumno (desbloquear trámites).
+                    4. 'acreditacionesCount' > 0: Foco en eficiencia de egreso.
+                    
+                    Si todo es 0: "Todo al día. Sugiere buscar nuevas alianzas o revisar planificaciones futuras."
+                    
+                    Contexto: Estamos en ${algorithmicAnalysis.rawData.mesActual}.
+                    Tono: Profesional, directo, proactivo.
                 `;
 
                 const response = await ai.models.generateContent({
-                    model: 'gemini-3-flash-preview',
+                    model: 'gemini-2.0-flash-exp',
                     contents: prompt,
                 });
 

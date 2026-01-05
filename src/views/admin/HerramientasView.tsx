@@ -1,12 +1,12 @@
 
 import React, { useState, lazy, Suspense, useMemo } from 'react';
 import SubTabs from '../../components/SubTabs';
-import AdminSearch from '../../components/AdminSearch';
+import AdminSearch from '../../components/admin/AdminSearch';
 import type { AirtableRecord, EstudianteFields } from '../../types';
 import Loader from '../../components/Loader';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import Toast from '../../components/ui/Toast';
-import RecordEditModal from '../../components/RecordEditModal';
+import RecordEditModal from '../../components/admin/RecordEditModal';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../../lib/db';
 import { schema } from '../../lib/dbSchema';
@@ -19,14 +19,14 @@ import { useAdminPreferences } from '../../contexts/AdminPreferencesContext';
 
 
 // Lazy load heavy components
-const DatabaseEditor = lazy(() => import('../../components/DatabaseEditor'));
-const PenalizationManager = lazy(() => import('../../components/PenalizationManager'));
-const EmailAutomationManager = lazy(() => import('../../components/EmailAutomationManager'));
-const NuevosConvenios = lazy(() => import('../../components/NuevosConvenios'));
-const ExecutiveReportGenerator = lazy(() => import('../../components/ExecutiveReportGenerator'));
-const ActiveInstitutionsReport = lazy(() => import('../../components/ActiveInstitutionsReport'));
+const DatabaseEditor = lazy(() => import('../../components/admin/DatabaseEditor'));
+const PenalizationManager = lazy(() => import('../../components/admin/PenalizationManager'));
+const EmailAutomationManager = lazy(() => import('../../components/admin/EmailAutomationManager'));
+const NuevosConvenios = lazy(() => import('../../components/admin/NuevosConvenios'));
+const ExecutiveReportGenerator = lazy(() => import('../../components/admin/ExecutiveReportGenerator'));
+const ActiveInstitutionsReport = lazy(() => import('../../components/admin/ActiveInstitutionsReport'));
 const PersonalizationPanel = lazy(() => import('../../components/PersonalizationPanel'));
-const DataIntegrityTool = lazy(() => import('../../components/DataIntegrityTool'));
+const DataIntegrityTool = lazy(() => import('../../components/admin/DataIntegrityTool'));
 
 const QUICK_STUDENT_CONFIG = {
   label: 'Estudiante',

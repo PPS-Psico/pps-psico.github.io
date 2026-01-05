@@ -8,7 +8,7 @@ type Tables = Database['public']['Tables'];
 export type AppRecord<T> = T & {
   id: string;
   createdTime?: string; // Legacy alias mapping to created_at
-  [key: string]: any; 
+  [key: string]: any;
 };
 
 // Map strict Database types to App types
@@ -20,7 +20,6 @@ export type Convocatoria = Tables['convocatorias']['Row'];
 export type Institucion = Tables['instituciones']['Row'];
 export type FinalizacionPPS = Tables['finalizacion_pps']['Row'];
 export type Penalizacion = Tables['penalizaciones']['Row'];
-export type AuthUserRow = Tables['auth_users']['Row']; // If you use it
 
 // Helper aliases for components that expect "Fields" suffix
 export type EstudianteFields = Estudiante;
@@ -32,7 +31,16 @@ export type InstitucionFields = Institucion;
 export type FinalizacionPPSFields = FinalizacionPPS;
 export type PenalizacionFields = Penalizacion;
 
-export type AirtableRecord<T> = AppRecord<T>; 
+// --- Strict Joined Types for Services ---
+export type PracticaWithLanzamiento = Practica & {
+  lanzamiento: Pick<LanzamientoPPS, 'nombre_pps' | 'orientacion' | 'fecha_inicio' | 'fecha_finalizacion'> | null;
+};
+
+export type SolicitudWithEstudiante = SolicitudPPS & {
+  estudiante: Pick<Estudiante, 'nombre' | 'legajo' | 'correo'> | null;
+};
+
+export type AirtableRecord<T> = AppRecord<T>;
 
 export interface AppError {
   type: string;
@@ -77,24 +85,24 @@ export type SelectedStudent = { nombre: string; legajo: string };
 export type GroupedSeleccionados = { [key: string]: SelectedStudent[] };
 
 export interface EnrichedStudent {
-    enrollmentId: string;
-    studentId: string;
-    nombre: string;
-    legajo: string;
-    correo: string;
-    status: string;
-    terminoCursar: boolean;
-    cursandoElectivas: boolean;
-    finalesAdeuda: string;
-    notasEstudiante: string;
-    totalHoras: number;
-    cantPracticas: number; // Nuevo campo para detectar ingresantes absolutos
-    penalizacionAcumulada: number;
-    puntajeTotal: number;
-    horarioSeleccionado: string;
-    trabaja: boolean;
-    certificadoTrabajo: string | null;
-    cvUrl: string | null;
+  enrollmentId: string;
+  studentId: string;
+  nombre: string;
+  legajo: string;
+  correo: string;
+  status: string;
+  terminoCursar: boolean;
+  cursandoElectivas: boolean;
+  finalesAdeuda: string;
+  notasEstudiante: string;
+  totalHoras: number;
+  cantPracticas: number; // Nuevo campo para detectar ingresantes absolutos
+  penalizacionAcumulada: number;
+  puntajeTotal: number;
+  horarioSeleccionado: string;
+  trabaja: boolean;
+  certificadoTrabajo: string | null;
+  cvUrl: string | null;
 }
 
 export interface InformeCorreccionStudent {
@@ -121,20 +129,20 @@ export interface InformeCorreccionPPS {
 }
 
 export interface FlatCorreccionStudent extends InformeCorreccionStudent {
-    ppsName: string | null;
-    informeLink?: string | null;
-    correctionDeadline?: string;
+  ppsName: string | null;
+  informeLink?: string | null;
+  correctionDeadline?: string;
 }
 
 export interface CalendarEvent {
-    id: string;
-    name: string;
-    schedule: string;
-    orientation: string;
-    location: string;
-    colorClasses: { tag: string; dot: string; };
-    startDate?: string | null;
-    endDate?: string | null;
+  id: string;
+  name: string;
+  schedule: string;
+  orientation: string;
+  location: string;
+  colorClasses: { tag: string; dot: string; };
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface Attachment {
@@ -145,64 +153,64 @@ export interface Attachment {
 export type ReportType = '2024' | '2025' | 'comparative';
 
 export interface TimelineMonthData {
-    monthName: string;
-    ppsCount: number;
-    cuposTotal: number;
-    institutions: { name: string; cupos: number; variants: string[] }[];
+  monthName: string;
+  ppsCount: number;
+  cuposTotal: number;
+  institutions: { name: string; cupos: number; variants: string[] }[];
 }
 
 interface KPISnapshot {
-    current: number;
-    previous: number;
+  current: number;
+  previous: number;
 }
 
 export interface PPSRequestSummary {
-    id: string;
-    studentName: string;
-    studentLegajo: string;
-    institutionName: string;
-    requestDate: string;
-    status: string;
+  id: string;
+  studentName: string;
+  studentLegajo: string;
+  institutionName: string;
+  requestDate: string;
+  status: string;
 }
 
 export interface ExecutiveReportData {
-    reportType: 'singleYear';
-    year: number;
-    period: { current: { start: string; end: string }; previous: { start: string; end: string }; };
-    summary: string;
-    kpis: {
-        activeStudents: KPISnapshot;
-        studentsWithoutAnyPps: KPISnapshot;
-        newStudents: KPISnapshot;
-        finishedStudents: KPISnapshot;
-        newPpsLaunches: KPISnapshot;
-        totalOfferedSpots: KPISnapshot;
-        newAgreements: KPISnapshot;
-    };
-    launchesByMonth: TimelineMonthData[];
-    newAgreementsList: string[];
-    ppsRequests: PPSRequestSummary[];
+  reportType: 'singleYear';
+  year: number;
+  period: { current: { start: string; end: string }; previous: { start: string; end: string }; };
+  summary: string;
+  kpis: {
+    activeStudents: KPISnapshot;
+    studentsWithoutAnyPps: KPISnapshot;
+    newStudents: KPISnapshot;
+    finishedStudents: KPISnapshot;
+    newPpsLaunches: KPISnapshot;
+    totalOfferedSpots: KPISnapshot;
+    newAgreements: KPISnapshot;
+  };
+  launchesByMonth: TimelineMonthData[];
+  newAgreementsList: string[];
+  ppsRequests: PPSRequestSummary[];
 }
 
 interface KPIComparison {
-    year2024: number;
-    year2025: number;
+  year2024: number;
+  year2025: number;
 }
 export interface ComparativeExecutiveReportData {
-    reportType: 'comparative';
-    summary: string;
-    kpis: {
-        activeStudents: KPIComparison;
-        studentsWithoutAnyPps: KPIComparison;
-        finishedStudents: KPIComparison;
-        newStudents: KPIComparison;
-        newPpsLaunches: KPIComparison;
-        totalOfferedSpots: KPIComparison;
-        newAgreements: KPIComparison;
-    };
-    launchesByMonth: { year2024: TimelineMonthData[]; year2025: TimelineMonthData[]; };
-    newAgreements: { year2024: string[]; year2025: string[]; };
-    ppsRequests: { year2024: PPSRequestSummary[]; year2025: PPSRequestSummary[]; };
+  reportType: 'comparative';
+  summary: string;
+  kpis: {
+    activeStudents: KPIComparison;
+    studentsWithoutAnyPps: KPIComparison;
+    finishedStudents: KPIComparison;
+    newStudents: KPIComparison;
+    newPpsLaunches: KPIComparison;
+    totalOfferedSpots: KPIComparison;
+    newAgreements: KPIComparison;
+  };
+  launchesByMonth: { year2024: TimelineMonthData[]; year2025: TimelineMonthData[]; };
+  newAgreements: { year2024: string[]; year2025: string[]; };
+  ppsRequests: { year2024: PPSRequestSummary[]; year2025: PPSRequestSummary[]; };
 }
 
 export type AnyReportData = ExecutiveReportData | ComparativeExecutiveReportData;

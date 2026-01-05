@@ -1,11 +1,11 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
-import AdminSearch from '../components/AdminSearch';
+import AdminSearch from '../components/admin/AdminSearch';
 import ConvocatoriaManager from '../components/ConvocatoriaManager';
 import { useAuth, type AuthUser } from '../contexts/AuthContext';
 import StudentDashboard from './StudentDashboard';
 import Tabs from '../components/Tabs';
-import { MetricsDashboard } from '../components/MetricsDashboard';
+import { MetricsDashboard } from '../components/admin/MetricsDashboard';
 import TimelineView from '../components/TimelineView';
 import SubTabs from '../components/SubTabs';
 import type { AirtableRecord, EstudianteFields } from '../types';

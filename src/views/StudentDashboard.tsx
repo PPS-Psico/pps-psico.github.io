@@ -1,24 +1,24 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import CriteriosPanel from '../components/CriteriosPanel';
-import PracticasTable from '../components/PracticasTable';
-import SolicitudesList from '../components/SolicitudesList';
+import CriteriosPanel from '../components/student/CriteriosPanel';
+import PracticasTable from '../components/student/PracticasTable';
+import SolicitudesList from '../components/student/SolicitudesList';
 import EmptyState from '../components/EmptyState';
 import Tabs from '../components/Tabs';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import WelcomeBanner from '../components/WelcomeBanner';
-import WhatsAppExportButton from '../components/WhatsAppExportButton';
+import WelcomeBanner from '../components/student/WelcomeBanner';
+import WhatsAppExportButton from '../components/student/WhatsAppExportButton';
 import { useAuth } from '../contexts/AuthContext';
 import type { AuthUser } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import type { TabId, Orientacion } from '../types';
-import DashboardLoadingSkeleton from '../components/DashboardLoadingSkeleton';
+import DashboardLoadingSkeleton from '../components/student/DashboardLoadingSkeleton';
 import ErrorState from '../components/ErrorState';
-import ProfileView from '../components/ProfileView';
-import HomeView from '../components/HomeView';
-import PrintableReport from '../components/PrintableReport';
+import ProfileView from '../components/student/ProfileView';
+import HomeView from '../components/student/HomeView';
+import PrintableReport from '../components/student/PrintableReport';
 import { useStudentPanel } from '../contexts/StudentPanelContext';
-import FinalizacionForm from '../components/FinalizacionForm';
+import FinalizacionForm from '../components/student/FinalizacionForm';
 import PreSolicitudCheckModal from '../components/PreSolicitudCheckModal';
 import {
     FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
@@ -51,13 +51,13 @@ import { useModal } from '../contexts/ModalContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 // import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
-import FinalizationStatusCard from '../components/FinalizationStatusCard';
-// import MobileSectionHeader from '../components/MobileSectionHeader'; // Unused
+import FinalizationStatusCard from '../components/student/FinalizationStatusCard';
+// import MobileSectionHeader from '../components/layout/MobileSectionHeader'; // Unused
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // Export individual views for Router
-export { default as StudentPracticas } from '../components/PracticasTable';
-export { default as StudentSolicitudes } from '../components/SolicitudesList';
+export { default as StudentPracticas } from '../components/student/PracticasTable';
+export { default as StudentSolicitudes } from '../components/student/SolicitudesList';
 
 // --- COMPONENT: Simulation Banner ---
 const SimulationBanner: React.FC<{ onExit?: () => void }> = ({ onExit }) => (

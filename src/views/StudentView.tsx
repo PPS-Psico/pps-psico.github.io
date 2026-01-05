@@ -1,8 +1,8 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Footer from '../components/Footer';
+import Footer from '../components/layout/Footer';
 import AppModals from '../components/AppModals';
-import MobileBottomNav from '../components/MobileBottomNav';
+import MobileBottomNav from '../components/layout/MobileBottomNav';
 import { useAuth } from '../contexts/AuthContext';
 import { StudentPanelProvider, useStudentPanel } from '../contexts/StudentPanelContext';
 import type { TabId } from '../types';

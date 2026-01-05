@@ -37,6 +37,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 2, // 2 minutes - data remains "fresh" preventing immediate refetch
+      gcTime: 1000 * 60 * 10,  // 10 minutes - keep unused data in cache before garbage collecting
     },
   },
 });
@@ -50,9 +52,9 @@ if (!container) {
 // --- SINGLETON PATTERN ---
 // @ts-ignore
 if (window.__REACT_ROOT_INSTANCE__) {
-    console.log('Desmontando instancia previa (src/main)...');
-    // @ts-ignore
-    window.__REACT_ROOT_INSTANCE__.unmount();
+  console.log('Desmontando instancia previa (src/main)...');
+  // @ts-ignore
+  window.__REACT_ROOT_INSTANCE__.unmount();
 }
 
 // Limpieza visual extra por seguridad
@@ -67,9 +69,9 @@ window.__REACT_ROOT_INSTANCE__ = root;
 root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-            <App />
-        </AuthProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   </React.StrictMode>

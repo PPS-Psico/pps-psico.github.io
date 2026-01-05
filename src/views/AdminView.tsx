@@ -9,10 +9,10 @@ import UnifiedTabs, { TabItem } from '../components/UnifiedTabs';
 // import { useTheme } from '../contexts/ThemeContext';
 
 // Components for Testing Mode
-const AdminDashboard = lazy(() => import('../components/AdminDashboard'));
+const AdminDashboard = lazy(() => import('../components/admin/AdminDashboard'));
 const LanzadorView = lazy(() => import('./admin/LanzadorView'));
 const GestionView = lazy(() => import('./admin/GestionView'));
-const SolicitudesManager = lazy(() => import('../components/SolicitudesManager'));
+const SolicitudesManager = lazy(() => import('../components/admin/SolicitudesManager'));
 const HerramientasView = lazy(() => import('./admin/HerramientasView'));
 const MetricsView = lazy(() => import('./admin/MetricsView'));
 

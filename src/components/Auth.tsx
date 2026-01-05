@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import MiPanelLogo from './MiPanelLogo';
 import UfloLogo from './UfloLogo';
-import ThemeToggle from './ThemeToggle';
+import ThemeToggle from './layout/ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useModal } from '../contexts/ModalContext';
 import { useTheme } from '../contexts/ThemeContext';

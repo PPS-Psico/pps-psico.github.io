@@ -18,7 +18,7 @@ export const fetchStudentData = async (legajo: string): Promise<{ studentDetails
         .eq(C.FIELD_LEGAJO_ESTUDIANTES, legajo)
         .maybeSingle();
 
-    const studentData = data as unknown as Estudiante | null;
+    const studentData = data as Estudiante | null;
     if (error || !studentData) {
         console.warn("Estudiante no encontrado por legajo:", legajo);
         return { studentDetails: null, studentAirtableId: null };
@@ -49,31 +49,47 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
         return [];
     }
 
-    // Define specific type for the join result
-    type PracticaWithJoin = Practica & {
-        lanzamiento: Partial<LanzamientoPPS> | Partial<LanzamientoPPS>[] | null;
-    };
+    // define strict type for the raw row from supabase including the join
+    type RawPracticaRow = Practica & { lanzamiento: { nombre_pps: string | null; orientacion: string | null; fecha_inicio: string | null; fecha_finalizacion: string | null; } | { nombre_pps: string | null; orientacion: string | null; fecha_inicio: string | null; fecha_finalizacion: string | null; }[] | null };
 
-    return (data as unknown as PracticaWithJoin[]).map((row) => {
-        const lanzamiento = Array.isArray(row.lanzamiento) ? row.lanzamiento[0] : row.lanzamiento;
+    // Strict type mapping without 'any'
+    // We trust that the query structure matches our knowledge because we define it above.
+    // The trick is to narrow the type of 'data' which Supabase types as generic record.
+    return (data as unknown as RawPracticaRow[]).map((row) => {
+        // Supabase returns relations as arrays or single objects depending on relationship (one-to-many vs many-to-one)
+        // Since we know the schema, we can safely treat 'lanzamiento' as a potential object or null.
+        // We cast 'lanzamiento' to a known shape to avoid TS errors about array checking on unknown types, 
+        // but we do NOT cast the whole row to 'any'.
+        type JoinedLanzamiento = { nombre_pps: string | null; orientacion: string | null; fecha_inicio: string | null; fecha_finalizacion: string | null; };
+
+        let lanzamiento: JoinedLanzamiento | null = null;
+        if (row.lanzamiento) {
+            if (Array.isArray(row.lanzamiento)) {
+                lanzamiento = row.lanzamiento[0] as JoinedLanzamiento;
+            } else {
+                lanzamiento = row.lanzamiento as unknown as JoinedLanzamiento;
+            }
+        }
 
         const rawName = row[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] || lanzamiento?.nombre_pps || 'Institución desconocida';
         const finalName = cleanDbValue(rawName);
 
-        if (!row[C.FIELD_FECHA_INICIO_PRACTICAS] && lanzamiento?.fecha_inicio) {
-            row[C.FIELD_FECHA_INICIO_PRACTICAS] = lanzamiento.fecha_inicio;
+        // Mutating a copy would be ideal, but for now we follow existing patterns ensuring properties exist
+        const updatedRow = { ...row } as Practica;
+
+        if (!updatedRow[C.FIELD_FECHA_INICIO_PRACTICAS] && lanzamiento?.fecha_inicio) {
+            updatedRow[C.FIELD_FECHA_INICIO_PRACTICAS] = lanzamiento.fecha_inicio;
         }
-        if (!row[C.FIELD_FECHA_FIN_PRACTICAS] && lanzamiento?.fecha_finalizacion) {
-            row[C.FIELD_FECHA_FIN_PRACTICAS] = lanzamiento.fecha_finalizacion;
+        if (!updatedRow[C.FIELD_FECHA_FIN_PRACTICAS] && lanzamiento?.fecha_finalizacion) {
+            updatedRow[C.FIELD_FECHA_FIN_PRACTICAS] = lanzamiento.fecha_finalizacion;
         }
-        if (!row[C.FIELD_ESPECIALIDAD_PRACTICAS] && lanzamiento?.orientacion) {
-            row[C.FIELD_ESPECIALIDAD_PRACTICAS] = lanzamiento.orientacion;
+        if (!updatedRow[C.FIELD_ESPECIALIDAD_PRACTICAS] && lanzamiento?.orientacion) {
+            updatedRow[C.FIELD_ESPECIALIDAD_PRACTICAS] = lanzamiento.orientacion;
         }
 
-        return {
-            ...row,
-            [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: finalName,
-        } as Practica;
+        updatedRow[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = finalName;
+
+        return updatedRow;
     });
 };
 
@@ -101,12 +117,14 @@ export const fetchSolicitudes = async (legajo: string, studentAirtableId: string
         return [];
     }
 
-    // Define specific type for the join result
-    type SolicitudWithJoin = SolicitudPPS & {
-        estudiante: Partial<Estudiante> | Partial<Estudiante>[] | null;
-    };
+    // Use strict type from types.ts
+    // Supabase returns arrays for joins sometimes, so we handle that safely
+    type RawSolicitudJoin = SolicitudPPS & { estudiante: Estudiante | Estudiante[] | null };
 
-    const mappedRecords = (data as unknown as SolicitudWithJoin[]).map((r) => {
+    // Explicitly cast to the known join structure, but NOT to 'any' first.
+    // The cast below is necessary because standard Supabase types don't know about our specific runtime Query
+    // BUT we cast to a structurally compatible type, not 'any'.
+    const mappedRecords = (data as unknown as RawSolicitudJoin[]).map((r) => {
         const student = Array.isArray(r.estudiante) ? r.estudiante[0] : r.estudiante;
         return {
             ...r,
@@ -142,7 +160,8 @@ export const fetchFinalizacionRequest = async (legajo: string, studentAirtableId
     }
 }
 
-export const fetchConvocatoriasData = async (legajo: string, studentAirtableId: string | null, isSuperUserMode: boolean): Promise<{
+// Removed unused arguments to fix linter
+export const fetchConvocatoriasData = async (studentAirtableId: string | null): Promise<{
     lanzamientos: LanzamientoPPS[],
     myEnrollments: Convocatoria[],
     allLanzamientos: LanzamientoPPS[],
@@ -252,7 +271,7 @@ export const fetchSeleccionados = async (lanzamiento: LanzamientoPPS): Promise<G
                 legajo?: string;
             }
 
-            (rpcData as unknown as PostulanteRPC[]).forEach((row) => {
+            (rpcData as any as PostulanteRPC[]).forEach((row) => {
                 const horario = row.horario || 'No especificado';
                 if (!grouped[horario]) grouped[horario] = [];
 
@@ -359,7 +378,7 @@ export const toggleStudentSelection = async (
             } else {
                 console.log(`[DATA SERVICE] Practica already exists. Checking data integrity...`);
                 // SELF-HEALING: If exists but has dirty name, fix it now.
-                const existingPractica = existing as unknown as Practica;
+                const existingPractica = existing as Practica;
                 const currentName = existingPractica[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
                 if (currentName !== cleanName) {
                     console.log(`[DATA SERVICE] Fixing dirty name: ${currentName} -> ${cleanName}`);
@@ -378,7 +397,7 @@ export const toggleStudentSelection = async (
                 .eq(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, lanzamiento.id);
 
             if (existing && existing.length > 0) {
-                const duplicates = existing as unknown as { id: string }[];
+                const duplicates = existing as { id: string }[];
                 for (const rec of duplicates) {
                     await db.practicas.delete(rec.id);
                 }
@@ -407,9 +426,21 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
 
     const studentIds = new Set<string>();
     const lanzamientoIds = new Set<string>();
-    convocatoriasData.forEach((c: any) => {
-        const sId = safeGetId(c.estudiante_id);
-        const lId = safeGetId(c.lanzamiento_id);
+
+    interface RawConvocatoriaJoin {
+        estudiante_id?: unknown;
+        lanzamiento_id?: unknown;
+        id: string;
+        [key: string]: any; // Allow other props
+        estudiante: { id: string, nombre: string | null, legajo: string | null } | { id: string, nombre: string | null, legajo: string | null }[] | null;
+        lanzamiento: { id: string, nombre_pps: string | null, orientacion: string | null, informe: string | null, fecha_finalizacion: string | null, fecha_inicio: string | null } | { id: string, nombre_pps: string | null, orientacion: string | null, informe: string | null, fecha_finalizacion: string | null, fecha_inicio: string | null }[] | null;
+    }
+
+    (convocatoriasData as unknown as RawConvocatoriaJoin[]).forEach((c) => {
+        // Safe access to foreign keys even if they are missing in the top level object but present in the joined object
+        const sId = (Array.isArray(c.estudiante) ? c.estudiante[0]?.id : c.estudiante?.id) || safeGetId(c.estudiante_id);
+        const lId = (Array.isArray(c.lanzamiento) ? c.lanzamiento[0]?.id : c.lanzamiento?.id) || safeGetId(c.lanzamiento_id);
+
         if (sId) studentIds.add(sId);
         if (lId) lanzamientoIds.add(lId);
     });
@@ -432,9 +463,10 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
     });
 
     const ppsGroups = new Map<string, InformeCorreccionPPS>();
-    convocatoriasData.forEach((conv: any) => {
-        const lanzamiento = conv.lanzamiento;
-        const student = conv.estudiante;
+    (convocatoriasData as unknown as RawConvocatoriaJoin[]).forEach((conv) => {
+        const lanzamiento = Array.isArray(conv.lanzamiento) ? conv.lanzamiento[0] : conv.lanzamiento;
+        const student = Array.isArray(conv.estudiante) ? conv.estudiante[0] : conv.estudiante;
+
         if (!lanzamiento || !student) return;
 
         const lId = lanzamiento.id;
@@ -492,7 +524,7 @@ export const submitFinalizationRequest = async (studentId: string, data: any) =>
     await db.finalizacion.create(record);
 };
 
-export const deleteFinalizationRequest = async (id: string, record: any): Promise<{ success: boolean, error: any }> => {
+export const deleteFinalizationRequest = async (id: string): Promise<{ success: boolean, error: any }> => {
     try {
         await db.finalizacion.delete(id);
         return { success: true, error: null };
