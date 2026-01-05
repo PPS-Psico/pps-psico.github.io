@@ -9,7 +9,7 @@ import WelcomeBannerAdmin from '../components/WelcomeBannerAdmin';
 import Loader from '../components/Loader';
 
 // Carga diferida del generador de reportes para optimizar el rendimiento inicial.
-const ExecutiveReportGenerator = lazy(() => import('../components/ExecutiveReportGenerator'));
+const ExecutiveReportGenerator = lazy(() => import('../components/admin/ExecutiveReportGenerator'));
 
 const ReporteroView: React.FC = () => {
     const { authenticatedUser } = useAuth();
@@ -35,7 +35,7 @@ const ReporteroView: React.FC = () => {
                         <SubTabs tabs={metricsSubTabs} activeTabId={activeMetricsTabId} onTabChange={setActiveMetricsTabId} />
                         <div className="mt-6">
                             <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>
-                                {activeMetricsTabId === 'dashboard' && <MetricsDashboard onStudentSelect={() => {}} isTestingMode={isTestingMode} />}
+                                {activeMetricsTabId === 'dashboard' && <MetricsDashboard onStudentSelect={() => { }} isTestingMode={isTestingMode} />}
                                 {activeMetricsTabId === 'timeline' && <TimelineView isTestingMode={isTestingMode} />}
                                 {activeMetricsTabId === 'executive-report' && <ExecutiveReportGenerator isTestingMode={isTestingMode} />}
                             </Suspense>
@@ -52,7 +52,7 @@ const ReporteroView: React.FC = () => {
             <Tabs
                 tabs={tabs}
                 activeTabId={'metrics'}
-                onTabChange={() => {}} // Solo hay una pestaña principal, no se necesita acción de cambio.
+                onTabChange={() => { }} // Solo hay una pestaña principal, no se necesita acción de cambio.
             />
         </div>
     );
