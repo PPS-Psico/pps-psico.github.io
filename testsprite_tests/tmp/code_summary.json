@@ -1,0 +1,74 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "React",
+        "Vite",
+        "Supabase",
+        "TailwindCSS",
+        "TanStack Query"
+    ],
+    "features": [
+        {
+            "name": "Student Dashboard",
+            "description": "Main view for students to see their status, total hours, and active practices.",
+            "files": [
+                "src/views/StudentDashboard.tsx",
+                "src/components/student/PracticasTable.tsx",
+                "src/hooks/useStudentPanel.ts",
+                "src/contexts/StudentPanelContext.tsx"
+            ]
+        },
+        {
+            "name": "Student Practicas Management",
+            "description": "Allows students to view their practices and edit end dates.",
+            "files": [
+                "src/components/student/PracticasTable.tsx",
+                "src/hooks/useStudentPracticas.ts"
+            ]
+        },
+        {
+            "name": "Admin Editor Practicas",
+            "description": "Admin interface to CRUD practices, assigning students and institutions.",
+            "files": [
+                "src/components/admin/EditorPracticas.tsx",
+                "src/components/admin/RecordEditModal.tsx"
+            ]
+        },
+        {
+            "name": "Admin Editor Estudiantes",
+            "description": "Admin interface to manage students and view their calculated total hours.",
+            "files": [
+                "src/components/admin/EditorEstudiantes.tsx"
+            ]
+        },
+        {
+            "name": "Admin Editor Instituciones",
+            "description": "Admin interface to manage institutions, agreements, and orientations.",
+            "files": [
+                "src/components/admin/EditorInstituciones.tsx"
+            ]
+        },
+        {
+            "name": "Smart Analysis",
+            "description": "AI-driven insights for dashboard data.",
+            "files": [
+                "src/hooks/useSmartAnalysis.ts"
+            ]
+        },
+        {
+            "name": "Authentication",
+            "description": "User authentication context and logic.",
+            "files": [
+                "src/contexts/AuthContext.tsx"
+            ]
+        },
+        {
+            "name": "Database Service",
+            "description": "Core Supabase interaction logic.",
+            "files": [
+                "src/services/supabaseService.ts",
+                "src/lib/db.ts"
+            ]
+        }
+    ]
+}

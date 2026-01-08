@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173/StudentDashboard",
+  "loginUser": "4227",
+  "loginPassword": "422792",
+  "executionArgs": {
+    "projectName": "consulta-pps-uflo",
+    "projectPath": "c:\\Users\\Blas_\\Downloads\\Mi Panel Antigravity\\consulta-pps-uflo",
+    "testIds": [],
+    "additionalInstruction": "Re-running after fixing critical Locale Error. Use provided student credentials.",
+    "envs": {
+      "API_KEY": "sk-user-gWIUuG07yREKrCh6_xM6BZgi9wRTEDsHjwSSexWlmvU45yryQP--fpsWXyVE9GVSWGKOoZSIZRw68uindcb67SAxUWEJdxiy4ymoW7Zu1tOXb1aB8cyIKfd4CGmV2f5bIZk"
+    }
+  },
+  "proxy": "http://a6799e8f-38cd-4601-9507-d4c14f379e8b:lgeCc4usSm7IirEuGlJcnXTJ3jPkoch7@tun.testsprite.com:8080"
+}

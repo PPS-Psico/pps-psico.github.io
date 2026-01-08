@@ -32,12 +32,18 @@ interface StudentPanelContextType {
 
     // Aggregated states
     isLoading: boolean;
+    isStudentLoading: boolean;
+    isPracticasLoading: boolean;
+    isSolicitudesLoading: boolean;
+    isConvocatoriasLoading: boolean;
+    isFinalizationLoading: boolean;
     error: Error | null;
 
     // Mutations and refetch functions
     updateOrientation: UseMutationResult<any, Error, Orientacion | "", unknown>;
     updateInternalNotes: UseMutationResult<any, Error, string, unknown>;
     updateNota: UseMutationResult<(AirtableRecord<any> | null)[], Error, { practicaId: string; nota: string; convocatoriaId?: string; }, unknown>;
+    updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string }, unknown>;
     enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean; };
     confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
     refetchAll: () => void;
@@ -55,7 +61,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
 
     // Call all the individual data hooks in one central place.
     const { studentDetails, studentAirtableId, isStudentLoading, studentError, updateOrientation, updateInternalNotes, refetchStudent } = useStudentData(legajo);
-    const { practicas, isPracticasLoading, practicasError, updateNota, refetchPracticas } = useStudentPracticas(legajo);
+    const { practicas, isPracticasLoading, practicasError, updateNota, updateFechaFin, refetchPracticas } = useStudentPracticas(legajo);
     const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } = useStudentSolicitudes(legajo, studentAirtableId);
     const {
         lanzamientos, myEnrollments, allLanzamientos, isConvocatoriasLoading, convocatoriasError,
@@ -105,10 +111,16 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
         institutionAddressMap,
         finalizacionRequest,
         isLoading,
+        isStudentLoading,
+        isPracticasLoading,
+        isSolicitudesLoading,
+        isConvocatoriasLoading,
+        isFinalizationLoading,
         error,
         updateOrientation,
         updateInternalNotes,
         updateNota,
+        updateFechaFin,
         enrollStudent,
         confirmInforme,
         refetchAll,

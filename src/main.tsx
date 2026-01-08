@@ -1,5 +1,5 @@
-
 import React from 'react';
+console.log('%c ANTIGRAVITY CONTROL: main.tsx loaded ', 'background: #222; color: #bada55; font-size: 20px');
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';

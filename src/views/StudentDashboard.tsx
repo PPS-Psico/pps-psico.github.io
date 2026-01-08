@@ -179,10 +179,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
         allLanzamientos,
         institutionAddressMap,
         isLoading,
+        isStudentLoading,
+        isPracticasLoading,
         error,
         updateOrientation,
         updateInternalNotes,
         updateNota,
+        updateFechaFin,
         enrollStudent,
         refetchAll,
         criterios,
@@ -311,11 +314,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
         </ErrorBoundary>
     ), [solicitudes, handleStartSolicitud, handleOpenFinalization, criterios, informeTasks]);
 
+    const handleFechaFinChange = useCallback((practicaId: string, fecha: string) => {
+        updateFechaFin.mutate({ practicaId, fecha });
+    }, [updateFechaFin]);
+
     const practicasContent = useMemo(() => (
         <ErrorBoundary>
-            <PracticasTable practicas={practicas} handleNotaChange={handleNotaChange} />
+            <PracticasTable
+                practicas={practicas}
+                handleNotaChange={handleNotaChange}
+                handleFechaFinChange={handleFechaFinChange}
+                isLoading={isPracticasLoading}
+            />
         </ErrorBoundary>
-    ), [practicas, handleNotaChange]);
+    ), [practicas, handleNotaChange, handleFechaFinChange]);
 
     const profileContent = useMemo(() => (
         <ErrorBoundary>
@@ -332,7 +344,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, activeTab, on
 
     const showEmptyState = useMemo(() => !isLoading && practicas.length === 0 && solicitudes.length === 0 && lanzamientos.length === 0 && informeTasks.length === 0 && isAdminViewing && !forceInteractiveMode, [isLoading, practicas.length, solicitudes.length, lanzamientos.length, informeTasks.length, isAdminViewing, forceInteractiveMode]);
 
-    if (isLoading) return <DashboardLoadingSkeleton />;
+    // Only block completely if CORE student data is missing.
+    // If practicals/requests are loading, we show partial skeletons inside tabs.
+    if (isStudentLoading) return <DashboardLoadingSkeleton />;
     if (error) return <ErrorState error={error.message} onRetry={() => refetchAll()} />;
 
     // CASO DE BLOQUEO POR FINALIZACIÓN (Solo si NO es un Admin mirando)

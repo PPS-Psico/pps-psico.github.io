@@ -90,11 +90,15 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             const enriched = records.map(s => {
                 const sPracticas = practicas.filter(p => {
                     const link = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
-                    return Array.isArray(link) ? link.includes(s.id) : link === s.id;
+                    // Handle both array (['id']) and string ('id') formats
+                    if (Array.isArray(link)) {
+                        return link.includes(s.id);
+                    }
+                    return String(link) === s.id;
                 });
                 return {
                     ...s,
-                    __totalHours: sPracticas.reduce((sum, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0), 0)
+                    __totalHours: sPracticas.reduce((sum, p) => sum + (Number(p[FIELD_HORAS_PRACTICAS]) || 0), 0)
                 };
             });
 

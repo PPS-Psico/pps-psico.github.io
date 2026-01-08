@@ -18,7 +18,7 @@ import { FIELD_LEGAJO_ESTUDIANTES } from './constants';
 const StudentView = lazy(() => import('./views/StudentView'));
 const StudentDashboard = lazy(() => import('./views/StudentDashboard'));
 const StudentHome = lazy(() => import('./views/StudentDashboard').then(module => ({ default: module.StudentHome })));
-const PracticasView = lazy(() => import('./views/student/PracticasView'));
+import PracticasView from './views/student/PracticasView';
 const SolicitudesView = lazy(() => import('./views/student/SolicitudesView'));
 const InformesView = lazy(() => import('./views/student/InformesView'));
 const StudentProfileView = lazy(() => import('./views/student/StudentProfileView'));

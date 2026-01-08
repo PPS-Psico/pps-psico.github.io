@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "project": "Panel de Gestión de Prácticas Profesionales (PPS) - UFLO",
+    "date": "2025-12-30",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "Una aplicación web para la gestión, inscripción y seguimiento de las Prácticas Profesionales Supervisadas de Psicología en UFLO, que facilita la interacción tanto para estudiantes como para administrativos y directivos.",
+  "core_goals": [
+    "Permitir a los estudiantes ver y gestionar su estado y prácticas profesionales.",
+    "Facilitar la inscripción y seguimiento de postulaciones a prácticas.",
+    "Proveer una interfaz administrativa para la gestión completa de estudiantes, prácticas e instituciones.",
+    "Incorporar análisis basado en IA para mejorar la supervisión y planificación de convenios y convocatorias.",
+    "Garantizar seguridad y autenticación robusta mediante Supabase."
+  ],
+  "key_features": [
+    "Dashboard Personal para estudiantes con estado, horas acumuladas y prácticas activas.",
+    "Gestión de prácticas para estudiantes incluyendo edición de fechas y subida de certificados.",
+    "Visualización y postulación a convocatorias de prácticas disponibles.",
+    "CRUD completo para administradores sobre Estudiantes, Prácticas e Instituciones.",
+    "Planificación y vista de calendario para convocatorias y plazos.",
+    "Smart Analysis con IA para alertas y recomendaciones proactivas.",
+    "Gestión de solicitudes de prácticas con aprobación o rechazo.",
+    "Autenticación segura de usuarios basada en Supabase."
+  ],
+  "user_flow_summary": [
+    "Login mediante autenticación Supabase.",
+    "Estudiante edita fecha de fin en su tabla de prácticas y guarda cambios persistentes.",
+    "Administrador accede al editor de estudiantes y visualiza cálculo automático de horas acumuladas.",
+    "Visualización y filtrado de listas de instituciones con etiquetas para estados de convenio.",
+    "Administrador gestiona solicitudes y convocatorias mediante la interfaz administrativa."
+  ],
+  "validation_criteria": [
+    "Autenticación valida y segura para todos los usuarios.",
+    "Persistencia correcta de las modificaciones de prácticas de estudiantes en la base de datos.",
+    "Cálculo automático y correcto de las horas totales en el editor de estudiantes.",
+    "Filtrado exacto y correcto renderizado de estados y etiquetas en las instituciones.",
+    "Funcionalidad completa y sin errores de CRUD para estudiantes, prácticas e instituciones.",
+    "Correcta integración y resultados del componente de Smart Analysis basado en IA.",
+    "Interfaz responsiva y conforme a las pautas de usabilidad definidas."
+  ],
+  "code_summary": {
+    "tech_stack": [
+      "TypeScript",
+      "React",
+      "Vite",
+      "Supabase",
+      "TailwindCSS",
+      "TanStack Query"
+    ],
+    "features": [
+      {
+        "name": "Student Dashboard",
+        "description": "Main view for students to see their status, total hours, and active practices.",
+        "files": [
+          "src/views/StudentDashboard.tsx",
+          "src/components/student/PracticasTable.tsx",
+          "src/hooks/useStudentPanel.ts",
+          "src/contexts/StudentPanelContext.tsx"
+        ]
+      },
+      {
+        "name": "Student Practicas Management",
+        "description": "Allows students to view their practices and edit end dates.",
+        "files": [
+          "src/components/student/PracticasTable.tsx",
+          "src/hooks/useStudentPracticas.ts"
+        ]
+      },
+      {
+        "name": "Admin Editor Practicas",
+        "description": "Admin interface to CRUD practices, assigning students and institutions.",
+        "files": [
+          "src/components/admin/EditorPracticas.tsx",
+          "src/components/admin/RecordEditModal.tsx"
+        ]
+      },
+      {
+        "name": "Admin Editor Estudiantes",
+        "description": "Admin interface to manage students and view their calculated total hours.",
+        "files": [
+          "src/components/admin/EditorEstudiantes.tsx"
+        ]
+      },
+      {
+        "name": "Admin Editor Instituciones",
+        "description": "Admin interface to manage institutions, agreements, and orientations.",
+        "files": [
+          "src/components/admin/EditorInstituciones.tsx"
+        ]
+      },
+      {
+        "name": "Smart Analysis",
+        "description": "AI-driven insights for dashboard data.",
+        "files": [
+          "src/hooks/useSmartAnalysis.ts"
+        ]
+      },
+      {
+        "name": "Authentication",
+        "description": "User authentication context and logic.",
+        "files": [
+          "src/contexts/AuthContext.tsx"
+        ]
+      },
+      {
+        "name": "Database Service",
+        "description": "Core Supabase interaction logic.",
+        "files": [
+          "src/services/supabaseService.ts",
+          "src/lib/db.ts"
+        ]
+      }
+    ]
+  }
+}

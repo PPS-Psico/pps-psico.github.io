@@ -59,9 +59,9 @@ const NotificationDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                     >
                         <div className="flex gap-3">
                             <div className={`flex-shrink-0 mt-1 ${notif.type === 'solicitud_pps' ? 'text-blue-500' :
-                                    notif.type === 'acreditacion' ? 'text-emerald-500' :
-                                        notif.type === 'recordatorio' ? 'text-amber-500' :
-                                            'text-slate-500'
+                                notif.type === 'acreditacion' ? 'text-emerald-500' :
+                                    notif.type === 'recordatorio' ? 'text-amber-500' :
+                                        'text-slate-500'
                                 }`}>
                                 <span className="material-icons !text-xl">
                                     {notif.type === 'solicitud_pps' ? 'assignment_ind' :
@@ -81,7 +81,7 @@ const NotificationDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                                     {notif.message}
                                 </p>
                                 <p className="text-[10px] text-slate-400 mt-2">
-                                    {formatDate(notif.timestamp.toISOString())} {notif.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {formatDate(notif.timestamp.toISOString())} {notif.timestamp.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             </div>
                         </div>

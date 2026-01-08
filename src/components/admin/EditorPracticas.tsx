@@ -106,8 +106,16 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
             const { records, total, error } = await db.practicas.getPage(currentPage, itemsPerPage, { filters });
             if (error) throw error;
 
-            const studentIds = records.map(r => safeGetId(r[FIELD_ESTUDIANTE_LINK_PRACTICAS])).filter(Boolean) as string[];
-            const students = await db.estudiantes.getAll({ filters: { id: studentIds }, fields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES] });
+            const studentIds = records.map(r => {
+                const val = r[FIELD_ESTUDIANTE_LINK_PRACTICAS];
+                if (Array.isArray(val) && val.length > 0) return val[0];
+                return safeGetId(val);
+            }).filter(Boolean) as string[];
+
+            // Ensure unique IDs to avoid duplicate queries or oversized URLs
+            const uniqueStudentIds = Array.from(new Set(studentIds));
+
+            const students = await db.estudiantes.getAll({ filters: { id: uniqueStudentIds }, fields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES] });
             const studentMap = new Map(students.map(s => [s.id, s]));
 
             const enriched = records.map(p => ({

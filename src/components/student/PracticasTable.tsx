@@ -16,7 +16,6 @@ import {
     getStatusVisuals,
     parseToUTCDate,
     normalizeStringForComparison,
-    cleanInstitutionName,
     cleanDbValue
 } from '../../utils/formatters';
 import EmptyState from '../EmptyState';
@@ -89,9 +88,7 @@ const DateDisplay: React.FC<{
     };
 
     const handleContainerClick = () => {
-        if (window.matchMedia('(min-width: 768px)').matches) {
-            setIsEditing(true);
-        }
+        setIsEditing(true);
     };
 
     if (isEditing) {
@@ -101,6 +98,11 @@ const DateDisplay: React.FC<{
                 autoFocus
                 defaultValue={inputValue}
                 onBlur={handleBlur}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.currentTarget.blur();
+                    }
+                }}
                 className="bg-white dark:bg-slate-800 border border-blue-500 rounded px-1 py-0.5 text-xs text-slate-800 dark:text-white outline-none w-28"
             />
         );
@@ -228,6 +230,10 @@ const PracticaRow: React.FC<{
 };
 
 const PracticasTable: React.FC<PracticasTableProps> = ({ practicas, handleNotaChange, handleFechaFinChange, isLoading = false }) => {
+    console.log('[DEBUG] PracticasTable Props:', {
+        practicasCount: practicas.length,
+        hasDateHandler: !!handleFechaFinChange
+    });
     const [savingNotaId, setSavingNotaId] = useState<string | null>(null);
     const [justUpdatedPracticaId, setJustUpdatedPracticaId] = useState<string | null>(null);
 
@@ -289,4 +295,4 @@ const PracticasTable: React.FC<PracticasTableProps> = ({ practicas, handleNotaCh
     );
 };
 
-export default React.memo(PracticasTable);
+export default PracticasTable;
