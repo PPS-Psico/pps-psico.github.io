@@ -9,6 +9,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { AdminPreferencesProvider } from './contexts/AdminPreferencesContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ErrorProvider } from './contexts/ErrorContext';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { StudentPanelProvider } from './contexts/StudentPanelContext';
@@ -95,13 +96,6 @@ const AppRoutes = () => {
             <Route path="/reportero" element={<ProtectedRoute allowedRoles={['Reportero']}><ReporteroView /></ProtectedRoute>} />
 
             <Route path="/testing" element={<ProtectedRoute allowedRoles={['SuperUser', 'AdminTester']}><AdminTestingView /></ProtectedRoute>} />
-
-<<<<<<< HEAD
-            <Route path="/design" element={<DesignSystemView />} />
-=======
-
->>>>>>> main
-
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
@@ -109,9 +103,10 @@ const AppRoutes = () => {
 
 const App: React.FC = () => {
     return (
-        <Router>
-            <ConfigProvider>
-                <AdminPreferencesProvider>
+        <ErrorProvider>
+            <Router>
+                <ConfigProvider>
+                    <AdminPreferencesProvider>
                     <NotificationProvider>
                         <PwaInstallProvider>
                             <ThemeProvider>
@@ -130,6 +125,7 @@ const App: React.FC = () => {
                 </AdminPreferencesProvider>
             </ConfigProvider>
         </Router>
+    </ErrorProvider>
     );
 };
 
