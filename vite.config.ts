@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
       dedupe: ['react', 'react-dom', 'react-router-dom'],
     },
     optimizeDeps: {
-      include: ['react', 'react-dom']
+      include: ['react', 'react-dom', 'react-ga4']
     },
     define: {
       'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.API_KEY),
