@@ -95,15 +95,11 @@ const AppRoutes = () => {
             <Route path="/reportero" element={<ProtectedRoute allowedRoles={['Reportero']}><ReporteroView /></ProtectedRoute>} />
 
             <Route path="/testing" element={<ProtectedRoute allowedRoles={['SuperUser', 'AdminTester']}><AdminTestingView /></ProtectedRoute>} />
-
-<<<<<<< HEAD
+            
             <Route path="/design" element={<DesignSystemView />} />
-=======
-
->>>>>>> main-con-monitoring-recuperado
-
+            
             <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            </Routes>
     );
 };
 
