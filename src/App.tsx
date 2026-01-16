@@ -36,6 +36,7 @@ const ReporteroView = lazy(() => import('./views/ReporteroView'));
 const AdminTestingView = lazy(() => import('./views/AdminTestingView'));
 const DesignSystemView = lazy(() => import('./views/DesignSystemView'));
 
+
 const AdminStudentWrapper = () => {
     const { legajo } = useParams();
     if (!legajo) return null;
@@ -95,7 +96,11 @@ const AppRoutes = () => {
 
             <Route path="/testing" element={<ProtectedRoute allowedRoles={['SuperUser', 'AdminTester']}><AdminTestingView /></ProtectedRoute>} />
 
+<<<<<<< HEAD
             <Route path="/design" element={<DesignSystemView />} />
+=======
+
+>>>>>>> main
 
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

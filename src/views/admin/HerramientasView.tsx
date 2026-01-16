@@ -27,6 +27,7 @@ const ExecutiveReportGenerator = lazy(() => import('../../components/admin/Execu
 const ActiveInstitutionsReport = lazy(() => import('../../components/admin/ActiveInstitutionsReport'));
 const PersonalizationPanel = lazy(() => import('../../components/PersonalizationPanel'));
 const DataIntegrityTool = lazy(() => import('../../components/admin/DataIntegrityTool'));
+const MonitoringTest = lazy(() => import('../../components/MonitoringTest'));
 
 const QUICK_STUDENT_CONFIG = {
   label: 'Estudiante',
@@ -78,6 +79,9 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
     // Mantenimiento (Integridad)
     if (preferences.showIntegrity) availableTabs.push({ id: 'integrity', label: 'Integridad', icon: 'health_and_safety' });
 
+    // Monitoring (siempre visible para admin)
+    availableTabs.push({ id: 'monitoring', label: 'Monitoring', icon: 'monitoring' });
+    
     // Siempre al final
     availableTabs.push({ id: 'personalization', label: 'Personalización', icon: 'tune' });
 
@@ -119,6 +123,12 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
           {activeTabId === 'integrity' && preferences.showIntegrity && (
             <ErrorBoundary>
               <DataIntegrityTool />
+            </ErrorBoundary>
+          )}
+
+          {activeTabId === 'monitoring' && (
+            <ErrorBoundary>
+              <MonitoringTest />
             </ErrorBoundary>
           )}
 

@@ -8,6 +8,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import './index.css';
 
+// Initialize Monitoring
+import { initSentry } from './lib/sentry';
+import { initGA4 } from './lib/analytics';
+import { initWebVitals } from './lib/webVitals';
+
 // --- REACT RESILIENCE PATCH ---
 if (typeof Node === 'function' && Node.prototype) {
   const originalRemoveChild = Node.prototype.removeChild;
@@ -65,6 +70,11 @@ if (container.hasChildNodes()) {
 const root = createRoot(container);
 // @ts-ignore
 window.__REACT_ROOT_INSTANCE__ = root;
+
+// Initialize monitoring services
+initSentry();
+initGA4();
+initWebVitals();
 
 root.render(
   <React.StrictMode>
