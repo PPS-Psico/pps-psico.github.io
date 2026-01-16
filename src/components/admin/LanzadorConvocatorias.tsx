@@ -5,7 +5,7 @@ import type { InstitucionFields, LanzamientoPPSFields, AirtableRecord, Lanzamien
 
 const LanzadorConvocatorias: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
-    const [lanzamientos, setLanzamientos] = useState([]);
+    const [lanzamientos, setLanzamientos] = useState<LanzamientoPPS[]>([]);
     const [formData, setFormData] = useState({
         nombre_pps: '',
         descripcion: '',
@@ -55,12 +55,12 @@ const LanzadorConvocatorias: React.FC = () => {
                 hora_fin: ''
             });
             setLanzamientos(prev => [...prev, data]);
-            queryClient.invalidateQueries({ queryKey: ['lanzamientos'] });
+            queryClient.invalidateQueries({ queryKey: ['lanzamientos', 'instituciones'] });
         }
     });
 
     const updateMutation = useMutation({
-        mutationFn: async ({ id, ...data }: { id: string, data: any }) => {
+        mutationFn: async ({ id, ...data }: { id: string; data: any }) => {
             return await db.lanzamientos.update(id, data);
         },
         onSuccess: () => {
@@ -91,8 +91,7 @@ const LanzadorConvocatorias: React.FC = () => {
                 ...formData,
                 estado: 'borrador',
                 fecha_lanzamiento: new Date().toISOString().split('T')[0],
-                hora_inicio: new Date().toTimeString().split(':').slice(0, 5),
-                hora_fin: new Date().toTimeString().split(':').slice(0, 5)
+                hora_inicio: new Date().toTimeString().split(':')[0]
             };
 
             if (editingConvocatoria) {
@@ -177,39 +176,34 @@ const LanzadorConvocatorias: React.FC = () => {
                             ) : (
                                 lanzamientos.map((lanzamiento: LanzamientoPPS) => (
                                     <div key={lanzamiento.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow-sm">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <div className="w-full">
+                                              <div className="flex justify-between items-start">
+                                            <div className="w-full">
                                                     <h4 className="text-lg font-semibold text-gray-900">
                                                         {lanzamiento.nombre_pps}
                                                     </h4>
                                                     <p className="text-sm text-gray-600">
                                                         <span className="font-medium">Estado:</span>
-                                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                                                            lanzamiento.estado === 'abierta' ? 'bg-green-100 text-white' : 'bg-yellow-100 text-black'
-                                                        }`}>
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${lanzamiento.estado === 'abierta' ? 'bg-green-100 text-white' : 'bg-yellow-100 text-black'}`}>
                                                             {lanzamiento.estado === 'abierta' ? 'Abierta' : lanzamiento.estado === 'cerrada' ? 'Cerrada' : 'Borrador'}
                                                         </span>
                                                     </p>
-                                                </div>
-                                                <div className="flex-1 space-x-4">
-                                                    <span className="text-sm text-gray-500">
+                                                    <p className="text-sm text-gray-600">
                                                         <span className="font-medium">Inscripción:</span>
                                                         <span className="text-sm">
-                                                            {lanzamiento.estado_inscripcion === 'inscripto' ? 'Inscripto' : 
-                                                             lanzamiento.estado_inscripcion === 'seleccionado' ? 'Seleccionado' : 'No seleccionado'}
-                                                        }
-                                                        </span>
+                                                            {lanzamiento.estado_inscripcion === 'inscripto' ? 'Inscripto' : lanzamiento.estado_inscripcion === 'seleccionado' ? 'Seleccionado' : 'No seleccionado'}
+                                                             </span>
                                                         <span className="text-sm font-medium">
-                                                            ({lanzamiento.inscriptos_count || 0}/{lanzamiento.cupos_disponibles})
-                                                        </span>
-                                                    </span>
+                                                            {lanzamiento.estado_inscripcion === 'inscripto' ? 'Inscripto' : lanzamiento.estado_inscripcion === 'seleccionado' ? 'Seleccionado' : 'No seleccionado'}
+                                                             </span>
+                                                             <span className="text-sm font-medium">
+                                                             {lanzamiento.inscriptos_count || 0}/{lanzamiento.cupos_disponibles}
+                                                             </span>
+                                                    </p>
                                                 </div>
-                                            </div>
                                             </div>
                                             <div className="text-right space-x-4">
                                                 <button
-                                                    onClick={() => setEditingConvocatoria(lanzamiento)}
+                                                    onClick={() => setEditingConvocatoria(lanzamiento.id)}
                                                     className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                                 >
                                                     <span className="material-icons">edit</span>
@@ -229,7 +223,6 @@ const LanzadorConvocatorias: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
                             ))
                             ))}
                         </div>
@@ -286,7 +279,7 @@ const LanzadorConvocatorias: React.FC = () => {
                                         <option value="Psicología Clínica">Psicología Clínica</option>
                                         <option value="Educativa">Educativa</option>
                                         <option value="Organizacional">Organizacional</option>
-                                        <option value="Tecnología">Tecnología</option>
+                                        <option value="Tecnológica">Tecnológica</option>
                                     </select>
                                 </div>
                                 
@@ -357,19 +350,22 @@ const LanzadorConvocatorias: React.FC = () => {
                                                 type="datetime-local"
                                                 value={formData.fecha_fin}
                                                 onChange={(e) => handleInputChange('fecha_fin', e.target.value)}
-                                                className="w-full px-3 py-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                         </div>
-                                        
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Hora de Inicio
                                             </label>
                                             <input
                                                 type="time"
                                                 value={formData.hora_inicio}
                                                 onChange={(e) => handleInputChange('hora_inicio', e.target.value)}
-                                                className="w-full px-3 py-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                         </div>
                                         
@@ -381,39 +377,37 @@ const LanzadorConvocatorias: React.FC = () => {
                                                 type="time"
                                                 value={formData.hora_fin}
                                                 onChange={(e) => handleInputChange('hora_fin', e.target.value)}
-                                                className="w-full px-3 py-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div>
-                                    <div>
-                                        <button
-                                            type="submit"
-                                            onClick={handleSubmit}
-                                            disabled={isLoading}
-                                            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-800 transition-colors disabled:opacity-50"
-                                        >
-                                            {isLoading ? (
-                                                <span className="animate-spin inline-block w-4 h-4 border-2 border-transparent"></span>
-                                            ) : (
-                                                <span>Crear Convocatoria</span>
-                                            )}
-                                        </button>
-                                        
-                                        {showNewForm && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowNewForm(false)}
-                                                className="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg font-semibold"
-                                            >
-                                                Cancelar
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
+                        </div>
+                        
+                        <div className="flex justify-end space-x-4">
+                            <button
+                                type="submit"
+                                onClick={handleSubmit}
+                                disabled={isLoading}
+                                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-800 transition-colors disabled:opacity-50"
+                            >
+                                {isLoading ? (
+                                    <span className="animate-spin inline-block w-4 h-4 border-2 border-transparent border-t-gray-200"></span>
+                                ) : (
+                                    <span>Crear Convocatoria</span>
+                                )}
+                            </button>
+                            
+                            {showNewForm && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewForm(false)}
+                                    className="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg font-semibold"
+                                >
+                                    Cancelar
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
