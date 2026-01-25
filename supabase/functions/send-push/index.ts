@@ -15,6 +15,13 @@ const corsHeaders = {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+console.log('🔧 Config loaded:', {
+    hasUrl: !!SUPABASE_URL,
+    hasServiceRole: !!SUPABASE_SERVICE_ROLE_KEY,
+    hasVapidPublic: !!VAPID_PUBLIC_KEY,
+    hasVapidPrivate: !!VAPID_PRIVATE_KEY
+});
+
 // Initialize Web Push
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails(
