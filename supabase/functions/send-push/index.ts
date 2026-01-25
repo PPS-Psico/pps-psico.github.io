@@ -1,12 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import * as webpush from "https://esm.sh/web-push@3.4.5";
 
 // -- CONFIGURATION --
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
-const VAPID_EMAIL = 'mailto:admin@uflo.edu.ar'; // Valid email for VAPID
+const VAPID_EMAIL = 'mailto:admin@uflo.edu.ar';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -22,15 +21,25 @@ console.log('🔧 Config loaded:', {
     hasVapidPrivate: !!VAPID_PRIVATE_KEY
 });
 
+// Import web-push compatible con Deno
+let webpush;
+try {
+    webpush = await import('https://deno.land/x/webpush@0.2.1/mod.ts');
+    console.log('✅ web-push imported from Deno Land');
+} catch (err) {
+    console.error('❌ Failed to import web-push:', err);
+}
+
 // Initialize Web Push
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+if (webpush && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails(
         VAPID_EMAIL,
         VAPID_PUBLIC_KEY,
         VAPID_PRIVATE_KEY
     );
+    console.log('✅ VAPID configured');
 } else {
-    console.warn("⚠️ VAPID Keys not found in environment variables.");
+    console.warn("⚠️ VAPID Keys not found in environment variables or web-push failed to load.");
 }
 
 Deno.serve(async (req) => {
