@@ -38,6 +38,7 @@ interface NotificationContextType {
     markAllAsRead: () => void;
     clearNotifications: () => void;
     subscribeToPush: () => Promise<void>;
+    unsubscribeFromPush: () => Promise<void>;
     isPushEnabled: boolean;
     showToast: (message: string, type: 'success' | 'error' | 'warning') => void;
 }
@@ -160,6 +161,37 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             setToast({ message: msg, type: 'error' });
             setIsPushEnabled(false); // Revert on error
             localStorage.removeItem(PUSH_STORAGE_KEY);
+        }
+    };
+
+    const unsubscribeFromPush = async () => {
+        if (!authenticatedUser) return;
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+
+            if (subscription) {
+                // 1. Remove from Supabase
+                const { error: dbError } = await supabase
+                    .from('push_subscriptions')
+                    .delete()
+                    .eq('user_id', authenticatedUser.id)
+                    .eq('endpoint', subscription.endpoint);
+
+                if (dbError) console.error("Error removing sub from DB:", dbError);
+
+                // 2. Unsubscribe from Browser
+                await subscription.unsubscribe();
+            }
+
+            setIsPushEnabled(false);
+            localStorage.removeItem(PUSH_STORAGE_KEY);
+            setToast({ message: 'Notificaciones desactivadas.', type: 'success' });
+
+        } catch (e: any) {
+            console.error('Unsubscribe error:', e);
+            setToast({ message: 'Error al desactivar notificaciones.', type: 'error' });
         }
     };
 
@@ -468,7 +500,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }, []);
 
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, subscribeToPush, isPushEnabled, showToast }}>
+        <NotificationContext.Provider value={{
+            notifications,
+            unreadCount,
+            markAsRead,
+            markAllAsRead,
+            clearNotifications,
+            subscribeToPush,
+            unsubscribeFromPush,
+            isPushEnabled,
+            showToast
+        }}>
             {children}
             {toast && (
                 <Toast

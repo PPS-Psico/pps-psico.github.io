@@ -30,7 +30,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({
 
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
       const prompt = `
         Eres un asistente académico experto en el área de la Psicología.
@@ -49,6 +49,7 @@ export const AIContentGenerator: React.FC<AIContentGeneratorProps> = ({
         - La descripción debe mencionar objetivos y rol del practicante
         - Las actividades deben ser concretas y realistas
         - NO incluyas explicaciones fuera del JSON
+        - NO redundancia: No menciones fechas, cantidad de cupos, ni horas acreditadas en la descripción (estos datos ya se muestran en otras partes de la tarjeta).
         - Si el texto no tiene suficiente información, crea contenido realista basado en el contexto
 
         Texto a procesar:

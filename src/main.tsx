@@ -89,8 +89,9 @@ root.render(
 
 // Service Worker
 const meta = import.meta as any;
-if (meta.env && meta.env.PROD && 'serviceWorker' in navigator) {
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // In dev, sw.js is served from /public
     navigator.serviceWorker.register('./sw.js')
       .then(registration => {
         console.log('SW registrado:', registration.scope);

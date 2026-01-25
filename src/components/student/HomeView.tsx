@@ -24,8 +24,8 @@ import EmptyState from '../EmptyState';
 import { useModal } from '../../contexts/ModalContext';
 import { fetchSeleccionados } from '../../services/dataService';
 import { useMutation } from '@tanstack/react-query';
-import { useAuth } from '../../contexts/AuthContext';
 import { mockDb } from '../../services/mockDb';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 interface HomeViewProps {
     myEnrollments: Convocatoria[];
@@ -148,8 +148,46 @@ const HomeView: React.FC<HomeViewProps> = ({
         );
     };
 
+    const { isPushEnabled, subscribeToPush, unsubscribeFromPush } = useNotifications();
+
     return (
         <div className="space-y-12 animate-fade-in">
+            {/* Push Notification Banner */}
+            <div className={`rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group transition-all duration-500 ${isPushEnabled
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-700 shadow-emerald-500/20'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-700 shadow-blue-500/20'
+                }`}>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-5">
+                        <div className={`w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 ${!isPushEnabled ? 'animate-bounce-slow' : ''}`}>
+                            <span className="material-icons !text-3xl">
+                                {isPushEnabled ? 'notifications_active' : 'notifications_none'}
+                            </span>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black mb-1">
+                                {isPushEnabled ? '¡Notificaciones Activas!' : '¡No te pierdas ninguna PPS!'}
+                            </h3>
+                            <p className="text-white/80 text-sm font-medium">
+                                {isPushEnabled
+                                    ? 'Recibirás una alerta en tu celular cada vez que se publique una nueva convocatoria.'
+                                    : 'Activá las notificaciones para recibir alertas de nuevas convocatorias en tu celular.'}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={isPushEnabled ? unsubscribeFromPush : subscribeToPush}
+                        className={`w-full md:w-auto px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider active:scale-95 transition-all shadow-lg ${isPushEnabled
+                                ? 'bg-emerald-500/20 border border-white/30 text-white hover:bg-emerald-500/40'
+                                : 'bg-white text-blue-600 hover:bg-blue-50'
+                            }`}
+                    >
+                        {isPushEnabled ? 'Desactivar Alertas' : 'Activar Notificaciones'}
+                    </button>
+                </div>
+            </div>
+
             {/* Active Convocatorias */}
             {openLanzamientos.length > 0 ? (
                 <div>

@@ -54,6 +54,7 @@ import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
 import Checkbox from '../ui/Checkbox';
+import { notificationService } from '../../services/notificationService';
 
 import { GoogleGenerativeAI } from "@google/generative-ai"; // Legacy SDK for broader free tier support
 
@@ -301,7 +302,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
     // AI Loading State
     const [rawActivityText, setRawActivityText] = useState('');
-    // Legacy AI campus code gen
+    const [isGenerating, setIsGenerating] = useState(false);
     const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [instiSearch, setInstiSearch] = useState('');
     const [selectedInstitution, setSelectedInstitution] = useState<AirtableRecord<InstitucionFields> | null>(null);
@@ -320,121 +321,136 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
         }
     };
 
-    const handleAIGeneration = async (fromPreview: boolean = false) => {
-        let currentDesc = formData.descripcion;
-        let currentActs = actividades;
+    /**
+     * Runs the AI logic to extract fields from raw text
+     */
+    const runAIExtraction = async () => {
+        if (!rawActivityText.trim()) return;
 
-        // 1. Check if we need AI generation
-        if (rawActivityText.trim() && GEMINI_API_KEY) {
-            setToastInfo({ message: "Generando contenido con IA...", type: "success" });
-            try {
-                const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-                const prompt = `
-                    Actúa como un experto en redacción de convocatorias universitarias y diseño UX.
-                    Objetivo: Generar contenido para una tarjeta visualmente equilibrada y detectar información clave.
-                    
-                    Instrucciones de Diseño:
-                    1. La tarjeta tiene dos columnas. Izquierda (Descripción) y Derecha (Lista de Items).
-                    2. Para mantener la ARMONÍA VISUAL, la columna derecha NO debe ser mucho más larga que la izquierda.
-                    3. REGLA DE ORO: Genera MÁXIMO 4 items para la lista de la derecha.
-                    4. Si la info original tiene más de 4 objetivos/actividades, INTEGRA los menos críticos dentro de la "descripcion" narrativa de forma fluida.
-                    5. La "descripcion" debe ser robusta (aprox 300-450 caracteres) para equilibrar el peso visual de la lista.
-                    6. FLEXIBILIDAD: El título de la lista de la derecha ("actividadesLabel") debe ser dinámico. 
-                       - Si la info se centra en tareas -> "Actividades".
-                       - Si se centra en lugares/espacios -> "Espacios de Participación".
-                       - Si se centra en objetivos específicos -> "Objetivos Específicos".
-                       - Elige el más adecuado según el material.
-                    7. DETECCIÓN DE HORARIOS: Busca detalladamente información sobre días, horarios y modalidades (presencial/virtual) de cursada.
-                       - No omitas información si hay múltiples turnos o espacios diferentes.
-                       - Si hay varios horarios, júntalos en el campo "horario_seleccionado" separados por PUNTO Y COMA (;).
-                       - Ejemplo formativo: "Turno Mañana: 10:30 a 13:30 hs; Turno Tarde: 14:00 a 17:30 hs; Sábados (Virtual): 10:00 a 12:00 hs".
-
-                    Información Cruda: "${rawActivityText}"
-                    
-                    Datos del Contexto:
-                    - Título: ${formData.nombrePPS || 'Práctica Profesional'}
-                    - Orientación: ${formData.orientacion || 'General'}
-                    
-                    Genera un objeto JSON con:
-                    1. "descripcion": Resumen profesional y completo. Incluye actividades secundarias aquí si son muchas.
-                    2. "actividades": Array de strings. MÁXIMO 4 items. Solo lo más relevante.
-                    3. "actividadesLabel": El título sugerido para la lista (ej: "Actividades", "Espacios", etc).
-                    4. "horario_seleccionado": Un string con todos los horarios detectados separados por PUNTO Y COMA (;). Si no hay, dejar vacío.
-                    5. "requisitoObligatorio": String (o vacío).
-                    
-                    Responde SOLO con el JSON válido.
-                `;
-
-                const result = await model.generateContent(prompt);
-                const response = result.response;
-                const text = response.text();
-
-                const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                const parsed = JSON.parse(cleanJson);
-
-                if (parsed) {
-                    currentDesc = parsed.descripcion || currentDesc;
-                    currentActs = Array.isArray(parsed.actividades) && parsed.actividades.length > 0 ? parsed.actividades : currentActs;
-
-                    setFormData(prev => ({
-                        ...prev,
-                        descripcion: currentDesc,
-                        requisitoObligatorio: parsed.requisitoObligatorio || prev.requisitoObligatorio,
-                        actividadesLabel: parsed.actividadesLabel || prev.actividadesLabel
-                    }));
-                    setActividades(currentActs);
-
-                    if (parsed.horario_seleccionado) {
-                        // Split by semicolon and filter empty results
-                        const detectedSchedules = parsed.horario_seleccionado.split(';').map((s: string) => s.trim()).filter(Boolean);
-                        if (detectedSchedules.length > 0) {
-                            setSchedules(detectedSchedules);
-                        }
-                    }
-
-                    setToastInfo({ message: "✨ Contenido y horarios detectados", type: "success" });
-                }
-            } catch (error: any) {
-                console.error("AI Auto-Gen Error", error);
-                setToastInfo({ message: `Error IA: ${error.message}`, type: "error" });
-            }
-        } else if (fromPreview && !GEMINI_API_KEY) {
-            setToastInfo({ message: "⚠️ API Key no detectada. Usando contenido manual.", type: "error" });
+        if (!GEMINI_API_KEY) {
+            setToastInfo({ message: "⚠️ API Key de Gemini no detectada. Verifica tu archivo .env", type: "error" });
+            return;
         }
 
-        // 2. Generate notification message if in preview mode OR if we want to refresh it
-        if (fromPreview) {
-            const inscripInfo = (formData.fechaInicioInscripcion && formData.fechaFinInscripcion)
-                ? `Desde *${formatDate(formData.fechaInicioInscripcion)}* hasta el *${formatDate(formData.fechaFinInscripcion)}*`
-                : '*A confirmar*';
+        setIsGenerating(true);
+        setToastInfo({ message: "Generando contenido con IA...", type: "success" });
 
-            // Calculate duration
-            let durationText = 'A confirmar';
-            if (formData.fechaInicio && formData.fechaFin) {
-                const s = new Date(formData.fechaInicio);
-                const e = new Date(formData.fechaFin);
-                if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
-                    const diffDays = Math.ceil(Math.abs(e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
-                    if (diffDays >= 30) {
-                        const months = Math.round(diffDays / 30);
-                        durationText = `${months} ${months === 1 ? 'mes' : 'meses'} (aprox.)`;
-                    } else if (diffDays >= 7) {
-                        const weeks = Math.round(diffDays / 7);
-                        durationText = `${weeks} ${weeks === 1 ? 'semana' : 'semanas'}`;
-                    } else {
-                        durationText = `${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
+        try {
+            const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            const prompt = `
+                Actúa como un experto en redacción de convocatorias universitarias y diseño UX.
+                Objetivo: Generar contenido para una tarjeta visualmente equilibrada y detectar información clave.
+                
+                Instrucciones de Diseño:
+                1. La tarjeta tiene dos columnas. Izquierda (Descripción) y Derecha (Lista de Items).
+                2. Para mantener la ARMONÍA VISUAL, la columna derecha NO debe ser mucho más larga que la izquierda.
+                3. REGLA DE ORO: Genera MÁXIMO 4 items para la lista de la derecha.
+                4. Si la info original tiene más de 4 objetivos/actividades, INTEGRA los menos críticos dentro de la "descripcion" narrativa de forma fluida.
+                5. La "descripcion" debe ser robusta (aprox 300-450 caracteres) para equilibrar el peso visual de la lista.
+                6. FLEXIBILIDAD: El título de la lista de la derecha ("actividadesLabel") debe ser dinámico. 
+                   - Si la info se centra en tareas -> "Actividades".
+                   - Si se centra en lugares/espacios -> "Espacios de Participación".
+                   - Si se centra en objetivos específicos -> "Objetivos Específicos".
+                   - Elige el más adecuado según el material.
+                7. DETECCIÓN DE HORARIOS: Busca detalladamente información sobre días, horarios y modalidades (presencial/virtual) de cursada.
+                   - No omitas información si hay múltiples turnos o espacios diferentes.
+                   - Si hay varios horarios, júntalos en el campo "horario_seleccionado" separados por PUNTO Y COMA (;).
+                   - Ejemplo formativo: "Turno Mañana: 10:30 a 13:30 hs; Turno Tarde: 14:00 a 17:30 hs; Sábados (Virtual): 10:00 a 12:00 hs".
+                8. NO REDUNDANCIA: La "descripcion" NO DEBE incluir datos que ya figuran en otros campos de la tarjeta:
+                   - NO menciones fechas de inicio o fin.
+                   - NO menciones la cantidad de cupos disponibles.
+                   - NO menciones la cantidad de horas acreditadas.
+                   - NO menciones si es presencial o virtual (ya figura en la ubicación).
+                   - Foco: Céntrate puramente en el propósito pedagógico, la dinámica de trabajo, el rol esperado del estudiante y el impacto de la práctica.
+
+                Información Cruda: "${rawActivityText}"
+                
+                Datos del Contexto:
+                - Título: ${formData.nombrePPS || 'Práctica Profesional'}
+                - Orientación: ${formData.orientacion || 'General'}
+                
+                Genera un objeto JSON con:
+                1. "descripcion": Narrativa profesional centrada en objetivos y rol. SIN mencionar fechas, cupos o cantidad de horas.
+                2. "actividades": Array de strings. MÁXIMO 4 items. Solo lo más relevante.
+                3. "actividadesLabel": El título sugerido para la lista (ej: "Actividades", "Espacios", etc).
+                4. "horario_seleccionado": Un string con todos los horarios detectados separados por PUNTO Y COMA (;). Si no hay, dejar vacío.
+                5. "requisitoObligatorio": String (o vacío).
+                
+                Responde SOLO con el JSON válido.
+            `;
+
+            const result = await model.generateContent(prompt);
+            const response = result.response;
+            const text = response.text();
+
+            const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanJson);
+
+            if (parsed) {
+                const currentDesc = parsed.descripcion || formData.descripcion;
+                const currentActs = Array.isArray(parsed.actividades) && parsed.actividades.length > 0 ? parsed.actividades : actividades;
+
+                setFormData(prev => ({
+                    ...prev,
+                    descripcion: currentDesc,
+                    requisitoObligatorio: parsed.requisitoObligatorio || prev.requisitoObligatorio,
+                    actividadesLabel: parsed.actividadesLabel || prev.actividadesLabel
+                }));
+                setActividades(currentActs);
+
+                if (parsed.horario_seleccionado) {
+                    const detectedSchedules = parsed.horario_seleccionado.split(';').map((s: string) => s.trim()).filter(Boolean);
+                    if (detectedSchedules.length > 0) {
+                        setSchedules(detectedSchedules);
                     }
                 }
-            }
 
-            const msg = `📢 *¡Nueva Convocatoria PPS: ${formData.nombrePPS || 'Práctica Profesional'}!* 📢
+                setToastInfo({ message: "✨ Contenido y horarios detectados", type: "success" });
+            }
+        } catch (error: any) {
+            console.error("AI Auto-Gen Error", error);
+            setToastInfo({ message: `Error IA: ${error.message}`, type: "error" });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    /**
+     * Logic to generate the WhatsApp preview and open the modal, 
+     * WITHOUT re-running extraction and losing manual edits.
+     */
+    const handleSmartPreview = () => {
+        const inscripInfo = (formData.fechaInicioInscripcion && formData.fechaFinInscripcion)
+            ? `Desde *${formatDate(formData.fechaInicioInscripcion)}* hasta el *${formatDate(formData.fechaFinInscripcion)}*`
+            : '*A confirmar*';
+
+        // Calculate duration
+        let durationText = 'A confirmar';
+        if (formData.fechaInicio && formData.fechaFin) {
+            const s = new Date(formData.fechaInicio);
+            const e = new Date(formData.fechaFin);
+            if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+                const diffDays = Math.ceil(Math.abs(e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays >= 30) {
+                    const months = Math.round(diffDays / 30);
+                    durationText = `${months} ${months === 1 ? 'mes' : 'meses'} (aprox.)`;
+                } else if (diffDays >= 7) {
+                    const weeks = Math.round(diffDays / 7);
+                    durationText = `${weeks} ${weeks === 1 ? 'semana' : 'semanas'}`;
+                } else {
+                    durationText = `${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
+                }
+            }
+        }
+
+        const msg = `📢 *¡Nueva Convocatoria PPS: ${formData.nombrePPS || 'Práctica Profesional'}!* 📢
 
 ✨ *Institución:* ${formData.nombrePPS || 'A confirmar'}.
 📍 *Lugar:* ${formData.direccion || 'A confirmar'}.
 
-🎯 *Objetivo:* ${currentDesc || 'Describir el objetivo de la práctica.'}
+🎯 *Objetivo:* ${formData.descripcion || 'Describir el objetivo de la práctica.'}
 
 *Detalles de la Práctica:*
 ⏱️ *Acredita:* ${formData.horasAcreditadas || 0} hs totales (${formData.orientacion || 'Orientación'}).
@@ -443,7 +459,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 📍 *Modalidad:* ${formData.direccion === 'Modalidad Virtual' ? 'Virtual' : 'Presencial'}.
 
 *Horarios y Dedicación:*
-🗓️ *Cursada:* ${schedules.join('; ') || 'A confirmar'}.
+🗓️ *Cursada:* ${schedules.filter(Boolean).join('; ') || 'A confirmar'}.
 
 *Fechas Clave:*
 ‼️ *INSCRIPCIÓN:* ${inscripInfo}. ‼️
@@ -454,13 +470,8 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
 
 🔗 *Inscripción en Mi Panel.*`;
 
-            setFormData(prev => ({ ...prev, mensajeWhatsApp: msg }));
-            setShowPreviewModal(true);
-        }
-    };
-
-    const handleSmartPreview = () => {
-        handleAIGeneration(true);
+        setFormData(prev => ({ ...prev, mensajeWhatsApp: msg }));
+        setShowPreviewModal(true);
     };
 
 
@@ -502,14 +513,24 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                 return null;
             }
 
-            const records = await db.lanzamientos.get({
-                filters: {
-                    [FIELD_NOMBRE_PPS_LANZAMIENTOS]: selectedInstitution[FIELD_NOMBRE_INSTITUCIONES]
-                },
+            // 1. Try search by Institution ID (Most reliable)
+            let records = await db.lanzamientos.get({
+                filters: { 'institucion_id': selectedInstitution.id },
                 sort: [{ field: 'fecha_inicio', direction: 'desc' }],
                 maxRecords: 1,
             });
-            // Ensure we get the fields we need. If generic 'get' is used, it usually maps all schema fields.
+
+            // 2. Fallback to relaxed name match if not found by ID or if ID-linked record is very old
+            if (records.length === 0) {
+                records = await db.lanzamientos.get({
+                    filters: {
+                        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: `%${selectedInstitution[FIELD_NOMBRE_INSTITUCIONES]}%`
+                    },
+                    sort: [{ field: 'fecha_inicio', direction: 'desc' }],
+                    maxRecords: 1,
+                });
+            }
+
             return records[0] || null;
         },
         enabled: !!selectedInstitution,
@@ -612,8 +633,16 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             }
             return db.lanzamientos.create(newLaunchData);
         },
-        onSuccess: () => {
+        onSuccess: (data: any, variables: any) => {
             setToastInfo({ message: 'Convocatoria procesada con éxito.', type: 'success' });
+
+            // Trigger Push Notification for new launches (not scheduled ones)
+            if (variables[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === 'Abierta') {
+                notificationService.notifyNewLaunch(variables[FIELD_NOMBRE_PPS_LANZAMIENTOS]).catch(err => {
+                    console.error('[Lanzador] Error triggering push notification:', err);
+                });
+            }
+
             setFormData(initialState);
             setSchedules(['']);
             setActividades([]);
@@ -800,8 +829,8 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
             actividadesLabel: (lastLanzamiento[FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS] as string) || 'Actividades',
             horariosFijos: !!lastLanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS]
         }));
-        setSchedules(prevSchedulesList);
-        setActividades(prevActivitiesList.length ? prevActivitiesList : []);
+        setSchedules(prevSchedulesList.length ? prevSchedulesList : ['']);
+        setActividades(prevActivitiesList.length ? prevActivitiesList : ['']);
 
         setToastInfo({ message: 'Datos anteriores cargados.', type: 'success' });
     }, [lastLanzamiento]);
@@ -1230,12 +1259,20 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => handleAIGeneration(false)}
-                                            className="h-full px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 border border-purple-200 dark:border-purple-800"
+                                            onClick={runAIExtraction}
+                                            disabled={isGenerating || !rawActivityText.trim()}
+                                            className={`h-full px-4 rounded-lg transition-colors flex flex-col items-center justify-center gap-1 border ${isGenerating
+                                                ? 'bg-slate-100 text-slate-400 border-slate-200'
+                                                : 'bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                                }`}
                                             title="Generar contenido automáticamente"
                                         >
-                                            <span className="material-icons !text-xl">auto_awesome</span>
-                                            <span className="text-[10px] font-bold">Generar</span>
+                                            <span className={`material-icons !text-xl ${isGenerating ? 'animate-spin' : ''}`}>
+                                                {isGenerating ? 'refresh' : 'auto_awesome'}
+                                            </span>
+                                            <span className="text-[10px] font-bold">
+                                                {isGenerating ? 'Cargando...' : 'Generar'}
+                                            </span>
                                         </button>
                                     </div>
                                     <p className="text-[10px] text-slate-500 mt-2">
