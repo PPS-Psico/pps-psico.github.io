@@ -79,9 +79,11 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
     // Mantenimiento (Integridad)
     if (preferences.showIntegrity) availableTabs.push({ id: 'integrity', label: 'Integridad', icon: 'health_and_safety' });
 
-    // Monitoring (siempre visible para admin)
-    availableTabs.push({ id: 'monitoring', label: 'Monitoring', icon: 'monitoring' });
-    
+    // Monitoring (siempre visible para admin si está activo en prefs)
+    if (preferences.showMonitoring) {
+      availableTabs.push({ id: 'monitoring', label: 'Monitoring', icon: 'monitoring' });
+    }
+
     // Siempre al final
     availableTabs.push({ id: 'personalization', label: 'Personalización', icon: 'tune' });
 
@@ -126,7 +128,7 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect, is
             </ErrorBoundary>
           )}
 
-          {activeTabId === 'monitoring' && (
+          {activeTabId === 'monitoring' && preferences.showMonitoring && (
             <ErrorBoundary>
               <MonitoringTest />
             </ErrorBoundary>

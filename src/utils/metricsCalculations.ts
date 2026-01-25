@@ -1,5 +1,5 @@
 
-import { 
+import {
     FIELD_ESTADO_ESTUDIANTES,
     FIELD_FECHA_FINALIZACION_ESTUDIANTES,
     FIELD_FECHA_INICIO_LANZAMIENTOS,
@@ -20,7 +20,7 @@ import {
     FIELD_ESTADO_PRACTICA
 } from '../constants';
 import { parseToUTCDate, safeGetId, normalizeStringForComparison } from './formatters';
-import { differenceInDays, endOfMonth, isBefore, isAfter, isSameMonth } from 'date-fns';
+import { differenceInDays, isSameMonth } from 'date-fns';
 
 const getGroupName = (name: string | undefined): string => {
     if (!name) return 'Sin Nombre';
@@ -40,7 +40,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
         if (!studentId || !dateStr) return;
         const date = parseToUTCDate(dateStr);
         if (!date) return;
-        
+
         const current = studentTimelineMap.get(studentId) || { firstActivity: new Date(9999, 11, 31), graduation: null };
         if (date < current.firstActivity) {
             current.firstActivity = date;
@@ -52,13 +52,15 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     allData.convocatorias.forEach((c: any) => {
         const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
         // Preferimos created_at para la inscripción, o fecha_inicio como fallback
-        updateFirstActivity(sId, c.created_at || c.fecha_inicio); 
+        const dateStr: string | null = c.created_at || c.fecha_inicio || null;
+        if (sId && dateStr) updateFirstActivity(sId, dateStr);
     });
 
     // 2. Barrer Prácticas (Por si hay históricas sin convocatoria)
     allData.practicas.forEach((p: any) => {
         const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
-        updateFirstActivity(sId, p[FIELD_FECHA_INICIO_PRACTICAS] || p.created_at);
+        const dateStr: string | null = p[FIELD_FECHA_INICIO_PRACTICAS] || p.created_at || null;
+        if (sId && dateStr) updateFirstActivity(sId, dateStr);
     });
 
     // 3. Cargar Fechas de Graduación y limpiar mapa
@@ -66,7 +68,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
         if (!studentTimelineMap.has(s.id)) return; // Si no tiene actividad, no cuenta para métricas de flujo
 
         const current = studentTimelineMap.get(s.id)!;
-        
+
         // Si está finalizado, registramos la fecha
         if (s[FIELD_ESTADO_ESTUDIANTES] === 'Finalizado' && s[FIELD_FECHA_FINALIZACION_ESTUDIANTES]) {
             current.graduation = parseToUTCDate(s[FIELD_FECHA_FINALIZACION_ESTUDIANTES]);
@@ -85,12 +87,12 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     const trendData: { month: string; value: number }[] = [];
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const currentMonthIndex = isCurrentYear ? now.getMonth() : 11;
-    
+
     // Calcular BASELINE: Estudiantes activos al 31 de Diciembre del año anterior
     const startOfTargetYear = new Date(targetYear, 0, 1); // 1 Enero
-    
+
     let activeCounter = 0;
-    
+
     // Contamos iniciales: Aquellos que entraron ANTES de este año y (no se graduaron O se graduaron DESPUÉS del inicio de este año)
     studentTimelineMap.forEach((timeline, _) => {
         if (timeline.firstActivity < startOfTargetYear) {
@@ -105,7 +107,6 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
         if (index > currentMonthIndex) return;
 
         const monthStart = new Date(targetYear, index, 1);
-        const monthEnd = endOfMonth(monthStart);
 
         // Sumar NUEVOS de este mes
         let newInMonth = 0;
@@ -129,7 +130,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
 
     // --- 3. LISTAS AUXILIARES ---
-    
+
     // Alumnos Acreditados (Finalizados en el año objetivo)
     const acreditadosList = allData.estudiantes.filter((s: any) => {
         const timeline = studentTimelineMap.get(s.id);
@@ -138,13 +139,13 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
     // Alumnos Activos HOY (Snapshot) o al final del año objetivo
     const activosList = allData.estudiantes.filter((s: any) => {
-         const timeline = studentTimelineMap.get(s.id);
-         if (!timeline) return false; // Sin actividad no cuenta
-         
-         const startedBeforeOrDuring = timeline.firstActivity.getUTCFullYear() <= targetYear;
-         const notGraduatedOrGraduatedAfter = !timeline.graduation || timeline.graduation.getUTCFullYear() > targetYear;
-         
-         return startedBeforeOrDuring && notGraduatedOrGraduatedAfter;
+        const timeline = studentTimelineMap.get(s.id);
+        if (!timeline) return false; // Sin actividad no cuenta
+
+        const startedBeforeOrDuring = timeline.firstActivity.getUTCFullYear() <= targetYear;
+        const notGraduatedOrGraduatedAfter = !timeline.graduation || timeline.graduation.getUTCFullYear() > targetYear;
+
+        return startedBeforeOrDuring && notGraduatedOrGraduatedAfter;
     });
 
     const totalMatriculaGenerada = activosList.length + acreditadosList.length;
@@ -152,7 +153,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     // Métricas Específicas de Estudiantes (Recuperadas de lógica anterior)
     const studentHoursMap = new Map<string, number>();
     const studentActivePracticesMap = new Map<string, boolean>();
-    
+
     allData.practicas.forEach((p: any) => {
         const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
         if (sId) {
@@ -168,7 +169,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     });
 
     const sinNingunaPpsList = activosList.filter((s: any) => !studentTimelineMap.has(s.id)); // Estricto: sin actividad registrada
-    
+
     const proximosAFinalizarList = activosList.filter((s: any) => {
         const totalHours = studentHoursMap.get(s.id) || 0;
         const hasActive = studentActivePracticesMap.get(s.id);
@@ -180,12 +181,13 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     const enPpsEnCursoList = activosList.filter((s: any) => studentActivePracticesMap.get(s.id));
 
     // --- 4. DISTRIBUCIÓN POR ÁREA ---
-    const occupancyByOrientation: Record<string, any[]> = {
-       'Clinica': [], 'Educacional': [], 'Laboral': [], 'Comunitaria': [], 'Sin definir': []
+    interface OccupancyEntry { nombre: string; legajo: string; institucion: string; raw_value: string; }
+    const occupancyByOrientation: Record<string, OccupancyEntry[]> = {
+        'Clinica': [], 'Educacional': [], 'Laboral': [], 'Comunitaria': [], 'Sin definir': []
     };
 
     const launchesMap = new Map(allData.lanzamientos.map((l: any) => [l.id, l]));
-    
+
     allData.convocatorias.forEach((c: any) => {
         const date = parseToUTCDate(c.created_at || c.fecha_inicio);
         if (!date || date.getUTCFullYear() !== targetYear) return;
@@ -197,14 +199,14 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
         const studentId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
         const student = allData.estudiantes.find((s: any) => s.id === studentId);
 
-        const studentEntry = {
-           nombre: student?.nombre || 'Estudiante',
-           legajo: student?.legajo || '---',
-           institucion: launch?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || 'N/A',
-           raw_value: launch?.[FIELD_ORIENTACION_LANZAMIENTOS] || '(Vacio)'
+        const studentEntry: OccupancyEntry = {
+            nombre: student?.nombre || 'Estudiante',
+            legajo: student?.legajo || '---',
+            institucion: (launch as any)?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || 'N/A',
+            raw_value: (launch as any)?.[FIELD_ORIENTACION_LANZAMIENTOS] || '(Vacio)'
         };
 
-        const normalized = normalizeStringForComparison(launch?.[FIELD_ORIENTACION_LANZAMIENTOS]);
+        const normalized = normalizeStringForComparison((launch as any)?.[FIELD_ORIENTACION_LANZAMIENTOS]);
         if (normalized.includes('clinica')) occupancyByOrientation['Clinica'].push(studentEntry);
         else if (normalized.includes('educacional') || normalized.includes('educacion')) occupancyByOrientation['Educacional'].push(studentEntry);
         else if (normalized.includes('laboral') || normalized.includes('trabajo')) occupancyByOrientation['Laboral'].push(studentEntry);
@@ -215,7 +217,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     // --- 5. DATOS DE INSTITUCIONES ---
     const yearLaunches = allData.lanzamientos.filter((l: any) => parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS])?.getUTCFullYear() === targetYear);
     const totalCupos = yearLaunches.reduce((sum: number, l: any) => sum + (l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0), 0);
-    
+
     const uniqueActiveNames = new Set<string>();
     yearLaunches.forEach((l: any) => {
         if (l[FIELD_NOMBRE_PPS_LANZAMIENTOS]) {
@@ -235,18 +237,18 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
     // --- 6. GESTIÓN Y SEGUIMIENTO ---
     const terminalStatuses = ['finalizada', 'cancelada', 'rechazada', 'archivado', 'realizada', 'no se pudo concretar'];
-    
+
     const solicitudesEnCursoList = allData.solicitudes.filter((r: any) => {
         const status = normalizeStringForComparison(r[FIELD_ESTADO_PPS]);
         return !terminalStatuses.includes(status);
     });
 
     const demoradosList = allData.solicitudes.filter((r: any) => {
-         const status = normalizeStringForComparison(r[FIELD_ESTADO_PPS]);
-         if (terminalStatuses.includes(status)) return false;
-         const updateDate = new Date(r[FIELD_ULTIMA_ACTUALIZACION_PPS] || r.created_at);
-         return differenceInDays(now, updateDate) > 5;
-     });
+        const status = normalizeStringForComparison(r[FIELD_ESTADO_PPS]);
+        if (terminalStatuses.includes(status)) return false;
+        const updateDate = new Date(r[FIELD_ULTIMA_ACTUALIZACION_PPS] || r.created_at);
+        return differenceInDays(now, updateDate) > 5;
+    });
 
     const acreditacionesPendientesList = allData.finalizaciones.filter((f: any) => f[FIELD_ESTADO_FINALIZACION] === 'Pendiente');
 
@@ -261,11 +263,11 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
     // Nota: 2024 y 2025 se calculan dinámicamente según la lógica de "Primera Actividad"
     const enrollmentEvolution = [
-         { year: '2022', value: 19, label: 'Nuevos Inscriptos' }, 
-         { year: '2023', value: 87, label: 'Nuevos Inscriptos' }, 
-         { year: '2024', value: getIngresantesCount(2024), label: 'Nuevos Inscriptos' },
-         { year: '2025', value: getIngresantesCount(2025), label: 'Nuevos Inscriptos' },
-         { year: '2026', value: 116, label: 'Proyeccion Ingresantes', isProjection: true }
+        { year: '2022', value: 19, label: 'Nuevos Inscriptos' },
+        { year: '2023', value: 87, label: 'Nuevos Inscriptos' },
+        { year: '2024', value: getIngresantesCount(2024), label: 'Nuevos Inscriptos' },
+        { year: '2025', value: getIngresantesCount(2025), label: 'Nuevos Inscriptos' },
+        { year: '2026', value: 116, label: 'Proyeccion Ingresantes', isProjection: true }
     ];
 
     return {
@@ -273,7 +275,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
         matriculaGenerada: { value: totalMatriculaGenerada, list: [...activosList, ...acreditadosList] },
         alumnosFinalizados: { value: acreditadosList.length, list: acreditadosList },
         matriculaActiva: { value: activosList.length, list: activosList },
-        solicitudesGestion: { value: solicitudesEnCursoList.length, list: solicitudesEnCursoList }, 
+        solicitudesGestion: { value: solicitudesEnCursoList.length, list: solicitudesEnCursoList },
 
         // Pestaña Estudiantes
         nuevosIngresantes: { value: ingresantesList.length, list: ingresantesList },
@@ -286,7 +288,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
         cuposOfrecidos: { value: totalCupos, list: [] },
         conveniosNuevos: { value: uniqueNewAgreementNames.size, list: nuevosConveniosList },
         institucionesActivas: { value: uniqueActiveNames.size, list: activeInstitutionsList },
-        
+
         // Tablas y Gráficos
         alumnosDemorados: { value: demoradosList.length, list: demoradosList },
         acreditacionesPendientes: { value: acreditacionesPendientesList.length, list: acreditacionesPendientesList },

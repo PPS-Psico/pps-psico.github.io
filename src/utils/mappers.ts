@@ -10,40 +10,51 @@ import type {
     PenalizacionFields,
     FinalizacionPPSFields
 } from '../types';
-import { cleanDbValue } from './formatters'; // Import cleanDbValue
+import { cleanDbValue } from './formatters';
 
 type Tables = Database['public']['Tables'];
 
 /**
- * Generic helper to add AppRecord specific fields
+ * Generic helper to add AppRecord specific fields.
+ * Handles both required and optional created_at fields.
  */
-const toAppRecord = <T extends { id: string; created_at: string }>(row: T): T & { createdTime: string } => {
+const toAppRecord = <T extends { id: string; created_at: string | null }>(row: T): T & { createdTime: string } => {
     return {
         ...row,
-        createdTime: row.created_at,
+        createdTime: row.created_at || '',
         id: String(row.id)
     };
 };
 
+/**
+ * Helper to clean array fields (from legacy Airtable data) into strings
+ */
+const cleanArrayField = (value: string[] | string | null | undefined): string => {
+    if (!value) return '';
+    if (Array.isArray(value)) return value[0] || '';
+    return String(value).trim();
+};
+
 export const mapEstudiante = (row: Tables['estudiantes']['Row']): AppRecord<EstudianteFields> => {
     const cleanRow = { ...row };
-    // Asegurar campos críticos
     if (row.legajo) cleanRow.legajo = cleanDbValue(row.legajo);
     if (row.nombre) cleanRow.nombre = cleanDbValue(row.nombre);
     if (row.correo) cleanRow.correo = cleanDbValue(row.correo);
 
-    // Explicitly cast to target intersection type which is safe here as we just decorated the row
     return toAppRecord(cleanRow) as AppRecord<EstudianteFields>;
 };
 
 export const mapPractica = (row: Tables['practicas']['Row']): AppRecord<PracticaFields> => {
-    const cleanRow = { ...row };
-    // Aplanar campos de texto que suelen venir como arrays de Airtable
-    cleanRow.nombre_institucion = cleanDbValue(row.nombre_institucion);
-    cleanRow.especialidad = cleanDbValue(row.especialidad);
-    cleanRow.estado = cleanDbValue(row.estado);
-    cleanRow.nota = cleanDbValue(row.nota);
-    return toAppRecord(cleanRow) as AppRecord<PracticaFields>;
+    // Create a copy for mapping, preserving original types for fields we don't modify
+    const mapped = {
+        ...row,
+        // Clean text fields while preserving array fields for DB compatibility
+        especialidad: cleanDbValue(row.especialidad),
+        estado: cleanDbValue(row.estado),
+        nota: cleanDbValue(row.nota),
+    };
+
+    return toAppRecord(mapped) as AppRecord<PracticaFields>;
 };
 
 export const mapSolicitud = (row: Tables['solicitudes_pps']['Row']): AppRecord<SolicitudPPSFields> => {
@@ -87,4 +98,7 @@ export const mapFinalizacion = (row: Tables['finalizacion_pps']['Row']): AppReco
     cleanRow.estado = cleanDbValue(row.estado);
     return toAppRecord(cleanRow) as AppRecord<FinalizacionPPSFields>;
 };
+
+// Utility export for components that need to clean array fields from DB
+export { cleanArrayField };
 

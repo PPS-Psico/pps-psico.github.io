@@ -48,11 +48,12 @@ const ActionItem: React.FC<ActionItemProps> = ({ title, count, description, icon
 interface ActionCenterProps {
     stagnantCount: number;
     upcomingClosuresCount: number;
-    pendingReviewsCount: number;
+    // TODO: pendingReviewsCount is currently unused. Uncomment if needed:
+    // pendingReviewsCount: number;
     pendingAccreditationsCount: number;
 }
 
-const ActionCenter: React.FC<ActionCenterProps> = ({ stagnantCount, upcomingClosuresCount, pendingReviewsCount, pendingAccreditationsCount }) => {
+const ActionCenter: React.FC<ActionCenterProps> = ({ stagnantCount, upcomingClosuresCount, pendingAccreditationsCount }) => {
     const navigate = useNavigate();
 
     return (

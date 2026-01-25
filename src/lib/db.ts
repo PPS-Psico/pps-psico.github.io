@@ -1,7 +1,8 @@
 
 import * as supabaseService from '../services/supabaseService';
 import type { Database } from '../types/supabase';
-import type { AppRecord } from '../types';
+// TODO: AppRecord is currently unused. Uncomment if needed:
+// import type { AppRecord } from '../types';
 import { supabase } from './supabaseClient';
 import { 
     mapEstudiante, 

@@ -1,17 +1,18 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useAdminPreferences } from '../../contexts/AdminPreferencesContext'; // Import context
-
+// TODO: Uncomment if needed:
+// import { useAuth } from '../../contexts/AuthContext';
+// import { useAdminPreferences } from '../../contexts/AdminPreferencesContext'; // Import context
 import { useOperationalData } from '../../hooks/useOperationalData';
-
 import Toast from '../ui/Toast';
 import { AdminDashboardSkeleton } from '../Skeletons';
 import EmptyState from '../EmptyState';
 import ActivityFeed from './ActivityFeed';
 import { differenceInDays } from 'date-fns';
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from '../../constants';
+// Added formatDate for alerts
+import { formatDate } from '../../utils/formatters';
 
 interface AdminDashboardProps {
     isTestingMode?: boolean;
@@ -98,8 +99,9 @@ const ManagementCard: React.FC<{
 };
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }) => {
-    const { authenticatedUser } = useAuth();
-    const { preferences } = useAdminPreferences(); // Access prefs
+    // TODO: These are currently unused. Uncomment if needed:
+    // const { authenticatedUser } = useAuth();
+    // const { preferences } = useAdminPreferences(); // Access prefs
     const navigate = useNavigate();
     const [toastInfo, setToastInfo] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -139,6 +141,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
             {toastInfo && <Toast message={toastInfo.message} type={toastInfo.type} onClose={() => setToastInfo(null)} />}
 
 
+
+            {/* --- ALERTAS DE ACCIÓN REQUERIDA (Cierre de Convocatorias) --- */}
+            {opData?.closingAlerts && opData.closingAlerts.length > 0 && (
+                <div className="mx-4 md:mx-0 p-4 bg-orange-50 dark:bg-orange-900/10 border-l-4 border-orange-500 rounded-r-xl shadow-sm animate-fade-in-up">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
+                            <span className="material-icons">warning_amber</span>
+                        </div>
+                        <div className="flex-1 w-full">
+                            <h4 className="font-black text-orange-800 dark:text-orange-200 text-sm uppercase tracking-wide mb-1">Acción Requerida: Cierre de Inscripciones</h4>
+                            <p className="text-xs text-orange-700/80 dark:text-orange-300/70 mb-3">
+                                Las siguientes convocatorias inician pronto y deben cerrarse para seleccionar estudiantes.
+                            </p>
+                            <div className="space-y-2">
+                                {opData.closingAlerts.map((alert: any) => (
+                                    <div key={alert.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white dark:bg-slate-800 p-3 rounded-lg border border-orange-100 dark:border-orange-900/30 shadow-sm gap-3">
+                                        <div>
+                                            <p className="font-bold text-slate-700 dark:text-slate-200 text-sm">{alert.name}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${alert.daysRemaining <= 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {alert.isClosingToday ? 'CIERRA HOY' : (alert.daysRemaining < 0 ? 'INSCRIPCIÓN FINALIZADA' : `${alert.daysRemaining} días restantes`)}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400">Cierre: {formatDate(alert.closingDate)}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => navigate('/admin/seleccionador')}
+                                            className="w-full sm:w-auto text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors shadow-blue-500/20 shadow-lg"
+                                        >
+                                            IR A SELECCIONAR
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* --- SECCIÓN GESTIÓN: GRID DE TARJETAS --- */}
             <section className="space-y-6">

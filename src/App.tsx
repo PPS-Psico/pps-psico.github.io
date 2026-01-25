@@ -9,11 +9,14 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { AdminPreferencesProvider } from './contexts/AdminPreferencesContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ErrorProvider } from './contexts/ErrorContext';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { StudentPanelProvider } from './contexts/StudentPanelContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { FIELD_LEGAJO_ESTUDIANTES } from './constants';
+import InstallPWA from './components/InstallPWA';
+
 // Views
 const StudentView = lazy(() => import('./views/StudentView'));
 const StudentDashboard = lazy(() => import('./views/StudentDashboard'));
@@ -34,8 +37,6 @@ const JefeView = lazy(() => import('./views/JefeView'));
 const DirectivoView = lazy(() => import('./views/DirectivoView'));
 const ReporteroView = lazy(() => import('./views/ReporteroView'));
 const AdminTestingView = lazy(() => import('./views/AdminTestingView'));
-const DesignSystemView = lazy(() => import('./views/DesignSystemView'));
-
 
 const AdminStudentWrapper = () => {
     const { legajo } = useParams();
@@ -46,7 +47,6 @@ const AdminStudentWrapper = () => {
         </StudentPanelProvider>
     );
 };
-
 
 const AppRoutes = () => {
     const { authenticatedUser } = useAuth();
@@ -95,37 +95,37 @@ const AppRoutes = () => {
             <Route path="/reportero" element={<ProtectedRoute allowedRoles={['Reportero']}><ReporteroView /></ProtectedRoute>} />
 
             <Route path="/testing" element={<ProtectedRoute allowedRoles={['SuperUser', 'AdminTester']}><AdminTestingView /></ProtectedRoute>} />
-            
-            <Route path="/design" element={<DesignSystemView />} />
-            
             <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+        </Routes>
     );
 };
 
 const App: React.FC = () => {
     return (
-        <Router>
-            <ConfigProvider>
-                <AdminPreferencesProvider>
-                    <NotificationProvider>
-                        <PwaInstallProvider>
-                            <ThemeProvider>
-                                <ModalProvider>
-                                    <ErrorBoundary>
-                                        <Layout>
-                                            <Suspense fallback={<Loader />}>
-                                                <AppRoutes />
-                                            </Suspense>
-                                        </Layout>
-                                    </ErrorBoundary>
-                                </ModalProvider>
-                            </ThemeProvider>
-                        </PwaInstallProvider>
-                    </NotificationProvider>
-                </AdminPreferencesProvider>
-            </ConfigProvider>
-        </Router>
+        <ErrorProvider>
+            <Router>
+                <ConfigProvider>
+                    <AdminPreferencesProvider>
+                        <NotificationProvider>
+                            <PwaInstallProvider>
+                                <ThemeProvider>
+                                    <ModalProvider>
+                                        <ErrorBoundary>
+                                            <Layout>
+                                                <InstallPWA />
+                                                <Suspense fallback={<Loader />}>
+                                                    <AppRoutes />
+                                                </Suspense>
+                                            </Layout>
+                                        </ErrorBoundary>
+                                    </ModalProvider>
+                                </ThemeProvider>
+                            </PwaInstallProvider>
+                        </NotificationProvider>
+                    </AdminPreferencesProvider>
+                </ConfigProvider>
+            </Router>
+        </ErrorProvider>
     );
 };
 

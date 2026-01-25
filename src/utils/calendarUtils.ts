@@ -52,30 +52,30 @@ function formatToUTC(date: Date): string {
  * @param date A representative date of the event (used to set the initial time).
  * @returns An object with google and ical links, or null if parsing fails.
  */
-export function generateRecurringCalendarLinks(event: CalendarEvent & { startDate?: string; endDate?: string }, date: Date): { google: string; ical: string } | null {
+export function generateRecurringCalendarLinks(event: CalendarEvent & { startDate?: string; endDate?: string }, _date: Date): { google: string; ical: string } | null {
     const timeInfo = parseTimeFromSchedule(event.schedule);
     const byDayRule = parseDaysOfWeek(event.schedule);
-    
+
     if (!timeInfo || !byDayRule || !event.startDate || !event.endDate) {
         return null; // Cannot generate recurring event without all info
     }
 
     const { startHour, endHour } = timeInfo;
-    
+
     const ppsStartDate = new Date(event.startDate);
     ppsStartDate.setUTCHours(startHour, 0, 0, 0);
 
     const ppsEndDate = new Date(event.startDate);
     ppsEndDate.setUTCHours(endHour, 0, 0, 0);
-    
+
     if (ppsEndDate < ppsStartDate) {
         ppsEndDate.setUTCDate(ppsEndDate.getUTCDate() + 1);
     }
-    
+
     // For the UNTIL part of the RRULE, it should be the end of the final day.
     const untilDate = new Date(event.endDate);
     untilDate.setUTCHours(23, 59, 59, 999);
-    
+
     const calStartUTC = formatToUTC(ppsStartDate);
     const calEndUTC = formatToUTC(ppsEndDate);
     const calUntilUTC = formatToUTC(untilDate);
@@ -112,7 +112,7 @@ export function generateRecurringCalendarLinks(event: CalendarEvent & { startDat
         'END:VEVENT',
         'END:VCALENDAR'
     ].join('\r\n');
-    
+
     const ical = `data:text/calendar;charset=utf8,${encodeURIComponent(icalContent)}`;
 
     return { google, ical };

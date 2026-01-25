@@ -117,7 +117,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentAirtableId, 
 
                 setFileCategories(prev => ({ ...prev, [type]: { ...prev[type], uploading: true } }));
 
-                const typeUploads = [];
+                const typeUploads: { url: string; filename: string }[] = [];
                 try {
                     for (const file of categoryState.files) {
                         const url = await uploadFinalizationFile(file, studentAirtableId, type);

@@ -96,6 +96,13 @@ const PersonalizationPanel: React.FC = () => {
                             checked={preferences.showIntegrity}
                             onChange={() => toggleModule('showIntegrity')}
                         />
+                        <SwitchRow
+                            label="Monitoreo de Sistema"
+                            description="Visualización de logs y estado técnico de la plataforma."
+                            icon="monitoring"
+                            checked={preferences.showMonitoring}
+                            onChange={() => toggleModule('showMonitoring')}
+                        />
                     </div>
                 </div>
 

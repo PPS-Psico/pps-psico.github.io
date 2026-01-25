@@ -1,5 +1,4 @@
 // Google Analytics 4 Configuration
-// ReactGA4 renamed to react-ga4 in newer versions
 import ReactGA from 'react-ga4';
 
 // Get GA4 Measurement ID from environment variables

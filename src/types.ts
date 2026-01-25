@@ -83,14 +83,16 @@ export interface CriteriosCalculados {
 
 // --- Component-specific Types ---
 export interface InformeTask {
-  convocatoriaId: string;
-  practicaId?: string;
-  ppsName: string;
-  informeLink?: string;
-  fechaFinalizacion: string;
-  informeSubido: boolean;
-  nota?: string | null;
-  fechaEntregaInforme?: string | null;
+    convocatoriaId: string;
+    practicaId?: string;
+    ppsName: string;
+    informeLink?: string;
+    fechaFinalizacion: string;
+    informeSubido: boolean;
+    nota?: string | null;
+    fechaEntregaInforme?: string | null;
+    // TODO: Use `informeTask` property in components instead:
+    // informeTask: string;
 }
 
 export type SelectedStudent = { nombre: string; legajo: string };

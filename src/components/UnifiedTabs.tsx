@@ -3,39 +3,39 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 export interface TabItem {
-  id: string;
-  label: string;
-  icon?: string;
-  badge?: number | string;
-  path?: string;
+    id: string;
+    label: string;
+    icon?: string;
+    badge?: number | string;
+    path?: string;
 }
 
 interface UnifiedTabsProps {
-  tabs: TabItem[];
-  activeTabId: string;
-  onTabChange: (id: string, path?: string) => void;
-  layoutIdPrefix?: string;
-  className?: string;
-  variant?: 'primary' | 'secondary';
-  onTabClose?: (id: string, e: React.MouseEvent) => void;
+    tabs: TabItem[];
+    activeTabId: string;
+    onTabChange: (id: string, path?: string) => void;
+    layoutIdPrefix?: string;
+    className?: string;
+    variant?: 'primary' | 'secondary';
+    onTabClose?: (id: string, e: React.MouseEvent) => void;
 }
 
-const UnifiedTabs: React.FC<UnifiedTabsProps> = ({ 
-    tabs, 
-    activeTabId, 
-    onTabChange, 
+const UnifiedTabs: React.FC<UnifiedTabsProps> = ({
+    tabs,
+    activeTabId,
+    onTabChange,
     layoutIdPrefix = 'tabs',
     className = '',
     variant = 'primary',
     onTabClose
 }) => {
-    
+
     // --- ESTILOS "PREMIUM" ---
-    
+
     // Contenedor Principal (La cápsula)
     // Dark mode updated: bg-slate-900/60 -> bg-[#1e293b]/90 (Slate-800 high opacity) to contrast with bg-[#020617] (Slate-950)
     // Dark border updated: border-white/10 -> border-slate-700
-    const containerClasses = variant === 'primary' 
+    const containerClasses = variant === 'primary'
         ? `
             bg-white/80 dark:bg-[#1E293B]/90 
             backdrop-blur-xl 
@@ -59,10 +59,10 @@ const UnifiedTabs: React.FC<UnifiedTabsProps> = ({
     const inactiveTextClass = 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200';
 
     return (
-        <div className={`inline-flex items-center justify-center max-w-full overflow-x-auto no-scrollbar ${containerClasses} ${className}`}>
+        <div className={`inline-flex items-center justify-start max-w-full overflow-x-auto no-scrollbar ${containerClasses} ${className}`}>
             {tabs.map((tab) => {
                 const isActive = activeTabId === tab.id;
-                
+
                 return (
                     <button
                         key={tab.id}
@@ -85,34 +85,34 @@ const UnifiedTabs: React.FC<UnifiedTabsProps> = ({
                                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
                             />
                         )}
-                        
+
                         {tab.icon && (
                             <span className={`material-icons relative z-20 !text-[18px] transition-colors duration-300 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'opacity-70'}`}>
                                 {tab.icon}
                             </span>
                         )}
-                        
+
                         <span className="relative z-20">{tab.label}</span>
-                        
+
                         {tab.badge && (
-                             <span className={`
+                            <span className={`
                                 relative z-20 ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] leading-none
-                                ${isActive 
-                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200' 
+                                ${isActive
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
                                     : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}
                              `}>
-                                 {tab.badge}
-                             </span>
+                                {tab.badge}
+                            </span>
                         )}
 
                         {onTabClose && isActive && (
-                             <div
+                            <div
                                 role="button"
                                 onClick={(e) => onTabClose(tab.id, e)}
                                 className="relative z-20 ml-1.5 p-0.5 rounded-full hover:bg-slate-200/80 dark:hover:bg-slate-600 text-slate-400 hover:text-rose-500 transition-colors"
-                             >
-                                 <span className="material-icons !text-[14px] block">close</span>
-                             </div>
+                            >
+                                <span className="material-icons !text-[14px] block">close</span>
+                            </div>
                         )}
                     </button>
                 );

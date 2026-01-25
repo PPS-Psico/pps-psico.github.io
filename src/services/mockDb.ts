@@ -1,6 +1,6 @@
 
 import { MOCK_ESTUDIANTES, MOCK_INSTITUCIONES, MOCK_LANZAMIENTOS, MOCK_PRACTICAS, MOCK_SOLICITUDES, MOCK_CONVOCATORIAS, MOCK_PENALIZACIONES, MOCK_FINALIZACIONES } from '../data/mockData';
-import { normalizeStringForComparison } from '../utils/formatters';
+
 
 // Simulación de base de datos en memoria (Singleton)
 class MockDatabase {
@@ -38,7 +38,7 @@ class MockDatabase {
                 return Object.entries(filters).every(([key, value]) => {
                     // Check array containment
                     if (Array.isArray(value)) {
-                         return value.includes(row[key]);
+                        return value.includes(row[key]);
                     }
                     // Handle comma-separated values in DB (legacy airtable style simulation)
                     if (typeof row[key] === 'string' && row[key].includes(',')) {
@@ -54,14 +54,14 @@ class MockDatabase {
 
     async create(table: string, fields: any) {
         await new Promise(resolve => setTimeout(resolve, 400));
-        const newRecord = { 
-            id: `mock_${table}_${Date.now()}`, 
-            created_at: new Date().toISOString(), 
-            ...fields 
+        const newRecord = {
+            id: `mock_${table}_${Date.now()}`,
+            created_at: new Date().toISOString(),
+            ...fields
         };
         // Ensure array if it doesn't exist
         if (!this.data[table]) this.data[table] = [];
-        
+
         this.data[table] = [newRecord, ...this.data[table]];
         return newRecord;
     }
@@ -70,7 +70,7 @@ class MockDatabase {
         await new Promise(resolve => setTimeout(resolve, 300));
         const index = this.data[table].findIndex((r: any) => r.id === id);
         if (index === -1) throw new Error(`Record ${id} not found in mock db table ${table}`);
-        
+
         this.data[table][index] = { ...this.data[table][index], ...fields };
         return this.data[table][index];
     }

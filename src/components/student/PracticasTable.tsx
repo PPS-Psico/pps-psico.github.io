@@ -158,7 +158,7 @@ const PracticaRow: React.FC<{
         <div
             className={`
                 group relative bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 transition-all duration-300 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between
-                ${isMenuOpen ? 'z-50 ring-1 ring-blue-200 dark:ring-blue-800' : 'z-0 shadow-sm hover:shadow-md'}
+                ${isMenuOpen ? 'z-[60] ring-1 ring-blue-200 dark:ring-blue-800' : 'z-10 shadow-sm hover:shadow-md'}
                 border-l-[6px] ${espVisuals.leftBorder}
             `}
         >

@@ -12,7 +12,8 @@ import {
     FIELD_ULTIMA_ACTUALIZACION_PPS,
     TABLE_NAME_FINALIZACION,
     FIELD_ESTADO_FINALIZACION,
-    FIELD_FECHA_INICIO_LANZAMIENTOS
+    FIELD_FECHA_INICIO_LANZAMIENTOS,
+    FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS
 } from '../constants';
 import { parseToUTCDate, normalizeStringForComparison } from '../utils/formatters';
 
@@ -20,6 +21,7 @@ export interface OperationalData {
     endingLaunches: any[];
     pendingRequests: any[];
     pendingFinalizations: any[];
+    closingAlerts: { id: string; name: string; daysRemaining: number; closingDate: string; isClosingToday: boolean }[];
 }
 
 export const useOperationalData = (isTestingMode = false) => {
@@ -40,31 +42,31 @@ export const useOperationalData = (isTestingMode = false) => {
                 requests = await mockDb.getAll('solicitudes_pps');
                 finals = await mockDb.getAll('finalizacion_pps');
             } else {
-                 // Fetch from Supabase
-                 const [launchesRes, requestsRes, finalsRes] = await Promise.all([
+                // Fetch from Supabase
+                const [launchesRes, requestsRes, finalsRes] = await Promise.all([
                     supabase.from(TABLE_NAME_LANZAMIENTOS_PPS).select(`*, ${FIELD_NOTAS_GESTION_LANZAMIENTOS}`),
                     supabase.from(TABLE_NAME_PPS).select('*'),
                     supabase.from(TABLE_NAME_FINALIZACION).select('*').eq(FIELD_ESTADO_FINALIZACION, 'Pendiente')
-                 ]);
-                 launches = launchesRes.data || [];
-                 requests = requestsRes.data || [];
-                 finals = finalsRes.data || [];
+                ]);
+                launches = launchesRes.data || [];
+                requests = requestsRes.data || [];
+                finals = finalsRes.data || [];
             }
-            
+
             // 1. Process Launches
             const endingLaunches = launches.map((l: any) => {
-                 const endDate = parseToUTCDate(l[FIELD_FECHA_FIN_LANZAMIENTOS]);
-                 
-                 const daysLeft = endDate 
-                    ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) 
+                const endDate = parseToUTCDate(l[FIELD_FECHA_FIN_LANZAMIENTOS]);
+
+                const daysLeft = endDate
+                    ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
                     : 999;
-                 
-                 return { 
-                     ...l, 
-                     daysLeft,
-                     estado_gestion: l[FIELD_ESTADO_GESTION_LANZAMIENTOS] || 'Pendiente de Gestión',
-                     notas_gestion: l[FIELD_NOTAS_GESTION_LANZAMIENTOS]
-                 };
+
+                return {
+                    ...l,
+                    daysLeft,
+                    estado_gestion: l[FIELD_ESTADO_GESTION_LANZAMIENTOS] || 'Pendiente de Gestión',
+                    notas_gestion: l[FIELD_NOTAS_GESTION_LANZAMIENTOS]
+                };
             }).filter((l: any) => {
                 // Same filtering logic for both modes
                 const startDate = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
@@ -77,8 +79,8 @@ export const useOperationalData = (isTestingMode = false) => {
                     return false;
                 }
 
-                if (l.daysLeft < 0) return true; 
-                if (l.daysLeft <= 30) return true; 
+                if (l.daysLeft < 0) return true;
+                if (l.daysLeft <= 30) return true;
 
                 return false;
             });
@@ -101,10 +103,44 @@ export const useOperationalData = (isTestingMode = false) => {
             // 3. Process Finalizations (Already filtered in SQL, filter again for mock)
             const pendingFinalizations = finals.filter((f: any) => f[FIELD_ESTADO_FINALIZACION] === 'Pendiente');
 
+            // 4. Alerts for Closing Convocatorias (Using Inscription Date or Start Date fallback)
+            const closingAlerts = launches.filter((l: any) => {
+                const status = normalizeStringForComparison(l.estado_convocatoria);
+                if (status !== 'abierta' && status !== 'abierto') return false;
+
+                // Priority: Inscription End Date
+                let targetDate = parseToUTCDate(l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]);
+
+                // Fallback: Start Date
+                if (!targetDate) {
+                    targetDate = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+                }
+
+                if (!targetDate) return false;
+
+                // Days until target date
+                const daysLeft = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+                // Alert condition: Today (0), Past (<0), or very soon (<= 2)
+                return daysLeft <= 2;
+            }).map((l: any) => {
+                const closingDate = parseToUTCDate(l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]) || parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+                const daysRemaining = closingDate ? Math.ceil((closingDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+                return {
+                    id: l.id,
+                    name: l.nombre_pps || 'Convocatoria sin nombre',
+                    daysRemaining,
+                    closingDate: l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] || l[FIELD_FECHA_INICIO_LANZAMIENTOS],
+                    isClosingToday: daysRemaining === 0
+                };
+            });
+
             return {
                 endingLaunches,
                 pendingRequests,
-                pendingFinalizations
+                pendingFinalizations,
+                closingAlerts
             };
         }
     });

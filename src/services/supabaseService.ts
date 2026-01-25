@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
 import type { AppErrorResponse } from '../types';
 import type { Database } from '../types/supabase';
-import { 
-    FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS 
+import {
+    FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS
 } from '../constants';
 
 const MAX_RETRIES = 3;
@@ -14,8 +14,8 @@ type TableName = keyof Database['public']['Tables'];
 
 const buildSearchFilter = (searchTerm: string, searchFields: string[]) => {
     if (!searchTerm || searchFields.length === 0) return null;
-    
-    const term = searchTerm.replace(/[%\\]/g, ''); 
+
+    const term = searchTerm.replace(/[%\\]/g, '');
     if (!term) return null;
 
     return searchFields.map(field => `${field}.ilike.*${term}*`).join(',');
@@ -60,26 +60,26 @@ export const fetchPaginatedData = async <T extends TableName>(
     try {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
-        
+
         const selectQuery = fields && fields.length > 0 ? `id, created_at, ${fields.join(', ')}` : '*';
-        
+
         let query = supabase.from(tableName).select(selectQuery, { count: 'exact' });
-        
+
         query = applyFilters(query, filters);
-        
+
         if (searchTerm && searchFields && searchFields.length > 0) {
-             const orQuery = buildSearchFilter(searchTerm, searchFields);
-             if (orQuery) query = query.or(orQuery);
+            const orQuery = buildSearchFilter(searchTerm, searchFields);
+            if (orQuery) query = query.or(orQuery);
         }
-        
+
         if (sort) query = query.order(sort.field, { ascending: sort.direction === 'asc' });
         else query = query.order('created_at', { ascending: false });
 
         const { data, error, count } = await query.range(from, to);
-        
+
         if (error) return { records: [], total: 0, error: { error: { type: 'SUPABASE_ERROR', message: error.message } } };
 
-        return { records: data as Database['public']['Tables'][T]['Row'][], total: count || 0, error: null };
+        return { records: data as unknown as Database['public']['Tables'][T]['Row'][], total: count || 0, error: null };
     } catch (e: any) {
         return { records: [], total: 0, error: { error: { type: 'UNKNOWN_ERROR', message: e.message } } };
     }
@@ -97,7 +97,7 @@ export const fetchAllData = async <T extends TableName>(
         let from = 0;
         const PAGE_SIZE = 1000;
         let hasMore = true;
-        
+
         const selectQuery = fields && fields.length > 0 ? `id, created_at, ${fields.join(', ')}` : '*';
 
         while (hasMore) {
@@ -108,13 +108,13 @@ export const fetchAllData = async <T extends TableName>(
                 try {
                     let query = supabase.from(tableName).select(selectQuery);
                     query = applyFilters(query, filters);
-                    
+
                     if (sort && sort.length > 0) {
                         sort.forEach(s => query = query.order(s.field, { ascending: s.direction === 'asc' }));
                     } else {
                         query = query.order('id', { ascending: true });
                     }
-                    
+
                     const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
                     if (error) throw error;
                     if (data) {
@@ -133,7 +133,7 @@ export const fetchAllData = async <T extends TableName>(
             }
             if (!success) return { records: [], error: { error: { type: 'SUPABASE_ERROR', message: lastError?.message || 'Network error' } } };
         }
-        
+
         return { records: allRows as Database['public']['Tables'][T]['Row'][], error: null };
     } catch (e: any) {
         return { records: [], error: { error: { type: 'UNKNOWN_ERROR', message: e.message } } };
@@ -152,15 +152,15 @@ export const fetchData = async <T extends TableName>(
         try {
             const selectQuery = fields && fields.length > 0 ? `id, created_at, ${fields.join(', ')}` : '*';
             let query = supabase.from(tableName).select(selectQuery).limit(maxRecords);
-            
+
             query = applyFilters(query, filters);
-            
+
             if (sort && sort.length > 0) sort.forEach(s => query = query.order(s.field, { ascending: s.direction === 'asc' }));
-            
+
             const { data, error } = await query;
             if (error) throw error;
-            
-            return { records: data as Database['public']['Tables'][T]['Row'][], error: null };
+
+            return { records: data as unknown as Database['public']['Tables'][T]['Row'][], error: null };
         } catch (e: any) {
             return { records: [], error: { error: { type: 'SUPABASE_ERROR', message: e.message } } };
         }
@@ -176,8 +176,8 @@ export const createRecord = async <T extends TableName>(
     try {
         const { data, error } = await supabase.from(tableName).insert(fields as any).select().single();
         if (error) return { record: null, error: { error: { type: 'CREATE_ERROR', message: error.message } } };
-        
-        return { record: data as Database['public']['Tables'][T]['Row'], error: null };
+
+        return { record: data as unknown as Database['public']['Tables'][T]['Row'], error: null };
     } catch (e: any) {
         return { record: null, error: { error: { type: 'UNKNOWN_ERROR', message: e.message } } };
     }
@@ -193,15 +193,15 @@ export const updateRecord = async <T extends TableName>(
         const { data, error } = await supabase
             .from(tableName)
             .update(fields as any)
-            .eq('id', recordId)
+            .eq('id', recordId as any)
             .select()
-            .maybeSingle(); 
+            .maybeSingle();
 
         if (error) {
             return { record: null, error: { error: { type: 'UPDATE_ERROR', message: error.message } } };
         }
-        
-        return { record: data as Database['public']['Tables'][T]['Row'], error: null };
+
+        return { record: data as unknown as Database['public']['Tables'][T]['Row'], error: null };
     } catch (e: any) {
         return { record: null, error: { error: { type: 'UNKNOWN_ERROR', message: e.message } } };
     }
@@ -215,10 +215,10 @@ export const updateRecords = async <T extends TableName>(
     try {
         const promises = records.map(rec => updateRecord(tableName, rec.id, rec.fields));
         const results = await Promise.all(promises);
-        
+
         const failures = results.filter(r => r.error);
         if (failures.length > 0) return { records: null, error: { error: { type: 'BULK_UPDATE_PARTIAL_ERROR', message: 'Algunos registros no se actualizaron.' } } };
-        
+
         const successes = results.map(r => r.record!).filter(Boolean);
         return { records: successes, error: null };
     } catch (e: any) {
@@ -232,19 +232,19 @@ export const deleteRecord = async <T extends TableName>(
     recordId: string
 ): Promise<{ success: boolean, error: AppErrorResponse | null }> => {
     try {
-        const { error, count } = await supabase.from(tableName).delete({ count: 'exact' }).eq('id', recordId);
-        
+        const { error, count } = await supabase.from(tableName).delete({ count: 'exact' }).eq('id', recordId as any);
+
         if (error) return { success: false, error: { error: { type: 'DELETE_ERROR', message: error.message } } };
-        
+
         if (count === 0) {
-            return { 
-                success: false, 
-                error: { 
-                    error: { 
-                        type: 'DELETE_ERROR', 
-                        message: 'No se pudo eliminar el registro.' 
-                    } 
-                } 
+            return {
+                success: false,
+                error: {
+                    error: {
+                        type: 'DELETE_ERROR',
+                        message: 'No se pudo eliminar el registro.'
+                    }
+                }
             };
         }
 

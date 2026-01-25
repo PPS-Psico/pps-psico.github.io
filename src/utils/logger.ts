@@ -4,8 +4,6 @@
  * Abstraction layer to handle console logging and potential future external error reporting services (e.g., Sentry).
  */
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-
 class Logger {
     private isDev: boolean;
 
@@ -13,16 +11,6 @@ class Logger {
         // Safe check for import.meta.env
         const meta = import.meta as any;
         this.isDev = meta && meta.env ? meta.env.DEV : false;
-    }
-
-    private formatMessage(level: LogLevel, message: string, data?: any) {
-        const timestamp = new Date().toISOString();
-        return {
-            timestamp,
-            level,
-            message,
-            data
-        };
     }
 
     info(message: string, data?: any) {
