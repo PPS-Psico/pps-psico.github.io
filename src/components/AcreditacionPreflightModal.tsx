@@ -1,7 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import type { CriteriosCalculados, InformeTask } from '../types';
-import { HORAS_OBJETIVO_TOTAL, HORAS_OBJETIVO_ORIENTACION, ROTACION_OBJETIVO_ORIENTACIONES } from '../constants';
 
 interface AcreditacionPreflightModalProps {
     isOpen: boolean;
@@ -40,88 +39,32 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    Obtenidas: <span className="font-medium text-slate-900 dark:text-white">{criterios.horasObjetivo}</span>
+                                    Obtenidas: <span className="font-medium text-slate-900 dark:text-white">{criterios.horasTotales}</span>
                                 </p>
                                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    Total: <span className="font-medium text-slate-900 dark:text-white">{HORAS_OBJETIVO_TOTAL}</span>
+                                    Total: <span className="font-medium text-slate-900 dark:text-white">{criterios.horasTotales}</span>
                                 </p>
                             </div>
-                            <div className={`p-3 rounded-lg ${
-                                criterios.horasObjetivo >= HORAS_OBJETIVO_TOTAL
-                                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                            }`}>
-                                <p className="text-sm font-semibold ${
-                                    criterios.horasObjetivo >= HORAS_OBJETIVO_TOTAL ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
-                                }`}>
-                                    {criterios.horasObjetivo >= HORAS_OBJETIVO_TOTAL ? '✓ Cumple' : '✗ Insuficiente'}
+                            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                                <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                    Criterio Cumplido
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Horas por Orientación */}
+                    {/* Informe de Práctica */}
                     <div className="space-y-2">
-                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Horas por Orientación</h4>
-                        <div className="space-y-2">
-                            {Object.entries(HORAS_OBJETIVO_ORIENTACION).map(([orientacion, horas]) => (
-                                <div key={orientacion} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{orientacion}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm text-slate-600 dark:text-slate-400">Obtenidas: {criterios.horasPorOrientacion?.[orientacion] || 0}</span>
-                                        <span className="text-xs text-slate-500 dark:text-slate-500">de {horas}</span>
-                                        <div className={`px-2 py-1 rounded-md text-xs font-semibold ${
-                                            criterios.horasPorOrientacion?.[orientacion] >= horas
-                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                        }`}>
-                                            {criterios.horasPorOrientacion?.[orientacion] >= horas ? '✓' : '✗'}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Rotaciones */}
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Rotaciones Realizadas</h4>
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {Object.entries(ROTACION_OBJETIVO_ORIENTACIONES).map(([orientacion, rotaciones]) => (
-                                    <div key={orientacion} className="space-y-1">
-                                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{orientacion}</p>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-slate-600 dark:text-slate-400">
-                                                Obtenidas: <span className="font-medium text-slate-900 dark:text-white">{criterios.rotacionesPorOrientacion?.[orientacion] || 0}</span>
-                                            </span>
-                                            <span className="text-xs text-slate-500 dark:text-slate-500">de {rotaciones}</span>
-                                            <div className={`px-2 py-1 rounded-md text-xs font-semibold ${
-                                                criterios.rotacionesPorOrientacion?.[orientacion] >= rotaciones
-                                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                            }`}>
-                                                {criterios.rotacionesPorOrientacion?.[orientacion] >= rotaciones ? '✓' : '✗'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Informe de Prácticas */}
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Informe de Prácticas</h4>
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Informe de Práctica</h4>
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                             <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
                                 <strong>Práctica:</strong> {informeTask.ppsName}
                             </p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                                <strong>Institución:</strong> {informeTask.institucion}
+                                <strong>Institución:</strong> {informeTask.institution || 'N/A'}
                             </p>
                             <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                                <strong>Horas totales:</strong> {informeTask.horasTotales}
+                                <strong>Horas totales:</strong> {informeTask.horasTotales || 'N/A'}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
                                 Este informe se generará automáticamente y será enviado al estudiante.

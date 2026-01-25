@@ -18,7 +18,6 @@ interface SolicitudesListProps {
 const SolicitudItem: React.FC<{ solicitud: SolicitudPPS }> = ({ solicitud }) => {
     const institucion = solicitud[FIELD_EMPRESA_PPS_SOLICITUD] || '';
     const status = solicitud[FIELD_ESTADO_PPS] || 'Pendiente';
-    const notas = solicitud[FIELD_NOTAS_PPS];
     const actualizacion = solicitud[FIELD_ULTIMA_ACTUALIZACION_PPS];
     const visuals = getStatusVisuals(status);
 
@@ -48,13 +47,6 @@ const SolicitudItem: React.FC<{ solicitud: SolicitudPPS }> = ({ solicitud }) => 
                         </div>
                     </div>
                 </div>
-
-                {/* Notes Preview (if any) */}
-                {notas && (
-                    <div className="hidden sm:block max-w-xs text-xs text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-900/50 p-2 rounded border border-slate-100 dark:border-slate-800 truncate">
-                        "{notas}"
-                    </div>
-                )}
             </div>
         </div>
     );

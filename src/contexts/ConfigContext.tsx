@@ -31,9 +31,9 @@ export const ConfigProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         if (!error && data) {
           setConfig({
-            horasObjetivoTotal: data.horas_objetivo_total ?? defaultConfig.horasObjetivoTotal,
-            horasObjetivoOrientacion: data.horas_objetivo_orientacion ?? defaultConfig.horasObjetivoOrientacion,
-            rotacionObjetivo: data.rotacion_objetivo ?? defaultConfig.rotacionObjetivo,
+            horasObjetivoTotal: (data as any).horas_objetivo_total ?? defaultConfig.horasObjetivoTotal,
+            horasObjetivoOrientacion: (data as any).horas_objetivo_orientacion ?? defaultConfig.horasObjetivoOrientacion,
+            rotacionObjetivo: (data as any).rotacion_objetivo ?? defaultConfig.rotacionObjetivo,
           });
         }
       } catch (e) {

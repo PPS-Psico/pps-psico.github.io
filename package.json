@@ -18,14 +18,11 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
-<<<<<<< HEAD
     "@google/generative-ai": "^0.24.1",
-=======
     "@google/genai": "^1.31.0",
     "@sentry/browser": "^10.34.0",
     "@sentry/react": "^10.34.0",
     "@sentry/tracing": "^7.120.4",
->>>>>>> main
     "@supabase/supabase-js": "^2.44.4",
     "@tanstack/react-query": "^5.51.11",
     "@types/trusted-types": "^2.0.7",

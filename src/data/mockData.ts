@@ -11,8 +11,6 @@ import {
     FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
     FIELD_DIRECCION_LANZAMIENTOS,
     FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
-    FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
-    FIELD_REQ_CV_LANZAMIENTOS,
     FIELD_NOMBRE_INSTITUCIONES,
     FIELD_CONVENIO_NUEVO_INSTITUCIONES,
     FIELD_TUTOR_INSTITUCIONES,
@@ -73,38 +71,38 @@ export const MOCK_INSTITUCIONES = [
 // --- ESTUDIANTES ---
 export const MOCK_ESTUDIANTES = [
     // Usuario Test
-    { 
-        id: 'st_999', 
+    {
+        id: 'st_999',
         created_at: getDate(-12),
-        [FIELD_LEGAJO_ESTUDIANTES]: '99999', 
-        [FIELD_NOMBRE_ESTUDIANTES]: 'Usuario de Prueba', 
-        [FIELD_DNI_ESTUDIANTES]: 12345678, 
-        [FIELD_CORREO_ESTUDIANTES]: 'tester@uflo.edu.ar', 
-        [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', 
+        [FIELD_LEGAJO_ESTUDIANTES]: '99999',
+        [FIELD_NOMBRE_ESTUDIANTES]: 'Usuario de Prueba',
+        [FIELD_DNI_ESTUDIANTES]: 12345678,
+        [FIELD_CORREO_ESTUDIANTES]: 'tester@uflo.edu.ar',
+        [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica',
         [FIELD_FINALIZARON_ESTUDIANTES]: false,
         [FIELD_NOTAS_INTERNAS_ESTUDIANTES]: 'Alumno para demostración.'
-    }, 
+    },
     // Alumnos Activos
-    { id: 'st_1', created_at: getDate(-10), [FIELD_LEGAJO_ESTUDIANTES]: '35123', [FIELD_NOMBRE_ESTUDIANTES]: 'Sofía Martínez', [FIELD_DNI_ESTUDIANTES]: 38111, [FIELD_CORREO_ESTUDIANTES]: 'sofia@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', [FIELD_FINALIZARON_ESTUDIANTES]: false }, 
-    { id: 'st_2', created_at: getDate(-10), [FIELD_LEGAJO_ESTUDIANTES]: '36451', [FIELD_NOMBRE_ESTUDIANTES]: 'Lucas Pérez', [FIELD_DNI_ESTUDIANTES]: 40222, [FIELD_CORREO_ESTUDIANTES]: 'lucas@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Laboral', [FIELD_FINALIZARON_ESTUDIANTES]: false }, 
+    { id: 'st_1', created_at: getDate(-10), [FIELD_LEGAJO_ESTUDIANTES]: '35123', [FIELD_NOMBRE_ESTUDIANTES]: 'Sofía Martínez', [FIELD_DNI_ESTUDIANTES]: 38111, [FIELD_CORREO_ESTUDIANTES]: 'sofia@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', [FIELD_FINALIZARON_ESTUDIANTES]: false },
+    { id: 'st_2', created_at: getDate(-10), [FIELD_LEGAJO_ESTUDIANTES]: '36451', [FIELD_NOMBRE_ESTUDIANTES]: 'Lucas Pérez', [FIELD_DNI_ESTUDIANTES]: 40222, [FIELD_CORREO_ESTUDIANTES]: 'lucas@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Laboral', [FIELD_FINALIZARON_ESTUDIANTES]: false },
     // Alumnos Finalizados
-    { id: 'st_3', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '33999', [FIELD_NOMBRE_ESTUDIANTES]: 'Camila López', [FIELD_DNI_ESTUDIANTES]: 37333, [FIELD_CORREO_ESTUDIANTES]: 'cami@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Educacional', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(2) }, 
-    { id: 'st_4', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '31000', [FIELD_NOMBRE_ESTUDIANTES]: 'Martín Garcia', [FIELD_DNI_ESTUDIANTES]: 35444, [FIELD_CORREO_ESTUDIANTES]: 'martin@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Comunitaria', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(5) }, 
-    { id: 'st_5', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '32555', [FIELD_NOMBRE_ESTUDIANTES]: 'Ana Torres', [FIELD_DNI_ESTUDIANTES]: 39555, [FIELD_CORREO_ESTUDIANTES]: 'ana@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(8) }, 
+    { id: 'st_3', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '33999', [FIELD_NOMBRE_ESTUDIANTES]: 'Camila López', [FIELD_DNI_ESTUDIANTES]: 37333, [FIELD_CORREO_ESTUDIANTES]: 'cami@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Educacional', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(2) },
+    { id: 'st_4', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '31000', [FIELD_NOMBRE_ESTUDIANTES]: 'Martín Garcia', [FIELD_DNI_ESTUDIANTES]: 35444, [FIELD_CORREO_ESTUDIANTES]: 'martin@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Comunitaria', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(5) },
+    { id: 'st_5', created_at: getDate(-24), [FIELD_LEGAJO_ESTUDIANTES]: '32555', [FIELD_NOMBRE_ESTUDIANTES]: 'Ana Torres', [FIELD_DNI_ESTUDIANTES]: 39555, [FIELD_CORREO_ESTUDIANTES]: 'ana@test.com', [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: 'Clinica', [FIELD_FINALIZARON_ESTUDIANTES]: true, [FIELD_FECHA_FINALIZACION_ESTUDIANTES]: getYearDate(8) },
 ];
 
 // --- LANZAMIENTOS (OFERTA PPS) ---
 // Distribuidos en el año actual para que las métricas funcionen
 export const MOCK_LANZAMIENTOS = [
     // Marzo
-    { 
-        id: 'lanz_1', 
+    {
+        id: 'lanz_1',
         created_at: getDate(-6),
-        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Hospital Garrahan - Guardia Pediátrica', 
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Hospital Garrahan - Guardia Pediátrica',
         [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(2), // Marzo
-        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(6), 
-        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica', 
-        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 10, 
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(6),
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica',
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 10,
         [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta',
         [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
         [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Lunes 8 a 12hs; Miércoles 8 a 12hs',
@@ -112,14 +110,14 @@ export const MOCK_LANZAMIENTOS = [
         [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 80,
     },
     // Abril
-    { 
-        id: 'lanz_2', 
+    {
+        id: 'lanz_2',
         created_at: getDate(-5),
-        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Clínica San Jorge - Admisiones', 
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Clínica San Jorge - Admisiones',
         [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(3), // Abril
-        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(7), 
-        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica', 
-        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 5, 
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(7),
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Clinica',
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 5,
         [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Cerrado',
         [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
         [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Martes 14 a 18hs',
@@ -127,14 +125,14 @@ export const MOCK_LANZAMIENTOS = [
         [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 60,
     },
     // Mayo
-    { 
-        id: 'lanz_3', 
+    {
+        id: 'lanz_3',
         created_at: getDate(-4),
-        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Fundación Sí - Abordaje Comunitario', 
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Fundación Sí - Abordaje Comunitario',
         [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(4), // Mayo
-        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(8), 
-        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Comunitaria', 
-        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 15, 
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(8),
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Comunitaria',
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 15,
         [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta',
         [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
         [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Sábados 10 a 14hs',
@@ -142,14 +140,14 @@ export const MOCK_LANZAMIENTOS = [
         [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 40
     },
     // Agosto (Próxima)
-    { 
-        id: 'lanz_4', 
+    {
+        id: 'lanz_4',
         created_at: getDate(-1),
-        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'ManpowerGroup - Selección IT', 
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'ManpowerGroup - Selección IT',
         [FIELD_FECHA_INICIO_LANZAMIENTOS]: getYearDate(7), // Agosto
-        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(11), 
-        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Laboral', 
-        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 8, 
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: getYearDate(11),
+        [FIELD_ORIENTACION_LANZAMIENTOS]: 'Laboral',
+        [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 8,
         [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta',
         [FIELD_ESTADO_GESTION_LANZAMIENTOS]: 'Relanzamiento Confirmado',
         [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: 'Full time',
@@ -164,10 +162,10 @@ export const MOCK_CONVOCATORIAS = [
     { id: 'conv_1', created_at: getDate(-5), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_1', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_999', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Seleccionado', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Lunes 8 a 12hs' },
     { id: 'conv_2', created_at: getDate(-5), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_1', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_1', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Seleccionado', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Miércoles 8 a 12hs' },
     { id: 'conv_3', created_at: getDate(-5), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_1', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_2', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Inscripto', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Lunes 8 a 12hs' },
-    
+
     // Inscripciones a Clínica San Jorge (lanz_2)
     { id: 'conv_4', created_at: getDate(-4), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_2', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_3', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Seleccionado', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Martes 14 a 18hs' },
-    
+
     // Inscripciones a Fundación Sí (lanz_3)
     { id: 'conv_5', created_at: getDate(-2), [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: 'lanz_3', [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: 'st_4', [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Inscripto', [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: 'Sábados 10 a 14hs' },
 ];

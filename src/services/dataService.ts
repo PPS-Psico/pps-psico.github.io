@@ -87,7 +87,8 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
             updatedRow[C.FIELD_ESPECIALIDAD_PRACTICAS] = lanzamiento.orientacion;
         }
 
-        updatedRow[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = finalName;
+        // Wrap in array to match DB type
+        updatedRow[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = [finalName];
 
         return updatedRow;
     });
@@ -384,10 +385,20 @@ export const toggleStudentSelection = async (
             if (!existing) {
                 console.log(`[DATA SERVICE] Creating Practica. Name="${cleanName}"`);
 
+                // DEFENSIVE CLEAN: Ensure we strip any JSON [] or Postgres {} artifacts
+                // incase cleanDbValue didn't catch them due to import/cache timing
+                let finalName = cleanName;
+                if (typeof finalName === 'string') {
+                    // Remove enclosing braces {}, brackets [], and quotes
+                    finalName = finalName
+                        .replace(/^\{|^\[|\]$|\}$/g, '') // Remove start/end brackets/braces
+                        .replace(/^"|^'|"$|'$/g, '');     // Remove surrounding quotes
+                }
+
                 const payload = {
                     [C.FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentId,
                     [C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: lanzamiento.id,
-                    [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName,
+                    [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: finalName,
                     [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion,
                     [C.FIELD_FECHA_INICIO_PRACTICAS]: lanzamiento[C.FIELD_FECHA_INICIO_LANZAMIENTOS],
                     [C.FIELD_FECHA_FIN_PRACTICAS]: lanzamiento[C.FIELD_FECHA_FIN_LANZAMIENTOS],
@@ -396,16 +407,20 @@ export const toggleStudentSelection = async (
                     [C.FIELD_NOTA_PRACTICAS]: 'Sin calificar'
                 };
 
-                await db.practicas.create(payload);
+                // Cast payload to any to bypass strict type check on potential array fields
+                await db.practicas.create(payload as any);
             } else {
                 console.log(`[DATA SERVICE] Practica already exists. Checking data integrity...`);
                 // SELF-HEALING: If exists but has dirty name, fix it now.
                 const existingPractica = existing as Practica;
                 const currentName = existingPractica[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
-                if (currentName !== cleanName) {
-                    console.log(`[DATA SERVICE] Fixing dirty name: ${currentName} -> ${cleanName}`);
+                // Check first element of array vs string
+                const currentNameStr = Array.isArray(currentName) ? currentName[0] : String(currentName);
+
+                if (currentNameStr !== cleanName) {
+                    console.log(`[DATA SERVICE] Fixing dirty name: ${currentNameStr} -> ${cleanName}`);
                     await db.practicas.update(existingPractica.id, {
-                        [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName,
+                        [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName, // FIXED: Removed extra [] wrapping
                         [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion
                     });
                 }

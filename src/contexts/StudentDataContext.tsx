@@ -2,7 +2,7 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useStudentData } from '../hooks/useStudentData';
 import type { UseMutationResult } from '@tanstack/react-query';
-import type { EstudianteFields, Orientacion, Estudiante } from '../types';
+import type { Estudiante, Orientacion } from '../types';
 
 interface StudentDataContextType {
     studentDetails: Estudiante | null;
@@ -18,7 +18,7 @@ const StudentDataContext = createContext<StudentDataContextType | undefined>(und
 
 export const StudentDataProvider: React.FC<{ legajo: string; children: ReactNode }> = ({ legajo, children }) => {
     const data = useStudentData(legajo);
-    
+
     return (
         <StudentDataContext.Provider value={data}>
             {children}

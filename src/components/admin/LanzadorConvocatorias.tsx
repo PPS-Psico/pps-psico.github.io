@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabaseClient';
 import { db } from '../../lib/db';
 import type { InstitucionFields, LanzamientoPPSFields, AirtableRecord, LanzamientoPPS } from '../../types';
 import {
@@ -650,6 +651,38 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
         }
     });
 
+    const deleteLaunchMutation = useMutation({
+        mutationFn: async (id: string) => {
+            if (isTestingMode) return null;
+
+            console.log("[DELETE] Cleaning up dependencies for launch:", id);
+
+            // CASCADE DELETE MANUALLY: 
+            // 1. Delete associated registrations (convocatorias)
+            const { error: err1 } = await supabase.from('convocatorias').delete().eq('lanzamiento_id', id);
+            if (err1) console.warn("Error deleting convocatorias:", err1);
+
+            // 2. Delete associated practices (practicas)
+            const { error: err2 } = await supabase.from('practicas').delete().eq('lanzamiento_id', id);
+            if (err2) console.warn("Error deleting practicas:", err2);
+
+            // 3. Finally delete the launch
+            console.log("[DELETE] Removing launch record...");
+            return db.lanzamientos.delete(id);
+        },
+        onSuccess: () => {
+            setToastInfo({ message: 'Lanzamiento y datos vinculados eliminados.', type: 'success' });
+            queryClient.invalidateQueries({ queryKey: ['launchHistory'] });
+            queryClient.invalidateQueries({ queryKey: ['allConvocatorias'] });
+            queryClient.invalidateQueries({ queryKey: ['allPracticas'] });
+        },
+        onError: (error: any) => {
+            console.error("Delete failed:", error);
+            const msg = error?.message || "Error desconocido";
+            setToastInfo({ message: `Error al eliminar: ${msg}`, type: 'error' });
+        }
+    });
+
     const updateDetailsMutation = useMutation({
         mutationFn: ({ id, fields }: { id: string, fields: any }) => {
             return db.lanzamientos.update(id, fields);
@@ -925,10 +958,21 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                             <span className="material-icons !text-xl">visibility_off</span>
                         </button>
                     )}
+                    <button
+                        onClick={() => {
+                            if (window.confirm('¿Estás seguro de eliminar este lanzamiento? Esto no se puede deshacer y podría afectar a los estudiantes inscriptos.')) {
+                                deleteLaunchMutation.mutate(launch.id);
+                            }
+                        }}
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Eliminar Registro Permanentemente"
+                    >
+                        <span className="material-icons !text-xl">delete_forever</span>
+                    </button>
                 </div>
             </div>
         );
-    }, [handleStatusAction]);
+    }, [handleStatusAction, deleteLaunchMutation]);
 
 
 
@@ -1351,17 +1395,17 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                     </button>
                                 </div>
 
-                                {/* CONTENT - Two columns: Card + WhatsApp */}
-                                <div className="flex-1 overflow-y-auto p-6 md:p-8">
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                                {/* CONTENT - Vertical Stack: Card then WhatsApp */}
+                                <div className="flex-1 overflow-y-auto p-6 md:p-10">
+                                    <div className="flex flex-col gap-12 max-w-4xl mx-auto">
 
-                                        {/* COLUMNA 1: TARJETA DE CONVOCATORIA */}
-                                        <div>
+                                        {/* BLOQUE 1: TARJETA DE CONVOCATORIA */}
+                                        <div className="w-full">
                                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                                <span className="material-icons !text-xs">credit_card</span>
-                                                Tarjeta de Convocatoria
+                                                <span className="material-icons !text-xs text-blue-500">credit_card</span>
+                                                Vista de Estudiante (Tarjeta)
                                             </h4>
-                                            <div className="bg-slate-50 dark:bg-slate-950/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-800">
+                                            <div className="bg-slate-50 dark:bg-slate-950/50 rounded-2xl p-1 border border-slate-200 dark:border-slate-800 shadow-inner">
                                                 <ConvocatoriaCardPremium
                                                     id="preview"
                                                     nombre={formData.nombrePPS || 'Sin Nombre'}
@@ -1390,29 +1434,40 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({ isTesting
                                             </div>
                                         </div>
 
-                                        {/* COLUMNA 2: MENSAJE WHATSAPP */}
-                                        <div className="flex flex-col h-full">
+                                        {/* DIVIDER */}
+                                        <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent"></div>
+
+                                        {/* BLOQUE 2: MENSAJE WHATSAPP */}
+                                        <div className="w-full flex flex-col">
                                             <div className="flex items-center justify-between mb-4">
                                                 <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
                                                     <span className="material-icons !text-xs">chat</span>
-                                                    Mensaje de WhatsApp
+                                                    Posteo de WhatsApp
                                                 </h4>
                                                 <button
                                                     type="button"
                                                     onClick={() => copyToClipboard(formData.mensajeWhatsApp || '')}
-                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${isCopied
-                                                        ? 'bg-emerald-500 text-white'
-                                                        : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800'}`}
+                                                    className={`hover-lift flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${isCopied
+                                                        ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+                                                        : 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400'}`}
                                                 >
-                                                    <span className="material-icons !text-lg">{isCopied ? 'done' : 'content_copy'}</span>
-                                                    {isCopied ? 'Copiado!' : 'Copiar Mensaje'}
+                                                    <span className="material-icons !text-lg">{isCopied ? 'done_all' : 'content_copy'}</span>
+                                                    {isCopied ? 'Copiado!' : 'Copiar para WhatsApp'}
                                                 </button>
                                             </div>
-                                            <div className="flex-1 bg-slate-900 rounded-2xl overflow-hidden border border-slate-800">
+                                            <div className="bg-slate-900 rounded-[24px] overflow-hidden border border-slate-800 shadow-2xl">
+                                                <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-700/50 flex items-center gap-2">
+                                                    <div className="flex gap-1.5">
+                                                        <div className="w-2.5 h-2.5 rounded-full bg-rose-500/50" />
+                                                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50" />
+                                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/50" />
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight ml-2">WhatsApp Preview</span>
+                                                </div>
                                                 <textarea
                                                     value={formData.mensajeWhatsApp}
                                                     onChange={(e) => setFormData(prev => ({ ...prev, mensajeWhatsApp: e.target.value }))}
-                                                    className="w-full h-full min-h-[400px] lg:min-h-[500px] bg-transparent text-emerald-100/90 text-xs leading-relaxed font-mono p-5 focus:ring-0 focus:outline-none resize-none"
+                                                    className="w-full h-full min-h-[300px] bg-transparent text-emerald-100/90 text-sm leading-relaxed font-mono p-6 focus:ring-0 focus:outline-none resize-none"
                                                     placeholder="El mensaje de WhatsApp se generará automáticamente..."
                                                 />
                                             </div>

@@ -1,13 +1,9 @@
 
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { db } from '../lib/db';
 import {
     FIELD_DNI_ESTUDIANTES,
     FIELD_CORREO_ESTUDIANTES,
-    FIELD_LEGAJO_ESTUDIANTES,
-    FIELD_NOMBRE_ESTUDIANTES,
-    FIELD_USER_ID_ESTUDIANTES,
     FIELD_TELEFONO_ESTUDIANTES,
 } from '../constants';
 import type { EstudianteFields, AirtableRecord } from '../types';
@@ -23,7 +19,7 @@ const normalizePhone = (phone: any) => {
     return String(phone).replace(/\D/g, '');
 };
 
-export const useAuthLogic = ({ login, showModal }: UseAuthLogicProps) => {
+export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps) => {
     const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'reset' | 'migration' | 'recover'>('login');
     const [resetStep, setResetStep] = useState<'verify' | 'reset_password' | 'success'>('verify');
     const [migrationStep, setMigrationStep] = useState<1 | 2>(1);
@@ -189,7 +185,7 @@ export const useAuthLogic = ({ login, showModal }: UseAuthLogicProps) => {
                     const email = String(foundStudent[FIELD_CORREO_ESTUDIANTES]).trim().toLowerCase();
 
                     // 1. Intentamos CREAR el usuario
-                    const { data: authData, error: signUpError } = await (supabase.auth as any).signUp({
+                    const { data: _authData, error: signUpError } = await (supabase.auth as any).signUp({
                         email: email,
                         password: password,
                         options: { data: { legajo: legajoTrimmed } }

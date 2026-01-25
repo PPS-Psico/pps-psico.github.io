@@ -69,7 +69,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                 const students = await mockDb.getAll('estudiantes', { id: studentIds });
                 const studentMap = new Map(students.map((s: any) => [s.id, s]));
 
-                const grouped: any = {};
+                const grouped: Record<string, { nombre: any, legajo: any }[]> = {};
                 selected.forEach((e: any) => {
                     const horario = e[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || 'No especificado';
                     const s = studentMap.get(e[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
@@ -132,8 +132,8 @@ const HomeView: React.FC<HomeViewProps> = ({
                 requisitoObligatorio={lanzamiento.requisito_obligatorio || ''}
                 reqCv={lanzamiento[FIELD_REQ_CV_LANZAMIENTOS] || false}
                 timeline={{
-                    inscripcion: (lanzamiento[FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] && lanzamiento[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS])
-                        ? `${formatDate(lanzamiento[FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] as string)} - ${formatDate(lanzamiento[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string)}`
+                    inscripcion: ((lanzamiento as any)[FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] && (lanzamiento as any)[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS])
+                        ? `${formatDate((lanzamiento as any)[FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] as string)} - ${formatDate((lanzamiento as any)[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string)}`
                         : 'Abierta',
                     inicio: formatDate(lanzamiento.fecha_inicio),
                     fin: formatDate(lanzamiento.fecha_finalizacion)

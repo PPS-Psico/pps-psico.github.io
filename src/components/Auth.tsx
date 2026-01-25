@@ -51,16 +51,16 @@ const Auth: React.FC = () => {
     const renderLogin = () => (
         <>
             <div className="text-left mb-10">
-                <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
                     Hola de nuevo.
                 </h2>
-                <p className="text-slate-500 dark:text-slate-400 mt-3 text-lg font-medium animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                <p className="text-slate-500 dark:text-slate-400 mt-3 text-lg font-medium">
                     Ingresa a tu panel académico.
                 </p>
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-6">
-                <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                <div className="space-y-6">
                     <Input
                         id="legajo"
                         type="text"
@@ -108,7 +108,7 @@ const Auth: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="pt-4 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                <div className="pt-4">
                     <button
                         type="submit"
                         disabled={isLoading}
@@ -128,7 +128,7 @@ const Auth: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="mt-8 flex items-center justify-center pt-8 border-t border-slate-100 dark:border-slate-800 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
+                <div className="mt-8 flex items-center justify-center pt-8 border-t border-slate-100 dark:border-slate-800">
                     <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
                         ¿Primera vez aquí?{' '}
                         <button
@@ -362,16 +362,16 @@ const Auth: React.FC = () => {
 
                                 <div className="space-y-10">
                                     <div className="space-y-6">
-                                        <h1 className="text-5xl font-black leading-[1.05] tracking-tighter animate-fade-in-up text-slate-900 dark:text-white" style={{ animationDelay: '100ms' }}>
+                                        <h1 className="text-5xl font-black leading-[1.05] tracking-tighter text-slate-900 dark:text-white">
                                             Gestión académica <br />
                                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">inteligente.</span>
                                         </h1>
-                                        <p className="text-lg leading-relaxed font-medium text-slate-600 dark:text-slate-400 max-w-sm animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                                        <p className="text-lg leading-relaxed font-medium text-slate-600 dark:text-slate-400 max-w-sm">
                                             Centraliza tus prácticas, inscripciones y acreditaciones en una plataforma unificada y simple.
                                         </p>
                                     </div>
 
-                                    <div className="space-y-5 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                                    <div className="space-y-5">
                                         {[
                                             { icon: 'verified_user', text: 'Gestión 100% Digital', desc: 'Olvídate del papel.' },
                                             { icon: 'insights', text: 'Seguimiento Real', desc: 'Tu progreso al instante.' },
@@ -390,7 +390,7 @@ const Auth: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 pt-8 border-t border-slate-200/60 dark:border-slate-800 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                                <div className="flex items-center gap-4 pt-8 border-t border-slate-200/60 dark:border-slate-800">
                                     <div className="opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
                                         <UfloLogo className="h-8 w-auto" variant={resolvedTheme} />
                                     </div>
