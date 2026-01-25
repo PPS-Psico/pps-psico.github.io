@@ -14,37 +14,6 @@ const corsHeaders = {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-console.log('🔧 Starting send-push function...');
-
-// Import web-push from npm with compatibility fix
-let webpush;
-try {
-    console.log('Attempting to import web-push from npm...');
-    const module = await import('https://esm.sh/web-push@3.6.7?bundle=true&no-check=true');
-    webpush = module.default;
-    console.log('✅ web-push imported. Export keys:', Object.keys(module));
-    console.log('Webpush type:', typeof webpush);
-    console.log('Webpush methods:', Object.keys(webpush || {}));
-} catch (err) {
-    console.error('❌ Failed to import web-push:', err);
-}
-
-// Initialize Web Push
-if (webpush && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-    try {
-        webpush.setVapidDetails(
-            VAPID_EMAIL,
-            VAPID_PUBLIC_KEY,
-            VAPID_PRIVATE_KEY
-        );
-        console.log('✅ VAPID configured');
-    } catch (err) {
-        console.error('❌ Failed to set VAPID:', err);
-    }
-} else {
-    console.warn("⚠️ VAPID Keys or web-push not available");
-}
-
 Deno.serve(async (req) => {
     console.log('📥 Request received:', req.method);
 
@@ -75,14 +44,32 @@ Deno.serve(async (req) => {
             });
         }
 
+        console.log(`[Push] Found ${subscriptions.length} subscriptions`);
+
+        // Import web-push only when needed (lazy loading)
+        console.log('[Push] Importing web-push...');
+        const webpushModule = await import('https://cdn.skypack.dev/web-push@3.6.7');
+        console.log('[Push] Web-push module loaded, exports:', Object.keys(webpushModule));
+        const webpush = webpushModule.default;
+
+        if (!webpush) {
+            throw new Error('Failed to load web-push module');
+        }
+
+        console.log('[Push] Setting VAPID details...');
+        webpush.setVapidDetails(
+            VAPID_EMAIL,
+            VAPID_PUBLIC_KEY,
+            VAPID_PRIVATE_KEY
+        );
+        console.log('[Push] VAPID configured');
+
         const payload = JSON.stringify({ title, message, url: url || '/' });
-        const results = [];
+        const results: any[] = [];
 
-        console.log(`[Push] Sending to ${subscriptions.length} subscriptions`);
-        console.log(`[Push] webpush.sendNotification type:`, typeof webpush?.sendNotification);
+        console.log('[Push] Starting to send notifications...');
 
-        // Send notifications
-        const promises = subscriptions.map(async (sub) => {
+        for (const sub of subscriptions) {
             try {
                 const pushConfig = {
                     endpoint: sub.endpoint,
@@ -92,28 +79,30 @@ Deno.serve(async (req) => {
                     }
                 };
 
-                console.log(`[Push] Attempting to send to ${sub.id}`);
+                console.log(`[Push] Sending to subscription ${sub.id}...`);
                 await webpush.sendNotification(pushConfig, payload);
-                return { id: sub.id, success: true };
+                results.push({ id: sub.id, success: true });
+                console.log(`[Push] ✅ Success for ${sub.id}`);
             } catch (err) {
-                console.error(`[Push] Error sending to ${sub.id}:`, err);
+                console.error(`[Push] ❌ Error for ${sub.id}:`, err);
                 if (err.statusCode === 410 || err.statusCode === 404) {
                     console.log(`[Push] Cleaning up expired subscription ${sub.id}`);
                     await supabase.from('push_subscriptions').delete().eq('id', sub.id);
-                    return { id: sub.id, success: false, error: 'Expired', cleaned: true };
+                    results.push({ id: sub.id, success: false, error: 'Expired', cleaned: true });
+                } else {
+                    results.push({ id: sub.id, success: false, error: err.message || String(err) });
                 }
-                return { id: sub.id, success: false, error: err.message || String(err) };
             }
-        });
+        }
 
-        const sentResults = await Promise.all(promises);
-        const successCount = sentResults.filter(r => r.success).length;
+        const successCount = results.filter(r => r.success).length;
+        console.log(`[Push] Completed: ${successCount}/${subscriptions.length} successful`);
 
         return new Response(JSON.stringify({
             success: true,
             sent: successCount,
             total: subscriptions.length,
-            details: sentResults
+            details: results
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
