@@ -51,7 +51,7 @@ const OrphanFixer: React.FC = () => {
                 if (sId && lId && validLaunchIds.has(lId)) activeStudents.add(sId);
             });
 
-            pracRes.data?.forEach(p => {
+            (pracRes.data as any[])?.forEach((p: any) => {
                 const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
                 const date = parseToUTCDate(p.fecha_inicio);
                 if (sId && date?.getUTCFullYear() === currentYear) activeStudents.add(sId);

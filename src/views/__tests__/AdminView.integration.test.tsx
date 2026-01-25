@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 // @ts-ignore
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
-import App from '@/App'; 
+import App from '@/App';
 import * as supabaseService from '@/services/supabaseService';
 import {
     TABLE_NAME_ESTUDIANTES,
@@ -26,18 +26,19 @@ const mockedSupabase = supabaseService as jest.Mocked<typeof supabaseService>;
 
 // Mock exceljs
 jest.mock('exceljs', () => ({
-  Workbook: jest.fn().mockImplementation(() => ({
-    xlsx: {
-      writeBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
-    },
-    addWorksheet: jest.fn().mockReturnValue({
-      columns: [],
-      addRows: jest.fn(),
-      getRow: jest.fn().mockReturnValue({
-        eachCell: jest.fn(),
-      }),
-    }),
-  })),
+    Workbook: jest.fn().mockImplementation(() => ({
+        xlsx: {
+            // @ts-ignore
+            writeBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+        },
+        addWorksheet: jest.fn().mockReturnValue({
+            columns: [],
+            addRows: jest.fn(),
+            getRow: jest.fn().mockReturnValue({
+                eachCell: jest.fn(),
+            }),
+        }),
+    })),
 }));
 
 // --- Datos Simulados ---
@@ -45,14 +46,14 @@ const mockAdminUser = { legajo: 'admin', nombre: 'Super Usuario', role: 'SuperUs
 
 const mockStudentForSearch = {
     id: 'recStudent123',
-    createdTime: '2023-01-01T00:00:00.000Z',
+    created_at: '2023-01-01T00:00:00.000Z',
     legajo: '12345',
     nombre: 'Juana Molina',
 };
 
 const mockStudentDetails = {
     id: 'recStudent123',
-    createdTime: '2023-01-01T00:00:00.000Z',
+    created_at: '2023-01-01T00:00:00.000Z',
     legajo: '12345',
     nombre: 'Juana Molina',
     orientacion_elegida: 'Clinica',
@@ -63,8 +64,8 @@ const mockStudentDetails = {
 const mockPracticas = [
     {
         id: 'recPracticaABC',
-        createdTime: '2023-01-01T00:00:00.000Z',
-        nombre_institucion: 'Hospital Central',
+        created_at: '2023-01-01T00:00:00.000Z',
+        nombre_institucion: ['Hospital Central'], // Wrapped in array as it's a lookup field
         especialidad: 'Clinica',
         horas_realizadas: 100,
         fecha_inicio: '2023-01-01',
@@ -81,7 +82,7 @@ describe('Flujo de Integración del Administrador', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         Storage.prototype.getItem = jest.fn((key) => {
             if (key === 'authenticatedUser') {
                 return JSON.stringify(mockAdminUser);
@@ -89,34 +90,34 @@ describe('Flujo de Integración del Administrador', () => {
             return null;
         });
 
-        mockedSupabase.fetchAllData.mockImplementation(async (tableName: string, zodSchema: any, fields?: string[], filters?: any): Promise<any> => {
+        mockedSupabase.fetchAllData.mockImplementation(async (tableName: any, fields?: any, filters?: any, sort?: any): Promise<any> => {
             // useStudentPracticas
             if (tableName === TABLE_NAME_PRACTICAS && filters?.estudiante_id === 'recStudent123') { // Assuming mock maps IDs correctly
                 return { records: mockPracticas, error: null };
             }
-            if ([TABLE_NAME_PPS, TABLE_NAME_CONVOCATORIAS, TABLE_NAME_LANZAMIENTOS_PPS, TABLE_NAME_INSTITUCIONES, TABLE_NAME_FINALIZACION].includes(tableName)) {
+            if ([TABLE_NAME_PPS, TABLE_NAME_CONVOCATORIAS, TABLE_NAME_LANZAMIENTOS_PPS, TABLE_NAME_INSTITUCIONES, TABLE_NAME_FINALIZACION].includes(tableName as string)) {
                 return { records: [], error: null };
             }
             return { records: [], error: null };
         });
 
-        mockedSupabase.fetchPaginatedData.mockImplementation(async (tableName: string, zodSchema: any, page: number, pageSize: number, fields?: string[], searchTerm?: string, searchFields?: string[], sort?: any, filters?: any): Promise<any> => {
-             // Búsqueda de AdminSearch
-             if (tableName === TABLE_NAME_ESTUDIANTES && searchTerm?.includes('Juana')) {
+        mockedSupabase.fetchPaginatedData.mockImplementation(async (tableName: any, page: any, pageSize: any, fields?: any, searchTerm?: any, searchFields?: any, sort?: any, filters?: any): Promise<any> => {
+            // Búsqueda de AdminSearch
+            if (tableName === TABLE_NAME_ESTUDIANTES && searchTerm?.includes('Juana')) {
                 return { records: [mockStudentForSearch], total: 1, error: null };
-             }
-             return { records: [], total: 0, error: null };
+            }
+            return { records: [], total: 0, error: null };
         });
-        
-        mockedSupabase.fetchData.mockImplementation(async (tableName: string, zodSchema: any, fields?: string[], filters?: any): Promise<any> => {
-             // useStudentData
+
+        mockedSupabase.fetchData.mockImplementation(async (tableName: any, fields?: any, filters?: any, maxRecords?: any, sort?: any): Promise<any> => {
+            // useStudentData
             if (tableName === TABLE_NAME_ESTUDIANTES && filters?.legajo === '12345') {
                 return { records: [mockStudentDetails], error: null };
             }
             return { records: [], error: null };
         });
 
-        mockedSupabase.updateRecord.mockResolvedValue({ record: { id: 'recPracticaABC', createdTime: '', nota: '10' }, error: null });
+        mockedSupabase.updateRecord.mockResolvedValue({ record: { id: 'recPracticaABC', created_at: '', nota: '10' } as any, error: null });
     });
 
     it('permite a un admin buscar un alumno, abrir su panel y editar una nota', async () => {
@@ -133,7 +134,7 @@ describe('Flujo de Integración del Administrador', () => {
         // 1. Navegar a la herramienta de búsqueda
         const herramientasTab = await screen.findByRole('tab', { name: /Herramientas/i }, { timeout: 10000 });
         await user.click(herramientasTab);
-        
+
         // 2. Buscar al alumno
         const searchInput = await screen.findByPlaceholderText(/Buscar por Legajo o Nombre.../i);
         await user.type(searchInput, 'Juana Molina');
@@ -150,17 +151,17 @@ describe('Flujo de Integración del Administrador', () => {
         expect(panelId).not.toBeNull();
         const studentDashboard = document.getElementById(panelId!);
         if (!studentDashboard) throw new Error("No se encontró el panel del dashboard del alumno.");
-        
+
         await within(studentDashboard).findByRole('heading', { name: /Juana/i, level: 1 });
 
         // 5. Navegar a la pestaña "Mis Prácticas"
         const practicasTab = await within(studentDashboard).findByRole('tab', { name: /Mis Prácticas/i });
         await user.click(practicasTab);
-        
+
         // 6. Cambiar nota
         const gradeSelector = await within(studentDashboard).findByLabelText('Calificación para Hospital Central');
         expect(gradeSelector).toHaveValue('Sin calificar');
-        
+
         await user.selectOptions(gradeSelector, '10');
 
         // 7. Verificar actualización

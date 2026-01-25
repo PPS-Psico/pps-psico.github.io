@@ -36,7 +36,7 @@ export const Step2Detalles: React.FC<Step2DetallesProps> = ({
           <Input
             type="text"
             value={formData.nombrePPS || ''}
-            onChange={(value) => onChange('nombrePPS', value)}
+            onChange={(e) => onChange('nombrePPS', e.target.value)}
             placeholder="Nombre de la práctica"
             icon="school"
           />
@@ -48,7 +48,7 @@ export const Step2Detalles: React.FC<Step2DetallesProps> = ({
           </label>
           <Select
             value={formData.orientacion || ''}
-            onChange={(value) => onChange('orientacion', value)}
+            onChange={(e) => onChange('orientacion', e.target.value)}
             options={ALL_ORIENTACIONES.map(orient => ({
               value: orient,
               label: orient
@@ -117,7 +117,7 @@ export const Step2Detalles: React.FC<Step2DetallesProps> = ({
             <Input
               type="number"
               value={formData.horasAcreditadas || ''}
-              onChange={(value) => onChange('horasAcreditadas', parseInt(value) || 0)}
+              onChange={(e) => onChange('horasAcreditadas', parseInt(e.target.value) || 0)}
               placeholder="0"
               icon="schedule"
             />
@@ -130,7 +130,7 @@ export const Step2Detalles: React.FC<Step2DetallesProps> = ({
             <Input
               type="number"
               value={formData.cuposDisponibles || ''}
-              onChange={(value) => onChange('cuposDisponibles', parseInt(value) || 1)}
+              onChange={(e) => onChange('cuposDisponibles', parseInt(e.target.value) || 1)}
               placeholder="1"
               icon="group"
             />
@@ -147,7 +147,7 @@ export const Step2Detalles: React.FC<Step2DetallesProps> = ({
           <Input
             type="text"
             value={formData.requisitoObligatorio || ''}
-            onChange={(value) => onChange('requisitoObligatorio', value)}
+            onChange={(e) => onChange('requisitoObligatorio', e.target.value)}
             placeholder="Requisito opcional..."
             icon="campaign"
           />
@@ -169,7 +169,7 @@ export const Step2Detalles: React.FC<Step2DetallesProps> = ({
             <Input
               type="datetime-local"
               value={formData.fechaPublicacion || ''}
-              onChange={(value) => onChange('fechaPublicacion', value)}
+              onChange={(e) => onChange('fechaPublicacion', e.target.value)}
             />
           </div>
         )}

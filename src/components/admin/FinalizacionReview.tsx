@@ -153,8 +153,14 @@ const RequestListItem: React.FC<{
             await Promise.all(allFiles.map(async (file) => {
                 try {
                     const path = getStoragePath(file.url);
-                    const { data } = await (path ? supabase.storage.from('documentos_finalizacion').download(path) : fetch(file.url).then(r => r.blob()));
-                    if (data) folder?.file(file.filename, data);
+                    let blob: Blob | null = null;
+                    if (path) {
+                        const { data, error } = await supabase.storage.from('documentos_finalizacion').download(path);
+                        if (!error && data) blob = data;
+                    } else {
+                        blob = await fetch(file.url).then(r => r.blob());
+                    }
+                    if (blob) folder?.file(file.filename, blob);
                 } catch (err) { }
             }));
             const content = await zip.generateAsync({ type: "blob" });

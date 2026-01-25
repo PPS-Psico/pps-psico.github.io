@@ -31,7 +31,7 @@ const mockedSupabase = supabaseService as jest.Mocked<typeof supabaseService>;
 // Mock Data
 const mockLanzamiento = {
     id: 'lanz123',
-    createdTime: '',
+    created_at: '',
     [FIELD_NOMBRE_PPS_LANZAMIENTOS]: 'Hospital Test',
     [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: 'Abierta',
     cupos_disponibles: 5,
@@ -40,7 +40,7 @@ const mockLanzamiento = {
 
 const mockStudent = {
     id: 'est123',
-    createdTime: '',
+    created_at: '',
     [FIELD_NOMBRE_ESTUDIANTES]: 'Estudiante Candidato',
     [FIELD_LEGAJO_ESTUDIANTES]: '12345',
     correo: 'test@mail.com'
@@ -48,19 +48,19 @@ const mockStudent = {
 
 const mockEnrollment = {
     id: 'conv123',
-    createdTime: '',
+    created_at: '',
     [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: ['est123'], // Legacy array format support
     [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: 'Inscripto',
     lanzamiento_id: 'lanz123'
 };
 
 describe('Seleccionador de Convocatorias (Integration)', () => {
-    
+
     beforeEach(() => {
         jest.clearAllMocks();
 
         // Mock fetchAllData responses dynamically based on table name
-        mockedSupabase.fetchAllData.mockImplementation(async (tableName: string, zodSchema: any, fields?: string[], filters?: any): Promise<any> => {
+        mockedSupabase.fetchAllData.mockImplementation(async (tableName: any, fields?: any, filters?: any): Promise<any> => {
             if (tableName === TABLE_NAME_LANZAMIENTOS_PPS) {
                 return { records: [mockLanzamiento], error: null };
             }
@@ -77,7 +77,7 @@ describe('Seleccionador de Convocatorias (Integration)', () => {
         });
 
         // Mock updateRecord specifically for the toggle action
-        mockedSupabase.updateRecord.mockResolvedValue({ record: {}, error: null });
+        mockedSupabase.updateRecord.mockResolvedValue({ record: {} as any, error: null });
     });
 
     it('permite seleccionar un alumno postulante y actualiza su estado', async () => {

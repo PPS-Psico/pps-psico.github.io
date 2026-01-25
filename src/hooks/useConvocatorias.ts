@@ -102,7 +102,7 @@ export const useConvocatorias = (legajo: string, studentAirtableId: string | nul
         refetchOnWindowFocus: true,
     });
 
-    const { lanzamientos = [], myEnrollments = [], allLanzamientos = [], institutionAddressMap = new Map(), institutionLogoMap = new Map() } = convocatoriasData || {};
+    const { lanzamientos = [], myEnrollments = [], allLanzamientos = [], institutionAddressMap = new Map(), institutionLogoMap = new Map() } = (convocatoriasData as any) || {};
 
     const enrollmentMutation = useMutation<AirtableRecord<ConvocatoriaFields> | null, Error, { formData: any, selectedLanzamiento: LanzamientoPPS }>({
         mutationFn: async ({ formData, selectedLanzamiento }) => {

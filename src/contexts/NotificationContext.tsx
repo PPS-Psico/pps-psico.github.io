@@ -107,11 +107,41 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
             const registration = await navigator.serviceWorker.ready;
 
-            // NOTE: In a real production environment, you would subscribe here with VAPID keys:
-            // const subscription = await registration.pushManager.subscribe({
-            //    userVisibleOnly: true,
-            //    applicationServerKey: 'YOUR_VAPID_PUBLIC_KEY'
-            // });
+            const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+            if (!vapidPublicKey) {
+                console.warn("VITE_VAPID_PUBLIC_KEY not defined. Push notifications will not work securely.");
+                throw new Error("Configuración de notificaciones incompleta (Falta VAPID Key). Contacta al soporte.");
+            }
+
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: vapidPublicKey
+            });
+
+            // Save subscription to Supabase
+            if (subscription) {
+                // Serialize keys properly
+                const p256dh = subscription.getKey('p256dh');
+                const auth = subscription.getKey('auth');
+
+                if (!p256dh || !auth) throw new Error("No se pudieron generar las llaves de encriptación.");
+
+                const subscriptionData = {
+                    user_id: authenticatedUser.id,
+                    endpoint: subscription.endpoint,
+                    p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(p256dh) as any)),
+                    auth: btoa(String.fromCharCode.apply(null, new Uint8Array(auth) as any))
+                };
+
+                const { error: dbError } = await supabase
+                    .from('push_subscriptions')
+                    .upsert(subscriptionData, { onConflict: 'user_id, endpoint' });
+
+                if (dbError) throw new Error("Error al guardar suscripción en servidor: " + dbError.message);
+
+                console.log("✅ Push Subscription saved:", subscriptionData);
+            }
 
             setToast({ message: 'Notificaciones activadas correctamente.', type: 'success' });
 

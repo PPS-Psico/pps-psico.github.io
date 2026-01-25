@@ -157,7 +157,7 @@ const DataIntegrityTool: React.FC = () => {
 
             // C. Limpiar Prácticas (nombre_institucion) - El campo más propenso a errores de migración
             const practicas = await db.practicas.getAll({ fields: [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] });
-            const dirtyPracticas = practicas.filter(p => {
+            const dirtyPracticas = (practicas as any[]).filter(p => {
                 const originalName = p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
                 if (!originalName) return false;
                 if (typeof originalName === 'object') return true;
@@ -169,8 +169,12 @@ const DataIntegrityTool: React.FC = () => {
             for (const p of dirtyPracticas) {
                 const oldName = p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
                 const newName = cleanNameArtifacts(oldName);
-                if (newName && newName !== oldName) {
-                    await supabase.from(TABLE_NAME_PRACTICAS).update({ [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: newName }).eq('id', p.id);
+
+                // Use robust comparison since oldName might be an array or string
+                const oldNameStr = Array.isArray(oldName) ? oldName[0] : String(oldName).trim();
+
+                if (newName && newName !== oldNameStr) {
+                    await supabase.from(TABLE_NAME_PRACTICAS).update({ [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: [newName] }).eq('id', p.id);
                     fixedCount++;
                 }
             }

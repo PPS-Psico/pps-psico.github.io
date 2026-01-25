@@ -167,6 +167,7 @@ export const fetchConvocatoriasData = async (studentAirtableId: string | null): 
     myEnrollments: Convocatoria[],
     allLanzamientos: LanzamientoPPS[],
     institutionAddressMap: Map<string, string>,
+    institutionLogoMap: Map<string, { url: string, invert: boolean }>,
 }> => {
 
     let myEnrollments: Convocatoria[] = [];
@@ -420,7 +421,7 @@ export const toggleStudentSelection = async (
                 if (currentNameStr !== cleanName) {
                     console.log(`[DATA SERVICE] Fixing dirty name: ${currentNameStr} -> ${cleanName}`);
                     await db.practicas.update(existingPractica.id, {
-                        [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName, // FIXED: Removed extra [] wrapping
+                        [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: [cleanName], // FIXED: Wrapped in [] as it's a lookup/array field compatible type
                         [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion
                     });
                 }
