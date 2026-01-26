@@ -59,7 +59,7 @@ interface ProfileViewProps {
 
 const ProfileView: React.FC<ProfileViewProps> = ({ studentDetails, isLoading, updateInternalNotes }) => {
     const { isSuperUserMode, isJefeMode } = useAuth();
-    const { subscribeToPush, unsubscribeFromPush, isPushEnabled } = useNotifications();
+    // const { subscribeToPush, unsubscribeFromPush, isPushEnabled } = useNotifications(); // Removed
     const { showModal } = useModal();
     const queryClient = useQueryClient();
 
@@ -181,27 +181,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ studentDetails, isLoading, up
                             <span className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-700 dark:group-hover:text-blue-300">Editar Datos de Contacto</span>
                         </button>
 
-                        {/* Notificaciones de nuevas convocatorias */}
-                        <div className="flex-1 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isPushEnabled ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                                    <span className="material-icons !text-xl">{isPushEnabled ? 'notifications_active' : 'notifications_none'}</span>
-                                </div>
-                                <div className="min-w-0">
-                                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Alertas al Celular</h4>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Avisarme de nuevas convocatorias.</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={isPushEnabled ? unsubscribeFromPush : subscribeToPush}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${isPushEnabled
-                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                                    }`}
-                            >
-                                {isPushEnabled ? 'Desactivar' : 'Activar'}
-                            </button>
-                        </div>
+
                     </>
                 ) : (
                     <div className="w-full flex gap-3 animate-fade-in">
