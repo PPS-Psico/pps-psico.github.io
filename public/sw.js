@@ -1,7 +1,7 @@
 
-// sw.js para relative base
+// sw.js para relative base (versión simple sin Firebase)
 
-const CACHE_NAME = 'mi-panel-academico-cache-v25';
+const CACHE_NAME = 'mi-panel-academico-cache-v26';
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json',
@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     (async () => {
       try {
-        // Intento de red primero
+        // Intenta de red primero
         const networkResponse = await fetch(event.request);
 
         // Si es un 404 para un archivo CSS o JS (probablemente una versión antigua con hash cambiado),
@@ -99,7 +99,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then((windowClients) => {
-      const url = event.notification.data.url;
+      const url = event.notification.data?.url;
       // Check if there is already a window/tab open with target URL
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
