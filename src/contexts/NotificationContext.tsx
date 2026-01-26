@@ -148,9 +148,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 throw new Error('Firebase messaging no está inicializado.');
             }
 
-            const token = await getToken(messaging, {
-                serviceWorkerRegistration: swRegistration
-            });
+            const token = await getToken(messaging);
 
             if (!token) {
                 throw new Error('No se pudo obtener el FCM token.');
