@@ -140,12 +140,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             setIsPushEnabled(true);
             localStorage.setItem(PUSH_STORAGE_KEY, 'true');
 
+            // Register service worker first
+            const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
             // Get FCM token
             if (!messaging) {
                 throw new Error('Firebase messaging no está inicializado.');
             }
 
-            const token = await getToken(messaging);
+            const token = await getToken(messaging, {
+                serviceWorkerRegistration: swRegistration
+            });
 
             if (!token) {
                 throw new Error('No se pudo obtener el FCM token.');
