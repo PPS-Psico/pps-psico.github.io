@@ -141,7 +141,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             localStorage.setItem(PUSH_STORAGE_KEY, 'true');
 
             // Register service worker first
-            const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            const swRegistration = await navigator.serviceWorker.register('/sw.js');
 
             // Get FCM token
             if (!messaging) {
