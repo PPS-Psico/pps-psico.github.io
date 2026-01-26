@@ -5,26 +5,31 @@
 let messaging;
 let app;
 
-try {
-  importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-  importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+// Load Firebase scripts first
+self.importScripts(
+  'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js'
+).then(() => {
+  try {
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDRk6xK2NmbG20dgHqBgdyYTREnrcVl_iA',
+      authDomain: 'consulta-pps-uflo.firebaseapp.com',
+      projectId: 'consulta-pps-uflo',
+      storageBucket: 'consulta-pps-uflo.firebasestorage.app',
+      messagingSenderId: '977860997987',
+      appId: '1:977860997987:web:ffc7e7716cd5da02c9d956'
+    };
 
-  const firebaseConfig = {
-    apiKey: 'AIzaSyDRk6xK2NmbG20dgHqBgdyYTREnrcVl_iA',
-    authDomain: 'consulta-pps-uflo.firebaseapp.com',
-    projectId: 'consulta-pps-uflo',
-    storageBucket: 'consulta-pps-uflo.firebasestorage.app',
-    messagingSenderId: '977860997987',
-    appId: '1:977860997987:web:ffc7e7716cd5da02c9d956'
-  };
-
-  app = firebase.initializeApp(firebaseConfig);
-  messaging = firebase.messaging();
-  
-  console.log('✅ Firebase initialized in service worker');
-} catch (err) {
-  console.error('❌ Firebase initialization error in SW:', err);
-}
+    app = firebase.initializeApp(firebaseConfig);
+    messaging = firebase.messaging();
+    
+    console.log('✅ Firebase initialized in service worker');
+  } catch (err) {
+    console.error('❌ Firebase initialization error in SW:', err);
+  }
+}).catch((err) => {
+  console.error('❌ Failed to load Firebase scripts:', err);
+});
 
 const CACHE_NAME = 'mi-panel-academico-cache-v21';
 const FILES_TO_CACHE = [
@@ -121,27 +126,37 @@ self.addEventListener('push', (event) => {
 });
 
 // --- FIREBASE CLOUD MESSAGING ---
-if (messaging) {
-  messaging.setBackgroundMessageHandler((payload) => {
-    console.log('Received Firebase background message:', payload);
-    
-    const notificationTitle = payload.notification?.title || 'Notificación';
-    const notificationOptions = {
-      body: payload.notification?.body || '',
-      icon: './icons/icon-192x192.png',
-      badge: './icons/icon-72x72.png',
-      data: payload.data || {},
-      tag: 'fcm-notification',
-      requireInteraction: true
-    };
 
-    return self.registration.showNotification(notificationTitle, notificationOptions);
-  });
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Mi Panel Académico';
+  const options = {
+    body: data.message || 'Tienes una nueva notificación.',
+    icon: './icons/icon-192x192.png',
+    badge: './icons/icon-192x192.png',
+    data: { url: data.url || '/' }
+  };
 
-  messaging.onNotification((notification) => {
-    console.log('Received Firebase notification:', notification);
-  });
-}
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((windowClients) => {
+      const url = event.notification.data?.url;
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(url || '/');
+      }
+    })
+  );
+});
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
