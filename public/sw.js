@@ -1,41 +1,51 @@
 
 // sw.js para relative base con Firebase Cloud Messaging
 
-// Firebase Cloud Messaging setup
-let messaging;
-let app;
-
-// Load Firebase scripts first
-self.importScripts(
-  'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js'
-).then(() => {
-  try {
-    const firebaseConfig = {
-      apiKey: 'AIzaSyDRk6xK2NmbG20dgHqBgdyYTREnrcVl_iA',
-      authDomain: 'consulta-pps-uflo.firebaseapp.com',
-      projectId: 'consulta-pps-uflo',
-      storageBucket: 'consulta-pps-uflo.firebasestorage.app',
-      messagingSenderId: '977860997987',
-      appId: '1:977860997987:web:ffc7e7716cd5da02c9d956'
-    };
-
-    app = firebase.initializeApp(firebaseConfig);
-    messaging = firebase.messaging();
-    
-    console.log('✅ Firebase initialized in service worker');
-  } catch (err) {
-    console.error('❌ Firebase initialization error in SW:', err);
-  }
-}).catch((err) => {
-  console.error('❌ Failed to load Firebase scripts:', err);
-});
-
-const CACHE_NAME = 'mi-panel-academico-cache-v21';
+const CACHE_NAME = 'mi-panel-academico-cache-v23';
 const FILES_TO_CACHE = [
   './index.html',
   './manifest.json',
 ];
+
+// Firebase Cloud Messaging setup
+let messaging;
+let app;
+
+// Import Firebase scripts
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    Promise.all([
+      // Install Firebase scripts
+      importScripts(
+        'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
+        'https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js',
+        'https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js'
+      )
+    ]).then(() => {
+      console.log('✅ Firebase scripts imported, initializing...');
+      
+      try {
+        const firebaseConfig = {
+          apiKey: 'AIzaSyDRk6xK2NmbG20dgHqBgdyYTREnrcVl_iA',
+          authDomain: 'consulta-pps-uflo.firebaseapp.com',
+          projectId: 'consulta-pps-uflo',
+          storageBucket: 'consulta-pps-uflo.firebasestorage.app',
+          messagingSenderId: '977860997987',
+          appId: '1:977860997987:web:ffc7e7716cd5da02c9d956'
+        };
+
+        app = firebase.initializeApp(firebaseConfig);
+        messaging = firebase.messaging();
+        
+        console.log('✅ Firebase initialized in service worker');
+      } catch (err) {
+        console.error('❌ Firebase initialization error in SW:', err);
+      }
+    }).catch((err) => {
+      console.error('❌ Failed to import Firebase scripts:', err);
+    })
+  );
+});
 
 // Instala y precachea el shell mínimo
 self.addEventListener('install', (event) => {
@@ -43,7 +53,6 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(FILES_TO_CACHE))
       .catch((err) => {
-        // Precarga parcial: no fallar la instalación por un asset faltante
         console.warn('[SW] Precarga parcial', err);
       })
   );
@@ -60,6 +69,65 @@ self.addEventListener('activate', (event) => {
     )
   );
   self.clients.claim();
+});
+
+// --- FIREBASE CLOUD MESSAGING BACKGROUND HANDLER ---
+
+if (typeof firebase !== 'undefined') {
+  firebase.messaging().onBackgroundMessage((payload) => {
+    console.log('Received Firebase background message:', payload);
+    
+    const notificationTitle = payload.notification?.title || 'Notificación';
+    const notificationOptions = {
+      body: payload.notification?.body || '',
+      icon: './icons/icon-192x192.png',
+      badge: './icons/icon-72x72.png',
+      data: payload.data || {},
+      tag: 'fcm-notification',
+      requireInteraction: true
+    };
+
+    return self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+
+  firebase.messaging().onNotification((notification) => {
+    console.log('Received Firebase notification:', notification);
+  });
+}
+
+// --- PUSH NOTIFICATIONS ---
+
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Mi Panel Académico';
+  const options = {
+    body: data.message || 'Tienes una nueva notificación.',
+    icon: './icons/icon-192x192.png',
+    badge: './icons/icon-192x192.png',
+    data: { url: data.url || '/' }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((windowClients) => {
+      const url = event.notification.data?.url;
+      // Check if there is already a window/tab open with target URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If not, open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
 });
 
 // Estrategia: Network-first con fallback a caché
@@ -84,7 +152,7 @@ self.addEventListener('fetch', (event) => {
           });
         }
 
-        // Cachea copia si es OK
+        // Caché copia si es OK
         if (networkResponse && networkResponse.ok) {
           const copy = networkResponse.clone();
           const cache = await caches.open(CACHE_NAME);
@@ -107,73 +175,5 @@ self.addEventListener('fetch', (event) => {
         return new Response(null, { status: 404, statusText: 'Not Found' });
       }
     })()
-  );
-});
-
-// --- PUSH NOTIFICATIONS ---
-
-self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || 'Mi Panel Académico';
-  const options = {
-    body: data.message || 'Tienes una nueva notificación.',
-    icon: './icons/icon-192x192.png',
-    badge: './icons/icon-192x192.png',
-    data: { url: data.url || '/' }
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
-// --- FIREBASE CLOUD MESSAGING ---
-
-self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || 'Mi Panel Académico';
-  const options = {
-    body: data.message || 'Tienes una nueva notificación.',
-    icon: './icons/icon-192x192.png',
-    badge: './icons/icon-192x192.png',
-    data: { url: data.url || '/' }
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((windowClients) => {
-      const url = event.notification.data?.url;
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if (client.url === url && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(url || '/');
-      }
-    })
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((windowClients) => {
-      const url = event.notification.data.url;
-      // Check if there is already a window/tab open with the target URL
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if (client.url === url && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // If not, open a new window
-      if (clients.openWindow) {
-        return clients.openWindow(url);
-      }
-    })
   );
 });
