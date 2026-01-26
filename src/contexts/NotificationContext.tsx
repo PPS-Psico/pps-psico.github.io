@@ -185,35 +185,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
     };
 
-                const { error: dbError } = await supabase
-                    .from('push_subscriptions')
-                    .upsert(subscriptionData, { onConflict: 'user_id, endpoint' });
-
-                if (dbError) throw new Error("Error al guardar suscripción en servidor: " + dbError.message);
-
-                console.log("✅ Push Subscription saved:", subscriptionData);
-            }
-
-            setToast({ message: 'Notificaciones activadas correctamente.', type: 'success' });
-
-            // Send a test notification immediately if supported to confirm
-            if (registration.showNotification) {
-                registration.showNotification('¡Activado!', {
-                    body: 'Recibirás avisos de nuevas convocatorias aquí.',
-                    icon: '/icons/icon-192x192.png'
-                });
-            }
-
-        } catch (e: any) {
-            console.error('Push subscription error:', e);
-            let msg = 'No se pudieron activar las notificaciones.';
-            if (e.message) msg = e.message;
-            setToast({ message: msg, type: 'error' });
-            setIsPushEnabled(false); // Revert on error
-            localStorage.removeItem(PUSH_STORAGE_KEY);
-        }
-    };
-
     const unsubscribeFromPush = async () => {
         if (!authenticatedUser) return;
 
