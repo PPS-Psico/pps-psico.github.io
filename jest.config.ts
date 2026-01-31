@@ -28,12 +28,6 @@ const config: JestConfigWithTsJest = {
       VITE_SUPABASE_ANON_KEY: 'test-anon-key',
     },
   },
-  
-  // Define custom environment variables
-  define: {
-    'import.meta.env.VITE_SUPABASE_URL': '"https://test.supabase.co"',
-    'import.meta.env.VITE_SUPABASE_ANON_KEY': '"test-anon-key"',
-  },
 };
 
 export default config;
