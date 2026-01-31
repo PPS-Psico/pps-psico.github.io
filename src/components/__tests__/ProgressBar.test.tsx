@@ -42,7 +42,7 @@ describe("ProgressBar", () => {
   it("shows the completion message when isComplete is true", () => {
     render(<ProgressBar value={100} max={100} label="Completion Test" isComplete={true} />);
 
-    expect(screen.getByText("¡Objetivo de horas cumplido!")).toBeInTheDocument();
+    expect(screen.getByText("Objetivo cumplido")).toBeInTheDocument();
   });
 
   it("does not show the completion message when isComplete is false", () => {
