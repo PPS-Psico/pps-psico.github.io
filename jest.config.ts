@@ -1,6 +1,6 @@
-import type { Config } from 'jest';
+import type { JestConfigWithTsJest } from 'ts-jest';
 
-const config: Config = {
+const config: JestConfigWithTsJest = {
   // Indicates that the test environment is a browser-like environment
   testEnvironment: 'jsdom',
 
