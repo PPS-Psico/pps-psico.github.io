@@ -2,15 +2,15 @@
 import ReactGA from "react-ga4";
 
 // Get GA4 Measurement ID from environment variables
-const GA4_MEASUREMENT_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID || "G-XXXXXXXXXX";
+const GA4_MEASUREMENT_ID = process.env.VITE_GA4_MEASUREMENT_ID || "G-XXXXXXXXXX";
 
 // Initialize Google Analytics
 export const initGA4 = () => {
-  if (import.meta.env.PROD && GA4_MEASUREMENT_ID !== "G-XXXXXXXXXX") {
+  if (process.env.PROD && GA4_MEASUREMENT_ID !== "G-XXXXXXXXXX") {
     ReactGA.initialize(GA4_MEASUREMENT_ID, {
       // Enable debug mode in development
       gaOptions: {
-        debug_mode: !import.meta.env.PROD,
+        debug_mode: !process.env.PROD,
       },
     });
 
@@ -20,7 +20,7 @@ export const initGA4 = () => {
 
 // Track page views
 export const trackPageView = (path: string, title?: string) => {
-  if (import.meta.env.PROD) {
+  if (process.env.PROD) {
     ReactGA.send({
       hitType: "pageview",
       page: path,
@@ -31,7 +31,7 @@ export const trackPageView = (path: string, title?: string) => {
 
 // Track custom events
 export const trackEvent = (action: string, category: string, label?: string, value?: number) => {
-  if (import.meta.env.PROD) {
+  if (process.env.PROD) {
     ReactGA.event({
       action,
       category,
@@ -131,7 +131,7 @@ export const setCustomDimensions = (userData: {
   orientation?: string;
   legajo?: string;
 }) => {
-  if (import.meta.env.PROD) {
+  if (process.env.PROD) {
     // Set custom dimensions for better segmentation
     ReactGA.gtag("config", GA4_MEASUREMENT_ID, {
       custom_map: {

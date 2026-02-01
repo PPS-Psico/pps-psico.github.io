@@ -161,11 +161,11 @@ const MonitoringTest: React.FC = () => {
           </div>
           <div>
             <span className="font-medium">Environment:</span>
-            <div>{import.meta.env.MODE}</div>
+            <div>{process.env.MODE}</div>
           </div>
           <div>
             <span className="font-medium">Monitoring:</span>
-            <div>{import.meta.env.PROD ? "✅ Enabled" : "⚠️ Development"}</div>
+            <div>{process.env.PROD ? "✅ Enabled" : "⚠️ Development"}</div>
           </div>
           <div>
             <span className="font-medium">Timestamp:</span>
@@ -287,18 +287,18 @@ const MonitoringTest: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <strong>SENTRY_DSN:</strong>{" "}
-            {import.meta.env.VITE_SENTRY_DSN ? "✅ Configurado" : "❌ No configurado"}
+            {process.env.VITE_SENTRY_DSN ? "✅ Configurado" : "❌ No configurado"}
           </div>
           <div>
             <strong>GA4_MEASUREMENT_ID:</strong>{" "}
-            {import.meta.env.VITE_GA4_MEASUREMENT_ID ? "✅ Configurado" : "❌ No configurado"}
+            {process.env.VITE_GA4_MEASUREMENT_ID ? "✅ Configurado" : "❌ No configurado"}
           </div>
           <div>
-            <strong>PRODUCTION:</strong> {import.meta.env.PROD ? "✅ Sí" : "❌ No (Development)"}
+            <strong>PRODUCTION:</strong> {process.env.PROD ? "✅ Sí" : "❌ No (Development)"}
           </div>
           <div>
             <strong>MONITORING_ENABLED:</strong>{" "}
-            {import.meta.env.PROD ? "✅ Sí" : "⚠️ Solo en producción"}
+            {process.env.PROD ? "✅ Sí" : "⚠️ Solo en producción"}
           </div>
         </div>
       </Card>

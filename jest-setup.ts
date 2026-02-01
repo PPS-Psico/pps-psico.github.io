@@ -4,12 +4,7 @@
 // learn more: https://github.com/testing-library/jest-dom
 import "@testing-library/jest-dom";
 
-// Mock Vite environment variables
-global.import = {
-  meta: {
-    env: {
-      VITE_SUPABASE_URL: "https://test.supabase.co",
-      VITE_SUPABASE_ANON_KEY: "test-anon-key",
-    },
-  },
-};
+// Mock environment variables for tests
+process.env.VITE_SUPABASE_URL = "https://test.supabase.co";
+process.env.VITE_SUPABASE_ANON_KEY = "test-anon-key";
+process.env.VITE_VAPID_PUBLIC_KEY = "test-vapid-key";

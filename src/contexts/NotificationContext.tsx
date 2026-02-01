@@ -1,4 +1,4 @@
-ï»¿import React, {
+import React, {
   createContext,
   ReactNode,
   useCallback,
@@ -68,7 +68,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     type: "success" | "error" | "warning";
   } | null>(null);
 
-  // Persistencia Local: Set de IDs leÃ­dos
+  // Persistencia Local: Set de IDs leídos
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
 
   // Push notification state
@@ -83,7 +83,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const userId = authenticatedUser?.id || "guest";
   const STORAGE_KEY = `read_notifications_v2_${userId}`;
 
-  // 0. CARGAR LEÃDOS DESDE LOCALSTORAGE
+  // 0. CARGAR LEÍDOS DESDE LOCALSTORAGE
   useEffect(() => {
     if (!authenticatedUser) return;
     try {
@@ -95,7 +95,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
       }
     } catch (e) {
-      console.warn("Error cargando notificaciones leÃ­das del storage", e);
+      console.warn("Error cargando notificaciones leídas del storage", e);
     }
   }, [authenticatedUser, STORAGE_KEY]);
 
@@ -146,7 +146,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               loadedNotifications.push({
                 id: notifId,
                 title: "Solicitud PPS Pendiente",
-                message: `${req[FIELD_SOLICITUD_NOMBRE_ALUMNO] || "Estudiante"} solicitÃ³ iniciar en ${req[FIELD_EMPRESA_PPS_SOLICITUD] || "InstituciÃ³n"}.`,
+                message: `${req[FIELD_SOLICITUD_NOMBRE_ALUMNO] || "Estudiante"} solicitó iniciar en ${req[FIELD_EMPRESA_PPS_SOLICITUD] || "Institución"}.`,
                 timestamp: new Date(req.created_at),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes?tab=ingreso",
@@ -155,7 +155,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             });
           }
 
-          // --- B. Solicitudes de AcreditaciÃ³n (FinalizaciÃ³n) Pendientes ---
+          // --- B. Solicitudes de Acreditación (Finalización) Pendientes ---
           const { data: pendingFinals } = await supabase
             .from(TABLE_NAME_FINALIZACION)
             .select(
@@ -182,8 +182,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
               loadedNotifications.push({
                 id: notifId,
-                title: "AcreditaciÃ³n Pendiente",
-                message: `${studentName} ha enviado documentaciÃ³n para acreditar.`,
+                title: "Acreditación Pendiente",
+                message: `${studentName} ha enviado documentación para acreditar.`,
                 timestamp: new Date(req.created_at),
                 type: "acreditacion",
                 link: "/admin/solicitudes?tab=egreso",
@@ -211,7 +211,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               loadedNotifications.push({
                 id: notifId,
                 title: "Nueva Convocatoria",
-                message: `${l[FIELD_NOMBRE_PPS_LANZAMIENTOS]} estÃ¡ abierta para inscripciÃ³n.`,
+                message: `${l[FIELD_NOMBRE_PPS_LANZAMIENTOS]} está abierta para inscripción.`,
                 timestamp: new Date(l.created_at),
                 type: "lanzamiento",
                 link: "/student",
@@ -272,8 +272,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
           addNotification({
             id: notifId,
-            title: "Nueva Solicitud de AcreditaciÃ³n",
-            message: `Un estudiante ha enviado documentaciÃ³n para finalizar.`,
+            title: "Nueva Solicitud de Acreditación",
+            message: `Un estudiante ha enviado documentación para finalizar.`,
             timestamp: new Date(),
             type: "acreditacion",
             link: "/admin/solicitudes?tab=egreso",
@@ -302,8 +302,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             const notifId = `launch-realtime-${newRecord.id}`;
             addNotification({
               id: notifId,
-              title: "Â¡Nueva Oportunidad de PPS!",
-              message: `Se ha abierto la inscripciÃ³n para ${newRecord[FIELD_NOMBRE_PPS_LANZAMIENTOS]}.`,
+              title: "¡Nueva Oportunidad de PPS!",
+              message: `Se ha abierto la inscripción para ${newRecord[FIELD_NOMBRE_PPS_LANZAMIENTOS]}.`,
               timestamp: new Date(),
               type: "lanzamiento",
               link: "/student",
@@ -334,11 +334,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               const newState = newRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS];
               let msg = `Tu estado ha cambiado a: ${newState}`;
               if (newState === "Seleccionado")
-                msg = "Â¡Felicitaciones! Has sido Seleccionado para la PPS.";
+                msg = "¡Felicitaciones! Has sido Seleccionado para la PPS.";
 
               addNotification({
                 id: `conv-update-${newRecord.id}-${Date.now()}`,
-                title: "ActualizaciÃ³n de PostulaciÃ³n",
+                title: "Actualización de Postulación",
                 message: msg,
                 timestamp: new Date(),
                 type: "estado",
@@ -411,7 +411,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       const result = await subscribeToPushApi();
       if (result.success) {
         setPushEnabled(true);
-        showToast("Â¡Notificaciones activadas! Te avisaremos de nuevas convocatorias.", "success");
+        showToast("¡Notificaciones activadas! Te avisaremos de nuevas convocatorias.", "success");
       } else {
         showToast(result.error || "No se pudo activar notificaciones", "error");
       }

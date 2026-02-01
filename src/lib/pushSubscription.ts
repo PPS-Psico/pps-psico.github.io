@@ -7,7 +7,7 @@ import { supabase } from "./supabaseClient";
 
 // VAPID Public Key - This needs to match the one in Supabase Edge Function secrets
 // Generate with: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
+const VAPID_PUBLIC_KEY = process.env.VITE_VAPID_PUBLIC_KEY || "";
 
 /**
  * Convert base64 URL-safe string to Uint8Array (for applicationServerKey)

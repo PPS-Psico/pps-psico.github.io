@@ -2,11 +2,11 @@
 import * as Sentry from "@sentry/react";
 
 // Get DSN from environment variables
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || "https://your-dsn@sentry.io/project-id";
+const SENTRY_DSN = process.env.VITE_SENTRY_DSN || "https://your-dsn@sentry.io/project-id";
 
 // Initialize Sentry
 export const initSentry = () => {
-  if (import.meta.env.PROD) {
+  if (process.env.PROD) {
     Sentry.init({
       dsn: SENTRY_DSN,
 
@@ -14,10 +14,10 @@ export const initSentry = () => {
       tracesSampleRate: 0.1,
 
       // Environment
-      environment: import.meta.env.MODE,
+      environment: process.env.MODE,
 
       // Release version
-      release: `consulta-pps-uflo@${import.meta.env.VITE_APP_VERSION || "1.0.0"}`,
+      release: `consulta-pps-uflo@${process.env.VITE_APP_VERSION || "1.0.0"}`,
 
       // Before send hook to filter errors
       beforeSend(event) {

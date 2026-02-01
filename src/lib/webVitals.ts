@@ -23,7 +23,7 @@ const vitalsData: any = {};
 
 // Initialize Web Vitals monitoring
 export const initWebVitals = () => {
-  if (import.meta.env.PROD) {
+  if (process.env.PROD) {
     console.log("📊 Initializing Web Vitals monitoring...");
 
     // Cumulative Layout Shift

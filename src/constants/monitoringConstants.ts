@@ -1,19 +1,19 @@
 // Environment Variables for Monitoring and Analytics
 
 // Sentry Configuration
-export const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || "";
-export const SENTRY_ENVIRONMENT = import.meta.env.MODE || "development";
+export const SENTRY_DSN = process.env.VITE_SENTRY_DSN || "";
+export const SENTRY_ENVIRONMENT = process.env.MODE || "development";
 
 // Google Analytics 4 Configuration
-export const GA4_MEASUREMENT_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID || "";
+export const GA4_MEASUREMENT_ID = process.env.VITE_GA4_MEASUREMENT_ID || "";
 export const GA4_ENABLED = Boolean(GA4_MEASUREMENT_ID && GA4_MEASUREMENT_ID !== "G-XXXXXXXXXX");
 
 // Application Version
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION || "1.0.0";
+export const APP_VERSION = process.env.VITE_APP_VERSION || "1.0.0";
 
 // Monitoring Flags
-export const MONITORING_ENABLED = import.meta.env.PROD;
-export const DEBUG_MODE = import.meta.env.DEV;
+export const MONITORING_ENABLED = process.env.PROD;
+export const DEBUG_MODE = process.env.DEV;
 
 // Feature Flags
 export const FEATURES = {

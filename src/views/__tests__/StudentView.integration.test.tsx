@@ -4,9 +4,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 // @ts-ignore
 import App from "@/App";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { db } from "@/lib/db";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // import * as authUtils from '@/utils/auth'; // Removed as it does not exist in current codebase
 import {
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
@@ -77,14 +75,9 @@ describe("Flujo de Inscripción de Estudiante (Integration Test)", () => {
     });
     (mockedDb.convocatorias.create as any).mockImplementation(createRecordMock);
 
-    const queryClient = new QueryClient();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </QueryClientProvider>
-    );
+    // Important: App already includes QueryClientProvider, AuthProvider, and Router.
+    // Repeating them here causes context conflicts and double-rendering issues.
+    render(<App />);
 
     // --- 1. Login ---
     const legajoInput = await screen.findByPlaceholderText(/Número de Legajo/i);

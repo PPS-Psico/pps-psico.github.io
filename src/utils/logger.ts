@@ -7,8 +7,8 @@ class Logger {
   private isDev: boolean;
 
   constructor() {
-    // Safe check for import.meta.env
-    const meta = import.meta as any;
+    // Safe check for process.env
+    const meta = ({ env: process.env } as any) as any;
     this.isDev = meta && meta.env ? meta.env.DEV : false;
   }
 
