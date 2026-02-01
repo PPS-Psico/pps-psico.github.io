@@ -1,6 +1,6 @@
 // sw.js para relative base (versión simple sin Firebase)
 
-const CACHE_NAME = "mi-panel-academico-cache-v27";
+const CACHE_NAME = "mi-panel-academico-cache-v28";
 const FILES_TO_CACHE = ["./index.html", "./manifest.json"];
 
 // Instala y precachea el shell mínimo

@@ -1,62 +1,6 @@
 import React from "react";
+import { addBusinessDays, getBusinessDaysCount } from "../../utils/businessDays";
 import { formatDate } from "../../utils/formatters";
-
-// Lógica de cálculo de fecha objetivo: Suma 14 días hábiles saltando Enero.
-function calculateTargetDateSkippingJanuary(startDate: Date, daysRequired: number): Date {
-  let count = 0;
-  const current = new Date(startDate);
-
-  // Evitar loop infinito por seguridad
-  let safetyCounter = 0;
-
-  while (count < daysRequired && safetyCounter < 365) {
-    current.setDate(current.getDate() + 1);
-    const day = current.getDay();
-    const month = current.getMonth(); // 0 = Enero
-
-    const isWeekend = day === 0 || day === 6;
-    const isJanuary = month === 0;
-
-    if (!isWeekend && !isJanuary) {
-      count++;
-    }
-    safetyCounter++;
-  }
-  return current;
-}
-
-// Lógica inversa: Cuenta cuántos días hábiles ADMINISTRATIVOS (sin Enero) hay entre hoy y la meta.
-function calculateRemainingAdministrativeDays(from: Date, to: Date): number {
-  // Si ya pasamos la fecha, calculamos días vencidos (negativos)
-  if (from > to) {
-    return -calculateRemainingAdministrativeDays(to, from);
-  }
-
-  let count = 0;
-  const current = new Date(from);
-  // Clonamos para no mutar 'to'
-  const target = new Date(to);
-  target.setHours(0, 0, 0, 0);
-  current.setHours(0, 0, 0, 0);
-
-  let safetyCounter = 0;
-
-  while (current < target && safetyCounter < 365) {
-    current.setDate(current.getDate() + 1);
-    const day = current.getDay();
-    const month = current.getMonth(); // 0 = Enero
-
-    const isWeekend = day === 0 || day === 6;
-    const isJanuary = month === 0;
-
-    // Solo contamos si es hábil Y no es enero
-    if (!isWeekend && !isJanuary) {
-      count++;
-    }
-    safetyCounter++;
-  }
-  return count;
-}
 
 interface FinalizationStatusCardProps {
   status: string;
@@ -70,12 +14,23 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
   studentName,
 }) => {
   const startDate = new Date(requestDate);
-  // 1. Calculamos la fecha meta real saltando Enero
-  const targetDate = calculateTargetDateSkippingJanuary(startDate, 14);
+  // 1. Calculamos la fecha meta real usando el utilitario de días hábiles (salta fines de semana, feriados, enero y receso invernal)
+  const targetDate = addBusinessDays(startDate, 14);
 
   const now = new Date();
   const currentMonth = now.getMonth();
-  const isJanuaryNow = currentMonth === 0;
+  const dayOfMonth = now.getDate();
+
+  const isJanuary = currentMonth === 0;
+  const isWinterBreak =
+    (currentMonth === 6 && dayOfMonth >= 21) || (currentMonth === 7 && dayOfMonth <= 1);
+
+  // Estado de Pausa Visual
+  const isPaused = isJanuary || isWinterBreak;
+  const pauseReason = isJanuary ? "Receso de Verano" : "Receso de Invierno";
+  const pauseDescription = isJanuary
+    ? "Enero no computa plazos administrativos."
+    : "El receso invernal no computa plazos administrativos.";
 
   // Normalización de estado
   const normalizeString = (str: string) =>
@@ -88,19 +43,16 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
   const isFinished = normalizedStatus === "cargado" || normalizedStatus === "finalizada";
   const isEnProceso = normalizedStatus === "en proceso";
 
-  // 2. Calculamos los días restantes "administrativos" (ignorando Enero en el conteo)
-  const daysDisplay = calculateRemainingAdministrativeDays(now, targetDate);
-
-  // Estado de Pausa Visual
-  const isPaused = isJanuaryNow;
+  // 2. Calculamos los días restantes usando el utilitario unificado
+  const daysDisplay = getBusinessDaysCount(now, targetDate);
 
   const totalDuration = targetDate.getTime() - startDate.getTime();
   const elapsed = now.getTime() - startDate.getTime();
 
-  // Barra de progreso visual (basada en tiempo real para fluidez, topeada si es Enero)
+  // Barra de progreso visual (basada en tiempo real para fluidez, topeada si está en receso)
   let percentage = Math.min(100, Math.max(5, (elapsed / totalDuration) * 100));
 
-  // Si estamos en Enero, congelamos la barra visualmente al 95% o donde haya quedado, para indicar "espera"
+  // Si estamos en receso, congelamos la barra visualmente al 95% o donde haya quedado, para indicar "espera"
   if (isPaused) percentage = Math.min(percentage, 95);
 
   // Si ya pasó la fecha, lleno total
@@ -307,13 +259,15 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
 
             {isPaused && (
               <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-2xl flex items-start gap-3">
-                <span className="material-icons text-amber-500 mt-0.5 !text-xl">beach_access</span>
+                <span className="material-icons text-amber-500 mt-0.5 !text-xl">
+                  {isJanuary ? "beach_access" : "ac_unit"}
+                </span>
                 <div>
                   <p className="text-[10px] font-black text-amber-800 dark:text-amber-200 uppercase mb-1">
-                    Receso de Verano
+                    {pauseReason}
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-300 leading-tight">
-                    Enero no computa plazos administrativos.
+                    {pauseDescription}
                   </p>
                 </div>
               </div>
@@ -321,7 +275,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
 
             <div className="flex flex-col items-center justify-center mb-8">
               <span
-                className={`text-8xl font-black tracking-tighter leading-none ${isOverdue ? "text-rose-500" : isPaused ? "text-amber-500" : "text-slate-900 dark:text-white"}`}
+                className={`text-8xl font-black tracking-tighter leading-none ${daysDisplay < 0 && !isFinished && !isPaused ? "text-rose-500" : isPaused ? "text-amber-500" : "text-slate-900 dark:text-white"}`}
               >
                 {isPaused ? "~" : Math.max(0, daysDisplay)}
               </span>
@@ -332,7 +286,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
 
             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 mb-8 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-1000 ${isPaused ? "bg-amber-400 striped-bar" : isOverdue ? "bg-rose-500" : "bg-blue-600"}`}
+                className={`h-full rounded-full transition-all duration-1000 ${isPaused ? "bg-amber-400 striped-bar" : daysDisplay < 0 && !isFinished && !isPaused ? "bg-rose-500" : "bg-blue-600"}`}
                 style={{ width: `${percentage}%` }}
               ></div>
             </div>
@@ -346,7 +300,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
               <div className="flex-1">
                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Estimado</p>
                 <p
-                  className={`text-sm font-bold font-mono ${isOverdue ? "text-rose-500" : "text-slate-700 dark:text-slate-300"}`}
+                  className={`text-sm font-bold font-mono ${daysDisplay < 0 && !isFinished && !isPaused ? "text-rose-500" : "text-slate-700 dark:text-slate-300"}`}
                 >
                   {formatDate(targetDate.toISOString())}
                 </p>
@@ -369,14 +323,20 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
 
             <a
               href={
-                isOverdue
+                daysDisplay < 0 && !isFinished && !isPaused
                   ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${firstName}`
                   : undefined
               }
-              className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-all ${isOverdue ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed"}`}
+              className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-all ${daysDisplay < 0 && !isFinished && !isPaused ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed"}`}
             >
-              <span className="material-icons">{isOverdue ? "mail" : "lock_clock"}</span>
-              <span>{isOverdue ? "Contactar Coordinación" : "Consulta Bloqueada"}</span>
+              <span className="material-icons">
+                {daysDisplay < 0 && !isFinished && !isPaused ? "mail" : "lock_clock"}
+              </span>
+              <span>
+                {daysDisplay < 0 && !isFinished && !isPaused
+                  ? "Contactar Coordinación"
+                  : "Consulta Bloqueada"}
+              </span>
             </a>
           </div>
         </div>

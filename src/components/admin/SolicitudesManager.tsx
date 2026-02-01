@@ -1,26 +1,20 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { FIELD_ESTADO_PPS, TABLE_PPS } from "../../constants";
 import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
 import { mockDb } from "../../services/mockDb";
 import type { SolicitudPPSFields } from "../../types";
-import {
-  FIELD_EMPRESA_PPS_SOLICITUD,
-  FIELD_ESTADO_PPS,
-  FIELD_ESTADO_FINALIZACION,
-  TABLE_PPS,
-  TABLE_FINALIZACION,
-} from "../../constants";
-import Loader from "../Loader";
-import EmptyState from "../EmptyState";
-import Toast from "../ui/Toast";
-import { formatDate, getStatusVisuals, normalizeStringForComparison } from "../../utils/formatters";
-import SubTabs from "../SubTabs";
-import FinalizacionReview from "./FinalizacionReview";
 import { sendSmartEmail } from "../../utils/emailService";
+import { getStatusVisuals, normalizeStringForComparison } from "../../utils/formatters";
 import CollapsibleSection from "../CollapsibleSection";
 import ConfirmModal from "../ConfirmModal";
+import EmptyState from "../EmptyState";
+import Loader from "../Loader";
+import SubTabs from "../SubTabs";
+import Toast from "../ui/Toast";
+import FinalizacionReview from "./FinalizacionReview";
 
 // Helper to extract nested values safely
 const safeVal = (val: any) =>
@@ -279,6 +273,16 @@ const RequestListItem: React.FC<{
                   className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
                 >
                   Cancelar
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteRequest(req.id);
+                  }}
+                  className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg flex items-center justify-center transition-colors border border-transparent hover:border-rose-100"
+                  title="Eliminar solicitud"
+                >
+                  <span className="material-icons !text-lg">delete</span>
                 </button>
                 <button
                   onClick={handleSave}

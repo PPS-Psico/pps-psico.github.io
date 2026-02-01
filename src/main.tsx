@@ -99,7 +99,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     // In dev, sw.js is served from /public
     navigator.serviceWorker
-      .register("./sw.js?v=2")
+      .register("./sw.js?v=3")
       .then((registration) => {
         console.log("SW registrado:", registration.scope);
       })
