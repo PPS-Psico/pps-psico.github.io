@@ -1082,7 +1082,7 @@ Responde SOLO con el JSON válido.
   };
 
   const renderLaunchItem = useCallback(
-    (launch: LanzamientoPPS, showCopyButton?: boolean = false) => {
+    (launch: LanzamientoPPS) => {
       const statusRaw = normalizeStringForComparison(
         launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
       );
@@ -1153,19 +1153,19 @@ Responde SOLO con el JSON válido.
                 <span className="material-icons !text-xl">lock_open</span>
               </button>
             )}
-            {!isOculta && showCopyButton && (
+            {isProgramada && mensajeWhatsApp && (
               <button
                 onClick={() => copyToClipboard(mensajeWhatsApp || "")}
                 className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
                   isCopied
                     ? "bg-emerald-500 text-white shadow-emerald-500/20"
-                    : "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:border-emerald-400"
+                    : "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400"
                 }`}
               >
                 <span className="material-icons !text-lg">
                   {isCopied ? "done_all" : "content_copy"}
                 </span>
-                {isCopied ? "Copiado!" : "Copiar mensaje"}
+                {isCopied ? "Copiado!" : "Copiar mensaje WhatsApp"}
               </button>
             )}
             <button
@@ -1484,20 +1484,6 @@ Responde SOLO con el JSON válido.
                       />
                     </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(formData.mensajeWhatsApp || "")}
-                    className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
-                      isCopied
-                        ? "bg-blue-500 text-white shadow-blue-500/20"
-                        : "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:border-blue-400"
-                    }`}
-                  >
-                    <span className="material-icons !text-lg">
-                      {isCopied ? "done_all" : "content_copy"}
-                    </span>
-                    {isCopied ? "Copiado!" : "Copiar mensaje WhatsApp"}
-                  </button>
                 </div>
               </div>
             </div>
@@ -1887,7 +1873,7 @@ Responde SOLO con el JSON válido.
                 </span>
               </h3>
               <div className="space-y-4">
-                {scheduledHistory.map((launch) => renderLaunchItem(launch, true))}
+                {scheduledHistory.map((launch) => renderLaunchItem(launch))}
               </div>
             </div>
           )}
