@@ -8,6 +8,23 @@ import "@testing-library/jest-dom";
 process.env.VITE_SUPABASE_URL = "https://test.supabase.co";
 process.env.VITE_SUPABASE_ANON_KEY = "test-anon-key";
 process.env.VITE_VAPID_PUBLIC_KEY = "test-vapid-key";
+process.env.VITE_GEMINI_API_KEY = "test-gemini-key";
+
+// Polyfill import.meta.env for Jest
+// This must be done before any code that uses import.meta.env
+const mockImportMeta = {
+  env: {
+    VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || "https://test.supabase.co",
+    VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || "test-anon-key",
+    VITE_GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY || "test-gemini-key",
+    VITE_VAPID_PUBLIC_KEY: process.env.VITE_VAPID_PUBLIC_KEY || "test-vapid-key",
+    VITE_AIRTABLE_PAT: process.env.VITE_AIRTABLE_PAT || "test-pat",
+    VITE_AIRTABLE_BASE_ID: process.env.VITE_AIRTABLE_BASE_ID || "test-base-id",
+  },
+};
+
+// Define import.meta globally for Jest
+(global as any).import = mockImportMeta;
 
 // Polyfills for JSDOM
 Object.defineProperty(window, "matchMedia", {
