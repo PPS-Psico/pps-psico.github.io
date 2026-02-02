@@ -14,5 +14,35 @@ console.log("================================");
 
 export const SUPABASE_URL = SUPABASE_URL_VALUE;
 export const SUPABASE_ANON_KEY = SUPABASE_ANON_KEY_VALUE;
+
+// Test function to verify Supabase connection
+export const testSupabaseConnection = async () => {
+  console.log("=== TESTING SUPABASE CONNECTION ===");
+  try {
+    const response = await fetch(`${SUPABASE_URL_VALUE}/rest/v1/`, {
+      method: "GET",
+      headers: {
+        apikey: SUPABASE_ANON_KEY_VALUE,
+        "Content-Type": "application/json",
+      },
+    });
+    const status = response.status;
+    console.log("Supabase API Status:", status);
+    if (status === 200) {
+      console.log("✅ SUCCESS: Supabase connection is valid!");
+      return { success: true, status };
+    } else if (status === 401) {
+      console.log("❌ ERROR: Invalid API Key");
+      return { success: false, status, error: "Invalid API Key" };
+    } else {
+      console.log(`❌ ERROR: Unexpected status ${status}`);
+      return { success: false, status, error: `Status ${status}` };
+    }
+  } catch (error: any) {
+    console.error("❌ ERROR: Connection failed", error);
+    return { success: false, error: error.message };
+  }
+};
+
 export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";

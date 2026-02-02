@@ -2,10 +2,21 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AuthProvider } from "./contexts/AuthContext";
+import { testSupabaseConnection } from "./constants";
+
 console.log(
   "%c ANTIGRAVITY CONTROL: main.tsx loaded ",
   "background: #222; color: #bada55; font-size: 20px"
 );
+
+// Run Supabase connection test on load
+testSupabaseConnection().then((result) => {
+  const message = result.success
+    ? `%c✅ Supabase Connection: OK (Status ${result.status}) - background: #1a7f37; color: white; padding: 10px;`
+    : `%c❌ Supabase Connection: FAILED (Status ${result.status}) - background: #d32f2f; color: white; padding: 10px;`;
+
+  console.log(message);
+});
 // @ts-ignore
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
