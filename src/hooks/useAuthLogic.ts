@@ -480,34 +480,119 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               status: rpcResetError.status,
             });
 
-            let errorMessage = "Error del servidor al restablecer la contraseña.";
-            let suggestion =
-              " Si el problema persiste, contacta a: blas.rivera@uflouniversidad.edu.ar";
-
             if (
+              rpcResetError.message.includes("No existe un usuario registrado con el correo") ||
               rpcResetError.message.includes("No existe usuario") ||
               rpcResetError.message.includes("not found")
             ) {
-              errorMessage = "No se encontró un usuario vinculado a este legajo en el sistema.";
-              suggestion = " Por favor, creá una cuenta nueva o contacta a coordinación.";
+              addLog("info", "Usuario no encontrado en auth, intentando crear usuario...");
+
+              const { data: studentData } = await (supabase.rpc as any)(
+                "get_student_details_by_legajo",
+                { legajo_input: legajoTrimmed }
+              );
+
+              const student = studentData && studentData.length > 0 ? studentData[0] : null;
+
+              if (!student) {
+                throw new Error("No se encontraron datos del estudiante. Contacta a soporte.");
+              }
+
+              const studentEmail = String(student[FIELD_CORREO_ESTUDIANTES] || "")
+                .trim()
+                .toLowerCase();
+
+              addLog("info", "Creando usuario en auth con email:", { email: studentEmail });
+
+              const { error: signUpError } = await (supabase.auth as any).signUp({
+                email: studentEmail,
+                password: password,
+                options: { data: { legajo: legajoTrimmed } },
+              });
+
+              if (signUpError && !signUpError.message.includes("already registered")) {
+                addLog("error", "Error al crear usuario", { signUpError });
+                throw new Error(`Error al crear usuario: ${signUpError.message}`);
+              }
+
+              addLog(
+                "info",
+                "Usuario creado o ya existía, intentando resetear contraseña nuevamente..."
+              );
+
+              const { error: retryResetError } = await (supabase.rpc as any)(
+                "admin_reset_password",
+                {
+                  legajo_input: legajoTrimmed,
+                  new_password: password,
+                }
+              );
+
+              if (retryResetError) {
+                addLog("error", "Error en segundo intento de reset", { retryResetError });
+                throw new Error(
+                  "No se pudo completar la recuperación de contraseña. Por favor, intenta 'Crear Cuenta' o contacta a soporte."
+                );
+              }
+
+              addLog("success", "Usuario creado y contraseña restablecida");
             } else if (
               rpcResetError.message.includes("constraint") ||
               rpcResetError.message.includes("duplicate")
             ) {
-              errorMessage = "Error de validación en la base de datos.";
-              suggestion = " Intenta nuevamente en unos minutos o contacta a soporte.";
+              throw new Error(
+                "Error de validación en la base de datos. Intenta nuevamente en unos minutos o contacta a soporte."
+              );
             } else if (rpcResetError.code === "23505") {
-              errorMessage = "Error de restricción única en la base de datos.";
-              suggestion = " Es posible que ya haya una solicitud pendiente.";
+              throw new Error(
+                "Error de restricción única en la base de datos. Es posible que ya haya una solicitud pendiente."
+              );
             } else if (rpcResetError.status >= 500) {
-              errorMessage = "El servidor no está respondiendo correctamente (Error 500).";
-              suggestion = " Este es un error temporal. Por favor, intenta en unos minutos.";
+              throw new Error(
+                "El servidor no está respondiendo correctamente (Error 500). Este es un error temporal. Por favor, intenta en unos minutos."
+              );
+            } else {
+              throw new Error(
+                `Error del servidor al restablecer la contraseña. Si el problema persiste, contacta a: blas.rivera@uflouniversidad.edu.ar`
+              );
             }
-
-            throw new Error(`${errorMessage}${suggestion}`);
           }
 
           addLog("success", "Contraseña restablecida exitosamente");
+
+          const { data: studentLoginData } = await (supabase.rpc as any)(
+            "get_student_details_by_legajo",
+            { legajo_input: legajoTrimmed }
+          );
+
+          const student =
+            studentLoginData && studentLoginData.length > 0 ? studentLoginData[0] : null;
+          const studentEmail = student
+            ? String(student[FIELD_CORREO_ESTUDIANTES] || "")
+                .trim()
+                .toLowerCase()
+            : "";
+
+          addLog("info", "Intentando login automático", { email: studentEmail });
+
+          const { data: loginData, error: loginError } = await (
+            supabase.auth as any
+          ).signInWithPassword({
+            email: studentEmail,
+            password: password,
+          });
+
+          if (loginError) {
+            addLog("info", "Login automático falló, mostrando éxito manual", { loginError });
+            setResetStep("success");
+            setIsLoading(false);
+            return;
+          }
+
+          if (loginData.user) {
+            addLog("success", "Login automático exitoso");
+          }
+
           setResetStep("success");
           setIsLoading(false);
         }
