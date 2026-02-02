@@ -42,25 +42,13 @@ jobs:
       - name: Run tests (skipped temporarily)
         run: echo "Tests skipped temporarily"
 
-      # Create .env.production with GitHub Secrets
-      - name: Create .env.production
-        env:
-          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-          VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
-          AIRTABLE_PAT: ${{ secrets.VITE_AIRTABLE_PAT }}
-          AIRTABLE_BASE_ID: ${{ secrets.VITE_AIRTABLE_BASE_ID }}
-        run: |
-          echo "VITE_SUPABASE_URL=$SUPABASE_URL" >> .env.production
-          echo "VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env.production
-          echo "VITE_GEMINI_API_KEY=$GEMINI_API_KEY" >> .env.production
-          echo "VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY" >> .env.production
-          echo "VITE_AIRTABLE_PAT=$AIRTABLE_PAT" >> .env.production
-          echo "VITE_AIRTABLE_BASE_ID=$AIRTABLE_BASE_ID" >> .env.production
-
-      - name: Build application
+      - name: Build application with env vars
         run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
