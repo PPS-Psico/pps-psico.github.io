@@ -1,18 +1,9 @@
 // --- Environment Configuration ---
-// NOTA: Estas credenciales están hardcodeadas para que el entorno de desarrollo y 'vite preview' funcionen.
-// El script "npm run prep-github" buscará y reemplazará estos valores exactos antes del despliegue.
+// TEMPORAL: Hardcodeo las credenciales para producción
+// TODO: Resolver problema con variables de entorno en GitHub Actions
 
-// Helper to get env values safely in both Vite and Jest
-const getEnv = (key: string, defaultValue: string = ""): string => {
-  // Check for both process.env and import.meta.env
-  if (typeof process !== "undefined" && process.env && process.env[key]) {
-    return process.env[key] || defaultValue;
-  }
-  // For Vite, use import.meta.env
-  return (import.meta.env as any)[key] || defaultValue;
-};
-
-export const SUPABASE_URL = getEnv("VITE_SUPABASE_URL", "");
-export const SUPABASE_ANON_KEY = getEnv("VITE_SUPABASE_ANON_KEY", "");
-
-export const GEMINI_API_KEY = getEnv("VITE_GEMINI_API_KEY", "") || getEnv("API_KEY", "");
+export const SUPABASE_URL = "https://qxnxtnhtbpsgzprqtrjl.supabase.co";
+export const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4bnh0bmh0YnBzZ3pwcnF0cmpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjIzNDEsImV4cCI6MjA3OTAzODM0MX0.Lwj2kZPjYaM6M7VbUX48hSnCh3N2YB6iMJtdhFP9brU";
+export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
