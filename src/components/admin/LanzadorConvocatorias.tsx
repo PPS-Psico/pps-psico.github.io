@@ -423,7 +423,7 @@ Instrucciones de Diseño:
    - Si hay varios horarios, júntalos en el campo "horario_seleccionado" separados por PUNTO Y COMA (;).
    - Ejemplo formativo: "Turno Mañana: 10:30 a 13:30 hs; Turno Tarde: 14:00 a 17:30 hs; Sábados (Virtual): 10:00 a 12:00 hs".
 
-Información Cruda: "${rawActivityText}"
+Información Cruda: ${JSON.stringify(rawActivityText)}
 
 Datos del Contexto:
 - Título: ${formData.nombrePPS || "Práctica Profesional"}
