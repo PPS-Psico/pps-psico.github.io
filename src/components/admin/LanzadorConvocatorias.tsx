@@ -1477,6 +1477,20 @@ Responde SOLO con el JSON válido.
                       />
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(formData.mensajeWhatsApp || "")}
+                    className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
+                      isCopied
+                        ? "bg-blue-500 text-white shadow-blue-500/20"
+                        : "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:border-blue-400"
+                    }`}
+                  >
+                    <span className="material-icons !text-lg">
+                      {isCopied ? "done_all" : "content_copy"}
+                    </span>
+                    {isCopied ? "Copiado!" : "Copiar mensaje WhatsApp"}
+                  </button>
                 </div>
               </div>
             </div>
