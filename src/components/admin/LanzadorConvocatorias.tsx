@@ -403,6 +403,11 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
     setToastInfo({ message: "Generando contenido con IA...", type: "success" });
 
     try {
+      const sanitizedText = rawActivityText
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
+
       const prompt = `
 Actúa como un experto en redacción de convocatorias universitarias y diseño UX.
 Objetivo: Generar contenido para una tarjeta visualmente equilibrada y detectar información clave.
@@ -423,7 +428,7 @@ Instrucciones de Diseño:
    - Si hay varios horarios, júntalos en el campo "horario_seleccionado" separados por PUNTO Y COMA (;).
    - Ejemplo formativo: "Turno Mañana: 10:30 a 13:30 hs; Turno Tarde: 14:00 a 17:30 hs; Sábados (Virtual): 10:00 a 12:00 hs".
 
-Información Cruda: ${JSON.stringify(rawActivityText)}
+Información Cruda: ${sanitizedText}
 
 Datos del Contexto:
 - Título: ${formData.nombrePPS || "Práctica Profesional"}
@@ -476,6 +481,9 @@ Responde SOLO con el JSON válido.
         .replace(/```json/g, "")
         .replace(/```/g, "")
         .trim();
+
+      console.log("🔍 [DEBUG] Raw text from Gemini:", cleanJson);
+
       const parsed = JSON.parse(cleanJson);
 
       if (parsed) {
