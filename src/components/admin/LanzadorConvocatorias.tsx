@@ -423,10 +423,18 @@ Instrucciones de Diseño:
    - Si se centra en lugares/espacios -> "Espacios de Participación".
    - Si se centra en objetivos específicos -> "Objetivos Específicos".
    - Elige el más adecuado según el material.
-7. DETECCIÓN DE HORARIOS: Busca detalladamente información sobre días, horarios y modalidades (presencial/virtual) de cursada.
+    7. DETECCIÓN DE HORARIOS: Busca detalladamente información sobre días, horarios y modalidades (presencial/virtual) de cursada.
    - No omitas información si hay múltiples turnos o espacios diferentes.
    - Si hay varios horarios, júntalos en el campo "horario_seleccionado" separados por PUNTO Y COMA (;).
    - Ejemplo formativo: "Turno Mañana: 10:30 a 13:30 hs; Turno Tarde: 14:00 a 17:30 hs; Sábados (Virtual): 10:00 a 12:00 hs".
+8. NO REDUNDANCIA: La "descripcion" NO DEBE incluir datos que ya figuran en otros campos de la tarjeta:
+   - NO menciones fechas de inicio o fin.
+   - NO menciones la cantidad de cupos disponibles.
+   - NO menciones la cantidad de horas acreditadas.
+   - NO menciones si es presencial o virtual (ya figura en la ubicación).
+   - NO menciones frases de marketing como "abre una valiosa convocatoria", "convocatoria breve", "cerrando el 5 de noviembre".
+   - NO repitas el nombre de la PPS, la institución o textos del lanzamiento.
+   - Si el texto original tiene información de CALIDAD de la PPS (características, tipo de práctica), inclúyela. Si no, genera una descripción concisa del rol del estudiante y el propósito pedagógico sin inventar información.
 
 Información Cruda: ${sanitizedText}
 
@@ -435,7 +443,7 @@ Datos del Contexto:
 - Orientación: ${formData.orientacion || "General"}
 
 Genera un objeto JSON con:
-1. "descripcion": Resumen profesional y completo. Incluye actividades secundarias aquí si son muchas.
+1. "descripcion": Resumen profesional conciso. Si el texto original tiene información de CALIDAD de la PPS (características, tipo de práctica), inclúyela. Si no hay, genera una descripción concisa del rol del estudiante y el propósito pedagógico sin inventar información ni repetir datos del lanzamiento.
 2. "actividades": Array de strings. MÁXIMO 4 items. Solo lo más relevante.
 3. "actividadesLabel": El título sugerido para la lista (ej: "Actividades", "Espacios", etc).
 4. "horario_seleccionado": Un string con todos los horarios detectados separados por PUNTO Y COMA (;). Si no hay, dejar vacío.
