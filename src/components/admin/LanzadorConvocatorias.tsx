@@ -445,12 +445,22 @@ Genera un objeto JSON con:
 Responde SOLO con el JSON válido.
 `;
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-content`, {
         method: "POST",
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ prompt }),
       });
 
