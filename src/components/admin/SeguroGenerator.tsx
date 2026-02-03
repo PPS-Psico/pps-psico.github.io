@@ -372,13 +372,10 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         {} as Record<string, StudentForReview[]>
       );
 
-      const today = new Date().toISOString().split("T")[0];
-
       for (const institucion in studentsByInstitution) {
         const group = studentsByInstitution[institucion];
-        const cleanInstitucion = institucion.replace(/[\\/?*[\]]/g, "").substring(0, 35) || "PPS";
-        const fileName = `Listado_Alumnos_${cleanInstitucion}_${today}.xlsx`;
-        const worksheet = workbook.addWorksheet(cleanInstitucion);
+        const baseSheetName = institucion.replace(/[\\/?*[\]]/g, "").substring(0, 25) || "PPS";
+        const worksheet = workbook.addWorksheet(baseSheetName);
 
         worksheet.columns = [
           { header: "APELLIDO", key: "apellido", width: 25 },
@@ -387,8 +384,6 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
           { header: "LEGAJO", key: "legajo", width: 15 },
           { header: "CORREO", key: "correo", width: 30 },
           { header: "TELEFONO", key: "telefono", width: 20 },
-          { header: "FECHA INICIO PPS", key: "fechaInicio", width: 18 },
-          { header: "NOMBRE PPS", key: "nombrePps", width: 35 },
           { header: "HORARIO", key: "horario", width: 30 },
         ];
 
@@ -408,7 +403,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       });
 
       const fileSaver = await import("file-saver");
-      fileSaver.saveAs(blob, `Listado_Alumnos_General_${today}.xlsx`);
+      fileSaver.saveAs(blob, `Listado_Alumnos_${new Date().toISOString().split("T")[0]}.xlsx`);
 
       setToastInfo({ message: "Excel generado correctamente.", type: "success" });
     } catch (e: any) {
