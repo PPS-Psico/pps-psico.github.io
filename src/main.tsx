@@ -17,44 +17,46 @@ testSupabaseConnection().then(async (result) => {
 
   console.log(message);
 
-  // Detailed diagnostics
-  console.log("=== DETAILED SUPABASE DIAGNOSTICS ===");
-  console.log("1. Checking Supabase endpoint health...");
+  // Detailed diagnostics - Only in development
+  if (import.meta.env.DEV) {
+    console.log("=== DETAILED SUPABASE DIAGNOSTICS ===");
+    console.log("1. Checking Supabase endpoint health...");
 
-  if (result.success) {
-    try {
-      const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import("./constants/configConstants");
-      console.log("2. Endpoint URL:", SUPABASE_URL);
-      console.log("3. API Key (first 30 chars):", SUPABASE_ANON_KEY.substring(0, 30));
+    if (result.success) {
+      try {
+        const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import("./constants/configConstants");
+        console.log("2. Endpoint URL:", SUPABASE_URL);
+        console.log("3. API Key (first 30 chars):", SUPABASE_ANON_KEY.substring(0, 30));
 
-      // Test with edge function
-      const rpcResponse = await fetch(`${SUPABASE_URL}/functions/v1/health-check`, {
-        method: "GET",
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          "Content-Type": "application/json",
-        },
-      });
+        // Test with edge function
+        const rpcResponse = await fetch(`${SUPABASE_URL}/functions/v1/health-check`, {
+          method: "GET",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            "Content-Type": "application/json",
+          },
+        });
 
-      console.log("4. RPC Endpoint Health:", rpcResponse.status);
+        console.log("4. RPC Endpoint Health:", rpcResponse.status);
 
-      // Test with public table (should be accessible with anon key)
-      const tableResponse = await fetch(`${SUPABASE_URL}/rest/v1/app_config?select=*`, {
-        method: "GET",
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          "Content-Type": "application/json",
-        },
-      });
+        // Test with public table (should be accessible with anon key)
+        const tableResponse = await fetch(`${SUPABASE_URL}/rest/v1/app_config?select=*`, {
+          method: "GET",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            "Content-Type": "application/json",
+          },
+        });
 
-      console.log("5. Public Table Access:", tableResponse.status);
-      console.log("6. If this is 401, it may be RLS policies blocking access");
-    } catch (e: any) {
-      console.error("7. Diagnostic error:", e);
+        console.log("5. Public Table Access:", tableResponse.status);
+        console.log("6. If this is 401, it may be RLS policies blocking access");
+      } catch (e: any) {
+        console.error("7. Diagnostic error:", e);
+      }
     }
-  }
 
-  console.log("===========================================");
+    console.log("===========================================");
+  }
 });
 
 // @ts-ignore
