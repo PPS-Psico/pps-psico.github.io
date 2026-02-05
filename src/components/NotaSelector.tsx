@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { createPortal } from "react-dom";
 
 const NOTA_OPTIONS = ["4", "5", "6", "7", "8", "9", "10"];
 
@@ -6,22 +7,62 @@ interface NotaSelectorProps {
   onSelect: (nota: string) => void;
   onClose: () => void;
   currentValue: string;
+  triggerRect?: DOMRect;
 }
 
-const NotaSelector: React.FC<NotaSelectorProps> = ({ onSelect, onClose, currentValue }) => {
+const NotaSelector: React.FC<NotaSelectorProps> = ({
+  onSelect,
+  onClose,
+  currentValue,
+  triggerRect,
+}) => {
+  const position = useMemo(() => {
+    if (!triggerRect) return "bottom" as const;
+
+    const menuHeight = 220;
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+
+    if (spaceBelow < menuHeight && spaceAbove > menuHeight) {
+      return "top" as const;
+    }
+    return "bottom" as const;
+  }, [triggerRect]);
+
   const handleOptionClick = (e: React.MouseEvent, nota: string) => {
     e.preventDefault();
     e.stopPropagation();
     onSelect(nota);
   };
 
-  return (
+  // Verificar que tenemos coordenadas válidas
+  if (!triggerRect || triggerRect.width === 0 || triggerRect.height === 0) {
+    return null;
+  }
+
+  const topPosition = position === "bottom" ? triggerRect.bottom + 12 : triggerRect.top - 220;
+  const leftPosition = triggerRect.right - 112;
+
+  // Asegurar que no salga de la pantalla por la derecha
+  const adjustedLeft = Math.max(10, Math.min(leftPosition, window.innerWidth - 122));
+
+  const menuContent = (
     <div
-      className="absolute top-full right-0 mt-3 w-28 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-scale-in origin-top-right z-[100]"
-      onMouseDown={(e) => e.stopPropagation()} // Previene que clics dentro del menú lo cierren
+      style={{
+        position: "fixed",
+        top: `${topPosition}px`,
+        left: `${adjustedLeft}px`,
+      }}
+      className="w-28 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-scale-in z-[9999]"
+      onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Flechita decorativa arriba (alineada a la derecha) */}
-      <div className="absolute -top-2 right-4 w-4 h-4 bg-white dark:bg-slate-800 border-t border-l border-slate-200 dark:border-slate-700 transform rotate-45"></div>
+      {/* Flechita decorativa */}
+      <div
+        className={`
+          absolute w-4 h-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transform rotate-45
+          ${position === "bottom" ? "-top-2 right-4 border-t border-l" : "-bottom-2 right-4 border-b border-r"}
+        `}
+      ></div>
 
       <div className="p-2 relative z-10 grid grid-cols-2 gap-1">
         {NOTA_OPTIONS.map((nota) => {
@@ -70,6 +111,8 @@ const NotaSelector: React.FC<NotaSelectorProps> = ({ onSelect, onClose, currentV
       </div>
     </div>
   );
+
+  return createPortal(menuContent, document.body);
 };
 
 export default NotaSelector;

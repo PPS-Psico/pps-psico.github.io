@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
-import {
-  Attachment,
-  getFileType,
-  getNormalizationState,
-  getStoragePath,
-} from "../../utils/attachmentUtils";
+import { Attachment, getNormalizationState, getStoragePath } from "../../utils/attachmentUtils";
 import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
 import CollapsibleSection from "../CollapsibleSection";
 import { formatDate } from "../../utils/formatters";
-import { createPortal } from "react-dom";
 import { supabase } from "../../lib/supabaseClient";
 import {
   FIELD_PLANILLA_HORAS_FINALIZACION,
@@ -20,6 +14,7 @@ import {
   FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
 } from "../../constants";
 import ConfirmModal from "../ConfirmModal";
+import { FilePreview } from "./preview";
 
 const normalizeAttachments = (attachment: any): Attachment[] => {
   if (!attachment) return [];
@@ -42,168 +37,6 @@ const normalizeAttachments = (attachment: any): Attachment[] => {
       };
     })
     .filter((a: Attachment) => !!a.url);
-};
-
-interface FilePreviewModalProps {
-  files: Attachment[];
-  initialIndex: number;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
-  files,
-  initialIndex,
-  isOpen,
-  onClose,
-}) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [isLoadingContent, setIsLoadingContent] = useState(true);
-  const [signedUrls, setSignedUrls] = useState<string[]>([]);
-  const [urlsLoaded, setUrlsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(initialIndex);
-      setHasError(false);
-      setUrlsLoaded(false);
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen, initialIndex]);
-
-  useEffect(() => {
-    if (!isOpen || files.length === 0) return;
-    const fetchAllUrls = async () => {
-      const promises = files.map(async (file) => {
-        const path = getStoragePath(file.url);
-        if (!path) return file.url;
-        try {
-          const { data, error } = await supabase.storage
-            .from("documentos_finalizacion")
-            .createSignedUrl(path, 3600);
-          if (error || !data) return file.url;
-          return data.signedUrl;
-        } catch (e) {
-          return file.url;
-        }
-      });
-      const results = await Promise.all(promises);
-      setSignedUrls(results);
-      setUrlsLoaded(true);
-      setIsLoadingContent(false);
-    };
-    fetchAllUrls();
-  }, [isOpen, files]);
-
-  const handleNext = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setIsLoadingContent(true);
-    setCurrentIndex((prev) => (prev + 1) % files.length);
-  };
-  const handlePrev = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setIsLoadingContent(true);
-    setCurrentIndex((prev) => (prev - 1 + files.length) % files.length);
-  };
-
-  if (!isOpen || files.length === 0) return null;
-  const currentFile = files[currentIndex];
-  const displayUrl = urlsLoaded ? signedUrls[currentIndex] : null;
-  const fileType = getFileType(currentFile.filename);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-md flex flex-col animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="flex-shrink-0 flex justify-between items-center p-4 text-white z-50 h-16 bg-gradient-to-b from-black/80 to-transparent"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-col">
-          <h3 className="font-bold text-lg truncate max-w-md">{currentFile.filename}</h3>
-          <span className="text-xs text-gray-400">
-            {currentIndex + 1} de {files.length}
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          {urlsLoaded && (
-            <a
-              href={displayUrl!}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-300 hover:text-white"
-            >
-              <span className="material-icons">download</span>
-            </a>
-          )}
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/20 transition-colors"
-          >
-            <span className="material-icons">close</span>
-          </button>
-        </div>
-      </div>
-      <div
-        className="flex-grow relative flex items-center justify-center p-4 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {!urlsLoaded ? (
-          <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-        ) : hasError || !displayUrl ? (
-          <div className="text-white">Error al cargar</div>
-        ) : fileType === "image" ? (
-          <img
-            src={displayUrl}
-            alt=""
-            className="max-w-full max-h-full object-contain"
-            onLoad={() => setIsLoadingContent(false)}
-          />
-        ) : fileType === "pdf" ? (
-          <iframe src={displayUrl} className="w-[90vw] h-[85vh] bg-white rounded-lg" title="PDF" />
-        ) : fileType === "office" ? (
-          <iframe
-            src={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(displayUrl)}`}
-            className="w-[90vw] h-[85vh] bg-white rounded-lg"
-            title="Office Document"
-          />
-        ) : (
-          <div className="text-white text-center">
-            <span className="material-icons !text-6xl mb-4 opacity-80">description</span>
-            <p className="mb-6">Vista previa no disponible.</p>
-            <a href={displayUrl} download className="bg-blue-600 px-6 py-3 rounded-xl font-bold">
-              Descargar
-            </a>
-          </div>
-        )}
-        {files.length > 1 && (
-          <>
-            <button
-              onClick={handlePrev}
-              className="absolute left-6 p-3 rounded-full bg-black/40 hover:bg-black/70 text-white/70 hover:text-white transition-all"
-            >
-              <span className="material-icons !text-3xl">chevron_left</span>
-            </button>
-            <button
-              onClick={handleNext}
-              className="absolute right-6 p-3 rounded-full bg-black/40 hover:bg-black/70 text-white/70 hover:text-white transition-all"
-            >
-              <span className="material-icons !text-3xl">chevron_right</span>
-            </button>
-          </>
-        )}
-      </div>
-    </div>,
-    document.body
-  );
 };
 
 const RequestListItem: React.FC<{
@@ -462,6 +295,27 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
     });
   };
 
+  const handlePreview = async (files: Attachment[]) => {
+    // Obtener signed URLs para los archivos
+    const filesWithSignedUrls = await Promise.all(
+      files.map(async (file) => {
+        const path = getStoragePath(file.url);
+        if (!path) return file;
+        try {
+          const { data, error } = await supabase.storage
+            .from("documentos_finalizacion")
+            .createSignedUrl(path, 3600);
+          if (error || !data) return file;
+          return { ...file, signedUrl: data.signedUrl };
+        } catch (e) {
+          return file;
+        }
+      })
+    );
+    setPreviewFiles(filesWithSignedUrls);
+    setIsPreviewOpen(true);
+  };
+
   if (isLoading) return <Loader />;
   if (error)
     return (
@@ -478,7 +332,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
         />
       )}
       {isPreviewOpen && (
-        <FilePreviewModal
+        <FilePreview
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           files={previewFiles}
@@ -524,10 +378,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
                 onCopy={handleCopyData}
                 isUpdating={updateStatusMutation.isPending || deleteMutation.isPending}
                 searchTerm={searchTerm}
-                onPreview={(f) => {
-                  setPreviewFiles(f);
-                  setIsPreviewOpen(true);
-                }}
+                onPreview={handlePreview}
               />
             ))}
           </div>
@@ -558,10 +409,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
                 onCopy={handleCopyData}
                 isUpdating={deleteMutation.isPending}
                 searchTerm={searchTerm}
-                onPreview={(f) => {
-                  setPreviewFiles(f);
-                  setIsPreviewOpen(true);
-                }}
+                onPreview={handlePreview}
                 isArchived={true}
               />
             ))}

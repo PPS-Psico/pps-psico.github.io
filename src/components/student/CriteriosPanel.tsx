@@ -275,7 +275,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
         <div className="col-span-2 relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-white to-slate-50 dark:from-[#0B1120] dark:to-[#0f172a] text-slate-900 dark:text-white shadow-xl shadow-slate-200/50 dark:shadow-black/50 border border-slate-200/80 dark:border-slate-800">
           {/* Background Effects */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-blue-100/60 to-transparent dark:from-blue-900/20 rounded-full blur-[120px] -mr-40 -mt-40 pointer-events-none opacity-80"></div>
-          <div className="absolute bottom-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] dark:opacity-[0.07] mix-blend-overlay pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-full h-full bg-[url('https://www.gradients.app/linear-gradient-to-t/white-on-stone/20')] opacity-[0.03] dark:opacity-[0.07] mix-blend-overlay pointer-events-none"></div>
 
           {/* Grid Layout for Hero Content */}
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center p-8 sm:p-10 h-full">

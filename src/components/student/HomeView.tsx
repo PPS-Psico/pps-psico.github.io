@@ -174,6 +174,7 @@ const HomeView: React.FC<HomeViewProps> = ({
         onInscribirse={() => onInscribir(lanzamiento)}
         onVerConvocados={() => seleccionadosMutation.mutate(lanzamiento)}
         horariosFijos={!!lanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS]}
+        fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
       />
     );
   };

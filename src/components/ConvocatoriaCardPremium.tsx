@@ -27,6 +27,7 @@ export interface ConvocatoriaDetailProps {
   invertLogo?: boolean;
   horariosFijos?: boolean;
   isCompleted?: boolean; // Prevents enrollment if student already completed this PPS
+  fechaEncuentroInicial?: string; // NEW: Fecha de encuentro inicial obligatorio
 }
 
 const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
@@ -48,6 +49,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   onVerConvocados,
   horariosFijos = false,
   isCompleted = false,
+  fechaEncuentroInicial,
 }) => {
   // Theme based on orientation - used for tags and accents, but timeline has its own evolution
   const theme = getEspecialidadClasses(orientacion);
@@ -59,7 +61,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   const getButtonConfig = () => {
     // Shared base classes for all states to maintain consistent sizing with better mobile support
     const baseClasses =
-      "px-6 py-2.5 rounded-[14px] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 min-w-[170px] md:min-w-[190px] relative overflow-hidden h-10 md:h-11 border shadow-sm";
+      "px-4 md:px-6 py-2 md:py-2.5 rounded-xl md:rounded-[14px] font-bold text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 md:gap-2 transition-all duration-300 min-w-[140px] md:min-w-[190px] relative overflow-hidden h-9 md:h-11 border shadow-sm";
 
     // PRIORITY 1: If already completed, block enrollment entirely
     if (isCompleted) {
@@ -176,17 +178,17 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
       <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.gradient}`} />
 
       {/* ─── 1. HEADER SECTION (Always Visible) ─── */}
-      <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-start justify-between gap-6 relative z-10">
+      <div className="p-4 md:p-8 flex flex-col md:flex-row md:items-start justify-between gap-4 md:gap-6 relative z-10">
         {/* Brand & Title */}
-        <div className="flex-1 min-w-0 flex flex-col gap-3">
+        <div className="flex-1 min-w-0 flex flex-col gap-2 md:gap-3">
           <div>
-            <div className="flex items-start justify-between gap-4">
-              <h2 className="text-lg md:text-2xl font-black text-slate-800 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+            <div className="flex items-start justify-between gap-3 md:gap-4">
+              <h2 className="text-base md:text-2xl font-black text-slate-800 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                 {nombre}
               </h2>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
               <span
                 className={`px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black tracking-wider border ${theme.tag}`}
               >
@@ -195,8 +197,8 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
 
               {/* Logic: Hours only visible when collapsed. Address always visible but position shifts naturally. */}
               {!isExpanded && (
-                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                  <span className="material-icons !text-sm">schedule</span>
+                <span className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                  <span className="material-icons !text-xs md:!text-sm">schedule</span>
                   {horasAcreditadas}hs
                 </span>
               )}
@@ -218,7 +220,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                     {...linkProps}
                     onClick={(e: React.MouseEvent) => !isVirtual && e.stopPropagation()}
                     className={`
-                                            inline-flex items-center gap-1 text-[10px] uppercase font-black px-2.5 py-1 rounded-lg transition-colors group/addr border
+                                            inline-flex items-center gap-1 text-[9px] md:text-[10px] uppercase font-black px-2 md:px-2.5 py-0.5 md:py-1 rounded-md md:rounded-lg transition-colors group/addr border
                                             ${
                                               isVirtual
                                                 ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800"
@@ -228,12 +230,12 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                     title={isVirtual ? "Modalidad Virtual" : "Ver Ubicación en Mapa"}
                   >
                     <span
-                      className={`material-icons !text-sm ${isVirtual ? "" : "text-indigo-500 group-hover/addr:text-indigo-700"} transition-colors`}
+                      className={`material-icons !text-xs md:!text-sm ${isVirtual ? "" : "text-indigo-500 group-hover/addr:text-indigo-700"} transition-colors`}
                     >
                       {isVirtual ? "wifi" : "location_on"}
                     </span>
                     <span
-                      className={`whitespace-normal leading-tight ${!isVirtual && "group-hover/addr:underline decoration-indigo-500/30 underline-offset-2"} transition-all`}
+                      className={`whitespace-normal leading-tight max-w-[150px] md:max-w-none truncate md:whitespace-normal ${!isVirtual && "group-hover/addr:underline decoration-indigo-500/30 underline-offset-2"} transition-all`}
                     >
                       {direccion}
                     </span>
@@ -245,20 +247,22 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         </div>
 
         {/* Right Side: Button & Chevron */}
-        <div className="flex items-center gap-3 self-start">
+        <div className="flex items-center gap-2 md:gap-3 self-start">
           {/* Action Button - Always visible here */}
           <button
             disabled={btnConfig.disabled}
             onClick={btnConfig.onClick}
             className={btnConfig.classes}
           >
-            {btnConfig.content || <span>{btnConfig.text}</span>}
+            {btnConfig.content || <span className="text-[10px] md:text-xs">{btnConfig.text}</span>}
             {btnConfig.icon && (
-              <span className="material-icons !text-lg relative z-10">{btnConfig.icon}</span>
+              <span className="material-icons !text-base md:!text-lg relative z-10">
+                {btnConfig.icon}
+              </span>
             )}
           </button>
 
-          {/* Chevron Toggle */}
+          {/* Chevron Toggle - Desktop */}
           <div
             className={`
                         hidden md:flex w-10 h-10 rounded-full items-center justify-center
@@ -272,15 +276,23 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         </div>
       </div>
 
+      {/* Mobile Expand Hint */}
+      <div className="md:hidden px-4 pb-2 -mt-2">
+        <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
+          <span className="material-icons !text-sm">expand_more</span>
+          <span>Toca para ver detalles</span>
+        </div>
+      </div>
+
       {/* ─── EXPANDABLE CONTENT ─── */}
       <div
         className={`grid transition-all duration-500 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
       >
         <div className="overflow-hidden">
           {/* ─── 2. METRICS ROW ─── */}
-          <div className="px-6 md:px-8 pb-6">
+          <div className="px-4 md:px-8 pb-4 md:pb-6">
             <div
-              className={`grid grid-cols-2 md:grid-cols-3 ${reqCv ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3`}
+              className={`grid grid-cols-2 md:grid-cols-3 ${reqCv ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-2 md:gap-3`}
             >
               {/* Updated Hours Metric Format */}
               <MetricItem
@@ -290,13 +302,35 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                 theme="indigo"
               />
 
-              <MetricItem
-                icon="event_available"
-                label={horariosFijos ? "HORARIOS FIJOS" : "HORARIOS"}
-                value={horariosCursada}
-                theme={horariosFijos ? "teal" : "blue"}
-                className={!reqCv ? "lg:col-span-2" : ""}
-              />
+              {fechaEncuentroInicial ? (
+                <MetricItem
+                  icon="groups"
+                  label="ENCUENTRO INICIAL"
+                  value={(() => {
+                    const dateObj = new Date(fechaEncuentroInicial);
+                    const dateStr = dateObj.toLocaleDateString("es-AR", {
+                      day: "numeric",
+                      month: "short",
+                    });
+                    const hours = dateObj.getHours();
+                    const minutes = dateObj.getMinutes();
+                    if (hours || minutes) {
+                      return `${dateStr} ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} hs`;
+                    }
+                    return dateStr;
+                  })()}
+                  theme="amber"
+                  className={!reqCv ? "lg:col-span-2" : ""}
+                />
+              ) : (
+                <MetricItem
+                  icon="event_available"
+                  label={horariosFijos ? "HORARIOS FIJOS" : "HORARIOS"}
+                  value={horariosCursada}
+                  theme={horariosFijos ? "teal" : "blue"}
+                  className={!reqCv ? "lg:col-span-2" : ""}
+                />
+              )}
 
               <MetricItem icon="group" label="Cupos" value={cupo} theme="teal" />
 
@@ -324,72 +358,85 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
           <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-800" />
 
           {/* ─── 3. CONTENT BODY ─── */}
-          <div className="p-6 md:p-8 flex flex-col lg:flex-row gap-10">
+          <div className="p-4 md:p-8 flex flex-col lg:flex-row gap-6 md:gap-10">
             {/* Description */}
             <div className="flex-1">
               <SectionHeader icon="info_outline" title="Descripción" color="text-indigo-400" />
-              <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base leading-relaxed text-justify font-medium">
+              <p className="text-slate-600 dark:text-slate-300 text-xs md:text-sm lg:text-base leading-relaxed text-justify font-medium">
                 {descripcion}
               </p>
             </div>
 
             {/* Activities List (Stacked full width) */}
             <div className="lg:w-[45%] flex flex-col gap-8">
-              {/* Schedule Section (If complex) */}
-              {(() => {
-                const isComplex =
-                  horariosCursada.includes(";") ||
-                  horariosCursada.includes("\n") ||
-                  horariosCursada.length > 40;
-                if (!isComplex) return null;
+              {/* Schedule Section - Always show if has content */}
+              {horariosCursada && horariosCursada.trim() && (
+                <div className="flex flex-col">
+                  <SectionHeader
+                    icon="calendar_month"
+                    title="Días y Horarios"
+                    color="text-blue-400"
+                  />
+                  <div className="flex flex-col gap-2 w-full">
+                    {(() => {
+                      const isComplex =
+                        horariosCursada.includes(";") ||
+                        horariosCursada.includes("\n") ||
+                        horariosCursada.length > 40;
 
-                const scheduleItems = horariosCursada
-                  .split(";")
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-
-                return (
-                  <div className="flex flex-col">
-                    <SectionHeader
-                      icon="calendar_month"
-                      title="Días y Horarios"
-                      color="text-blue-400"
-                    />
-                    <div className="flex flex-col gap-2 w-full">
-                      {scheduleItems.map((item, i) => (
-                        <div
-                          key={i}
-                          className="flex items-start gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30"
-                        >
-                          <span className="material-icons !text-sm text-blue-500 mt-0.5">
-                            check_circle
-                          </span>
-                          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                            {item}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                      if (isComplex) {
+                        // Multiple schedules - show as list
+                        const scheduleItems = horariosCursada
+                          .split(";")
+                          .map((s) => s.trim())
+                          .filter(Boolean);
+                        return scheduleItems.map((item, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30"
+                          >
+                            <span className="material-icons !text-sm text-blue-500 mt-0.5">
+                              check_circle
+                            </span>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                              {item}
+                            </span>
+                          </div>
+                        ));
+                      } else {
+                        // Simple schedule - show as single item
+                        return (
+                          <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30">
+                            <span className="material-icons !text-sm text-blue-500 mt-0.5">
+                              check_circle
+                            </span>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                              {horariosCursada}
+                            </span>
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
-                );
-              })()}
+                </div>
+              )}
 
               <div className="flex flex-col">
                 <SectionHeader icon="task_alt" title={actividadesLabel} color="text-teal-400" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2 md:gap-3 w-full">
                   {actividades.map((act, i) => (
                     <div
                       key={i}
                       className={`
-                                            w-full flex items-center px-4 py-3 rounded-xl
+                                            w-full flex items-center px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl
                                             bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60
                                             hover:border-blue-200 dark:hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300
                                         `}
                     >
                       <div
-                        className={`w-2 h-2 rounded-full mr-3 flex-shrink-0 bg-gradient-to-br ${theme.gradient || "from-blue-400 to-indigo-400"}`}
+                        className={`w-1.5 md:w-2 h-1.5 md:h-2 rounded-full mr-2 md:mr-3 flex-shrink-0 bg-gradient-to-br ${theme.gradient || "from-blue-400 to-indigo-400"}`}
                       />
-                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-snug">
+                      <span className="text-xs md:text-sm font-semibold text-slate-700 dark:text-slate-200 leading-snug">
                         {act}
                       </span>
                     </div>
@@ -400,17 +447,17 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
           </div>
 
           {/* ─── 4. TIMELINE FOOTER ─── */}
-          <div className="bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 p-6 md:px-8 mt-auto backdrop-blur-sm">
-            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8 flex items-center gap-2">
-              <span className="material-icons !text-base">timeline</span>
+          <div className="bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 p-4 md:p-6 md:px-8 mt-auto backdrop-blur-sm">
+            <h3 className="text-[10px] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 md:mb-8 flex items-center gap-2">
+              <span className="material-icons !text-sm md:!text-base">timeline</span>
               Cronograma Evolutivo
             </h3>
 
-            <div className="relative isolate mb-8">
+            <div className="relative isolate mb-4 md:mb-8">
               {/* Connector Line (Multi-Color Gradient) */}
-              <div className="absolute top-[18px] left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-400 via-blue-400 to-emerald-400 opacity-30 hidden md:block rounded-full transform -translate-y-1/2" />
+              <div className="absolute top-[14px] md:top-[18px] left-0 right-0 h-1 md:h-1.5 bg-gradient-to-r from-indigo-400 via-blue-400 to-emerald-400 opacity-30 hidden md:block rounded-full transform -translate-y-1/2" />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-0">
                 {/* Point 1: Inscripción (Indigo/Violet) */}
                 <TimelinePoint
                   title="Inscripción"
@@ -494,20 +541,20 @@ const MetricItem: React.FC<{
   return (
     <div
       className={`
-      p-3 md:p-4 rounded-2xl flex flex-col justify-center gap-1.5 border
+      p-2 md:p-4 rounded-xl md:rounded-2xl flex flex-col justify-center gap-1 md:gap-1.5 border
       ${activeStyle}
       transition-all hover:scale-[1.02] duration-300 text-center
       ${className}
     `}
       title={value}
     >
-      <div className="flex items-center justify-center gap-1.5 mb-1">
-        <span className="material-icons !text-lg">{icon}</span>
+      <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5 md:mb-1">
+        <span className="material-icons !text-base md:!text-lg">{icon}</span>
       </div>
-      <div className="text-[10px] uppercase font-black opacity-70 tracking-wider leading-none">
+      <div className="text-[9px] md:text-[10px] uppercase font-black opacity-70 tracking-wider leading-none">
         {label}
       </div>
-      <div className="text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight">
+      <div className="text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight">
         {value}
       </div>
     </div>

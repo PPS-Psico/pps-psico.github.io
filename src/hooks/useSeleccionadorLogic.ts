@@ -26,6 +26,7 @@ import {
   FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES,
   FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS,
   FIELD_CV_CONVOCATORIAS,
+  FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
 } from "../constants";
 import { normalizeStringForComparison, cleanDbValue } from "../utils/formatters";
 import type { LanzamientoPPS, AirtableRecord, EnrichedStudent, ConvocatoriaFields } from "../types";
@@ -372,11 +373,26 @@ export const useSeleccionadorLogic = (
       if (!isTestingMode) {
         // Email notification loop
         const emailPromises = selectedCandidates.map(async (student) => {
+          const encuentroInicial = selectedLanzamiento[FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS];
+          let encuentroText = "";
+          if (encuentroInicial) {
+            const dateObj = new Date(encuentroInicial as string);
+            const fechaStr = dateObj.toLocaleDateString("es-AR", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            const hora = dateObj.getHours().toString().padStart(2, "0");
+            const minutos = dateObj.getMinutes().toString().padStart(2, "0");
+            encuentroText = `${fechaStr} a las ${hora}:${minutos} hs`;
+          }
           return sendSmartEmail("seleccion", {
             studentName: student.nombre,
             studentEmail: student.correo,
             ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
-            schedule: (student.horarioSeleccionado || "A confirmar") as string, // Ensure string type
+            schedule: (student.horarioSeleccionado || "A confirmar") as string,
+            encuentroInicial: encuentroText || undefined,
           });
         });
         await Promise.all(emailPromises);

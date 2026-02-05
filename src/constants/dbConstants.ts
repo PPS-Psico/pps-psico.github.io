@@ -86,6 +86,7 @@ export const FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS = "fecha_fin_inscripcion";
 export const FIELD_FECHA_PUBLICACION_LANZAMIENTOS = "fecha_publicacion";
 export const FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS = "mensaje_whatsapp";
 export const FIELD_HORARIOS_FIJOS_LANZAMIENTOS = "horarios_fijos";
+export const FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS = "fecha_encuentro_inicial";
 export const FIELD_AIRTABLE_ID = "airtable_id";
 
 // Convocatorias

@@ -9,7 +9,8 @@ const DEFAULT_TEMPLATES: Record<EmailScenario, { subject: string; body: string }
     body: `Hola {{nombre_alumno}},
 Nos complace informarte que has sido seleccionado/a para realizar tu Práctica Profesional Supervisada en:
 Institución: {{nombre_pps}}
-Horario/Comisión asignada: {{horario}}`,
+Horario/Comisión asignada: {{horario}}
+{{encuentro_inicial}}`,
   },
   solicitud: {
     subject: "Actualización de tu Solicitud de PPS - UFLO",
@@ -32,6 +33,7 @@ interface EmailData {
   institution?: string;
   newState?: string;
   notes?: string;
+  encuentroInicial?: string; // NEW: Fecha de encuentro inicial
 }
 
 const incrementCounter = () => {
@@ -169,13 +171,19 @@ export const sendSmartEmail = async (
       .replace(/{{nombre_pps}}/g, data.ppsName || "")
       .replace(/{{institucion}}/g, data.institution || "");
 
+    // Build encuentro inicial text
+    const encuentroText = data.encuentroInicial
+      ? `\n📅 Encuentro Inicial Obligatorio: ${data.encuentroInicial}\n   (Es obligatorio para todos los seleccionados)`
+      : "";
+
     const textBody = bodyTmpl
       .replace(/{{nombre_alumno}}/g, data.studentName)
       .replace(/{{nombre_pps}}/g, data.ppsName || "")
       .replace(/{{horario}}/g, data.schedule || "")
       .replace(/{{institucion}}/g, data.institution || "")
       .replace(/{{estado_nuevo}}/g, data.newState || "")
-      .replace(/{{notas}}/g, data.notes || "");
+      .replace(/{{notas}}/g, data.notes || "")
+      .replace(/{{encuentro_inicial}}/g, encuentroText);
 
     const firstName = data.studentName.split(" ")[0];
     const htmlTitle = `Hola, <span style="color: #2563eb;">${firstName}</span>`;

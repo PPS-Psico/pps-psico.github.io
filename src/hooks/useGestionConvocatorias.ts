@@ -188,17 +188,27 @@ export const useGestionConvocatorias = ({
 
   const filteredData = useMemo(() => {
     const now = new Date();
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(now.getDate() + 7);
+    const currentYear = now.getFullYear();
 
-    // Groups
+    // Nuevas categorías basadas en flujo de contacto
+    const porContactar: (LanzamientoPPS & {
+      daysSinceEnd: number;
+      urgency?: "high" | "normal";
+    })[] = [];
+    const contactadasEsperandoRespuesta: (LanzamientoPPS & {
+      daysSinceEnd: number;
+      daysWaiting: number;
+    })[] = [];
+    const respondidasPendienteDecision: (LanzamientoPPS & {
+      daysSinceEnd: number;
+      daysSinceResponse?: number;
+    })[] = [];
     const relanzamientosConfirmados: LanzamientoPPS[] = [];
     const activasYPorFinalizar: (LanzamientoPPS & {
       daysLeft?: number;
       urgency?: "high" | "normal";
     })[] = [];
-    const finalizadasParaReactivar: (LanzamientoPPS & { daysSinceEnd?: number })[] = [];
-    const activasIndefinidas: LanzamientoPPS[] = []; // For Manual/Indefinite dates
+    const activasIndefinidas: LanzamientoPPS[] = [];
 
     // 1. Group by Institution Base Name to process lifecycle
     const groups = new Map<string, LanzamientoPPS[]>();
@@ -208,8 +218,8 @@ export const useGestionConvocatorias = ({
       groups.get(name)!.push(pps);
     });
 
-    // 2. Analyze each Group
-    groups.forEach((history, _) => {
+    // 2. Analyze each Group based on contact flow
+    groups.forEach((history) => {
       // Sort by Date Descending (Newest first)
       history.sort((a, b) => {
         const dateA = new Date(a[FIELD_FECHA_INICIO_LANZAMIENTOS] || "1900-01-01").getTime();
@@ -217,23 +227,23 @@ export const useGestionConvocatorias = ({
         return dateB - dateA;
       });
 
-      // Check if there is ALREADY a confirmed future relaunch
+      // Check if there is ALREADY a confirmed future relaunch for current year
       const futureLaunch = history.find((pps) => {
         const status = normalizeStringForComparison(pps[FIELD_ESTADO_GESTION_LANZAMIENTOS]);
+        const relaunchDate = pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS];
+
         return (
           status === "relanzamiento confirmado" ||
-          (pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS] &&
-            new Date(pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS]).getFullYear() >= 2026)
+          (relaunchDate && new Date(relaunchDate).getFullYear() >= currentYear)
         );
       });
 
       if (futureLaunch) {
         relanzamientosConfirmados.push(futureLaunch);
-        return; // Cycle handled
+        return; // Already managed this year
       }
 
-      // If no future launch, look at the CURRENT active/latest one
-      // We ignore "Archived" or "No se Relanza" unless they are the *only* thing
+      // Find the most relevant PPS (not archived or explicitly rejected)
       const relevantPPS =
         history.find((pps) => {
           const status = normalizeStringForComparison(pps[FIELD_ESTADO_GESTION_LANZAMIENTOS]);
@@ -243,7 +253,7 @@ export const useGestionConvocatorias = ({
       if (!relevantPPS) return;
 
       const status = normalizeStringForComparison(relevantPPS[FIELD_ESTADO_GESTION_LANZAMIENTOS]);
-      if (status === "archivado" || status === "no se relanza") return; // Explicitly dead
+      if (status === "archivado" || status === "no se relanza") return;
 
       const startDate = parseToUTCDate(relevantPPS[FIELD_FECHA_INICIO_LANZAMIENTOS]);
       const endDate = parseToUTCDate(relevantPPS[FIELD_FECHA_FIN_LANZAMIENTOS]);
@@ -257,38 +267,86 @@ export const useGestionConvocatorias = ({
       // Case B: Active or Finished?
       const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
 
-      if (daysLeft < 0) {
-        // FINISHED - Needs Action
-        // But only if it finished recently (< 6 months) or we want to reactivate
-        // Let's include everything finished as "Reactivar" logic
-        finalizadasParaReactivar.push({
-          ...relevantPPS,
-          daysSinceEnd: Math.abs(daysLeft),
-        });
-      } else {
-        // ACTIVE
+      if (daysLeft >= 0) {
+        // STILL ACTIVE - Not finished yet
         const urgency = daysLeft <= 7 ? "high" : "normal";
         activasYPorFinalizar.push({
           ...relevantPPS,
           daysLeft,
           urgency,
         });
+        return;
       }
+
+      // FINISHED - Now categorize by contact status
+      const daysSinceEnd = Math.abs(daysLeft);
+
+      // FLUJO DE CONTACTO:
+      // 1. Pendiente de Gestión → Por Contactar
+      if (status === "pendiente de gestion") {
+        const urgency = daysSinceEnd <= 30 ? "high" : "normal";
+        porContactar.push({
+          ...relevantPPS,
+          daysSinceEnd,
+          urgency,
+        });
+        return;
+      }
+
+      // 2. Esperando Respuesta → Contactadas - Esperando Respuesta
+      if (status === "esperando respuesta") {
+        // Calculate days waiting since end of PPS
+        const daysWaiting = Math.max(1, daysSinceEnd);
+
+        contactadasEsperandoRespuesta.push({
+          ...relevantPPS,
+          daysSinceEnd,
+          daysWaiting,
+        });
+        return;
+      }
+
+      // 3. En Conversación → Respondidas - Pendiente de Decisión
+      if (status === "en conversacion") {
+        // Days since end as proxy for days since response
+        const daysSinceResponse = daysSinceEnd;
+
+        respondidasPendienteDecision.push({
+          ...relevantPPS,
+          daysSinceEnd,
+          daysSinceResponse,
+        });
+        return;
+      }
+
+      // Any other status for finished PPS goes to "Por Contactar" for manual review
+      porContactar.push({
+        ...relevantPPS,
+        daysSinceEnd,
+        urgency: "normal",
+      });
     });
 
-    // 3. Fallback for "Pendientes de Gestion" explicit status that might be old
-    // (If user manually tagged something as "Esperando Respuesta" but dates are old)
-    // The logic above covers lifecycle. "Pendientes" is implicitly "FinalizadasParaReactivar" or "Activas".
-    // We map the return to match component expectations.
-
+    // Sort each category by urgency/elapsed time
     return {
+      // Categorías de contacto (nuevo flujo)
+      porContactar: porContactar.sort((a, b) => {
+        // Prioritize by urgency, then by daysSinceEnd (recent first)
+        if (a.urgency === "high" && b.urgency !== "high") return -1;
+        if (a.urgency !== "high" && b.urgency === "high") return 1;
+        return a.daysSinceEnd - b.daysSinceEnd;
+      }),
+      contactadasEsperandoRespuesta: contactadasEsperandoRespuesta.sort(
+        (a, b) => b.daysWaiting - a.daysWaiting // Longest waiting first
+      ),
+      respondidasPendienteDecision: respondidasPendienteDecision.sort(
+        (a, b) => (a.daysSinceResponse || 0) - (b.daysSinceResponse || 0) // Most recent first
+      ),
+
+      // Categorías existentes
       relanzamientosConfirmados,
-      pendientesDeGestion: [], // Deprecated in favor of clearer categories
       activasYPorFinalizar: activasYPorFinalizar.sort(
         (a, b) => (a.daysLeft || 999) - (b.daysLeft || 999)
-      ),
-      finalizadasParaReactivar: finalizadasParaReactivar.sort(
-        (a, b) => (a.daysSinceEnd || 0) - (b.daysSinceEnd || 0)
       ),
       activasIndefinidas,
     };

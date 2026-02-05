@@ -45,10 +45,12 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
         {activeGestionTabId === "calendar" && (
           <CalendarPlanning
             items={[
-              ...filteredData.activasYPorFinalizar,
-              ...filteredData.finalizadasParaReactivar,
-              ...filteredData.relanzamientosConfirmados,
-              ...filteredData.activasIndefinidas,
+              ...(filteredData.activasYPorFinalizar || []),
+              ...(filteredData.porContactar || []),
+              ...(filteredData.contactadasEsperandoRespuesta || []),
+              ...(filteredData.respondidasPendienteDecision || []),
+              ...(filteredData.relanzamientosConfirmados || []),
+              ...(filteredData.activasIndefinidas || []),
             ]}
           />
         )}

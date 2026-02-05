@@ -14,6 +14,8 @@ import {
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
+  FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
 } from "../constants";
 import EmptyState from "./EmptyState";
 import { useModal } from "../contexts/ModalContext";
@@ -77,7 +79,7 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="grid gap-6 animate-fade-in">
       {lanzamientos.map((lanzamiento) => {
         const enrollment = enrollmentMap.get(lanzamiento.id);
         const enrollmentStatus = enrollment
@@ -138,6 +140,8 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
             status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]}
             estadoInscripcion={enrollmentStatus as any}
             isCompleted={isCompleted}
+            horariosFijos={lanzamiento.horarios_fijos || false}
+            fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
             onInscribirse={() => onInscribir(lanzamiento)}
           />
         );

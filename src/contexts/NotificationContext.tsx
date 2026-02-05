@@ -24,6 +24,7 @@ import {
   TABLE_NAME_LANZAMIENTOS_PPS,
   TABLE_NAME_PPS,
 } from "../constants";
+import ReminderService, { Reminder } from "../services/reminderService";
 import {
   isPushSupported as checkPushSupported,
   getPushSubscriptionStatus,
@@ -68,7 +69,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     type: "success" | "error" | "warning";
   } | null>(null);
 
-  // Persistencia Local: Set de IDs le�dos
+  // Persistencia Local: Set de IDs leídos
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
 
   // Push notification state
@@ -95,7 +96,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
       }
     } catch (e) {
-      console.warn("Error cargando notificaciones le�das del storage", e);
+      console.warn("Error cargando notificaciones leídas del storage", e);
     }
   }, [authenticatedUser, STORAGE_KEY]);
 
@@ -146,7 +147,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               loadedNotifications.push({
                 id: notifId,
                 title: "Solicitud PPS Pendiente",
-                message: `${req[FIELD_SOLICITUD_NOMBRE_ALUMNO] || "Estudiante"} solicit� iniciar en ${req[FIELD_EMPRESA_PPS_SOLICITUD] || "Instituci�n"}.`,
+                message: `${req[FIELD_SOLICITUD_NOMBRE_ALUMNO] || "Estudiante"} solicitó iniciar en ${req[FIELD_EMPRESA_PPS_SOLICITUD] || "Institución"}.`,
                 timestamp: new Date(req.created_at),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes?tab=ingreso",
@@ -155,7 +156,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             });
           }
 
-          // --- B. Solicitudes de Acreditaci�n (Finalizaci�n) Pendientes ---
+          // --- B. Solicitudes de Acreditación (Finalización) Pendientes ---
           const { data: pendingFinals } = await supabase
             .from(TABLE_NAME_FINALIZACION)
             .select(
@@ -182,8 +183,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
               loadedNotifications.push({
                 id: notifId,
-                title: "Acreditaci�n Pendiente",
-                message: `${studentName} ha enviado documentaci�n para acreditar.`,
+                title: "Acreditación Pendiente",
+                message: `${studentName} ha enviado documentación para acreditar.`,
                 timestamp: new Date(req.created_at),
                 type: "acreditacion",
                 link: "/admin/solicitudes?tab=egreso",
@@ -219,6 +220,25 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               });
             });
           }
+        }
+
+        // --- D. Recordatorios de Hoy (para Administradores) ---
+        if (isAdmin && authenticatedUser) {
+          ReminderService.setUserId(authenticatedUser.id);
+          const todayReminders = await ReminderService.getTodayReminders();
+
+          todayReminders.forEach((reminder: Reminder) => {
+            const notifId = `reminder-${reminder.id}`;
+            loadedNotifications.push({
+              id: notifId,
+              title: `Recordatorio: ${reminder.title}`,
+              message: reminder.description || `Tienes un recordatorio pendiente para hoy`,
+              timestamp: new Date(reminder.due_date),
+              type: "recordatorio",
+              link: "/admin",
+              isRead: readNotificationIds.has(notifId),
+            });
+          });
         }
 
         loadedNotifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -272,8 +292,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
           addNotification({
             id: notifId,
-            title: "Nueva Solicitud de Acreditaci�n",
-            message: `Un estudiante ha enviado documentaci�n para finalizar.`,
+            title: "Nueva Solicitud de Acreditación",
+            message: `Un estudiante ha enviado documentación para finalizar.`,
             timestamp: new Date(),
             type: "acreditacion",
             link: "/admin/solicitudes?tab=egreso",

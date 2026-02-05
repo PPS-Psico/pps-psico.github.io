@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import type { Practica } from "../../types";
 import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
@@ -133,6 +133,18 @@ const PracticaRow: React.FC<{
   isSuccess: boolean;
 }> = ({ practica, onNotaChange, onFechaFinChange, isSaving, isSuccess }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [triggerRect, setTriggerRect] = useState<DOMRect>(new DOMRect(0, 0, 0, 0));
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const handleMenuToggle = () => {
+    if (!isSaving && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setTriggerRect(rect);
+      setIsMenuOpen(true);
+    } else {
+      setIsMenuOpen(false);
+    }
+  };
 
   const rawName = practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
   // CLEAN NAME DISPLAY FORCEFULLY HERE AS WELL
@@ -210,13 +222,15 @@ const PracticaRow: React.FC<{
         <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
 
         <div className="relative flex flex-col items-center">
-          <GradeDisplay
-            nota={notaActual}
-            onClick={() => !isSaving && setIsMenuOpen(!isMenuOpen)}
-            isSaving={isSaving}
-            isSuccess={isSuccess}
-            isOpen={isMenuOpen}
-          />
+          <div ref={triggerRef}>
+            <GradeDisplay
+              nota={notaActual}
+              onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
+              isSaving={isSaving}
+              isSuccess={isSuccess}
+              isOpen={isMenuOpen}
+            />
+          </div>
 
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center">
             Nota
@@ -237,6 +251,7 @@ const PracticaRow: React.FC<{
                 onSelect={handleSelectGrade}
                 onClose={() => setIsMenuOpen(false)}
                 currentValue={notaActual}
+                triggerRect={triggerRect}
               />
             </>
           )}
@@ -252,10 +267,13 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
   handleFechaFinChange,
   isLoading = false,
 }) => {
-  console.log("[DEBUG] PracticasTable Props:", {
-    practicasCount: practicas.length,
-    hasDateHandler: !!handleFechaFinChange,
-  });
+  if (import.meta.env.DEV) {
+    console.log("[DEBUG] PracticasTable Props:", {
+      practicasCount: practicas.length,
+      hasDateHandler: !!handleFechaFinChange,
+    });
+  }
+
   const [savingNotaId, setSavingNotaId] = useState<string | null>(null);
   const [justUpdatedPracticaId, setJustUpdatedPracticaId] = useState<string | null>(null);
 

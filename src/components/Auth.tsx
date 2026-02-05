@@ -576,7 +576,7 @@ const Auth: React.FC = () => {
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-400/20 dark:bg-indigo-900/10 rounded-full mix-blend-multiply filter blur-[120px] animate-blob"></div>
         <div className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-blue-400/20 dark:bg-blue-900/10 rounded-full mix-blend-multiply filter blur-[120px] animate-blob animation-delay-2000"></div>
         <div className="absolute bottom-[-20%] left-[20%] w-[60vw] h-[60vw] bg-purple-400/20 dark:bg-purple-900/10 rounded-full mix-blend-multiply filter blur-[120px] animate-blob animation-delay-4000"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[url('https://www.gradients.app/linear-gradient-to-t/white-on-stone/20')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
       </div>
 
       {/* HEADER (ABSOLUTE TOP) */}

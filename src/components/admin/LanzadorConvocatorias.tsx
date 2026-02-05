@@ -39,6 +39,7 @@ import {
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
   FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
   FIELD_INSTITUCION_LINK_PRACTICAS,
 } from "../../constants";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "../../constants/configConstants";
@@ -84,6 +85,7 @@ type FormData = {
   nombrePPS: string | undefined;
   fechaInicio: string | undefined;
   fechaFin: string | undefined;
+  fechaEncuentroInicial: string | undefined;
   fechaInicioInscripcion: string | undefined;
   fechaFinInscripcion: string | undefined;
   orientacion: string | undefined;
@@ -107,6 +109,7 @@ const initialState: FormData = {
   nombrePPS: "",
   fechaInicio: "",
   fechaFin: "",
+  fechaEncuentroInicial: "",
   fechaInicioInscripcion: "",
   fechaFinInscripcion: "",
   orientacion: "",
@@ -573,15 +576,35 @@ Responde SOLO con el JSON válido.
 📅 *Horarios*:`;
 
     if (validSchedules.length > 0) {
-      if (validSchedules.length > 1) {
+      if (validSchedules.length > 1 && !formData.horariosFijos) {
+        // Multiple groups - show as Grupo 1, Grupo 2, etc.
         message += validSchedules
           .map((s, index) => `• *Grupo ${index + 1}:* ${s.trim()}`)
           .join("\n");
+      } else if (validSchedules.length > 1 && formData.horariosFijos) {
+        // Fixed schedules - all students attend all schedules
+        message += "\n" + validSchedules.map((s) => `• ${s.trim()}`).join("\n");
       } else {
         message += ` ${validSchedules[0].trim()}`;
       }
     } else {
       message += " A confirmar";
+    }
+
+    // Add Encuentro Inicial if exists
+    if (formData.fechaEncuentroInicial) {
+      const encuentroDate = new Date(formData.fechaEncuentroInicial);
+      const fechaStr = formatDate(formData.fechaEncuentroInicial);
+      const hours = encuentroDate.getHours();
+      const minutes = encuentroDate.getMinutes();
+      const horaStr =
+        hours || minutes
+          ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} hs`
+          : "";
+      message += `
+
+🤝 *Encuentro Inicial Obligatorio:* ${fechaStr}${horaStr ? ` a las ${horaStr}` : ""}
+⚠️ Es obligatorio para todos los inscriptos`;
     }
 
     message += `
@@ -978,6 +1001,8 @@ Responde SOLO con el JSON válido.
       descripcion: (lastLanzamiento[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "",
       requisitoObligatorio:
         (lastLanzamiento[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] as string) || "",
+      fechaEncuentroInicial:
+        (lastLanzamiento[FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS] as string) || "",
       fechaInicioInscripcion: "",
       fechaFinInscripcion: "",
       mensajeWhatsApp: (lastLanzamiento[FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS] as string) || "",
@@ -1051,6 +1076,7 @@ Responde SOLO con el JSON válido.
       [FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS]: formData.mensajeWhatsApp,
       [FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS]: formData.actividadesLabel,
       [FIELD_HORARIOS_FIJOS_LANZAMIENTOS]: formData.horariosFijos,
+      [FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS]: formData.fechaEncuentroInicial || null,
       [FIELD_INSTITUCION_LINK_PRACTICAS]: selectedInstitution?.id || "recInstMock_nuevo",
     };
 
@@ -1414,6 +1440,71 @@ Responde SOLO con el JSON válido.
                     onChange={handleChange}
                     name="fechaFin"
                   />
+                </InputWrapper>
+
+                <InputWrapper label="Encuentro Inicial" icon="groups">
+                  {!formData.fechaEncuentroInicial ? (
+                    <input
+                      type="date"
+                      name="fechaEncuentroInicial"
+                      value=""
+                      onChange={(e) => {
+                        const fecha = e.target.value;
+                        if (fecha) {
+                          handleChange({
+                            target: {
+                              name: "fechaEncuentroInicial",
+                              value: `${fecha}T09:00`,
+                            },
+                          } as any);
+                        }
+                      }}
+                      className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-3 px-4 text-sm text-slate-900 dark:text-slate-100 focus:border-amber-500 focus:outline-none"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-800">
+                        <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                          {new Date(formData.fechaEncuentroInicial).toLocaleDateString("es-AR", {
+                            day: "numeric",
+                            month: "short",
+                          })}{" "}
+                          {formData.fechaEncuentroInicial.split("T")[1]?.substring(0, 5) || "09:00"}{" "}
+                          hs
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleChange({
+                              target: {
+                                name: "fechaEncuentroInicial",
+                                value: "",
+                              },
+                            } as any);
+                          }}
+                          className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
+                        >
+                          <span className="material-icons !text-lg">close</span>
+                        </button>
+                      </div>
+                      <input
+                        type="time"
+                        name="horaEncuentroInicial"
+                        value={formData.fechaEncuentroInicial.split("T")[1] || "09:00"}
+                        onChange={(e) => {
+                          const hora = e.target.value;
+                          const fecha = formData.fechaEncuentroInicial.split("T")[0];
+                          handleChange({
+                            target: {
+                              name: "fechaEncuentroInicial",
+                              value: `${fecha}T${hora}`,
+                            },
+                          } as any);
+                        }}
+                        className="w-full rounded-xl border-2 border-amber-300 dark:border-amber-600 bg-white dark:bg-slate-900 py-2 px-3 text-sm text-slate-900 dark:text-slate-100 focus:border-amber-500 focus:outline-none"
+                      />
+                    </div>
+                  )}
                 </InputWrapper>
 
                 <div className="col-span-1 md:col-span-2 lg:col-span-3 h-px bg-slate-200 dark:bg-slate-700 my-2" />
@@ -1781,6 +1872,7 @@ Responde SOLO con el JSON válido.
                           requisitoObligatorio={formData.requisitoObligatorio}
                           reqCv={formData.reqCv}
                           horariosFijos={formData.horariosFijos}
+                          fechaEncuentroInicial={formData.fechaEncuentroInicial}
                           timeline={{
                             inscripcion:
                               formData.fechaInicioInscripcion && formData.fechaFinInscripcion

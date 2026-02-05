@@ -15,12 +15,17 @@ import {
   parseToUTCDate,
   normalizeStringForComparison,
 } from "../../utils/formatters";
+import ContactModal from "./ContactModal";
+import TodoistService from "../../services/todoistDirectService";
+import ReminderService from "../../services/reminderService";
+import { useAuth } from "../../contexts/AuthContext";
 
 // Opciones Simplificadas
 const GESTION_STATUS_OPTIONS = [
   "Pendiente de Gestión",
-  "Relanzamiento Confirmado",
   "Esperando Respuesta",
+  "En Conversación",
+  "Relanzamiento Confirmado",
   "No se Relanza",
   "Archivado",
 ];
@@ -34,17 +39,31 @@ interface GestionCardProps {
   onSavePhone: (institutionId: string, phone: string) => Promise<boolean>;
   daysLeft?: number;
   urgency?: "high" | "normal";
+  daysWaiting?: number;
+  daysSinceResponse?: number;
 }
 
 const GestionCard: React.FC<GestionCardProps> = React.memo(
-  ({ pps, onSave, isUpdating, institution, onSavePhone, daysLeft, urgency }) => {
+  ({
+    pps,
+    onSave,
+    isUpdating,
+    institution,
+    onSavePhone,
+    daysLeft,
+    urgency,
+    daysWaiting,
+    cardType,
+  }) => {
+    const { authenticatedUser } = useAuth();
     const [isExpanded, setIsExpanded] = useState(false);
     const [status, setStatus] = useState(
       pps[FIELD_ESTADO_GESTION_LANZAMIENTOS] || "Pendiente de Gestión"
     );
     const [notes, setNotes] = useState(pps[FIELD_NOTAS_GESTION_LANZAMIENTOS] || "");
-
-    // ... (keep existing state logic)
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [todoistSuccess, setTodoistSuccess] = useState(false);
+    const [reminderSuccess, setReminderSuccess] = useState(false);
 
     // Initialize date
     const [relaunchDate, setRelaunchDate] = useState(() => {
@@ -76,6 +95,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
       return status !== originalStatus || notes !== originalNotes || dateChanged;
     }, [status, notes, relaunchDate, pps]);
 
+    // Handle Save con integración a Todoist
     const handleSave = async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!hasChanges) return;
@@ -87,6 +107,38 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
 
       if (status === "Relanzamiento Confirmado") {
         updates[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS] = relaunchDate;
+
+        // Crear recordatorios internos
+        if (authenticatedUser?.id) {
+          ReminderService.setUserId(authenticatedUser.id);
+          try {
+            await ReminderService.createLanzamientoReminders(
+              pps.id,
+              pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "",
+              relaunchDate,
+              institution?.phone
+            );
+            setReminderSuccess(true);
+            setTimeout(() => setReminderSuccess(false), 3000);
+          } catch (error) {
+            console.error("Error creando recordatorios:", error);
+          }
+        }
+
+        // Intentar crear tarea en Todoist (puede fallar si API está en mantenimiento)
+        try {
+          await TodoistService.createLanzamientoTask(
+            pps[FIELD_NOMBRE_PPS_LANZAMIENTOS],
+            relaunchDate,
+            undefined,
+            2,
+            institution?.phone
+          );
+          setTodoistSuccess(true);
+          setTimeout(() => setTodoistSuccess(false), 3000);
+        } catch (error) {
+          console.error("Error creando tarea en Todoist:", error);
+        }
       }
 
       setIsJustSaved(true);
@@ -117,6 +169,35 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
       }
     };
 
+    // Handle Quick Contact
+    const handleQuickContact = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsContactModalOpen(true);
+    };
+
+    // Handle Contact Modal Submit
+    const handleContactModalSubmit = async () => {
+      setStatus("Esperando Respuesta");
+      setIsContactModalOpen(false);
+
+      // Crear recordatorio de seguimiento en 7 días
+      if (authenticatedUser?.id) {
+        ReminderService.setUserId(authenticatedUser.id);
+        try {
+          await ReminderService.createSeguimientoReminder(
+            pps.id,
+            pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "",
+            7,
+            institution?.phone
+          );
+          setReminderSuccess(true);
+          setTimeout(() => setReminderSuccess(false), 3000);
+        } catch (error) {
+          console.error("Error creando recordatorio de seguimiento:", error);
+        }
+      }
+    };
+
     // Status Color Logic
     const statusColor = useMemo(() => {
       if (status === "Relanzamiento Confirmado")
@@ -125,6 +206,8 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
         return "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800";
       if (status === "Esperando Respuesta")
         return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
+      if (status === "En Conversación")
+        return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
       return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
     }, [status]);
 
@@ -132,7 +215,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
     const UrgencyBadge = () => {
       if (daysLeft === undefined) return null;
 
-      // Context: Active (daysLeft > 0)
       if (daysLeft > 0 && daysLeft <= 7) {
         return (
           <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800 flex items-center gap-1 animate-pulse">
@@ -149,10 +231,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
         );
       }
 
-      // Context: Finished (daysLeft <= 0)
-      // Note: For finished items, daysLeft comes as negative from the hook logic for the "Finalizadas" section,
-      // BUT verify how it is passed. In ConvocatoriaManager I passed `-(pps.daysSinceEnd)`.
-      // So daysLeft for finished items is indeed negative.
       if (daysLeft <= 0) {
         return (
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 flex items-center gap-1">
@@ -165,217 +243,252 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
       return null;
     };
 
-    const displayRelaunchDate = () => {
-      if (!relaunchDate) return null;
-      const d = parseToUTCDate(relaunchDate);
-      if (d) return d.getFullYear();
-      return relaunchDate.length > 15 ? relaunchDate.substring(0, 12) + "..." : relaunchDate;
+    // Days Waiting Badge (for "Contactadas - Esperando Respuesta")
+    const DaysWaitingBadge = () => {
+      if (!daysWaiting || status !== "Esperando Respuesta") return null;
+
+      const urgencyClass =
+        daysWaiting > 7
+          ? "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800"
+          : daysWaiting > 3
+            ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+            : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
+
+      return (
+        <span
+          className={`text-[10px] font-bold ${urgencyClass} px-2 py-0.5 rounded border flex items-center gap-1 ${daysWaiting > 7 ? "animate-pulse" : ""}`}
+        >
+          <span className="material-icons !text-[10px]">schedule</span> Esperando {daysWaiting} días
+        </span>
+      );
     };
 
     const isEffectivelyConfirmed =
       status === "Relanzamiento Confirmado" ||
       (relaunchDate && new Date(relaunchDate).getFullYear() >= 2026);
 
-    // Dynamic Border Class based on Orientation
-    const cardBorderClass = isExpanded
-      ? "shadow-xl ring-1 ring-blue-500/20 border-blue-300 dark:border-blue-700"
-      : urgency === "high"
-        ? "shadow-sm hover:shadow-md border-l-4 border-l-rose-500 border-t border-r border-b border-rose-200 dark:border-rose-900 bg-rose-50/30 dark:bg-rose-900/10"
+    const cardBorderClass = isJustSaved
+      ? "shadow-lg ring-2 ring-emerald-400 border-l-4 border-emerald-500"
+      : hasChanges
+        ? `shadow-md hover:shadow-lg border-l-4 ${especialidadVisuals.leftBorder}`
         : `shadow-sm hover:shadow-md border-l-4 ${especialidadVisuals.leftBorder} border-t border-r border-b border-slate-200 dark:border-slate-700`;
 
+    const displayRelaunchDate = () => {
+      if (!relaunchDate) return null;
+      const d = parseToUTCDate(relaunchDate);
+      if (!d) return relaunchDate;
+      return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    };
+
     return (
-      <div
-        className={`relative bg-white dark:bg-gray-900 rounded-xl transition-all duration-300 overflow-hidden ${cardBorderClass}`}
-        onClick={() => !isEditingPhone && setIsExpanded(!isExpanded)}
-      >
-        {/* Header Content */}
-        <div className="p-4 pl-5 cursor-pointer">
-          <div className="flex justify-between items-start gap-3">
-            <div className="flex-grow min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className={`${especialidadVisuals.tag} text-[10px] py-0.5 px-2 font-bold`}>
-                  {pps[FIELD_ORIENTACION_LANZAMIENTOS]}
-                </span>
-                {isEffectivelyConfirmed && relaunchDate && (
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800">
-                    <span className="material-icons !text-[10px]">event</span>
-                    {displayRelaunchDate()}
-                  </span>
-                )}
-                <UrgencyBadge />
-              </div>
-              <h4
-                className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate pr-4"
-                title={pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
-              >
-                {pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
-              </h4>
-            </div>
+      <>
+        {isContactModalOpen && (
+          <ContactModal
+            isOpen={isContactModalOpen}
+            onClose={() => setIsContactModalOpen(false)}
+            pps={pps}
+            institution={institution as any}
+            onMarkContacted={handleContactModalSubmit}
+          />
+        )}
 
-            <div className="flex-shrink-0 flex items-center gap-2">
-              {institution?.phone ? (
-                <button
-                  onClick={handleWhatsAppClick}
-                  className="p-2 rounded-full bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 transition-colors"
-                  title="WhatsApp"
-                >
-                  <span className="material-icons !text-lg">chat</span>
-                </button>
-              ) : (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditingPhone(true);
-                  }}
-                  className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  title="Agregar Teléfono"
-                >
-                  <span className="material-icons !text-lg">add_call</span>
-                </button>
-              )}
-              <div
-                className={`transform transition-transform duration-300 text-slate-400 ${isExpanded ? "rotate-180" : ""}`}
-              >
-                <span className="material-icons">expand_more</span>
-              </div>
-            </div>
-          </div>
-
-          {isEditingPhone && (
-            <div
-              className="absolute top-3 right-12 z-20 flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 animate-scale-in"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <input
-                type="tel"
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                className="w-28 text-xs p-1.5 border-none bg-transparent focus:ring-0 outline-none text-slate-800 dark:text-white"
-                placeholder="Número..."
-                autoFocus
-              />
-              <button
-                onClick={handleSavePhone}
-                className="p-1 text-emerald-500 hover:bg-emerald-50 rounded"
-              >
-                <span className="material-icons !text-sm">check</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditingPhone(false);
-                }}
-                className="p-1 text-rose-500 hover:bg-rose-50 rounded"
-              >
-                <span className="material-icons !text-sm">close</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Expanded Body */}
         <div
-          className={`grid transition-all duration-300 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-800" : "grid-rows-[0fr] opacity-0"}`}
+          className={`relative bg-white dark:bg-gray-900 rounded-xl transition-all duration-300 overflow-hidden ${cardBorderClass}`}
+          onClick={() => !isEditingPhone && setIsExpanded(!isExpanded)}
         >
-          <div
-            className="overflow-hidden bg-slate-50/50 dark:bg-slate-800/20 cursor-default"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 space-y-4">
-              <div className="flex gap-4 items-start">
-                <div className="flex-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
-                    Estado
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className={`w-full text-sm font-semibold rounded-lg py-2.5 px-3 border outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-colors appearance-none ${statusColor}`}
-                  >
-                    {GESTION_STATUS_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Smart Action Button for 2026 Relaunch */}
-                {status !== "Relanzamiento Confirmado" && status !== "No se Relanza" && (
-                  <div className="mt-6">
-                    <button
-                      onClick={() => {
-                        setStatus("Relanzamiento Confirmado");
-                      }}
-                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 underline decoration-dotted underline-offset-4"
-                    >
-                      Confirmar 2026
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {isEffectivelyConfirmed && (
-                <div className="animate-fade-in bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/50">
-                  <label className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <span className="material-icons !text-sm">event</span>
-                    Fecha Estimada Incio 2026
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej: 15/03/2026..."
-                    value={relaunchDate}
-                    onChange={(e) => setRelaunchDate(e.target.value)}
-                    className="w-full text-sm font-medium rounded-lg py-2 px-3 border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500/50 outline-none text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
-                  <span className="material-icons !text-xs">edit_note</span>
-                  Bitácora de Gestión
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    className="w-full text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 pl-4 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none leading-relaxed"
-                    placeholder="Escribe aquí los avances..."
-                  />
-                  <div className="absolute left-0 top-3 bottom-3 w-1 bg-blue-400 rounded-r opacity-50"></div>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={handleSave}
-                  disabled={isUpdating || !hasChanges || isJustSaved}
-                  className={`flex items-center gap-2 py-2 px-6 rounded-lg text-sm font-bold shadow-sm transition-all transform active:scale-95
-                                ${
-                                  isJustSaved
-                                    ? "bg-emerald-500 text-white cursor-default"
-                                    : hasChanges
-                                      ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
-                                      : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
-                                }
-                            `}
-                >
-                  {isUpdating ? (
-                    <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <span className="material-icons !text-base">
-                      {isJustSaved ? "check" : "save"}
+          {/* Header Content */}
+          <div className="p-4 pl-5 cursor-pointer">
+            <div className="flex justify-between items-start gap-3">
+              <div className="flex-grow min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className={`${especialidadVisuals.tag} text-[10px] py-0.5 px-2 font-bold`}>
+                    {pps[FIELD_ORIENTACION_LANZAMIENTOS]}
+                  </span>
+                  {isEffectivelyConfirmed && relaunchDate && (
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800">
+                      <span className="material-icons !text-[10px]">event</span>
+                      {displayRelaunchDate()}
                     </span>
                   )}
-                  <span>{isJustSaved ? "Guardado" : "Guardar Cambios"}</span>
-                </button>
+                  <UrgencyBadge />
+                  <DaysWaitingBadge />
+                </div>
+                <h4
+                  className="font-bold text-slate-800 dark:text-slate-100 leading-tight truncate pr-4"
+                  title={pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
+                >
+                  {pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
+                </h4>
+              </div>
+
+              <div className="flex-shrink-0 flex items-center gap-2">
+                {/* Botón de Contacto Rápido */}
+                {status === "Pendiente de Gestión" && cardType === "porContactar" && (
+                  <button
+                    onClick={handleQuickContact}
+                    className="px-3 py-1.5 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-1"
+                    title="Contactar para relanzamiento"
+                  >
+                    <span className="material-icons !text-sm">send</span>
+                    <span>Contactar</span>
+                  </button>
+                )}
+
+                {institution?.phone ? (
+                  <button
+                    onClick={handleWhatsAppClick}
+                    className="p-2 rounded-full bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 transition-colors"
+                    title="WhatsApp"
+                  >
+                    <span className="material-icons !text-lg">chat</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditingPhone(true);
+                    }}
+                    className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Agregar Teléfono"
+                  >
+                    <span className="material-icons !text-lg">add_call</span>
+                  </button>
+                )}
+                <div
+                  className={`transform transition-transform duration-300 text-slate-400 ${isExpanded ? "rotate-180" : ""}`}
+                >
+                  <span className="material-icons">expand_more</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Expanded Body */}
+          <div
+            className={`grid transition-all duration-300 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20 cursor-default" : "grid-rows-[0fr] opacity-0"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="overflow-hidden bg-slate-50/50 dark:bg-slate-800/20 cursor-default">
+              <div className="p-4 space-y-4">
+                <div className="flex gap-4 items-start">
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                      Estado
+                    </label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className={`w-full text-sm font-semibold rounded-lg py-2.5 px-3 border outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-colors appearance-none ${statusColor}`}
+                    >
+                      {GESTION_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Smart Action Button for 2026 Relaunch */}
+                  {status !== "Relanzamiento Confirmado" &&
+                    status !== "No se Relanza" &&
+                    status !== "Archivado" && (
+                      <div className="mt-6">
+                        <button
+                          onClick={() => {
+                            setStatus("Relanzamiento Confirmado");
+                          }}
+                          className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 underline decoration-dotted underline-offset-4"
+                        >
+                          Confirmar 2026
+                        </button>
+                      </div>
+                    )}
+                </div>
+
+                {/* Indicador de recordatorios creados */}
+                {reminderSuccess && (
+                  <div className="flex items-center gap-2 mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                    <span className="material-icons !text-purple-600 !text-sm">
+                      notifications_active
+                    </span>
+                    <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                      Recordatorios creados (7, 1 y 0 días antes)
+                    </span>
+                  </div>
+                )}
+
+                {/* Indicador de integración con Todoist */}
+                {todoistSuccess && (
+                  <div className="flex items-center gap-2 mt-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                    <span className="material-icons !text-emerald-600 !text-sm">check_circle</span>
+                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                      Tarea creada en Todoist
+                    </span>
+                  </div>
+                )}
+
+                {isEffectivelyConfirmed && (
+                  <div className="animate-fade-in bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/50">
+                    <label className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                      <span className="material-icons !text-sm">event</span>
+                      Fecha Estimada Incio 2026
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 15/03/2026..."
+                      value={relaunchDate}
+                      onChange={(e) => setRelaunchDate(e.target.value)}
+                      className="w-full text-sm font-medium rounded-lg py-2 px-3 border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500/50 outline-none text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-2">
+                    <span className="material-icons !text-xs">edit_note</span>
+                    Bitácora de Gestión
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      className="w-full text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 pl-4 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none leading-relaxed"
+                      placeholder="Escribe aquí los avances..."
+                    />
+                    <div className="absolute left-0 top-3 bottom-3 w-1 bg-blue-400 rounded-r opacity-50"></div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={isUpdating || !hasChanges || isJustSaved}
+                    className={`flex items-center gap-2 py-2 px-6 rounded-lg text-sm font-bold shadow-sm transition-all transform active:scale-95
+                                  ${
+                                    isJustSaved
+                                      ? "bg-emerald-500 text-white cursor-default"
+                                      : hasChanges
+                                        ? "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
+                                        : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                                  }
+                             `}
+                  >
+                    {isUpdating ? (
+                      <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-icons !text-base">
+                        {isJustSaved ? "check" : "save"}
+                      </span>
+                    )}
+                    <span>{isJustSaved ? "Guardado" : "Guardar Cambios"}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 );

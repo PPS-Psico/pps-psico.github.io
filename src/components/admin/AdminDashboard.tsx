@@ -1,17 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-// TODO: Uncomment if needed:
-// import { useAuth } from '../../contexts/AuthContext';
-// import { useAdminPreferences } from '../../contexts/AdminPreferencesContext'; // Import context
+import { useAuth } from "../../contexts/AuthContext";
 import { useOperationalData } from "../../hooks/useOperationalData";
+import { useReminders } from "../../hooks/useReminders";
 import Toast from "../ui/Toast";
 import { AdminDashboardSkeleton } from "../Skeletons";
 import EmptyState from "../EmptyState";
 import ActivityFeed from "./ActivityFeed";
 import { differenceInDays } from "date-fns";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
-// Added formatDate for alerts
 import { formatDate } from "../../utils/formatters";
+import { StatusBadge, ActionButton, AdminCard } from "../ui/admin";
+import { adminTheme } from "../../theme/adminTheme";
 
 interface AdminDashboardProps {
   isTestingMode?: boolean;
@@ -95,8 +95,7 @@ const ManagementCard: React.FC<{
 };
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }) => {
-  // TODO: These are currently unused. Uncomment if needed:
-  // const { authenticatedUser } = useAuth();
+  const { authenticatedUser } = useAuth();
   // const { preferences } = useAdminPreferences(); // Access prefs
   const navigate = useNavigate();
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
@@ -108,6 +107,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
     isLoading: isOpLoading,
     error: opError,
   } = useOperationalData(isTestingMode);
+
+  // Hook de recordatorios
+  const {
+    todayReminders,
+    overdueReminders,
+    weekReminders,
+    counts,
+    isLoading: isRemindersLoading,
+    completeReminder,
+  } = useReminders(authenticatedUser?.id);
 
   if (isOpLoading) return <AdminDashboardSkeleton />;
 
@@ -225,6 +234,147 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
             </div>
           </div>
         </div>
+      )}
+
+      {/* --- SECCIÓN RECORDATORIOS --- */}
+      {(counts.today > 0 || counts.overdue > 0) && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+              <div className="h-6 w-1 bg-purple-600 rounded-full"></div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                Mis Recordatorios
+                {(counts.today > 0 || counts.overdue > 0) && (
+                  <StatusBadge status="info" size="sm">
+                    {counts.today + counts.overdue} pendientes
+                  </StatusBadge>
+                )}
+              </h3>
+            </div>
+            <ActionButton
+              variant="ghost"
+              size="sm"
+              icon="arrow_forward"
+              iconPosition="right"
+              onClick={() => navigate("/admin/recordatorios")}
+            >
+              Ver todos
+            </ActionButton>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-4">
+            {/* Recordatorios de hoy */}
+            {todayReminders.length > 0 && (
+              <AdminCard
+                variant="elevated"
+                className="border-purple-200 dark:border-purple-800"
+                header={
+                  <div className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
+                    <span className="material-icons text-purple-600">today</span>
+                    <h4 className="font-bold">Hoy ({todayReminders.length})</h4>
+                  </div>
+                }
+              >
+                <div className="space-y-2">
+                  {todayReminders.slice(0, 3).map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-200 dark:border-slate-600"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">
+                          {reminder.title}
+                        </p>
+                        {reminder.pps_name && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                            {reminder.pps_name}
+                          </p>
+                        )}
+                      </div>
+                      <ActionButton
+                        variant="ghost"
+                        size="sm"
+                        icon="check_circle"
+                        onClick={() => completeReminder(reminder.id)}
+                        className="text-emerald-600 hover:text-emerald-700"
+                      />
+                    </div>
+                  ))}
+                  {todayReminders.length > 3 && (
+                    <ActionButton
+                      variant="ghost"
+                      size="sm"
+                      icon="arrow_forward"
+                      iconPosition="right"
+                      onClick={() => navigate("/admin/recordatorios")}
+                      className="w-full text-purple-600 hover:text-purple-700"
+                    >
+                      Ver {todayReminders.length - 3} más
+                    </ActionButton>
+                  )}
+                </div>
+              </AdminCard>
+            )}
+
+            {/* Recordatorios vencidos */}
+            {overdueReminders.length > 0 && (
+              <AdminCard
+                variant="elevated"
+                className="border-rose-200 dark:border-rose-800"
+                header={
+                  <div className="flex items-center gap-2 text-rose-800 dark:text-rose-200">
+                    <span className="material-icons text-rose-600">warning</span>
+                    <h4 className="font-bold">Vencidos ({overdueReminders.length})</h4>
+                  </div>
+                }
+              >
+                <div className="space-y-2">
+                  {overdueReminders.slice(0, 3).map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-200 dark:border-slate-600"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">
+                          {reminder.title}
+                        </p>
+                        <StatusBadge status="error" size="sm" dot>
+                          Venció hace{" "}
+                          {Math.abs(
+                            Math.floor(
+                              (new Date().getTime() - new Date(reminder.due_date).getTime()) /
+                                (1000 * 60 * 60 * 24)
+                            )
+                          )}{" "}
+                          días
+                        </StatusBadge>
+                      </div>
+                      <ActionButton
+                        variant="ghost"
+                        size="sm"
+                        icon="check_circle"
+                        onClick={() => completeReminder(reminder.id)}
+                        className="text-emerald-600 hover:text-emerald-700"
+                      />
+                    </div>
+                  ))}
+                  {overdueReminders.length > 3 && (
+                    <ActionButton
+                      variant="ghost"
+                      size="sm"
+                      icon="arrow_forward"
+                      iconPosition="right"
+                      onClick={() => navigate("/admin/recordatorios")}
+                      className="w-full text-rose-600 hover:text-rose-700"
+                    >
+                      Ver {overdueReminders.length - 3} más
+                    </ActionButton>
+                  )}
+                </div>
+              </AdminCard>
+            )}
+          </div>
+        </section>
       )}
 
       {/* --- SECCIÓN GESTIÓN: GRID DE TARJETAS --- */}
