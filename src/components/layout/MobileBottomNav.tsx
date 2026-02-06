@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import type { TabId } from "../../types";
@@ -18,13 +18,6 @@ interface MobileBottomNavProps {
 const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const index = tabs.findIndex((tab) => tab.id === activeTabId);
-    setActiveIndex(index >= 0 ? index : 0);
-  }, [activeTabId, tabs]);
 
   const handleNavigate = useCallback(
     (tab: NavTab) => {
@@ -40,45 +33,42 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
-      {/* Glassmorphism Background */}
-      <div className="absolute inset-0 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl" />
+      {/* Premium Glass Background */}
+      <div className="absolute inset-0 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-t border-slate-200/50 dark:border-slate-800/50" />
 
-      {/* Top Border Line */}
-      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent" />
-
-      {/* Navigation Content */}
-      <div ref={containerRef} className="relative flex items-center justify-around h-[80px] px-2">
-        {tabs.map((tab, index) => {
+      {/* Navigation Container */}
+      <div className="relative flex items-center justify-around h-[76px] px-2">
+        {tabs.map((tab) => {
           const isActive = tab.id === activeTabId;
 
           return (
             <motion.button
               key={tab.id}
               onClick={() => handleNavigate(tab)}
-              className="relative flex flex-col items-center justify-center w-full h-full focus:outline-none"
-              whileTap={{ scale: 0.9 }}
+              className="relative flex flex-col items-center justify-center flex-1 h-full focus:outline-none"
+              whileTap={{ scale: 0.92 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
               <div className="relative flex flex-col items-center">
-                {/* Active Glow Effect */}
+                {/* Premium Active Glow - Blue for light mode, Indigo for dark mode */}
                 <AnimatePresence>
                   {isActive && (
                     <motion.div
-                      layoutId="activeGlow"
-                      className="absolute -inset-4 bg-blue-500/10 dark:bg-blue-400/10 rounded-full blur-xl"
-                      initial={{ opacity: 0, scale: 0.5 }}
+                      layoutId="glow"
+                      className="absolute -inset-3 bg-blue-500/20 dark:bg-indigo-500/20 rounded-full blur-xl"
+                      initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.5 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
                       transition={{ type: "spring", stiffness: 300, damping: 25 }}
                     />
                   )}
                 </AnimatePresence>
 
-                {/* Icon Container */}
+                {/* Icon Container with Background */}
                 <motion.div
-                  className="relative flex items-center justify-center w-12 h-12"
+                  className="relative flex items-center justify-center w-11 h-11 mb-0.5"
                   animate={{
-                    scale: isActive ? 1.1 : 1,
+                    scale: isActive ? 1.05 : 1,
                     y: isActive ? -2 : 0,
                   }}
                   transition={{
@@ -87,79 +77,49 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
                     damping: 30,
                   }}
                 >
-                  {/* Active Background Circle */}
+                  {/* Active Background Circle - Blue for light mode, Indigo for dark mode */}
                   <AnimatePresence>
                     {isActive && (
                       <motion.div
-                        layoutId="activeBackground"
-                        className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl"
-                        initial={{ opacity: 0, scale: 0.6 }}
+                        layoutId="circle"
+                        className="absolute inset-0 bg-blue-600 dark:bg-indigo-500 rounded-2xl"
+                        initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.6 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
                         transition={{ type: "spring", stiffness: 400, damping: 25 }}
                         style={{
-                          boxShadow: "0 8px 20px -4px rgba(59, 130, 246, 0.4)",
+                          boxShadow: isActive
+                            ? "0 4px 14px -2px rgba(37, 99, 235, 0.4)"
+                            : "0 4px 14px -2px rgba(168, 85, 247, 0.4)",
                         }}
                       />
                     )}
                   </AnimatePresence>
 
                   {/* Icon */}
-                  <motion.span
-                    className={`material-icons text-2xl relative z-10 ${
+                  <span
+                    className={`material-icons text-2xl relative z-10 transition-colors duration-200 ${
                       isActive ? "text-white" : "text-slate-400 dark:text-slate-500"
                     }`}
-                    animate={{
-                      rotate: isActive ? [0, -10, 10, 0] : 0,
-                    }}
-                    transition={{
-                      rotate: {
-                        duration: 0.5,
-                        ease: "easeInOut",
-                        times: [0, 0.2, 0.4, 0.5],
-                      },
-                    }}
                   >
                     {tab.icon}
-                  </motion.span>
+                  </span>
                 </motion.div>
 
-                {/* Label */}
-                <motion.span
-                  className={`text-[11px] font-semibold mt-0.5 ${
+                {/* Label - Blue for light mode, Indigo for dark mode */}
+                <span
+                  className={`text-[10px] font-semibold transition-all duration-200 ${
                     isActive
-                      ? "text-blue-600 dark:text-blue-400 font-bold"
-                      : "text-slate-400 dark:text-slate-500 font-medium"
+                      ? "text-blue-600 dark:text-indigo-400"
+                      : "text-slate-400 dark:text-slate-500"
                   }`}
-                  animate={{
-                    opacity: isActive ? 1 : 0.7,
-                    y: isActive ? 0 : 2,
-                  }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 >
                   {tab.label}
-                </motion.span>
+                </span>
               </div>
             </motion.button>
           );
         })}
-      </div>
-
-      {/* Dot Indicator Line */}
-      <div className="absolute bottom-3 left-0 right-0 flex justify-center">
-        <motion.div
-          className="w-1 h-1 rounded-full bg-blue-500"
-          animate={{
-            x: (activeIndex - 1.5) * 80,
-            scale: 1,
-            opacity: 1,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 30,
-          }}
-        />
       </div>
     </div>
   );
