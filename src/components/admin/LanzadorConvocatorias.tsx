@@ -14,7 +14,6 @@ import {
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  // FIELD_INFORME_LANZAMIENTOS removed
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
@@ -32,9 +31,9 @@ import {
   FIELD_TUTOR_INSTITUCIONES,
   FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
   FIELD_REQ_CV_LANZAMIENTOS,
+  FIELD_CODIGO_CAMPUS_INSTITUCIONES,
   FIELD_CODIGO_CAMPUS_LANZAMIENTOS,
   FIELD_DIRECCION_LANZAMIENTOS,
-  FIELD_CODIGO_CAMPUS_INSTITUCIONES,
   FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
   FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS,
@@ -43,6 +42,10 @@ import {
   FIELD_INSTITUCION_LINK_PRACTICAS,
 } from "../../constants";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "../../constants/configConstants";
+// TODO: Re-enable when launcher components are created
+// import { LaunchForm } from "../launcher/LaunchForm";
+// import { LaunchHistory } from "../launcher/LaunchHistory";
+// import { LaunchInscriptosModal } from "../launcher/LaunchInscriptosModal";
 import Card from "../ui/Card";
 import Toast from "../ui/Toast";
 import { ALL_ORIENTACIONES, Orientacion } from "../../types";
@@ -58,6 +61,7 @@ import Select from "../ui/Select";
 import Button from "../ui/Button";
 import Checkbox from "../ui/Checkbox";
 import { notificationService } from "../../services/notificationService";
+import { useNavigate } from "react-router-dom";
 
 const mockInstitutions = [
   { id: "recInstMock1", [FIELD_NOMBRE_INSTITUCIONES]: "Hospital de Juguete" },
@@ -355,6 +359,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
   isTestingMode = false,
   forcedTab,
 }) => {
+  const navigate = useNavigate();
   const [internalTab, setInternalTab] = useState("new");
   const activeTab = forcedTab || internalTab;
 
@@ -639,10 +644,11 @@ Responde SOLO con el JSON válido.
 
   // UI States
   const [isNewInstitutionModalOpen, setIsNewInstitutionModalOpen] = useState(false);
-  const [editingLaunch, setEditingLaunch] = useState<AirtableRecord<LanzamientoPPSFields> | null>(
-    null
-  );
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const [editingLaunch, setEditingLaunch] = useState<LanzamientoPPS | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [copiedLaunchId, setCopiedLaunchId] = useState<string | null>(null);
 
   const { data: institutions = [] } = useQuery<AirtableRecord<InstitucionFields>[]>({
     queryKey: ["allInstitutionsForLauncher", isTestingMode],
@@ -1094,6 +1100,24 @@ Responde SOLO con el JSON válido.
     updateStatusMutation.mutate({ id, updates });
   };
 
+  const handleEditLaunch = (launch: LanzamientoPPS) => {
+    setEditingLaunch(launch);
+  };
+
+  const handleDeleteLaunch = (id: string) => {
+    if (window.confirm("¿Estás seguro de eliminar este lanzamiento?")) {
+      deleteLaunchMutation.mutate(id);
+    }
+  };
+
+  const handleCopyWhatsApp = (message: string) => {
+    navigator.clipboard.writeText(message);
+    setCopiedLaunchId(editingLaunch?.id || null);
+    setTimeout(() => setCopiedLaunchId(null), 2000);
+  };
+
+  const selectedLaunch = editingLaunch;
+
   const LaunchCountdown: React.FC<{ targetDate: string }> = ({ targetDate }) => {
     const [timeLeft, setTimeLeft] = useState<string>("");
 
@@ -1178,6 +1202,13 @@ Responde SOLO con el JSON válido.
               title="Editar"
             >
               <span className="material-icons !text-xl">edit</span>
+            </button>
+            <button
+              onClick={() => navigate(`/admin/lanzador?tab=seleccionador&launchId=${launch.id}`)}
+              className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+              title="Ver Inscriptos"
+            >
+              <span className="material-icons !text-xl">group</span>
             </button>
             {isOculta ? (
               <button
@@ -1980,8 +2011,18 @@ Responde SOLO con el JSON válido.
         </form>
       </div>
 
-      {/* HISTORY TAB */}
+      {/* HISTORY TAB - TODO: Re-enable when LaunchHistory component is available */}
       <div className={activeTab === "history" ? "block" : "hidden"}>
+        {/* <LaunchHistory
+          launches={visibleHistory}
+          isLoading={isFetching}
+          onEdit={handleEditLaunch}
+          onStatusChange={handleStatusAction}
+          onDelete={handleDeleteLaunch}
+          onCopyWhatsApp={handleCopyWhatsApp}
+          isCopied={copiedLaunchId === selectedLaunch?.id}
+          isTestingMode={isTestingMode}
+        /> */}
         <div className="mt-8 space-y-8">
           {scheduledHistory.length > 0 && (
             <div className="animate-fade-in">
@@ -2041,6 +2082,8 @@ Responde SOLO con el JSON válido.
           isSaving={updateDetailsMutation.isPending}
         />
       )}
+
+      {/* Modal de Gestión de Inscriptos */}
     </Card>
   );
 };

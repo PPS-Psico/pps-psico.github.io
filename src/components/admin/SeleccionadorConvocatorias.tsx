@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { useSeleccionadorLogic } from "../../hooks/useSeleccionadorLogic";
+import { supabase } from "../../lib/supabaseClient";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
 } from "../../constants";
 import {
   normalizeStringForComparison,
@@ -123,6 +127,42 @@ const StudentRow: React.FC<{
             </a>
           )}
 
+          {/* BOTÓN WHATSAPP - Contacto de emergencia */}
+          {(() => {
+            const telefono = student.telefono || "";
+            const numeroLimpio = telefono.replace(/\D/g, "");
+            const esValido = numeroLimpio.length >= 10;
+
+            if (!telefono) return null;
+
+            if (!esValido) {
+              return (
+                <span
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800 whitespace-nowrap cursor-help"
+                  title={`Número inválido: ${telefono}`}
+                >
+                  <span className="material-icons !text-[10px] mr-0.5">error</span>
+                  N° mal
+                </span>
+              );
+            }
+
+            return (
+              <a
+                href={`https://wa.me/${numeroLimpio}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800 whitespace-nowrap hover:bg-green-100 transition-colors"
+                title={`WhatsApp: ${telefono}`}
+              >
+                <svg className="w-3 h-3 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                WhatsApp
+              </a>
+            );
+          })()}
+
           {student.penalizacionAcumulada > 0 && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800 whitespace-nowrap">
               Penalización Activa
@@ -161,10 +201,10 @@ const StudentRow: React.FC<{
             disabled={isUpdating}
             className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm ${
               isSelected
-                ? "bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-100 dark:ring-emerald-900"
+                ? "bg-emerald-600 text-white hover:bg-rose-600 hover:ring-rose-100 ring-2 ring-emerald-100 dark:ring-emerald-900"
                 : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-400 hover:text-blue-600 hover:border-blue-300 dark:hover:border-blue-500 dark:hover:text-blue-400"
             }`}
-            title={isSelected ? "Deseleccionar" : "Seleccionar Alumno"}
+            title={isSelected ? "Dar de Baja (con penalización)" : "Seleccionar Alumno"}
           >
             {isUpdating ? (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -210,6 +250,62 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   } = useSeleccionadorLogic(isTestingMode, onNavigateToInsurance, preSelectedLaunchId);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [studentToBaja, setStudentToBaja] = useState<EnrichedStudent | null>(null);
+  const [showPenalizacionModal, setShowPenalizacionModal] = useState(false);
+  const [penaltyType, setPenaltyType] = useState("Baja Anticipada");
+  const [penaltyNotes, setPenaltyNotes] = useState("");
+
+  // Handler mejorado para toggle con penalización
+  const handleToggleWithPenalty = (student: EnrichedStudent) => {
+    const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
+
+    if (isCurrentlySelected) {
+      // Si está seleccionado, guardamos el estudiante y abrimos modal de penalización
+      setStudentToBaja(student);
+      setShowPenalizacionModal(true);
+    } else {
+      // Si no está seleccionado, hacemos toggle normal
+      handleToggle(student);
+    }
+  };
+
+  const handleConfirmBajaWithPenalty = async () => {
+    if (!studentToBaja || !selectedLanzamiento) return;
+
+    try {
+      // 1. Dar de baja (cambiar estado)
+      await handleToggle(studentToBaja);
+
+      // 2. Aplicar penalización
+      const penaltyData = {
+        estudiante_id: studentToBaja.studentId,
+        tipo_incumplimiento: penaltyType,
+        fecha_incidente: new Date().toISOString().split("T")[0],
+        notas: penaltyNotes,
+        puntaje_penalizacion: getPenaltyScore(penaltyType),
+        convocatoria_afectada: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
+      };
+
+      await supabase.from("penalizaciones").insert([penaltyData]);
+
+      setToastInfo({ message: "Estudiante dado de baja y penalizado", type: "success" });
+      setShowPenalizacionModal(false);
+      setStudentToBaja(null);
+      setPenaltyNotes("");
+    } catch (error) {
+      setToastInfo({ message: "Error al procesar la baja", type: "error" });
+    }
+  };
+
+  const getPenaltyScore = (type: string) => {
+    const scores: Record<string, number> = {
+      "Baja Anticipada": 30,
+      "Baja sobre la Fecha / Ausencia en Inicio": 50,
+      "Abandono durante la PPS": 70,
+      "Falta sin Aviso": 40,
+    };
+    return scores[type] || 30;
+  };
 
   if (isLoadingLaunches) return <Loader />;
 
@@ -284,18 +380,44 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
         />
       )}
 
-      <ConfirmModal
-        isOpen={isConfirmOpen}
-        title="¿Cerrar Mesa de Inscripción?"
-        message={`Se enviarán correos automáticos de confirmación a los ${selectedCandidates.length} alumnos seleccionados. ¿Deseas proceder con el cierre definitivo de esta convocatoria?`}
-        onConfirm={() => {
-          handleConfirmAndCloseTable();
-          setIsConfirmOpen(false);
-        }}
-        onClose={() => setIsConfirmOpen(false)}
-        confirmText="Confirmar Cierre"
-        type="info"
-      />
+      {selectedLanzamiento && (
+        <ConfirmModal
+          isOpen={isConfirmOpen}
+          title={
+            normalizeStringForComparison(
+              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
+            ) === "cerrado"
+              ? "¿Guardar Cambios?"
+              : "¿Cerrar Mesa de Inscripción?"
+          }
+          message={
+            normalizeStringForComparison(
+              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
+            ) === "cerrado"
+              ? `Se guardarán los cambios realizados (${selectedCandidates.length} estudiantes seleccionados). No se enviarán correos automáticos porque la convocatoria ya está cerrada. ¿Deseas continuar?`
+              : `Se enviarán correos automáticos de confirmación a los ${selectedCandidates.length} alumnos seleccionados. ¿Deseas proceder con el cierre definitivo de esta convocatoria?`
+          }
+          onConfirm={() => {
+            handleConfirmAndCloseTable();
+            setIsConfirmOpen(false);
+          }}
+          onClose={() => setIsConfirmOpen(false)}
+          confirmText={
+            normalizeStringForComparison(
+              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
+            ) === "cerrado"
+              ? "Guardar Cambios"
+              : "Confirmar Cierre"
+          }
+          type={
+            normalizeStringForComparison(
+              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
+            ) === "cerrado"
+              ? "warning"
+              : "info"
+          }
+        />
+      )}
 
       <div className="bg-white dark:bg-[#0F172A] p-4 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
@@ -316,37 +438,20 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               </p>
             </div>
           </div>
-          {viewMode === "selection" ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode("review")}
-                className="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-md hover:bg-blue-700 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
-              >
-                Revisar y Cerrar
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode("selection")}
-                className="text-slate-600 dark:text-slate-300 font-bold px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                Volver
-              </button>
-              <button
-                onClick={() => setIsConfirmOpen(true)}
-                disabled={isClosingTable}
-                className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-colors disabled:opacity-70 dark:bg-emerald-700 dark:hover:bg-emerald-600"
-              >
-                {isClosingTable ? (
-                  <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <span className="material-icons !text-base">lock</span>
-                )}
-                {isClosingTable ? "Cerrando..." : "Confirmar Cierre"}
-              </button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsConfirmOpen(true)}
+              disabled={isClosingTable}
+              className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-colors disabled:opacity-70 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+            >
+              {isClosingTable ? (
+                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+              ) : (
+                <span className="material-icons !text-base">lock</span>
+              )}
+              {isClosingTable ? "Guardando..." : "Guardar Cambios"}
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
@@ -385,23 +490,90 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
         <Loader />
       ) : (
         <div className="space-y-3">
-          {(viewMode === "selection" ? candidates : selectedCandidates).map((student) => (
+          {/* Mostrar SIEMPRE todos los candidatos, no solo seleccionados */}
+          {candidates.map((student) => (
             <StudentRow
               key={student.enrollmentId}
               student={student}
-              onToggleSelection={handleToggle}
+              onToggleSelection={handleToggleWithPenalty}
               onUpdateSchedule={handleUpdateSchedule}
               isUpdating={updatingId === student.enrollmentId}
-              isReviewMode={viewMode === "review"}
+              isReviewMode={false}
             />
           ))}
-          {viewMode === "review" && selectedCandidates.length === 0 && (
+          {candidates.length === 0 && (
             <EmptyState
               icon="group_off"
-              title="Sin Seleccionados"
-              message="No has seleccionado ningún estudiante para esta mesa."
+              title="Sin Inscriptos"
+              message="No hay estudiantes inscriptos en esta convocatoria."
             />
           )}
+        </div>
+      )}
+
+      {/* Modal de Penalización */}
+      {showPenalizacionModal && studentToBaja && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">
+              Dar de Baja - {studentToBaja.nombre}
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Selecciona el tipo de baja y agrega notas si es necesario.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Tipo de Baja
+                </label>
+                <select
+                  value={penaltyType}
+                  onChange={(e) => setPenaltyType(e.target.value)}
+                  className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 text-sm"
+                >
+                  <option value="Baja Anticipada">Baja Anticipada (30 pts)</option>
+                  <option value="Baja sobre la Fecha / Ausencia en Inicio">
+                    Baja sobre la Fecha (50 pts)
+                  </option>
+                  <option value="Abandono durante la PPS">Abandono (70 pts)</option>
+                  <option value="Falta sin Aviso">Falta sin Aviso (40 pts)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Notas
+                </label>
+                <textarea
+                  value={penaltyNotes}
+                  onChange={(e) => setPenaltyNotes(e.target.value)}
+                  placeholder="Describe el motivo de la baja..."
+                  rows={3}
+                  className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 text-sm resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowPenalizacionModal(false);
+                  setStudentToBaja(null);
+                  setPenaltyNotes("");
+                }}
+                className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmBajaWithPenalty}
+                className="px-6 py-2.5 rounded-xl font-bold text-sm bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+              >
+                Confirmar Baja
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

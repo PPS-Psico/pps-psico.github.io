@@ -4,29 +4,45 @@ import { db } from "../lib/db";
 import { mockDb } from "../services/mockDb";
 import { toggleStudentSelection } from "../services/dataService";
 import {
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
-  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
+  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_LEGAJO_CONVOCATORIAS,
+  FIELD_NOMBRE_PPS_CONVOCATORIAS,
+  FIELD_FECHA_INICIO_CONVOCATORIAS,
+  FIELD_FECHA_FIN_CONVOCATORIAS,
+  FIELD_DIRECCION_CONVOCATORIAS,
+  FIELD_ORIENTACION_CONVOCATORIAS,
+  FIELD_HORAS_ACREDITADAS_CONVOCATORIAS,
+  FIELD_CUPOS_DISPONIBLES_CONVOCATORIAS,
   FIELD_TERMINO_CURSAR_CONVOCATORIAS,
   FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS,
   FIELD_FINALES_ADEUDA_CONVOCATORIAS,
   FIELD_OTRA_SITUACION_CONVOCATORIAS,
   FIELD_HORARIO_FORMULA_CONVOCATORIAS,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
-  FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_HORAS_PRACTICAS,
-  FIELD_PENALIZACION_ESTUDIANTE_LINK,
-  FIELD_PENALIZACION_PUNTAJE,
   FIELD_TRABAJA_CONVOCATORIAS,
-  FIELD_TRABAJA_ESTUDIANTES,
-  FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES,
   FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS,
   FIELD_CV_CONVOCATORIAS,
   FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_CORREO_ESTUDIANTES,
+  FIELD_TELEFONO_ESTUDIANTES,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+  FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_HORAS_PRACTICAS,
+  FIELD_PENALIZACION_PUNTAJE,
+  FIELD_TRABAJA_ESTUDIANTES,
+  FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES,
+  TABLE_NAME_CONVOCATORIAS,
+  TABLE_NAME_ESTUDIANTES,
+  TABLE_NAME_PRACTICAS,
+  TABLE_NAME_LANZAMIENTOS_PPS,
+  TABLE_NAME_PENALIZACIONES,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
+  FIELD_PENALIZACION_ESTUDIANTE_LINK,
 } from "../constants";
 import { normalizeStringForComparison, cleanDbValue } from "../utils/formatters";
 import type { LanzamientoPPS, AirtableRecord, EnrichedStudent, ConvocatoriaFields } from "../types";
@@ -85,7 +101,7 @@ export const useSeleccionadorLogic = (
   const queryClient = useQueryClient();
 
   const { data: openLaunches = [], isLoading: isLoadingLaunches } = useQuery({
-    queryKey: ["openLaunchesForSelector", isTestingMode],
+    queryKey: ["openLaunchesForSelector", isTestingMode, initialLaunchId],
     queryFn: async () => {
       let records: any[] = [];
       if (isTestingMode) {
@@ -103,6 +119,16 @@ export const useSeleccionadorLogic = (
         })
         .filter((l) => {
           const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
+          // Si hay un initialLaunchId (viene del historial), mostrar todas las convocatorias
+          // Si no, solo mostrar las abiertas
+          if (initialLaunchId) {
+            return (
+              status === "abierta" ||
+              status === "abierto" ||
+              status === "cerrado" ||
+              status === "cerrada"
+            );
+          }
           return status === "abierta" || status === "abierto";
         });
     },
@@ -118,17 +144,15 @@ export const useSeleccionadorLogic = (
   }, [initialLaunchId, openLaunches, selectedLanzamiento]);
 
   // Auto-select launch when navigating from AdminDashboard with priorityLaunchId
+  // NOTA: Ya no cambiamos automáticamente a modo review para permitir gestión completa
   useEffect(() => {
     if (priorityLaunchId && openLaunches.length > 0 && !selectedLanzamiento) {
       const target = openLaunches.find((l) => l.id === priorityLaunchId);
       if (target) {
         setSelectedLanzamiento(target);
-        // Automatically switch to review mode to show enrolled students
-        setViewMode("review");
-        console.log(
-          "[useSeleccionadorLogic] Auto-selected launch and switched to review mode:",
-          target.id
-        );
+        // Mantener en modo selection para ver todos los inscriptos
+        setViewMode("selection");
+        console.log("[useSeleccionadorLogic] Auto-selected launch for full management:", target.id);
       }
     }
   }, [priorityLaunchId, openLaunches, selectedLanzamiento]);
@@ -237,6 +261,7 @@ export const useSeleccionadorLogic = (
             nombre: studentDetails[FIELD_NOMBRE_ESTUDIANTES] || "Desconocido",
             legajo: String(studentDetails[FIELD_LEGAJO_ESTUDIANTES] || ""),
             correo: studentDetails[FIELD_CORREO_ESTUDIANTES] || "",
+            telefono: studentDetails[FIELD_TELEFONO_ESTUDIANTES] || "",
             status: enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] || "Inscripto",
             terminoCursar: enrollment[FIELD_TERMINO_CURSAR_CONVOCATORIAS] === "Sí",
             cursandoElectivas: enrollment[FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS] === "Sí",
@@ -252,7 +277,7 @@ export const useSeleccionadorLogic = (
             cvUrl: cvUrl,
           };
         })
-        .filter((item): item is EnrichedStudent => item !== null);
+        .filter((item): item is NonNullable<typeof item> => item !== null) as EnrichedStudent[];
 
       return enrichedList.sort((a, b) => b.puntajeTotal - a.puntajeTotal);
     },
@@ -370,43 +395,56 @@ export const useSeleccionadorLogic = (
     if (!selectedLanzamiento) return;
     setIsClosingTable(true);
     try {
-      if (!isTestingMode) {
-        // Email notification loop
-        const emailPromises = selectedCandidates.map(async (student) => {
-          const encuentroInicial = selectedLanzamiento[FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS];
-          let encuentroText = "";
-          if (encuentroInicial) {
-            const dateObj = new Date(encuentroInicial as string);
-            const fechaStr = dateObj.toLocaleDateString("es-AR", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            });
-            const hora = dateObj.getHours().toString().padStart(2, "0");
-            const minutos = dateObj.getMinutes().toString().padStart(2, "0");
-            encuentroText = `${fechaStr} a las ${hora}:${minutos} hs`;
-          }
-          return sendSmartEmail("seleccion", {
-            studentName: student.nombre,
-            studentEmail: student.correo,
-            ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
-            schedule: (student.horarioSeleccionado || "A confirmar") as string,
-            encuentroInicial: encuentroText || undefined,
-          });
-        });
-        await Promise.all(emailPromises);
+      // Verificar si la convocatoria ya está cerrada (modo gestión de bajas desde historial)
+      const isAlreadyClosed =
+        normalizeStringForComparison(
+          selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
+        ) === "cerrado";
 
-        // Close Launch
-        await db.lanzamientos.update(selectedLanzamiento.id, {
-          [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
-        });
+      if (!isTestingMode) {
+        // Solo enviar correos si la convocatoria NO estaba cerrada previamente
+        if (!isAlreadyClosed) {
+          // Email notification loop
+          const emailPromises = selectedCandidates.map(async (student) => {
+            const encuentroInicial =
+              selectedLanzamiento[FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS];
+            let encuentroText = "";
+            if (encuentroInicial) {
+              const dateObj = new Date(encuentroInicial as string);
+              const fechaStr = dateObj.toLocaleDateString("es-AR", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+              const hora = dateObj.getHours().toString().padStart(2, "0");
+              const minutos = dateObj.getMinutes().toString().padStart(2, "0");
+              encuentroText = `${fechaStr} a las ${hora}:${minutos} hs`;
+            }
+            return sendSmartEmail("seleccion", {
+              studentName: student.nombre,
+              studentEmail: student.correo,
+              ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
+              schedule: (student.horarioSeleccionado || "A confirmar") as string,
+              encuentroInicial: encuentroText || undefined,
+            });
+          });
+          await Promise.all(emailPromises);
+
+          // Close Launch solo si no estaba cerrada
+          await db.lanzamientos.update(selectedLanzamiento.id, {
+            [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
+          });
+        }
       } else {
         await mockDb.update("lanzamientos_pps", selectedLanzamiento.id, {
           [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
         });
       }
-      setToastInfo({ message: `Mesa cerrada.`, type: "success" });
+      setToastInfo({
+        message: isAlreadyClosed ? `Cambios guardados.` : `Mesa cerrada.`,
+        type: "success",
+      });
       if (onNavigateToInsurance)
         setTimeout(() => onNavigateToInsurance(selectedLanzamiento.id), 1500);
       else {
@@ -420,6 +458,56 @@ export const useSeleccionadorLogic = (
       setIsClosingTable(false);
     }
   };
+
+  // Query para estudiantes disponibles (no inscriptos)
+  const { data: availableStudents = [], isLoading: isLoadingAvailable } = useQuery({
+    queryKey: ["availableStudents", selectedLanzamiento?.id, isTestingMode],
+    queryFn: async () => {
+      if (!selectedLanzamiento) return [];
+
+      // Traer todos los estudiantes
+      let allStudents: any[] = [];
+      if (isTestingMode) {
+        allStudents = await mockDb.getAll("estudiantes");
+      } else {
+        allStudents = await db.estudiantes.getAll();
+      }
+
+      // Filtrar los que ya están inscriptos
+      const enrolledIds = new Set(candidates.map((c) => c.studentId));
+      return allStudents.filter((s) => !enrolledIds.has(s.id));
+    },
+    enabled: !!selectedLanzamiento && candidates.length > 0,
+  });
+
+  // Mutation para inscribir nuevo estudiante
+  const enrollNewStudentMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      if (!selectedLanzamiento) return;
+
+      if (isTestingMode) {
+        await mockDb.create("convocatorias", {
+          [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: selectedLanzamiento.id,
+          [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentId,
+          [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "seleccionado",
+        });
+      } else {
+        await db.convocatorias.create({
+          [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: selectedLanzamiento.id,
+          [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentId,
+          [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "seleccionado",
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: candidatesQueryKey });
+      queryClient.invalidateQueries({ queryKey: ["availableStudents"] });
+      setToastInfo({ message: "Estudiante inscripto correctamente", type: "success" });
+    },
+    onError: () => {
+      setToastInfo({ message: "Error al inscribir estudiante", type: "error" });
+    },
+  });
 
   return {
     selectedLanzamiento,
@@ -439,5 +527,8 @@ export const useSeleccionadorLogic = (
     handleUpdateSchedule,
     handleConfirmAndCloseTable,
     closeLaunchMutation,
+    availableStudents,
+    isLoadingAvailable,
+    enrollNewStudent: enrollNewStudentMutation.mutate,
   };
 };

@@ -104,6 +104,7 @@ export interface EnrichedStudent {
   nombre: string;
   legajo: string;
   correo: string;
+  telefono?: string; // Campo opcional para contacto WhatsApp
   status: string;
   terminoCursar: boolean;
   cursandoElectivas: boolean;

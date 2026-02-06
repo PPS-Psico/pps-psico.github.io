@@ -33,6 +33,12 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
     if (tab && tabs.some((t) => t.id === tab)) {
       setActiveTabId(tab);
     }
+
+    // Update preSelectedLanzamientoId when it changes in URL
+    const urlLaunchId = searchParams.get("launchId");
+    if (urlLaunchId) {
+      setPreSelectedLanzamientoId(urlLaunchId);
+    }
   }, [searchParams]);
 
   const handleNavigateToInsurance = (lanzamientoId: string) => {
