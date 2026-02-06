@@ -84,26 +84,36 @@ const Tabs: React.FC<TabsProps> = ({
       {/* --- HEADER: NAVIGATION BAR --- */}
       <div className="flex-shrink-0 px-4 sm:px-8 py-6 border-b border-slate-100 dark:border-slate-800/50 bg-white/80 dark:bg-[#0F172A]/90 backdrop-blur-md sticky top-0 z-20">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Mobile Dropdown (Visible only on small screens) */}
-          <div className="md:hidden relative w-full">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500">
-              <span className="material-icons !text-xl">
-                {tabs.find((t) => t.id === activeTabId)?.icon || "menu"}
-              </span>
-            </div>
-            <select
-              value={activeTabId}
-              onChange={(e) => onTabChange(e.target.value)}
-              className="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white py-3 pl-10 pr-10 rounded-2xl font-bold shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-            >
-              {tabs.map((tab) => (
-                <option key={tab.id} value={tab.id}>
-                  {tab.label}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500">
-              <span className="material-icons !text-xl">expand_more</span>
+          {/* Mobile Segmented Control (Premium Design) */}
+          <div className="md:hidden w-full">
+            <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner">
+              {tabs.map((tab) => {
+                const isActive = activeTabId === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`relative flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
+                      isActive
+                        ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-lg shadow-slate-200/50 dark:shadow-black/20"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    }`}
+                  >
+                    {tab.icon && (
+                      <span
+                        className={`material-icons !text-lg transition-colors ${isActive ? "text-blue-600 dark:text-blue-400" : ""}`}
+                      >
+                        {tab.icon}
+                      </span>
+                    )}
+                    <span className="relative z-10">{tab.label}</span>
+                    {/* Active indicator line */}
+                    {isActive && (
+                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
