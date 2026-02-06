@@ -715,6 +715,41 @@ Responde SOLO con el JSON válido.
     enabled: true,
   });
 
+  // Efecto automático para archivar convocatorias que ya comenzaron
+  useEffect(() => {
+    if (!launchHistory || launchHistory.length === 0 || isTestingMode) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const convocatoriasToArchive = launchHistory.filter((launch) => {
+      const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS];
+      const estado = normalizeStringForComparison(launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
+
+      if (!fechaInicio || estado === "oculto") return false;
+
+      const startDate = new Date(fechaInicio);
+      startDate.setHours(0, 0, 0, 0);
+
+      return startDate <= today;
+    });
+
+    if (convocatoriasToArchive.length > 0) {
+      console.log(
+        `[Auto-Archive] Archivando ${convocatoriasToArchive.length} convocatorias que ya comenzaron...`
+      );
+
+      convocatoriasToArchive.forEach((launch) => {
+        updateStatusMutation.mutate({
+          id: launch.id,
+          updates: {
+            [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Oculto",
+          },
+        });
+      });
+    }
+  }, [launchHistory, isTestingMode]);
+
   // SORTING AND GROUPING LOGIC FOR HISTORY TAB
   const { visibleHistory, hiddenHistory, scheduledHistory } = useMemo(() => {
     const sorted = [...launchHistory].sort((a, b) => {

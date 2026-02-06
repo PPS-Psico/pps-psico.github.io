@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { z } from "zod";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
@@ -68,7 +69,13 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
     if (isOpen) {
       setFormData(initialData);
       setErrors({});
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
     }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
   }, [isOpen]);
 
   const handleChange = (
@@ -122,18 +129,24 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
 
   if (!isOpen) return null;
 
-  return (
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
-      onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 p-4"
+      onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-[95vw] max-h-[90dvh] sm:w-full sm:max-w-3xl sm:max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 transition-transform duration-300 animate-scale-in"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden"
       >
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-start">
+        <div className="flex-shrink-0 p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-start">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
               <span className="material-icons !text-2xl">add_business</span>
@@ -148,7 +161,11 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <span className="material-icons !text-2xl">close</span>
@@ -158,7 +175,7 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
         {/* Form Content */}
         <form
           onSubmit={handleSubmit}
-          className="flex-grow overflow-y-auto p-6 space-y-6 custom-scrollbar bg-white dark:bg-slate-900"
+          className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-white dark:bg-slate-900"
         >
           {/* Section 1: Institution */}
           <div className="space-y-4">
@@ -354,12 +371,24 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
         </form>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-3 safe-area-bottom">
-          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+        <div className="flex-shrink-0 p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-3">
+          <Button
+            variant="secondary"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmit(e);
+            }}
             isLoading={isSubmitting}
             disabled={isSubmitting}
             icon="send"
@@ -368,7 +397,8 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -17,7 +17,7 @@ const baseClasses =
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-blue-500/30 dark:hover:shadow-blue-400/20 hover:-translate-y-1 focus-visible:ring-blue-500 dark:focus-visible:ring-offset-slate-900 disabled:from-slate-400 disabled:to-slate-400 has-shine-effect hover:shine-effect",
+    "relative overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-blue-500/30 dark:hover:shadow-blue-400/20 hover:-translate-y-1 focus-visible:ring-blue-500 dark:focus-visible:ring-offset-slate-900 disabled:from-slate-400 disabled:to-slate-400",
   secondary:
     "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:-translate-y-px active:bg-slate-100 focus-visible:ring-blue-500 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-600 dark:active:bg-slate-500 dark:focus-visible:ring-offset-slate-900 disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500",
   danger:

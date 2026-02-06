@@ -162,22 +162,11 @@ const SolicitudesView: React.FC = () => {
         existingInstitutions={existingInstitutions}
       />
 
-      {isFinalizationModalOpen && (
-        <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
-            <button
-              onClick={() => setIsFinalizationModalOpen(false)}
-              className="absolute top-4 right-4 z-10 p-2 bg-white/80 dark:bg-slate-700/80 rounded-full hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-50 dark:text-slate-300 transition-colors shadow-sm backdrop-blur-sm"
-            >
-              <span className="material-icons">close</span>
-            </button>
-            <FinalizacionForm
-              studentAirtableId={getStudentId()}
-              onClose={() => setIsFinalizationModalOpen(false)}
-            />
-          </div>
-        </div>
-      )}
+      <FinalizacionForm
+        isOpen={isFinalizationModalOpen}
+        studentAirtableId={getStudentId()}
+        onClose={() => setIsFinalizationModalOpen(false)}
+      />
     </>
   );
 };

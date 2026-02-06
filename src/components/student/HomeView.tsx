@@ -25,6 +25,7 @@ import {
   FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
 } from "../../constants";
 import { normalizeStringForComparison, formatDate } from "../../utils/formatters";
 import ConvocatoriaCardPremium from "../ConvocatoriaCardPremium";
@@ -106,14 +107,36 @@ const HomeView: React.FC<HomeViewProps> = ({
     onError: (error) => showModal("Error", error.message),
   });
 
+  // Obtener fecha actual (sin hora para comparación precisa)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Filtrar lanzamientos que ya comenzaron (fecha_inicio <= hoy)
+  const startedLanzamientoIds = new Set(
+    lanzamientos
+      .filter((l) => {
+        const fechaInicio = l[FIELD_FECHA_INICIO_LANZAMIENTOS];
+        if (!fechaInicio) return false;
+        const startDate = new Date(fechaInicio);
+        startDate.setHours(0, 0, 0, 0);
+        return startDate <= today;
+      })
+      .map((l) => l.id)
+  );
+
+  // Las convocatorias que ya comenzaron se mueven a cerradas/finalizadas automáticamente
   const openLanzamientos = lanzamientos.filter((l) => {
     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-    return status === "abierta" || status === "abierto";
+    const isStarted = startedLanzamientoIds.has(l.id);
+    // Solo mostrar en abiertas si NO ha comenzado y el estado es abierto
+    return !isStarted && (status === "abierta" || status === "abierto");
   });
 
   const closedLanzamientos = lanzamientos.filter((l) => {
     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-    return status === "cerrada" || status === "cerrado";
+    const isStarted = startedLanzamientoIds.has(l.id);
+    // Mostrar en cerradas si ya comenzó O si el estado es cerrado
+    return isStarted || status === "cerrada" || status === "cerrado";
   });
 
   const renderCard = (lanzamientoWithSuffix: LanzamientoPPS & { key_suffix?: string }) => {
