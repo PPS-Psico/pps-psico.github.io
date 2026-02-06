@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import type { TabId } from "../../types";
 
@@ -17,164 +18,108 @@ interface MobileBottomNavProps {
 const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isPressed, setIsPressed] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const index = tabs.findIndex((tab) => tab.id === activeTabId);
-    setActiveIndex(index >= 0 ? index : 0);
-  }, [activeTabId, tabs]);
-
-  useEffect(() => {
-    // Small delay for entrance animation
     const timer = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
-  const handlePress = useCallback((tabId: string) => {
-    setIsPressed(tabId);
-    setTimeout(() => setIsPressed(null), 150);
-  }, []);
-
   const handleNavigate = useCallback(
-    (tab: NavTab, index: number) => {
-      handlePress(tab.id);
+    (tab: NavTab) => {
       if (location.pathname !== tab.path) {
-        // Add haptic feedback if available
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate(10);
         }
         navigate(tab.path);
       }
     },
-    [navigate, location.pathname, handlePress]
+    [navigate, location.pathname]
   );
+
+  const activeIndex = tabs.findIndex((tab) => tab.id === activeTabId);
 
   return (
     <>
-      {/* Safe area spacer for iPhone notch */}
+      {/* Safe area spacer */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
-        {/* Top gradient border for better visibility in light mode */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
+        {/* Navigation Container - Floating Pill Style */}
+        <div className="mx-4 mb-4">
+          <div className="h-[72px] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+            <div className="relative flex items-center justify-around h-full px-2">
+              {/* Animated Background Pill */}
+              <motion.div
+                className="absolute h-[48px] bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl shadow-lg shadow-blue-500/25"
+                initial={false}
+                animate={{
+                  x: mounted ? `calc(${activeIndex} * (100% + 0px) + 8px)` : 0,
+                  width: `calc(${100 / tabs.length}% - 16px)`,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30,
+                }}
+                style={{
+                  left: 0,
+                  top: "50%",
+                  y: "-50%",
+                }}
+              />
 
-        {/* Main navigation container */}
-        <div className="h-[80px] bg-white dark:bg-[#0B1120] backdrop-blur-2xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.3)]">
-          <div className="flex justify-around items-center h-full pb-1 relative">
-            {tabs.map((tab, index) => {
-              const isActive = tab.id === activeTabId;
-              const isBeingPressed = isPressed === tab.id;
+              {tabs.map((tab, index) => {
+                const isActive = tab.id === activeTabId;
 
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleNavigate(tab, index)}
-                  onTouchStart={() => handlePress(tab.id)}
-                  onTouchEnd={() => setIsPressed(null)}
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                  className="relative flex flex-col items-center justify-center w-full h-full group focus:outline-none active:bg-transparent"
-                  aria-label={tab.label}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  {/* Active indicator pill - More visible in light mode */}
-                  {isActive && (
-                    <>
-                      {/* Glow effect - positioned higher with z-index */}
-                      <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-14 h-1.5 bg-gradient-to-r from-blue-400 to-indigo-400 dark:from-blue-500 dark:to-indigo-500 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.6)] dark:shadow-[0_0_15px_rgba(59,130,246,0.5)] animate-pulse z-20" />
-                      {/* Main indicator */}
-                      <div
-                        className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-14 h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full shadow-lg shadow-blue-500/50 z-20"
-                        style={{
-                          animation: "slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-                        }}
-                      />
-                    </>
-                  )}
-
-                  {/* Icon container with spring animation */}
-                  <div
-                    className={`relative transition-all duration-300 ease-spring ${
-                      isActive ? "-translate-y-1" : ""
-                    } ${isBeingPressed ? "scale-90" : "scale-100"}`}
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleNavigate(tab)}
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                    className="relative flex flex-col items-center justify-center w-full h-full z-10 focus:outline-none"
+                    aria-label={tab.label}
+                    aria-current={isActive ? "page" : undefined}
                   >
-                    {/* Active background circle - More visible in light mode */}
-                    <div
-                      className={`absolute inset-0 -m-2 rounded-2xl transition-all duration-300 ${
-                        isActive
-                          ? "bg-blue-100 dark:bg-blue-900/30 scale-100 shadow-md dark:shadow-none"
-                          : "bg-transparent scale-75 opacity-0"
-                      }`}
-                    />
-
-                    {/* Icon */}
-                    <div
-                      className={`relative p-2 rounded-xl transition-all duration-300 ${
-                        isActive
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-slate-500 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400"
-                      }`}
+                    <motion.div
+                      className="flex flex-col items-center justify-center"
+                      animate={{
+                        scale: isActive ? 1.05 : 1,
+                        y: isActive ? -2 : 0,
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 25,
+                      }}
                     >
+                      {/* Icon */}
                       <span
-                        className={`material-icons transition-all duration-300 ${
+                        className={`material-icons text-2xl transition-colors duration-300 ${
                           isActive
-                            ? "!text-[28px] drop-shadow-sm dark:drop-shadow-md"
-                            : "!text-[24px]"
+                            ? "text-white drop-shadow-md"
+                            : "text-slate-500 dark:text-slate-400"
                         }`}
-                        style={{
-                          transform: isBeingPressed ? "scale(0.85)" : "scale(1)",
-                          transition: "transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                        }}
                       >
                         {tab.icon}
                       </span>
-                    </div>
-                  </div>
 
-                  {/* Label with fade animation - Better contrast in light mode */}
-                  <span
-                    className={`text-[10px] font-semibold transition-all duration-300 leading-none mt-0.5 ${
-                      isActive
-                        ? "text-blue-700 dark:text-blue-100 font-bold"
-                        : "text-slate-500 dark:text-slate-500 font-medium"
-                    }`}
-                    style={{
-                      opacity: isActive ? 1 : 0.8,
-                      transform: isActive ? "translateY(0)" : "translateY(1px)",
-                    }}
-                  >
-                    {tab.label}
-                  </span>
-
-                  {/* Subtle scale effect when pressed - More visible in light mode */}
-                  <div
-                    className={`absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-xl transition-all duration-150 -z-10 ${
-                      isBeingPressed ? "opacity-100 scale-95" : "opacity-0 scale-90"
-                    }`}
-                  />
-                </button>
-              );
-            })}
+                      {/* Label */}
+                      <span
+                        className={`text-[11px] font-semibold mt-0.5 transition-colors duration-300 ${
+                          isActive
+                            ? "text-white font-bold"
+                            : "text-slate-500 dark:text-slate-400 font-medium"
+                        }`}
+                      >
+                        {tab.label}
+                      </span>
+                    </motion.div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* CSS for spring easing */}
-      <style>{`
-        .ease-spring {
-          transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        
-        @keyframes slideUpFade {
-          from {
-            opacity: 0;
-            transform: translateY(4px) scaleX(0.5);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scaleX(1);
-          }
-        }
-      `}</style>
     </>
   );
 };
