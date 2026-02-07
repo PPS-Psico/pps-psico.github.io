@@ -74,12 +74,12 @@ const AnimatedGradeDisplay: React.FC<{
     const num = parseInt(n, 10);
     if (!isNaN(num)) {
       if (num >= 7)
-        return "from-emerald-400 to-emerald-600 text-white border-emerald-300 shadow-emerald-500/30";
+        return "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-emerald-500/10 dark:shadow-emerald-500/20";
       if (num >= 4)
-        return "from-amber-400 to-amber-600 text-white border-amber-300 shadow-amber-500/30";
-      return "from-rose-400 to-rose-600 text-white border-rose-300 shadow-rose-500/30";
+        return "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 shadow-amber-500/10 dark:shadow-amber-500/20";
+      return "bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30 shadow-rose-500/10 dark:shadow-rose-500/20";
     }
-    return "from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600";
+    return "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700";
   };
 
   const style = getGradeStyle(nota);
@@ -89,7 +89,7 @@ const AnimatedGradeDisplay: React.FC<{
     <motion.div
       className={`
         relative flex items-center justify-center w-14 h-14 rounded-2xl border-2 text-2xl font-black
-        bg-gradient-to-br ${style}
+        ${style}
         transition-all duration-300 cursor-pointer overflow-hidden
         ${isSaving ? "animate-pulse" : "hover:shadow-lg hover:scale-105"}
         ${isOpen ? "ring-4 ring-blue-100 dark:ring-blue-900/40 border-blue-400 z-50" : ""}
@@ -101,11 +101,8 @@ const AnimatedGradeDisplay: React.FC<{
       whileTap={{ scale: 0.95 }}
       title="Clic para editar nota"
     >
-      {/* Shine effect */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500" />
-
       {isSaving ? (
-        <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+        <div className="w-5 h-5 border-3 border-current border-t-transparent rounded-full animate-spin" />
       ) : isSuccess ? (
         <motion.span
           initial={{ scale: 0 }}
