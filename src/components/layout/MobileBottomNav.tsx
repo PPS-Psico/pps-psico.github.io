@@ -26,6 +26,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
           navigator.vibrate(8);
         }
         navigate(tab.path);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },
     [navigate, location.pathname]
