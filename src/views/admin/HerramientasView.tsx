@@ -15,6 +15,7 @@ import {
   FIELD_NOTAS_INTERNAS_ESTUDIANTES,
 } from "../../constants";
 import { useAdminPreferences } from "../../contexts/AdminPreferencesContext";
+import { testPushNotification } from "../../lib/pushSubscription";
 
 // Lazy load heavy components
 const DatabaseEditor = lazy(() => import("../../components/admin/DatabaseEditor"));
@@ -102,6 +103,22 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
     return availableTabs;
   }, [preferences]);
 
+  const handleTestNotification = async () => {
+    try {
+      const result = await testPushNotification();
+      if (result.success) {
+        setToastInfo({
+          message: "Notificación de prueba enviada a todos los suscriptores",
+          type: "success",
+        });
+      } else {
+        setToastInfo({ message: `Error: ${result.error}`, type: "error" });
+      }
+    } catch (e: any) {
+      setToastInfo({ message: `Error: ${e.message}`, type: "error" });
+    }
+  };
+
   return (
     <div className="space-y-8">
       {toastInfo && (
@@ -111,6 +128,24 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
           onClose={() => setToastInfo(null)}
         />
       )}
+
+      {/* Botón temporal de prueba de notificaciones */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-amber-800">🧪 Prueba de Notificaciones Push</h3>
+            <p className="text-sm text-amber-600">
+              Hacé click para enviar una notificación de prueba a todos los usuarios suscritos
+            </p>
+          </div>
+          <button
+            onClick={handleTestNotification}
+            className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors"
+          >
+            Enviar Notificación de Prueba
+          </button>
+        </div>
+      </div>
 
       <SubTabs tabs={tabs} activeTabId={activeTabId} onTabChange={setActiveTabId} />
       <div className="mt-6">
