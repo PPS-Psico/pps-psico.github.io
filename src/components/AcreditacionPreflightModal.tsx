@@ -46,6 +46,24 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
 
         {/* Contenido Scrolleable */}
         <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/50 dark:bg-[#0B1120]">
+          {/* Mensaje de advertencia cuando faltan requisitos */}
+          {!(
+            criterios.cumpleHorasTotales &&
+            criterios.cumpleRotacion &&
+            criterios.cumpleHorasOrientacion &&
+            !criterios.tienePracticasPendientes
+          ) && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-2xl">
+              <div className="flex items-start gap-3">
+                <span className="material-icons text-amber-500 text-xl mt-0.5">warning</span>
+                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
+                  El sistema detecta que aún no cumples los requisitos para la acreditación. Si esto
+                  es un error o tienes la autorización del coordinador, puedes continuar.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Grid Layout para ahorrar espacio vertical */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {/* 1. HORAS TOTALES */}
@@ -189,22 +207,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
         </div>
 
         {/* Footer Fijo */}
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 z-20">
-          {/* Mensaje condicional */}
-          {!(
-            criterios.cumpleHorasTotales &&
-            criterios.cumpleRotacion &&
-            criterios.cumpleHorasOrientacion &&
-            !criterios.tienePracticasPendientes
-          ) ? (
-            <p className="text-[11px] text-amber-600 dark:text-amber-500 font-medium text-center sm:text-left leading-tight max-w-sm hidden sm:block bg-amber-50 dark:bg-amber-900/10 px-3 py-2 rounded-lg border border-amber-100 dark:border-amber-900/30">
-              El sistema detecta que aún no cumples los requisitos para la acreditación. Si esto es
-              un error o tienes la autorización del coordinador, puedes continuar.
-            </p>
-          ) : (
-            <div className="hidden sm:block"></div> /* Spacer vacío */
-          )}
-
+        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row items-center justify-end gap-4 z-20">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               onClick={onClose}

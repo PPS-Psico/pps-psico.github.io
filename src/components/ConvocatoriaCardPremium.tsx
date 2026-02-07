@@ -159,100 +159,122 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
       className={`
         w-full relative overflow-hidden flex flex-col
         rounded-[24px] 
-        bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950
-        border border-slate-200/60 dark:border-slate-800/60
+        bg-gradient-to-br from-white via-slate-50/50 to-slate-100/30 
+        dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-950
+        backdrop-blur-xl
+        border border-slate-100 dark:border-slate-800/60
         transition-all duration-500 ease-out
         group cursor-pointer
+        ${!isExpanded ? "hover:border-slate-200 dark:hover:border-slate-700/50" : ""}
       `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => setIsExpanded(!isExpanded)}
       style={{
-        transform: isHovered && !isExpanded ? "translateY(-4px)" : "translateY(0)",
-        boxShadow: isHovered
-          ? "0 20px 40px -5px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.02)"
-          : "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)",
+        transform: isHovered && !isExpanded ? "translateY(-2px)" : "translateY(0)",
+        boxShadow:
+          isHovered && !isExpanded
+            ? "0 12px 24px -8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.02)"
+            : "0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.01)",
       }}
     >
-      {/* Top Accent Line - Theme based */}
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${theme.gradient}`} />
+      {/* Orientation indicator - Subtle colored dot */}
+      <div className="absolute top-4 left-4 md:top-6 md:left-6 z-20">
+        <div
+          className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-gradient-to-br ${theme.gradient} shadow-sm`}
+        />
+      </div>
 
       {/* ─── 1. HEADER SECTION (Always Visible) ─── */}
-      <div className="p-4 md:p-8 flex flex-col md:flex-row md:items-start justify-between gap-4 md:gap-6 relative z-10">
-        {/* Brand & Title */}
-        <div className="flex-1 min-w-0 flex flex-col gap-2 md:gap-3">
-          <div>
-            <div className="flex items-start justify-between gap-3 md:gap-4">
-              <h2 className="text-base md:text-2xl font-black text-slate-800 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
-                {nombre}
-              </h2>
-            </div>
+      {/* Mobile: Column layout with title+chevron row and button below */}
+      {/* Desktop: Row layout */}
+      <div className="pt-6 pb-4 px-4 md:pt-10 md:pb-8 md:px-8 flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-6 relative z-10 bg-gradient-to-b from-transparent via-transparent to-slate-50/30 dark:to-slate-800/20">
+        {/* Brand & Title with Chevron */}
+        <div className="flex-1 min-w-0">
+          {/* Title row with chevron for mobile */}
+          <div className="flex items-center gap-2">
+            <h2 className="flex-1 text-lg md:text-2xl font-black text-slate-800 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+              {nombre}
+            </h2>
 
-            <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
-              <span
-                className={`px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black tracking-wider border ${theme.tag}`}
-              >
-                {orientacion}
+            {/* Mobile Chevron - Next to title */}
+            <div
+              className={`
+                md:hidden flex-shrink-0 flex w-8 h-8 rounded-full items-center justify-center
+                bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500
+                transition-all duration-300
+                ${isExpanded ? "rotate-180 bg-blue-50 text-blue-500" : "group-hover:bg-slate-200 dark:group-hover:bg-slate-700"}
+              `}
+            >
+              <span className="material-icons !text-lg">expand_more</span>
+            </div>
+          </div>
+
+          {/* Desktop: Show orientation tag and address */}
+          <div className="hidden md:flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
+            <span
+              className={`px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black tracking-wider border ${theme.tag}`}
+            >
+              {orientacion}
+            </span>
+
+            {/* Logic: Hours only visible when collapsed. */}
+            {!isExpanded && (
+              <span className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                <span className="material-icons !text-xs md:!text-sm">schedule</span>
+                {horasAcreditadas}hs
               </span>
+            )}
 
-              {/* Logic: Hours only visible when collapsed. Address always visible but position shifts naturally. */}
-              {!isExpanded && (
-                <span className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                  <span className="material-icons !text-xs md:!text-sm">schedule</span>
-                  {horasAcreditadas}hs
-                </span>
-              )}
+            {/* Location Tag - Desktop only */}
+            {(() => {
+              const isVirtual = direccion.toLowerCase().includes("virtual");
+              const TagComponent = isVirtual ? "span" : "a";
+              const linkProps = isVirtual
+                ? {}
+                : {
+                    href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                  };
 
-              {/* Location Tag - Moved to Header */}
-              {(() => {
-                const isVirtual = direccion.toLowerCase().includes("virtual");
-                const TagComponent = isVirtual ? "span" : "a";
-                const linkProps = isVirtual
-                  ? {}
-                  : {
-                      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`,
-                      target: "_blank",
-                      rel: "noopener noreferrer",
-                    };
-
-                return (
-                  <TagComponent
-                    {...linkProps}
-                    onClick={(e: React.MouseEvent) => !isVirtual && e.stopPropagation()}
-                    className={`
-                                            inline-flex items-center gap-1 text-[9px] md:text-[10px] uppercase font-black px-2 md:px-2.5 py-0.5 md:py-1 rounded-md md:rounded-lg transition-colors group/addr border
-                                            ${
-                                              isVirtual
-                                                ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-                                                : "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
-                                            }
-                                        `}
-                    title={isVirtual ? "Modalidad Virtual" : "Ver Ubicación en Mapa"}
+              return (
+                <TagComponent
+                  {...linkProps}
+                  onClick={(e: React.MouseEvent) => !isVirtual && e.stopPropagation()}
+                  className={`
+                    inline-flex items-center gap-1 text-[9px] md:text-[10px] uppercase font-black px-2 md:px-2.5 py-0.5 md:py-1 rounded-md md:rounded-lg transition-colors group/addr border
+                    ${
+                      isVirtual
+                        ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                        : "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
+                    }
+                  `}
+                  title={isVirtual ? "Modalidad Virtual" : "Ver Ubicación en Mapa"}
+                >
+                  <span
+                    className={`material-icons !text-xs md:!text-sm ${isVirtual ? "" : "text-indigo-500 group-hover/addr:text-indigo-700"} transition-colors`}
                   >
-                    <span
-                      className={`material-icons !text-xs md:!text-sm ${isVirtual ? "" : "text-indigo-500 group-hover/addr:text-indigo-700"} transition-colors`}
-                    >
-                      {isVirtual ? "wifi" : "location_on"}
-                    </span>
-                    <span
-                      className={`whitespace-normal leading-tight max-w-[150px] md:max-w-none truncate md:whitespace-normal ${!isVirtual && "group-hover/addr:underline decoration-indigo-500/30 underline-offset-2"} transition-all`}
-                    >
-                      {direccion}
-                    </span>
-                  </TagComponent>
-                );
-              })()}
-            </div>
+                    {isVirtual ? "wifi" : "location_on"}
+                  </span>
+                  <span
+                    className={`whitespace-normal leading-tight max-w-[150px] md:max-w-none truncate md:whitespace-normal ${!isVirtual && "group-hover/addr:underline decoration-indigo-500/30 underline-offset-2"} transition-all`}
+                  >
+                    {direccion}
+                  </span>
+                </TagComponent>
+              );
+            })()}
           </div>
         </div>
 
-        {/* Right Side: Button & Chevron */}
-        <div className="flex items-center gap-2 md:gap-3 self-start">
-          {/* Action Button - Always visible here */}
+        {/* Right Side: Button & Chevron (Desktop only) */}
+        <div className="flex items-center gap-2 md:gap-3 md:self-start">
+          {/* Mobile: Button below title */}
           <button
             disabled={btnConfig.disabled}
             onClick={btnConfig.onClick}
-            className={btnConfig.classes}
+            className={`${btnConfig.classes} md:order-none`}
           >
             {btnConfig.content || <span className="text-[10px] md:text-xs">{btnConfig.text}</span>}
             {btnConfig.icon && (
@@ -265,22 +287,14 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
           {/* Chevron Toggle - Desktop */}
           <div
             className={`
-                        hidden md:flex w-10 h-10 rounded-full items-center justify-center
-                        bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500
-                        transition-all duration-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700
-                        ${isExpanded ? "rotate-180 bg-blue-50 text-blue-500" : ""}
-                    `}
+              hidden md:flex w-10 h-10 rounded-full items-center justify-center
+              bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500
+              transition-all duration-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700
+              ${isExpanded ? "rotate-180 bg-blue-50 text-blue-500" : ""}
+            `}
           >
             <span className="material-icons">expand_more</span>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile Expand Hint */}
-      <div className="md:hidden px-4 pb-2 -mt-2">
-        <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
-          <span className="material-icons !text-sm">expand_more</span>
-          <span>Toca para ver detalles</span>
         </div>
       </div>
 
@@ -291,8 +305,83 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         <div className="overflow-hidden">
           {/* ─── 2. METRICS ROW ─── */}
           <div className="px-4 md:px-8 pb-4 md:pb-6">
+            {/* Mobile: Grid 2x2 with Address card */}
+            <div className="grid grid-cols-2 md:hidden gap-2">
+              {/* Hours with Orientation */}
+              <MetricItem
+                icon="schedule"
+                label="ACREDITA"
+                value={`${horasAcreditadas}hs ${orientacion}`}
+                theme="indigo"
+              />
+
+              {/* Meeting/Schedule */}
+              {fechaEncuentroInicial ? (
+                <MetricItem
+                  icon="groups"
+                  label="ENCUENTRO"
+                  value={(() => {
+                    const dateObj = new Date(fechaEncuentroInicial);
+                    const dateStr = dateObj.toLocaleDateString("es-AR", {
+                      day: "numeric",
+                      month: "short",
+                    });
+                    const hours = dateObj.getHours();
+                    const minutes = dateObj.getMinutes();
+                    if (hours || minutes) {
+                      return `${dateStr} ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}hs`;
+                    }
+                    return dateStr;
+                  })()}
+                  theme="amber"
+                />
+              ) : (
+                <MetricItem
+                  icon="event_available"
+                  label={horariosFijos ? "FIJOS" : "HORARIOS"}
+                  value={
+                    horariosCursada.length > 15
+                      ? horariosCursada.substring(0, 15) + "..."
+                      : horariosCursada
+                  }
+                  theme={horariosFijos ? "teal" : "blue"}
+                />
+              )}
+
+              {/* Spots */}
+              <MetricItem icon="group" label="CUPOS" value={cupo} theme="teal" />
+
+              {/* Address - Clickable */}
+              {(() => {
+                const isVirtual = direccion.toLowerCase().includes("virtual");
+                if (isVirtual) {
+                  return (
+                    <MetricItem icon="wifi" label="MODALIDAD" value="VIRTUAL" theme="purple" />
+                  );
+                }
+                return (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="block"
+                  >
+                    <MetricItem
+                      icon="location_on"
+                      label="UBICACIÓN"
+                      value={direccion.length > 20 ? direccion.substring(0, 20) + "..." : direccion}
+                      theme="rose"
+                      isClickable
+                    />
+                  </a>
+                );
+              })()}
+            </div>
+
+            {/* Desktop: Original grid */}
             <div
-              className={`grid grid-cols-2 md:grid-cols-3 ${reqCv ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-2 md:gap-3`}
+              className={`hidden md:grid md:grid-cols-3 ${reqCv ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-2 md:gap-3`}
             >
               {/* Updated Hours Metric Format */}
               <MetricItem
@@ -522,9 +611,10 @@ const MetricItem: React.FC<{
   icon: string;
   label: string;
   value: string;
-  theme?: "slate" | "indigo" | "blue" | "teal" | "amber";
+  theme?: "slate" | "indigo" | "blue" | "teal" | "amber" | "purple" | "rose";
   className?: string;
-}> = ({ icon, label, value, theme = "slate", className = "" }) => {
+  isClickable?: boolean;
+}> = ({ icon, label, value, theme = "slate", className = "", isClickable = false }) => {
   const themeStyles = {
     slate:
       "bg-slate-50/50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 text-slate-400",
@@ -534,6 +624,9 @@ const MetricItem: React.FC<{
     teal: "bg-teal-50/60 dark:bg-teal-900/10 border-teal-100 dark:border-teal-800/30 text-teal-500",
     amber:
       "bg-amber-50/80 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30 ring-4 ring-amber-50/50 dark:ring-transparent text-amber-500",
+    purple:
+      "bg-purple-50/60 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800/30 text-purple-500",
+    rose: "bg-rose-50/60 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800/30 text-rose-500",
   };
 
   const activeStyle = themeStyles[theme];
@@ -541,20 +634,24 @@ const MetricItem: React.FC<{
   return (
     <div
       className={`
-      p-2 md:p-4 rounded-xl md:rounded-2xl flex flex-col justify-center gap-1 md:gap-1.5 border
+      relative p-2 md:p-4 rounded-xl md:rounded-2xl flex flex-col justify-center gap-1 md:gap-1.5 border overflow-hidden
       ${activeStyle}
       transition-all hover:scale-[1.02] duration-300 text-center
+      ${isClickable ? "cursor-pointer hover:shadow-md active:scale-95" : ""}
       ${className}
     `}
       title={value}
     >
-      <div className="flex items-center justify-center gap-1 md:gap-1.5 mb-0.5 md:mb-1">
+      {/* Shimmer effect on hover */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+
+      <div className="relative z-10 flex items-center justify-center gap-1 md:gap-1.5 mb-0.5 md:mb-1">
         <span className="material-icons !text-base md:!text-lg">{icon}</span>
       </div>
-      <div className="text-[9px] md:text-[10px] uppercase font-black opacity-70 tracking-wider leading-none">
+      <div className="relative z-10 text-[9px] md:text-[10px] uppercase font-black opacity-70 tracking-wider leading-none">
         {label}
       </div>
-      <div className="text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight">
+      <div className="relative z-10 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight">
         {value}
       </div>
     </div>
