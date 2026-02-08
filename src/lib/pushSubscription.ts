@@ -52,7 +52,27 @@ export function isPushSupported(): boolean {
 }
 
 /**
- * Get the current push subscription status
+ * Check if subscription exists in database
+ */
+async function checkSubscriptionInDatabase(endpoint: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from("push_subscriptions")
+      .select("id")
+      .eq("endpoint", endpoint)
+      .single();
+
+    if (error || !data) {
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Get the current push subscription status (checks both browser and database)
  */
 export async function getPushSubscriptionStatus(): Promise<{
   isSubscribed: boolean;
@@ -67,7 +87,23 @@ export async function getPushSubscriptionStatus(): Promise<{
   try {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
-    return { isSubscribed: !!subscription, permission };
+
+    // If no local subscription, return false
+    if (!subscription) {
+      return { isSubscribed: false, permission };
+    }
+
+    // Check if subscription exists in database
+    const existsInDb = await checkSubscriptionInDatabase(subscription.endpoint);
+
+    if (!existsInDb) {
+      console.log("[Push] Local subscription found but not in database - cleaning up...");
+      // Clean up local subscription since it's not in DB
+      await subscription.unsubscribe();
+      return { isSubscribed: false, permission };
+    }
+
+    return { isSubscribed: true, permission };
   } catch (error) {
     console.error("[Push] Error checking subscription status:", error);
     return { isSubscribed: false, permission };
