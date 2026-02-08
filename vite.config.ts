@@ -27,11 +27,11 @@ export default defineConfig(({ mode }) => {
       include: ['react', 'react-dom', 'react-ga4']
     },
     define: {
-      'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
-      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
-      'process.env.VITE_VAPID_PUBLIC_KEY': JSON.stringify(env.VITE_VAPID_PUBLIC_KEY || ''),
-      'process.env.VITE_ONESIGNAL_APP_ID': JSON.stringify(env.VITE_ONESIGNAL_APP_ID || ''),
-      'process.env.VITE_ONESIGNAL_SAFARI_WEB_ID': JSON.stringify(env.VITE_ONESIGNAL_SAFARI_WEB_ID || ''),
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
+      'import.meta.env.VITE_VAPID_PUBLIC_KEY': JSON.stringify(env.VITE_VAPID_PUBLIC_KEY || ''),
+      'import.meta.env.VITE_ONESIGNAL_APP_ID': JSON.stringify(env.VITE_ONESIGNAL_APP_ID || ''),
+      'import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID': JSON.stringify(env.VITE_ONESIGNAL_SAFARI_WEB_ID || ''),
     },
     build: {
       outDir: 'dist',
