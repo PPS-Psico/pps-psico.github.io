@@ -111,21 +111,3 @@ export const getOneSignalUserId = async (): Promise<string | null> => {
     return null;
   }
 };
-
-// Load OneSignal SDK Script
-export const loadOneSignalSDK = () => {
-  return new Promise<void>((resolve, reject) => {
-    if (document.getElementById("onesignal-sdk")) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "onesignal-sdk";
-    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load OneSignal SDK"));
-    document.head.appendChild(script);
-  });
-};
