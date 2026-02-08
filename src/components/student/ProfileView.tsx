@@ -455,6 +455,41 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     Enviarme notificación de prueba
                   </button>
 
+                  {/* Botón de prueba local */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        if (!("serviceWorker" in navigator)) {
+                          showModal("Error", "Service Worker no soportado");
+                          return;
+                        }
+                        const registration = await navigator.serviceWorker.ready;
+                        const subscription = await registration.pushManager.getSubscription();
+
+                        // Intentar mostrar notificación local de prueba
+                        if (Notification.permission === "granted") {
+                          await registration.showNotification("🧪 Prueba Local", {
+                            body: "Si ves esto, las notificaciones funcionan!",
+                            icon: "./icons/icon-192x192.png",
+                            requireInteraction: true,
+                          });
+                          showModal(
+                            "Info",
+                            `Service Worker activo. Suscripción: ${subscription ? "Sí" : "No"}. Notificación local enviada.`
+                          );
+                        } else {
+                          showModal("Error", "Permiso de notificaciones no concedido");
+                        }
+                      } catch (e: any) {
+                        showModal("Error", `Error: ${e.message}`);
+                      }
+                    }}
+                    className="mt-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="material-icons !text-sm">check_circle</span>
+                    Probar notificación local
+                  </button>
+
                   <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 ml-5">
                     Si cambias de dispositivo o navegador, deberás activarlas nuevamente allí.
                   </p>
