@@ -134,7 +134,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   isLoading,
   updateInternalNotes,
 }) => {
-  const { isSuperUserMode, isJefeMode } = useAuth();
+  const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
   const { showModal } = useModal();
   const queryClient = useQueryClient();
 
@@ -162,7 +162,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleSubscribe = async () => {
     setIsPushLoading(true);
-    const result = await subscribeToOneSignal(legajo);
+    const result = await subscribeToOneSignal(authenticatedUser?.id);
     if (result.success) {
       setIsPushEnabled(true);
       showModal("Éxito", "¡Notificaciones activadas correctamente!");
