@@ -33,6 +33,8 @@ export const initializeOneSignal = async () => {
       const initConfig: any = {
         appId: ONESIGNAL_APP_ID,
         allowLocalhostAsSecureOrigin: true,
+        serviceWorkerParam: { scope: "/consulta-pps-uflo/" },
+        serviceWorkerPath: "consulta-pps-uflo/OneSignalSDKWorker.js",
         notifyButton: {
           enable: false, // Usamos nuestro propio botón, no el de OneSignal
         },
