@@ -1,6 +1,6 @@
 // sw.js para relative base (versión simple sin Firebase)
 
-const CACHE_NAME = "mi-panel-academico-cache-v28";
+const CACHE_NAME = "mi-panel-academico-cache-v29";
 const FILES_TO_CACHE = ["./index.html", "./manifest.json"];
 
 // Instala y precachea el shell mínimo
@@ -87,16 +87,32 @@ self.addEventListener("fetch", (event) => {
 // --- PUSH NOTIFICATIONS ---
 
 self.addEventListener("push", (event) => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || "Mi Panel Académico";
-  const options = {
-    body: data.message || "Tienes una nueva notificación.",
-    icon: "./icons/icon-192x192.png",
-    badge: "./icons/icon-192x192.png",
-    data: { url: data.url || "/" },
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+  console.log("[SW] Evento push recibido:", event);
+  
+  try {
+    const data = event.data ? event.data.json() : {};
+    console.log("[SW] Datos recibidos:", data);
+    
+    const title = data.title || "Mi Panel Académico";
+    const options = {
+      body: data.message || "Tienes una nueva notificación.",
+      icon: "./icons/icon-192x192.png",
+      badge: "./icons/icon-192x192.png",
+      data: { url: data.url || "/" },
+      requireInteraction: true,
+      tag: "pps-notification",
+    };
+    
+    console.log("[SW] Mostrando notificación:", title, options);
+    
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+        .then(() => console.log("[SW] Notificación mostrada correctamente"))
+        .catch(err => console.error("[SW] Error mostrando notificación:", err))
+    );
+  } catch (error) {
+    console.error("[SW] Error procesando push:", error);
+  }
 });
 
 self.addEventListener("notificationclick", (event) => {
