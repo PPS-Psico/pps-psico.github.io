@@ -31,20 +31,22 @@ jobs:
         run: |
           echo "=== Validating OneSignal secrets ==="
           echo "Checking if secrets exist (not empty)..."
-          if [ -z "${{ secrets.VITE_ONESIGNAL_APP_ID }}" ]; then
+          if [ -z "$ONESIGNAL_APP_ID" ]; then
             echo "❌ ERROR: VITE_ONESIGNAL_APP_ID is not set or empty!"
             echo "Secret exists but has no value"
             exit 1
           else
-            echo "✅ VITE_ONESIGNAL_APP_ID exists (length: ${#{{ secrets.VITE_ONESIGNAL_APP_ID }}})"
-            echo "First 8 chars: ${{ secrets.VITE_ONESIGNAL_APP_ID }}" | cut -c1-8
+            echo "✅ VITE_ONESIGNAL_APP_ID exists (length: ${#ONESIGNAL_APP_ID})"
           fi
-          if [ -z "${{ secrets.VITE_ONESIGNAL_SAFARI_WEB_ID }}" ]; then
+          if [ -z "$ONESIGNAL_SAFARI_WEB_ID" ]; then
             echo "⚠️ WARNING: VITE_ONESIGNAL_SAFARI_WEB_ID is not set (optional for non-Safari)"
           else
             echo "✅ VITE_ONESIGNAL_SAFARI_WEB_ID exists"
           fi
           echo "✅ OneSignal secrets validated"
+        env:
+          ONESIGNAL_APP_ID: ${{ secrets.VITE_ONESIGNAL_APP_ID }}
+          ONESIGNAL_SAFARI_WEB_ID: ${{ secrets.VITE_ONESIGNAL_SAFARI_WEB_ID }}
 
       - name: Create env file
         run: |
