@@ -490,7 +490,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     Probar notificación local
                   </button>
 
-                  <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 ml-5">
+                  <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                      <strong>⚠️ Nota:</strong> Las notificaciones push remotas (desde el servidor)
+                      pueden tener problemas de entrega en algunos dispositivos debido a
+                      limitaciones de Firebase Cloud Messaging (FCM). Si no recibís notificaciones
+                      de nuevas convocatorias, revisá la app manualmente.
+                    </p>
+                  </div>
+
+                  <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 ml-5 mt-2">
                     Si cambias de dispositivo o navegador, deberás activarlas nuevamente allí.
                   </p>
                 </motion.div>

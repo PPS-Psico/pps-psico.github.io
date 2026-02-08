@@ -283,7 +283,7 @@ async function sendWebPush(
       Authorization: vapidAuth,
       "Content-Type": "application/octet-stream",
       "Content-Encoding": "aes128gcm",
-      TTL: "86400", // 24 hours
+      TTL: "86400",
       Urgency: "high",
     },
     body,
