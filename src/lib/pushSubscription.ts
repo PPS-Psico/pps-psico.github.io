@@ -238,10 +238,6 @@ export async function subscribeToPush(): Promise<{ success: boolean; error?: str
  * Unsubscribe from push notifications
  */
 export async function unsubscribeFromPush(): Promise<{ success: boolean; error?: string }> {
-  if (!isPushSupported()) {
-    return { success: false, error: "Push notifications not supported" };
-  }
-
   try {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
@@ -287,6 +283,22 @@ export async function testPushNotification(): Promise<{
       "[Push Test] VAPID_PUBLIC_KEY:",
       VAPID_PUBLIC_KEY ? "Configurada" : "NO CONFIGURADA"
     );
+
+    // Verificar suscripción antes de enviar
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      return {
+        success: false,
+        error: "No hay suscripción activa. Desactivá y volvé a activar las notificaciones.",
+      };
+    }
+
+    console.log("[Push Test] Suscripción encontrada:", {
+      endpoint: subscription.endpoint.substring(0, 50) + "...",
+      expirationTime: subscription.expirationTime,
+    });
 
     const { data, error } = await supabase.functions.invoke("send-push", {
       body: {
