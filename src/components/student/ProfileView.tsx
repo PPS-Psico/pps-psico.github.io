@@ -13,6 +13,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useModal } from "../../contexts/ModalContext";
 import { useNotifications } from "../../contexts/NotificationContext";
 import { db } from "../../lib/db";
+import { testPushNotification } from "../../lib/pushSubscription";
 import type { EstudianteFields } from "../../types";
 import { SkeletonBox } from "../Skeletons";
 
@@ -424,12 +425,36 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
-                  className="mt-4 pt-4 border-t border-blue-200/50 dark:border-blue-700/50 flex flex-col gap-2"
+                  className="mt-4 pt-4 border-t border-blue-200/50 dark:border-blue-700/50 flex flex-col gap-3"
                 >
                   <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
                     <span className="material-icons !text-sm">check_circle</span>
                     Dispositivo vinculado correctamente
                   </p>
+
+                  {/* Botón de prueba */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await testPushNotification();
+                        if (result.success) {
+                          showModal(
+                            "Éxito",
+                            `Notificación enviada. Revisá si te llegó. Enviadas: ${result.details?.sent || 0}`
+                          );
+                        } else {
+                          showModal("Error", result.error || "No se pudo enviar");
+                        }
+                      } catch (e: any) {
+                        showModal("Error", e.message);
+                      }
+                    }}
+                    className="mt-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="material-icons !text-sm">send</span>
+                    Enviarme notificación de prueba
+                  </button>
+
                   <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 ml-5">
                     Si cambias de dispositivo o navegador, deberás activarlas nuevamente allí.
                   </p>
