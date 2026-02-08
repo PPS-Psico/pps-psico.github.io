@@ -39,10 +39,22 @@ jobs:
           echo "VITE_ONESIGNAL_APP_ID=${{ secrets.VITE_ONESIGNAL_APP_ID }}" >> .env
           echo "VITE_ONESIGNAL_SAFARI_WEB_ID=${{ secrets.VITE_ONESIGNAL_SAFARI_WEB_ID }}" >> .env
 
+      - name: Debug env file
+        run: |
+          echo "=== DEBUG: Checking .env file ==="
+          ls -la .env
+          echo "=== DEBUG: Env file contents (masked) ==="
+          cat .env | sed 's/=.*$/=***/g'
+          echo "=== DEBUG: OneSignal variables present ==="
+          grep -c "VITE_ONESIGNAL" .env || echo "0"
+
       - name: Build with secrets
         run: |
           npm run prep-github
           npm run build
+        env:
+          VITE_ONESIGNAL_APP_ID: ${{ secrets.VITE_ONESIGNAL_APP_ID }}
+          VITE_ONESIGNAL_SAFARI_WEB_ID: ${{ secrets.VITE_ONESIGNAL_SAFARI_WEB_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

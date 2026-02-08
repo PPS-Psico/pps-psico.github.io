@@ -11,6 +11,10 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in current working directory.
   const env = loadEnv(mode, (process as any).cwd(), '');
 
+  // Debug: Log available environment variables
+  console.log('Vite Config - Available env keys:', Object.keys(env).filter(k => k.startsWith('VITE_')));
+  console.log('Vite Config - OneSignal App ID exists:', !!env.VITE_ONESIGNAL_APP_ID);
+
   return {
     // CAMBIO CLAVE: Usar ruta relativa './' permite que la app funcione
     // tanto en el subdirectorio de GitHub Pages como en la raíz del preview local.
@@ -26,8 +30,11 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: ['react', 'react-dom', 'react-ga4']
     },
-    // Environment variables are automatically loaded from .env file by Vite
-    // No need for manual define - Vite handles import.meta.env.* automatically
+    // Environment variables - use env from loadEnv OR process.env as fallback
+    define: {
+      'import.meta.env.VITE_ONESIGNAL_APP_ID': JSON.stringify(env.VITE_ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID || ''),
+      'import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID': JSON.stringify(env.VITE_ONESIGNAL_SAFARI_WEB_ID || process.env.VITE_ONESIGNAL_SAFARI_WEB_ID || ''),
+    },
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
