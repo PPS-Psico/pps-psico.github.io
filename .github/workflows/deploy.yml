@@ -39,6 +39,8 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_APP_VERSION: ${{ secrets.VITE_APP_VERSION }}
           VITE_ENABLE_MONITORING_IN_DEV: ${{ secrets.VITE_ENABLE_MONITORING_IN_DEV }}
+          VITE_ONESIGNAL_APP_ID: ${{ secrets.VITE_ONESIGNAL_APP_ID }}
+          VITE_ONESIGNAL_SAFARI_WEB_ID: ${{ secrets.VITE_ONESIGNAL_SAFARI_WEB_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

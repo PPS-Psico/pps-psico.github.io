@@ -2,6 +2,7 @@
 // Documentation: https://documentation.onesignal.com/docs/custom-code-setup
 
 const ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || "";
+const ONESIGNAL_SAFARI_WEB_ID = import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || "";
 
 // Extend Window interface for OneSignal
 declare global {
@@ -23,7 +24,7 @@ export const initializeOneSignal = async () => {
 
     // Push initialization function
     window.OneSignalDeferred.push((OneSignal: any) => {
-      OneSignal.init({
+      const initConfig: any = {
         appId: ONESIGNAL_APP_ID,
         allowLocalhostAsSecureOrigin: true,
         notifyButton: {
@@ -35,7 +36,14 @@ export const initializeOneSignal = async () => {
             enabled: false,
           },
         },
-      });
+      };
+
+      // Agregar Safari Web ID si está configurado
+      if (ONESIGNAL_SAFARI_WEB_ID) {
+        initConfig.safari_web_id = ONESIGNAL_SAFARI_WEB_ID;
+      }
+
+      OneSignal.init(initConfig);
     });
 
     console.log("[OneSignal] Initialized successfully");
