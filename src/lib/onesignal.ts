@@ -60,7 +60,11 @@ export const initializeOneSignal = async () => {
   }
 };
 
-export const subscribeToOneSignal = async (): Promise<{ success: boolean; error?: string }> => {
+import { supabase } from "./supabaseClient";
+
+export const subscribeToOneSignal = async (
+  userId?: string
+): Promise<{ success: boolean; error?: string; playerId?: string }> => {
   try {
     if (!window.OneSignal) {
       return { success: false, error: "OneSignal not loaded" };
@@ -69,8 +73,48 @@ export const subscribeToOneSignal = async (): Promise<{ success: boolean; error?
     // Request permission using OneSignal's slidedown prompt
     await window.OneSignal.Slidedown.promptPush();
 
-    console.log("[OneSignal] Subscription prompt shown");
-    return { success: true };
+    // Wait a moment for the subscription to be created
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Get the player ID
+    const playerId = await getOneSignalPlayerId();
+
+    if (!playerId) {
+      console.warn("[OneSignal] No player ID obtained after subscription");
+      return { success: true }; // Still success, but no player ID
+    }
+
+    console.log("[OneSignal] Subscription successful, player ID:", playerId);
+
+    // Save to database if we have a user ID
+    if (userId) {
+      try {
+        // Use raw query to avoid type checking issues
+        const { error } = await supabase.from("push_subscriptions").upsert(
+          {
+            user_id: userId,
+            onesignal_player_id: playerId,
+            endpoint: `onesignal:${playerId}`, // Placeholder to satisfy NOT NULL
+            p256dh: "onesignal", // Placeholder
+            auth: "onesignal", // Placeholder
+            updated_at: new Date().toISOString(),
+          } as any,
+          {
+            onConflict: "user_id",
+          }
+        );
+
+        if (error) {
+          console.error("[OneSignal] Error saving to database:", error);
+        } else {
+          console.log("[OneSignal] Player ID saved to database");
+        }
+      } catch (dbError) {
+        console.error("[OneSignal] Database error:", dbError);
+      }
+    }
+
+    return { success: true, playerId };
   } catch (error: any) {
     console.error("[OneSignal] Subscribe error:", error);
     return { success: false, error: error.message };
@@ -107,7 +151,7 @@ export const isOneSignalSubscribed = async (): Promise<boolean> => {
   }
 };
 
-export const getOneSignalUserId = async (): Promise<string | null> => {
+export const getOneSignalPlayerId = async (): Promise<string | null> => {
   try {
     if (!window.OneSignal) {
       return null;
@@ -119,3 +163,6 @@ export const getOneSignalUserId = async (): Promise<string | null> => {
     return null;
   }
 };
+
+// Alias for backward compatibility
+export const getOneSignalUserId = getOneSignalPlayerId;

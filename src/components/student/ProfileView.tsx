@@ -162,7 +162,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleSubscribe = async () => {
     setIsPushLoading(true);
-    const result = await subscribeToOneSignal();
+    const result = await subscribeToOneSignal(legajo);
     if (result.success) {
       setIsPushEnabled(true);
       showModal("Éxito", "¡Notificaciones activadas correctamente!");
