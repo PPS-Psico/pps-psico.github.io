@@ -87,17 +87,22 @@ export const initializeOneSignal = async () => {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     window.OneSignalDeferred.push((OneSignal: any) => {
-      // Detectar si estamos en GitHub Pages
+      // Detectar si estamos en GitHub Pages con subdirectorio
       const isGitHubPages =
         window.location.hostname === "pps-psico.github.io" ||
         window.location.hostname.includes("github.io");
 
+      // Para GitHub Pages con subdirectorio, usar path relativo
+      // OneSignal no soporta subdirectorios en Site URL, así que usamos paths relativos
+      const basePath = isGitHubPages ? "/consulta-pps-uflo/" : "/";
+
       const initConfig: any = {
         appId: ONESIGNAL_APP_ID,
         allowLocalhostAsSecureOrigin: true,
-        // Para GitHub Pages, el service worker debe estar en la raíz del subpath
-        serviceWorkerParam: { scope: "/consulta-pps-uflo/" },
-        serviceWorkerPath: "/consulta-pps-uflo/OneSignalSDKWorker.js",
+        // CAMBIO CLAVE: Usar path relativo para GitHub Pages
+        // OneSignal Site URL está configurado sin subdirectorio, así que usamos paths relativos
+        serviceWorkerParam: { scope: basePath },
+        serviceWorkerPath: "OneSignalSDKWorker.js", // Path relativo, no absoluto
         notifyButton: { enable: false },
         autoRegister: false,
         // DESACTIVAR TODOS LOS PROMPTS automáticos
@@ -113,7 +118,8 @@ export const initializeOneSignal = async () => {
       };
 
       if (isGitHubPages) {
-        logDebug(`GitHub Pages detected - Service Worker scope: /consulta-pps-uflo/`);
+        logDebug(`GitHub Pages detected - Using relative paths for Service Worker`);
+        logDebug(`Base path: ${basePath}, SW path: ${initConfig.serviceWorkerPath}`);
       }
 
       if (ONESIGNAL_SAFARI_WEB_ID) {
