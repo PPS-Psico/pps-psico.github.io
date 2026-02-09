@@ -38,11 +38,22 @@ export const initializeOneSignal = async () => {
         notifyButton: {
           enable: false, // Usamos nuestro propio botón, no el de OneSignal
         },
-        // No mostrar prompts automáticos, los controlamos manualmente
+        // NO registrar automáticamente - esperar a que el usuario haga clic
+        autoRegister: false,
+        // No mostrar prompts automáticos de ningún tipo
         promptOptions: {
           slidedown: {
             enabled: false,
+            autoPrompt: false,
           },
+          native: {
+            enabled: false,
+            autoPrompt: false,
+          },
+        },
+        // Desactivar todas las suscripciones automáticas
+        subscription: {
+          autoResubscribe: false,
         },
       };
 
