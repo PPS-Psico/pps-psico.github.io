@@ -212,16 +212,28 @@ Deno.serve(async (req) => {
     let tokens: string[] = [];
 
     if (send_to_all) {
-      // Get all tokens
-      console.log("[FCM] Querying fcm_tokens table...");
-      const { data, error } = await supabase.from("fcm_tokens").select("fcm_token");
-
-      console.log("[FCM] Query result:", { data, error, count: data?.length });
+      // Get all tokens using RPC function (bypasses RLS)
+      console.log("[FCM] Querying fcm_tokens via RPC...");
+      const { data, error } = await supabase.rpc("get_all_fcm_tokens");
+      
+      console.log("[FCM] RPC result:", { data, error, count: data?.length });
 
       if (error) {
-        console.error("[FCM] Database error:", error);
+        console.error("[FCM] RPC error:", error);
         throw error;
       }
+      tokens = data?.map((t: any) => t.fcm_token) || [];
+      console.log("[FCM] Found tokens:", tokens.length);
+    } else if (user_ids && user_ids.length > 0) {
+      // Get tokens for specific users
+      const { data, error } = await supabase
+        .from("fcm_tokens")
+        .select("fcm_token")
+        .in("user_id", user_ids);
+
+      if (error) throw error;
+      tokens = data?.map((t: any) => t.fcm_token) || [];
+    }
       tokens = data?.map((t: any) => t.fcm_token) || [];
       console.log("[FCM] Found tokens:", tokens.length);
     } else if (user_ids && user_ids.length > 0) {
