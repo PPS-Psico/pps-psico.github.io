@@ -123,9 +123,10 @@ const PUSH_SCENARIOS: AutomationScenario[] = [
 const EmailAutomationManager: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"emails" | "push">("emails");
-  const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
-    null
-  );
+  const [toastInfo, setToastInfo] = useState<{
+    message: string;
+    type: "success" | "error" | "warning";
+  } | null>(null);
 
   // Email test state
   const [testEmail, setTestEmail] = useState("");
