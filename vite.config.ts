@@ -45,7 +45,11 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]'
         }
-      }
-    }
+      },
+      // Asegurar que archivos en public/ se copien al dist/
+      copyPublicDir: true
+    },
+    // Configuración específica para archivos estáticos
+    publicDir: 'public'
   }
 })
