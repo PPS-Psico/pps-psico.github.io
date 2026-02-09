@@ -168,12 +168,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     if (result.success) {
       setIsPushEnabled(true);
       if (result.playerId) {
-        showModal("Éxito", `¡Notificaciones activadas! ID: ${result.playerId.substring(0, 8)}...`);
+        showModal(
+          "Éxito",
+          "¡Notificaciones activadas! Vas a recibir alertas de nuevas convocatorias."
+        );
       } else {
         showModal("Éxito", "¡Notificaciones activadas correctamente!");
       }
     } else {
-      showModal("Error", result.error || "No se pudieron activar las notificaciones");
+      // Mostrar error más detallado
+      const errorMessage = result.error || "No se pudieron activar las notificaciones";
+      showModal("Atención", errorMessage);
+
+      // Si requiere acción del usuario, mantener el toggle apagado
+      if (result.requiresUserAction) {
+        setIsPushEnabled(false);
+      }
     }
     setIsPushLoading(false);
   };
