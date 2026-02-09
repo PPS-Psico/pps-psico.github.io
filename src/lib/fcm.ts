@@ -125,18 +125,17 @@ export const subscribeToFCM = async (
       try {
         // Use RPC function to save token (bypasses RLS and FK issues)
         const { data, error } = await (supabase as any).rpc("save_fcm_token", {
-          p_uid: userId,
-          p_token: token,
+          uid: userId,
+          tok: token,
         });
 
         if (error) {
           console.error("[FCM] Error saving token via RPC:", error);
-        } else if (data && data.length > 0) {
-          console.log("[FCM] Token saved to database via RPC:", data[0]);
+        } else if (data === true) {
+          console.log("[FCM] Token saved to database via RPC");
           dbSaved = true;
         } else {
-          console.log("[FCM] Token saved to database via RPC (no data returned)");
-          dbSaved = true;
+          console.log("[FCM] Token NOT saved to database");
         }
       } catch (e) {
         console.error("[FCM] Exception saving token:", e);

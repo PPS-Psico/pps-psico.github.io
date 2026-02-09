@@ -164,7 +164,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         if (fcmSubscribed) {
           try {
             const { data, error } = await (supabase as any).rpc("check_fcm_token_exists", {
-              p_uid: authenticatedUser.id,
+              uid: authenticatedUser.id,
             });
 
             if (!error && data) {
@@ -224,7 +224,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       if (authenticatedUser?.id) {
         try {
           const { error } = await (supabase as any).rpc("delete_fcm_token_user", {
-            p_uid: authenticatedUser.id,
+            uid: authenticatedUser.id,
           });
           if (error) {
             console.log("[ProfileView] Note: Token not in DB or already deleted");
