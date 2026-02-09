@@ -201,7 +201,7 @@ export const getCurrentFCMToken = async (): Promise<string | null> => {
  */
 export const deleteFCMTokenFromDB = async (userId: string): Promise<void> => {
   try {
-    await supabase.from("fcm_tokens").delete().eq("user_id", userId);
+    await (supabase as any).from("fcm_tokens").delete().eq("user_id", userId);
     console.log("[FCM] Token deleted from database for user:", userId);
   } catch (error) {
     console.error("[FCM] Error deleting token from database:", error);

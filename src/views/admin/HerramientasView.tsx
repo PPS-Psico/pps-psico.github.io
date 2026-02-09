@@ -57,8 +57,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
   );
-  const [testResult, setTestResult] = useState<any>(null);
-  const [isTestingPush, setIsTestingPush] = useState(false);
   const queryClient = useQueryClient();
 
   const createStudentMutation = useMutation({
@@ -103,36 +101,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
 
     return availableTabs;
   }, [preferences]);
-
-  const handleTestNotification = async () => {
-    setIsTestingPush(true);
-    setTestResult(null);
-    try {
-      console.log("[UI] Iniciando test de notificación...");
-      const result = await testPushNotification();
-      console.log("[UI] Resultado del test:", result);
-
-      setTestResult(result);
-
-      if (result.success) {
-        setToastInfo({
-          message: `✅ Notificación enviada. Éxito: ${result.details?.sent || "?"}/${result.details?.total || "?"}`,
-          type: "success",
-        });
-      } else {
-        setToastInfo({
-          message: `❌ Error: ${result.error}`,
-          type: "error",
-        });
-      }
-    } catch (e: any) {
-      console.error("[UI] Error capturado:", e);
-      setToastInfo({ message: `❌ Error inesperado: ${e.message}`, type: "error" });
-      setTestResult({ success: false, error: e.message, details: e });
-    } finally {
-      setIsTestingPush(false);
-    }
-  };
 
   return (
     <div className="space-y-8">

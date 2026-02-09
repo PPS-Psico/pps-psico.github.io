@@ -766,11 +766,6 @@ const EmailAutomationManager: React.FC = () => {
               })}
             </div>
           </div>
-
-          {/* Diagnóstico OneSignal */}
-          <div className="mt-8">
-            <OneSignalDiagnosticsPanel />
-          </div>
         </>
       )}
     </div>
