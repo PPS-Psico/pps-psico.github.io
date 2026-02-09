@@ -213,10 +213,17 @@ Deno.serve(async (req) => {
 
     if (send_to_all) {
       // Get all tokens
+      console.log("[FCM] Querying fcm_tokens table...");
       const { data, error } = await supabase.from("fcm_tokens").select("fcm_token");
 
-      if (error) throw error;
+      console.log("[FCM] Query result:", { data, error, count: data?.length });
+
+      if (error) {
+        console.error("[FCM] Database error:", error);
+        throw error;
+      }
       tokens = data?.map((t: any) => t.fcm_token) || [];
+      console.log("[FCM] Found tokens:", tokens.length);
     } else if (user_ids && user_ids.length > 0) {
       // Get tokens for specific users
       const { data, error } = await supabase
