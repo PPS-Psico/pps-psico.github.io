@@ -38,6 +38,36 @@ export const getDebugLogs = (): string[] => {
   }
 };
 
+// Función para desregistrar Service Workers conflictivos
+const unregisterConflictingServiceWorkers = async (): Promise<boolean> => {
+  try {
+    if (!("serviceWorker" in navigator)) {
+      return true;
+    }
+
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    logDebug(`Found ${registrations.length} existing service worker registrations`);
+
+    let unregistered = false;
+    for (const registration of registrations) {
+      // Si hay un SW que NO es de OneSignal, desregistrarlo
+      if (
+        !registration.scope.includes("OneSignal") &&
+        !registration.active?.scriptURL?.includes("OneSignalSDK")
+      ) {
+        logDebug(`Unregistering conflicting SW: ${registration.scope}`);
+        await registration.unregister();
+        unregistered = true;
+      }
+    }
+
+    return unregistered;
+  } catch (e: any) {
+    logDebug(`Error unregistering SWs: ${e.message}`);
+    return false;
+  }
+};
+
 export const initializeOneSignal = async () => {
   if (!ONESIGNAL_APP_ID) {
     logDebug("App ID not configured");
@@ -45,6 +75,15 @@ export const initializeOneSignal = async () => {
   }
 
   try {
+    // Desregistrar SWs conflictivos antes de inicializar OneSignal
+    const hadConflicts = await unregisterConflictingServiceWorkers();
+    if (hadConflicts) {
+      logDebug("Unregistered conflicting service workers, reloading page in 1s...");
+      // Recargar la página para que OneSignal pueda registrar su SW limpio
+      setTimeout(() => window.location.reload(), 1000);
+      return;
+    }
+
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     window.OneSignalDeferred.push((OneSignal: any) => {
