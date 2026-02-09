@@ -12,6 +12,8 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useModal } from "../../contexts/ModalContext";
 import { db } from "../../lib/db";
+import { supabase } from "../../lib/supabaseClient";
+import { subscribeToFCM, unsubscribeFromFCM, isFCMSubscribed } from "../../lib/fcm";
 import type { EstudianteFields } from "../../types";
 import { SkeletonBox } from "../Skeletons";
 
@@ -140,6 +142,51 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     correo: "",
     telefono: "",
   });
+
+  // FCM state
+  const [isPushEnabled, setIsPushEnabled] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
+  const isPushSupported = "Notification" in window && "serviceWorker" in navigator;
+
+  // Check FCM subscription status
+  useEffect(() => {
+    const checkStatus = async () => {
+      const subscribed = await isFCMSubscribed();
+      setIsPushEnabled(subscribed);
+    };
+    checkStatus();
+  }, []);
+
+  const handleSubscribe = async () => {
+    setIsPushLoading(true);
+    const result = await subscribeToFCM(authenticatedUser?.id);
+    if (result.success) {
+      setIsPushEnabled(true);
+      showModal(
+        "Éxito",
+        "¡Notificaciones activadas! Vas a recibir alertas de nuevas convocatorias."
+      );
+    } else {
+      showModal("Error", result.error || "No se pudieron activar las notificaciones");
+    }
+    setIsPushLoading(false);
+  };
+
+  const handleUnsubscribe = async () => {
+    setIsPushLoading(true);
+    const result = await unsubscribeFromFCM();
+    if (result.success) {
+      setIsPushEnabled(false);
+      // Also delete from database
+      if (authenticatedUser?.id) {
+        await supabase.from("fcm_tokens").delete().eq("user_id", authenticatedUser.id);
+      }
+      showModal("Éxito", "Notificaciones desactivadas");
+    } else {
+      showModal("Error", result.error || "No se pudieron desactivar las notificaciones");
+    }
+    setIsPushLoading(false);
+  };
 
   useEffect(() => {
     if (studentDetails) {
@@ -337,6 +384,114 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           usuario de acceso seguirá siendo el mismo hasta que lo cambies en seguridad.
         </motion.p>
       )}
+
+      {/* Notifications Section - FCM */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+        className="pt-6 border-t border-slate-200 dark:border-slate-800"
+      >
+        <h3 className="font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+          <span className="material-icons text-slate-400">notifications</span>
+          Configuración de Alertas
+        </h3>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800/50 p-5 shadow-lg shadow-blue-500/5">
+          {/* Background glow */}
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-400/20 rounded-full blur-3xl" />
+
+          {!isPushSupported ? (
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                <span className="material-icons !text-xl text-amber-600 dark:text-amber-400">
+                  warning_amber
+                </span>
+              </div>
+              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex-1">
+                Navegador no compatible
+              </h4>
+            </div>
+          ) : (
+            <div className="relative z-10">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    animate={
+                      isPushEnabled
+                        ? {
+                            scale: [1, 1.1, 1],
+                            boxShadow: [
+                              "0 0 0 0 rgba(59, 130, 246, 0.4)",
+                              "0 0 0 10px rgba(59, 130, 246, 0)",
+                              "0 0 0 0 rgba(59, 130, 246, 0)",
+                            ],
+                          }
+                        : {}
+                    }
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all ${
+                      isPushEnabled
+                        ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/30"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-500"
+                    }`}
+                  >
+                    <span className="material-icons !text-xl">
+                      {isPushEnabled ? "notifications_active" : "notifications_off"}
+                    </span>
+                  </motion.div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex-1">
+                    Notificaciones Push
+                  </h4>
+                </div>
+
+                <button
+                  onClick={isPushEnabled ? handleUnsubscribe : handleSubscribe}
+                  disabled={isPushLoading}
+                  className={`relative min-w-[56px] h-8 rounded-full transition-all duration-300 ${
+                    isPushEnabled
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30"
+                      : "bg-slate-300 dark:bg-slate-600"
+                  } ${isPushLoading ? "opacity-70 cursor-wait" : "cursor-pointer"}`}
+                >
+                  <motion.div
+                    animate={{
+                      left: isPushEnabled ? "calc(100% - 28px)" : "4px",
+                    }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="absolute top-1 w-6 h-6 rounded-full bg-white shadow-md"
+                  />
+                </button>
+              </div>
+
+              {isPushEnabled ? (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-3 text-xs text-blue-600 dark:text-blue-400"
+                >
+                  Notificaciones activas - Recibirás alertas de nuevas convocatorias
+                </motion.p>
+              ) : (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-3 text-xs text-slate-500 dark:text-slate-400"
+                >
+                  Activa las notificaciones para recibir alertas de nuevas convocatorias y
+                  actualizaciones importantes
+                </motion.p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {(isSuperUserMode || isJefeMode) && (
+          <p className="text-[10px] text-slate-400 mt-2 text-center">
+            (Visible para administradores solo para pruebas. Los alumnos ven esto en su perfil).
+          </p>
+        )}
+      </motion.div>
 
       {/* Notas Internas (Solo Admin) */}
       {(isSuperUserMode || isJefeMode) && (

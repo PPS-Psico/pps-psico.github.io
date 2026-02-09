@@ -138,21 +138,16 @@ root.render(
   </React.StrictMode>
 );
 
-// Service Worker de PWA - Desactivado temporalmente
-// Se reactivará cuando implementemos FCM para notificaciones push
-// TODO: Implementar firebase-messaging-sw.js para FCM
-/*
-const meta = { env: import.meta.env } as any;
+// Register Firebase Cloud Messaging Service Worker
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("./firebase-messaging-sw.js")
       .then((registration) => {
-        console.log("FCM SW registrado:", registration.scope);
+        console.log("✅ FCM Service Worker registered:", registration.scope);
       })
       .catch((error) => {
-        console.log("FCM SW falló:", error);
+        console.error("❌ FCM Service Worker registration failed:", error);
       });
   });
 }
-*/
