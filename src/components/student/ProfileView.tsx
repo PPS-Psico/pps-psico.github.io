@@ -161,12 +161,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       // Verificar base de datos
       let dbSubscribed = false;
       if (authenticatedUser?.id) {
-        const { data } = await supabase
+        // Usar SQL raw para evitar problemas de tipado
+        const { data, error } = await supabase
           .from("push_subscriptions")
-          .select("onesignal_player_id")
+          .select("*")
           .eq("user_id", authenticatedUser.id)
           .single();
-        dbSubscribed = !!data?.onesignal_player_id;
+
+        if (!error && data) {
+          // Verificar que tenga onesignal_player_id
+          dbSubscribed = !!(data as any)?.onesignal_player_id;
+        }
       }
 
       // El botón está activado solo si AMBAS condiciones se cumplen
