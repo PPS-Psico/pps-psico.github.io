@@ -229,8 +229,8 @@ export const getCurrentFCMToken = async (): Promise<string | null> => {
 export const deleteFCMTokenFromDB = async (userId: string): Promise<void> => {
   try {
     // Use rpc to bypass RLS for deletion
-    const { error } = await (supabase as any).rpc("delete_fcm_token", {
-      p_user_id: userId,
+    const { error } = await (supabase as any).rpc("delete_fcm_token_user", {
+      uid: userId,
     });
 
     if (error) {
