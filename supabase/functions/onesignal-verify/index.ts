@@ -5,6 +5,8 @@
  * Required Supabase Secrets:
  * - ONESIGNAL_REST_API_KEY: Your OneSignal REST API Key
  * - ONESIGNAL_APP_ID: Your OneSignal App ID
+ *
+ * Deployed via GitHub Actions
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
