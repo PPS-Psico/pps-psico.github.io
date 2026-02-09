@@ -99,15 +99,7 @@ export const subscribeToFCM = async (
       };
     }
 
-    // Check if already subscribed
-    const isSubscribed = await isFCMSubscribed();
-    if (isSubscribed) {
-      console.log("[FCM] Already subscribed");
-      const token = await getFCMToken();
-      return { success: true, token: token || undefined };
-    }
-
-    // Get token
+    // Get token (will return cached if exists)
     const token = await getFCMToken();
 
     if (!token) {
@@ -118,28 +110,43 @@ export const subscribeToFCM = async (
       };
     }
 
+    // Check if already subscribed
+    const isSubscribed = await isFCMSubscribed();
+    if (isSubscribed) {
+      console.log("[FCM] Already subscribed, ensuring token is in database...");
+    }
+
     // Save to database if userId provided
     if (userId) {
-      const { error } = await (supabase as any).from("fcm_tokens").upsert(
-        {
-          user_id: userId,
-          fcm_token: token,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id",
-        }
-      );
+      console.log("[FCM] Saving token to database for user:", userId);
+      console.log("[FCM] Token value:", token.substring(0, 20) + "...");
+
+      const { data, error } = await (supabase as any)
+        .from("fcm_tokens")
+        .upsert(
+          {
+            user_id: userId,
+            fcm_token: token,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+            ignoreDuplicates: false,
+          }
+        )
+        .select();
 
       if (error) {
         console.error("[FCM] Error saving to database:", error);
-        return {
-          success: false,
-          error: "Error guardando la suscripción: " + error.message,
-        };
+        console.error("[FCM] Error details:", JSON.stringify(error));
+        // Don't fail if DB save fails - token is still valid for notifications
+        console.log("[FCM] Continuing despite DB error - token is still active");
+      } else {
+        console.log("[FCM] Token saved to database for user:", userId);
+        console.log("[FCM] DB response:", data);
       }
-
-      console.log("[FCM] Token saved to database for user:", userId);
+    } else {
+      console.log("[FCM] No userId provided, skipping database save");
     }
 
     // Setup foreground message handler
