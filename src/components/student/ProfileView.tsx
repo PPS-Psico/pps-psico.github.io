@@ -180,7 +180,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       // Also delete from database (ignore errors)
       if (authenticatedUser?.id) {
         try {
-          await supabase.from("fcm_tokens").delete().eq("user_id", authenticatedUser.id);
+          await (supabase as any).from("fcm_tokens").delete().eq("user_id", authenticatedUser.id);
         } catch (e) {
           console.log("[ProfileView] Note: Could not delete from DB (token may not exist)");
         }
