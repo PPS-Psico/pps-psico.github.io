@@ -86,6 +86,7 @@ export const subscribeToFCM = async (
 ): Promise<{
   success: boolean;
   token?: string;
+  dbSaved?: boolean;
   error?: string;
 }> => {
   try {
@@ -117,20 +118,25 @@ export const subscribeToFCM = async (
     }
 
     // Save to database if userId provided
+    let dbSaved = false;
     if (userId) {
       console.log("[FCM] Saving token to database for user:", userId);
 
       try {
         // Use RPC function to save token (bypasses RLS and FK issues)
-        const { error } = await (supabase as any).rpc("save_fcm_token", {
+        const { data, error } = await (supabase as any).rpc("save_fcm_token", {
           p_user_id: userId,
           p_fcm_token: token,
         });
 
         if (error) {
           console.error("[FCM] Error saving token via RPC:", error);
+        } else if (data && data.length > 0) {
+          console.log("[FCM] Token saved to database via RPC:", data[0]);
+          dbSaved = true;
         } else {
-          console.log("[FCM] Token saved to database via RPC");
+          console.log("[FCM] Token saved to database via RPC (no data returned)");
+          dbSaved = true;
         }
       } catch (e) {
         console.error("[FCM] Exception saving token:", e);
@@ -153,7 +159,7 @@ export const subscribeToFCM = async (
       }
     });
 
-    return { success: true, token };
+    return { success: true, token, dbSaved };
   } catch (error: any) {
     console.error("[FCM] Subscription error:", error);
     return {

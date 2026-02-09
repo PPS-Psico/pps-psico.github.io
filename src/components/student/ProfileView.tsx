@@ -195,11 +195,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     setIsPushLoading(true);
     const result = await subscribeToFCM(authenticatedUser?.id);
     if (result.success) {
-      setIsPushEnabled(true);
-      showModal(
-        "Éxito",
-        "¡Notificaciones activadas! Vas a recibir alertas de nuevas convocatorias."
-      );
+      // Solo activar el toggle si se guardó en la base de datos
+      if (result.dbSaved) {
+        setIsPushEnabled(true);
+        showModal(
+          "Éxito",
+          "¡Notificaciones activadas! Vas a recibir alertas de nuevas convocatorias."
+        );
+      } else {
+        setIsPushEnabled(false);
+        showModal(
+          "Atención",
+          "Se obtuvo el permiso de notificaciones pero no se pudo guardar en la base de datos. Intentá nuevamente."
+        );
+      }
     } else {
       showModal("Error", result.error || "No se pudieron activar las notificaciones");
     }
