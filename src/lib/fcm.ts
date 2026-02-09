@@ -201,8 +201,16 @@ export const getCurrentFCMToken = async (): Promise<string | null> => {
  */
 export const deleteFCMTokenFromDB = async (userId: string): Promise<void> => {
   try {
-    await (supabase as any).from("fcm_tokens").delete().eq("user_id", userId);
-    console.log("[FCM] Token deleted from database for user:", userId);
+    // Use rpc to bypass RLS for deletion
+    const { error } = await supabase.rpc("delete_fcm_token", {
+      p_user_id: userId,
+    });
+
+    if (error) {
+      console.error("[FCM] Error deleting token from database:", error);
+    } else {
+      console.log("[FCM] Token deleted from database for user:", userId);
+    }
   } catch (error) {
     console.error("[FCM] Error deleting token from database:", error);
   }

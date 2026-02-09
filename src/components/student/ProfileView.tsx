@@ -177,9 +177,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     const result = await unsubscribeFromFCM();
     if (result.success) {
       setIsPushEnabled(false);
-      // Also delete from database
+      // Also delete from database (ignore errors)
       if (authenticatedUser?.id) {
-        await (supabase as any).from("fcm_tokens").delete().eq("user_id", authenticatedUser.id);
+        try {
+          await supabase.from("fcm_tokens").delete().eq("user_id", authenticatedUser.id);
+        } catch (e) {
+          console.log("[ProfileView] Note: Could not delete from DB (token may not exist)");
+        }
       }
       showModal("Éxito", "Notificaciones desactivadas");
     } else {
