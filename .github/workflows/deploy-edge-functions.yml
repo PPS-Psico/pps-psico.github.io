@@ -20,9 +20,8 @@ jobs:
         with:
           version: latest
           
-      # Edge Functions temporarily disabled - will be reimplemented with FCM
-      # - name: Deploy Edge Functions
-      #   run: |
-      #     supabase functions deploy send-push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-      #   env:
-      #     SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Deploy Edge Functions
+        run: |
+          supabase functions deploy send-fcm-notification --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
