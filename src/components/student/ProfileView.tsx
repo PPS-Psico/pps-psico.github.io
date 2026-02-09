@@ -149,21 +149,44 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const isPushSupported = "Notification" in window && "serviceWorker" in navigator;
   const isCheckingStatus = useRef(false);
 
-  // Check FCM subscription status
+  // Check FCM subscription status (FCM + Database)
   useEffect(() => {
     if (isCheckingStatus.current) return;
     isCheckingStatus.current = true;
 
     const checkStatus = async () => {
       try {
-        const subscribed = await isFCMSubscribed();
-        setIsPushEnabled(subscribed);
+        // Verificar FCM
+        const fcmSubscribed = await isFCMSubscribed();
+
+        // Verificar base de datos
+        let dbHasToken = false;
+        if (authenticatedUser?.id && fcmSubscribed) {
+          const { data, error } = await (supabase as any)
+            .from("fcm_tokens")
+            .select("id")
+            .eq("user_id", authenticatedUser.id)
+            .single();
+
+          if (!error && data) {
+            dbHasToken = true;
+          }
+        }
+
+        // El botón solo está activo si AMBAS condiciones se cumplen
+        const fullySubscribed = fcmSubscribed && dbHasToken;
+        console.log("[ProfileView] Subscription check:", {
+          fcmSubscribed,
+          dbHasToken,
+          fullySubscribed,
+        });
+        setIsPushEnabled(fullySubscribed);
       } finally {
         isCheckingStatus.current = false;
       }
     };
     checkStatus();
-  }, []);
+  }, [authenticatedUser?.id]);
 
   const handleSubscribe = async () => {
     setIsPushLoading(true);
