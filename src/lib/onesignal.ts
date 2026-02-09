@@ -40,11 +40,17 @@ export const initializeOneSignal = async () => {
         },
         // NO registrar automáticamente - esperar a que el usuario haga clic
         autoRegister: false,
-        // No mostrar prompts automáticos de ningún tipo
+        // Configurar Slidedown Prompt en español
         promptOptions: {
           slidedown: {
-            enabled: false,
+            enabled: true,
             autoPrompt: false,
+            pageViews: 999,
+            timeDelay: 999,
+            actionMessage: "📬 ¿Querés recibir notificaciones?",
+            acceptButtonText: "Sí, activar",
+            cancelButtonText: "No, gracias",
+            confirmMessage: "Te avisaremos cuando haya nuevas convocatorias PPS disponibles.",
           },
           native: {
             enabled: false,
