@@ -581,20 +581,31 @@ const EmailAutomationManager: React.FC = () => {
                 <Button
                   onClick={async () => {
                     setIsSendingCustomPush(true);
+                    console.log("[FCM Test] Starting test notification...");
                     try {
-                      const { data, error } = await supabase.functions.invoke("send-push", {
-                        body: {
-                          title: "🧪 Prueba de Notificación",
-                          message:
-                            "Esta es una notificación de prueba para verificar que todo funciona correctamente.",
-                        },
-                      });
+                      console.log("[FCM Test] Invoking send-fcm-notification function...");
+                      const { data, error } = await supabase.functions.invoke(
+                        "send-fcm-notification",
+                        {
+                          body: {
+                            title: "🧪 Prueba de Notificación",
+                            body: "Esta es una notificación de prueba para verificar que todo funciona correctamente.",
+                            send_to_all: true,
+                          },
+                        }
+                      );
+
+                      console.log("[FCM Test] Response:", { data, error });
 
                       // Check if response has error message
                       if (data?.error) {
+                        console.error("[FCM Test] Server returned error:", data.error);
                         throw new Error(data.error);
                       }
-                      if (error) throw error;
+                      if (error) {
+                        console.error("[FCM Test] Supabase function error:", error);
+                        throw error;
+                      }
 
                       if (data?.sent === 0) {
                         setToastInfo({
@@ -604,11 +615,12 @@ const EmailAutomationManager: React.FC = () => {
                         });
                       } else {
                         setToastInfo({
-                          message: `Notificación enviada a ${data?.sent || 0} suscriptor(es)`,
+                          message: `Notificación enviada a ${data?.sent || 0} suscriptor(es)${data?.failed > 0 ? ` (${data.failed} fallidos)` : ""}`,
                           type: "success",
                         });
                       }
                     } catch (error: any) {
+                      console.error("[FCM Test] Error:", error);
                       setToastInfo({
                         message: error.message || "Error al enviar notificación",
                         type: "error",

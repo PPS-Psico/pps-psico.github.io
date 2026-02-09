@@ -463,12 +463,11 @@ export const useSeleccionadorLogic = (
                   .replace("{{nombre_alumno}}", student.nombre)
                   .replace("{{nombre_pps}}", selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
 
-                return supabase.functions.invoke("send-push", {
+                return supabase.functions.invoke("send-fcm-notification", {
                   body: {
                     title,
-                    message,
-                    url: "/student/practicas",
-                    user_id: student.studentId,
+                    body: message,
+                    user_ids: [student.studentId],
                   },
                 });
               });

@@ -60,7 +60,7 @@ import Input from "../ui/Input";
 import Select from "../ui/Select";
 import Button from "../ui/Button";
 import Checkbox from "../ui/Checkbox";
-import { notificationService } from "../../services/notificationService";
+
 import { useNavigate } from "react-router-dom";
 
 // Componente para mostrar cuenta regresiva - definido fuera del componente principal para evitar re-renders
@@ -885,10 +885,20 @@ Responde SOLO con el JSON válido.
 
       // Trigger Push Notification for new launches (not scheduled ones)
       if (variables[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === "Abierta") {
-        notificationService
-          .notifyNewLaunch(variables[FIELD_NOMBRE_PPS_LANZAMIENTOS])
+        console.log("[Lanzador] Triggering FCM notification for new launch...");
+        supabase.functions
+          .invoke("send-fcm-notification", {
+            body: {
+              title: "🎉 Nueva Convocatoria PPS",
+              body: `Se abrió la convocatoria: ${variables[FIELD_NOMBRE_PPS_LANZAMIENTOS]}`,
+              send_to_all: true,
+            },
+          })
+          .then((response) => {
+            console.log("[Lanzador] FCM notification response:", response);
+          })
           .catch((err) => {
-            console.error("[Lanzador] Error triggering push notification:", err);
+            console.error("[Lanzador] Error triggering FCM notification:", err);
           });
       }
 
