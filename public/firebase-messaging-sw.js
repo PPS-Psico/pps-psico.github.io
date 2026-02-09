@@ -20,29 +20,16 @@ const messaging = firebase.messaging();
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  console.log('[firebase-messaging-sw.js] Data:', payload.data);
   
-  // Read notification data from the data payload
-  // Note: FCM data messages are always strings
-  const notificationTitle = payload.data?.title || 'Nueva Notificación';
-  const notificationBody = payload.data?.body || '';
-  const notificationIcon = payload.data?.icon || '/icon-192x192.png';
-  const notificationBadge = payload.data?.badge || '/icon-192x192.png';
-  
-  console.log('[firebase-messaging-sw.js] Showing notification:', {
-    title: notificationTitle,
-    body: notificationBody,
-    icon: notificationIcon
-  });
-  
+  const notificationTitle = payload.notification?.title || 'Nueva Notificación';
   const notificationOptions = {
-    body: notificationBody,
-    icon: notificationIcon,
-    badge: notificationBadge,
-    tag: payload.data?.tag || `notification-${Date.now()}`,
+    body: payload.notification?.body || '',
+    icon: payload.notification?.icon || '/icon-192x192.png',
+    badge: '/icon-192x192.png',
+    tag: payload.data?.tag || 'default',
     data: payload.data || {},
     requireInteraction: true,
-    actions: []
+    actions: payload.notification?.actions || []
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
