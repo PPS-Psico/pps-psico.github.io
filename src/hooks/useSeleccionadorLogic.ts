@@ -290,6 +290,14 @@ export const useSeleccionadorLogic = (
     [candidates]
   );
 
+  // Filtrar candidatos según el modo de vista
+  const displayedCandidates = useMemo(() => {
+    if (viewMode === "review") {
+      return selectedCandidates;
+    }
+    return candidates;
+  }, [candidates, selectedCandidates, viewMode]);
+
   const toggleMutation = useMutation({
     mutationFn: async (student: EnrichedStudent) => {
       if (!selectedLanzamiento) return;
@@ -562,6 +570,7 @@ export const useSeleccionadorLogic = (
     candidates,
     isLoadingCandidates,
     selectedCandidates,
+    displayedCandidates,
     handleToggle,
     handleUpdateSchedule,
     handleConfirmAndCloseTable,

@@ -243,6 +243,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     candidates,
     isLoadingCandidates,
     selectedCandidates,
+    displayedCandidates,
     handleToggle,
     handleUpdateSchedule,
     handleConfirmAndCloseTable,
@@ -439,9 +440,29 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
             </div>
           </div>
           <div className="flex gap-2">
+            {/* Botón para alternar entre ver todos y ver solo seleccionados */}
+            <button
+              onClick={() => setViewMode(viewMode === "selection" ? "review" : "selection")}
+              className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors border ${
+                viewMode === "review"
+                  ? "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700"
+                  : "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+              title={
+                viewMode === "selection" ? "Ver solo seleccionados" : "Ver todos los inscriptos"
+              }
+            >
+              <span className="material-icons !text-base">
+                {viewMode === "selection" ? "visibility" : "visibility_off"}
+              </span>
+              {viewMode === "selection"
+                ? `Ver Seleccionados (${selectedCandidates.length})`
+                : "Ver Todos"}
+            </button>
+
             <button
               onClick={() => setIsConfirmOpen(true)}
-              disabled={isClosingTable}
+              disabled={isClosingTable || selectedCandidates.length === 0}
               className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-colors disabled:opacity-70 dark:bg-emerald-700 dark:hover:bg-emerald-600"
             >
               {isClosingTable ? (
@@ -455,34 +476,43 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
         </div>
 
         <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-          <div className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2 group relative cursor-help">
-            <span className="font-bold">Criterio:</span> Puntaje descendente
-            <span className="material-icons !text-sm opacity-70">help</span>
-            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              <p className="font-bold mb-1 border-b border-slate-600 pb-1">Fórmula de Puntaje:</p>
-              <ul className="space-y-1 list-disc pl-3">
-                <li>
-                  Terminó de cursar: <strong>+100 pts</strong>
-                </li>
-                <li>
-                  Cursando electivas: <strong>+50 pts</strong>
-                </li>
-                <li>
-                  Trabaja (c/certificado): <strong>+20 pts</strong>
-                </li>
-                <li>
-                  Adeuda finales: <strong>+30 pts</strong>
-                </li>
-                <li>
-                  Horas acumuladas: <strong>+0.5 pts/hora</strong>
-                </li>
-                <li>
-                  Penalizaciones: <strong>- Puntos</strong>
-                </li>
-              </ul>
-              <div className="absolute -top-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
+          {viewMode === "review" && (
+            <div className="text-xs px-3 py-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
+              <span className="material-icons !text-sm">fact_check</span>
+              <span className="font-bold">Modo Revisión:</span> Mostrando solo los{" "}
+              {selectedCandidates.length} estudiantes seleccionados
             </div>
-          </div>
+          )}
+          {viewMode === "selection" && (
+            <div className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2 group relative cursor-help">
+              <span className="font-bold">Criterio:</span> Puntaje descendente
+              <span className="material-icons !text-sm opacity-70">help</span>
+              <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <p className="font-bold mb-1 border-b border-slate-600 pb-1">Fórmula de Puntaje:</p>
+                <ul className="space-y-1 list-disc pl-3">
+                  <li>
+                    Terminó de cursar: <strong>+100 pts</strong>
+                  </li>
+                  <li>
+                    Cursando electivas: <strong>+50 pts</strong>
+                  </li>
+                  <li>
+                    Trabaja (c/certificado): <strong>+20 pts</strong>
+                  </li>
+                  <li>
+                    Adeuda finales: <strong>+30 pts</strong>
+                  </li>
+                  <li>
+                    Horas acumuladas: <strong>+0.5 pts/hora</strong>
+                  </li>
+                  <li>
+                    Penalizaciones: <strong>- Puntos</strong>
+                  </li>
+                </ul>
+                <div className="absolute -top-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -490,18 +520,18 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
         <Loader />
       ) : (
         <div className="space-y-3">
-          {/* Mostrar SIEMPRE todos los candidatos, no solo seleccionados */}
-          {candidates.map((student) => (
+          {/* Mostrar candidatos según el modo de vista */}
+          {displayedCandidates.map((student) => (
             <StudentRow
               key={student.enrollmentId}
               student={student}
               onToggleSelection={handleToggleWithPenalty}
               onUpdateSchedule={handleUpdateSchedule}
               isUpdating={updatingId === student.enrollmentId}
-              isReviewMode={false}
+              isReviewMode={viewMode === "review"}
             />
           ))}
-          {candidates.length === 0 && (
+          {displayedCandidates.length === 0 && (
             <EmptyState
               icon="group_off"
               title="Sin Inscriptos"

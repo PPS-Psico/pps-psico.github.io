@@ -185,18 +185,23 @@ export const subscribeToOneSignal = async (userId?: string) => {
       optInSuccess = true;
     }
 
-    // Paso 5: Esperar y obtener player ID con timeout
+    // Paso 5: Esperar y obtener player ID con timeout extendido
     logDebug("Waiting for player ID...");
     let playerId: string | null = null;
-    const maxAttempts = 30; // 6 segundos
+    let subscriptionToken: string | null = null;
+    const maxAttempts = 50; // 10 segundos
 
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const sub = await window.OneSignal.User.PushSubscription;
-        if (sub?.id) {
+        if (sub?.id && sub?.token) {
           playerId = sub.id;
-          logDebug(`Got player ID: ${playerId}`);
+          subscriptionToken = sub.token;
+          logDebug(`Got player ID: ${playerId}, token exists: ${!!subscriptionToken}`);
           break;
+        } else if (sub?.id) {
+          // Tenemos ID pero no token aún, seguir esperando
+          logDebug(`Got player ID but waiting for token... attempt ${i + 1}`);
         }
       } catch (e) {
         // ignorar
@@ -214,7 +219,45 @@ export const subscribeToOneSignal = async (userId?: string) => {
       };
     }
 
-    // Paso 6: Guardar en base de datos
+    if (!subscriptionToken) {
+      logDebug("ERROR: Player ID obtained but no subscription token");
+      return {
+        success: false,
+        error:
+          "La suscripción no se completó correctamente. Intentá recargar la página y activar nuevamente.",
+        logs: getDebugLogs(),
+      };
+    }
+
+    // Paso 6: Verificación CRÍTICA - esperar a que OneSignal confirme el registro
+    logDebug("Verifying subscription with OneSignal...");
+    let verified = false;
+    for (let i = 0; i < 10; i++) {
+      try {
+        const sub = await window.OneSignal.User.PushSubscription;
+        // Verificar que optedIn sea true y que tengamos token
+        if (sub?.optedIn && sub?.token) {
+          verified = true;
+          logDebug("Subscription verified with OneSignal");
+          break;
+        }
+      } catch (e) {
+        // ignorar
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    if (!verified) {
+      logDebug("ERROR: Subscription not verified with OneSignal");
+      return {
+        success: false,
+        error:
+          "OneSignal no confirmó la suscripción. Intentá: 1) Recargar la página 2) Asegurarte de tener conexión estable 3) Intentar de nuevo",
+        logs: getDebugLogs(),
+      };
+    }
+
+    // Paso 7: Guardar en base de datos SOLO si está verificado
     if (userId) {
       const saved = await saveToDatabase(userId, playerId);
       if (!saved) {
@@ -222,24 +265,8 @@ export const subscribeToOneSignal = async (userId?: string) => {
       }
     }
 
-    // Paso 7: Verificación final
-    try {
-      const finalSub = await window.OneSignal.User.PushSubscription;
-      if (finalSub?.optedIn) {
-        logDebug("SUCCESS: Subscription verified");
-        return { success: true, playerId };
-      } else {
-        logDebug("WARNING: Subscription created but not opted in");
-        return {
-          success: true,
-          playerId,
-          warning: "Suscripción creada pero puede no estar activa",
-        };
-      }
-    } catch (e) {
-      logDebug("Verification failed but returning success anyway");
-      return { success: true, playerId };
-    }
+    logDebug("SUCCESS: Subscription completed and verified");
+    return { success: true, playerId };
   } catch (error: any) {
     logDebug(`FATAL ERROR: ${error.message}`);
     return {
