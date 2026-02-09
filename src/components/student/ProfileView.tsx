@@ -488,13 +488,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 </button>
               </div>
 
-              {isPushEnabled && (
+              {isPushEnabled ? (
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="mt-3 text-xs text-blue-600 dark:text-blue-400"
                 >
                   Notificaciones activas
+                </motion.p>
+              ) : (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-3 text-xs text-slate-500 dark:text-slate-400"
+                >
+                  Activa las notificaciones para recibir alertas de nuevas convocatorias y
+                  actualizaciones importantes
                 </motion.p>
               )}
             </div>
