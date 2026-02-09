@@ -148,23 +148,15 @@ async function sendToToken(
       body: JSON.stringify({
         message: {
           token: token,
-          notification: {
+          // Using only data payload to prevent automatic notification display
+          // The Service Worker will handle notification display
+          data: {
             title: title,
             body: body,
-          },
-          webpush: {
-            notification: {
-              icon: "https://pps-psico.github.io/icon-192x192.png",
-              badge: "https://pps-psico.github.io/icon-192x192.png",
-              click_action: "https://pps-psico.github.io/",
-            },
-            fcm_options: {
-              link: "https://pps-psico.github.io/",
-            },
-          },
-          data: {
-            ...data,
+            icon: "https://pps-psico.github.io/icon-192x192.png",
+            badge: "https://pps-psico.github.io/icon-192x192.png",
             url: "https://pps-psico.github.io/",
+            ...data,
           },
         },
       }),

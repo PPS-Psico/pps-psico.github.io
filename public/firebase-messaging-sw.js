@@ -21,15 +21,16 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification?.title || 'Nueva Notificación';
+  // Read notification data from the data payload
+  const notificationTitle = payload.data?.title || 'Nueva Notificación';
   const notificationOptions = {
-    body: payload.notification?.body || '',
-    icon: payload.notification?.icon || '/icon-192x192.png',
-    badge: '/icon-192x192.png',
-    tag: payload.data?.tag || 'default',
+    body: payload.data?.body || '',
+    icon: payload.data?.icon || '/icon-192x192.png',
+    badge: payload.data?.badge || '/icon-192x192.png',
+    tag: payload.data?.tag || `notification-${Date.now()}`,
     data: payload.data || {},
     requireInteraction: true,
-    actions: payload.notification?.actions || []
+    actions: []
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
