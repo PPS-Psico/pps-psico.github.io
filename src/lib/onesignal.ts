@@ -75,14 +75,12 @@ export const initializeOneSignal = async () => {
   }
 
   try {
-    // Desregistrar SWs conflictivos antes de inicializar OneSignal
-    const hadConflicts = await unregisterConflictingServiceWorkers();
-    if (hadConflicts) {
-      logDebug("Unregistered conflicting service workers, reloading page in 1s...");
-      // Recargar la página para que OneSignal pueda registrar su SW limpio
-      setTimeout(() => window.location.reload(), 1000);
-      return;
-    }
+    // NOTA: El Service Worker de la PWA ha sido desactivado en main.tsx
+    // para evitar conflictos con OneSignal. Ver comentario en main.tsx línea 151.
+    // La función unregisterConflictingServiceWorkers se mantiene por compatibilidad
+    // pero ya no es necesaria ya que no hay SW de PWA que compita.
+    //
+    // await unregisterConflictingServiceWorkers();
 
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 

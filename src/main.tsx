@@ -148,7 +148,13 @@ root.render(
   </React.StrictMode>
 );
 
-// Service Worker
+// Service Worker de PWA DESACTIVADO temporalmente
+// OneSignal requiere control exclusivo del Service Worker para notificaciones push
+// El SW de la PWA compite con OneSignal y causa conflictos
+// Para reactivar la PWA (funcionalidad offline), se necesitaría:
+// 1. Un dominio propio sin subdirectorio, o
+// 2. Integrar el código de OneSignal dentro del SW de la PWA existente
+/*
 const meta = { env: import.meta.env } as any;
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -163,3 +169,4 @@ if ("serviceWorker" in navigator) {
       });
   });
 }
+*/
