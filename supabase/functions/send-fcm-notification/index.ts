@@ -233,18 +233,7 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
       tokens = data?.map((t: any) => t.fcm_token) || [];
-    }
-      tokens = data?.map((t: any) => t.fcm_token) || [];
       console.log("[FCM] Found tokens:", tokens.length);
-    } else if (user_ids && user_ids.length > 0) {
-      // Get tokens for specific users
-      const { data, error } = await supabase
-        .from("fcm_tokens")
-        .select("fcm_token")
-        .in("user_id", user_ids);
-
-      if (error) throw error;
-      tokens = data?.map((t: any) => t.fcm_token) || [];
     } else {
       return new Response(
         JSON.stringify({ error: "Either user_ids or send_to_all must be specified" }),
