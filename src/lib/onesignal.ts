@@ -48,7 +48,7 @@ export const initializeOneSignal = async () => {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     window.OneSignalDeferred.push((OneSignal: any) => {
-      const initConfig = {
+      const initConfig: any = {
         appId: ONESIGNAL_APP_ID,
         allowLocalhostAsSecureOrigin: true,
         serviceWorkerParam: { scope: "/consulta-pps-uflo/" },

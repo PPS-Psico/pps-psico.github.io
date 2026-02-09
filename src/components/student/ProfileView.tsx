@@ -193,7 +193,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       showModal("Atención", errorMessage);
 
       // Si requiere acción del usuario, mantener el toggle apagado
-      if (result.requiresUserAction || result.blocked) {
+      if (result.blocked) {
         setIsPushEnabled(false);
       }
     }
