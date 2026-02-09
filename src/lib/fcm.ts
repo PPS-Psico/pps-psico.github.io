@@ -121,32 +121,16 @@ export const subscribeToFCM = async (
       console.log("[FCM] Saving token to database for user:", userId);
 
       try {
-        // First try to insert
-        const { error: insertError } = await (supabase as any).from("fcm_tokens").insert({
-          user_id: userId,
-          fcm_token: token,
+        // Use RPC function to save token (bypasses RLS and FK issues)
+        const { error } = await (supabase as any).rpc("save_fcm_token", {
+          p_user_id: userId,
+          p_fcm_token: token,
         });
 
-        if (insertError && insertError.code === "23505") {
-          // Duplicate key - update instead
-          console.log("[FCM] Token already exists, updating...");
-          const { error: updateError } = await (supabase as any)
-            .from("fcm_tokens")
-            .update({
-              fcm_token: token,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("user_id", userId);
-
-          if (updateError) {
-            console.error("[FCM] Error updating token:", updateError);
-          } else {
-            console.log("[FCM] Token updated in database");
-          }
-        } else if (insertError) {
-          console.error("[FCM] Error inserting token:", insertError);
+        if (error) {
+          console.error("[FCM] Error saving token via RPC:", error);
         } else {
-          console.log("[FCM] Token saved to database");
+          console.log("[FCM] Token saved to database via RPC");
         }
       } catch (e) {
         console.error("[FCM] Exception saving token:", e);

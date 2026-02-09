@@ -163,14 +163,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         let dbHasToken = false;
         if (fcmSubscribed) {
           try {
-            const { data, error } = await (supabase as any)
-              .from("fcm_tokens")
-              .select("id")
-              .eq("user_id", authenticatedUser.id)
-              .maybeSingle();
+            const { data, error } = await (supabase as any).rpc("check_fcm_token_exists", {
+              p_user_id: authenticatedUser.id,
+            });
 
             if (!error && data) {
-              dbHasToken = true;
+              dbHasToken = data;
             }
           } catch (e) {
             // Ignorar errores de permisos
@@ -213,15 +211,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     const result = await unsubscribeFromFCM();
     if (result.success) {
       setIsPushEnabled(false);
-      // Also delete from database (ignore errors - token may not exist)
+      // Also delete from database via RPC
       if (authenticatedUser?.id) {
         try {
-          const { error } = await (supabase as any)
-            .from("fcm_tokens")
-            .delete()
-            .eq("user_id", authenticatedUser.id);
+          const { error } = await (supabase as any).rpc("delete_fcm_token_user", {
+            p_user_id: authenticatedUser.id,
+          });
           if (error) {
             console.log("[ProfileView] Note: Token not in DB or already deleted");
+          } else {
+            console.log("[ProfileView] Token deleted from database");
           }
         } catch (e) {
           console.log("[ProfileView] Note: Could not delete from DB");
