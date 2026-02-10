@@ -1,22 +1,22 @@
+import * as C from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import { Database } from "../types/supabase";
 import {
+  Convocatoria,
+  Estudiante,
+  FinalizacionPPS,
+  GroupedSeleccionados,
+  InformeCorreccionPPS,
+  LanzamientoPPS,
   Practica,
   SolicitudPPS,
-  LanzamientoPPS,
-  Convocatoria,
-  GroupedSeleccionados,
-  FinalizacionPPS,
-  Estudiante,
-  InformeCorreccionPPS,
 } from "../types";
-import * as C from "../constants";
+import { Database } from "../types/supabase";
 import {
+  cleanDbValue,
+  cleanInstitutionName,
   normalizeStringForComparison,
   safeGetId,
-  cleanInstitutionName,
-  cleanDbValue,
 } from "../utils/formatters";
 
 export const fetchStudentData = async (
@@ -723,12 +723,12 @@ export const uploadSolicitudFile = async (
 ): Promise<string> => {
   if (!studentId) throw new Error("No student ID");
   const fileExt = file.name.split(".").pop();
-  const fileName = `${type}/${studentId}/${category}_${Date.now()}.${fileExt}`;
+  const fileName = `${studentId}/${type}/${category}_${Date.now()}.${fileExt}`;
   const { error } = await supabase.storage
-    .from("solicitudes_pps")
+    .from("documentos_estudiantes")
     .upload(fileName, file, { upsert: true });
   if (error) throw error;
-  const { data } = supabase.storage.from("solicitudes_pps").getPublicUrl(fileName);
+  const { data } = supabase.storage.from("documentos_estudiantes").getPublicUrl(fileName);
   return data.publicUrl;
 };
 
@@ -922,13 +922,25 @@ export const rejectSolicitudModificacion = async (
 export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?: string) => {
   const { data: solicitud, error: fetchError } = await supabase
     .from("solicitudes_nueva_pps")
-    .select("*")
+    .select(
+      `
+      *,
+      institucion:instituciones(nombre)
+    `
+    )
     .eq("id", solicitudId)
     .single();
 
   if (fetchError) throw fetchError;
   if (!solicitud) throw new Error("Solicitud no encontrada");
   if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
+
+  // Obtener nombre de la institución (ya sea del listado o manual)
+  const instData = (solicitud as any).institucion;
+  const nombreInstitucion =
+    (Array.isArray(instData) ? instData[0]?.nombre : instData?.nombre) ||
+    solicitud.nombre_institucion_manual ||
+    "Institución desconocida";
 
   // Crear la práctica
   const practicaRecord: Database["public"]["Tables"]["practicas"]["Insert"] = {
@@ -940,7 +952,7 @@ export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?:
     estado: "Finalizada",
     nota: null,
     lanzamiento_id: null,
-    nombre_institucion: solicitud.nombre_institucion_manual || null,
+    nombre_institucion: nombreInstitucion,
   };
 
   const { data: practica, error: practicaError } = await supabase

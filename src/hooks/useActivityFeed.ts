@@ -1,21 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../lib/supabaseClient";
-import { mockDb } from "../services/mockDb";
 import {
-  TABLE_NAME_PPS,
-  TABLE_NAME_FINALIZACION,
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_CONVOCATORIAS,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_SOLICITUD_NOMBRE_ALUMNO,
   FIELD_EMPRESA_PPS_SOLICITUD,
+  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_FINALIZACION,
   FIELD_ESTADO_PPS,
   FIELD_FECHA_SOLICITUD_FINALIZACION,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_SOLICITUD_NOMBRE_ALUMNO,
+  TABLE_NAME_CONVOCATORIAS,
+  TABLE_NAME_FINALIZACION,
+  TABLE_NAME_LANZAMIENTOS_PPS,
+  TABLE_NAME_PPS,
+  TABLE_NAME_SOLICITUDES_MODIFICACION,
+  TABLE_NAME_SOLICITUDES_NUEVA,
 } from "../constants";
+import { supabase } from "../lib/supabaseClient";
+import { mockDb } from "../services/mockDb";
 
 export interface ActivityItem {
   id: string;
@@ -53,6 +55,8 @@ export const useActivityFeed = (isTestingMode = false) => {
         let requests: any[] = [];
         let finalizations: any[] = [];
         let launches: any[] = [];
+        let correctionMods: any[] = [];
+        let correctionNews: any[] = [];
         const enrollmentCounts: Record<string, number> = {};
 
         if (isTestingMode) {
@@ -81,10 +85,10 @@ export const useActivityFeed = (isTestingMode = false) => {
             .from(TABLE_NAME_FINALIZACION)
             .select(
               `
-                            id, 
-                            created_at, 
-                            ${FIELD_FECHA_SOLICITUD_FINALIZACION}, 
-                            ${FIELD_ESTADO_FINALIZACION}, 
+                            id,
+                            created_at,
+                            ${FIELD_FECHA_SOLICITUD_FINALIZACION},
+                            ${FIELD_ESTADO_FINALIZACION},
                             estudiante:estudiantes!fk_finalizacion_estudiante (
                                 ${FIELD_NOMBRE_ESTUDIANTES}
                             )
@@ -121,6 +125,33 @@ export const useActivityFeed = (isTestingMode = false) => {
               });
             }
           }
+
+          // 4. Correction Requests (Modificaciones)
+          const modsRes = await supabase
+            .from(TABLE_NAME_SOLICITUDES_MODIFICACION)
+            .select(
+              `
+              id, created_at, tipo_modificacion, estado,
+              estudiante:estudiantes(nombre)
+            `
+            )
+            .order("created_at", { ascending: false })
+            .limit(10);
+          correctionMods = modsRes.data || [];
+
+          // 5. Correction Requests (Nuevas PPS)
+          const newsRes = await supabase
+            .from(TABLE_NAME_SOLICITUDES_NUEVA)
+            .select(
+              `
+              id, created_at, orientacion, estado, nombre_institucion_manual,
+              estudiante:estudiantes(nombre),
+              institucion:instituciones(nombre)
+            `
+            )
+            .order("created_at", { ascending: false })
+            .limit(10);
+          correctionNews = newsRes.data || [];
         }
 
         // Mapper: Solicitudes (Ingreso)
@@ -151,6 +182,52 @@ export const useActivityFeed = (isTestingMode = false) => {
             user: name,
             avatarLetter: name.charAt(0).toUpperCase(),
             statusColor: color,
+            rawStatus: status,
+            institution: inst,
+            isNew: date > oneDayAgo && status === "Pendiente",
+          });
+        });
+
+        // Mapper: Modificaciones
+        correctionMods.forEach((m: any) => {
+          const status = normalizeStatus(m.estado);
+          const student = Array.isArray(m.estudiante) ? m.estudiante[0] : m.estudiante;
+          const name = student?.nombre || "Estudiante";
+          let date = new Date(m.created_at || Date.now());
+
+          items.push({
+            id: `mod-${m.id}`,
+            type: "request",
+            title: "Cambio de Práctica",
+            description: `Solicita cambio de ${m.tipo_modificacion}`,
+            timestamp: date,
+            user: name,
+            avatarLetter: name.charAt(0).toUpperCase(),
+            statusColor: "purple",
+            rawStatus: status,
+            isNew: date > oneDayAgo && status === "Pendiente",
+          });
+        });
+
+        // Mapper: Nuevas PPS
+        correctionNews.forEach((n: any) => {
+          const status = normalizeStatus(n.estado);
+          const student = Array.isArray(n.estudiante) ? n.estudiante[0] : n.estudiante;
+          const name = student?.nombre || "Estudiante";
+          const inst =
+            (Array.isArray(n.institucion) ? n.institucion[0]?.nombre : n.institucion?.nombre) ||
+            n.nombre_institucion_manual;
+          let date = new Date(n.created_at || Date.now());
+
+          items.push({
+            id: `newpps-${n.id}`,
+            type: "request",
+            title: "Práctica Autogestiva",
+            description: `Nueva solicitud en ${inst || "Institución"}`,
+            timestamp: date,
+            user: name,
+            avatarLetter: name.charAt(0).toUpperCase(),
+            statusColor: "blue",
             rawStatus: status,
             institution: inst,
             isNew: date > oneDayAgo && status === "Pendiente",

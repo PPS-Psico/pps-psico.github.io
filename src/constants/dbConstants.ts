@@ -8,6 +8,8 @@ export const TABLE_CONVOCATORIAS = "convocatorias";
 export const TABLE_INSTITUCIONES = "instituciones";
 export const TABLE_FINALIZACION = "finalizacion_pps";
 export const TABLE_PENALIZACIONES = "penalizaciones";
+export const TABLE_SOLICITUDES_MODIFICACION = "solicitudes_modificacion_pps";
+export const TABLE_SOLICITUDES_NUEVA = "solicitudes_nueva_pps";
 
 // Legacy Aliases for Tables (Kept for compatibility)
 export const TABLE_NAME_PPS = TABLE_PPS;
@@ -19,6 +21,8 @@ export const TABLE_NAME_CONVOCATORIAS = TABLE_CONVOCATORIAS;
 export const TABLE_NAME_INSTITUCIONES = TABLE_INSTITUCIONES;
 export const TABLE_NAME_FINALIZACION = TABLE_FINALIZACION;
 export const TABLE_NAME_PENALIZACIONES = TABLE_PENALIZACIONES;
+export const TABLE_NAME_SOLICITUDES_MODIFICACION = TABLE_SOLICITUDES_MODIFICACION;
+export const TABLE_NAME_SOLICITUDES_NUEVA = TABLE_SOLICITUDES_NUEVA;
 
 // --- DB COLUMN NAMES (Mapped to FIELD_ constants for app compatibility) ---
 

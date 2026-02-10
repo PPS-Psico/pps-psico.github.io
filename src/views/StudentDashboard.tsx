@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from "react";
 import CriteriosPanel from "../components/student/CriteriosPanel";
 import PracticasTable from "../components/student/PracticasTable";
+import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
+import SolicitudNuevaPPSModal from "../components/student/SolicitudNuevaPPSModal";
 import SolicitudesList from "../components/student/SolicitudesList";
 import EmptyState from "../components/EmptyState";
 import Tabs from "../components/Tabs";
@@ -11,7 +13,7 @@ import WhatsAppExportButton from "../components/student/WhatsAppExportButton";
 import { useAuth } from "../contexts/AuthContext";
 import type { AuthUser } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationContext";
-import type { TabId, Orientacion } from "../types";
+import type { TabId, Orientacion, Practica } from "../types";
 import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
 import ErrorState from "../components/ErrorState";
 import ProfileView from "../components/student/ProfileView";
@@ -165,6 +167,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
   const [forceInteractiveMode, setForceInteractiveMode] = useState(false);
+
+  // Estado para modales de corrección de prácticas
+  const [showModificacionModal, setShowModificacionModal] = useState(false);
+  const [showNuevaPPSModal, setShowNuevaPPSModal] = useState(false);
+  const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);
   const { openSolicitudPPSModal } = useModal();
   const { showToast } = useNotifications();
   const queryClient = useQueryClient();
@@ -235,6 +242,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     },
     [updateNota]
   );
+
+  // Handlers para modales de corrección de prácticas
+  const handleRequestModificacion = useCallback((practica: Practica) => {
+    console.log("[DEBUG] StudentDashboard - Solicitar modificación para:", practica);
+    setSelectedPractica(practica);
+    setShowModificacionModal(true);
+  }, []);
+
+  const handleRequestNuevaPPS = useCallback(() => {
+    console.log("[DEBUG] StudentDashboard - Solicitar nueva PPS");
+    setShowNuevaPPSModal(true);
+  }, []);
+
+  const handleRefetchPracticas = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["practicas"] });
+  }, [queryClient]);
 
   const handleOpenFinalization = useCallback(() => {
     setIsFinalizationModalOpen(true);
@@ -360,10 +383,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           handleNotaChange={handleNotaChange}
           handleFechaFinChange={handleFechaFinChange}
           isLoading={isPracticasLoading}
+          onRequestModificacion={handleRequestModificacion}
+          onRequestNuevaPPS={handleRequestNuevaPPS}
         />
       </ErrorBoundary>
     ),
-    [practicas, handleNotaChange, handleFechaFinChange]
+    [
+      practicas,
+      handleNotaChange,
+      handleFechaFinChange,
+      handleRequestModificacion,
+      handleRequestNuevaPPS,
+    ]
   );
 
   const profileContent = useMemo(
@@ -598,6 +629,25 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           isLoading={isLoading}
         />
       )}
+
+      {/* Modales de corrección de prácticas */}
+      <SolicitudModificacionModal
+        isOpen={showModificacionModal}
+        onClose={() => {
+          setShowModificacionModal(false);
+          setSelectedPractica(null);
+        }}
+        practica={selectedPractica}
+        studentId={studentDetails?.id || null}
+        onSuccess={handleRefetchPracticas}
+      />
+
+      <SolicitudNuevaPPSModal
+        isOpen={showNuevaPPSModal}
+        onClose={() => setShowNuevaPPSModal(false)}
+        studentId={studentDetails?.id || null}
+        onSuccess={handleRefetchPracticas}
+      />
     </>
   );
 };

@@ -1,27 +1,27 @@
-import React, { createContext, useContext, ReactNode, useMemo, useCallback } from "react";
+import React, { createContext, ReactNode, useCallback, useContext, useMemo } from "react";
+import { FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES } from "../constants";
 import { useAuth } from "../contexts/AuthContext";
+import { useAppConfig } from "../contexts/ConfigContext";
+import { useConvocatorias } from "../hooks/useConvocatorias";
 import { useStudentData } from "../hooks/useStudentData";
+import { useStudentFinalizacion } from "../hooks/useStudentFinalizacion";
 import { useStudentPracticas } from "../hooks/useStudentPracticas";
 import { useStudentSolicitudes } from "../hooks/useStudentSolicitudes";
-import { useConvocatorias } from "../hooks/useConvocatorias";
-import { useStudentFinalizacion } from "../hooks/useStudentFinalizacion";
 import { calculateCriterios, initialCriterios } from "../utils/criteriaCalculations";
 import { processAndLinkStudentData } from "../utils/dataLinker";
-import { FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES } from "../constants";
-import { useAppConfig } from "../contexts/ConfigContext";
 
 import type { UseMutationResult } from "@tanstack/react-query";
 import type {
+  AirtableRecord,
+  Convocatoria,
+  CriteriosCalculados,
   EstudianteFields,
+  FinalizacionPPS,
+  InformeTask,
+  LanzamientoPPS,
+  Orientacion,
   Practica,
   SolicitudPPS,
-  LanzamientoPPS,
-  Convocatoria,
-  Orientacion,
-  InformeTask,
-  AirtableRecord,
-  CriteriosCalculados,
-  FinalizacionPPS,
 } from "../types";
 
 interface StudentPanelContextType {
@@ -59,6 +59,7 @@ interface StudentPanelContextType {
     unknown
   >;
   updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string }, unknown>;
+  deletePractica: UseMutationResult<any, Error, string, unknown>;
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
   refetchAll: () => void;
@@ -94,6 +95,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     practicasError,
     updateNota,
     updateFechaFin,
+    deletePractica,
     refetchPracticas,
   } = useStudentPracticas(legajo);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
@@ -185,6 +187,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     updateInternalNotes,
     updateNota,
     updateFechaFin,
+    deletePractica,
     enrollStudent,
     confirmInforme,
     refetchAll,

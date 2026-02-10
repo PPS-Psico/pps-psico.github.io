@@ -3,13 +3,19 @@ import PageWrapper from "../../components/layout/PageWrapper";
 import PracticasTable from "../../components/student/PracticasTable";
 import SolicitudModificacionModal from "../../components/student/SolicitudModificacionModal";
 import SolicitudNuevaPPSModal from "../../components/student/SolicitudNuevaPPSModal";
-import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import type { Practica } from "../../types";
 
 const PracticasView: React.FC = () => {
-  const { practicas, updateNota, updateFechaFin, refetchPracticas, studentDetails } =
-    useStudentPanel();
+  const {
+    practicas,
+    updateNota,
+    updateFechaFin,
+    deletePractica,
+    refetchPracticas,
+    studentDetails,
+  } = useStudentPanel();
   const { authenticatedUser: user } = useAuth();
 
   const [showModificacionModal, setShowModificacionModal] = useState(false);
@@ -22,9 +28,15 @@ const PracticasView: React.FC = () => {
     setShowModificacionModal(true);
   };
 
+  const handleDeletePractica = (practicaId: string) => {
+    deletePractica.mutate(practicaId);
+  };
+
   const handleRequestNuevaPPS = () => {
     console.log("[DEBUG] Abrir modal nueva PPS");
+    console.log("[DEBUG] Estado antes:", { modalVisible: showNuevaPPSModal });
     setShowNuevaPPSModal(true);
+    console.log("[DEBUG] Seteando modal a true");
   };
 
   console.log("[DEBUG] PracticasView render - handlers definidos:", {
@@ -61,6 +73,7 @@ const PracticasView: React.FC = () => {
             updateFechaFin.mutate({ practicaId: pid, fecha });
           }}
           onRequestModificacion={handleRequestModificacion}
+          onDeletePractica={handleDeletePractica}
           onRequestNuevaPPS={handleRequestNuevaPPS}
         />
       </PageWrapper>

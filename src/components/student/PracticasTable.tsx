@@ -1,22 +1,22 @@
-import React, { useState, useRef, useEffect } from "react";
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
-import type { Practica } from "../../types";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_HORAS_PRACTICAS,
-  FIELD_FECHA_INICIO_PRACTICAS,
-  FIELD_FECHA_FIN_PRACTICAS,
-  FIELD_ESTADO_PRACTICA,
   FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
+  FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_FECHA_INICIO_PRACTICAS,
+  FIELD_HORAS_PRACTICAS,
+  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
 } from "../../constants";
+import type { Practica } from "../../types";
 import {
+  cleanDbValue,
   formatDate,
   getEspecialidadClasses,
   getStatusVisuals,
-  parseToUTCDate,
   normalizeStringForComparison,
-  cleanDbValue,
+  parseToUTCDate,
 } from "../../utils/formatters";
 import EmptyState from "../EmptyState";
 import NotaSelector from "../NotaSelector";
@@ -28,6 +28,7 @@ interface PracticasTableProps {
   handleFechaFinChange?: (practicaId: string, fecha: string) => void;
   isLoading?: boolean;
   onRequestModificacion?: (practica: Practica) => void;
+  onDeletePractica?: (practicaId: string) => void;
   onRequestNuevaPPS?: () => void;
 }
 
@@ -189,8 +190,8 @@ const TiltCard: React.FC<{
   const mouseXSpring = useSpring(x, { stiffness: 500, damping: 100 });
   const mouseYSpring = useSpring(y, { stiffness: 500, damping: 100 });
 
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["7deg", "-7deg"]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-7deg", "7deg"]);
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["1.5deg", "-1.5deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-1.5deg", "1.5deg"]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -230,6 +231,7 @@ const PracticaRow: React.FC<{
   onNotaChange: (id: string, nota: string) => void;
   onFechaFinChange?: (id: string, fecha: string) => void;
   onRequestModificacion?: (practica: Practica) => void;
+  onDeletePractica?: (id: string) => void;
   isSaving: boolean;
   isSuccess: boolean;
   index: number;
@@ -238,6 +240,7 @@ const PracticaRow: React.FC<{
   onNotaChange,
   onFechaFinChange,
   onRequestModificacion,
+  onDeletePractica,
   isSaving,
   isSuccess,
   index,
@@ -283,129 +286,131 @@ const PracticaRow: React.FC<{
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.4,
-        delay: index * 0.08,
-        ease: [0.25, 0.46, 0.45, 0.94],
-      }}
+    <TiltCard
+      className={`
+        group relative bg-white dark:bg-slate-900 rounded-2xl p-5
+        border border-slate-200 dark:border-slate-800
+        transition-shadow duration-300
+        flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between
+        shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50
+        ${isMenuOpen ? "z-[60] ring-2 ring-blue-200 dark:ring-blue-800" : "z-10"}
+        border-l-[6px] ${espVisuals.leftBorder}
+      `}
     >
-      <TiltCard
-        className={`
-          group relative bg-white dark:bg-slate-900 rounded-2xl p-5 
-          border border-slate-200 dark:border-slate-800 
-          transition-shadow duration-300 
-          flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between
-          shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50
-          ${isMenuOpen ? "z-[60] ring-2 ring-blue-200 dark:ring-blue-800" : "z-10"}
-          border-l-[6px] ${espVisuals.leftBorder}
-        `}
-      >
-        <div className="pl-1 flex-1 min-w-0 w-full">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`${espVisuals.tag} text-[10px] py-0.5 px-2 font-bold rounded-full`}>
-              {practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General"}
-            </span>
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${statusVisuals.labelClass} border bg-opacity-10`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              {status}
-            </span>
-          </div>
-
-          <h3 className="text-base font-bold text-slate-900 dark:text-white pr-2 leading-tight break-words hyphens-auto">
-            {institucion}
-          </h3>
-
-          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
-            <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">
-              <span className="material-icons !text-sm opacity-70">date_range</span>
-              <span>{formatDate(practica[FIELD_FECHA_INICIO_PRACTICAS])}</span>
-              <span className="mx-1">-</span>
-              <DateDisplay
-                dateStr={practica[FIELD_FECHA_FIN_PRACTICAS] || null}
-                onDateChange={(newDate) =>
-                  onFechaFinChange && onFechaFinChange(practica.id, newDate)
-                }
-                label="Fecha Fin"
-              />
-            </div>
-          </div>
+      <div className="pl-1 flex-1 min-w-0 w-full">
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`${espVisuals.tag} text-[10px] py-0.5 px-2 font-bold rounded-full`}>
+            {practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General"}
+          </span>
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${statusVisuals.labelClass} border bg-opacity-10`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+            {status}
+          </span>
         </div>
 
-        <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 dark:border-slate-800 pt-3 sm:pt-0">
-          <div className="flex flex-col items-center justify-center min-w-[3rem] text-center">
-            <motion.p
-              className="text-2xl font-black text-slate-800 dark:text-slate-200 leading-none text-center w-full"
-              whileHover={{ scale: 1.1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            >
-              {practica[FIELD_HORAS_PRACTICAS] || 0}
-            </motion.p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 text-center w-full">
-              Horas
-            </p>
-          </div>
+        <h3 className="text-base font-bold text-slate-900 dark:text-white pr-2 leading-tight break-words hyphens-auto">
+          {institucion}
+        </h3>
 
-          <div className="w-px h-10 bg-gradient-to-b from-transparent via-slate-200 dark:via-slate-700 to-transparent hidden sm:block" />
-
-          <div className="relative flex flex-col items-center">
-            <div ref={triggerRef}>
-              <AnimatedGradeDisplay
-                nota={notaActual}
-                prevNota={prevNota}
-                onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
-                isSaving={isSaving}
-                isSuccess={isSuccess}
-                isOpen={isMenuOpen}
-              />
-            </div>
-
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center">
-              Nota
-            </p>
-
-            {/* Botón de editar PPS */}
-            {onRequestModificacion && (
-              <motion.button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRequestModificacion(practica);
-                }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="mt-2 p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                title="Solicitar modificación"
-              >
-                <span className="material-icons text-lg">edit</span>
-              </motion.button>
-            )}
-
-            {isMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 cursor-default"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsMenuOpen(false);
-                  }}
-                />
-
-                <NotaSelector
-                  onSelect={handleSelectGrade}
-                  onClose={() => setIsMenuOpen(false)}
-                  currentValue={notaActual}
-                  triggerRect={triggerRect}
-                />
-              </>
-            )}
+        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
+          <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">
+            <span className="material-icons !text-sm opacity-70">date_range</span>
+            <span>{formatDate(practica[FIELD_FECHA_INICIO_PRACTICAS])}</span>
+            <span className="mx-1">-</span>
+            <DateDisplay
+              dateStr={practica[FIELD_FECHA_FIN_PRACTICAS] || null}
+              onDateChange={(newDate) => onFechaFinChange && onFechaFinChange(practica.id, newDate)}
+              label="Fecha Fin"
+            />
           </div>
         </div>
-      </TiltCard>
-    </motion.div>
+      </div>
+
+      <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 dark:border-slate-800 pt-3 sm:pt-0">
+        {/* Modern Float Edit Button - Top Right Corner */}
+        {onRequestModificacion && (
+          <motion.button
+            whileHover={{ scale: 1.1, backgroundColor: "var(--tw-bg-opacity)" }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequestModificacion(practica);
+            }}
+            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100 z-30"
+            title="Solicitar modificación"
+          >
+            <span className="material-icons text-base">edit</span>
+          </motion.button>
+        )}
+
+        {/* Botón de eliminar PPS */}
+        {onDeletePractica && (
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("¿Estás seguro de que deseas eliminar esta práctica?")) {
+                onDeletePractica(practica.id);
+              }
+            }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+            title="Eliminar práctica"
+          >
+            <span className="material-icons text-lg">delete_outline</span>
+          </motion.button>
+        )}
+
+        {/* Separator and Hours Display */}
+        <div className="flex flex-col items-center justify-center min-w-[3.5rem] text-center ml-2">
+          <p className="text-2xl font-black text-slate-800 dark:text-slate-200 leading-none">
+            {practica[FIELD_HORAS_PRACTICAS] || 0}
+          </p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+            Horas
+          </p>
+        </div>
+
+        <div className="w-px h-10 bg-gradient-to-b from-transparent via-slate-200 dark:via-slate-700 to-transparent hidden sm:block" />
+
+        <div className="relative flex flex-col items-center">
+          <div ref={triggerRef}>
+            <AnimatedGradeDisplay
+              nota={notaActual}
+              prevNota={prevNota}
+              onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
+              isSaving={isSaving}
+              isSuccess={isSuccess}
+              isOpen={isMenuOpen}
+            />
+          </div>
+
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center">
+            Nota
+          </p>
+        </div>
+      </div>
+
+      {isMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMenuOpen(false);
+            }}
+          />
+          <NotaSelector
+            onSelect={handleSelectGrade}
+            onClose={() => setIsMenuOpen(false)}
+            currentValue={notaActual}
+            triggerRect={triggerRect}
+          />
+        </>
+      )}
+    </TiltCard>
   );
 };
 
@@ -415,6 +420,7 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
   handleFechaFinChange,
   isLoading = false,
   onRequestModificacion,
+  onDeletePractica,
   onRequestNuevaPPS,
 }) => {
   if (import.meta.env.DEV) {
@@ -481,29 +487,26 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
           onNotaChange={onLocalNoteChange}
           onFechaFinChange={handleFechaFinChange}
           onRequestModificacion={onRequestModificacion}
+          onDeletePractica={onDeletePractica}
           isSaving={savingNotaId === practica.id}
           isSuccess={justUpdatedPracticaId === practica.id}
           index={index}
         />
       ))}
 
-      {/* Tarjeta para agregar nueva PPS */}
+      {/* Botón sutil para agregar nueva PPS */}
       {onRequestNuevaPPS && (
-        <motion.button
-          onClick={onRequestNuevaPPS}
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group min-h-[200px] flex flex-col items-center justify-center gap-3"
-        >
-          <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors">
-            <span className="material-icons text-3xl text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-              add
-            </span>
-          </div>
-          <span className="font-medium text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-            Agregar PPS manualmente
-          </span>
-        </motion.button>
+        <div className="flex justify-center py-4">
+          <motion.button
+            onClick={onRequestNuevaPPS}
+            whileHover={{ scale: 1.1, y: -2 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-900/30 transition-all"
+            title="Solicitar agregar una PPS"
+          >
+            <span className="material-icons text-2xl">add</span>
+          </motion.button>
+        </div>
       )}
     </div>
   );

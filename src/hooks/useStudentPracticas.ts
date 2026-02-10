@@ -1,17 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchPracticas } from "../services/dataService";
-import { db } from "../lib/db";
-import { mockDb } from "../services/mockDb";
-import { useModal } from "../contexts/ModalContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  FIELD_NOTA_PRACTICAS,
-  FIELD_INFORME_SUBIDO_CONVOCATORIAS,
   FIELD_ESTADO_PRACTICA,
-  FIELD_FECHA_FIN_PRACTICAS,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_INFORME_SUBIDO_CONVOCATORIAS,
+  FIELD_NOTA_PRACTICAS,
 } from "../constants";
-import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
+import { useModal } from "../contexts/ModalContext";
+import { db } from "../lib/db";
+import { fetchPracticas } from "../services/dataService";
+import { mockDb } from "../services/mockDb";
 import type { Practica } from "../types";
+import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
 
 export const useStudentPracticas = (legajo: string) => {
   const queryClient = useQueryClient();
@@ -126,12 +126,27 @@ export const useStudentPracticas = (legajo: string) => {
     onError: (err) => showModal("Error", `No se pudo actualizar la fecha: ${err.message}`),
   });
 
+  const deletePractica = useMutation({
+    mutationFn: async (practicaId: string) => {
+      if (legajo === "99999") {
+        return mockDb.delete("practicas", practicaId);
+      }
+      return db.practicas.delete(practicaId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["practicas", legajo] });
+      showModal("Práctica Eliminada", "La práctica se ha eliminado correctamente.");
+    },
+    onError: (err) => showModal("Error", `No se pudo eliminar la práctica: ${err.message}`),
+  });
+
   return {
     practicas,
     isPracticasLoading,
     practicasError,
     updateNota,
     updateFechaFin,
+    deletePractica,
     refetchPracticas,
   };
 };

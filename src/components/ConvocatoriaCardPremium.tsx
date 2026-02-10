@@ -151,15 +151,14 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   const btnConfig = getButtonConfig();
 
   // Logic for hiding requirements when CV is not requested
-  const showRequisitoMetric = reqCv && requisitoObligatorio;
   const showCvMetric = reqCv;
 
   return (
     <article
       className={`
         w-full relative overflow-hidden flex flex-col
-        rounded-[24px] 
-        bg-gradient-to-br from-white via-slate-50/50 to-slate-100/30 
+        rounded-[24px]
+        bg-gradient-to-br from-white via-slate-50/50 to-slate-100/30
         dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-950
         backdrop-blur-xl
         border border-slate-100 dark:border-slate-800/60
@@ -423,15 +422,6 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
 
               <MetricItem icon="group" label="Cupos" value={cupo} theme="teal" />
 
-              {showRequisitoMetric && (
-                <MetricItem
-                  icon="verified_user"
-                  label="Requisito"
-                  value={requisitoObligatorio}
-                  theme="amber"
-                />
-              )}
-
               {showCvMetric && (
                 <MetricItem
                   icon="description"
@@ -454,6 +444,23 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               <p className="text-slate-600 dark:text-slate-300 text-xs md:text-sm lg:text-base leading-relaxed text-justify font-medium">
                 {descripcion}
               </p>
+
+              {/* Requisito Excluyente / Información Importante */}
+              {requisitoObligatorio && (
+                <div className="mt-6 md:mt-8 animate-fade-in-up">
+                  <div className="p-4 md:p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10 border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-amber-600 dark:text-amber-400">
+                      <span className="material-icons !text-lg md:!text-xl">campaign</span>
+                      <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">
+                        Requisito / Importante
+                      </span>
+                    </div>
+                    <p className="text-amber-900 dark:text-amber-200 text-sm md:text-base font-bold leading-relaxed">
+                      {requisitoObligatorio}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Activities List (Stacked full width) */}

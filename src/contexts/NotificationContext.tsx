@@ -23,6 +23,8 @@ import {
   TABLE_NAME_FINALIZACION,
   TABLE_NAME_LANZAMIENTOS_PPS,
   TABLE_NAME_PPS,
+  TABLE_NAME_SOLICITUDES_MODIFICACION,
+  TABLE_NAME_SOLICITUDES_NUEVA,
 } from "../constants";
 import { isFCMSubscribed, subscribeToFCM, unsubscribeFromFCM } from "../lib/fcm";
 import { supabase } from "../lib/supabaseClient";
@@ -187,6 +189,78 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               });
             });
           }
+
+          // --- C. Solicitudes de Modificación Pendientes ---
+          const { data: pendingMods } = await supabase
+            .from(TABLE_NAME_SOLICITUDES_MODIFICACION)
+            .select(
+              `
+              id,
+              created_at,
+              tipo_modificacion,
+              estudiante:estudiantes(nombre)
+            `
+            )
+            .eq("estado", "pendiente")
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          if (pendingMods) {
+            pendingMods.forEach((mod: any) => {
+              const notifId = `mod-${mod.id}`;
+              const studentName = Array.isArray(mod.estudiante)
+                ? mod.estudiante[0]?.nombre
+                : mod.estudiante?.nombre;
+              loadedNotifications.push({
+                id: notifId,
+                title: "Solicitud de Modificación",
+                message: `${studentName || "Estudiante"} solicita cambio de ${mod.tipo_modificacion}.`,
+                timestamp: new Date(mod.created_at),
+                type: "solicitud_pps",
+                link: "/admin/solicitudes",
+                isRead: readNotificationIds.has(notifId),
+              });
+            });
+          }
+
+          // --- D. Solicitudes de Nueva PPS Pendientes ---
+          const { data: pendingNewRequests } = await supabase
+            .from(TABLE_NAME_SOLICITUDES_NUEVA)
+            .select(
+              `
+              id,
+              created_at,
+              nombre_institucion_manual,
+              estudiante:estudiantes(nombre),
+              institucion:instituciones(nombre)
+            `
+            )
+            .eq("estado", "pendiente")
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          if (pendingNewRequests) {
+            pendingNewRequests.forEach((req: any) => {
+              const notifId = `newpps-${req.id}`;
+              const studentName = Array.isArray(req.estudiante)
+                ? req.estudiante[0]?.nombre
+                : req.estudiante?.nombre;
+              const instName =
+                (Array.isArray(req.institucion)
+                  ? req.institucion[0]?.nombre
+                  : req.institucion?.nombre) || req.nombre_institucion_manual;
+
+              loadedNotifications.push({
+                id: notifId,
+                title: "Nueva PPS Autogestiva",
+                message: `${studentName || "Estudiante"} solicita iniciar en ${instName || "Institución"}.`,
+                timestamp: new Date(req.created_at),
+                type: "solicitud_pps",
+                link: "/admin/solicitudes",
+                isRead: readNotificationIds.has(notifId),
+              });
+            });
+          }
         } else if (isStudent) {
           // --- C. Nuevos Lanzamientos (Student) ---
           const sevenDaysAgo = new Date();
@@ -292,6 +366,42 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             timestamp: new Date(),
             type: "acreditacion",
             link: "/admin/solicitudes?tab=egreso",
+            isRead: false,
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: TABLE_NAME_SOLICITUDES_MODIFICACION },
+        async (payload: any) => {
+          if (!isAdmin) return;
+          if (!payload || !payload.new) return;
+
+          addNotification({
+            id: `mod-${payload.new.id}`,
+            title: "Solicitud de Modificación",
+            message: `Un estudiante solicita un cambio en su práctica.`,
+            timestamp: new Date(),
+            type: "solicitud_pps",
+            link: "/admin/solicitudes",
+            isRead: false,
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: TABLE_NAME_SOLICITUDES_NUEVA },
+        async (payload: any) => {
+          if (!isAdmin) return;
+          if (!payload || !payload.new) return;
+
+          addNotification({
+            id: `newpps-${payload.new.id}`,
+            title: "Nueva PPS Autogestiva",
+            message: `Nueva solicitud autogestiva recibida.`,
+            timestamp: new Date(),
+            type: "solicitud_pps",
+            link: "/admin/solicitudes",
             isRead: false,
           });
         }

@@ -1,20 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import Button from "../ui/Button";
-import { useNotifications } from "../../contexts/NotificationContext";
-import { uploadSolicitudFile, submitSolicitudNuevaPPS } from "../../services/dataService";
-import { supabase } from "../../lib/supabaseClient";
-import type { Institucion, LanzamientoPPS } from "../../types";
+import { motion } from "framer-motion";
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_ORIENTACIONES_INSTITUCIONES,
-  FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
-  ALL_ORIENTACIONES,
-} from "../../constants";
-import { formatDate } from "../../utils/formatters";
+  FIELD_ORIENTACION_LANZAMIENTOS,
+} from "../../constants/dbConstants";
+import { useNotifications } from "../../contexts/NotificationContext";
+import { supabase } from "../../lib/supabaseClient";
+import { submitSolicitudNuevaPPS, uploadSolicitudFile } from "../../services/dataService";
+import type { LanzamientoPPS } from "../../types";
+import Button from "../ui/Button";
 
 interface SolicitudNuevaPPSModalProps {
   isOpen: boolean;
@@ -32,7 +28,6 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const { showToast } = useNotifications();
 
   // Estados del formulario
-  const [selectedInstitucionId, setSelectedInstitucionId] = useState<string>("");
   const [nombreInstitucionManual, setNombreInstitucionManual] = useState<string>("");
   const [orientacion, setOrientacion] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState<string>("");
@@ -41,81 +36,86 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const [esOnline, setEsOnline] = useState(false);
   const [planillaFile, setPlanillaFile] = useState<File | null>(null);
   const [informeFile, setInformeFile] = useState<File | null>(null);
+  const [institucionSeleccionada, setInstitucionSeleccionada] = useState<Institucion | null>(null);
+  const [lanzamientoSeleccionado, setLanzamientoSeleccionado] = useState<LanzamientoPPS | null>(
+    null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragActive, setDragActive] = useState<string | null>(null);
-  const [showManualInstitucion, setShowManualInstitucion] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showResults, setShowResults] = useState(false);
 
-  // Fetch instituciones
+  // Fetch instituciones y lanzamientos
   const { data: instituciones = [] } = useQuery({
     queryKey: ["instituciones"],
     queryFn: async () => {
       const { data } = await supabase
         .from("instituciones")
-        .select("*")
-        .order(FIELD_NOMBRE_INSTITUCIONES);
+        .select("id, nombre, orientaciones")
+        .order("nombre");
       return data || [];
     },
     enabled: isOpen,
   });
 
-  // Fetch lanzamientos para obtener datos por defecto
   const { data: lanzamientos = [] } = useQuery({
     queryKey: ["lanzamientos_pps"],
     queryFn: async () => {
-      const { data } = await supabase.from("lanzamientos_pps").select("*");
-      return data || [];
+      const { data } = await supabase
+        .from("lanzamientos_pps")
+        .select("*")
+        .order("created_at", { ascending: false });
+      return (data as LanzamientoPPS[]) || [];
     },
     enabled: isOpen,
   });
 
-  // Autocompletar datos cuando se selecciona institución
+  // Filtrar lanzamientos que coincidan con el nombre ingresado
+  const lanzamientosCoincidentes = useMemo(() => {
+    const busquedaNormalizada = searchTerm.toLowerCase().trim();
+    if (!busquedaNormalizada) return [];
+
+    return instituciones.filter((inst) => inst.nombre?.toLowerCase().includes(busquedaNormalizada));
+  }, [searchTerm, instituciones]);
+
+  // Filtrar lanzamientos que coincidan con la institución seleccionada
+  const lanzamientosDeInstitucion = useMemo(() => {
+    if (!institucionSeleccionada) return [];
+    return lanzamientos.filter((l) => l.institucion_id === institucionSeleccionada.id);
+  }, [lanzamientos, institucionSeleccionada]);
+
+  // Auto-completar datos cuando se selecciona institución del listado
   useEffect(() => {
-    if (selectedInstitucionId && !showManualInstitucion) {
-      const institucion = instituciones.find((i) => i.id === selectedInstitucionId);
-      if (institucion) {
-        // Buscar lanzamientos de esta institución para obtener orientación y horas por defecto
-        const lanzamientosInst = lanzamientos.filter(
-          (l) => l.institucion_id === selectedInstitucionId
-        );
+    if (!institucionSeleccionada || !isOpen) return;
 
-        if (lanzamientosInst.length > 0) {
-          const ultimoLanzamiento = lanzamientosInst[lanzamientosInst.length - 1];
+    if (lanzamientosDeInstitucion.length > 0) {
+      // Ordenar por fecha para obtener el más reciente
+      const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const ultimoLanzamiento = sortedLanzamientos[0];
 
-          // Sugerir orientación (editable)
-          if (ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] && !orientacion) {
-            setOrientacion(ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
-          }
-
-          // Sugerir horas (editable)
-          if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] && !horasEstimadas) {
-            setHorasEstimadas(String(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]));
-          }
-        } else if (institucion[FIELD_ORIENTACIONES_INSTITUCIONES] && !orientacion) {
-          // Si no hay lanzamientos, usar orientaciones de la institución
-          const orientaciones = institucion[FIELD_ORIENTACIONES_INSTITUCIONES]?.split(",") || [];
-          if (orientaciones.length > 0) {
-            setOrientacion(orientaciones[0].trim());
-          }
-        }
+      // Autocompletar orientación
+      if (ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]) {
+        setOrientacion(ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
       }
-    }
-  }, [selectedInstitucionId, instituciones, lanzamientos, showManualInstitucion]);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-      // Reset form
-      resetForm();
+      // Autocompletar horas
+      if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) {
+        setHorasEstimadas(String(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]));
+      }
+
+      // Verificar si es online (Inteligente)
+      const modalidad =
+        (ultimoLanzamiento as any).modalidad_online === "Online" ||
+        (ultimoLanzamiento as any).modalidad_online === true ||
+        ultimoLanzamiento.modalidad === "Online" ||
+        (ultimoLanzamiento as any).es_online === true;
+      setEsOnline(modalidad);
     }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
+  }, [institucionSeleccionada, lanzamientosDeInstitucion, isOpen]);
 
   const resetForm = () => {
-    setSelectedInstitucionId("");
     setNombreInstitucionManual("");
     setOrientacion("");
     setFechaInicio("");
@@ -124,34 +124,64 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     setEsOnline(false);
     setPlanillaFile(null);
     setInformeFile(null);
-    setShowManualInstitucion(false);
+    setInstitucionSeleccionada(null);
+    setLanzamientoSeleccionado(null);
+    setDragActive(null);
+    setSearchTerm("");
+    setShowResults(false);
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      resetForm();
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
   const handleFileChange = (type: "planilla" | "informe", file: File | null) => {
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        showToast("El archivo es demasiado grande (máx 10MB)", "error");
-        return;
-      }
-      if (file.type !== "application/pdf") {
-        showToast("Solo se permiten archivos PDF", "error");
-        return;
-      }
-      if (type === "planilla") {
-        setPlanillaFile(file);
-      } else {
-        setInformeFile(file);
-      }
+    if (!file) {
+      if (type === "planilla") setPlanillaFile(null);
+      else setInformeFile(null);
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("El archivo es demasiado grande (máx 10MB)", "error");
+      return;
+    }
+
+    // Soportar PDF, Word, JPG, PNG, WEBP
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      showToast("Formato no soportado. Soportado: PDF, Word, JPG, PNG, WEBP (máx 10MB)", "error");
+      return;
+    }
+
+    if (type === "planilla") {
+      setPlanillaFile(file);
+    } else {
+      setInformeFile(file);
     }
   };
 
   const validateForm = (): boolean => {
-    if (!showManualInstitucion && !selectedInstitucionId) {
+    // Validar que se seleccionó una institución
+    if (!institucionSeleccionada?.id) {
       showToast("Seleccioná una institución", "error");
-      return false;
-    }
-    if (showManualInstitucion && !nombreInstitucionManual.trim()) {
-      showToast("Ingresá el nombre de la institución", "error");
       return false;
     }
     if (!orientacion) {
@@ -166,10 +196,6 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       showToast("Ingresá la fecha de finalización", "error");
       return false;
     }
-    if (new Date(fechaFinalizacion) <= new Date(fechaInicio)) {
-      showToast("La fecha de finalización debe ser posterior a la de inicio", "error");
-      return false;
-    }
     if (!horasEstimadas || parseInt(horasEstimadas) <= 0) {
       showToast("Ingresá las horas estimadas", "error");
       return false;
@@ -178,12 +204,14 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       showToast("El máximo permitido es 120 horas", "error");
       return false;
     }
-    if (!esOnline && !planillaFile) {
-      showToast("Tenés que subir la planilla de asistencia (o marcar como online)", "error");
+    // Si es online, solo informe es obligatorio
+    if (esOnline && !informeFile) {
+      showToast("Si es online, el informe es obligatorio", "error");
       return false;
     }
-    if (!informeFile) {
-      showToast("Tenés que subir el informe final", "error");
+    // Si es presencial, se requiere planilla + informe
+    if (!esOnline && !planillaFile) {
+      showToast("Si es presencial, la planilla es obligatoria", "error");
       return false;
     }
     return true;
@@ -197,7 +225,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       let planillaUrl = null;
       let informeUrl = null;
 
-      // Subir planilla si no es online
+      // Subir planilla (si aplica)
       if (!esOnline && planillaFile) {
         planillaUrl = await uploadSolicitudFile(
           planillaFile,
@@ -219,20 +247,21 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
 
       // Crear solicitud
       await submitSolicitudNuevaPPS(studentId, {
-        institucionId: showManualInstitucion ? null : selectedInstitucionId,
-        nombreInstitucionManual: showManualInstitucion ? nombreInstitucionManual : null,
+        institucionId: institucionSeleccionada?.id || null,
+        nombreInstitucionManual: null,
         orientacion,
         fechaInicio,
         fechaFinalizacion,
         horasEstimadas: parseInt(horasEstimadas, 10),
         planillaAsistenciaUrl: planillaUrl,
-        informeFinalUrl: informeUrl || "",
+        informeFinalUrl: informeUrl,
         esOnline,
       });
 
       showToast("Solicitud enviada correctamente", "success");
       onSuccess?.();
       onClose();
+      resetForm();
     } catch (error: any) {
       showToast(error.message || "Error al enviar la solicitud", "error");
     } finally {
@@ -255,9 +284,14 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         e.preventDefault();
         setDragActive(null);
       }}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(type);
+      }}
       onDrop={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         setDragActive(null);
         const f = e.dataTransfer.files[0];
         handleFileChange(type, f);
@@ -274,8 +308,15 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       <input
         id={`file-${type}`}
         type="file"
-        accept=".pdf"
-        onChange={(e) => handleFileChange(type, e.target.files?.[0] || null)}
+        accept={
+          type === "planilla"
+            ? ".pdf"
+            : ".pdf,.doc,.docx,.doc,.doc,.docm,.pdf,.jpeg,.jpg,.png,.webp"
+        }
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          handleFileChange(type, f);
+        }}
         className="hidden"
       />
       {file ? (
@@ -286,26 +327,23 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
           <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-[200px]">
             {file.name}
           </span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setFile(null);
-            }}
-            className="ml-2 text-slate-400 hover:text-rose-500"
-          >
+          <button onClick={() => setFile(null)} className="ml-2 text-slate-400 hover:text-rose-500">
             <span className="material-icons text-sm">close</span>
           </button>
         </div>
       ) : (
         <>
-          <span className="material-icons text-2xl text-slate-400 dark:text-slate-500 mb-1">
-            upload_file
+          <span className="material-icons text-3xl text-slate-400 dark:text-slate-500 mb-2">
+            {type === "planilla" ? "description" : "assignment"}
           </span>
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            {type === "planilla" ? "Planilla de asistencia" : "Informe final"}
-            {required && <span className="text-rose-500">*</span>}
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            {type === "planilla"
+              ? "Arrastrá tu planilla de asistencia o hacé clic para seleccionar"
+              : "Arrastrá tu informe final o hacé clic para seleccionar"}
           </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500">PDF, máx 10MB</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Soportado: PDF, Word, JPG, PNG, WEBP (máx 10MB)
+          </p>
         </>
       )}
     </div>
@@ -323,14 +361,9 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       >
         <div className="p-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Solicitar nueva PPS
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Completá los datos de tu práctica para que sea revisada
-              </p>
-            </div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              Solicitar nueva PPS
+            </h2>
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
@@ -340,7 +373,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           <div className="space-y-6">
             {/* Institución */}
             <div>
@@ -348,50 +381,60 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 Institución <span className="text-rose-500">*</span>
               </label>
 
-              {!showManualInstitucion ? (
-                <>
-                  <select
-                    value={selectedInstitucionId}
-                    onChange={(e) => setSelectedInstitucionId(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Seleccioná una institución</option>
-                    {instituciones.map((inst) => (
-                      <option key={inst.id} value={inst.id}>
-                        {inst[FIELD_NOMBRE_INSTITUCIONES]}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => {
-                      setShowManualInstitucion(true);
-                      setSelectedInstitucionId("");
-                    }}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-2"
-                  >
-                    La institución no está en la lista
-                  </button>
-                </>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={nombreInstitucionManual}
-                    onChange={(e) => setNombreInstitucionManual(e.target.value)}
-                    placeholder="Nombre de la institución"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={() => {
-                      setShowManualInstitucion(false);
-                      setNombreInstitucionManual("");
-                    }}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-2"
-                  >
-                    Volver a la lista
-                  </button>
-                </>
-              )}
+              <div className="relative">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-icons text-slate-400">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setShowResults(true);
+                        if (!e.target.value) {
+                          setInstitucionSeleccionada(null);
+                        }
+                      }}
+                      onFocus={() => setShowResults(true)}
+                      placeholder="Escribí para buscar institución..."
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Resultados de búsqueda */}
+                {showResults && searchTerm.trim() && (
+                  <>
+                    <div className="fixed inset-0 z-[100]" onClick={() => setShowResults(false)} />
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[101] max-h-60 overflow-y-auto overflow-x-hidden py-2 backdrop-blur-xl">
+                      {lanzamientosCoincidentes.length > 0 ? (
+                        lanzamientosCoincidentes.map((inst) => (
+                          <button
+                            key={inst.id}
+                            onClick={() => {
+                              setInstitucionSeleccionada(inst as any);
+                              setSearchTerm(inst.nombre || "");
+                              setShowResults(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-between"
+                          >
+                            <span className="font-medium">{inst.nombre}</span>
+                            <span className="material-icons text-blue-500 text-sm">
+                              add_circle_outline
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 italic">
+                          No se encontraron resultados
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Orientación */}
@@ -405,7 +448,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Seleccioná una orientación</option>
-                {ALL_ORIENTACIONES.map((ori) => (
+                {["Clinica", "Educacional", "Laboral", "Comunitaria"].map((ori) => (
                   <option key={ori} value={ori}>
                     {ori}
                   </option>
@@ -423,7 +466,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                   type="date"
                   value={fechaInicio}
                   onChange={(e) => setFechaInicio(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl border border-sshare-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
@@ -442,8 +485,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
             {/* Horas */}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Horas a acreditar <span className="text-slate-400">(máx 120)</span>{" "}
-                <span className="text-rose-500">*</span>
+                Cantidad de horas <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
@@ -452,61 +494,53 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 placeholder="Ej: 80"
                 min="1"
                 max="120"
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Máximo 120 horas</p>
             </div>
 
-            {/* Es online? */}
-            <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-              <input
-                type="checkbox"
-                id="es-online"
-                checked={esOnline}
-                onChange={(e) => {
-                  setEsOnline(e.target.checked);
-                  if (e.target.checked) {
-                    setPlanillaFile(null);
-                  }
-                }}
-                className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="es-online" className="text-sm text-slate-700 dark:text-slate-300">
-                Esta PPS fue realizada en modalidad online
-                <span className="block text-xs text-slate-500 dark:text-slate-400">
-                  (No se requiere planilla de asistencia)
-                </span>
-              </label>
-            </div>
+            {/* Info sobre modalidad online */}
+            {esOnline && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20 flex items-start gap-3">
+                <span className="material-icons text-blue-500">info</span>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Esta institución es <strong>Online</strong>. Solo necesitás subir el informe
+                  final.
+                </p>
+              </div>
+            )}
 
             {/* Archivos */}
-            <div className="grid grid-cols-2 gap-4">
-              {!esOnline && renderFileUpload("planilla", planillaFile, setPlanillaFile, true)}
-              {renderFileUpload("informe", informeFile, setInformeFile, true)}
+            <div className="space-y-4">
+              {!esOnline && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Planilla de asistencia <span className="text-rose-500">*</span>
+                  </label>
+                  {renderFileUpload("planilla", planillaFile, setPlanillaFile, true)}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Informe final <span className="text-rose-500">*</span>
+                </label>
+                {renderFileUpload("informe", informeFile, setInformeFile, true)}
+              </div>
             </div>
+          </div>
 
-            {/* Submit */}
-            <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-              <Button variant="secondary" onClick={onClose} className="flex-1">
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                isLoading={isSubmitting}
-                disabled={
-                  (!showManualInstitucion && !selectedInstitucionId) ||
-                  (showManualInstitucion && !nombreInstitucionManual.trim()) ||
-                  !orientacion ||
-                  !fechaInicio ||
-                  !fechaFinalizacion ||
-                  !horasEstimadas ||
-                  (!esOnline && !planillaFile) ||
-                  !informeFile
-                }
-                className="flex-1"
-              >
-                Enviar solicitud
-              </Button>
-            </div>
+          <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <Button variant="secondary" onClick={onClose} className="flex-1">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              Enviar solicitud
+            </Button>
           </div>
         </div>
       </motion.div>

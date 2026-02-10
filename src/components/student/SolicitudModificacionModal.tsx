@@ -76,8 +76,19 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
         showToast("El archivo es demasiado grande (máx 10MB)", "error");
         return;
       }
-      if (file.type !== "application/pdf") {
-        showToast("Solo se permiten archivos PDF", "error");
+      // Soportar PDF, Word e imágenes
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        showToast("Solo se permiten archivos PDF, Word e imágenes", "error");
         return;
       }
       setPlanillaFile(file);
@@ -256,7 +267,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Horas a acreditar <span className="text-slate-400">(máx 120)</span>
+            Cantidad de horas <span className="text-slate-400">(máx 120)</span>
           </label>
           <input
             type="number"
@@ -293,7 +304,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.doc,.docx,.doc,.jpeg,.jpg,.png,.webp"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -321,9 +332,11 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
                   upload_file
                 </span>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Arrastrá tu archivo PDF o hacé clic para seleccionar
+                  Arrastrá tu archivo o hacé clic para seleccionar
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Máximo 10MB</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                  Soportado: PDF, Word, JPG, PNG, WEBP (máx 10MB)
+                </p>
               </>
             )}
           </div>
