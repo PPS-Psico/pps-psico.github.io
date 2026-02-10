@@ -24,7 +24,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || 'Nueva Notificación';
   const notificationOptions = {
     body: payload.notification?.body || '',
-    icon: payload.notification?.icon || '/icons/icon-192x192.png',
+    icon: payload.notification?.icon || '/icons/icon-notification.png',
     badge: '/icons/icon-192x192.png',
     tag: payload.data?.tag || 'default',
     data: payload.data || {},
