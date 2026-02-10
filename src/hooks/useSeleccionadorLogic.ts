@@ -246,6 +246,7 @@ export const useSeleccionadorLogic = (
           return {
             enrollmentId: enrollment.id,
             studentId: sId,
+            userId: studentDetails[FIELD_USER_ID_ESTUDIANTES],
             nombre: studentDetails[FIELD_NOMBRE_ESTUDIANTES] || "Desconocido",
             legajo: String(studentDetails[FIELD_LEGAJO_ESTUDIANTES] || ""),
             correo: studentDetails[FIELD_CORREO_ESTUDIANTES] || "",
@@ -453,7 +454,7 @@ export const useSeleccionadorLogic = (
                     title,
                     body: message,
                     type: "selection", // Icon type
-                    user_ids: [student.studentId],
+                    user_ids: [student.userId || student.studentId],
                   },
                 });
               });

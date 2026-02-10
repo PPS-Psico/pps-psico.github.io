@@ -105,6 +105,7 @@ export type GroupedSeleccionados = { [key: string]: SelectedStudent[] };
 export interface EnrichedStudent {
   enrollmentId: string;
   studentId: string;
+  userId?: string; // Add this to link with FCM tokens
   nombre: string;
   legajo: string;
   correo: string;
