@@ -159,7 +159,7 @@ async function sendToToken(
           data: {
             content_title: title, // Use specific keys to avoid conflicts
             content_body: body, // Use specific keys to avoid conflicts
-            content_type: data.type || "message", // Dynamic type for icons
+            content_type: data.type || "message", // Priority to data.type
             title: title,
             body: body,
             url: "https://pps-psico.github.io/",
@@ -277,7 +277,10 @@ Deno.serve(async (req) => {
     const errors: string[] = [];
 
     for (const token of tokens) {
-      const result = await sendToToken(token, title, messageBody, body.data || {});
+      const result = await sendToToken(token, title, messageBody, {
+        ...(body.data || {}),
+        type: body.type,
+      });
       if (result.success) {
         sent++;
       } else {
