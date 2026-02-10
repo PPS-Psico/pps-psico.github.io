@@ -78,8 +78,14 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     updateInternalNotes,
     refetchStudent,
   } = useStudentData(legajo);
-  const { practicas, isPracticasLoading, practicasError, updateNota, updateFechaFin, refetchPracticas } =
-    useStudentPracticas(legajo);
+  const {
+    practicas,
+    isPracticasLoading,
+    practicasError,
+    updateNota,
+    updateFechaFin,
+    refetchPracticas,
+  } = useStudentPracticas(legajo);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
     useStudentSolicitudes(legajo, studentAirtableId);
   const {

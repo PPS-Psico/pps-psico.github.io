@@ -4,10 +4,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import Button from "../ui/Button";
 import { useNotifications } from "../../contexts/NotificationContext";
-import {
-  uploadSolicitudFile,
-  submitSolicitudNuevaPPS,
-} from "../../services/dataService";
+import { uploadSolicitudFile, submitSolicitudNuevaPPS } from "../../services/dataService";
 import { supabase } from "../../lib/supabaseClient";
 import type { Institucion, LanzamientoPPS } from "../../types";
 import {
@@ -33,7 +30,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   onSuccess,
 }) => {
   const { showToast } = useNotifications();
-  
+
   // Estados del formulario
   const [selectedInstitucionId, setSelectedInstitucionId] = useState<string>("");
   const [nombreInstitucionManual, setNombreInstitucionManual] = useState<string>("");
@@ -80,15 +77,15 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         const lanzamientosInst = lanzamientos.filter(
           (l) => l.institucion_id === selectedInstitucionId
         );
-        
+
         if (lanzamientosInst.length > 0) {
           const ultimoLanzamiento = lanzamientosInst[lanzamientosInst.length - 1];
-          
+
           // Sugerir orientación (editable)
           if (ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] && !orientacion) {
             setOrientacion(ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
           }
-          
+
           // Sugerir horas (editable)
           if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] && !horasEstimadas) {
             setHorasEstimadas(String(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]));
@@ -270,8 +267,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         dragActive === type
           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
           : file
-          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-          : "border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-600"
+            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+            : "border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-600"
       }`}
     >
       <input
@@ -283,7 +280,9 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       />
       {file ? (
         <div className="flex items-center justify-center gap-2">
-          <span className="material-icons text-emerald-600 dark:text-emerald-400">check_circle</span>
+          <span className="material-icons text-emerald-600 dark:text-emerald-400">
+            check_circle
+          </span>
           <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-[200px]">
             {file.name}
           </span>
@@ -348,7 +347,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Institución <span className="text-rose-500">*</span>
               </label>
-              
+
               {!showManualInstitucion ? (
                 <>
                   <select
@@ -407,7 +406,9 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
               >
                 <option value="">Seleccioná una orientación</option>
                 {ALL_ORIENTACIONES.map((ori) => (
-                  <option key={ori} value={ori}>{ori}</option>
+                  <option key={ori} value={ori}>
+                    {ori}
+                  </option>
                 ))}
               </select>
             </div>

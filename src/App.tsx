@@ -42,7 +42,6 @@ const HerramientasView = lazy(() => import("./views/admin/HerramientasView"));
 const MetricsView = lazy(() => import("./views/admin/MetricsView"));
 const RecordatoriosView = lazy(() => import("./views/admin/RecordatoriosView"));
 const SolicitudesManager = lazy(() => import("./components/admin/SolicitudesManager"));
-const SolicitudesCorreccionManager = lazy(() => import("./components/admin/SolicitudesCorreccionManager"));
 const JefeView = lazy(() => import("./views/JefeView"));
 const DirectivoView = lazy(() => import("./views/DirectivoView"));
 const ReporteroView = lazy(() => import("./views/ReporteroView"));
@@ -120,7 +119,6 @@ const AppRoutes = () => {
         <Route path="lanzador" element={<LanzadorView />} />
         <Route path="gestion" element={<GestionView />} />
         <Route path="solicitudes" element={<SolicitudesManager />} />
-        <Route path="correcciones" element={<SolicitudesCorreccionManager />} />
         <Route path="recordatorios" element={<RecordatoriosView />} />
         <Route
           path="herramientas"

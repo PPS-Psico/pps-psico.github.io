@@ -8,9 +8,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import type { Practica } from "../../types";
 
 const PracticasView: React.FC = () => {
-  const { practicas, updateNota, updateFechaFin, refetchPracticas, studentDetails } = useStudentPanel();
+  const { practicas, updateNota, updateFechaFin, refetchPracticas, studentDetails } =
+    useStudentPanel();
   const { authenticatedUser: user } = useAuth();
-  
+
   const [showModificacionModal, setShowModificacionModal] = useState(false);
   const [showNuevaPPSModal, setShowNuevaPPSModal] = useState(false);
   const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);

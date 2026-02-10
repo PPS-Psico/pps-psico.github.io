@@ -15,6 +15,7 @@ import Loader from "../Loader";
 import SubTabs from "../SubTabs";
 import Toast from "../ui/Toast";
 import FinalizacionReview from "./FinalizacionReview";
+import SolicitudesCorreccionManager from "./SolicitudesCorreccionManager";
 import { SearchBar, FilterTabs, SortDropdown } from "./SearchAndFilter";
 import { StatusBadge, ActionButton } from "../ui/admin";
 
@@ -329,6 +330,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
   const tabs = [
     { id: "ingreso", label: "Solicitudes de PPS", icon: "login" },
     { id: "egreso", label: "Solicitudes de Finalización", icon: "logout" },
+    { id: "correcciones", label: "Solicitudes de Corrección", icon: "edit_note" },
   ];
 
   const {
@@ -497,6 +499,8 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
 
       {activeTabId === "egreso" ? (
         <FinalizacionReview isTestingMode={isTestingMode} />
+      ) : activeTabId === "correcciones" ? (
+        <SolicitudesCorreccionManager />
       ) : (
         <div className="animate-fade-in-up space-y-6">
           {/* Barra de búsqueda y filtros mejorada */}

@@ -799,10 +799,12 @@ export const submitSolicitudNuevaPPS = async (
 export const fetchSolicitudesModificacionByStudent = async (studentId: string) => {
   const { data, error } = await supabase
     .from("solicitudes_modificacion_pps")
-    .select(`
+    .select(
+      `
       *,
       practica:practicas(*)
-    `)
+    `
+    )
     .eq("estudiante_id", studentId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -812,10 +814,12 @@ export const fetchSolicitudesModificacionByStudent = async (studentId: string) =
 export const fetchSolicitudesNuevaPPSByStudent = async (studentId: string) => {
   const { data, error } = await supabase
     .from("solicitudes_nueva_pps")
-    .select(`
+    .select(
+      `
       *,
       institucion:instituciones(id, nombre)
-    `)
+    `
+    )
     .eq("estudiante_id", studentId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -827,17 +831,19 @@ export const fetchSolicitudesNuevaPPSByStudent = async (studentId: string) => {
 export const fetchAllSolicitudesModificacion = async (estado?: string) => {
   let query = supabase
     .from("solicitudes_modificacion_pps")
-    .select(`
+    .select(
+      `
       *,
       estudiante:estudiantes(id, nombre, legajo, correo),
       practica:practicas(*)
-    `)
+    `
+    )
     .order("created_at", { ascending: false });
-  
+
   if (estado) {
     query = query.eq("estado", estado);
   }
-  
+
   const { data, error } = await query;
   if (error) throw error;
   return data || [];
@@ -846,17 +852,19 @@ export const fetchAllSolicitudesModificacion = async (estado?: string) => {
 export const fetchAllSolicitudesNuevaPPS = async (estado?: string) => {
   let query = supabase
     .from("solicitudes_nueva_pps")
-    .select(`
+    .select(
+      `
       *,
       estudiante:estudiantes(id, nombre, legajo, correo),
       institucion:instituciones(id, nombre)
-    `)
+    `
+    )
     .order("created_at", { ascending: false });
-  
+
   if (estado) {
     query = query.eq("estado", estado);
   }
-  
+
   const { data, error } = await query;
   if (error) throw error;
   return data || [];
@@ -868,7 +876,7 @@ export const approveSolicitudModificacion = async (solicitudId: string, notasAdm
     .select("*, practica:practicas(*)")
     .eq("id", solicitudId)
     .single();
-  
+
   if (fetchError) throw fetchError;
   if (!solicitud) throw new Error("Solicitud no encontrada");
   if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
@@ -878,7 +886,7 @@ export const approveSolicitudModificacion = async (solicitudId: string, notasAdm
     .from("solicitudes_modificacion_pps")
     .update({ estado: "aprobada", notas_admin: notasAdmin })
     .eq("id", solicitudId);
-  
+
   if (updateError) throw updateError;
 
   // Si es cambio de horas, actualizar la práctica
@@ -887,23 +895,27 @@ export const approveSolicitudModificacion = async (solicitudId: string, notasAdm
       .from("practicas")
       .update({ horas_realizadas: solicitud.horas_nuevas })
       .eq("id", solicitud.practica_id);
-    
+
     if (practicaError) throw practicaError;
   }
 
   return solicitud;
 };
 
-export const rejectSolicitudModificacion = async (solicitudId: string, comentarioRechazo: string, notasAdmin?: string) => {
+export const rejectSolicitudModificacion = async (
+  solicitudId: string,
+  comentarioRechazo: string,
+  notasAdmin?: string
+) => {
   const { error } = await supabase
     .from("solicitudes_modificacion_pps")
-    .update({ 
-      estado: "rechazada", 
+    .update({
+      estado: "rechazada",
       comentario_rechazo: comentarioRechazo,
-      notas_admin: notasAdmin 
+      notas_admin: notasAdmin,
     })
     .eq("id", solicitudId);
-  
+
   if (error) throw error;
 };
 
@@ -913,7 +925,7 @@ export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?:
     .select("*")
     .eq("id", solicitudId)
     .single();
-  
+
   if (fetchError) throw fetchError;
   if (!solicitud) throw new Error("Solicitud no encontrada");
   if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
@@ -936,7 +948,7 @@ export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?:
     .insert(practicaRecord)
     .select()
     .single();
-  
+
   if (practicaError) throw practicaError;
 
   // Actualizar estado de la solicitud
@@ -944,30 +956,31 @@ export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?:
     .from("solicitudes_nueva_pps")
     .update({ estado: "aprobada", notas_admin: notasAdmin })
     .eq("id", solicitudId);
-  
+
   if (updateError) throw updateError;
 
   return { solicitud, practica };
 };
 
-export const rejectSolicitudNuevaPPS = async (solicitudId: string, comentarioRechazo: string, notasAdmin?: string) => {
+export const rejectSolicitudNuevaPPS = async (
+  solicitudId: string,
+  comentarioRechazo: string,
+  notasAdmin?: string
+) => {
   const { error } = await supabase
     .from("solicitudes_nueva_pps")
-    .update({ 
-      estado: "rechazada", 
+    .update({
+      estado: "rechazada",
       comentario_rechazo: comentarioRechazo,
-      notas_admin: notasAdmin 
+      notas_admin: notasAdmin,
     })
     .eq("id", solicitudId);
-  
+
   if (error) throw error;
 };
 
 export const deletePractica = async (practicaId: string) => {
-  const { error } = await supabase
-    .from("practicas")
-    .delete()
-    .eq("id", practicaId);
-  
+  const { error } = await supabase.from("practicas").delete().eq("id", practicaId);
+
   if (error) throw error;
 };

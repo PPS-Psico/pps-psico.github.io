@@ -42,7 +42,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -64,7 +64,8 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
   if (!isOpen || !practica) return null;
 
-  const institucion = cleanDbValue(practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || "Institución";
+  const institucion =
+    cleanDbValue(practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || "Institución";
   const horasActuales = practica[FIELD_HORAS_PRACTICAS] || 0;
   const orientacion = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
 
@@ -126,7 +127,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
   const handleSubmitHoras = async () => {
     if (!studentId || !practica) return;
-    
+
     if (!validateHoras(horasNuevas)) return;
     if (!planillaFile) {
       showToast("Tenés que subir la planilla de asistencia", "error");
@@ -164,7 +165,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
   const handleDeletePractica = async () => {
     if (!practica) return;
-    
+
     setIsDeleting(true);
     try {
       await deletePractica(practica.id);
@@ -191,7 +192,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
           ¿Qué querés hacer con esta PPS?
         </p>
-        
+
         <button
           onClick={() => {
             setTipoModificacion("horas");
@@ -247,7 +248,8 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
         <p className="text-sm text-blue-800 dark:text-blue-200">
           <span className="material-icons text-sm align-text-bottom mr-1">info</span>
-          Completá los datos y subí la planilla de asistencia. Tu solicitud será revisada por la coordinación.
+          Completá los datos y subí la planilla de asistencia. Tu solicitud será revisada por la
+          coordinación.
         </p>
       </div>
 
@@ -284,8 +286,8 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
               dragActive
                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                 : planillaFile
-                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                : "border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-600"
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                  : "border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-600"
             }`}
           >
             <input
@@ -297,7 +299,9 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             />
             {planillaFile ? (
               <div className="flex items-center justify-center gap-2">
-                <span className="material-icons text-emerald-600 dark:text-emerald-400">check_circle</span>
+                <span className="material-icons text-emerald-600 dark:text-emerald-400">
+                  check_circle
+                </span>
                 <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
                   {planillaFile.name}
                 </span>
@@ -319,9 +323,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                   Arrastrá tu archivo PDF o hacé clic para seleccionar
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                  Máximo 10MB
-                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Máximo 10MB</p>
               </>
             )}
           </div>
@@ -403,7 +405,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
                   ¿Eliminar PPS?
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  Esta acción no se puede deshacer. Se eliminará permanentemente el registro de {" "}
+                  Esta acción no se puede deshacer. Se eliminará permanentemente el registro de{" "}
                   <strong>{institucion}</strong>.
                 </p>
               </div>

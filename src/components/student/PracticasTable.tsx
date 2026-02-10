@@ -233,7 +233,15 @@ const PracticaRow: React.FC<{
   isSaving: boolean;
   isSuccess: boolean;
   index: number;
-}> = ({ practica, onNotaChange, onFechaFinChange, onRequestModificacion, isSaving, isSuccess, index }) => {
+}> = ({
+  practica,
+  onNotaChange,
+  onFechaFinChange,
+  onRequestModificacion,
+  isSaving,
+  isSuccess,
+  index,
+}) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [triggerRect, setTriggerRect] = useState<DOMRect>(new DOMRect(0, 0, 0, 0));
   const triggerRef = useRef<HTMLDivElement>(null);

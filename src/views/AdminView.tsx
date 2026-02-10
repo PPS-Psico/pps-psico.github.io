@@ -12,7 +12,6 @@ const AdminDashboard = lazy(() => import("../components/admin/AdminDashboard"));
 const LanzadorView = lazy(() => import("./admin/LanzadorView"));
 const GestionView = lazy(() => import("./admin/GestionView"));
 const SolicitudesManager = lazy(() => import("../components/admin/SolicitudesManager"));
-const SolicitudesCorreccionManager = lazy(() => import("../components/admin/SolicitudesCorreccionManager"));
 const HerramientasView = lazy(() => import("./admin/HerramientasView"));
 const MetricsView = lazy(() => import("./admin/MetricsView"));
 const RecordatoriosView = lazy(() => import("./admin/RecordatoriosView"));
@@ -49,8 +48,6 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
       currentTabId = "gestion";
     } else if (location.pathname.includes("/admin/solicitudes")) {
       currentTabId = "solicitudes";
-    } else if (location.pathname.includes("/admin/correcciones")) {
-      currentTabId = "correcciones";
     } else if (location.pathname.includes("/admin/recordatorios")) {
       currentTabId = "recordatorios";
     } else if (location.pathname.includes("/admin/metrics")) {
@@ -75,7 +72,6 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
 
     baseTabs.push(
       { id: "solicitudes", label: "Solicitudes", icon: "list_alt", path: "/admin/solicitudes" },
-      { id: "correcciones", label: "Correcciones", icon: "edit_note", path: "/admin/correcciones" },
       {
         id: "recordatorios",
         label: "Recordatorios",
@@ -161,7 +157,6 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
               <div className="p-8 text-center text-slate-500">Módulo desactivado</div>
             ))}
           {localTab === "solicitudes" && <SolicitudesManager isTestingMode={true} />}
-          {localTab === "correcciones" && <SolicitudesCorreccionManager />}
           {localTab === "recordatorios" && <RecordatoriosView />}
           {localTab === "metrics" && (
             <MetricsView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />

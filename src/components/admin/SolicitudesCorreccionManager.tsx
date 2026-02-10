@@ -76,7 +76,9 @@ const SolicitudesCorreccionManager: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>("modificaciones");
   const [statusFilter, setStatusFilter] = useState<SolicitudStatus>("pendiente");
-  const [selectedSolicitud, setSelectedSolicitud] = useState<SolicitudModificacion | SolicitudNueva | null>(null);
+  const [selectedSolicitud, setSelectedSolicitud] = useState<
+    SolicitudModificacion | SolicitudNueva | null
+  >(null);
   const [showRechazoModal, setShowRechazoModal] = useState(false);
   const [comentarioRechazo, setComentarioRechazo] = useState("");
   const [notasAdmin, setNotasAdmin] = useState("");
@@ -85,7 +87,8 @@ const SolicitudesCorreccionManager: React.FC = () => {
   // Fetch solicitudes de modificación
   const { data: solicitudesModificacion = [], isLoading: isLoadingMod } = useQuery({
     queryKey: ["solicitudes_modificacion", statusFilter],
-    queryFn: () => fetchAllSolicitudesModificacion(statusFilter === "todas" ? undefined : statusFilter),
+    queryFn: () =>
+      fetchAllSolicitudesModificacion(statusFilter === "todas" ? undefined : statusFilter),
   });
 
   // Fetch solicitudes de nueva PPS
@@ -124,7 +127,8 @@ const SolicitudesCorreccionManager: React.FC = () => {
   });
 
   const approveNuevaMutation = useMutation({
-    mutationFn: ({ id, notas }: { id: string; notas?: string }) => approveSolicitudNuevaPPS(id, notas),
+    mutationFn: ({ id, notas }: { id: string; notas?: string }) =>
+      approveSolicitudNuevaPPS(id, notas),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["solicitudes_nueva_pps"] });
       queryClient.invalidateQueries({ queryKey: ["practicas"] });
@@ -322,9 +326,7 @@ const SolicitudesCorreccionManager: React.FC = () => {
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">
               {sol.estudiante?.nombre}
             </h3>
-            <p className="text-slate-500 dark:text-slate-400">
-              {sol.estudiante?.correo}
-            </p>
+            <p className="text-slate-500 dark:text-slate-400">{sol.estudiante?.correo}</p>
           </div>
           <button
             onClick={() => setSelectedSolicitud(null)}
@@ -337,7 +339,9 @@ const SolicitudesCorreccionManager: React.FC = () => {
         {isModificacion ? (
           <>
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-              <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-3">Detalles de la práctica</h4>
+              <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-3">
+                Detalles de la práctica
+              </h4>
               <div className="space-y-2 text-sm">
                 <p>
                   <span className="text-slate-500">Institución: </span>
@@ -384,7 +388,9 @@ const SolicitudesCorreccionManager: React.FC = () => {
         ) : (
           <>
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-              <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-3">Detalles de la nueva PPS</h4>
+              <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-3">
+                Detalles de la nueva PPS
+              </h4>
               <div className="space-y-2 text-sm">
                 <p>
                   <span className="text-slate-500">Institución: </span>
@@ -399,12 +405,16 @@ const SolicitudesCorreccionManager: React.FC = () => {
                 </p>
                 <p>
                   <span className="text-slate-500">Período: </span>
-                  {new Date((sol as SolicitudNueva).fecha_inicio).toLocaleDateString("es-AR")} -{" "}
+                  {new Date((sol as SolicitudNueva).fecha_inicio).toLocaleDateString(
+                    "es-AR"
+                  )} -{" "}
                   {new Date((sol as SolicitudNueva).fecha_finalizacion).toLocaleDateString("es-AR")}
                 </p>
                 <p>
                   <span className="text-slate-500">Horas: </span>
-                  <span className="font-medium">{(sol as SolicitudNueva).horas_estimadas} horas</span>
+                  <span className="font-medium">
+                    {(sol as SolicitudNueva).horas_estimadas} horas
+                  </span>
                 </p>
                 {(sol as SolicitudNueva).es_online && (
                   <p className="text-blue-600 dark:text-blue-400">Modalidad: Online</p>
@@ -460,11 +470,7 @@ const SolicitudesCorreccionManager: React.FC = () => {
               >
                 Rechazar
               </Button>
-              <Button
-                onClick={handleApprove}
-                isLoading={isProcessing}
-                className="flex-1"
-              >
+              <Button onClick={handleApprove} isLoading={isProcessing} className="flex-1">
                 Aprobar
               </Button>
             </div>
@@ -490,7 +496,9 @@ const SolicitudesCorreccionManager: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Solicitudes de Corrección</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          Solicitudes de Corrección
+        </h2>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as SolicitudStatus)}
