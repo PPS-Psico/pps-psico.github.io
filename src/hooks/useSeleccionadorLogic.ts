@@ -27,6 +27,7 @@ import {
   FIELD_TERMINO_CURSAR_CONVOCATORIAS,
   FIELD_TRABAJA_CONVOCATORIAS,
   FIELD_TRABAJA_ESTUDIANTES,
+  FIELD_USER_ID_ESTUDIANTES,
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
