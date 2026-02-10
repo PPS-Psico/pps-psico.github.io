@@ -9,7 +9,7 @@ import {
 import { useNotifications } from "../../contexts/NotificationContext";
 import { supabase } from "../../lib/supabaseClient";
 import { submitSolicitudNuevaPPS, uploadSolicitudFile } from "../../services/dataService";
-import type { LanzamientoPPS } from "../../types";
+import type { Institucion, LanzamientoPPS } from "../../types";
 import Button from "../ui/Button";
 
 interface SolicitudNuevaPPSModalProps {
@@ -109,7 +109,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       const modalidad =
         (ultimoLanzamiento as any).modalidad_online === "Online" ||
         (ultimoLanzamiento as any).modalidad_online === true ||
-        ultimoLanzamiento.modalidad === "Online" ||
+        (ultimoLanzamiento as any).modalidad === "Online" ||
         (ultimoLanzamiento as any).es_online === true;
       setEsOnline(modalidad);
     }
