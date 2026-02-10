@@ -153,8 +153,10 @@ async function sendToToken(
           // payload causes Firebase to auto-display a notification AND trigger
           // onBackgroundMessage, resulting in duplicates.
           data: {
+            content_title: title, // Use specific keys to avoid conflicts
+            content_body: body, // Use specific keys to avoid conflicts
             title: title,
-            body: body, // Renamed from 'message' to 'body' for consistency
+            body: body,
             url: "https://pps-psico.github.io/",
             ...data,
           },

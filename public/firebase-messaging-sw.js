@@ -114,13 +114,14 @@ messaging.onBackgroundMessage((payload) => {
   // Extract notification data from the data payload
   const data = payload.data || {};
 
-  const title = data.title || "Mi Panel Academico";
-  const body = data.body || data.message || "Nueva notificación";
+  // Support multiple key names to avoid conflicts and ensure backward compatibility
+  const title = data.content_title || data.title || "Mi Panel Academico";
+  const body = data.content_body || data.body || data.message || "Nueva notificación";
 
   const options = {
     body: body,
-    icon: "./icons/icon-192x192.png",
-    badge: "./icons/icon-notification.png", // Status bar icon (should be monochrome/transparent)
+    icon: "/icons/icon-192x192.png", // Absolute path
+    badge: "/icons/icon-notification.png", // Absolute path
     data: { url: data.url || "https://pps-psico.github.io/" },
     tag: "pps-notification",
     renotify: true,
