@@ -9,8 +9,8 @@ const DEFAULT_TEMPLATES: Record<EmailScenario, { subject: string; body: string }
     body: `Hola {{nombre_alumno}},
 Nos complace informarte que has sido seleccionado/a para realizar tu Práctica Profesional Supervisada en:
 Institución: {{nombre_pps}}
-Horario/Comisión asignada: {{horario}}
-{{encuentro_inicial}}`,
+{{encuentro_inicial}}
+{{horario}}`,
   },
   solicitud: {
     subject: "Actualización de tu Solicitud de PPS - UFLO",
@@ -171,15 +171,20 @@ export const sendSmartEmail = async (
       .replace(/{{nombre_pps}}/g, data.ppsName || "")
       .replace(/{{institucion}}/g, data.institution || "");
 
-    // Build encuentro inicial text
+    // Build encuentro inicial text (siempre primero si existe)
     const encuentroText = data.encuentroInicial
-      ? `\n📅 Encuentro Inicial Obligatorio: ${data.encuentroInicial}\n   (Es obligatorio para todos los seleccionados)`
+      ? `📅 Encuentro Inicial Obligatorio: ${data.encuentroInicial}\n(Es obligatorio para todos los seleccionados)\n\n`
       : "";
+
+    // Build horario text (siempre que exista)
+    // La lógica de ocultar horario cuando es fijo/único + hay encuentro inicial
+    // ya se maneja en useSeleccionadorLogic.ts enviando undefined en schedule
+    const horarioText = data.schedule ? `⏰ Horario/Comisión asignada: ${data.schedule}\n` : "";
 
     const textBody = bodyTmpl
       .replace(/{{nombre_alumno}}/g, data.studentName)
       .replace(/{{nombre_pps}}/g, data.ppsName || "")
-      .replace(/{{horario}}/g, data.schedule || "")
+      .replace(/{{horario}}/g, horarioText)
       .replace(/{{institucion}}/g, data.institution || "")
       .replace(/{{estado_nuevo}}/g, data.newState || "")
       .replace(/{{notas}}/g, data.notes || "")

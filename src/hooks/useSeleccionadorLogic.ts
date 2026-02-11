@@ -402,6 +402,17 @@ export const useSeleccionadorLogic = (
       if (!isTestingMode) {
         // Solo enviar correos si la convocatoria NO estaba cerrada previamente
         if (!isAlreadyClosed) {
+          // Obtener información de horarios del lanzamiento
+          const horariosFijos = !!selectedLanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS];
+          const horarioSeleccionadoLanzamiento =
+            selectedLanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS];
+          const horariosDisponibles = horarioSeleccionadoLanzamiento
+            ? String(horarioSeleccionadoLanzamiento)
+                .split(";")
+                .filter((h) => h.trim())
+            : [];
+          const tieneUnSoloHorario = horariosDisponibles.length <= 1;
+
           // Email notification loop
           const emailPromises = selectedCandidates.map(async (student) => {
             const encuentroInicial =
@@ -419,11 +430,21 @@ export const useSeleccionadorLogic = (
               const minutos = dateObj.getMinutes().toString().padStart(2, "0");
               encuentroText = `${fechaStr} a las ${hora}:${minutos} hs`;
             }
+
+            // Determinar si se debe mostrar el horario en el email
+            // Mostrar horario excepto cuando:
+            // - Hay encuentro inicial Y (horarios son fijos O es un solo horario)
+            const horarioAsignado =
+              student.horarioSeleccionado || (tieneUnSoloHorario ? horariosDisponibles[0] : "");
+            const esHorarioObligatorioUnico = horariosFijos || tieneUnSoloHorario;
+            const debeOcultarHorario = !!encuentroInicial && esHorarioObligatorioUnico;
+            const debeMostrarHorario = !!horarioAsignado && !debeOcultarHorario;
+
             return sendSmartEmail("seleccion", {
               studentName: student.nombre,
               studentEmail: student.correo,
               ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
-              schedule: (student.horarioSeleccionado || "A confirmar") as string,
+              schedule: debeMostrarHorario ? (horarioAsignado as string) : undefined,
               encuentroInicial: encuentroText || undefined,
             });
           });
