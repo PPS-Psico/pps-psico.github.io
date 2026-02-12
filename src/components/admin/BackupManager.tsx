@@ -62,7 +62,7 @@ const BackupManager: React.FC = () => {
     enabled: true,
     frequency: "daily" as const,
     backup_time: "02:00",
-    retain_count: 2,
+    retain_count: 3,
   });
 
   const fetchData = async () => {
@@ -401,6 +401,32 @@ const BackupManager: React.FC = () => {
             </div>
           </div>
         </AdminCard>
+
+        <AdminCard variant="default" className="md:col-span-3">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-indigo-100 text-indigo-600">
+              <span className="material-icons">auto_fix_high</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-slate-500">Estrategia de Retención Inteligente</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Diario
+                </span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                  Semanal
+                </span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  Mensual
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                3 backups con cobertura completa: último diario + último domingo + último 1ro del
+                mes
+              </p>
+            </div>
+          </div>
+        </AdminCard>
       </div>
 
       {/* Lista de Backups */}
@@ -662,24 +688,25 @@ const BackupManager: React.FC = () => {
 
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Retención (backups a mantener)
+                  Estrategia de Retención
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={configForm.retain_count}
-                  onChange={(e) =>
-                    setConfigForm((prev) => ({
-                      ...prev,
-                      retain_count: parseInt(e.target.value) || 2,
-                    }))
-                  }
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Tu base de datos ocupa ~5MB por backup
-                </p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
+                    <strong>3 backups inteligentes:</strong>
+                  </p>
+                  <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                    <li>
+                      ✅ <strong>1 diario</strong> - El más reciente
+                    </li>
+                    <li>
+                      ✅ <strong>1 semanal</strong> - Último domingo
+                    </li>
+                    <li>
+                      ✅ <strong>1 mensual</strong> - Último 1ro del mes
+                    </li>
+                  </ul>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Espacio total: ~15MB (3 × 5MB)</p>
               </div>
             </div>
 

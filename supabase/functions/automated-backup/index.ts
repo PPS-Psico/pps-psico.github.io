@@ -205,17 +205,87 @@ async function cleanupOldBackups(bucketName: string, retainCount: number) {
   try {
     const { data: files, error } = await supabase.storage.from(bucketName).list();
 
-    if (error || !files || files.length <= retainCount) return;
+    if (error || !files) {
+      console.error("Error listing files:", error);
+      return;
+    }
+
+    // Filtrar solo archivos de backup
+    const backupFiles = files.filter((f) => f.name.startsWith("backup_"));
+
+    if (backupFiles.length <= retainCount) {
+      console.log(
+        `Found ${backupFiles.length} backups, retention is ${retainCount}, no cleanup needed`
+      );
+      return;
+    }
 
     // Ordenar por fecha de creación (más reciente primero)
-    const sortedFiles = files
-      .filter((f) => f.name.startsWith("backup_"))
-      .sort(
-        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-      );
+    const sortedFiles = backupFiles.sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
 
-    // Eliminar archivos antiguos
-    const filesToDelete = sortedFiles.slice(retainCount);
+    console.log(`Found ${sortedFiles.length} backups, applying smart retention strategy`);
+
+    // Estrategia inteligente de retención con 3 backups:
+    // 1. Siempre mantener el más reciente (diario)
+    // 2. Mantener el último del domingo (semanal)
+    // 3. Mantener el último del 1ro del mes (mensual)
+
+    const filesToKeep = new Set<string>();
+
+    // 1. Siempre mantener el más reciente
+    if (sortedFiles.length > 0) {
+      filesToKeep.add(sortedFiles[0].name);
+      console.log(`📌 Keeping daily: ${sortedFiles[0].name}`);
+    }
+
+    // 2. Buscar el último backup del domingo (excepto el más reciente si también es domingo)
+    let lastSundayBackup: (typeof sortedFiles)[0] | null = null;
+    for (let i = 1; i < sortedFiles.length; i++) {
+      const fileDate = new Date(sortedFiles[i].created_at || 0);
+      if (fileDate.getDay() === 0) {
+        // 0 = Domingo
+        lastSundayBackup = sortedFiles[i];
+        break;
+      }
+    }
+    if (lastSundayBackup) {
+      filesToKeep.add(lastSundayBackup.name);
+      console.log(`📌 Keeping weekly (Sunday): ${lastSundayBackup.name}`);
+    }
+
+    // 3. Buscar el último backup del 1ro del mes
+    let lastFirstOfMonthBackup: (typeof sortedFiles)[0] | null = null;
+    for (let i = 1; i < sortedFiles.length; i++) {
+      const fileDate = new Date(sortedFiles[i].created_at || 0);
+      if (fileDate.getDate() === 1) {
+        // 1 = Primer día del mes
+        lastFirstOfMonthBackup = sortedFiles[i];
+        break;
+      }
+    }
+    if (lastFirstOfMonthBackup && !filesToKeep.has(lastFirstOfMonthBackup.name)) {
+      filesToKeep.add(lastFirstOfMonthBackup.name);
+      console.log(`📌 Keeping monthly (1st): ${lastFirstOfMonthBackup.name}`);
+    }
+
+    // Si todavía no tenemos suficientes archivos para mantener, agregar los más recientes
+    let index = 0;
+    while (
+      filesToKeep.size < Math.min(retainCount, sortedFiles.length) &&
+      index < sortedFiles.length
+    ) {
+      filesToKeep.add(sortedFiles[index].name);
+      index++;
+    }
+
+    // Eliminar archivos que no están en la lista de mantenimiento
+    const filesToDelete = sortedFiles.filter((f) => !filesToKeep.has(f.name));
+
+    console.log(
+      `Keeping ${filesToKeep.size} backups, deleting ${filesToDelete.length} old backups`
+    );
 
     for (const file of filesToDelete) {
       await supabase.storage.from(bucketName).remove([file.name]);
