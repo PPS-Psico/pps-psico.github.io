@@ -13,6 +13,7 @@ import {
   FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
   FIELD_FINALES_ADEUDA_CONVOCATORIAS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_HORARIO_ASIGNADO_CONVOCATORIAS,
   FIELD_HORARIO_FORMULA_CONVOCATORIAS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_HORAS_PRACTICAS,
@@ -258,6 +259,7 @@ export const useSeleccionadorLogic = (
             finalesAdeuda: enrollment[FIELD_FINALES_ADEUDA_CONVOCATORIAS] || "",
             notasEstudiante: enrollment[FIELD_OTRA_SITUACION_CONVOCATORIAS] || "",
             horarioSeleccionado: enrollment[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || "",
+            horarioAsignado: enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] || "",
             totalHoras,
             cantPracticas,
             penalizacionAcumulada,
@@ -349,9 +351,9 @@ export const useSeleccionadorLogic = (
     mutationFn: async ({ id, schedule }: { id: string; schedule: string }) => {
       if (isTestingMode)
         return mockDb.update("convocatorias", id, {
-          [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: schedule,
+          [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: schedule,
         });
-      return db.convocatorias.update(id, { [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: schedule });
+      return db.convocatorias.update(id, { [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: schedule });
     },
     onSuccess: () => {
       setToastInfo({ message: "Horario actualizado.", type: "success" });

@@ -97,6 +97,7 @@ export const FIELD_AIRTABLE_ID = "airtable_id";
 export const FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS = "estado_inscripcion";
 export const FIELD_INFORME_SUBIDO_CONVOCATORIAS = "informe_subido";
 export const FIELD_HORARIO_FORMULA_CONVOCATORIAS = "horario_seleccionado";
+export const FIELD_HORARIO_ASIGNADO_CONVOCATORIAS = "horario_asignado";
 export const FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS = "estudiante_id";
 export const FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS = "lanzamiento_id";
 export const FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS = "fecha_entrega_informe";

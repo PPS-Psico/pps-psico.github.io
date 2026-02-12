@@ -119,7 +119,8 @@ export interface EnrichedStudent {
   cantPracticas: number; // Nuevo campo para detectar ingresantes absolutos
   penalizacionAcumulada: number;
   puntajeTotal: number;
-  horarioSeleccionado: string;
+  horarioSeleccionado: string; // Horarios solicitados (originales separados por ;)
+  horarioAsignado?: string; // Horario final asignado por el admin
   trabaja: boolean;
   certificadoTrabajo: string | null;
   cvUrl: string | null;

@@ -50,6 +50,7 @@ export type Database = {
           fecha_inicio: string | null;
           fecha_nacimiento: string | null;
           finales_adeuda: string | null;
+          horario_asignado: string | null;
           horario_seleccionado: string | null;
           horas_acreditadas: number | null;
           id: string;
@@ -80,6 +81,7 @@ export type Database = {
           fecha_inicio?: string | null;
           fecha_nacimiento?: string | null;
           finales_adeuda?: string | null;
+          horario_asignado?: string | null;
           horario_seleccionado?: string | null;
           horas_acreditadas?: number | null;
           id?: string;
@@ -110,6 +112,7 @@ export type Database = {
           fecha_inicio?: string | null;
           fecha_nacimiento?: string | null;
           finales_adeuda?: string | null;
+          horario_asignado?: string | null;
           horario_seleccionado?: string | null;
           horas_acreditadas?: number | null;
           id?: string;
@@ -454,6 +457,7 @@ export type Database = {
           fecha_inicio_inscripcion?: string | null;
           fecha_publicacion?: string | null;
           fecha_relanzamiento?: string | null;
+          horario_asignado?: string | null;
           horario_seleccionado?: string | null;
           horarios_fijos?: boolean | null;
           horas_acreditadas?: number | null;
@@ -489,6 +493,7 @@ export type Database = {
           fecha_inicio_inscripcion?: string | null;
           fecha_publicacion?: string | null;
           fecha_relanzamiento?: string | null;
+          horario_asignado?: string | null;
           horario_seleccionado?: string | null;
           horarios_fijos?: boolean | null;
           horas_acreditadas?: number | null;

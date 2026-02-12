@@ -2,11 +2,16 @@
 import * as Sentry from "@sentry/react";
 
 // Get DSN from environment variables
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || "https://your-dsn@sentry.io/project-id";
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || "";
 
 // Initialize Sentry
 export const initSentry = () => {
-  if (import.meta.env.PROD) {
+  // Solo inicializar si hay un DSN válido configurado
+  if (
+    import.meta.env.PROD &&
+    SENTRY_DSN &&
+    SENTRY_DSN !== "https://your-dsn@sentry.io/project-id"
+  ) {
     Sentry.init({
       dsn: SENTRY_DSN,
 
