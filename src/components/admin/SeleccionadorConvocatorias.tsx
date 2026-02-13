@@ -391,6 +391,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     selectedCandidates,
     displayedCandidates,
     scheduleInfo,
+    isEditMode,
     handleToggle,
     handleUpdateSchedule,
     handleConfirmAndCloseTable,
@@ -676,7 +677,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               onUpdateSchedule={handleUpdateSchedule}
               isUpdating={updatingId === student.enrollmentId}
               isReviewMode={viewMode === "review"}
-              isEditMode={false}
+              isEditMode={isEditMode}
               showScheduleSelector={scheduleInfo?.showScheduleSelector ?? true}
             />
           ))}

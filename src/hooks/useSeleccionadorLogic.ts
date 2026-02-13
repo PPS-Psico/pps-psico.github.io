@@ -348,12 +348,26 @@ export const useSeleccionadorLogic = (
   });
 
   const scheduleMutation = useMutation({
-    mutationFn: async ({ id, schedule }: { id: string; schedule: string }) => {
+    mutationFn: async ({
+      id,
+      schedule,
+      isEditMode,
+    }: {
+      id: string;
+      schedule: string;
+      isEditMode?: boolean;
+    }) => {
+      // Si estamos en modo edición (convocatoria cerrada), actualizamos horario_asignado
+      // Si estamos en modo normal (convocatoria abierta), actualizamos horario_seleccionado
+      const fieldToUpdate = isEditMode
+        ? FIELD_HORARIO_ASIGNADO_CONVOCATORIAS
+        : FIELD_HORARIO_FORMULA_CONVOCATORIAS;
+
       if (isTestingMode)
         return mockDb.update("convocatorias", id, {
-          [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: schedule,
+          [fieldToUpdate]: schedule,
         });
-      return db.convocatorias.update(id, { [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: schedule });
+      return db.convocatorias.update(id, { [fieldToUpdate]: schedule });
     },
     onSuccess: () => {
       setToastInfo({ message: "Horario actualizado.", type: "success" });
@@ -388,7 +402,7 @@ export const useSeleccionadorLogic = (
   };
 
   const handleUpdateSchedule = (id: string, newSchedule: string) => {
-    scheduleMutation.mutate({ id, schedule: newSchedule });
+    scheduleMutation.mutate({ id, schedule: newSchedule, isEditMode });
   };
 
   const handleConfirmAndCloseTable = async () => {
@@ -494,6 +508,14 @@ export const useSeleccionadorLogic = (
           await db.lanzamientos.update(selectedLanzamiento.id, {
             [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
           });
+
+          // Copiar horario_seleccionado a horario_asignado para todos los estudiantes seleccionados
+          const updatePromises = selectedCandidates.map((student) => {
+            return db.convocatorias.update(student.enrollmentId, {
+              [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: student.horarioSeleccionado,
+            });
+          });
+          await Promise.all(updatePromises);
         }
       } else {
         await mockDb.update("lanzamientos_pps", selectedLanzamiento.id, {
@@ -598,6 +620,15 @@ export const useSeleccionadorLogic = (
     };
   }, [selectedLanzamiento]);
 
+  // Determinar si estamos en modo edición (convocatoria ya cerrada)
+  const isEditMode = useMemo(() => {
+    if (!selectedLanzamiento) return false;
+    return (
+      normalizeStringForComparison(selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]) ===
+      "cerrado"
+    );
+  }, [selectedLanzamiento]);
+
   return {
     selectedLanzamiento,
     setSelectedLanzamiento,
@@ -614,6 +645,7 @@ export const useSeleccionadorLogic = (
     selectedCandidates,
     displayedCandidates,
     scheduleInfo,
+    isEditMode,
     handleToggle,
     handleUpdateSchedule,
     handleConfirmAndCloseTable,
