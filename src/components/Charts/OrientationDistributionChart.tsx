@@ -24,6 +24,29 @@ const CustomTooltip = ({ active, payload }: any) => {
 const OrientationDistributionChart: React.FC<OrientationDistributionChartProps> = ({ data }) => {
   const total = data.reduce((acc, curr) => acc + curr.value, 0);
 
+  if (!data.length || total === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="w-full h-[350px] bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm flex flex-col items-center justify-center"
+      >
+        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
+          <span className="material-icons !text-4xl text-slate-400 dark:text-slate-500">
+            pie_chart
+          </span>
+        </div>
+        <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">
+          Distribución por Área
+        </h3>
+        <p className="text-sm text-slate-400 dark:text-slate-500 text-center max-w-xs">
+          No hay datos de distribución disponibles para el año seleccionado.
+        </p>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

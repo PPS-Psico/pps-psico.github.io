@@ -17,14 +17,20 @@ import {
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_HORAS_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
+  FIELD_ESTUDIANTE_FINALIZACION,
+  FIELD_FECHA_SOLICITUD_FINALIZACION,
 } from "../constants";
 import { parseToUTCDate, safeGetId, normalizeStringForComparison } from "./formatters";
-import { differenceInDays, isSameMonth } from "date-fns";
+import { differenceInDays } from "date-fns";
 
 const getGroupName = (name: string | undefined): string => {
   if (!name) return "Sin Nombre";
   return name.split(/ [-–] /)[0].trim();
 };
+
+// Proyección de usuarios habilitados sin cuenta para el año actual
+// Este valor se suma a los nuevos inscriptos reales para la proyección
+const PROYECCION_USUARIOS_HABILITADOS_2026 = 150;
 
 export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   const isCurrentYear = targetYear === new Date().getFullYear();
@@ -85,78 +91,65 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     return timeline && timeline.firstActivity.getUTCFullYear() === targetYear;
   });
 
-  // --- 2. CÁLCULO DE EVOLUCIÓN MENSUAL (Active Enrollment Trend) ---
-  const trendData: { month: string; value: number }[] = [];
-  const months = [
-    "Ene",
-    "Feb",
-    "Mar",
-    "Abr",
-    "May",
-    "Jun",
-    "Jul",
-    "Ago",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dic",
-  ];
-  const currentMonthIndex = isCurrentYear ? now.getMonth() : 11;
+  // --- 2. EVOLUCIÓN ANUAL DE MATRÍCULA (No mensual) ---
+  const trendData: { year: string; value: number; label: string }[] = [];
 
-  // Calcular BASELINE: Estudiantes activos al 31 de Diciembre del año anterior
-  const startOfTargetYear = new Date(targetYear, 0, 1); // 1 Enero
+  // Calcular matrícula activa a fin de cada año
+  for (let year = 2022; year <= targetYear; year++) {
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
 
-  let activeCounter = 0;
-
-  // Contamos iniciales: Aquellos que entraron ANTES de este año y (no se graduaron O se graduaron DESPUÉS del inicio de este año)
-  studentTimelineMap.forEach((timeline, _) => {
-    if (timeline.firstActivity < startOfTargetYear) {
-      if (!timeline.graduation || timeline.graduation >= startOfTargetYear) {
-        activeCounter++;
-      }
-    }
-  });
-
-  // Generar puntos mes a mes acumulativos
-  months.forEach((monthName, index) => {
-    if (index > currentMonthIndex) return;
-
-    const monthStart = new Date(targetYear, index, 1);
-
-    // Sumar NUEVOS de este mes
-    let newInMonth = 0;
-    // Restar GRADUADOS de este mes
-    let graduatedInMonth = 0;
-
-    studentTimelineMap.forEach((timeline, _) => {
-      // Es nuevo si su primera actividad fue este mes
-      if (
-        isSameMonth(timeline.firstActivity, monthStart) &&
-        timeline.firstActivity.getUTCFullYear() === targetYear
-      ) {
-        newInMonth++;
-      }
-      // Se fue si se graduó este mes
-      if (
-        timeline.graduation &&
-        isSameMonth(timeline.graduation, monthStart) &&
-        timeline.graduation.getUTCFullYear() === targetYear
-      ) {
-        graduatedInMonth++;
+    let activeAtYearEnd = 0;
+    studentTimelineMap.forEach((timeline) => {
+      // Empezó antes o durante el año
+      if (timeline.firstActivity <= endOfYear) {
+        // No se fue, o se fue después del fin de año
+        if (!timeline.graduation || timeline.graduation > endOfYear) {
+          activeAtYearEnd++;
+        }
       }
     });
 
-    activeCounter = activeCounter + newInMonth - graduatedInMonth;
-    trendData.push({ month: monthName, value: activeCounter });
-  });
+    trendData.push({
+      year: year.toString(),
+      value: activeAtYearEnd,
+      label: `Matrícula activa a fin de ${year}`,
+    });
+  }
 
   // --- 3. LISTAS AUXILIARES ---
 
-  // Alumnos Acreditados (Finalizados en el año objetivo)
-  const acreditadosList = allData.estudiantes.filter((s: any) => {
-    const timeline = studentTimelineMap.get(s.id);
-    return timeline?.graduation && timeline.graduation.getUTCFullYear() === targetYear;
+  // Alumnos Finalizados:
+  // 1. Los que tienen fecha_finalizacion en tabla estudiantes
+  // 2. Los que tienen solicitud en tabla finalizaciones (por fecha_solicitud)
+  const finalizacionMap = new Map<string, any>();
+  allData.finalizaciones.forEach((f: any) => {
+    const sId = safeGetId(f[FIELD_ESTUDIANTE_FINALIZACION]);
+    if (sId) {
+      finalizacionMap.set(sId, f);
+    }
   });
+
+  const acreditadosFinalizados = allData.estudiantes.filter((s: any) => {
+    // Opción 1: tiene registro en tabla finalizaciones
+    const finalizacion = finalizacionMap.get(s.id);
+    if (finalizacion) {
+      const fechaSolicitud = parseToUTCDate(finalizacion[FIELD_FECHA_SOLICITUD_FINALIZACION]);
+      if (fechaSolicitud && fechaSolicitud.getUTCFullYear() === targetYear) {
+        return true;
+      }
+    }
+
+    // Opción 2: tiene fecha_finalizacion en tabla estudiantes
+    const fechaEstudiante = parseToUTCDate(s[FIELD_FECHA_FINALIZACION_ESTUDIANTES]);
+    if (fechaEstudiante && fechaEstudiante.getUTCFullYear() === targetYear) {
+      return true;
+    }
+
+    return false;
+  });
+
+  const acreditadosList = acreditadosFinalizados;
 
   // Alumnos Activos HOY (Snapshot) o al final del año objetivo
   // Incluye a quienes se fueron durante el año (para matrícula generada del año)
@@ -171,7 +164,8 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     return startedBeforeOrDuring && notGraduatedBeforeYear;
   });
 
-  const totalMatriculaGenerada = activosList.length + acreditadosList.length;
+  // Matrícula Generada: Solo los nuevos del año (no la suma de activos + acreditados)
+  const totalMatriculaGenerada = ingresantesList.length;
 
   // Métricas Específicas de Estudiantes (Recuperadas de lógica anterior)
   const studentHoursMap = new Map<string, number>();
@@ -191,10 +185,20 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     }
   });
 
+  // Mapa de estudiantes que tienen AL MENOS una práctica (sin importar horas)
+  const studentHasAnyPractice = new Set<string>();
+  allData.practicas.forEach((p: any) => {
+    const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
+    if (sId) {
+      studentHasAnyPractice.add(sId);
+    }
+  });
+
   const sinNingunaPpsList = allData.estudiantes.filter((s: any) => {
+    // Solo estudiantes activos que NO tienen ninguna práctica
     const estado = normalizeStringForComparison(s[FIELD_ESTADO_ESTUDIANTES]);
     if (estado !== "activo") return false;
-    return !studentHoursMap.has(s.id);
+    return !studentHasAnyPractice.has(s.id);
   });
 
   const proximosAFinalizarList = activosList.filter((s: any) => {
@@ -225,8 +229,12 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   allData.convocatorias.forEach((c: any) => {
     const date = parseToUTCDate(c.created_at || c.fecha_inicio);
     if (!date || date.getUTCFullYear() !== targetYear) return;
-    if (normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) !== "seleccionado")
-      return;
+
+    const estadoInscripcion = normalizeStringForComparison(
+      c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]
+    );
+    const estadosValidos = ["seleccionado", "en proceso", "espera", "inscripto"];
+    if (!estadosValidos.includes(estadoInscripcion)) return;
 
     const rawLanzId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
     const lanzId = Array.isArray(rawLanzId) ? rawLanzId[0] : rawLanzId;
@@ -321,7 +329,11 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     return count;
   };
 
-  // Calcular dinámicamente para años con datos, agregar 2026 como proyección si es el año actual
+  // Calcular dinámicamente para años con datos
+  // Para 2026: reales + proyección de usuarios habilitados sin cuenta
+  const ingresantesReales2026 = getIngresantesCount(2026);
+  const proyectados2026 = isCurrentYear ? PROYECCION_USUARIOS_HABILITADOS_2026 : 0;
+
   const enrollmentEvolution = [
     { year: "2022", value: getIngresantesCount(2022) || 19, label: "Nuevos Inscriptos" },
     { year: "2023", value: getIngresantesCount(2023) || 87, label: "Nuevos Inscriptos" },
@@ -329,9 +341,12 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     { year: "2025", value: getIngresantesCount(2025), label: "Nuevos Inscriptos" },
     {
       year: "2026",
-      value: getIngresantesCount(2026),
-      label: "Proyeccion Ingresantes",
-      isProjection: targetYear >= 2026,
+      value: proyectados2026 > 0 ? proyectados2026 : ingresantesReales2026,
+      label:
+        proyectados2026 > 0
+          ? `Proyección: ${ingresantesReales2026} reales + ${proyectados2026} proyectados`
+          : "Nuevos Inscriptos",
+      isProjection: targetYear >= 2026 && proyectados2026 > 0,
     },
   ];
 
@@ -345,15 +360,21 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     matriculaActiva: { value: activosList.length, list: activosList },
     solicitudesGestion: { value: solicitudesEnCursoList.length, list: solicitudesEnCursoList },
 
-    // Pestaña Estudiantes
+    // Pestaña Instituciones
     nuevosIngresantes: { value: ingresantesList.length, list: ingresantesList },
     alumnosSinPPS: { value: sinNingunaPpsList.length, list: sinNingunaPpsList },
     proximosAFinalizar: { value: proximosAFinalizarList.length, list: proximosAFinalizarList },
     haciendoPPS: { value: enPpsEnCursoList.length, list: enPpsEnCursoList },
 
     // Pestaña Instituciones
+    // Crear lista con nombre y cupos para mostrar en modal
+    ppsLanzadasList: yearLaunches.map((l: any) => ({
+      nombre: l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre",
+      legajo: l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0,
+      institucion: l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "",
+    })),
     ppsLanzadas: { value: yearLaunches.length, list: yearLaunches },
-    cuposOfrecidos: { value: totalCupos, list: [] },
+    cuposOfrecidos: { value: totalCupos, list: yearLaunches },
     conveniosNuevos: { value: uniqueNewAgreementNames.size, list: nuevosConveniosList },
     institucionesActivas: { value: uniqueActiveNames.size, list: activeInstitutionsList },
 
@@ -366,5 +387,33 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     occupancyDistribution: occupancyByOrientation,
     enrollmentEvolution,
     trendData,
+
+    // Tendencias vs año anterior
+    trends: {
+      matriculaGenerada:
+        getIngresantesCount(targetYear - 1) > 0
+          ? Math.round(
+              ((totalMatriculaGenerada - getIngresantesCount(targetYear - 1)) /
+                getIngresantesCount(targetYear - 1)) *
+                100
+            )
+          : 0,
+      acreditados:
+        getIngresantesCount(targetYear - 1) > 0
+          ? Math.round(
+              ((acreditadosList.length - getIngresantesCount(targetYear - 1)) /
+                getIngresantesCount(targetYear - 1)) *
+                100
+            )
+          : 0,
+      activos:
+        getIngresantesCount(targetYear - 1) > 0
+          ? Math.round(
+              ((activosList.length - getIngresantesCount(targetYear - 1)) /
+                getIngresantesCount(targetYear - 1)) *
+                100
+            )
+          : 0,
+    },
   };
 };

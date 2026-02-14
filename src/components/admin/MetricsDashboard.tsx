@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { useMetricsData } from "../../hooks/useMetricsData";
 import type { StudentInfo } from "../../types";
+import {
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+} from "../../constants";
 import EmptyState from "../EmptyState";
 import StudentListModal from "../StudentListModal";
 import Card from "../ui/Card";
@@ -18,14 +22,21 @@ type ModalData = {
   description?: React.ReactNode;
 };
 
-const Tabs: React.FC<{ active: string; onChange: (t: string) => void }> = ({
+type TabCount = {
+  overview?: number;
+  students?: number;
+  institutions?: number;
+};
+
+const Tabs: React.FC<{ active: string; onChange: (t: string) => void; counts?: TabCount }> = ({
   active,
   onChange,
+  counts = {},
 }) => {
   const tabs = [
     { key: "overview", label: "Resumen", icon: "dashboard" },
-    { key: "students", label: "Estudiantes", icon: "groups" },
-    { key: "institutions", label: "Instituciones", icon: "apartment" },
+    { key: "students", label: "Estudiantes", icon: "groups", count: counts.students },
+    { key: "institutions", label: "Instituciones", icon: "apartment", count: counts.institutions },
   ];
   return (
     <div className="mt-4 inline-flex p-1 rounded-xl border bg-white dark:bg-slate-800/50 dark:border-slate-700">
@@ -41,6 +52,17 @@ const Tabs: React.FC<{ active: string; onChange: (t: string) => void }> = ({
         >
           <span className="material-icons !text-base">{t.icon}</span>
           <span className="whitespace-nowrap">{t.label}</span>
+          {t.count !== undefined && t.count > 0 && (
+            <span
+              className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                active === t.key
+                  ? "bg-white/20 dark:bg-slate-800/20"
+                  : "bg-slate-200 dark:bg-slate-700"
+              }`}
+            >
+              {t.count}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -50,18 +72,32 @@ const Tabs: React.FC<{ active: string; onChange: (t: string) => void }> = ({
 interface MetricsDashboardProps {
   onStudentSelect?: (student: { legajo: string; nombre: string }) => void;
   isTestingMode?: boolean;
+  onModalOpen?: (isOpen: boolean) => void;
 }
 
 export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
   onStudentSelect,
   isTestingMode = false,
+  onModalOpen,
 }) => {
   const [modalData, setModalData] = useState<ModalData | null>(null);
   const [targetYear, setTargetYear] = useState<number>(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState<"overview" | "students" | "institutions">("overview");
 
-  const openModal = useCallback((payload: ModalData) => setModalData(payload), []);
-  const closeModal = useCallback(() => setModalData(null), []);
+  const openModal = useCallback(
+    (payload: ModalData) => {
+      setModalData(payload);
+      onModalOpen?.(true);
+      document.body.classList.add("metrics-modal-open");
+    },
+    [onModalOpen]
+  );
+
+  const closeModal = useCallback(() => {
+    setModalData(null);
+    onModalOpen?.(false);
+    document.body.classList.remove("metrics-modal-open");
+  }, [onModalOpen]);
 
   const { data: metrics, isLoading, error } = useMetricsData({ targetYear, isTestingMode });
 
@@ -137,19 +173,35 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
             })
           }
           color="indigo"
+          trend={
+            metrics.trends
+              ? {
+                  value: metrics.trends.matriculaGenerada,
+                  label: `vs ${targetYear - 1}`,
+                }
+              : undefined
+          }
         />
         <HeroMetric
-          title="Acreditados"
+          title="Finalizados"
           value={metrics.alumnosFinalizados.value}
           icon="military_tech"
-          description={`Finalizaron en ${targetYear}`}
+          description={`Completaron PPS en ${targetYear}`}
           onClick={() =>
             openModal({
-              title: `Acreditados en ${targetYear}`,
+              title: `Finalizados en ${targetYear}`,
               students: metrics.alumnosFinalizados.list as StudentInfo[],
             })
           }
           color="emerald"
+          trend={
+            metrics.trends
+              ? {
+                  value: metrics.trends.acreditados,
+                  label: `vs ${targetYear - 1}`,
+                }
+              : undefined
+          }
         />
         <HeroMetric
           title="Matricula Activa"
@@ -163,10 +215,33 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
             })
           }
           color="blue"
+          trend={
+            metrics.trends
+              ? {
+                  value: metrics.trends.activos,
+                  label: `vs ${targetYear - 1}`,
+                }
+              : undefined
+          }
         />
       </div>
 
-      <Tabs active={activeTab} onChange={(t) => setActiveTab(t as any)} />
+      <Tabs
+        active={activeTab}
+        onChange={(t) => setActiveTab(t as any)}
+        counts={{
+          students:
+            (metrics.nuevosIngresantes?.value || 0) +
+            (metrics.alumnosSinPPS?.value || 0) +
+            (metrics.proximosAFinalizar?.value || 0) +
+            (metrics.haciendoPPS?.value || 0),
+          institutions:
+            (metrics.ppsLanzadas?.value || 0) +
+            (metrics.institucionesActivas?.value || 0) +
+            (metrics.cuposOfrecidos?.value || 0) +
+            (metrics.conveniosNuevos?.value || 0),
+        }}
+      />
 
       <div className="mt-8 animate-fade-in-up">
         {activeTab === "overview" && (
@@ -349,6 +424,16 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
               value={metrics.ppsLanzadas.value}
               icon="rocket_launch"
               description={`Convocatorias publicadas en ${targetYear}`}
+              onClick={() =>
+                openModal({
+                  title: `PPS Lanzadas en ${targetYear}`,
+                  students: metrics.ppsLanzadasList || [],
+                  headers: [
+                    { key: "nombre", label: "PPS" },
+                    { key: "legajo", label: "Cupos" },
+                  ],
+                })
+              }
               isLoading={false}
             />
             <MetricCard
@@ -368,7 +453,21 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
               title="Cupos Ofrecidos"
               value={metrics.cuposOfrecidos.value}
               icon="groups"
-              description="Total de vacantes puestas a disposicion."
+              description="Total de vacantes disponibles."
+              onClick={() =>
+                openModal({
+                  title: `Cupos por PPS en ${targetYear}`,
+                  students: (metrics.cuposOfrecidos.list || []).map((l: any) => ({
+                    nombre:
+                      l.nombre_pps_lanzamientos || l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre",
+                    legajo: l.cupos_disponibles || l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0,
+                  })),
+                  headers: [
+                    { key: "nombre", label: "PPS" },
+                    { key: "legajo", label: "Cupos" },
+                  ],
+                })
+              }
               isLoading={false}
             />
             <MetricCard

@@ -59,6 +59,30 @@ const EnrollmentEvolutionChart: React.FC<EnrollmentEvolutionChartProps> = ({
   data,
   onBarClick,
 }) => {
+  const total = data.reduce((acc, curr) => acc + curr.value, 0);
+
+  if (!data.length || total === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full h-[380px] bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center"
+      >
+        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
+          <span className="material-icons !text-4xl text-slate-400 dark:text-slate-500">
+            analytics
+          </span>
+        </div>
+        <h3 className="text-lg font-black text-slate-600 dark:text-slate-300 mb-2">
+          Nuevos Inscriptos
+        </h3>
+        <p className="text-sm text-slate-400 dark:text-slate-500 text-center max-w-xs">
+          No hay datos de evolución histórica disponibles.
+        </p>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -104,9 +128,19 @@ const EnrollmentEvolutionChart: React.FC<EnrollmentEvolutionChartProps> = ({
               className="cursor-pointer"
             >
               {data.map((entry, index) => {
-                let fillColor = "#2563eb"; // Real
-                if (entry.year === "2025") fillColor = "#3b82f6";
-                if (entry.isProjection) fillColor = "#f59e0b";
+                const currentYear = new Date().getFullYear();
+                const entryYear = parseInt(entry.year);
+                let fillColor = "#2563eb";
+
+                if (entry.isProjection) {
+                  fillColor = "#f59e0b";
+                } else if (entryYear < currentYear - 1) {
+                  fillColor = "#64748b";
+                } else if (entryYear === currentYear - 1) {
+                  fillColor = "#3b82f6";
+                } else if (entryYear === currentYear) {
+                  fillColor = "#2563eb";
+                }
 
                 return (
                   <Cell

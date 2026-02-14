@@ -30,6 +30,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
 
   const [localTab, setLocalTab] = useState("dashboard");
   const [scrolled, setScrolled] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -159,7 +160,11 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
           {localTab === "solicitudes" && <SolicitudesManager isTestingMode={true} />}
           {localTab === "recordatorios" && <RecordatoriosView />}
           {localTab === "metrics" && (
-            <MetricsView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />
+            <MetricsView
+              onStudentSelect={handleTestStudentSelect}
+              isTestingMode={true}
+              onModalOpen={setIsModalOpen}
+            />
           )}
           {localTab === "herramientas" && (
             <HerramientasView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />
@@ -183,7 +188,9 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
       </div>
 
       {/* --- UNIFIED STICKY HEADER --- */}
-      <header className={`sticky top-0 z-40 transition-all duration-300 border-b ${headerClasses}`}>
+      <header
+        className={`sticky top-0 z-40 transition-all duration-300 border-b ${headerClasses} ${isModalOpen ? "hidden" : ""}`}
+      >
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center relative">
             {/* Centered Navigation Capsule */}

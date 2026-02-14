@@ -7,10 +7,21 @@ import ErrorBoundary from "../../components/ErrorBoundary";
 interface MetricsViewProps {
   onStudentSelect: (student: { legajo: string; nombre: string }) => void;
   isTestingMode?: boolean;
+  onModalOpen?: (isOpen: boolean) => void;
 }
 
-const MetricsView: React.FC<MetricsViewProps> = ({ onStudentSelect, isTestingMode = false }) => {
+const MetricsView: React.FC<MetricsViewProps> = ({
+  onStudentSelect,
+  isTestingMode = false,
+  onModalOpen,
+}) => {
   const [activeMetricsTabId, setActiveMetricsTabId] = useState("dashboard");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleModalOpen = (open: boolean) => {
+    setIsModalOpen(open);
+    onModalOpen?.(open);
+  };
 
   const metricsSubTabs = [
     { id: "dashboard", label: "Dashboard", icon: "bar_chart" },
@@ -19,15 +30,21 @@ const MetricsView: React.FC<MetricsViewProps> = ({ onStudentSelect, isTestingMod
 
   return (
     <>
-      <SubTabs
-        tabs={metricsSubTabs}
-        activeTabId={activeMetricsTabId}
-        onTabChange={setActiveMetricsTabId}
-      />
+      <div className={isModalOpen ? "hidden" : ""}>
+        <SubTabs
+          tabs={metricsSubTabs}
+          activeTabId={activeMetricsTabId}
+          onTabChange={setActiveMetricsTabId}
+        />
+      </div>
       <div className="mt-6">
         {activeMetricsTabId === "dashboard" && (
           <ErrorBoundary>
-            <MetricsDashboard onStudentSelect={onStudentSelect} isTestingMode={isTestingMode} />
+            <MetricsDashboard
+              onStudentSelect={onStudentSelect}
+              isTestingMode={isTestingMode}
+              onModalOpen={handleModalOpen}
+            />
           </ErrorBoundary>
         )}
         {activeMetricsTabId === "timeline" && (

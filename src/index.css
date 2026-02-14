@@ -307,3 +307,12 @@ html.dark body {
     display: none !important;
   }
 }
+
+/* Hide main navigation headers when metrics modal is open */
+body.metrics-modal-open header.sticky,
+body.metrics-modal-open header.z-40,
+body.metrics-modal-open header.z-50,
+body.metrics-modal-open [class*="UnifiedTabs"],
+body.metrics-modal-open nav[class*="sticky"] {
+  display: none !important;
+}

@@ -177,7 +177,8 @@ const StudentListModal: React.FC<StudentListModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in"
+      className="fixed inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in"
+      style={{ zIndex: 99999 }}
       aria-labelledby="student-list-modal-title"
       role="dialog"
       aria-modal="true"
@@ -185,7 +186,8 @@ const StudentListModal: React.FC<StudentListModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-[95vw] sm:w-full max-w-3xl max-h-[85dvh] sm:max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200/70 dark:border-slate-800 animate-scale-in"
+        className="relative w-[95vw] sm:w-full max-w-3xl max-h-[calc(100dvh-140px)] sm:max-h-[calc(100vh-140px)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200/70 dark:border-slate-800 animate-scale-in mt-16 sm:mt-20"
+        style={{ zIndex: 99999 }}
       >
         <div className="p-6 flex-shrink-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-start justify-between gap-4">

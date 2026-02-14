@@ -11,19 +11,17 @@ import {
 import { motion } from "framer-motion";
 
 interface EnrollmentTrendChartProps {
-  data: { month: string; value: number }[];
+  data: { year: string; value: number; label?: string }[];
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-xl">
-        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">{label}</p>
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Año {label}</p>
         <div className="flex items-center gap-2 text-xs">
           <div className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-slate-500 dark:text-slate-400 font-medium">
-            Estudiantes Activos:
-          </span>
+          <span className="text-slate-500 dark:text-slate-400 font-medium">Matrícula Activa:</span>
           <span className="font-bold text-slate-800 dark:text-slate-100">{payload[0].value}</span>
         </div>
       </div>
@@ -33,6 +31,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const EnrollmentTrendChart: React.FC<EnrollmentTrendChartProps> = ({ data }) => {
+  if (!data.length || data.every((d) => d.value === 0)) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full h-[350px] bg-white dark:bg-gray-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm flex flex-col items-center justify-center"
+      >
+        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
+          <span className="material-icons !text-4xl text-slate-400 dark:text-slate-500">
+            trending_up
+          </span>
+        </div>
+        <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">
+          Evolución de Matrícula Activa
+        </h3>
+        <p className="text-sm text-slate-400 dark:text-slate-500 text-center max-w-xs">
+          No hay datos de evolución disponibles para el año seleccionado.
+        </p>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -65,7 +86,7 @@ const EnrollmentTrendChart: React.FC<EnrollmentTrendChartProps> = ({ data }) => 
               className="dark:stroke-slate-800"
             />
             <XAxis
-              dataKey="month"
+              dataKey="year"
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#64748b", fontSize: 12 }}
