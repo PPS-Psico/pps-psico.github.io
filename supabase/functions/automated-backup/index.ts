@@ -31,17 +31,22 @@ Deno.serve(async (req: Request) => {
   }
 
   // Verificar autenticación (solo admin o cron job)
+  const url = new URL(req.url);
+  const queryKey = url.searchParams.get("key");
   const authHeader = req.headers.get("Authorization");
   const apiKey = req.headers.get("X-API-Key");
   const cronSecret = Deno.env.get("CRON_SECRET");
 
-  console.log("Auth header received:", authHeader);
-  console.log("API Key received:", apiKey);
-  console.log("Cron secret configured:", cronSecret ? "Yes (hidden)" : "No");
+  console.log("Query key:", queryKey ? "Present" : "Missing");
+  console.log("Auth header:", authHeader ? "Present" : "Missing");
+  console.log("API Key header:", apiKey ? "Present" : "Missing");
 
-  // Verificar si es cron job por API Key (más confiable)
+  // Verificar si es cron job (por query param, API Key o Authorization)
   let isCronJob = false;
-  if (apiKey && apiKey === cronSecret) {
+  if (queryKey && queryKey === cronSecret) {
+    isCronJob = true;
+    console.log("Authenticated via query parameter");
+  } else if (apiKey && apiKey === cronSecret) {
     isCronJob = true;
     console.log("Authenticated via X-API-Key header");
   } else if (authHeader && authHeader === `Bearer ${cronSecret}`) {

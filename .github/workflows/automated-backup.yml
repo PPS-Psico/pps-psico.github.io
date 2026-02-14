@@ -25,8 +25,7 @@ jobs:
           echo "🚀 Iniciando backup automático..."
           
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/automated-backup" \
-            -H "X-API-Key: ${{ secrets.CRON_SECRET }}" \
+            "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/automated-backup?key=${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
