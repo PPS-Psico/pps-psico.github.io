@@ -6,12 +6,6 @@ const InstallAdminPWA: React.FC = () => {
   const [showButton, setShowButton] = useState(true);
 
   useEffect(() => {
-    // Verificar si ya está instalada
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setIsInstalled(true);
-      return;
-    }
-
     // Capturar el evento beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -30,9 +24,16 @@ const InstallAdminPWA: React.FC = () => {
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
-      alert(
-        "Para instalar:\n\nAndroid: Menú (⋮) → 'Agregar a pantalla de inicio'\n\niOS: Compartir (□↑) → 'Agregar a pantalla de inicio'"
-      );
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+      if (isStandalone) {
+        alert(
+          "Ya tenés una PWA instalada.\n\nPara instalar la versión Admin:\n\n1. Desinstalá la PWA actual de tu dispositivo\n2. Volvé a entrar a esta página\n3. Instalá nuevamente"
+        );
+      } else {
+        alert(
+          "Para instalar:\n\nAndroid: Menú (⋮) → 'Agregar a pantalla de inicio'\n\niOS: Compartir (□↑) → 'Agregar a pantalla de inicio'"
+        );
+      }
       return;
     }
 
@@ -49,7 +50,7 @@ const InstallAdminPWA: React.FC = () => {
     setShowButton(false);
   };
 
-  if (isInstalled || !showButton) return null;
+  if (!showButton) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-[9999]">
