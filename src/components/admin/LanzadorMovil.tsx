@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabase";
-import { normalizeStringForComparison } from "../../utils/formatters";
-import { FIELD_ESTADO_LANZAMIENTOS } from "../../constants";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || "",
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ""
+);
 
 interface Lanzamiento {
   id: string;
