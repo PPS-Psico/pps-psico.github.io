@@ -180,6 +180,7 @@ const StudentRow: React.FC<{
   isReviewMode?: boolean;
   isEditMode?: boolean;
   showScheduleSelector?: boolean;
+  onShowPracticas?: (student: EnrichedStudent) => void;
 }> = ({
   student,
   onToggleSelection,
@@ -188,6 +189,7 @@ const StudentRow: React.FC<{
   isReviewMode = false,
   isEditMode = false,
   showScheduleSelector = true,
+  onShowPracticas,
 }) => {
   const isSelected = normalizeStringForComparison(student.status) === "seleccionado";
 
@@ -198,8 +200,9 @@ const StudentRow: React.FC<{
       <div className="p-3 sm:p-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center">
         <div className="flex items-center gap-3 min-w-[200px]">
           <div
-            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-base font-black border shadow-sm ${student.puntajeTotal >= 100 ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800" : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"}`}
-            title="Puntaje Total"
+            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-base font-black border shadow-sm cursor-pointer hover:scale-110 transition-transform ${student.puntajeTotal >= 100 ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800" : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"}`}
+            title="Ver prácticas del estudiante"
+            onClick={() => onShowPracticas?.(student)}
           >
             {student.puntajeTotal}
           </div>
@@ -364,6 +367,205 @@ const StudentRow: React.FC<{
   );
 };
 
+// Componente Modal para mostrar prácticas del estudiante
+interface PracticasModalProps {
+  student: EnrichedStudent | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClose }) => {
+  const [practicas, setPracticas] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen && student) {
+      fetchPracticas();
+    }
+  }, [isOpen, student]);
+
+  const fetchPracticas = async () => {
+    if (!student) return;
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("practicas")
+        .select(
+          `
+          id,
+          estado,
+          horas,
+          nota,
+          lanzamiento:lanzamiento_id (
+            nombre_pps,
+            fecha_inicio,
+            fecha_finalizacion
+          )
+        `
+        )
+        .eq("estudiante_id", student.studentId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setPracticas(data || []);
+    } catch (err) {
+      console.error("Error fetching practicas:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen || !student) return null;
+
+  const totalHoras = practicas.reduce((sum, p) => sum + (p.horas || 0), 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col animate-fade-in-up">
+        {/* Header */}
+        <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+              <span className="material-icons text-2xl">school</span>
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">{student.nombre}</h3>
+              <p className="text-blue-100 text-sm">Legajo: {student.legajo}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <span className="material-icons">close</span>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : practicas.length === 0 ? (
+            <div className="text-center py-12">
+              <span className="material-icons text-6xl text-slate-300 dark:text-slate-600 mb-4">
+                work_off
+              </span>
+              <p className="text-slate-500 dark:text-slate-400">No hay prácticas registradas</p>
+            </div>
+          ) : (
+            <>
+              {/* Resumen */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {practicas.length}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    Prácticas
+                  </div>
+                </div>
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {totalHoras}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    Horas Totales
+                  </div>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                    {student.puntajeTotal}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    Puntaje
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabla de prácticas */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-100 dark:bg-slate-800">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                        Institución
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                        Estado
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                        Horas
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                        Nota
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {practicas.map((practica, index) => (
+                      <tr
+                        key={practica.id}
+                        className="hover:bg-white dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">
+                            {practica.lanzamiento?.nombre_pps || "N/A"}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {practica.lanzamiento?.fecha_inicio &&
+                              new Date(practica.lanzamiento.fecha_inicio).toLocaleDateString(
+                                "es-AR"
+                              )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                              practica.estado === "Finalizada"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                : practica.estado === "En curso"
+                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                            }`}
+                          >
+                            {practica.estado || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                            {practica.horas || 0}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                            {practica.nota || "-"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface SeleccionadorProps {
   isTestingMode?: boolean;
   onNavigateToInsurance?: (lanzamientoId: string) => void;
@@ -403,6 +605,11 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   const [showPenalizacionModal, setShowPenalizacionModal] = useState(false);
   const [penaltyType, setPenaltyType] = useState("Baja Anticipada");
   const [penaltyNotes, setPenaltyNotes] = useState("");
+
+  // Estado para modal de prácticas del estudiante
+  const [showPracticasModal, setShowPracticasModal] = useState(false);
+  const [selectedStudentForPracticas, setSelectedStudentForPracticas] =
+    useState<EnrichedStudent | null>(null);
 
   // Handler mejorado para toggle con penalización
   const handleToggleWithPenalty = (student: EnrichedStudent) => {
@@ -679,6 +886,10 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               isReviewMode={viewMode === "review"}
               isEditMode={isEditMode}
               showScheduleSelector={scheduleInfo?.showScheduleSelector ?? true}
+              onShowPracticas={(student) => {
+                setSelectedStudentForPracticas(student);
+                setShowPracticasModal(true);
+              }}
             />
           ))}
           {displayedCandidates.length === 0 && (
@@ -756,6 +967,16 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Prácticas del Estudiante */}
+      <PracticasModal
+        student={selectedStudentForPracticas}
+        isOpen={showPracticasModal}
+        onClose={() => {
+          setShowPracticasModal(false);
+          setSelectedStudentForPracticas(null);
+        }}
+      />
     </div>
   );
 };
