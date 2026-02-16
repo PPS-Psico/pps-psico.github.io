@@ -58,28 +58,34 @@
       }
     </script>
 
-    <!-- Detect admin-movil and use different manifest -->
+    <!-- Detect route and use appropriate manifest -->
     <script>
       (function() {
-        // Verificar si estamos en admin-movil
-        if (window.location.hash.includes('admin-movil') || window.location.pathname.includes('admin-movil')) {
-          // Cambiar manifest para admin
-          const manifestLink = document.querySelector('link[rel="manifest"]');
+        const currentHash = window.location.hash || '#/';
+        const isAdmin = currentHash.includes('admin-movil');
+        
+        // Always fetch the manifest to get proper installation
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        
+        if (isAdmin) {
+          // Admin view
           if (manifestLink) {
-            manifestLink.href = './manifest-admin.json?v=1';
+            manifestLink.href = './manifest-admin.json?v=2';
           }
-          // Cambiar theme color para admin
           const themeMeta = document.querySelector('meta[name="theme-color"]');
           if (themeMeta) {
-            themeMeta.content = '#4f46e5'; // Indigo para admin
+            themeMeta.content = '#4f46e5';
           }
-          // Cambiar favicon para admin
           const faviconLink = document.querySelector('link[rel="icon"]');
           if (faviconLink) {
             faviconLink.href = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%234f46e5%22%3E%3Cpath%20d%3D%22M12%201L3%205v6c0%205.55%203.84%2010.74%209%2012%205.16-1.26%209-6.45%209-12V5l-9-4zm0%2010.99h7c-.53%204.12-3.28%207.79-7%208.94V12H5V6.3l7-3.11v8.8z%22/%3E%3C/svg%3E";
           }
-          // Cambiar título
           document.title = "Gestión PPS UFLO";
+        } else {
+          // Student view - use dynamic start_url
+          if (manifestLink) {
+            manifestLink.href = './manifest.json?v=4';
+          }
         }
       })();
     </script>

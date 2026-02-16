@@ -1,9 +1,9 @@
 {
-  "name": "Gestión PPS UFLO",
-  "short_name": "Gestión PPS",
-  "id": "/admin-movil",
-  "description": "Panel de gestión de PPS para seguimiento de instituciones y relanzamientos 2026",
-  "start_url": "./#/admin-movil",
+  "name": "Consulta PPS UFLO",
+  "short_name": "Consulta PPS",
+  "id": "/consulta-pps",
+  "description": "Portal de autogestión para Prácticas Profesionales Supervisadas - UFLO",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f8fafc",
@@ -24,5 +24,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["business", "productivity"]
+  "categories": ["education", "productivity"]
 }

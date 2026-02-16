@@ -148,7 +148,7 @@ const ConvocatoriaCard: React.FC<ConvocatoriaCardProps> = ({
     }
 
     return {
-      text: estadoConvocatoria || "Cerrada",
+      text: "Ver Seleccionados",
       icon: convocatoriaStatusVisuals.icon,
       style:
         "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",

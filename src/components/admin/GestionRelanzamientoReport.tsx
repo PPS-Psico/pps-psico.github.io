@@ -46,7 +46,8 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
     null
   );
   const [isGenerating, setIsGenerating] = useState(false);
-  const { data, isLoading, error } = useQuery({
+  const [isImporting, setIsImporting] = useState(false);
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["gestionRelanzamientoReportData", isTestingMode],
     queryFn: () => fetchReportData(isTestingMode),
   });
@@ -218,6 +219,80 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
     }
   };
 
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+
+      const worksheet = workbook.getWorksheet("Gestión Relanzamiento");
+      if (!worksheet) {
+        setToastInfo({ message: "No se encontró la hoja 'Gestión Relanzamiento'", type: "error" });
+        return;
+      }
+
+      const updates: { id: string; telefono: string }[] = [];
+      let rowCount = 0;
+
+      // Empezar desde la fila 6 (después del header)
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber < 6) return; // Skip headers
+
+        const institucionName = row.getCell(1).value as string;
+        const telefono = row.getCell(3).value as string;
+
+        if (institucionName && telefono) {
+          // Buscar la institución por nombre
+          const normalizedName = normalizeStringForComparison(institucionName);
+          const institucion = data?.instituciones.find(
+            (inst) =>
+              normalizeStringForComparison(inst[FIELD_NOMBRE_INSTITUCIONES] || "") ===
+              normalizedName
+          );
+
+          if (institucion && institucion.id) {
+            updates.push({ id: institucion.id, telefono: String(telefono) });
+            rowCount++;
+          }
+        }
+      });
+
+      if (updates.length === 0) {
+        setToastInfo({ message: "No se encontraron teléfonos para actualizar", type: "error" });
+        return;
+      }
+
+      // Actualizar instituciones una por una
+      let successCount = 0;
+      for (const update of updates) {
+        try {
+          await db.instituciones.update(update.id, {
+            [FIELD_TELEFONO_INSTITUCIONES]: update.telefono,
+          });
+          successCount++;
+        } catch (err) {
+          console.error(`Error updating institution ${update.id}:`, err);
+        }
+      }
+
+      setToastInfo({
+        message: `¡${successCount} de ${updates.length} teléfonos actualizados correctamente!`,
+        type: "success",
+      });
+      refetch(); // Recargar datos
+    } catch (e: any) {
+      console.error("Error importing:", e);
+      setToastInfo({ message: `Error al importar: ${e.message}`, type: "error" });
+    } finally {
+      setIsImporting(false);
+      event.target.value = ""; // Reset input
+    }
+  };
+
   if (isLoading) return <Loader />;
 
   if (error) {
@@ -252,23 +327,49 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
               Total: {reportData.length} instituciones del año {new Date().getFullYear() - 1}
             </p>
           </div>
-          <button
-            onClick={handleDownload}
-            disabled={isGenerating || reportData.length === 0}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
-          >
-            {isGenerating ? (
-              <>
-                <span className="material-icons animate-spin">refresh</span>
-                <span>Generando...</span>
-              </>
-            ) : (
-              <>
-                <span className="material-icons">download</span>
-                <span>Descargar Excel</span>
-              </>
-            )}
-          </button>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleImportExcel}
+              className="hidden"
+              id="import-phones"
+              disabled={isImporting}
+            />
+            <label
+              htmlFor="import-phones"
+              className={`flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg shadow-green-200 transition-all transform hover:scale-105 active:scale-95 cursor-pointer ${isImporting ? "opacity-50" : ""}`}
+            >
+              {isImporting ? (
+                <>
+                  <span className="material-icons animate-spin">refresh</span>
+                  <span>Importando...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-icons">upload_file</span>
+                  <span>Importar Excel</span>
+                </>
+              )}
+            </label>
+            <button
+              onClick={handleDownload}
+              disabled={isGenerating || reportData.length === 0}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
+            >
+              {isGenerating ? (
+                <>
+                  <span className="material-icons animate-spin">refresh</span>
+                  <span>Generando...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-icons">download</span>
+                  <span>Descargar Excel</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {reportData.length > 0 ? (
