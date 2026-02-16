@@ -417,24 +417,32 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col animate-fade-in-up">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col animate-fade-in-up border border-slate-200 dark:border-slate-700">
         {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              <span className="material-icons text-2xl">school</span>
+        <div className="relative px-8 py-6 bg-gradient-to-br from-indigo-600 via-blue-600 to-blue-700 dark:from-indigo-700 dark:via-blue-700 dark:to-slate-800 text-white overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-lg">
+                <span className="material-icons text-3xl">school</span>
+              </div>
+              <div>
+                <h3 className="font-bold text-xl tracking-tight">{student.nombre}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-sm rounded-full text-xs font-medium border border-white/20">
+                    Legajo: {student.legajo}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-lg">{student.nombre}</h3>
-              <p className="text-blue-100 text-sm">Legajo: {student.legajo}</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-2.5 hover:bg-white/20 rounded-xl transition-all duration-200 hover:scale-110 border border-transparent hover:border-white/20"
+            >
+              <span className="material-icons text-2xl">close</span>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-          >
-            <span className="material-icons">close</span>
-          </button>
         </div>
 
         {/* Content */}
@@ -453,29 +461,56 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
           ) : (
             <>
               {/* Resumen */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {practicas.length}
-                  </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    Prácticas
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="group relative bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-700/30 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300">
+                  <div className="relative flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                      <span className="material-icons text-blue-600 dark:text-blue-400">work</span>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-black text-blue-600 dark:text-blue-400 leading-none">
+                        {practicas.length}
+                      </div>
+                      <div className="text-xs font-semibold text-blue-700/70 dark:text-blue-300/70 uppercase tracking-wider mt-1">
+                        Prácticas
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                    {totalHoras}
-                  </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    Horas Totales
+
+                <div className="group relative bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-700/30 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-300">
+                  <div className="relative flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                      <span className="material-icons text-emerald-600 dark:text-emerald-400">
+                        schedule
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                        {totalHoras}
+                      </div>
+                      <div className="text-xs font-semibold text-emerald-700/70 dark:text-emerald-300/70 uppercase tracking-wider mt-1">
+                        Horas Totales
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                    {student.puntajeTotal}
-                  </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    Puntaje
+
+                <div className="group relative bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-700/30 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                  <div className="relative flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                      <span className="material-icons text-amber-600 dark:text-amber-400">
+                        star
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-black text-amber-600 dark:text-amber-400 leading-none">
+                        {student.puntajeTotal}
+                      </div>
+                      <div className="text-xs font-semibold text-amber-700/70 dark:text-amber-300/70 uppercase tracking-wider mt-1">
+                        Puntaje
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
