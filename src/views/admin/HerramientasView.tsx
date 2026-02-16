@@ -27,6 +27,9 @@ const ExecutiveReportGenerator = lazy(
 const ActiveInstitutionsReport = lazy(
   () => import("../../components/admin/ActiveInstitutionsReport")
 );
+const GestionRelanzamientoReport = lazy(
+  () => import("../../components/admin/GestionRelanzamientoReport")
+);
 const PersonalizationPanel = lazy(() => import("../../components/PersonalizationPanel"));
 const BackupManager = lazy(() => import("../../components/admin/BackupManager"));
 const MonitoringTest = lazy(() => import("../../components/MonitoringTest"));
@@ -195,6 +198,9 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
 
           {activeTabId === "reportes" && preferences.showReports && (
             <div className="space-y-6">
+              <ErrorBoundary>
+                <GestionRelanzamientoReport isTestingMode={isTestingMode} />
+              </ErrorBoundary>
               <ErrorBoundary>
                 <ActiveInstitutionsReport isTestingMode={isTestingMode} />
               </ErrorBoundary>

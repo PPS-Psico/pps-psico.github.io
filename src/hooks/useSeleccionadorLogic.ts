@@ -447,20 +447,16 @@ export const useSeleccionadorLogic = (
               encuentroText = `${fechaStr} a las ${hora}:${minutos} hs`;
             }
 
-            // Determinar si se debe mostrar el horario en el email
-            // Mostrar horario excepto cuando:
-            // - Hay encuentro inicial Y (horarios son fijos O es un solo horario)
+            // Determinar el horario a mostrar
+            // Si no hay horario seleccionado pero hay un solo horario disponible, usar ese
             const horarioAsignado =
               student.horarioSeleccionado || (tieneUnSoloHorario ? horariosDisponibles[0] : "");
-            const esHorarioObligatorioUnico = horariosFijos || tieneUnSoloHorario;
-            const debeOcultarHorario = !!encuentroInicial && esHorarioObligatorioUnico;
-            const debeMostrarHorario = !!horarioAsignado && !debeOcultarHorario;
 
             return sendSmartEmail("seleccion", {
               studentName: student.nombre,
               studentEmail: student.correo,
               ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
-              schedule: debeMostrarHorario ? (horarioAsignado as string) : undefined,
+              schedule: horarioAsignado || undefined,
               encuentroInicial: encuentroText || undefined,
             });
           });
@@ -508,15 +504,16 @@ export const useSeleccionadorLogic = (
           await db.lanzamientos.update(selectedLanzamiento.id, {
             [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
           });
-
-          // Copiar horario_seleccionado a horario_asignado para todos los estudiantes seleccionados
-          const updatePromises = selectedCandidates.map((student) => {
-            return db.convocatorias.update(student.enrollmentId, {
-              [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: student.horarioSeleccionado,
-            });
-          });
-          await Promise.all(updatePromises);
         }
+
+        // Copiar horario_seleccionado a horario_asignado para todos los estudiantes seleccionados
+        // Esto debe hacerse tanto en cierre normal como en modo edición
+        const updatePromises = selectedCandidates.map((student) => {
+          return db.convocatorias.update(student.enrollmentId, {
+            [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: student.horarioSeleccionado,
+          });
+        });
+        await Promise.all(updatePromises);
       } else {
         await mockDb.update("lanzamientos_pps", selectedLanzamiento.id, {
           [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
