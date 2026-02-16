@@ -511,7 +511,7 @@ const BackupManager: React.FC = () => {
                             {backup.backup_type === "automatic" ? "Automático" : "Manual"}
                           </StatusBadge>
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${backupType.color}`}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${backupType.color}`}
                           >
                             {backupType.label}
                           </span>
@@ -611,15 +611,41 @@ const BackupManager: React.FC = () => {
                     </StatusBadge>
                   </td>
                   <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                    {formatDate(item.created_at)}
+                    {formatDate(item.started_at)}
                   </td>
-                  <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                    {item.record_count > 0 && `${item.record_count} registros`}
-                    {item.tables_backed_up?.length > 0 &&
-                      ` • ${item.tables_backed_up.length} tablas`}
-                    {item.error_message && (
-                      <span className="text-rose-600 ml-2">Error: {item.error_message}</span>
-                    )}
+                  <td className="py-3 px-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {item.record_count > 0 && `${item.record_count} registros`}
+                        {item.tables_backed_up?.length > 0 &&
+                          ` • ${item.tables_backed_up.length} tablas`}
+                        {item.error_message && (
+                          <span className="text-rose-600 ml-2">Error: {item.error_message}</span>
+                        )}
+                      </span>
+                      {(() => {
+                        const date = new Date(item.started_at);
+                        if (date.getDay() === 0) {
+                          return (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 w-fit">
+                              Semanal
+                            </span>
+                          );
+                        } else if (date.getDate() === 1) {
+                          return (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 w-fit">
+                              Mensual
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
+                              Diario
+                            </span>
+                          );
+                        }
+                      })()}
+                    </div>
                   </td>
                 </tr>
               ))}
