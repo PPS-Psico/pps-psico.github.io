@@ -82,7 +82,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
       // Student was inscripto but convocatoria is now closed - show "VER RESULTADOS"
       const wasInscripto = estadoLower === "inscripto";
       return {
-        text: wasInscripto ? "VER RESULTADOS" : "CERRADA",
+        text: wasInscripto ? "Ver Seleccionados" : "Ver Seleccionados",
         icon: "groups",
         classes: `${baseClasses} bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900 hover:border-indigo-400 dark:hover:border-indigo-600 active:scale-95`,
         disabled: false,
@@ -118,7 +118,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
 
     if (estadoLower === "no_seleccionado") {
       return {
-        text: "CERRADA",
+        text: "Ver Seleccionados",
         icon: "groups",
         classes: `${baseClasses} bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900 hover:border-indigo-400 dark:hover:border-indigo-600 active:scale-95`,
         disabled: false,
