@@ -388,25 +388,21 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
     if (!student) return;
     setIsLoading(true);
     try {
+      console.log("Buscando prácticas para estudiante:", student.studentId);
+
+      // Consulta simplificada sin joins complejos
       const { data, error } = await supabase
         .from("practicas")
-        .select(
-          `
-          id,
-          estado,
-          horas,
-          nota,
-          lanzamiento:lanzamiento_id (
-            nombre_pps,
-            fecha_inicio,
-            fecha_finalizacion
-          )
-        `
-        )
+        .select("*")
         .eq("estudiante_id", student.studentId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error en consulta:", error);
+        throw error;
+      }
+
+      console.log("Prácticas encontradas:", data);
       setPracticas(data || []);
     } catch (err) {
       console.error("Error fetching practicas:", err);
@@ -417,7 +413,7 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
 
   if (!isOpen || !student) return null;
 
-  const totalHoras = practicas.reduce((sum, p) => sum + (p.horas || 0), 0);
+  const totalHoras = practicas.reduce((sum, p) => sum + (p.horas_realizadas || 0), 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -511,13 +507,11 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
                       >
                         <td className="px-4 py-3">
                           <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">
-                            {practica.lanzamiento?.nombre_pps || "N/A"}
+                            {practica.nombre_institucion || "N/A"}
                           </div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">
-                            {practica.lanzamiento?.fecha_inicio &&
-                              new Date(practica.lanzamiento.fecha_inicio).toLocaleDateString(
-                                "es-AR"
-                              )}
+                            {practica.fecha_inicio &&
+                              new Date(practica.fecha_inicio).toLocaleDateString("es-AR")}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -535,7 +529,7 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
-                            {practica.horas || 0}
+                            {practica.horas_realizadas || 0}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
