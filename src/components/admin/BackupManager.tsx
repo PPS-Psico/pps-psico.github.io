@@ -308,6 +308,29 @@ const BackupManager: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  // Función para determinar el tipo de backup (diario, semanal, mensual)
+  const getBackupType = (backup: BackupFile, index: number) => {
+    const date = new Date(backup.created_at);
+
+    // El más reciente siempre es el diario
+    if (index === 0) {
+      return { label: "Diario", color: "bg-blue-100 text-blue-800" };
+    }
+
+    // Si es domingo (0), es semanal
+    if (date.getDay() === 0) {
+      return { label: "Semanal", color: "bg-emerald-100 text-emerald-800" };
+    }
+
+    // Si es día 1 del mes, es mensual
+    if (date.getDate() === 1) {
+      return { label: "Mensual", color: "bg-purple-100 text-purple-800" };
+    }
+
+    // Por defecto, es un backup adicional (no debería pasar con la nueva lógica)
+    return { label: "Extra", color: "bg-slate-100 text-slate-800" };
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -378,12 +401,17 @@ const BackupManager: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-slate-500">Frecuencia</p>
-              <p className="font-bold text-slate-800 capitalize">
-                {config?.frequency === "hourly" && "Cada hora"}
-                {config?.frequency === "daily" && "Diario"}
-                {config?.frequency === "weekly" && "Semanal"}
-                {config?.frequency === "monthly" && "Mensual"}
-              </p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                  Diario
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                  Semanal
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                  Mensual
+                </span>
+              </div>
             </div>
           </div>
         </AdminCard>
@@ -397,32 +425,6 @@ const BackupManager: React.FC = () => {
               <p className="text-sm text-slate-500">Último Backup</p>
               <p className="font-bold text-slate-800">
                 {config?.last_backup_at ? formatDate(config.last_backup_at) : "Nunca"}
-              </p>
-            </div>
-          </div>
-        </AdminCard>
-
-        <AdminCard variant="default" className="md:col-span-3">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-indigo-100 text-indigo-600">
-              <span className="material-icons">auto_fix_high</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-slate-500">Estrategia de Retención Inteligente</p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Diario
-                </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                  Semanal
-                </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  Mensual
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                3 backups con cobertura completa: último diario + último domingo + último 1ro del
-                mes
               </p>
             </div>
           </div>
@@ -474,56 +476,66 @@ const BackupManager: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {backups.map((backup) => (
-                  <tr
-                    key={backup.file_name}
-                    className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  >
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="material-icons text-slate-400">backup</span>
-                        <span className="font-medium text-slate-800 dark:text-slate-200 text-sm">
-                          {backup.file_name}
+                {backups.map((backup, index) => {
+                  const backupType = getBackupType(backup, index);
+                  return (
+                    <tr
+                      key={backup.file_name}
+                      className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    >
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="material-icons text-slate-400">backup</span>
+                          <span className="font-medium text-slate-800 dark:text-slate-200 text-sm">
+                            {backup.file_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
+                        {formatDate(backup.created_at)}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
+                        {formatFileSize(backup.size_bytes)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {backup.record_count} registros
                         </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                      {formatDate(backup.created_at)}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                      {formatFileSize(backup.size_bytes)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {backup.record_count} registros
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <StatusBadge
-                        status={backup.backup_type === "automatic" ? "info" : "warning"}
-                        size="sm"
-                      >
-                        {backup.backup_type === "automatic" ? "Automático" : "Manual"}
-                      </StatusBadge>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <ActionButton
-                          variant="ghost"
-                          size="sm"
-                          icon="restore"
-                          onClick={() => {
-                            setSelectedBackup(backup);
-                            handleRestore(backup.file_name);
-                          }}
-                          loading={isRestoring && selectedBackup?.file_name === backup.file_name}
-                        >
-                          Restaurar
-                        </ActionButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col gap-1">
+                          <StatusBadge
+                            status={backup.backup_type === "automatic" ? "info" : "warning"}
+                            size="sm"
+                          >
+                            {backup.backup_type === "automatic" ? "Automático" : "Manual"}
+                          </StatusBadge>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${backupType.color}`}
+                          >
+                            {backupType.label}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <ActionButton
+                            variant="ghost"
+                            size="sm"
+                            icon="restore"
+                            onClick={() => {
+                              setSelectedBackup(backup);
+                              handleRestore(backup.file_name);
+                            }}
+                            loading={isRestoring && selectedBackup?.file_name === backup.file_name}
+                          >
+                            Restaurar
+                          </ActionButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
