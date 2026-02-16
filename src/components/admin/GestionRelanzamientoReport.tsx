@@ -6,7 +6,7 @@ import {
   FIELD_TELEFONO_INSTITUCIONES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_ESTADO_GESTION_LANZAMIENTOS,
+  FIELD_FECHA_FIN_LANZAMIENTOS,
 } from "../../constants";
 import { normalizeStringForComparison } from "../../utils/formatters";
 import Loader from "../Loader";
@@ -31,7 +31,7 @@ const fetchReportData = async (isTestingMode: boolean) => {
       fields: [
         FIELD_NOMBRE_PPS_LANZAMIENTOS,
         FIELD_ORIENTACION_LANZAMIENTOS,
-        FIELD_ESTADO_GESTION_LANZAMIENTOS,
+        FIELD_FECHA_FIN_LANZAMIENTOS,
         "institucion_id",
       ],
     }),
@@ -54,15 +54,21 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
   const reportData = useMemo((): ReportData[] => {
     if (!data) return [];
 
-    // Filtrar lanzamientos que están en gestión de relanzamiento
-    const lanzamientosEnGestion = data.lanzamientos.filter((l) => {
-      const estadoGestion = l[FIELD_ESTADO_GESTION_LANZAMIENTOS];
-      return estadoGestion && estadoGestion !== "Archivado" && estadoGestion !== "No se relanza";
+    // Incluir TODOS los lanzamientos del año pasado (2025) que hayan finalizado
+    // Esto corresponde a lo que se ve en la sección de Gestión
+    const currentYear = new Date().getFullYear();
+    const lastYear = currentYear - 1;
+
+    const lanzamientosDelAnoPasado = data.lanzamientos.filter((l) => {
+      const fechaFin = l[FIELD_FECHA_FIN_LANZAMIENTOS];
+      if (!fechaFin) return false;
+      const year = new Date(fechaFin).getFullYear();
+      return year === lastYear || year === currentYear;
     });
 
     const reportMap = new Map<string, ReportData>();
 
-    lanzamientosEnGestion.forEach((launch) => {
+    lanzamientosDelAnoPasado.forEach((launch) => {
       const ppsName = launch[FIELD_NOMBRE_PPS_LANZAMIENTOS];
       if (!ppsName) return;
 
@@ -120,9 +126,8 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
       const worksheet = workbook.addWorksheet("Gestión Relanzamiento");
 
       // Título
-      const titleRow = worksheet.addRow([
-        "Listado de Instituciones - Gestión de Relanzamiento 2026",
-      ]);
+      const lastYear = new Date().getFullYear() - 1;
+      const titleRow = worksheet.addRow([`Listado de Instituciones Activas ${lastYear}`]);
       worksheet.mergeCells("A1:C1");
       titleRow.font = { name: "Calibri", size: 24, bold: true, color: { argb: "FF1E40AF" } };
       titleRow.alignment = { vertical: "middle", horizontal: "center" };
@@ -231,8 +236,10 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
         <div className="flex items-center gap-3">
           <span className="material-icons text-4xl">phone_in_talk</span>
           <div>
-            <h2 className="text-2xl font-bold">Gestión de Relanzamiento</h2>
-            <p className="text-blue-100">Listado de instituciones con teléfonos de contacto</p>
+            <h2 className="text-2xl font-bold">Todas las Instituciones</h2>
+            <p className="text-blue-100">
+              Listado completo de instituciones activas del año pasado
+            </p>
           </div>
         </div>
       </div>
@@ -240,9 +247,9 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
       <div className="p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">Instituciones en Gestión</h3>
+            <h3 className="text-xl font-bold text-slate-800">Instituciones Activas</h3>
             <p className="text-slate-500 text-sm mt-1">
-              Total: {reportData.length} instituciones para relanzamiento 2026
+              Total: {reportData.length} instituciones del año {new Date().getFullYear() - 1}
             </p>
           </div>
           <button
@@ -312,7 +319,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
           <EmptyState
             icon="inbox"
             title="No hay instituciones"
-            message="No se encontraron instituciones en gestión de relanzamiento."
+            message="No se encontraron instituciones del año pasado."
           />
         )}
 
