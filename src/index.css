@@ -316,3 +316,84 @@ body.metrics-modal-open [class*="UnifiedTabs"],
 body.metrics-modal-open nav[class*="sticky"] {
   display: none !important;
 }
+
+/* ───── ADMIN MOBILE RESPONSIVE ───── */
+
+/* Admin mobile shell: content area padding, full bleed */
+@media (max-width: 767px) {
+  /* Dashboard management cards: stack vertically */
+  .admin-mobile-shell .grid.lg\:grid-cols-4,
+  .admin-mobile-shell .grid.sm\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Make ManagementCard more compact on mobile */
+  .admin-mobile-shell button[class*="rounded-\[2rem\]"] {
+    padding: 16px !important;
+    border-radius: 1rem !important;
+  }
+
+  .admin-mobile-shell button[class*="rounded-\[2rem\]"] .text-4xl {
+    font-size: 2rem !important;
+  }
+
+  /* Admin dashboard section spacing */
+  .admin-mobile-shell .space-y-12 {
+    gap: 1.5rem !important;
+  }
+
+  .admin-mobile-shell .space-y-12 > * + * {
+    margin-top: 1.5rem !important;
+  }
+
+  /* Full-bleed content padding */
+  .admin-mobile-shell main {
+    padding: 12px !important;
+  }
+
+  /* Activity feed & sections */
+  .admin-mobile-shell section .px-4 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Alert cards compact on mobile */
+  .admin-mobile-shell [class*="border-l-4"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0 0.75rem 0.75rem 0 !important;
+  }
+
+  /* Reminder grid: single column */
+  .admin-mobile-shell .grid.lg\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* SubTabs (inside Lanzador / Gestión views): horizontal scroll, compact */
+  .admin-mobile-shell [role="tablist"] {
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    padding: 4px !important;
+  }
+
+  .admin-mobile-shell [role="tablist"] button {
+    padding: 8px 14px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* LanzadorConvocatorias & ConvocatoriaManager: tighter cards */
+  .admin-mobile-shell .mt-6 {
+    margin-top: 0.75rem !important;
+  }
+
+  /* Forms in Lanzador: compact inputs */
+  .admin-mobile-shell form .grid.grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Calendar view: make it scroll horizontally */
+  .admin-mobile-shell [class*="CalendarPlanning"] {
+    overflow-x: auto;
+  }
+}

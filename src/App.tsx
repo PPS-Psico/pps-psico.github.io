@@ -1,28 +1,29 @@
 import React, { lazy, Suspense } from "react";
 import {
+  Navigate,
+  Route,
   HashRouter as Router,
   Routes,
-  Route,
-  Navigate,
-  useParams,
   useNavigate,
+  useParams,
 } from "react-router-dom";
-import Loader from "./components/Loader";
 import Auth from "./components/Auth";
-import Layout from "./components/layout/Layout";
-import { useAuth } from "./contexts/AuthContext";
-import { ModalProvider } from "./contexts/ModalContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { ConfigProvider } from "./contexts/ConfigContext";
-import { AdminPreferencesProvider } from "./contexts/AdminPreferencesContext";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { ErrorProvider } from "./contexts/ErrorContext";
-import { PwaInstallProvider } from "./contexts/PwaInstallContext";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { StudentPanelProvider } from "./contexts/StudentPanelContext";
-import { NotificationProvider } from "./contexts/NotificationContext";
-import { FIELD_LEGAJO_ESTUDIANTES } from "./constants";
 import InstallPWA from "./components/InstallPWA";
+import Layout from "./components/layout/Layout";
+import Loader from "./components/Loader";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { FIELD_LEGAJO_ESTUDIANTES } from "./constants";
+import { AdminPreferencesProvider } from "./contexts/AdminPreferencesContext";
+import { useAuth } from "./contexts/AuthContext";
+import { ConfigProvider } from "./contexts/ConfigContext";
+import { ErrorProvider } from "./contexts/ErrorContext";
+import { ModalProvider } from "./contexts/ModalContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
+import { PwaInstallProvider } from "./contexts/PwaInstallContext";
+import { StudentPanelProvider } from "./contexts/StudentPanelContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import PracticasView from "./views/student/PracticasView";
 
 // Views
 const StudentView = lazy(() => import("./views/StudentView"));
@@ -30,7 +31,6 @@ const StudentDashboard = lazy(() => import("./views/StudentDashboard"));
 const StudentHome = lazy(() =>
   import("./views/StudentDashboard").then((module) => ({ default: module.StudentHome }))
 );
-import PracticasView from "./views/student/PracticasView";
 const SolicitudesView = lazy(() => import("./views/student/SolicitudesView"));
 const StudentProfileView = lazy(() => import("./views/student/StudentProfileView"));
 
@@ -46,7 +46,6 @@ const JefeView = lazy(() => import("./views/JefeView"));
 const DirectivoView = lazy(() => import("./views/DirectivoView"));
 const ReporteroView = lazy(() => import("./views/ReporteroView"));
 const AdminTestingView = lazy(() => import("./views/AdminTestingView"));
-const AdminMovilView = lazy(() => import("./views/AdminMovilView"));
 
 const AdminStudentWrapper = () => {
   const { legajo } = useParams();
@@ -166,7 +165,6 @@ const AppRoutes = () => {
         }
       />
 
-      <Route path="/admin-movil" element={<AdminMovilView />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -1,11 +1,9 @@
-import React, { useState, lazy, useEffect, useMemo } from "react";
-import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
-// import { useAuth } from '../contexts/AuthContext';
-import { useAdminPreferences } from "../contexts/AdminPreferencesContext";
-import Loader from "../components/Loader";
+import React, { lazy, useEffect, useMemo, useState } from "react";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppModals from "../components/AppModals";
+import Loader from "../components/Loader";
 import UnifiedTabs, { TabItem } from "../components/UnifiedTabs";
-// import { useTheme } from '../contexts/ThemeContext';
+import { useAdminPreferences } from "../contexts/AdminPreferencesContext";
 
 // Components for Testing Mode
 const AdminDashboard = lazy(() => import("../components/admin/AdminDashboard"));
@@ -20,13 +18,28 @@ interface AdminViewProps {
   isTestingMode?: boolean;
 }
 
+/** Hook to detect mobile viewport */
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    setIsMobile(mql.matches);
+    return () => mql.removeEventListener("change", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+/** Mobile-only tabs (Inicio, Lanzador, Gestión) */
+const MOBILE_TAB_IDS = new Set(["dashboard", "lanzador", "gestion"]);
+
 const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
-  // const { authenticatedUser } = useAuth();
   const { preferences } = useAdminPreferences();
-  // const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
+  const isMobile = useIsMobile();
 
   const [localTab, setLocalTab] = useState("dashboard");
   const [scrolled, setScrolled] = useState(false);
@@ -60,6 +73,18 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     }
   }
 
+  // On mobile, if navigating to a non-mobile tab, redirect to dashboard
+  useEffect(() => {
+    if (
+      isMobile &&
+      !isTestingMode &&
+      !MOBILE_TAB_IDS.has(currentTabId) &&
+      currentTabId !== "student-profile"
+    ) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [isMobile, currentTabId, isTestingMode, navigate]);
+
   // Build tabs list dynamically
   const navItems = useMemo<TabItem[]>(() => {
     const baseTabs: TabItem[] = [
@@ -67,29 +92,31 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
       { id: "lanzador", label: "Lanzador", icon: "rocket_launch", path: "/admin/lanzador" },
     ];
 
-    if (preferences.showManagementTab) {
-      baseTabs.push({ id: "gestion", label: "Gestión", icon: "tune", path: "/admin/gestion" });
+    // Gestión always visible (required on mobile)
+    baseTabs.push({ id: "gestion", label: "Gestión", icon: "tune", path: "/admin/gestion" });
+
+    // Desktop-only tabs
+    if (!isMobile) {
+      baseTabs.push(
+        { id: "solicitudes", label: "Solicitudes", icon: "list_alt", path: "/admin/solicitudes" },
+        {
+          id: "recordatorios",
+          label: "Recordatorios",
+          icon: "notifications",
+          path: "/admin/recordatorios",
+        },
+        { id: "metrics", label: "Métricas", icon: "analytics", path: "/admin/metrics" },
+        {
+          id: "herramientas",
+          label: "Herramientas",
+          icon: "construction",
+          path: "/admin/herramientas",
+        }
+      );
     }
 
-    baseTabs.push(
-      { id: "solicitudes", label: "Solicitudes", icon: "list_alt", path: "/admin/solicitudes" },
-      {
-        id: "recordatorios",
-        label: "Recordatorios",
-        icon: "notifications",
-        path: "/admin/recordatorios",
-      },
-      { id: "metrics", label: "Métricas", icon: "analytics", path: "/admin/metrics" },
-      {
-        id: "herramientas",
-        label: "Herramientas",
-        icon: "construction",
-        path: "/admin/herramientas",
-      }
-    );
-
-    // Dynamic Student Tab
-    if (!isTestingMode && currentTabId === "student-profile") {
+    // Dynamic Student Tab (desktop only)
+    if (!isMobile && !isTestingMode && currentTabId === "student-profile") {
       baseTabs.push({
         id: "student-profile",
         label: `Alumno ${params.legajo}`,
@@ -105,6 +132,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     currentTabId,
     params.legajo,
     location.pathname,
+    isMobile,
   ]);
 
   const handleTabChange = (tabId: string, path?: string) => {
@@ -179,6 +207,61 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     ? "bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-slate-200/50 dark:border-white/5 shadow-sm py-3"
     : "bg-transparent border-transparent py-6";
 
+  // ─── MOBILE LAYOUT ───
+  if (isMobile) {
+    return (
+      <div className="admin-mobile-shell min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-[72px]">
+        {/* Mobile content area — full bleed, no header capsule */}
+        <main className="relative z-10">{renderContent()}</main>
+
+        {/* ── BOTTOM NAV BAR (mobile only) ── */}
+        <nav
+          className="fixed bottom-0 inset-x-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        >
+          <div className="flex justify-around items-stretch">
+            {navItems
+              .filter((t) => MOBILE_TAB_IDS.has(t.id))
+              .map((tab) => {
+                const isActive = currentTabId === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id, tab.path)}
+                    className={`
+                    flex flex-col items-center justify-center flex-1 py-2.5 gap-0.5 transition-all duration-200
+                    ${
+                      isActive
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-slate-400 dark:text-slate-500 active:text-slate-600"
+                    }
+                  `}
+                  >
+                    <span
+                      className={`material-icons transition-transform duration-200 ${isActive ? "!text-[26px] scale-110" : "!text-[24px]"}`}
+                    >
+                      {tab.icon}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold tracking-wide ${isActive ? "opacity-100" : "opacity-70"}`}
+                    >
+                      {tab.label}
+                    </span>
+                    {isActive && (
+                      <span className="absolute top-0 left-1/2 -translate-x-1/2 h-[3px] w-10 rounded-b-full bg-blue-600 dark:bg-blue-400" />
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+        </nav>
+
+        <AppModals />
+      </div>
+    );
+  }
+
+  // ─── DESKTOP LAYOUT (unchanged) ───
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
       {/* Background Ambient Glows (Subtle) */}

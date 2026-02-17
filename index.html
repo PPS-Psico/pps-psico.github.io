@@ -8,9 +8,11 @@
       name="description"
       content="Portal de autogestión para Prácticas Profesionales Supervisadas - UFLO"
     />
-    
+
     <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.sh;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -22,12 +24,13 @@
       form-action 'self';
       upgrade-insecure-requests;
       block-all-mixed-content;
-    ">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-    
+    "
+    />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+
     <title>Consulta de PPS y Prácticas</title>
 
     <!-- Favicon -->
@@ -56,38 +59,6 @@
       } else {
         document.documentElement.classList.remove("dark");
       }
-    </script>
-
-    <!-- Detect route and use appropriate manifest -->
-    <script>
-      (function() {
-        const currentHash = window.location.hash || '#/';
-        const isAdmin = currentHash.includes('admin-movil');
-        
-        // Always fetch the manifest to get proper installation
-        const manifestLink = document.querySelector('link[rel="manifest"]');
-        
-        if (isAdmin) {
-          // Admin view
-          if (manifestLink) {
-            manifestLink.href = './manifest-admin.json?v=2';
-          }
-          const themeMeta = document.querySelector('meta[name="theme-color"]');
-          if (themeMeta) {
-            themeMeta.content = '#4f46e5';
-          }
-          const faviconLink = document.querySelector('link[rel="icon"]');
-          if (faviconLink) {
-            faviconLink.href = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%234f46e5%22%3E%3Cpath%20d%3D%22M12%201L3%205v6c0%205.55%203.84%2010.74%209%2012%205.16-1.26%209-6.45%209-12V5l-9-4zm0%2010.99h7c-.53%204.12-3.28%207.79-7%208.94V12H5V6.3l7-3.11v8.8z%22/%3E%3C/svg%3E";
-          }
-          document.title = "Gestión PPS UFLO";
-        } else {
-          // Student view - use dynamic start_url
-          if (manifestLink) {
-            manifestLink.href = './manifest.json?v=4';
-          }
-        }
-      })();
     </script>
 
     <!-- Fonts -->
@@ -133,8 +104,6 @@
         }
       }
     </script>
-    
-
   </head>
   <body class="notranslate">
     <div id="root"></div>

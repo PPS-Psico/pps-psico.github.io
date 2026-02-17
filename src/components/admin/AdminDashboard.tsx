@@ -1,17 +1,16 @@
-import React, { useState } from "react";
+import { differenceInDays } from "date-fns";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOperationalData } from "../../hooks/useOperationalData";
 import { useReminders } from "../../hooks/useReminders";
-import Toast from "../ui/Toast";
-import { AdminDashboardSkeleton } from "../Skeletons";
-import EmptyState from "../EmptyState";
-import ActivityFeed from "./ActivityFeed";
-import { differenceInDays } from "date-fns";
-import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
 import { formatDate } from "../../utils/formatters";
-import { StatusBadge, ActionButton, AdminCard } from "../ui/admin";
-import { adminTheme } from "../../theme/adminTheme";
+import EmptyState from "../EmptyState";
+import { AdminDashboardSkeleton } from "../Skeletons";
+import { ActionButton, AdminCard, StatusBadge } from "../ui/admin";
+import Toast from "../ui/Toast";
+import ActivityFeed from "./ActivityFeed";
 
 interface AdminDashboardProps {
   isTestingMode?: boolean;
@@ -96,11 +95,20 @@ const ManagementCard: React.FC<{
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }) => {
   const { authenticatedUser } = useAuth();
-  // const { preferences } = useAdminPreferences(); // Access prefs
   const navigate = useNavigate();
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
   );
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    setIsMobile(mql.matches);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   const {
     data: opData,
@@ -236,8 +244,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
         </div>
       )}
 
-      {/* --- SECCIÓN RECORDATORIOS --- */}
-      {(counts.today > 0 || counts.overdue > 0) && (
+      {/* --- SECCIÓN RECORDATORIOS (desktop only) --- */}
+      {!isMobile && (counts.today > 0 || counts.overdue > 0) && (
         <section className="space-y-4">
           <div className="flex items-center justify-between px-4">
             <div className="flex items-center gap-3">
@@ -385,7 +393,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
             Estado Operativo
           </h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div
+          className={`grid gap-6 ${isMobile ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}
+        >
           <ManagementCard
             title="Instituciones Vencidas"
             count={overdueCount}
@@ -394,22 +404,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
             color="red"
             onClick={() => navigate("/admin/gestion?filter=vencidas")}
           />
-          <ManagementCard
-            title="Demoradas"
-            count={stagnantCount}
-            label="Sin cambio +5 días"
-            icon="hourglass_empty"
-            color="amber"
-            onClick={() => navigate("/admin/solicitudes?tab=ingreso")}
-          />
-          <ManagementCard
-            title="Acreditaciones"
-            count={accreditationCount}
-            label="Pendientes de carga"
-            icon="verified"
-            color="emerald"
-            onClick={() => navigate("/admin/solicitudes?tab=egreso")}
-          />
+          {!isMobile && (
+            <ManagementCard
+              title="Demoradas"
+              count={stagnantCount}
+              label="Sin cambio +5 días"
+              icon="hourglass_empty"
+              color="amber"
+              onClick={() => navigate("/admin/solicitudes?tab=ingreso")}
+            />
+          )}
+          {!isMobile && (
+            <ManagementCard
+              title="Acreditaciones"
+              count={accreditationCount}
+              label="Pendientes de carga"
+              icon="verified"
+              color="emerald"
+              onClick={() => navigate("/admin/solicitudes?tab=egreso")}
+            />
+          )}
           <ManagementCard
             title="Próximas a Vencer"
             count={upcomingCount}
