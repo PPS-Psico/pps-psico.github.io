@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { Attachment, getFileType } from "../../../utils/attachmentUtils";
-import { PdfViewer } from "./PdfViewer";
 import { ExcelViewer } from "./ExcelViewer";
+import { FileInfoButton } from "./FileInfo";
 import { ImageViewer } from "./ImageViewer";
-import { FileInfo, FileInfoButton } from "./FileInfo";
-import { KeyboardShortcuts } from "./KeyboardShortcuts";
+import { PdfViewer } from "./PdfViewer";
 
 interface FilePreviewProps {
   files: Attachment[];
@@ -25,10 +24,11 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [showThumbnails, setShowThumbnails] = useState(true);
+  const [showThumbnails, setShowThumbnails] = useState(false); // Default hidden
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [direction, setDirection] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const thumbnailTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,12 +71,14 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           if (files.length > 1 && !e.shiftKey) {
             e.preventDefault();
             handlePrev();
+            showThumbnailsTemporarily();
           }
           break;
         case "ArrowRight":
           if (files.length > 1 && !e.shiftKey) {
             e.preventDefault();
             handleNext();
+            showThumbnailsTemporarily();
           }
           break;
         case "i":
@@ -89,12 +91,6 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         case "?":
           setShowShortcuts(!showShortcuts);
           break;
-        case "t":
-        case "T":
-          if (files.length > 1) {
-            setShowThumbnails(!showThumbnails);
-          }
-          break;
         case "f":
         case "F":
           toggleFullscreen();
@@ -104,7 +100,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, files.length, currentIndex, showInfo, showShortcuts, showThumbnails]);
+  }, [isOpen, files.length, currentIndex, showInfo, showShortcuts]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -151,6 +147,32 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
     [currentIndex]
   );
 
+  const showThumbnailsTemporarily = () => {
+    setShowThumbnails(true);
+    if (thumbnailTimeoutRef.current) {
+      clearTimeout(thumbnailTimeoutRef.current);
+    }
+    thumbnailTimeoutRef.current = setTimeout(() => {
+      setShowThumbnails(false);
+    }, 3000);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const windowHeight = window.innerHeight;
+    const threshold = 150; // Pixels from bottom to trigger
+    if (windowHeight - e.clientY < threshold) {
+      setShowThumbnails(true);
+      if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);
+    } else {
+      // If we move away from bottom, start hide timer
+      if (!thumbnailTimeoutRef.current && showThumbnails) {
+        thumbnailTimeoutRef.current = setTimeout(() => {
+          setShowThumbnails(false);
+        }, 1000);
+      }
+    }
+  };
+
   if (!isOpen || files.length === 0) return null;
 
   const currentFile = files[currentIndex];
@@ -180,7 +202,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
     switch (fileType) {
       case "pdf":
-        return <PdfViewer {...viewerProps} showThumbnails={showThumbnails} />;
+        return <PdfViewer {...viewerProps} />;
       case "office":
         return <ExcelViewer {...viewerProps} filename={currentFile.filename} />;
       case "image":
@@ -229,6 +251,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col"
       onClick={onClose}
+      onMouseMove={handleMouseMove}
     >
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -276,19 +299,6 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         <div className="flex items-center gap-1">
           {/* File Info Button */}
           <FileInfoButton onClick={() => setShowInfo(true)} />
-
-          {/* Thumbnails Toggle */}
-          {files.length > 1 && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowThumbnails(!showThumbnails)}
-              className={`p-2 rounded-xl transition-colors ${showThumbnails ? "bg-blue-500/20 text-blue-400" : "bg-white/5 hover:bg-white/10"}`}
-              title={`${showThumbnails ? "Ocultar" : "Mostrar"} miniaturas (T)`}
-            >
-              <span className="material-icons">grid_view</span>
-            </motion.button>
-          )}
 
           {/* Fullscreen Toggle */}
           <motion.button
@@ -349,7 +359,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           </motion.div>
         </AnimatePresence>
 
-        {/* Navigation arrows */}
+        {/* Navigation arrows (only visible when hovering sides or navigating) */}
         {files.length > 1 && (
           <>
             <motion.button
@@ -358,7 +368,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               whileHover={{ scale: 1.1, x: 5 }}
               whileTap={{ scale: 0.9 }}
               onClick={handlePrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl group"
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl group z-20"
             >
               <span className="material-icons !text-3xl group-hover:-translate-x-1 transition-transform">
                 chevron_left
@@ -370,7 +380,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               whileHover={{ scale: 1.1, x: -5 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl group"
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl group z-20"
             >
               <span className="material-icons !text-3xl group-hover:translate-x-1 transition-transform">
                 chevron_right
@@ -397,85 +407,77 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Thumbnail strip */}
+      {/* Auto-hiding Thumbnail strip */}
       <AnimatePresence>
         {files.length > 1 && showThumbnails && (
           <motion.div
-            initial={{ y: 100, opacity: 0 }}
+            initial={{ y: 200, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="flex-shrink-0 bg-black/60 backdrop-blur-xl border-t border-white/10 p-4 overflow-x-auto"
-            onClick={(e) => e.stopPropagation()}
+            exit={{ y: 200, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center"
+            onMouseEnter={() => {
+              if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);
+            }}
           >
-            <div className="flex gap-3 justify-center">
-              {files.map((file, index) => {
-                const isActive = index === currentIndex;
-                const type = getFileType(file.filename);
-                return (
-                  <motion.button
-                    key={index}
-                    onClick={() => handleThumbnailClick(index)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden transition-all border-2 ${
-                      isActive
-                        ? "border-blue-500 shadow-lg shadow-blue-500/25"
-                        : "border-transparent hover:border-white/20"
-                    }`}
-                  >
-                    {type === "image" ? (
-                      <img
-                        src={file.signedUrl || file.url}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div
-                        className={`w-full h-full flex flex-col items-center justify-center gap-1 ${
-                          isActive
-                            ? "bg-gradient-to-br from-blue-600/20 to-blue-700/20"
-                            : "bg-slate-800"
-                        }`}
-                      >
-                        <span
-                          className={`material-icons text-2xl ${isActive ? "text-blue-400" : "text-slate-400"}`}
+            <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-3 shadow-2xl overflow-x-auto max-w-[90vw] custom-scrollbar">
+              <div className="flex gap-3">
+                {files.map((file, index) => {
+                  const isActive = index === currentIndex;
+                  const type = getFileType(file.filename);
+                  return (
+                    <motion.button
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleThumbnailClick(index);
+                      }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden transition-all border-2 ${
+                        isActive
+                          ? "border-blue-500 shadow-lg shadow-blue-500/25"
+                          : "border-transparent hover:border-white/20"
+                      }`}
+                    >
+                      {type === "image" ? (
+                        <img
+                          src={file.signedUrl || file.url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div
+                          className={`w-full h-full flex flex-col items-center justify-center gap-1 ${
+                            isActive
+                              ? "bg-gradient-to-br from-blue-600/20 to-blue-700/20"
+                              : "bg-slate-800"
+                          }`}
                         >
-                          {type === "pdf"
-                            ? "picture_as_pdf"
-                            : type === "office"
-                              ? "table_chart"
-                              : "insert_drive_file"}
-                        </span>
-                        <span className="text-[10px] uppercase font-medium text-slate-400">
-                          {type}
-                        </span>
-                      </div>
-                    )}
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeThumb"
-                        className="absolute inset-0 ring-2 ring-blue-500 rounded-xl"
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      />
-                    )}
-                  </motion.button>
-                );
-              })}
+                          <span
+                            className={`material-icons text-xl ${
+                              isActive ? "text-blue-400" : "text-slate-400"
+                            }`}
+                          >
+                            {type === "pdf"
+                              ? "picture_as_pdf"
+                              : type === "office"
+                                ? "table_chart"
+                                : "insert_drive_file"}
+                          </span>
+                        </div>
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
             </div>
+            {/* Puntero decorativo (opcional) */}
+            {/* <div className="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-black/60 backdrop-blur-xl mt-[-1px]" /> */}
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Modals */}
-      <FileInfo
-        isOpen={showInfo}
-        onClose={() => setShowInfo(false)}
-        file={currentFile}
-        fileType={fileType}
-      />
-
-      <KeyboardShortcuts isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </motion.div>,
     document.body
   );
