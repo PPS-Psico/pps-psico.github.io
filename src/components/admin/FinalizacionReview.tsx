@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
-import { Attachment, getNormalizationState, getStoragePath } from "../../utils/attachmentUtils";
-import Loader from "../Loader";
-import EmptyState from "../EmptyState";
-import Toast from "../ui/Toast";
-import CollapsibleSection from "../CollapsibleSection";
-import { formatDate } from "../../utils/formatters";
-import { supabase } from "../../lib/supabaseClient";
+import React, { useState } from "react";
 import {
-  FIELD_PLANILLA_HORAS_FINALIZACION,
   FIELD_INFORME_FINAL_FINALIZACION,
   FIELD_PLANILLA_ASISTENCIA_FINALIZACION,
+  FIELD_PLANILLA_HORAS_FINALIZACION,
   FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
 } from "../../constants";
+import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
+import { supabase } from "../../lib/supabaseClient";
+import { Attachment, getNormalizationState, getStoragePath } from "../../utils/attachmentUtils";
+import { formatDate } from "../../utils/formatters";
+import CollapsibleSection from "../CollapsibleSection";
 import ConfirmModal from "../ConfirmModal";
+import EmptyState from "../EmptyState";
+import Loader from "../Loader";
+import Toast from "../ui/Toast";
 import { FilePreview } from "./preview";
 
 const normalizeAttachments = (attachment: any): Attachment[] => {
@@ -286,6 +286,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
     historyList,
   } = useFinalizacionLogic(isTestingMode);
   const [previewFiles, setPreviewFiles] = useState<Attachment[]>([]);
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
 
@@ -295,7 +296,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
     });
   };
 
-  const handlePreview = async (files: Attachment[]) => {
+  const handlePreview = async (files: Attachment[], index: number = 0) => {
     // Obtener signed URLs para los archivos
     const filesWithSignedUrls = await Promise.all(
       files.map(async (file) => {
@@ -313,6 +314,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
       })
     );
     setPreviewFiles(filesWithSignedUrls);
+    setPreviewInitialIndex(index);
     setIsPreviewOpen(true);
   };
 
@@ -336,7 +338,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           files={previewFiles}
-          initialIndex={0}
+          initialIndex={previewInitialIndex}
         />
       )}
       <ConfirmModal
