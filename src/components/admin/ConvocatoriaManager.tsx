@@ -1,13 +1,13 @@
 import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useGestionConvocatorias, FilterType } from "../../hooks/useGestionConvocatorias";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
+import { FilterType, useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
 import { normalizeStringForComparison } from "../../utils/formatters";
+import CollapsibleSection from "../CollapsibleSection";
+import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
-import EmptyState from "../EmptyState";
 import GestionCard from "./GestionCard";
-import CollapsibleSection from "../CollapsibleSection";
 
 interface ConvocatoriaManagerProps {
   forcedOrientations?: string[];
@@ -65,7 +65,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       )}
 
       {/* HEADER: Estilo Premium Dark */}
-      <div className="p-4 bg-white dark:bg-[#0F172A] rounded-xl border border-slate-200 dark:border-white/5 shadow-sm sticky top-20 z-30 backdrop-blur-md bg-white/90 dark:bg-[#0F172A]/90">
+      <div className="p-4 bg-white dark:bg-[#0F172A] rounded-xl border border-slate-200 dark:border-white/5 shadow-sm z-30 backdrop-blur-md bg-white/90 dark:bg-[#0F172A]/90">
         <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
             <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 whitespace-nowrap">
