@@ -10,7 +10,6 @@ export interface AdminModuleConfig {
   showNewAgreements: boolean; // Herramienta Nuevos Convenios
   showReports: boolean; // Herramienta Reportes
   showBackups: boolean; // Herramienta Backups
-  showMonitoring: boolean; // Herramienta Monitoreo
 }
 
 const DEFAULT_PREFERENCES: AdminModuleConfig = {
@@ -22,7 +21,6 @@ const DEFAULT_PREFERENCES: AdminModuleConfig = {
   showNewAgreements: true,
   showReports: true,
   showBackups: true,
-  showMonitoring: true,
 };
 
 interface AdminPreferencesContextType {

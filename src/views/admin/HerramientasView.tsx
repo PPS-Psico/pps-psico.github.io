@@ -32,7 +32,6 @@ const GestionRelanzamientoReport = lazy(
 );
 const PersonalizationPanel = lazy(() => import("../../components/PersonalizationPanel"));
 const BackupManager = lazy(() => import("../../components/admin/BackupManager"));
-const MonitoringTest = lazy(() => import("../../components/MonitoringTest"));
 
 const QUICK_STUDENT_CONFIG = {
   label: "Estudiante",
@@ -94,11 +93,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
     if (preferences.showBackups)
       availableTabs.push({ id: "backups", label: "Backups", icon: "backup" });
 
-    // Monitoring (siempre visible para admin si está activo en prefs)
-    if (preferences.showMonitoring) {
-      availableTabs.push({ id: "monitoring", label: "Monitoring", icon: "monitoring" });
-    }
-
     // Siempre al final
     availableTabs.push({ id: "personalization", label: "Personalización", icon: "tune" });
 
@@ -151,12 +145,6 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
           {activeTabId === "backups" && preferences.showBackups && (
             <ErrorBoundary>
               <BackupManager />
-            </ErrorBoundary>
-          )}
-
-          {activeTabId === "monitoring" && preferences.showMonitoring && (
-            <ErrorBoundary>
-              <MonitoringTest />
             </ErrorBoundary>
           )}
 

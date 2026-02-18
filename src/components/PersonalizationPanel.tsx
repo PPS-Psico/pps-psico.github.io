@@ -100,13 +100,6 @@ const PersonalizationPanel: React.FC = () => {
               checked={preferences.showBackups}
               onChange={() => toggleModule("showBackups")}
             />
-            <SwitchRow
-              label="Monitoreo de Sistema"
-              description="Visualización de logs y estado técnico de la plataforma."
-              icon="monitoring"
-              checked={preferences.showMonitoring}
-              onChange={() => toggleModule("showMonitoring")}
-            />
           </div>
         </div>
 
