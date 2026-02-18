@@ -11,6 +11,7 @@ import {
   TABLE_NAME_FINALIZACION,
   TABLE_NAME_LANZAMIENTOS_PPS,
   TABLE_NAME_PPS,
+  TABLE_NAME_SOLICITUDES_MODIFICACION,
 } from "../constants";
 import { supabase } from "../lib/supabaseClient";
 import { mockDb } from "../services/mockDb";
