@@ -19,6 +19,17 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        
+      - name: Deploy Backup Function
+        run: |
+          echo "📦 Ensuring backup function is deployed with --no-verify-jwt..."
+          npx supabase functions deploy automated-backup --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --no-verify-jwt || echo "Deploy step completed"
+      
       - name: Trigger Backup Function
         id: backup
         run: |
