@@ -93,6 +93,12 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
               >
                 <span className="material-icons !text-xs">schedule</span> Próximas
               </button>
+              <button
+                onClick={() => setFilterType("demoradas")}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "demoradas" ? "bg-white dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 shadow-sm border border-transparent dark:border-orange-800/50" : "text-slate-500 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400"}`}
+              >
+                <span className="material-icons !text-xs">hourglass_empty</span> Demoradas
+              </button>
             </div>
           </div>
 
@@ -112,12 +118,78 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
         </div>
       </div>
 
+      {/* ==================== SECCIÓN: DEMORADAS (filter=demoradas or integrated in all) ==================== */}
+      {filteredData.contactadasEsperandoRespuesta &&
+        filteredData.respondidasPendienteDecision &&
+        (filterType === "demoradas" || filterType === "all") &&
+        (() => {
+          // Calculate stagnant items: non-conclusive states with 2+ days without update
+          const now = new Date();
+          const allStagnant = [
+            ...filteredData.contactadasEsperandoRespuesta,
+            ...filteredData.respondidasPendienteDecision,
+            ...filteredData.porContactar,
+          ].filter((pps: any) => {
+            const lastUpdate = pps.updated_at || pps.created_at;
+            if (!lastUpdate) return true; // No update = stagnant
+            const daysSince = Math.floor(
+              (now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24)
+            );
+            return daysSince >= 2;
+          });
+
+          if (allStagnant.length === 0 && filterType === "demoradas") {
+            return (
+              <EmptyState
+                icon="thumb_up"
+                title="¡Todo al día!"
+                message="No hay gestiones demoradas. Todas las instituciones se actualizaron en los últimos 2 días."
+              />
+            );
+          }
+
+          if (allStagnant.length === 0) return null;
+
+          return (
+            <CollapsibleSection
+              title="⏳ Demoradas (2+ días sin cambios)"
+              count={allStagnant.length}
+              icon="hourglass_empty"
+              iconBgColor="bg-orange-100 dark:bg-orange-900/30"
+              iconColor="text-orange-600 dark:text-orange-400"
+              borderColor="border-orange-300 dark:border-orange-800"
+              defaultOpen={filterType === "demoradas"}
+            >
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 pl-4 border-l-4 border-orange-300 dark:border-orange-700">
+                Gestiones que llevan 2 o más días sin actualizarse a un estado conclusivo
+                (Relanzamiento Confirmado, Archivado o No se Relanza).
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
+                {allStagnant.map((pps: any) => (
+                  <GestionCard
+                    key={pps.id}
+                    pps={pps}
+                    onSave={handleSave}
+                    isUpdating={updatingIds.has(pps.id)}
+                    cardType="demoradas"
+                    institution={institutionsMap.get(
+                      normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
+                    )}
+                    onSavePhone={handleUpdateInstitutionPhone}
+                    daysLeft={-(pps.daysSinceEnd || 0)}
+                  />
+                ))}
+              </div>
+            </CollapsibleSection>
+          );
+        })()}
+
       {/* ==================== NUEVO FLUJO DE CONTACTO ==================== */}
 
       {/* SECCIÓN 1: POR CONTACTAR (PRIORIDAD MÁXIMA) */}
       {filteredData.porContactar &&
         filteredData.porContactar.length > 0 &&
-        filterType === "all" && (
+        (filterType === "all" || filterType === "demoradas") && (
           <CollapsibleSection
             title="🔔 Por Contactar"
             count={filteredData.porContactar.length}
@@ -153,7 +225,8 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {/* SECCIÓN 2: CONTACTADAS - ESPERANDO RESPUESTA */}
       {filteredData.contactadasEsperandoRespuesta &&
         filteredData.contactadasEsperandoRespuesta.length > 0 &&
-        filterType === "all" && (
+        filterType !== "vencidas" &&
+        filterType !== "proximas" && (
           <CollapsibleSection
             title="📧 Contactadas - Esperando Respuesta"
             count={filteredData.contactadasEsperandoRespuesta.length}
@@ -188,7 +261,8 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {/* SECCIÓN 3: RESPONDIDAS - PENDIENTE DE DECISIÓN */}
       {filteredData.respondidasPendienteDecision &&
         filteredData.respondidasPendienteDecision.length > 0 &&
-        filterType === "all" && (
+        filterType !== "vencidas" &&
+        filterType !== "proximas" && (
           <CollapsibleSection
             title="💬 Respondidas - Pendiente de Decisión"
             count={filteredData.respondidasPendienteDecision.length}

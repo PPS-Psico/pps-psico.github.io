@@ -1155,7 +1155,7 @@ Responde SOLO con el JSON válido.
       [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: formData.programarLanzamiento
         ? "Programada"
         : formData.estadoConvocatoria,
-      [FIELD_ESTADO_GESTION_LANZAMIENTOS]: "Relanzamiento Confirmado",
+      [FIELD_ESTADO_GESTION_LANZAMIENTOS]: "Relanzada",
       [FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS]: formData.reqCertificadoTrabajo,
       [FIELD_REQ_CV_LANZAMIENTOS]: formData.reqCv,
       [FIELD_DIRECCION_LANZAMIENTOS]: formData.direccion,
@@ -1184,7 +1184,7 @@ Responde SOLO con el JSON válido.
     if (action === "cerrar") updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Cerrado";
     else if (action === "abrir") {
       updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Abierta";
-      updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Relanzamiento Confirmado";
+      updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Relanzada";
     } else if (action === "ocultar") updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Oculto";
 
     updateStatusMutation.mutate({ id, updates });

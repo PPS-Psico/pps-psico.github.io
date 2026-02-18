@@ -325,6 +325,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
     const tab = params.get("tab");
     if (tab === "egreso") setActiveTabId("egreso");
     else if (tab === "ingreso") setActiveTabId("ingreso");
+    else if (tab === "correcciones") setActiveTabId("correcciones");
   }, [location.search]);
 
   const tabs = [

@@ -21,7 +21,7 @@ import { mockDb } from "../services/mockDb";
 
 export interface ActivityItem {
   id: string;
-  type: "request" | "finalization" | "launch";
+  type: "request" | "finalization" | "launch" | "correction";
   title: string;
   description: string;
   timestamp: Date;
@@ -197,9 +197,9 @@ export const useActivityFeed = (isTestingMode = false) => {
 
           items.push({
             id: `mod-${m.id}`,
-            type: "request",
-            title: "Cambio de Práctica",
-            description: `Solicita cambio de ${m.tipo_modificacion}`,
+            type: "correction",
+            title: "Solicitud de Corrección",
+            description: status,
             timestamp: date,
             user: name,
             avatarLetter: name.charAt(0).toUpperCase(),
@@ -221,9 +221,9 @@ export const useActivityFeed = (isTestingMode = false) => {
 
           items.push({
             id: `newpps-${n.id}`,
-            type: "request",
-            title: "Práctica Autogestiva",
-            description: `Nueva solicitud en ${inst || "Institución"}`,
+            type: "correction",
+            title: "Solicitud de Corrección",
+            description: status,
             timestamp: date,
             user: name,
             avatarLetter: name.charAt(0).toUpperCase(),

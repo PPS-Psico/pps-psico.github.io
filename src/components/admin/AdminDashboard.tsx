@@ -1,11 +1,11 @@
 import { differenceInDays } from "date-fns";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
+import { FIELD_FECHA_FIN_LANZAMIENTOS, FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOperationalData } from "../../hooks/useOperationalData";
 import { useReminders } from "../../hooks/useReminders";
-import { formatDate } from "../../utils/formatters";
+import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
 import EmptyState from "../EmptyState";
 import { AdminDashboardSkeleton } from "../Skeletons";
 import { ActionButton, AdminCard, StatusBadge } from "../ui/admin";
@@ -134,8 +134,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
 
   const now = new Date();
 
-  // --- LÓGICA DE AGRUPACIÓN ---
-  const overdueLaunches = (opData?.endingLaunches || []).filter((l: any) => l.daysLeft < 0);
+  // --- ESTADOS CONCLUSIVOS ---
+  const conclusiveStatuses = [
+    "relanzamiento confirmado",
+    "relanzada",
+    "archivado",
+    "no se relanza",
+  ];
+
+  // --- INSTITUCIONES VENCIDAS ---
+  // PPS que finalizaron (daysLeft < 0) y NO tienen estado conclusivo → necesitan gestión
+  const allLaunches = opData?.endingLaunches || [];
+  const overdueLaunches = allLaunches.filter((l: any) => {
+    const endDate = parseToUTCDate(l[FIELD_FECHA_FIN_LANZAMIENTOS]);
+    if (!endDate) return false;
+    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
+    if (daysLeft >= 0) return false;
+    const status = normalizeStringForComparison(l.estado_gestion || "");
+    return !conclusiveStatuses.includes(status);
+  });
 
   const uniqueOverdueInstitutions = new Set(
     overdueLaunches.map((l: any) => {
@@ -143,19 +160,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
       return name.split(" - ")[0].trim();
     })
   );
-
   const overdueCount = uniqueOverdueInstitutions.size;
 
+  // --- DEMORADAS (2+ días sin actualización a estado conclusivo) ---
+  // Gestiones en estados activos (Esperando Respuesta, En Conversación, Pendiente de Gestión)
+  // que no se actualizaron en más de 2 días
   let stagnantCount = 0;
-  (opData?.pendingRequests || []).forEach((r: any) => {
-    if (!r.updated) return;
-    const lastUpdate = new Date(r.updated);
-    if (differenceInDays(now, lastUpdate) > 5) stagnantCount++;
+  const stagnantLaunches = allLaunches.filter((l: any) => {
+    const status = normalizeStringForComparison(l.estado_gestion || "");
+    // Solo contar estados no conclusivos (activos en gestión)
+    if (conclusiveStatuses.includes(status)) return false;
+    // Must have an update timestamp
+    const lastUpdate = l.updated_at || l.created_at;
+    if (!lastUpdate) return false;
+    const daysSinceUpdate = differenceInDays(now, new Date(lastUpdate));
+    return daysSinceUpdate >= 2;
   });
+  stagnantCount = new Set(
+    stagnantLaunches.map((l: any) => {
+      const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
+      return name.split(" - ")[0].trim();
+    })
+  ).size;
+
   const accreditationCount = (opData?.pendingFinalizations || []).length;
-  const upcomingCount = (opData?.endingLaunches || []).filter(
-    (l: any) => l.daysLeft >= 0 && l.daysLeft <= 30
-  ).length;
+
+  // --- PRÓXIMAS A VENCER ---
+  // PPS activas (daysLeft >= 0 && <= 30) que necesitan seguimiento para relanzamiento
+  const upcomingCount = allLaunches.filter((l: any) => l.daysLeft >= 0 && l.daysLeft <= 30).length;
 
   return (
     <div className="space-y-12 animate-fade-in-up pb-10">
@@ -399,7 +431,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
           <ManagementCard
             title="Instituciones Vencidas"
             count={overdueCount}
-            label="Gestión requerida"
+            label="Finalizadas sin relanzar"
             icon="event_busy"
             color="red"
             onClick={() => navigate("/admin/gestion?filter=vencidas")}
@@ -408,10 +440,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
             <ManagementCard
               title="Demoradas"
               count={stagnantCount}
-              label="Sin cambio +5 días"
+              label="Sin cambio +2 días"
               icon="hourglass_empty"
               color="amber"
-              onClick={() => navigate("/admin/solicitudes?tab=ingreso")}
+              onClick={() => navigate("/admin/gestion?filter=demoradas")}
             />
           )}
           {!isMobile && (
@@ -427,7 +459,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
           <ManagementCard
             title="Próximas a Vencer"
             count={upcomingCount}
-            label="Vencen este mes"
+            label="Vencen en 30 días"
             icon="update"
             color="blue"
             onClick={() => navigate("/admin/gestion?filter=proximas")}

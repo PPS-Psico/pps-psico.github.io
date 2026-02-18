@@ -35,6 +35,14 @@ const ActivityItemCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
       path: "/admin/solicitudes?tab=ingreso",
       highlightRing: "group-hover:ring-blue-100 dark:group-hover:ring-blue-900/30",
     };
+  } else if (item.type === "correction") {
+    config = {
+      icon: "edit_note",
+      bgIcon: "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400",
+      actionText: "Gestionar",
+      path: "/admin/solicitudes?tab=correcciones",
+      highlightRing: "group-hover:ring-purple-100 dark:group-hover:ring-purple-900/30",
+    };
   } else if (item.type === "launch") {
     // Extract raw ID (remove 'lanz-' prefix added in the hook)
     const launchId = item.id.replace("lanz-", "");
@@ -80,9 +88,11 @@ const ActivityItemCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
           <span className="truncate max-w-[200px]">
             {item.type === "finalization"
               ? "Solicita Acreditación"
-              : item.type === "launch"
-                ? "Convocatoria Abierta"
-                : "Solicita Ingreso"}
+              : item.type === "correction"
+                ? "Solicitud de Corrección"
+                : item.type === "launch"
+                  ? "Convocatoria Abierta"
+                  : "Solicita Ingreso"}
           </span>
 
           {/* Tags especiales */}

@@ -1,20 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../lib/supabaseClient";
-import { mockDb } from "../services/mockDb";
 import {
-  TABLE_NAME_LANZAMIENTOS_PPS,
+  FIELD_ESTADO_FINALIZACION,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
-  FIELD_FECHA_FIN_LANZAMIENTOS,
-  FIELD_NOTAS_GESTION_LANZAMIENTOS,
-  TABLE_NAME_PPS,
   FIELD_ESTADO_PPS,
+  FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
+  FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_NOTAS_GESTION_LANZAMIENTOS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
   TABLE_NAME_FINALIZACION,
-  FIELD_ESTADO_FINALIZACION,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
+  TABLE_NAME_LANZAMIENTOS_PPS,
+  TABLE_NAME_PPS,
 } from "../constants";
-import { parseToUTCDate, normalizeStringForComparison } from "../utils/formatters";
+import { supabase } from "../lib/supabaseClient";
+import { mockDb } from "../services/mockDb";
+import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
 
 export interface OperationalData {
   endingLaunches: any[];
@@ -69,7 +69,7 @@ export const useOperationalData = (isTestingMode = false) => {
           const endDate = parseToUTCDate(l[FIELD_FECHA_FIN_LANZAMIENTOS]);
 
           const daysLeft = endDate
-            ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24))
             : 999;
 
           return {
@@ -80,23 +80,20 @@ export const useOperationalData = (isTestingMode = false) => {
           };
         })
         .filter((l: any) => {
-          // Same filtering logic for both modes
+          // Filter by year: only current year launches
           const startDate = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
-          if (!startDate || startDate.getUTCFullYear() !== currentYear) {
+          if (!startDate || startDate.getUTCFullYear() < currentYear) {
             return false;
           }
 
-          const status = l.estado_gestion;
-          if (
-            status === "Relanzamiento Confirmado" ||
-            status === "Archivado" ||
-            status === "No se Relanza"
-          ) {
+          const status = normalizeStringForComparison(l.estado_gestion || "");
+          if (status === "archivado" || status === "no se relanza") {
             return false;
           }
 
+          // Past (overdue) or soon (within 60 days to be safer)
           if (l.daysLeft < 0) return true;
-          if (l.daysLeft <= 30) return true;
+          if (l.daysLeft <= 60) return true;
 
           return false;
         });

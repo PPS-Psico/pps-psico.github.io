@@ -1,22 +1,22 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { fetchPaginatedData } from "../services/supabaseService";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FIELD_ESTADO_GESTION_LANZAMIENTOS,
+  FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  TABLE_NAME_INSTITUCIONES,
+  TABLE_NAME_LANZAMIENTOS_PPS,
+} from "../constants";
 import { db } from "../lib/db";
 import { mockDb } from "../services/mockDb";
+import { fetchPaginatedData } from "../services/supabaseService";
 import type { LanzamientoPPS } from "../types";
-import {
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_INSTITUCIONES,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_FIN_LANZAMIENTOS,
-  FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
-  FIELD_ESTADO_GESTION_LANZAMIENTOS,
-} from "../constants";
 import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
 import { mapLanzamiento } from "../utils/mappers";
 
 type LoadingState = "initial" | "loading" | "loaded" | "error";
-export type FilterType = "all" | "vencidas" | "proximas";
+export type FilterType = "all" | "vencidas" | "proximas" | "demoradas";
 
 const getGroupName = (name: unknown): string => {
   const strName = String(name || "");
@@ -51,6 +51,18 @@ export const useGestionConvocatorias = ({
     if (initialFilter) setFilterType(initialFilter);
   }, [initialFilter]);
 
+  // Debounced search: we keep a ref to avoid refetching on every keystroke
+  const debouncedSearchRef = useRef("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    debouncedSearchRef.current = searchTerm;
+    const timer = setTimeout(() => {
+      setDebouncedSearch(debouncedSearchRef.current);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const fetchData = useCallback(async () => {
     setLoadingState("loading");
     setError(null);
@@ -70,22 +82,22 @@ export const useGestionConvocatorias = ({
 
       // FILTROS BASADOS EN FECHA DE INICIO (fecha_inicio)
       if (filterType === "vencidas") {
-        // Vencidas = Ya iniciaron (Fecha Inicio <= Hoy)
         filters["endDate"] = today;
       } else if (filterType === "proximas") {
-        // Próximas = Van a iniciar (Fecha Inicio >= Hoy)
         filters["startDate"] = today;
       }
+      // "demoradas" and "all" fetch all data, filtering is done client-side
 
-      // Fetch Data
+      // Fetch Data WITHOUT searchTerm in the server query
+      // Search filtering is done client-side to avoid re-fetching on every keystroke
       const { records: lanzRecords, error: lanzError } = await fetchPaginatedData(
         TABLE_NAME_LANZAMIENTOS_PPS,
         1,
         1000,
         [],
-        searchTerm,
+        undefined, // No server-side search
         [FIELD_NOMBRE_PPS_LANZAMIENTOS],
-        { field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "asc" }, // Ordenar por fecha inicio
+        { field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "asc" },
         filters
       );
 
@@ -108,14 +120,13 @@ export const useGestionConvocatorias = ({
       });
       setInstitutionsMap(newInstitutionsMap);
 
-      // Client-side refinement (Double check)
+      // Client-side refinement
       const mappedRecords = lanzRecords.map(mapLanzamiento);
 
       const filteredRecords = mappedRecords.filter((pps) => {
         const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
         if (status === "Archivado" || status === "No se Relanza") return false;
 
-        // Client-side date check using FECHA_INICIO as requested
         if (filterType === "vencidas") {
           const start = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
           return start && start < now;
@@ -136,7 +147,7 @@ export const useGestionConvocatorias = ({
       setError(err.message || "Error al cargar datos");
       setLoadingState("error");
     }
-  }, [isTestingMode, filterType, searchTerm]);
+  }, [isTestingMode, filterType]); // searchTerm REMOVED - filtering is client-side now
 
   useEffect(() => {
     fetchData();
@@ -190,6 +201,15 @@ export const useGestionConvocatorias = ({
     const now = new Date();
     const currentYear = now.getFullYear();
 
+    // Client-side search filtering (replaces server-side)
+    const searchNormalized = normalizeStringForComparison(debouncedSearch);
+    const searchFiltered = searchNormalized
+      ? lanzamientos.filter((pps) => {
+          const name = normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "");
+          return name.includes(searchNormalized);
+        })
+      : lanzamientos;
+
     // Nuevas categorías basadas en flujo de contacto
     const porContactar: (LanzamientoPPS & {
       daysSinceEnd: number;
@@ -212,7 +232,7 @@ export const useGestionConvocatorias = ({
 
     // 1. Group by Institution Base Name to process lifecycle
     const groups = new Map<string, LanzamientoPPS[]>();
-    lanzamientos.forEach((pps) => {
+    searchFiltered.forEach((pps) => {
       const name = getGroupName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
       if (!groups.has(name)) groups.set(name, []);
       groups.get(name)!.push(pps);
@@ -234,6 +254,7 @@ export const useGestionConvocatorias = ({
 
         return (
           status === "relanzamiento confirmado" ||
+          status === "relanzada" ||
           (relaunchDate && new Date(relaunchDate).getFullYear() >= currentYear)
         );
       });
@@ -295,7 +316,6 @@ export const useGestionConvocatorias = ({
 
       // 2. Esperando Respuesta → Contactadas - Esperando Respuesta
       if (status === "esperando respuesta") {
-        // Calculate days waiting since end of PPS
         const daysWaiting = Math.max(1, daysSinceEnd);
 
         contactadasEsperandoRespuesta.push({
@@ -306,9 +326,8 @@ export const useGestionConvocatorias = ({
         return;
       }
 
-      // 3. En Conversación → Respondidas - Pendiente de Decisión
-      if (status === "en conversacion") {
-        // Days since end as proxy for days since response
+      // 3. En Conversación / Seguimiento Exhaustivo → Respondidas - Pendiente de Decisión
+      if (status === "en conversacion" || status === "seguimiento exhaustivo") {
         const daysSinceResponse = daysSinceEnd;
 
         respondidasPendienteDecision.push({
@@ -331,16 +350,15 @@ export const useGestionConvocatorias = ({
     return {
       // Categorías de contacto (nuevo flujo)
       porContactar: porContactar.sort((a, b) => {
-        // Prioritize by urgency, then by daysSinceEnd (recent first)
         if (a.urgency === "high" && b.urgency !== "high") return -1;
         if (a.urgency !== "high" && b.urgency === "high") return 1;
         return a.daysSinceEnd - b.daysSinceEnd;
       }),
       contactadasEsperandoRespuesta: contactadasEsperandoRespuesta.sort(
-        (a, b) => b.daysWaiting - a.daysWaiting // Longest waiting first
+        (a, b) => b.daysWaiting - a.daysWaiting
       ),
       respondidasPendienteDecision: respondidasPendienteDecision.sort(
-        (a, b) => (a.daysSinceResponse || 0) - (b.daysSinceResponse || 0) // Most recent first
+        (a, b) => (a.daysSinceResponse || 0) - (b.daysSinceResponse || 0)
       ),
 
       // Categorías existentes
@@ -350,7 +368,7 @@ export const useGestionConvocatorias = ({
       ),
       activasIndefinidas,
     };
-  }, [lanzamientos]);
+  }, [lanzamientos, debouncedSearch]);
 
   return {
     institutionsMap,
