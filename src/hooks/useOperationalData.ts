@@ -20,6 +20,7 @@ export interface OperationalData {
   endingLaunches: any[];
   pendingRequests: any[];
   pendingFinalizations: any[];
+  pendingCorrectionsCount: number;
   closingAlerts: {
     id: string;
     name: string;
@@ -40,15 +41,18 @@ export const useOperationalData = (isTestingMode = false) => {
       let launches: any[] = [];
       let requests: any[] = [];
       let finals: any[] = [];
+      let correctionsCount = 0;
 
       if (isTestingMode) {
         // Fetch from Mock DB to allow dynamic updates within the session
         launches = await mockDb.getAll("lanzamientos_pps");
         requests = await mockDb.getAll("solicitudes_pps");
         finals = await mockDb.getAll("finalizacion_pps");
+        // Simplified for mock
+        correctionsCount = 0;
       } else {
         // Fetch from Supabase
-        const [launchesRes, requestsRes, finalsRes] = await Promise.all([
+        const [launchesRes, requestsRes, finalsRes, modRes] = await Promise.all([
           supabase
             .from(TABLE_NAME_LANZAMIENTOS_PPS)
             .select(`*, ${FIELD_NOTAS_GESTION_LANZAMIENTOS}`),
@@ -57,10 +61,15 @@ export const useOperationalData = (isTestingMode = false) => {
             .from(TABLE_NAME_FINALIZACION)
             .select("*")
             .eq(FIELD_ESTADO_FINALIZACION, "Pendiente"),
+          supabase
+            .from(TABLE_NAME_SOLICITUDES_MODIFICACION)
+            .select("id", { count: "exact", head: true })
+            .eq("estado", "Pendiente"),
         ]);
         launches = launchesRes.data || [];
         requests = requestsRes.data || [];
         finals = finalsRes.data || [];
+        correctionsCount = modRes.count || 0;
       }
 
       // 1. Process Launches
@@ -91,9 +100,9 @@ export const useOperationalData = (isTestingMode = false) => {
             return false;
           }
 
-          // Past (overdue) or soon (within 60 days to be safer)
+          // Past (overdue) or soon (within 30 days to be safer)
           if (l.daysLeft < 0) return true;
-          if (l.daysLeft <= 60) return true;
+          if (l.daysLeft <= 30) return true;
 
           return false;
         });
@@ -172,6 +181,7 @@ export const useOperationalData = (isTestingMode = false) => {
         endingLaunches,
         pendingRequests,
         pendingFinalizations,
+        pendingCorrectionsCount: correctionsCount,
         closingAlerts,
       };
     },

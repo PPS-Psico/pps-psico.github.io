@@ -62,8 +62,6 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
       currentTabId = "gestion";
     } else if (location.pathname.includes("/admin/solicitudes")) {
       currentTabId = "solicitudes";
-    } else if (location.pathname.includes("/admin/recordatorios")) {
-      currentTabId = "recordatorios";
     } else if (location.pathname.includes("/admin/metrics")) {
       currentTabId = "metrics";
     } else if (location.pathname.includes("/admin/herramientas")) {
@@ -99,12 +97,6 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     if (!isMobile) {
       baseTabs.push(
         { id: "solicitudes", label: "Solicitudes", icon: "list_alt", path: "/admin/solicitudes" },
-        {
-          id: "recordatorios",
-          label: "Recordatorios",
-          icon: "notifications",
-          path: "/admin/recordatorios",
-        },
         { id: "metrics", label: "Métricas", icon: "analytics", path: "/admin/metrics" },
         {
           id: "herramientas",
@@ -186,7 +178,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
               <div className="p-8 text-center text-slate-500">Módulo desactivado</div>
             ))}
           {localTab === "solicitudes" && <SolicitudesManager isTestingMode={true} />}
-          {localTab === "recordatorios" && <RecordatoriosView />}
+          {/* {localTab === "recordatorios" && <RecordatoriosView />} */}
           {localTab === "metrics" && (
             <MetricsView
               onStudentSelect={handleTestStudentSelect}

@@ -1,14 +1,13 @@
 import { differenceInDays } from "date-fns";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FIELD_FECHA_FIN_LANZAMIENTOS, FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
+import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOperationalData } from "../../hooks/useOperationalData";
 import { useReminders } from "../../hooks/useReminders";
-import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
+import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import EmptyState from "../EmptyState";
 import { AdminDashboardSkeleton } from "../Skeletons";
-import { ActionButton, AdminCard, StatusBadge } from "../ui/admin";
 import Toast from "../ui/Toast";
 import ActivityFeed from "./ActivityFeed";
 
@@ -143,51 +142,66 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
   ];
 
   // --- INSTITUCIONES VENCIDAS ---
-  // PPS que finalizaron (daysLeft < 0) y NO tienen estado conclusivo → necesitan gestión
+  // PPS que finalizaron y NO se ha iniciado gestión (Estado pendiente)
   const allLaunches = opData?.endingLaunches || [];
   const overdueLaunches = allLaunches.filter((l: any) => {
-    const endDate = parseToUTCDate(l[FIELD_FECHA_FIN_LANZAMIENTOS]);
-    if (!endDate) return false;
-    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
-    if (daysLeft >= 0) return false;
     const status = normalizeStringForComparison(l.estado_gestion || "");
-    return !conclusiveStatuses.includes(status);
+    return status === "pendiente de gestion" && l.daysLeft < 0;
   });
 
-  const uniqueOverdueInstitutions = new Set(
-    overdueLaunches.map((l: any) => {
-      const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
-      return name.split(" - ")[0].trim();
-    })
-  );
-  const overdueCount = uniqueOverdueInstitutions.size;
+  const overdueCount = new Set(
+    overdueLaunches.map((l: any) => (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").split(" - ")[0].trim())
+  ).size;
 
-  // --- DEMORADAS (2+ días sin actualización a estado conclusivo) ---
-  // Gestiones en estados activos (Esperando Respuesta, En Conversación, Pendiente de Gestión)
-  // que no se actualizaron en más de 2 días
-  let stagnantCount = 0;
-  const stagnantLaunches = allLaunches.filter((l: any) => {
+  // --- GESTIÓN ACTIVA ---
+  const activeManagementLaunches = allLaunches.filter((l: any) => {
     const status = normalizeStringForComparison(l.estado_gestion || "");
-    // Solo contar estados no conclusivos (activos en gestión)
-    if (conclusiveStatuses.includes(status)) return false;
-    // Must have an update timestamp
+    return !conclusiveStatuses.includes(status) && status !== "pendiente de gestion";
+  });
+
+  const activeManagementCount = new Set(
+    activeManagementLaunches.map((l: any) =>
+      l[FIELD_NOMBRE_PPS_LANZAMIENTOS]?.split(" - ")[0].trim()
+    )
+  ).size;
+
+  // --- DEMORADAS (Seguimiento Exhaustivo Automático: 2+ días sin cambios) ---
+  const stagnantLaunches = activeManagementLaunches.filter((l: any) => {
     const lastUpdate = l.updated_at || l.created_at;
-    if (!lastUpdate) return false;
+    if (!lastUpdate) return true;
+
     const daysSinceUpdate = differenceInDays(now, new Date(lastUpdate));
     return daysSinceUpdate >= 2;
   });
-  stagnantCount = new Set(
-    stagnantLaunches.map((l: any) => {
-      const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
-      return name.split(" - ")[0].trim();
-    })
+
+  const stagnantCount = new Set(
+    stagnantLaunches.map((l: any) =>
+      (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").split(" - ")[0].trim()
+    )
   ).size;
 
-  const accreditationCount = (opData?.pendingFinalizations || []).length;
+  // --- PRÓXIMAS A VENCER (Lanzadas/Activas) ---
+  const upcomingLaunches = allLaunches.filter((l: any) => l.daysLeft >= 0 && l.daysLeft <= 5);
+  const upcomingCount = new Set(
+    upcomingLaunches.map((l: any) =>
+      (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").split(" - ")[0].trim()
+    )
+  ).size;
 
-  // --- PRÓXIMAS A VENCER ---
-  // PPS activas (daysLeft >= 0 && <= 30) que necesitan seguimiento para relanzamiento
-  const upcomingCount = allLaunches.filter((l: any) => l.daysLeft >= 0 && l.daysLeft <= 30).length;
+  const filteredPendingFinalizations = (opData?.pendingFinalizations || []).filter(
+    (f: any) => normalizeStringForComparison(f.estado || "") !== "en proceso sac"
+  );
+
+  const pendingManagementLaunches = allLaunches.filter((l: any) => {
+    const status = normalizeStringForComparison(l.estado_gestion || "");
+    return status === "pendiente de gestion";
+  });
+
+  const pendingManagementCount = new Set(
+    pendingManagementLaunches.map((l: any) =>
+      l[FIELD_NOMBRE_PPS_LANZAMIENTOS]?.split(" - ")[0].trim()
+    )
+  ).size;
 
   return (
     <div className="space-y-12 animate-fade-in-up pb-10">
@@ -197,6 +211,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
           type={toastInfo.type}
           onClose={() => setToastInfo(null)}
         />
+      )}
+
+      {/* --- BLOQUE DE INCENTIVO: NADA EN GESTIÓN --- */}
+      {activeManagementCount === 0 && pendingManagementCount > 0 && (
+        <div className="mx-4 md:mx-0 p-6 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/10 border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-2xl shadow-sm animate-pulse">
+          <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <div className="p-4 bg-indigo-600 dark:bg-indigo-500 rounded-2xl shadow-lg ring-4 ring-indigo-100 dark:ring-indigo-900/30">
+              <span className="material-icons !text-4xl text-white">rocket_launch</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-black text-indigo-900 dark:text-indigo-100 mb-2 uppercase tracking-tight">
+                ¡Es momento de iniciar nuevas gestiones!
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                No tienes ninguna institución en seguimiento activo actualmente. Tienes{" "}
+                <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                  {pendingManagementCount} instituciones
+                </span>{" "}
+                esperando ser contactadas para el relanzamiento 2026. ¡Vamos!
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const navEvent = new CustomEvent("admin-navigate", { detail: "lanzamientos" });
+                window.dispatchEvent(navEvent);
+              }}
+              className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all transform active:scale-95 whitespace-nowrap"
+            >
+              GESTIONAR AHORA
+            </button>
+          </div>
+        </div>
       )}
 
       {/* --- ALERTAS DE ACCIÓN REQUERIDA (Cierre de Convocatorias) --- */}
@@ -276,147 +322,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
         </div>
       )}
 
-      {/* --- SECCIÓN RECORDATORIOS (desktop only) --- */}
-      {!isMobile && (counts.today > 0 || counts.overdue > 0) && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between px-4">
-            <div className="flex items-center gap-3">
-              <div className="h-6 w-1 bg-purple-600 rounded-full"></div>
-              <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                Mis Recordatorios
-                {(counts.today > 0 || counts.overdue > 0) && (
-                  <StatusBadge status="info" size="sm">
-                    {counts.today + counts.overdue} pendientes
-                  </StatusBadge>
-                )}
-              </h3>
-            </div>
-            <ActionButton
-              variant="ghost"
-              size="sm"
-              icon="arrow_forward"
-              iconPosition="right"
-              onClick={() => navigate("/admin/recordatorios")}
-            >
-              Ver todos
-            </ActionButton>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-4">
-            {/* Recordatorios de hoy */}
-            {todayReminders.length > 0 && (
-              <AdminCard
-                variant="elevated"
-                className="border-purple-200 dark:border-purple-800"
-                header={
-                  <div className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
-                    <span className="material-icons text-purple-600">today</span>
-                    <h4 className="font-bold">Hoy ({todayReminders.length})</h4>
-                  </div>
-                }
-              >
-                <div className="space-y-2">
-                  {todayReminders.slice(0, 3).map((reminder) => (
-                    <div
-                      key={reminder.id}
-                      className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-200 dark:border-slate-600"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">
-                          {reminder.title}
-                        </p>
-                        {reminder.pps_name && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                            {reminder.pps_name}
-                          </p>
-                        )}
-                      </div>
-                      <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        icon="check_circle"
-                        onClick={() => completeReminder(reminder.id)}
-                        className="text-emerald-600 hover:text-emerald-700"
-                      />
-                    </div>
-                  ))}
-                  {todayReminders.length > 3 && (
-                    <ActionButton
-                      variant="ghost"
-                      size="sm"
-                      icon="arrow_forward"
-                      iconPosition="right"
-                      onClick={() => navigate("/admin/recordatorios")}
-                      className="w-full text-purple-600 hover:text-purple-700"
-                    >
-                      Ver {todayReminders.length - 3} más
-                    </ActionButton>
-                  )}
-                </div>
-              </AdminCard>
-            )}
-
-            {/* Recordatorios vencidos */}
-            {overdueReminders.length > 0 && (
-              <AdminCard
-                variant="elevated"
-                className="border-rose-200 dark:border-rose-800"
-                header={
-                  <div className="flex items-center gap-2 text-rose-800 dark:text-rose-200">
-                    <span className="material-icons text-rose-600">warning</span>
-                    <h4 className="font-bold">Vencidos ({overdueReminders.length})</h4>
-                  </div>
-                }
-              >
-                <div className="space-y-2">
-                  {overdueReminders.slice(0, 3).map((reminder) => (
-                    <div
-                      key={reminder.id}
-                      className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-200 dark:border-slate-600"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">
-                          {reminder.title}
-                        </p>
-                        <StatusBadge status="error" size="sm" dot>
-                          Venció hace{" "}
-                          {Math.abs(
-                            Math.floor(
-                              (new Date().getTime() - new Date(reminder.due_date).getTime()) /
-                                (1000 * 60 * 60 * 24)
-                            )
-                          )}{" "}
-                          días
-                        </StatusBadge>
-                      </div>
-                      <ActionButton
-                        variant="ghost"
-                        size="sm"
-                        icon="check_circle"
-                        onClick={() => completeReminder(reminder.id)}
-                        className="text-emerald-600 hover:text-emerald-700"
-                      />
-                    </div>
-                  ))}
-                  {overdueReminders.length > 3 && (
-                    <ActionButton
-                      variant="ghost"
-                      size="sm"
-                      icon="arrow_forward"
-                      iconPosition="right"
-                      onClick={() => navigate("/admin/recordatorios")}
-                      className="w-full text-rose-600 hover:text-rose-700"
-                    >
-                      Ver {overdueReminders.length - 3} más
-                    </ActionButton>
-                  )}
-                </div>
-              </AdminCard>
-            )}
-          </div>
-        </section>
-      )}
-
       {/* --- SECCIÓN GESTIÓN: GRID DE TARJETAS --- */}
       <section className="space-y-6">
         <div className="flex items-center gap-3 px-4">
@@ -431,38 +336,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
           <ManagementCard
             title="Instituciones Vencidas"
             count={overdueCount}
-            label="Finalizadas sin relanzar"
+            label="Finalizadas sin gestión"
             icon="event_busy"
             color="red"
             onClick={() => navigate("/admin/gestion?filter=vencidas")}
           />
-          {!isMobile && (
-            <ManagementCard
-              title="Demoradas"
-              count={stagnantCount}
-              label="Sin cambio +2 días"
-              icon="hourglass_empty"
-              color="amber"
-              onClick={() => navigate("/admin/gestion?filter=demoradas")}
-            />
-          )}
-          {!isMobile && (
-            <ManagementCard
-              title="Acreditaciones"
-              count={accreditationCount}
-              label="Pendientes de carga"
-              icon="verified"
-              color="emerald"
-              onClick={() => navigate("/admin/solicitudes?tab=egreso")}
-            />
-          )}
+          <ManagementCard
+            title="Demoradas"
+            count={stagnantCount}
+            label="En gestión (2+ días)"
+            icon="hourglass_empty"
+            color="amber"
+            onClick={() => navigate("/admin/gestion?filter=demoradas")}
+          />
+          <ManagementCard
+            title="Solicitudes Pendientes"
+            count={
+              (opData?.pendingRequests?.length || 0) +
+              filteredPendingFinalizations.length +
+              (opData?.pendingCorrectionsCount || 0)
+            }
+            label="PPS, Finalización y Corrección (Modific.)"
+            icon="pending_actions"
+            color="emerald"
+            onClick={() => navigate("/admin/solicitudes")}
+            subCount={opData?.pendingRequests?.length || 0}
+            subLabel="PPS"
+          />
           <ManagementCard
             title="Próximas a Vencer"
             count={upcomingCount}
-            label="Vencen en 30 días"
+            label="Vencen pronto (5 días)"
             icon="update"
             color="blue"
-            onClick={() => navigate("/admin/gestion?filter=proximas")}
+            onClick={() => navigate("/admin/gestion?filter=confirmadas")}
           />
         </div>
       </section>

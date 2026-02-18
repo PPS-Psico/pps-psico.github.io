@@ -85,13 +85,19 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                 onClick={() => setFilterType("vencidas")}
                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "vencidas" ? "bg-white dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 shadow-sm border border-transparent dark:border-rose-800/50" : "text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400"}`}
               >
-                <span className="material-icons !text-xs">priority_high</span> Vencidas
+                <span className="material-icons !text-xs">event_busy</span> Vencidas
               </button>
               <button
-                onClick={() => setFilterType("proximas")}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "proximas" ? "bg-white dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 shadow-sm border border-transparent dark:border-amber-800/50" : "text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400"}`}
+                onClick={() => setFilterType("enGestion")}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "enGestion" ? "bg-white dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 shadow-sm border border-transparent dark:border-blue-800/50" : "text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"}`}
               >
-                <span className="material-icons !text-xs">schedule</span> Próximas
+                <span className="material-icons !text-xs">sync_alt</span> En gestión
+              </button>
+              <button
+                onClick={() => setFilterType("confirmadas")}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "confirmadas" ? "bg-white dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 shadow-sm border border-transparent dark:border-emerald-800/50" : "text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-400"}`}
+              >
+                <span className="material-icons !text-xs">verified</span> Confirmadas / Lanzadas
               </button>
               <button
                 onClick={() => setFilterType("demoradas")}
@@ -128,10 +134,9 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
           const allStagnant = [
             ...filteredData.contactadasEsperandoRespuesta,
             ...filteredData.respondidasPendienteDecision,
-            ...filteredData.porContactar,
           ].filter((pps: any) => {
             const lastUpdate = pps.updated_at || pps.created_at;
-            if (!lastUpdate) return true; // No update = stagnant
+            if (!lastUpdate) return true;
             const daysSince = Math.floor(
               (now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24)
             );
@@ -186,12 +191,12 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
 
       {/* ==================== NUEVO FLUJO DE CONTACTO ==================== */}
 
-      {/* SECCIÓN 1: POR CONTACTAR (PRIORIDAD MÁXIMA) */}
+      {/* SECCIÓN 1: INSTITUCIONES VENCIDAS (PRIORIDAD MÁXIMA) */}
       {filteredData.porContactar &&
         filteredData.porContactar.length > 0 &&
-        (filterType === "all" || filterType === "demoradas") && (
+        (filterType === "all" || filterType === "vencidas") && (
           <CollapsibleSection
-            title="🔔 Por Contactar"
+            title="🔔 Instituciones Vencidas (Sin Gestión)"
             count={filteredData.porContactar.length}
             icon="campaign"
             iconBgColor="bg-red-100 dark:bg-red-900/30"
@@ -200,7 +205,8 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
             defaultOpen={true}
           >
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 pl-4 border-l-4 border-red-300 dark:border-red-700">
-              Instituciones finalizadas que aún no han sido contactadas para el relanzamiento 2026.
+              Instituciones con PPS finalizadas que aún no han iniciado su ciclo de gestión para
+              relanzamiento.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
               {filteredData.porContactar.map((pps: any) => (
@@ -225,8 +231,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {/* SECCIÓN 2: CONTACTADAS - ESPERANDO RESPUESTA */}
       {filteredData.contactadasEsperandoRespuesta &&
         filteredData.contactadasEsperandoRespuesta.length > 0 &&
-        filterType !== "vencidas" &&
-        filterType !== "proximas" && (
+        (filterType === "all" || filterType === "enGestion") && (
           <CollapsibleSection
             title="📧 Contactadas - Esperando Respuesta"
             count={filteredData.contactadasEsperandoRespuesta.length}
@@ -261,8 +266,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {/* SECCIÓN 3: RESPONDIDAS - PENDIENTE DE DECISIÓN */}
       {filteredData.respondidasPendienteDecision &&
         filteredData.respondidasPendienteDecision.length > 0 &&
-        filterType !== "vencidas" &&
-        filterType !== "proximas" && (
+        (filterType === "all" || filterType === "enGestion") && (
           <CollapsibleSection
             title="💬 Respondidas - Pendiente de Decisión"
             count={filteredData.respondidasPendienteDecision.length}
@@ -299,9 +303,9 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {/* SECCIÓN: ACTIVAS Y POR FINALIZAR */}
       {filteredData.activasYPorFinalizar &&
         filteredData.activasYPorFinalizar.length > 0 &&
-        filterType === "all" && (
+        (filterType === "all" || filterType === "confirmadas") && (
           <CollapsibleSection
-            title="📅 Activas y Por Finalizar"
+            title="📅 Lanzadas - Activas y Por Finalizar"
             count={filteredData.activasYPorFinalizar.length}
             icon="notifications_active"
             iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"
@@ -334,9 +338,9 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {/* SECCIÓN: RELANZAMIENTOS CONFIRMADOS */}
       {filteredData.relanzamientosConfirmados &&
         filteredData.relanzamientosConfirmados.length > 0 &&
-        filterType === "all" && (
+        (filterType === "all" || filterType === "confirmadas") && (
           <CollapsibleSection
-            title="✅ Relanzamientos Confirmados 2026"
+            title="✅ Confirmadas - Relanzamientos 2026"
             count={filteredData.relanzamientosConfirmados.length}
             icon="flight_takeoff"
             iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"

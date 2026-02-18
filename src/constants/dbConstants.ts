@@ -73,6 +73,7 @@ export const FIELD_DIRECCION_LANZAMIENTOS = "direccion";
 export const FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS = "req_certificado_trabajo";
 export const FIELD_REQ_CV_LANZAMIENTOS = "req_cv";
 export const FIELD_NOTAS_GESTION_LANZAMIENTOS = "notas_gestion";
+export const FIELD_HISTORIAL_GESTION_LANZAMIENTOS = "historial_gestion";
 export const FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS = "horario_seleccionado";
 export const FIELD_HORAS_ACREDITADAS_LANZAMIENTOS = "horas_acreditadas";
 export const FIELD_INFORME_LANZAMIENTOS = "informe";

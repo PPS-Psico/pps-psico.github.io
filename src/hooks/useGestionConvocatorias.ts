@@ -16,7 +16,7 @@ import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatter
 import { mapLanzamiento } from "../utils/mappers";
 
 type LoadingState = "initial" | "loading" | "loaded" | "error";
-export type FilterType = "all" | "vencidas" | "proximas" | "demoradas";
+export type FilterType = "all" | "vencidas" | "enGestion" | "confirmadas" | "demoradas";
 
 const getGroupName = (name: unknown): string => {
   const strName = String(name || "");
@@ -76,17 +76,8 @@ export const useGestionConvocatorias = ({
       }
 
       const now = new Date();
-      const today = now.toISOString().split("T")[0];
-
+      // FILTERS: Now we fetch all for better client-side categorization
       const filters: Record<string, unknown> = {};
-
-      // FILTROS BASADOS EN FECHA DE INICIO (fecha_inicio)
-      if (filterType === "vencidas") {
-        filters["endDate"] = today;
-      } else if (filterType === "proximas") {
-        filters["startDate"] = today;
-      }
-      // "demoradas" and "all" fetch all data, filtering is done client-side
 
       // Fetch Data WITHOUT searchTerm in the server query
       // Search filtering is done client-side to avoid re-fetching on every keystroke
@@ -97,7 +88,7 @@ export const useGestionConvocatorias = ({
         [],
         undefined, // No server-side search
         [FIELD_NOMBRE_PPS_LANZAMIENTOS],
-        { field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "asc" },
+        { field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "desc" }, // Order by newest first
         filters
       );
 
@@ -123,18 +114,11 @@ export const useGestionConvocatorias = ({
       // Client-side refinement
       const mappedRecords = lanzRecords.map(mapLanzamiento);
 
+      // Basic filtering: exclude Conclusive statuses for the main management view if not in "all"
       const filteredRecords = mappedRecords.filter((pps) => {
         const status = pps[FIELD_ESTADO_GESTION_LANZAMIENTOS];
+        // Archivados y Rechazados siempre ocultos de aca
         if (status === "Archivado" || status === "No se Relanza") return false;
-
-        if (filterType === "vencidas") {
-          const start = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
-          return start && start < now;
-        }
-        if (filterType === "proximas") {
-          const start = parseToUTCDate(pps[FIELD_FECHA_INICIO_LANZAMIENTOS]);
-          return start && start >= now;
-        }
 
         return true;
       });
@@ -147,7 +131,7 @@ export const useGestionConvocatorias = ({
       setError(err.message || "Error al cargar datos");
       setLoadingState("error");
     }
-  }, [isTestingMode, filterType]); // searchTerm REMOVED - filtering is client-side now
+  }, [isTestingMode]); // Remove filterType dependency since we fetch all now
 
   useEffect(() => {
     fetchData();
@@ -290,7 +274,7 @@ export const useGestionConvocatorias = ({
 
       if (daysLeft >= 0) {
         // STILL ACTIVE - Not finished yet
-        const urgency = daysLeft <= 7 ? "high" : "normal";
+        const urgency = daysLeft <= 5 ? "high" : "normal";
         activasYPorFinalizar.push({
           ...relevantPPS,
           daysLeft,
@@ -316,7 +300,11 @@ export const useGestionConvocatorias = ({
 
       // 2. Esperando Respuesta → Contactadas - Esperando Respuesta
       if (status === "esperando respuesta") {
-        const daysWaiting = Math.max(1, daysSinceEnd);
+        const lastUpdate = relevantPPS.updated_at || relevantPPS.created_at || now.toISOString();
+        const daysWaiting = Math.max(
+          0,
+          Math.floor((now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24))
+        );
 
         contactadasEsperandoRespuesta.push({
           ...relevantPPS,
@@ -328,12 +316,16 @@ export const useGestionConvocatorias = ({
 
       // 3. En Conversación / Seguimiento Exhaustivo → Respondidas - Pendiente de Decisión
       if (status === "en conversacion" || status === "seguimiento exhaustivo") {
-        const daysSinceResponse = daysSinceEnd;
+        const lastUpdate = relevantPPS.updated_at || relevantPPS.created_at || now.toISOString();
+        const daysWaiting = Math.max(
+          0,
+          Math.floor((now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24))
+        );
 
         respondidasPendienteDecision.push({
           ...relevantPPS,
           daysSinceEnd,
-          daysSinceResponse,
+          daysSinceResponse: daysWaiting,
         });
         return;
       }
