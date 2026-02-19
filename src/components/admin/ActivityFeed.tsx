@@ -1,8 +1,8 @@
-import React from "react";
-import { useActivityFeed, ActivityItem } from "../../hooks/useActivityFeed";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import React from "react";
 import { useNavigate } from "react-router-dom";
+import { ActivityItem, useActivityFeed } from "../../hooks/useActivityFeed";
 
 const ActivityItemCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ const ActivityItemCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
     };
   } else if (item.type === "request") {
     config = {
-      icon: "person_add",
+      icon: "business",
       bgIcon: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
       actionText: "Gestionar",
       path: "/admin/solicitudes?tab=ingreso",
@@ -89,10 +89,10 @@ const ActivityItemCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
             {item.type === "finalization"
               ? "Solicita Acreditación"
               : item.type === "correction"
-                ? "Solicitud de Corrección"
+                ? "Solicita Corrección"
                 : item.type === "launch"
                   ? "Convocatoria Abierta"
-                  : "Solicita Ingreso"}
+                  : "Solicita PPS"}
           </span>
 
           {/* Tags especiales */}
