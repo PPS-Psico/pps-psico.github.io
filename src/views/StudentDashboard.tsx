@@ -1,57 +1,57 @@
-import React, { useState, useMemo, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import EmptyState from "../components/EmptyState";
+import ErrorState from "../components/ErrorState";
+import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
+import Tabs from "../components/Tabs";
 import CriteriosPanel from "../components/student/CriteriosPanel";
+import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
+import FinalizacionForm from "../components/student/FinalizacionForm";
+import HomeView from "../components/student/HomeView";
 import PracticasTable from "../components/student/PracticasTable";
+import PrintableReport from "../components/student/PrintableReport";
+import ProfileView from "../components/student/ProfileView";
 import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
 import SolicitudNuevaPPSModal from "../components/student/SolicitudNuevaPPSModal";
 import SolicitudesList from "../components/student/SolicitudesList";
-import EmptyState from "../components/EmptyState";
-import Tabs from "../components/Tabs";
-import Card from "../components/ui/Card";
-import Button from "../components/ui/Button";
 import WelcomeBanner from "../components/student/WelcomeBanner";
 import WhatsAppExportButton from "../components/student/WhatsAppExportButton";
-import { useAuth } from "../contexts/AuthContext";
-import type { AuthUser } from "../contexts/AuthContext";
-import { useNotifications } from "../contexts/NotificationContext";
-import type { TabId, Orientacion, Practica } from "../types";
-import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
-import ErrorState from "../components/ErrorState";
-import ProfileView from "../components/student/ProfileView";
-import HomeView from "../components/student/HomeView";
-import PrintableReport from "../components/student/PrintableReport";
-import { useStudentPanel } from "../contexts/StudentPanelContext";
-import FinalizacionForm from "../components/student/FinalizacionForm";
-import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
 import {
-  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_PPS,
-  FIELD_ESTADO_PPS,
-  FIELD_ULTIMA_ACTUALIZACION_PPS,
+  FIELD_CORREO_ESTUDIANTES,
   FIELD_EMPRESA_PPS_SOLICITUD,
-  FIELD_SOLICITUD_LEGAJO_ALUMNO,
-  FIELD_SOLICITUD_NOMBRE_ALUMNO,
-  FIELD_SOLICITUD_EMAIL_ALUMNO,
-  FIELD_SOLICITUD_LOCALIDAD,
+  FIELD_ESTADO_FINALIZACION,
+  FIELD_ESTADO_PPS,
+  FIELD_FECHA_SOLICITUD_FINALIZACION,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_LEGAJO_PPS,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
+  FIELD_SOLICITUD_CONTACTO_TUTOR,
+  FIELD_SOLICITUD_DESCRIPCION,
   FIELD_SOLICITUD_DIRECCION,
+  FIELD_SOLICITUD_EMAIL_ALUMNO,
+  FIELD_SOLICITUD_EMAIL_INSTITUCION,
+  FIELD_SOLICITUD_LEGAJO_ALUMNO,
+  FIELD_SOLICITUD_LOCALIDAD,
+  FIELD_SOLICITUD_NOMBRE_ALUMNO,
   FIELD_SOLICITUD_REFERENTE,
+  FIELD_SOLICITUD_TELEFONO_INSTITUCION,
   FIELD_SOLICITUD_TIENE_CONVENIO,
   FIELD_SOLICITUD_TIENE_TUTOR,
-  FIELD_SOLICITUD_CONTACTO_TUTOR,
   FIELD_SOLICITUD_TIPO_PRACTICA,
-  FIELD_SOLICITUD_DESCRIPCION,
-  FIELD_SOLICITUD_EMAIL_INSTITUCION,
-  FIELD_SOLICITUD_TELEFONO_INSTITUCION,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
-  FIELD_FECHA_SOLICITUD_FINALIZACION,
-  FIELD_ESTADO_FINALIZACION,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../constants";
-import { useNavigate } from "react-router-dom";
+import type { AuthUser } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useModal } from "../contexts/ModalContext";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNotifications } from "../contexts/NotificationContext";
+import { useStudentPanel } from "../contexts/StudentPanelContext";
 import { db } from "../lib/db";
+import type { Orientacion, Practica, TabId } from "../types";
 // import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
 import FinalizationStatusCard from "../components/student/FinalizationStatusCard";
 // import MobileSectionHeader from '../components/layout/MobileSectionHeader'; // Unused

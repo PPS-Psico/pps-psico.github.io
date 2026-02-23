@@ -1,17 +1,18 @@
-import React, { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
-import EmptyState from "../EmptyState";
-import type { SolicitudPPS, CriteriosCalculados, FinalizacionPPS, InformeTask } from "../../types";
-import FinalizationStatusCard from "./FinalizationStatusCard";
+import React, { useMemo, useRef, useState } from "react";
 import {
-  FIELD_ESTADO_FINALIZACION,
-  FIELD_FECHA_SOLICITUD_FINALIZACION,
-  FIELD_ESTADO_PPS,
   FIELD_EMPRESA_PPS_SOLICITUD,
+  FIELD_ESTADO_FINALIZACION,
+  FIELD_ESTADO_PPS,
+  FIELD_FECHA_SOLICITUD_FINALIZACION,
+  FIELD_NOTAS_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../../constants";
-import { normalizeStringForComparison, getStatusVisuals, formatDate } from "../../utils/formatters";
+import type { CriteriosCalculados, FinalizacionPPS, InformeTask, SolicitudPPS } from "../../types";
+import { formatDate, getStatusVisuals, normalizeStringForComparison } from "../../utils/formatters";
 import AcreditacionPreflightModal from "../AcreditacionPreflightModal";
+import EmptyState from "../EmptyState";
+import FinalizationStatusCard from "./FinalizationStatusCard";
 
 interface SolicitudesListProps {
   solicitudes: SolicitudPPS[];
@@ -84,15 +85,21 @@ const SolicitudItem: React.FC<{ solicitud: SolicitudPPS; index?: number }> = ({
 }) => {
   const institucion = solicitud[FIELD_EMPRESA_PPS_SOLICITUD] || "";
   const status = solicitud[FIELD_ESTADO_PPS] || "Pendiente";
+  const notas = solicitud[FIELD_NOTAS_PPS];
   const actualizacion = solicitud[FIELD_ULTIMA_ACTUALIZACION_PPS];
   const visuals = getStatusVisuals(status);
 
+  const normalizedStatus = normalizeStringForComparison(status);
+
+  // Logic: Student only sees notes if the status is "No se pudo concretar" (to know why)
+  const showNotes = normalizedStatus === "no se pudo concretar";
+
   // Get color scheme for shadows
   const getColorScheme = () => {
-    const statusLower = normalizeStringForComparison(status);
-    if (statusLower.includes("aprob") || statusLower.includes("complet")) return "emerald";
-    if (statusLower.includes("pend")) return "amber";
-    if (statusLower.includes("rechaz") || statusLower.includes("cancel")) return "rose";
+    if (normalizedStatus.includes("aprob") || normalizedStatus.includes("complet"))
+      return "emerald";
+    if (normalizedStatus.includes("pend")) return "amber";
+    if (normalizedStatus.includes("rechaz") || normalizedStatus.includes("cancel")) return "rose";
     return "blue";
   };
 
@@ -120,72 +127,92 @@ const SolicitudItem: React.FC<{ solicitud: SolicitudPPS; index?: number }> = ({
         <div className="relative bg-white dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
           <RippleEffect color={getRippleColor()} />
 
-          <div className="relative z-10 flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
-            <div className="flex items-start gap-4">
-              {/* Icon Box with Pulse Animation */}
-              <div className="relative">
-                <motion.div
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                  className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${visuals.iconContainerClass} bg-opacity-20 dark:bg-opacity-10`}
-                >
-                  <span
-                    className={`material-icons !text-2xl ${visuals.accentBg.replace("bg-", "text-")}`}
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
+              <div className="flex items-start gap-4">
+                {/* Icon Box with Pulse Animation */}
+                <div className="relative">
+                  <motion.div
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${visuals.iconContainerClass} bg-opacity-20 dark:bg-opacity-10`}
                   >
-                    {visuals.icon}
-                  </span>
-                </motion.div>
+                    <span
+                      className={`material-icons !text-2xl ${visuals.accentBg.replace("bg-", "text-")}`}
+                    >
+                      {visuals.icon}
+                    </span>
+                  </motion.div>
 
-                {/* Pulse animation for active statuses */}
-                {!normalizeStringForComparison(status).includes("final") &&
-                  !normalizeStringForComparison(status).includes("complet") && (
+                  {/* Pulse animation for active statuses */}
+                  {!normalizedStatus.includes("final") && !normalizedStatus.includes("complet") && (
                     <motion.div
                       className={`absolute inset-0 rounded-xl ${visuals.accentBg} opacity-20`}
                       animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0, 0.2] }}
                       transition={{ repeat: Infinity, duration: 2 }}
                     />
                   )}
-              </div>
+                </div>
 
-              <div className="flex-1">
-                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight">
-                  {institucion || "Institución sin nombre"}
-                </h4>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${visuals.labelClass}`}
-                  >
-                    <motion.span
-                      className="w-1.5 h-1.5 rounded-full bg-current"
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                    />
-                    {status}
-                  </span>
-                  <span className="text-xs text-slate-400">•</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <span className="material-icons !text-[10px]">update</span>
-                    {formatDate(actualizacion)}
-                  </span>
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight">
+                    {institucion || "Institución sin nombre"}
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${visuals.labelClass}`}
+                    >
+                      <motion.span
+                        className="w-1.5 h-1.5 rounded-full bg-current"
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                      />
+                      {status}
+                    </span>
+                    <span className="text-xs text-slate-400">•</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <span className="material-icons !text-[10px]">update</span>
+                      {formatDate(actualizacion)}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Arrow indicator */}
+              <motion.div
+                initial={{ x: -5, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="hidden sm:flex items-center"
+              >
+                <motion.span
+                  className="material-icons text-slate-300 dark:text-slate-600"
+                  whileHover={{ x: 5 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  chevron_right
+                </motion.span>
+              </motion.div>
             </div>
 
-            {/* Arrow indicator */}
-            <motion.div
-              initial={{ x: -5, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="hidden sm:flex items-center"
-            >
-              <motion.span
-                className="material-icons text-slate-300 dark:text-slate-600"
-                whileHover={{ x: 5 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            {/* Motivo Box (Visible if status is failure) */}
+            {showNotes && notas && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+                className="p-3 bg-red-50/50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30 text-sm text-slate-600 dark:text-slate-300 leading-relaxed overflow-hidden"
               >
-                chevron_right
-              </motion.span>
-            </motion.div>
+                <div className="flex gap-2">
+                  <span className="material-icons !text-sm text-rose-500 mt-0.5">info</span>
+                  <div className="flex-1">
+                    <strong className="text-rose-700 dark:text-rose-400 text-xs uppercase tracking-wider block mb-1">
+                      Actualización de Coordinación:
+                    </strong>
+                    <span className="italic">"{notas}"</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </TiltCard>
@@ -251,7 +278,7 @@ const PremiumActionButton: React.FC<{
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.95 }}
       className={`
-        relative w-full flex items-center gap-4 p-5 rounded-2xl 
+        relative w-full flex items-center gap-4 p-5 rounded-2xl
         bg-gradient-to-r ${theme.gradient}
         border-2 ${theme.border}
         ${theme.text}

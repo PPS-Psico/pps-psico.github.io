@@ -1,11 +1,11 @@
 import React from "react";
-import type { SolicitudPPS } from "../types";
 import {
   FIELD_EMPRESA_PPS_SOLICITUD,
   FIELD_ESTADO_PPS,
-  FIELD_ULTIMA_ACTUALIZACION_PPS,
   FIELD_NOTAS_PPS,
+  FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../constants";
+import type { SolicitudPPS } from "../types";
 import { formatDate, getStatusVisuals, normalizeStringForComparison } from "../utils/formatters";
 
 interface SolicitudCardProps {
@@ -21,7 +21,8 @@ const SolicitudCard: React.FC<SolicitudCardProps> = ({ solicitud }) => {
   const visuals = getStatusVisuals(status);
 
   // Logic: Student only sees notes if the status is "No se pudo concretar" (to know why)
-  const showNotes = normalizeStringForComparison(status) === "no se pudo concretar";
+  const normalizedStatus = normalizeStringForComparison(status);
+  const showNotes = normalizedStatus === "no se pudo concretar";
 
   return (
     <article className="group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 overflow-hidden relative">
