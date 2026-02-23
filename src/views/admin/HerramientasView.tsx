@@ -1,20 +1,20 @@
-import React, { useState, lazy, Suspense, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { lazy, Suspense, useMemo, useState } from "react";
+import ErrorBoundary from "../../components/ErrorBoundary";
+import Loader from "../../components/Loader";
 import SubTabs from "../../components/SubTabs";
 import AdminSearch from "../../components/admin/AdminSearch";
-import type { AirtableRecord, EstudianteFields } from "../../types";
-import Loader from "../../components/Loader";
-import ErrorBoundary from "../../components/ErrorBoundary";
-import Toast from "../../components/ui/Toast";
 import RecordEditModal from "../../components/admin/RecordEditModal";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { db } from "../../lib/db";
-import { schema } from "../../lib/dbSchema";
+import Toast from "../../components/ui/Toast";
 import {
-  FIELD_NOMBRE_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_NOMBRE_ESTUDIANTES,
   FIELD_NOTAS_INTERNAS_ESTUDIANTES,
 } from "../../constants";
 import { useAdminPreferences } from "../../contexts/AdminPreferencesContext";
+import { db } from "../../lib/db";
+import { schema } from "../../lib/dbSchema";
+import type { AirtableRecord, EstudianteFields } from "../../types";
 
 // Lazy load heavy components
 const DatabaseEditor = lazy(() => import("../../components/admin/DatabaseEditor"));
@@ -32,6 +32,7 @@ const GestionRelanzamientoReport = lazy(
 );
 const PersonalizationPanel = lazy(() => import("../../components/PersonalizationPanel"));
 const BackupManager = lazy(() => import("../../components/admin/BackupManager"));
+const ConvenioGenerator = lazy(() => import("../../components/admin/ConvenioGenerator"));
 
 const QUICK_STUDENT_CONFIG = {
   label: "Estudiante",
@@ -82,6 +83,12 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
 
     if (preferences.showNewAgreements)
       availableTabs.push({ id: "convenios", label: "Convenios Nuevos", icon: "handshake" });
+    if (preferences.showAgreementGenerator)
+      availableTabs.push({
+        id: "generador-convenios",
+        label: "Generador Convenios",
+        icon: "auto_awesome",
+      });
     if (preferences.showPenalizations)
       availableTabs.push({ id: "penalizaciones", label: "Penalizaciones", icon: "gavel" });
     if (preferences.showAutomation)
@@ -127,6 +134,12 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
           {activeTabId === "convenios" && preferences.showNewAgreements && (
             <ErrorBoundary>
               <NuevosConvenios isTestingMode={isTestingMode} />
+            </ErrorBoundary>
+          )}
+
+          {activeTabId === "generador-convenios" && preferences.showAgreementGenerator && (
+            <ErrorBoundary>
+              <ConvenioGenerator isTestingMode={isTestingMode} />
             </ErrorBoundary>
           )}
 

@@ -15,32 +15,34 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, file, mimeType, model = "gemini-2.5-flash" } = await req.json();
 
     if (!GEMINI_API_KEY) {
       throw new Error("GEMINI_API_KEY not found");
     }
 
+    const parts = [{ text: prompt }];
+    if (file && mimeType) {
+      parts.push({
+        inline_data: {
+          mime_type: mimeType,
+          data: file,
+        },
+      } as any);
+    }
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
+          contents: [{ parts }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 8192,
           },
         }),
       }

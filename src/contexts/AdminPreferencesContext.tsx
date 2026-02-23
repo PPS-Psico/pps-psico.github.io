@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 // Definición de qué módulos se pueden apagar/prender
 export interface AdminModuleConfig {
@@ -10,6 +10,7 @@ export interface AdminModuleConfig {
   showNewAgreements: boolean; // Herramienta Nuevos Convenios
   showReports: boolean; // Herramienta Reportes
   showBackups: boolean; // Herramienta Backups
+  showAgreementGenerator: boolean; // Generador de Convenios IA
 }
 
 const DEFAULT_PREFERENCES: AdminModuleConfig = {
@@ -21,6 +22,7 @@ const DEFAULT_PREFERENCES: AdminModuleConfig = {
   showNewAgreements: true,
   showReports: true,
   showBackups: true,
+  showAgreementGenerator: true,
 };
 
 interface AdminPreferencesContextType {

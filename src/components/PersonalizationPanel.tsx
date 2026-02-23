@@ -1,7 +1,7 @@
 import React from "react";
+import { useAdminPreferences } from "../contexts/AdminPreferencesContext";
 import Card from "./ui/Card";
 import SwitchRow from "./ui/SwitchRow";
-import { useAdminPreferences } from "../contexts/AdminPreferencesContext";
 
 const PersonalizationPanel: React.FC = () => {
   const { preferences, toggleModule, resetPreferences } = useAdminPreferences();
@@ -91,6 +91,14 @@ const PersonalizationPanel: React.FC = () => {
               icon="summarize"
               checked={preferences.showReports}
               onChange={() => toggleModule("showReports")}
+            />
+
+            <SwitchRow
+              label="Generador de Convenios IA"
+              description="Herramienta para redactar convenios marco y específicos con IA."
+              icon="auto_awesome"
+              checked={preferences.showAgreementGenerator}
+              onChange={() => toggleModule("showAgreementGenerator")}
             />
 
             <SwitchRow
