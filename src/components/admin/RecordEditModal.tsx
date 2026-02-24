@@ -1,18 +1,29 @@
-import React, { useState, useEffect, useRef } from "react";
-import type { AirtableRecord } from "../../types";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_LINK_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
 } from "../../constants";
+import type { AirtableRecord } from "../../types";
 import { cleanDbValue } from "../../utils/formatters";
 
 interface FieldConfig {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "date" | "email" | "tel" | "select" | "checkbox";
+  type:
+    | "text"
+    | "textarea"
+    | "number"
+    | "date"
+    | "email"
+    | "tel"
+    | "select"
+    | "checkbox"
+    | "section";
   options?: readonly string[] | { value: string; label: string }[];
+  isFullWidth?: boolean;
+  description?: string;
 }
 
 interface TableConfig {
@@ -115,13 +126,13 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     const isTextarea = field.type === "textarea";
 
     const inputClasses = `
-            w-full rounded-xl border-2 
-            border-slate-300 dark:border-slate-500 
-            p-2.5 text-sm font-medium 
-            bg-white dark:bg-slate-950 
+            w-full rounded-xl border-2
+            border-slate-300 dark:border-slate-500
+            p-2.5 text-sm font-medium
+            bg-white dark:bg-slate-950
             text-slate-900 dark:text-slate-100
-            focus:border-blue-600 dark:focus:border-blue-400 
-            focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/40 
+            focus:border-blue-600 dark:focus:border-blue-400
+            focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/40
             outline-none transition-all
             ${isCheckbox ? "h-5 w-5 text-blue-600 rounded cursor-pointer" : ""}
         `;
@@ -169,11 +180,33 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
       }
     }
 
+    if (field.type === "section") {
+      return (
+        <div className="col-span-1 sm:col-span-2 mt-4 first:mt-0">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-px flex-grow bg-slate-200 dark:bg-slate-800"></div>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 whitespace-nowrap">
+              {field.label}
+            </span>
+            <div className="h-px flex-grow bg-slate-200 dark:bg-slate-800"></div>
+          </div>
+        </div>
+      );
+    }
+
+    const wrapperClasses =
+      field.isFullWidth || isTextarea ? "col-span-1 sm:col-span-2" : "col-span-1";
+
     if (isTextarea) {
       return (
-        <div className="col-span-1 sm:col-span-2">
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+        <div className={wrapperClasses}>
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
             {field.label}
+            {field.description && (
+              <span className="normal-case font-normal text-[10px] text-slate-400">
+                {field.description}
+              </span>
+            )}
           </label>
           <textarea
             name={field.key}
@@ -188,7 +221,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
     if (field.type === "select") {
       return (
-        <div className="col-span-1">
+        <div className={wrapperClasses}>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
             {field.label}
           </label>
@@ -225,7 +258,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
     if (isCheckbox) {
       return (
-        <div className="col-span-1 flex items-center gap-3 mt-6 p-1">
+        <div className={`${wrapperClasses} flex items-center gap-3 mt-6 p-1`}>
           <input
             type="checkbox"
             id={field.key}
@@ -234,18 +267,23 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
             onChange={handleChange}
             className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-500 text-blue-600 focus:ring-blue-500 cursor-pointer"
           />
-          <label
-            htmlFor={field.key}
-            className="text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none"
-          >
-            {field.label}
-          </label>
+          <div className="flex flex-col">
+            <label
+              htmlFor={field.key}
+              className="text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none"
+            >
+              {field.label}
+            </label>
+            {field.description && (
+              <span className="text-[10px] text-slate-400 leading-none">{field.description}</span>
+            )}
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="col-span-1">
+      <div className={wrapperClasses}>
         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
           {field.label}
         </label>
@@ -256,6 +294,9 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
           onChange={handleChange}
           className={inputClasses}
         />
+        {field.description && (
+          <p className="mt-1.5 text-[10px] text-slate-400 leading-none">{field.description}</p>
+        )}
       </div>
     );
   };
