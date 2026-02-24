@@ -1908,7 +1908,7 @@ Responde SOLO con el JSON válido.
                         placeholder="Ej: Lunes 9 a 12hs - Lic. Pérez"
                       />
                     </div>
-                    {(formData.orientacion as string[])?.length >= 2 && (
+                    {isMultiOrientation && (
                       <div className="w-full md:w-48">
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
                           Orientación vinculada
