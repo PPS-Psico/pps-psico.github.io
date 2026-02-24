@@ -311,8 +311,9 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   ) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors((prev) => ({ ...prev, submit: "El archivo supera los 5MB permitidos." }));
+      // Aumentamos a 15MB considerando fotos de alta resolución
+      if (file.size > 15 * 1024 * 1024) {
+        setErrors((prev) => ({ ...prev, submit: "El archivo supera los 15MB permitidos." }));
         return;
       }
       setFormData((prev) => ({ ...prev, [fieldName]: file }));
@@ -328,13 +329,26 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
 
   // Helper to upload files to Supabase
   const uploadFile = async (file: File, folder: string): Promise<string> => {
-    if (!studentProfile?.id) throw new Error("No ID");
-    const fileExt = file.name.split(".").pop();
+    if (!studentProfile?.id)
+      throw new Error("No hay un perfil de estudiante válido (ID faltando).");
+
+    const fileExt = file.name.split(".").pop()?.toLowerCase() || "bin";
     const fileName = `${studentProfile.id}/${folder}_${Date.now()}.${fileExt}`;
+
+    console.log(`[Upload] Iniciando subida de ${file.name} (${file.type}) a ${folder}...`);
+
     const { error: uploadError } = await supabase.storage
       .from("documentos_estudiantes")
-      .upload(fileName, file, { upsert: true });
-    if (uploadError) throw new Error(uploadError.message);
+      .upload(fileName, file, {
+        upsert: true,
+        contentType: file.type, // Forzamos el content type para que Supabase lo maneje correctamente
+      });
+
+    if (uploadError) {
+      console.error("[Upload] Error en Supabase:", uploadError);
+      throw new Error(`Error de subida: ${uploadError.message}`);
+    }
+
     const { data } = supabase.storage.from("documentos_estudiantes").getPublicUrl(fileName);
     return data.publicUrl;
   };
@@ -515,7 +529,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                         type="file"
                         ref={certFileInputRef}
                         className="hidden"
-                        accept=".pdf,.jpg,.png,.jpeg"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif"
                         onChange={(e) => handleFileChange(e, "certificadoTrabajoFile")}
                       />
 
@@ -713,13 +727,13 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                 type="file"
                 ref={cvFileInputRef}
                 className="hidden"
-                accept=".pdf,.doc,.docx,.jpg,.png,.jpeg"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx"
                 onChange={(e) => handleFileChange(e, "cvFile")}
               />
               <label htmlFor="cv-file-upload" className="block cursor-pointer">
                 <FileUploadButton
                   onClick={() => {}}
-                  label={formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF, Word o Imagen)"}
+                  label={formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF, Imagen o Word)"}
                   fileName={formData.cvFile?.name}
                   hasError={!!errors.cvFile}
                 />

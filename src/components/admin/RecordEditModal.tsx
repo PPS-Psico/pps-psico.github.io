@@ -282,6 +282,11 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
       );
     }
 
+    let inputValue = value;
+    if (field.type === "date" && typeof value === "string") {
+      inputValue = value.split("T")[0]; // Ensure YYYY-MM-DD format for <input type="date">
+    }
+
     return (
       <div className={wrapperClasses}>
         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
@@ -290,7 +295,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
         <input
           type={field.type}
           name={field.key}
-          value={value}
+          value={inputValue}
           onChange={handleChange}
           className={inputClasses}
         />
