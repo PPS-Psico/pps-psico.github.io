@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { Estudiante } from "../types";
-import { FIELD_TRABAJA_ESTUDIANTES, FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES } from "../constants";
+import { FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES, FIELD_TRABAJA_ESTUDIANTES } from "../constants";
 import { supabase } from "../lib/supabaseClient";
+import { Estudiante } from "../types";
 
 // --- COMPONENTES UI INTERNOS ESTILIZADOS ---
 
@@ -116,8 +116,8 @@ const FileUploadButton: React.FC<{
     >
       {fileName ? "Archivo seleccionado" : label}
     </span>
-    <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 text-center max-w-[180px] truncate">
-      {fileName || "PDF o Imagen (Máx 5MB)"}
+    <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 text-center max-w-[180px] truncate pointer-events-none">
+      {fileName || "PDF o Imagen (JPG, PNG) - Máx 5MB"}
     </span>
   </div>
 );
@@ -320,6 +320,9 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       if (fieldName === "certificadoTrabajoFile")
         setErrors((prev) => ({ ...prev, trabaja: undefined }));
       if (fieldName === "cvFile") setErrors((prev) => ({ ...prev, cvFile: undefined }));
+
+      // Clear the value so the same file can be selected again if needed
+      e.target.value = "";
     }
   };
 
@@ -508,6 +511,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                       )}
 
                       <input
+                        id="cert-file-upload"
                         type="file"
                         ref={certFileInputRef}
                         className="hidden"
@@ -515,18 +519,20 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                         onChange={(e) => handleFileChange(e, "certificadoTrabajoFile")}
                       />
 
-                      <FileUploadButton
-                        onClick={() => certFileInputRef.current?.click()}
-                        label={
-                          formData.certificadoTrabajoFile
-                            ? "Cambiar Archivo"
-                            : formData.existingCertificadoTrabajo
-                              ? "Actualizar Certificado"
-                              : "Subir Certificado"
-                        }
-                        fileName={formData.certificadoTrabajoFile?.name}
-                        hasError={!!errors.trabaja}
-                      />
+                      <label htmlFor="cert-file-upload" className="block cursor-pointer">
+                        <FileUploadButton
+                          onClick={() => {}} // Debounce/Prevent double trigger if needed, but label handles it
+                          label={
+                            formData.certificadoTrabajoFile
+                              ? "Cambiar Archivo"
+                              : formData.existingCertificadoTrabajo
+                                ? "Actualizar Certificado"
+                                : "Subir Certificado"
+                          }
+                          fileName={formData.certificadoTrabajoFile?.name}
+                          hasError={!!errors.trabaja}
+                        />
+                      </label>
                       {errors.trabaja && (
                         <p className="text-xs text-rose-500 font-semibold mt-2 flex items-center gap-1">
                           <span className="material-icons !text-xs">error</span> {errors.trabaja}
@@ -703,18 +709,21 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               </h3>
 
               <input
+                id="cv-file-upload"
                 type="file"
                 ref={cvFileInputRef}
                 className="hidden"
-                accept=".pdf,.doc,.docx"
+                accept=".pdf,.doc,.docx,.jpg,.png,.jpeg"
                 onChange={(e) => handleFileChange(e, "cvFile")}
               />
-              <FileUploadButton
-                onClick={() => cvFileInputRef.current?.click()}
-                label={formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF/Word)"}
-                fileName={formData.cvFile?.name}
-                hasError={!!errors.cvFile}
-              />
+              <label htmlFor="cv-file-upload" className="block cursor-pointer">
+                <FileUploadButton
+                  onClick={() => {}}
+                  label={formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF, Word o Imagen)"}
+                  fileName={formData.cvFile?.name}
+                  hasError={!!errors.cvFile}
+                />
+              </label>
               {errors.cvFile && (
                 <p className="text-xs text-rose-500 font-semibold mt-2 flex items-center gap-1">
                   <span className="material-icons !text-xs">error</span> {errors.cvFile}

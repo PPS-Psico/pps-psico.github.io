@@ -385,12 +385,21 @@ const LAUNCH_TABLE_CONFIG = {
       options: ["Clinica", "Educacional", "Laboral", "Comunitaria"],
     },
     {
+      key: FIELD_REQ_CV_LANZAMIENTOS,
+      label: "Solicitar CV",
+      type: "checkbox" as const,
+    },
+    {
+      key: FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
+      label: "Solicitar Certificado",
+      type: "checkbox" as const,
+    },
+    {
       key: FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
       label: "Estado",
       type: "select" as const,
       options: ["Abierta", "Cerrado", "Oculto"],
     },
-    { key: FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS, label: "Etiqueta Lista", type: "text" as const },
   ],
 };
 
