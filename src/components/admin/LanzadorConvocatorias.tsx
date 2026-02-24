@@ -466,8 +466,10 @@ Actúa como un experto en redacción de convocatorias universitarias y diseño U
 Objetivo: Generar contenido para una tarjeta visualmente equilibrada y detectar información técnica, logística y de horarios con comisiones.
 
 Instrucciones de Diseño y Extracción:
-1. **Descripción Robusta**: Genera una descripción profesional de 300-450 caracteres. NO inventes información, pero dale un tono formal.
-2. **Equilibrio Visual**: Genera MÁXIMO 4 items para la lista de actividades. Si hay más, intégralos en la descripción.
+1. **Descripción Temática**: Genera una descripción profesional de 300-450 caracteres enfocada EXCLUSIVAMENTE en la propuesta técnica y el rol formativo.
+   - PROHIBIDO incluir: dirección física, modalidad (presencial/virtual), duración, cantidad de cupos, horas acreditadas o fechas. Esta información ya aparece en otros campos.
+   - ENFÓCATE EN: El propósito de la práctica, el enfoque institucional (ej: abordaje de consumos), la población atendida y lo que el estudiante aprenderá o aportará.
+2. **Actividades Impactantes**: Genera MÁXIMO 4 items para la lista de actividades. Selecciona las más representativas. Si el texto original tiene muchas más, sintetízalas narrativamente en el campo de "Descripción Temática".
 3. **Detección de Dirección**: Busca la dirección física o modalidad (ej: "Modalidad Virtual").
 4. **Detección de Orientaciones**: Identifica todas las orientaciones mencionadas (Clínica, Jurídica, Educacional, Comunitaria, Laboral, etc).
 5. **Comisiones y Horarios**: Sé extremadamente minucioso.
