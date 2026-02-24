@@ -1,11 +1,12 @@
 import React from "react";
 import Button from "../../ui/Button";
-import Input from "../../ui/Input";
 import Checkbox from "../../ui/Checkbox";
+import Input from "../../ui/Input";
+import Select from "../../ui/Select";
 
 interface SchedulesSectionProps {
-  schedules: string[];
-  setSchedules: (scheds: string[]) => void;
+  schedules: { time: string; orientacion: string }[];
+  setSchedules: (scheds: { time: string; orientacion: string }[]) => void;
   formData: any;
   handleChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -18,17 +19,23 @@ export const SchedulesSection: React.FC<SchedulesSectionProps> = ({
   formData,
   handleChange,
 }) => {
-  const handleScheduleChange = (index: number, value: string) => {
+  const handleScheduleValueChange = (
+    index: number,
+    field: "time" | "orientacion",
+    value: string
+  ) => {
     const newSchedules = [...schedules];
-    newSchedules[index] = value;
+    newSchedules[index] = { ...newSchedules[index], [field]: value };
     setSchedules(newSchedules);
   };
 
-  const addSchedule = () => setSchedules([...schedules, ""]);
+  const addSchedule = () => setSchedules([...schedules, { time: "", orientacion: "" }]);
   const removeSchedule = (index: number) => {
     const newSchedules = schedules.filter((_, i) => i !== index);
-    setSchedules(newSchedules.length ? newSchedules : [""]);
+    setSchedules(newSchedules.length ? newSchedules : [{ time: "", orientacion: "" }]);
   };
+
+  const selectedOrientations = formData.orientacion || [];
 
   return (
     <div className="relative">
@@ -56,29 +63,60 @@ export const SchedulesSection: React.FC<SchedulesSectionProps> = ({
               Horarios de Cursada
             </label>
             <p className="text-xs text-slate-500">
-              Ej: Lunes 9:00 a 13:00hs; Miércoles 14:00 a 18:00hs. Si hay múltiples opciones,
-              agrégalas todas.
+              Configura los horarios y asígnales una orientación específica si es necesario.
             </p>
 
-            <div className="space-y-2">
+            <div className="space-y-4">
               {schedules.map((schedule, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={schedule}
-                    onChange={(e) => handleScheduleChange(index, e.target.value)}
-                    placeholder={`Horario ${index + 1}`}
-                    className="flex-1"
-                  />
-                  {schedules.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeSchedule(index)}
-                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                <div
+                  key={index}
+                  className="flex flex-col md:flex-row items-start md:items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative group"
+                >
+                  <div className="flex-1 w-full">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      Horario
+                    </label>
+                    <Input
+                      type="text"
+                      value={schedule.time}
+                      onChange={(e) => handleScheduleValueChange(index, "time", e.target.value)}
+                      placeholder="Ej: Lunes 9:00 a 13:00hs"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="w-full md:w-48">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      Orientación vinculada
+                    </label>
+                    <Select
+                      value={schedule.orientacion}
+                      onChange={(e) =>
+                        handleScheduleValueChange(index, "orientacion", e.target.value)
+                      }
+                      className="w-full"
                     >
-                      <span className="material-icons !text-lg">delete</span>
-                    </button>
-                  )}
+                      <option value="">Cualquiera / General</option>
+                      {selectedOrientations.map((o: string) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center pt-5">
+                    {schedules.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSchedule(index)}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                        title="Eliminar horario"
+                      >
+                        <span className="material-icons !text-xl">delete</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

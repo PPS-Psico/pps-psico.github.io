@@ -1,25 +1,23 @@
 import React, { useState } from "react";
+import {
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
+} from "../../constants";
 import { useSeleccionadorLogic } from "../../hooks/useSeleccionadorLogic";
 import { supabase } from "../../lib/supabaseClient";
-import {
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
-} from "../../constants";
-import {
-  normalizeStringForComparison,
-  getEspecialidadClasses,
-  formatDate,
-} from "../../utils/formatters";
 import type { EnrichedStudent } from "../../types";
-import Loader from "../Loader";
-import EmptyState from "../EmptyState";
-import Toast from "../ui/Toast";
+import {
+  formatDate,
+  getEspecialidadClasses,
+  normalizeStringForComparison,
+} from "../../utils/formatters";
 import ConfirmModal from "../ConfirmModal";
+import EmptyState from "../EmptyState";
+import Loader from "../Loader";
+import Toast from "../ui/Toast";
 
 // Componente Premium para selección de horarios
 interface ScheduleSelectorProps {
@@ -175,7 +173,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
 const StudentRow: React.FC<{
   student: EnrichedStudent;
   onToggleSelection: (student: EnrichedStudent) => void;
-  onUpdateSchedule: (id: string, newSchedule: string) => void;
+  onUpdateSchedule: (student: EnrichedStudent, newSchedule: string) => void;
   isUpdating: boolean;
   isReviewMode?: boolean;
   isEditMode?: boolean;
@@ -341,7 +339,7 @@ const StudentRow: React.FC<{
             horariosSolicitados={student.horarioSeleccionado || ""}
             horarioAsignado={student.horarioAsignado}
             isEditMode={false}
-            onScheduleChange={(newSchedule) => onUpdateSchedule(student.enrollmentId, newSchedule)}
+            onScheduleChange={(newSchedule) => onUpdateSchedule(student, newSchedule)}
             disabled={!showScheduleSelector}
           />
 

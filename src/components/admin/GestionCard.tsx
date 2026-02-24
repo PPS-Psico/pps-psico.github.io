@@ -6,6 +6,7 @@ import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_NOTAS_GESTION_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
+  FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
 } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
 import ReminderService from "../../services/reminderService";
@@ -60,17 +61,26 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [todoistSuccess, setTodoistSuccess] = useState(false);
     const [reminderSuccess, setReminderSuccess] = useState(false);
+    const [nextCheckDate, setNextCheckDate] = useState(() => {
+      const val = pps[FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS] || "";
+      if (!val) return "";
+      const d = parseToUTCDate(val);
+      return d ? d.toISOString().split("T")[0] : val;
+    });
 
     // Initialize date
     const [relaunchDate, setRelaunchDate] = useState(() => {
-      const rDate = pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS];
-      if (rDate) return rDate;
-      const sDate = pps[FIELD_FECHA_INICIO_LANZAMIENTOS];
-      if (sDate) {
-        const d = parseToUTCDate(sDate);
-        if (d && d.getUTCFullYear() >= 2026) return sDate;
+      let raw = pps[FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS];
+      if (!raw) {
+        const sDate = pps[FIELD_FECHA_INICIO_LANZAMIENTOS];
+        if (sDate) {
+          const d = parseToUTCDate(sDate);
+          if (d && d.getUTCFullYear() >= 2026) raw = sDate;
+        }
       }
-      return "";
+      if (!raw) return "";
+      const d = parseToUTCDate(raw);
+      return d ? d.toISOString().split("T")[0] : raw;
     });
 
     const [isJustSaved, setIsJustSaved] = useState(false);
@@ -104,7 +114,19 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
     );
 
     const isActiveManagement = status === "Esperando Respuesta" || status === "En Conversación";
-    const isStagnantAlert = isActiveManagement && daysSinceLastTouch >= 2;
+
+    // Si hay una fecha de próximo seguimiento futura, no está estancado
+    const isSnoozed = useMemo(() => {
+      if (!nextCheckDate) return false;
+      const d = parseToUTCDate(nextCheckDate);
+      if (!d) return false;
+      // Normalizar a medianoche para comparar solo fechas
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return d > today;
+    }, [nextCheckDate]);
+
+    const isStagnantAlert = isActiveManagement && daysSinceLastTouch >= 2 && !isSnoozed;
 
     // Detectar cambios
     const hasChanges = useMemo(() => {
@@ -119,9 +141,10 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
         status !== originalStatus ||
         notes !== originalNotes ||
         dateChanged ||
+        nextCheckDate !== (pps[FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS] || "") ||
         newLogEntry.trim() !== ""
       );
-    }, [status, notes, relaunchDate, pps, newLogEntry]);
+    }, [status, notes, relaunchDate, nextCheckDate, pps, newLogEntry]);
 
     // Handle Save con integración a Todoist
     const handleSave = async (e: React.MouseEvent) => {
@@ -150,6 +173,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
         [FIELD_ESTADO_GESTION_LANZAMIENTOS]: status,
         [FIELD_NOTAS_GESTION_LANZAMIENTOS]: notes,
         historial_gestion: updatedHistory,
+        [FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS]: nextCheckDate,
       };
 
       if (status === "Relanzamiento Confirmado") {
@@ -381,6 +405,12 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                       Visto hace {daysSinceLastTouch} d
                     </span>
                   )}
+                  {isSnoozed && (
+                    <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+                      <span className="material-icons !text-[10px]">notification_important</span>{" "}
+                      Recordatorio: {nextCheckDate}
+                    </span>
+                  )}
                 </div>
                 <h4
                   className="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 leading-tight truncate pr-2"
@@ -545,6 +575,36 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                         </p>
                       )}
                     </div>
+
+                    {/* Recordatorio (Snooze) - Compacto debajo del historial */}
+                    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+                      <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <span className="material-icons !text-[12px]">calendar_today</span>
+                        Recordatorio (Pausar alertas hasta esta fecha)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-grow">
+                          <input
+                            type="date"
+                            value={nextCheckDate}
+                            onChange={(e) => setNextCheckDate(e.target.value)}
+                            className="w-full text-xs rounded-lg border border-amber-100 dark:border-amber-900/50 bg-white dark:bg-slate-800 py-2 px-3 pl-8 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-sm"
+                          />
+                          <span className="material-icons absolute left-2.5 top-1/2 -translate-y-1/2 !text-xs text-amber-500/50">
+                            event_repeat
+                          </span>
+                        </div>
+                        {nextCheckDate && (
+                          <button
+                            onClick={() => setNextCheckDate("")}
+                            className="p-1.5 rounded-full hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors"
+                            title="Limpiar recordatorio"
+                          >
+                            <span className="material-icons !text-sm">clear</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -555,8 +615,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                       Fecha Estimada Inicio 2026
                     </label>
                     <input
-                      type="text"
-                      placeholder="Ej: 15/03/2026..."
+                      type="date"
                       value={relaunchDate}
                       onChange={(e) => setRelaunchDate(e.target.value)}
                       className="w-full text-sm font-medium rounded-lg py-2 px-3 border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500/50 outline-none"

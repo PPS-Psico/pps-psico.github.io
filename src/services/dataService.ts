@@ -422,7 +422,8 @@ export const toggleStudentSelection = async (
   convocatoriaId: string,
   isSelecting: boolean,
   studentId: string,
-  lanzamiento: LanzamientoPPS
+  lanzamiento: LanzamientoPPS,
+  horarioAsignado?: string
 ): Promise<{ success: boolean; error?: string }> => {
   const newStatus = isSelecting ? "Seleccionado" : "Inscripto";
   try {
@@ -437,7 +438,28 @@ export const toggleStudentSelection = async (
       let rawName = lanzamiento[C.FIELD_NOMBRE_PPS_LANZAMIENTOS];
       if (Array.isArray(rawName)) rawName = rawName[0];
       const cleanName = cleanDbValue(rawName);
-      const cleanOrientacion = cleanDbValue(lanzamiento[C.FIELD_ORIENTACION_LANZAMIENTOS]);
+
+      // Determine correct orientation
+      let finalOrientacion = "";
+      if (horarioAsignado) {
+        // Extract from "Time [Orientation]"
+        const match = horarioAsignado.match(/\[(.*)\]/);
+        if (match) finalOrientacion = match[1].trim();
+      }
+
+      // Fallback to first orientation if not found in schedule
+      if (!finalOrientacion) {
+        const rawOrient = lanzamiento[C.FIELD_ORIENTACION_LANZAMIENTOS];
+        const orients =
+          typeof rawOrient === "string"
+            ? rawOrient.split(",").map((o) => o.trim())
+            : Array.isArray(rawOrient)
+              ? rawOrient
+              : [];
+        finalOrientacion = orients[0] || "";
+      }
+
+      const cleanOrientacion = cleanDbValue(finalOrientacion);
 
       // ROOT CAUSE FIX: Check if the source Lanzamiento is dirty in the DB (contains { "Name" })
       // If so, attempt to clean the source record to prevent future issues
@@ -521,6 +543,33 @@ export const toggleStudentSelection = async (
     return { success: true };
   } catch (e) {
     console.error(`[DATA SERVICE] ERROR:`, e);
+    return { success: false, error: (e as Error).message };
+  }
+};
+
+export const updatePracticaFromSchedule = async (
+  studentId: string,
+  lanzamientoId: string,
+  newSchedule: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Extract orientation from new schedule
+    const match = newSchedule.match(/\[(.*)\]/);
+    if (!match) return { success: true }; // Nothing to update if no orientation in brackets
+
+    const newOrientacion = cleanDbValue(match[1].trim());
+
+    // Update the practice record
+    const { error } = await supabase
+      .from("practicas")
+      .update({ [C.FIELD_ESPECIALIDAD_PRACTICAS]: newOrientacion })
+      .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId)
+      .eq(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, lanzamientoId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (e) {
+    console.error(`[DATA SERVICE] Error updating practice orientation:`, e);
     return { success: false, error: (e as Error).message };
   }
 };

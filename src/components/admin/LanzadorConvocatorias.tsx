@@ -133,7 +133,7 @@ type FormData = {
   fechaEncuentroInicial: string | undefined;
   fechaInicioInscripcion: string | undefined;
   fechaFinInscripcion: string | undefined;
-  orientacion: string | undefined;
+  orientacion: string[]; // Changed to array for multiple selections
   horasAcreditadas: number | undefined;
   cuposDisponibles: number | undefined;
   estadoConvocatoria: string | undefined;
@@ -157,7 +157,7 @@ const initialState: FormData = {
   fechaEncuentroInicial: "",
   fechaInicioInscripcion: "",
   fechaFinInscripcion: "",
-  orientacion: "",
+  orientacion: [],
   horasAcreditadas: 0,
   cuposDisponibles: 1,
   estadoConvocatoria: "Abierta",
@@ -405,8 +405,12 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
   const activeTab = forcedTab || internalTab;
 
   const [formData, setFormData] = useState<FormData>(initialState);
-  const [schedules, setSchedules] = useState<string[]>([""]);
+  const [schedules, setSchedules] = useState<{ time: string; orientacion: string }[]>([
+    { time: "", orientacion: "" },
+  ]);
   const [actividades, setActividades] = useState<string[]>([]);
+
+  const isMultiOrientation = (formData.orientacion as string[])?.length >= 2;
 
   // Legacy: We still save it effectively, but we don't focus on it as much in UI.
 
@@ -459,44 +463,28 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
 
       const prompt = `
 Actúa como un experto en redacción de convocatorias universitarias y diseño UX.
-Objetivo: Generar contenido para una tarjeta visualmente equilibrada y detectar información clave.
+Objetivo: Generar contenido para una tarjeta visualmente equilibrada y detectar información técnica, logística y de horarios con comisiones.
 
-Instrucciones de Diseño:
-1. La tarjeta tiene dos columnas. Izquierda (Descripción) y Derecha (Lista de Items).
-2. Para mantener la ARMONÍA VISUAL, la columna derecha NO debe ser mucho más larga que la izquierda.
-3. REGLA DE ORO: Genera MÁXIMO 4 items para la lista de la derecha.
-4. Si la info original tiene más de 4 objetivos/actividades, INTEGRA los menos críticos dentro de la "descripcion" narrativa de forma fluida.
-5. La "descripcion" debe ser robusta (aprox 300-450 caracteres) para equilibrar el peso visual de la lista.
-6. FLEXIBILIDAD: El título de la lista de la derecha ("actividadesLabel") debe ser dinámico.
-   - Si la info se centra en tareas -> "Actividades".
-   - Si se centra en lugares/espacios -> "Espacios de Participación".
-   - Si se centra en objetivos específicos -> "Objetivos Específicos".
-   - Elige el más adecuado según el material.
-    7. DETECCIÓN DE HORARIOS: Busca detalladamente información sobre días, horarios y modalidades (presencial/virtual) de cursada.
-   - No omitas información si hay múltiples turnos o espacios diferentes.
-   - Si hay varios horarios, júntalos en el campo "horario_seleccionado" separados por PUNTO Y COMA (;).
-   - Ejemplo formativo: "Turno Mañana: 10:30 a 13:30 hs; Turno Tarde: 14:00 a 17:30 hs; Sábados (Virtual): 10:00 a 12:00 hs".
-8. NO REDUNDANCIA: La "descripcion" NO DEBE incluir datos que ya figuran en otros campos de la tarjeta:
-   - NO menciones fechas de inicio o fin.
-   - NO menciones la cantidad de cupos disponibles.
-   - NO menciones la cantidad de horas acreditadas.
-   - NO menciones si es presencial o virtual (ya figura en la ubicación).
-   - NO menciones frases de marketing como "abre una valiosa convocatoria", "convocatoria breve", "cerrando el 5 de noviembre".
-   - NO repitas el nombre de la PPS, la institución o textos del lanzamiento.
-   - Si el texto original tiene información de CALIDAD de la PPS (características, tipo de práctica), inclúyela. Si no, genera una descripción concisa del rol del estudiante y el propósito pedagógico sin inventar información.
+Instrucciones de Diseño y Extracción:
+1. **Descripción Robusta**: Genera una descripción profesional de 300-450 caracteres. NO inventes información, pero dale un tono formal.
+2. **Equilibrio Visual**: Genera MÁXIMO 4 items para la lista de actividades. Si hay más, intégralos en la descripción.
+3. **Detección de Dirección**: Busca la dirección física o modalidad (ej: "Modalidad Virtual").
+4. **Detección de Orientaciones**: Identifica todas las orientaciones mencionadas (Clínica, Jurídica, Educacional, Comunitaria, Laboral, etc).
+5. **Comisiones y Horarios**: Sé extremadamente minucioso.
+   - Si se mencionan "Comisiones" o "Grupos", incluye el nombre de la comisión en el texto del horario.
+   - Formato esperado para texto: "Comisión [Nombre]: [Día y Horario]".
+   - Si una comisión específica tiene una orientación asignada diferente a las demás, identifícala.
 
 Información Cruda: ${sanitizedText}
 
-Datos del Contexto:
-- Título: ${formData.nombrePPS || "Práctica Profesional"}
-- Orientación: ${formData.orientacion || "General"}
-
 Genera un objeto JSON con:
-1. "descripcion": Resumen profesional conciso. Si el texto original tiene información de CALIDAD de la PPS (características, tipo de práctica), inclúyela. Si no hay, genera una descripción concisa del rol del estudiante y el propósito pedagógico sin inventar información ni repetir datos del lanzamiento.
-2. "actividades": Array de strings. MÁXIMO 4 items. Solo lo más relevante.
-3. "actividadesLabel": El título sugerido para la lista (ej: "Actividades", "Espacios", etc).
-4. "horario_seleccionado": Un string con todos los horarios detectados separados por PUNTO Y COMA (;). Si no hay, dejar vacío.
-5. "requisitoObligatorio": String (o vacío).
+1. "descripcion": Texto narrativo.
+2. "actividades": Array de strings (max 4).
+3. "actividadesLabel": Título dinámico.
+4. "orientaciones": Array de strings con las orientaciones detectadas.
+5. "horarios": Array de objetos [{ "texto": "Nombre Comisión: Horario", "orientacion_vinculada": "Orientación si existe" }].
+6. "direccion": Dirección detectada.
+7. "requisitoObligatorio": Cualquier requisito excluyente.
 
 Responde SOLO con el JSON válido.
 `;
@@ -539,7 +527,7 @@ Responde SOLO con el JSON válido.
         .replace(/```/g, "")
         .trim();
 
-      console.log("🔍 [DEBUG] Raw text from Gemini:", cleanJson);
+      console.log("🔍 [DEBUG] Gemini Response:", cleanJson);
 
       const parsed = JSON.parse(cleanJson);
 
@@ -550,25 +538,35 @@ Responde SOLO con el JSON válido.
             ? parsed.actividades
             : actividades;
 
+        // Detect and filter orientations from the AI
+        const detectedOrientations = Array.isArray(parsed.orientaciones)
+          ? parsed.orientaciones.filter((o: string) => ALL_ORIENTACIONES.includes(o))
+          : [];
+
         setFormData((prev) => ({
           ...prev,
           descripcion: currentDesc,
+          direccion: parsed.direccion || prev.direccion,
+          orientacion: detectedOrientations.length > 0 ? detectedOrientations : prev.orientacion,
           requisitoObligatorio: parsed.requisitoObligatorio || prev.requisitoObligatorio,
           actividadesLabel: parsed.actividadesLabel || prev.actividadesLabel,
         }));
         setActividades(currentActs);
 
-        if (parsed.horario_seleccionado) {
-          const detectedSchedules = parsed.horario_seleccionado
-            .split(";")
-            .map((s: string) => s.trim())
-            .filter(Boolean);
+        if (Array.isArray(parsed.horarios)) {
+          const detectedSchedules = parsed.horarios
+            .map((h: any) => ({
+              time: h.texto || "",
+              orientacion: h.orientacion_vinculada || "",
+            }))
+            .filter((s: { time: string }) => s.time.length > 0);
+
           if (detectedSchedules.length > 0) {
             setSchedules(detectedSchedules);
           }
         }
 
-        setToastInfo({ message: "✨ Contenido y horarios detectados", type: "success" });
+        setToastInfo({ message: "✨ Datos y Comisiones detectados", type: "success" });
       }
     } catch (error: any) {
       console.error("AI Auto-Gen Error", error);
@@ -608,8 +606,7 @@ Responde SOLO con el JSON válido.
     }
 
     // Get filtered schedules
-    const validSchedules = schedules.filter(Boolean);
-    const hasMultipleSchedules = validSchedules.length > 1;
+    const validSchedules = schedules.filter((s) => s.time && s.time.trim());
 
     // Build WhatsApp message
     let message = `📢 *¡Nueva Convocatoria PPS: ${formData.nombrePPS || formData.nombreInstitucion || "Nueva Convocatoria"}!* 📢
@@ -622,16 +619,24 @@ Responde SOLO con el JSON válido.
 📅 *Horarios*:`;
 
     if (validSchedules.length > 0) {
+      const formatScheduleLine = (s: { time: string; orientacion: string }) => {
+        const time = s.time.trim();
+        const orient = isMultiOrientation && s.orientacion ? ` [${s.orientacion}]` : "";
+        return `${time}${orient}`;
+      };
+
       if (validSchedules.length > 1 && !formData.horariosFijos) {
         // Multiple groups - show as Grupo 1, Grupo 2, etc.
-        message += validSchedules
-          .map((s, index) => `• *Grupo ${index + 1}:* ${s.trim()}`)
-          .join("\n");
+        message +=
+          "\n" +
+          validSchedules
+            .map((s, index) => `• *Grupo ${index + 1}:* ${formatScheduleLine(s)}`)
+            .join("\n");
       } else if (validSchedules.length > 1 && formData.horariosFijos) {
         // Fixed schedules - all students attend all schedules
-        message += "\n" + validSchedules.map((s) => `• ${s.trim()}`).join("\n");
+        message += "\n" + validSchedules.map((s) => `• ${formatScheduleLine(s)}`).join("\n");
       } else {
-        message += ` ${validSchedules[0].trim()}`;
+        message += ` ${formatScheduleLine(validSchedules[0])}`;
       }
     } else {
       message += " A confirmar";
@@ -1032,16 +1037,16 @@ Responde SOLO con el JSON válido.
     }));
   };
 
-  const handleScheduleChange = (index: number, value: string) => {
+  const handleScheduleChange = (index: number, field: "time" | "orientacion", value: string) => {
     const newSchedules = [...schedules];
-    newSchedules[index] = value;
+    newSchedules[index] = { ...newSchedules[index], [field]: value };
     setSchedules(newSchedules);
   };
 
-  const addSchedule = () => setSchedules([...schedules, ""]);
+  const addSchedule = () => setSchedules([...schedules, { time: "", orientacion: "" }]);
   const removeSchedule = (index: number) => {
     const newSchedules = schedules.filter((_, i) => i !== index);
-    setSchedules(newSchedules.length ? newSchedules : [""]);
+    setSchedules(newSchedules.length ? newSchedules : [{ time: "", orientacion: "" }]);
   };
 
   // Activities Handlers
@@ -1060,14 +1065,23 @@ Responde SOLO con el JSON válido.
   const handleLoadLastData = useCallback(() => {
     if (!lastLanzamiento) return;
     const prevSchedulesString = lastLanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS];
-    let prevSchedulesList = [""];
+    let prevSchedulesList: { time: string; orientacion: string }[] = [];
     if (prevSchedulesString) {
       prevSchedulesList = prevSchedulesString
         .split(";")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (prevSchedulesList.length === 0) prevSchedulesList = [""];
+        .map((s) => {
+          const item = s.trim();
+          if (!item) return null;
+          // Format is typically "Time [Orientation]"
+          const match = item.match(/(.*)\[(.*)\]/);
+          if (match) {
+            return { time: match[1].trim(), orientacion: match[2].trim() };
+          }
+          return { time: item, orientacion: "" };
+        })
+        .filter((i): i is { time: string; orientacion: string } => i !== null);
     }
+    if (prevSchedulesList.length === 0) prevSchedulesList = [{ time: "", orientacion: "" }];
 
     // Handle Activities (Robust parsing)
     const prevActivitiesRaw = lastLanzamiento[FIELD_ACTIVIDADES_LANZAMIENTOS];
@@ -1086,9 +1100,20 @@ Responde SOLO con el JSON válido.
       }
     }
 
+    const orientationRaw = lastLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS];
+    let orientationList: string[] = [];
+    if (typeof orientationRaw === "string") {
+      orientationList = orientationRaw
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+    } else if (Array.isArray(orientationRaw)) {
+      orientationList = orientationRaw;
+    }
+
     setFormData((prev) => ({
       ...prev,
-      orientacion: (lastLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "",
+      orientacion: orientationList,
       horasAcreditadas: (lastLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] as number) || 0,
       cuposDisponibles: (lastLanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number) || 1,
       reqCertificadoTrabajo: lastLanzamiento[FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS] !== false,
@@ -1106,7 +1131,7 @@ Responde SOLO con el JSON válido.
         (lastLanzamiento[FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS] as string) || "Actividades",
       horariosFijos: !!lastLanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS],
     }));
-    setSchedules(prevSchedulesList.length ? prevSchedulesList : [""]);
+    setSchedules(prevSchedulesList);
     setActividades(prevActivitiesList.length ? prevActivitiesList : [""]);
 
     setToastInfo({ message: "Datos anteriores cargados.", type: "success" });
@@ -1129,7 +1154,7 @@ Responde SOLO con el JSON válido.
     const horas = Number(formData.horasAcreditadas);
     const hasHours = !isNaN(horas); // Allow 0, but check if it's a number
 
-    if (!formData.nombrePPS || !fechaRealInicio || !formData.orientacion || !hasHours) {
+    if (!formData.nombrePPS || !fechaRealInicio || !formData.orientacion.length || !hasHours) {
       setToastInfo({
         message: "Por favor, complete los campos requeridos (Nombre, Fecha, Orientación, Horas).",
         type: "error",
@@ -1139,7 +1164,12 @@ Responde SOLO con el JSON válido.
 
     // Prepare arrays
     const horarioFinal = schedules
-      .map((s) => s.trim())
+      .map((s) => {
+        const time = s.time.trim();
+        const orient = isMultiOrientation ? s.orientacion.trim() : "";
+        if (!time) return null;
+        return orient ? `${time} [${orient}]` : time;
+      })
       .filter(Boolean)
       .join("; ");
     const actividadesFinal = actividades.map((a) => a.trim()).filter(Boolean);
@@ -1148,7 +1178,7 @@ Responde SOLO con el JSON válido.
       [FIELD_NOMBRE_PPS_LANZAMIENTOS]: formData.nombrePPS,
       [FIELD_FECHA_INICIO_LANZAMIENTOS]: formData.fechaInicio, // Always launch start date
       [FIELD_FECHA_FIN_LANZAMIENTOS]: formData.fechaFin,
-      [FIELD_ORIENTACION_LANZAMIENTOS]: formData.orientacion,
+      [FIELD_ORIENTACION_LANZAMIENTOS]: formData.orientacion.join(", "),
       [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: Number(formData.horasAcreditadas),
       [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: Number(formData.cuposDisponibles),
       [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: horarioFinal,
@@ -1467,15 +1497,32 @@ Responde SOLO con el JSON válido.
                   />
                 </InputWrapper>
 
-                <InputWrapper label="Orientación" icon="school">
-                  <Select value={formData.orientacion} onChange={handleChange} name="orientacion">
-                    <option value="">Seleccionar...</option>
-                    {ALL_ORIENTACIONES.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </Select>
+                <InputWrapper label="Orientaciones" icon="school">
+                  <div className="flex flex-wrap gap-2">
+                    {ALL_ORIENTACIONES.map((o) => {
+                      const isSelected = (formData.orientacion as string[])?.includes(o);
+                      return (
+                        <button
+                          key={o}
+                          type="button"
+                          onClick={() => {
+                            const current = (formData.orientacion as string[]) || [];
+                            const next = current.includes(o)
+                              ? current.filter((x: string) => x !== o)
+                              : [...current, o];
+                            setFormData((prev) => ({ ...prev, orientacion: next }));
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
+                            isSelected
+                              ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-blue-300"
+                          }`}
+                        >
+                          {o}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </InputWrapper>
 
                 <InputWrapper label="Dirección / Lugar" icon="location_on">
@@ -1847,29 +1894,61 @@ Responde SOLO con el JSON válido.
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
                 {schedules.map((schedule, idx) => (
-                  <div key={idx} className="flex gap-2 mb-3 last:mb-0">
-                    <Input
-                      value={schedule}
-                      onChange={(e) => handleScheduleChange(idx, e.target.value)}
-                      placeholder="Ej: Lunes 9 a 12hs - Lic. Pérez"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeSchedule(idx)}
-                      className="p-2 hover:bg-rose-100 hover:text-rose-600 text-slate-400 rounded-lg transition-colors"
-                    >
-                      <span className="material-icons !text-lg">delete</span>
-                    </button>
+                  <div
+                    key={idx}
+                    className="flex flex-col md:flex-row gap-3 mb-4 last:mb-0 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-fade-in"
+                  >
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
+                        Horario / Profesional
+                      </label>
+                      <Input
+                        value={schedule.time}
+                        onChange={(e) => handleScheduleChange(idx, "time", e.target.value)}
+                        placeholder="Ej: Lunes 9 a 12hs - Lic. Pérez"
+                      />
+                    </div>
+                    {(formData.orientacion as string[])?.length >= 2 && (
+                      <div className="w-full md:w-48">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
+                          Orientación vinculada
+                        </label>
+                        <Select
+                          value={schedule.orientacion}
+                          onChange={(e) => handleScheduleChange(idx, "orientacion", e.target.value)}
+                        >
+                          <option value="">Cualquiera</option>
+                          {((formData.orientacion as string[]) || []).map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    )}
+                    <div className="flex items-end pb-1">
+                      <button
+                        type="button"
+                        onClick={() => removeSchedule(idx)}
+                        className="p-2.5 bg-rose-50 text-rose-500 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/30 rounded-xl transition-all border border-rose-100 dark:border-rose-800/50"
+                        title="Eliminar Horario"
+                      >
+                        <span className="material-icons !text-lg">delete</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
-                <Button
-                  variant="secondary"
-                  onClick={addSchedule}
-                  type="button"
-                  className="mt-2 text-xs"
-                >
-                  + Agregar Horario
-                </Button>
+                <div className="mt-4 flex justify-start">
+                  <Button
+                    variant="secondary"
+                    onClick={addSchedule}
+                    type="button"
+                    className="text-xs !py-2 px-4 flex items-center gap-1"
+                  >
+                    <span className="material-icons !text-sm">add_circle</span>
+                    Agregar Horario
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -1948,7 +2027,17 @@ Responde SOLO con el JSON válido.
                           }
                           actividadesLabel={formData.actividadesLabel}
                           horasAcreditadas={String(formData.horasAcreditadas || 0)}
-                          horariosCursada={schedules.join("; ") || "A confirmar"}
+                          horariosCursada={
+                            schedules
+                              .map((s) => {
+                                const time = s.time.trim();
+                                const orient =
+                                  isMultiOrientation && s.orientacion ? ` [${s.orientacion}]` : "";
+                                return time ? `${time}${orient}` : null;
+                              })
+                              .filter(Boolean)
+                              .join("; ") || "A confirmar"
+                          }
                           cupo={String(formData.cuposDisponibles || 0)}
                           requisitoObligatorio={formData.requisitoObligatorio}
                           reqCv={formData.reqCv}

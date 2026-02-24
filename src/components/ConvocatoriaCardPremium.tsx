@@ -4,30 +4,30 @@ import { getEspecialidadClasses } from "../utils/formatters";
 export interface ConvocatoriaDetailProps {
   id: string;
   nombre: string;
-  orientacion: string;
+  orientacion: string | string[];
   direccion: string;
   descripcion: string;
   actividades: string[];
-  actividadesLabel?: string; // New prop
+  actividadesLabel?: string;
   horasAcreditadas: string;
   horariosCursada: string;
   cupo: string;
   requisitoObligatorio: string;
-  reqCv?: boolean; // New prop
+  reqCv?: boolean;
   timeline: {
     inscripcion: string;
     inicio: string;
     fin: string;
   };
-  logoUrl?: string; // Optional company logo
-  status?: string; // 'abierta', 'cerrada', etc.
+  logoUrl?: string;
+  status?: string;
   estadoInscripcion?: "inscripto" | "seleccionado" | "no_seleccionado" | null;
   onInscribirse?: () => void;
   onVerConvocados?: () => void;
   invertLogo?: boolean;
   horariosFijos?: boolean;
-  isCompleted?: boolean; // Prevents enrollment if student already completed this PPS
-  fechaEncuentroInicial?: string; // NEW: Fecha de encuentro inicial obligatorio
+  isCompleted?: boolean;
+  fechaEncuentroInicial?: string;
 }
 
 const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
@@ -51,10 +51,14 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   isCompleted = false,
   fechaEncuentroInicial,
 }) => {
-  // Theme based on orientation - used for tags and accents, but timeline has its own evolution
-  const theme = getEspecialidadClasses(orientacion);
+  const orientationsArray = Array.isArray(orientacion)
+    ? orientacion
+    : orientacion
+      ? [orientacion]
+      : [];
+  const primaryOrientacion = orientationsArray[0] || "Clinica";
+  const theme = getEspecialidadClasses(primaryOrientacion);
   const [isHovered, setIsHovered] = useState(false);
-
   const [isExpanded, setIsExpanded] = useState(false);
 
   // --- Dynamic Button Logic ---
@@ -211,11 +215,14 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
 
           {/* Desktop: Show orientation tag and address */}
           <div className="hidden md:flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
-            <span
-              className={`px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black tracking-wider border ${theme.tag}`}
-            >
-              {orientacion}
-            </span>
+            {orientationsArray.map((o) => (
+              <span
+                key={o}
+                className={`px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black tracking-wider border ${getEspecialidadClasses(o).tag}`}
+              >
+                {o}
+              </span>
+            ))}
 
             {/* Logic: Hours only visible when collapsed. */}
             {!isExpanded && (
@@ -310,7 +317,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               <MetricItem
                 icon="schedule"
                 label="ACREDITA"
-                value={`${horasAcreditadas}hs ${orientacion}`}
+                value={`${horasAcreditadas}hs ${orientationsArray.join(", ")}`}
                 theme="indigo"
               />
 
@@ -386,7 +393,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               <MetricItem
                 icon="schedule"
                 label="ACREDITA"
-                value={`${horasAcreditadas} horas de ${orientacion}`}
+                value={`${horasAcreditadas} horas de ${orientationsArray.join(" o ")}`}
                 theme="indigo"
               />
 

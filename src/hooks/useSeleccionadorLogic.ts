@@ -32,7 +32,7 @@ import {
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import { toggleStudentSelection } from "../services/dataService";
+import { toggleStudentSelection, updatePracticaFromSchedule } from "../services/dataService";
 import { mockDb } from "../services/mockDb";
 import type { AirtableRecord, ConvocatoriaFields, EnrichedStudent, LanzamientoPPS } from "../types";
 import { sendSmartEmail } from "../utils/emailService";
@@ -307,7 +307,8 @@ export const useSeleccionadorLogic = (
         student.enrollmentId,
         !isCurrentlySelected,
         student.studentId,
-        selectedLanzamiento
+        selectedLanzamiento,
+        student.horarioAsignado || student.horarioSeleccionado
       );
       return { ...result, student };
     },
@@ -352,16 +353,25 @@ export const useSeleccionadorLogic = (
       id,
       schedule,
       isEditMode,
+      student,
+      isSelected,
     }: {
       id: string;
       schedule: string;
       isEditMode?: boolean;
+      student: EnrichedStudent;
+      isSelected: boolean;
     }) => {
       // Si estamos en modo edición (convocatoria cerrada), actualizamos horario_asignado
       // Si estamos en modo normal (convocatoria abierta), actualizamos horario_seleccionado
       const fieldToUpdate = isEditMode
         ? FIELD_HORARIO_ASIGNADO_CONVOCATORIAS
         : FIELD_HORARIO_FORMULA_CONVOCATORIAS;
+
+      if (!isTestingMode && isSelected && selectedLanzamiento) {
+        // If student is already selected, sync the orientation in the Practica record
+        await updatePracticaFromSchedule(student.studentId, selectedLanzamiento.id, schedule);
+      }
 
       if (isTestingMode)
         return mockDb.update("convocatorias", id, {
@@ -401,8 +411,14 @@ export const useSeleccionadorLogic = (
     toggleMutation.mutate(student);
   };
 
-  const handleUpdateSchedule = (id: string, newSchedule: string) => {
-    scheduleMutation.mutate({ id, schedule: newSchedule, isEditMode });
+  const handleUpdateSchedule = (student: EnrichedStudent, schedule: string) => {
+    scheduleMutation.mutate({
+      id: student.enrollmentId,
+      schedule,
+      isEditMode,
+      student,
+      isSelected: normalizeStringForComparison(student.status) === "seleccionado",
+    });
   };
 
   const handleConfirmAndCloseTable = async () => {

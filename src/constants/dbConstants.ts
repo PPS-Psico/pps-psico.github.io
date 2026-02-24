@@ -69,6 +69,7 @@ export const FIELD_ORIENTACION_LANZAMIENTOS = "orientacion";
 export const FIELD_FECHA_INICIO_LANZAMIENTOS = "fecha_inicio";
 export const FIELD_FECHA_FIN_LANZAMIENTOS = "fecha_finalizacion";
 export const FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS = "fecha_relanzamiento";
+export const FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS = "proximo_seguimiento";
 export const FIELD_DIRECCION_LANZAMIENTOS = "direccion";
 export const FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS = "req_certificado_trabajo";
 export const FIELD_REQ_CV_LANZAMIENTOS = "req_cv";

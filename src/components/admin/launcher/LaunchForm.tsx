@@ -1,8 +1,8 @@
 import React from "react";
+import { ALL_ORIENTACIONES } from "../../../types";
+import Checkbox from "../../ui/Checkbox";
 import Input from "../../ui/Input";
 import Select from "../../ui/Select";
-import Checkbox from "../../ui/Checkbox";
-import { ALL_ORIENTACIONES } from "../../../types";
 
 interface LaunchFormProps {
   formData: any;
@@ -59,23 +59,40 @@ export const LaunchForm: React.FC<LaunchFormProps> = ({
 
           {/* Orientación y Horas */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                Orientación *
+            <div className="md:col-span-1">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                Orientaciones *
               </label>
-              <Select
-                name="orientacion"
-                value={formData.orientacion}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Seleccionar...</option>
-                {ALL_ORIENTACIONES.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </Select>
+              <div className="flex flex-wrap gap-3">
+                {ALL_ORIENTACIONES.map((o) => {
+                  const isSelected = formData.orientacion?.includes(o);
+                  return (
+                    <button
+                      key={o}
+                      type="button"
+                      onClick={() => {
+                        const current = formData.orientacion || [];
+                        const next = current.includes(o)
+                          ? current.filter((x: string) => x !== o)
+                          : [...current, o];
+                        handleChange({
+                          target: {
+                            name: "orientacion",
+                            value: next,
+                          },
+                        } as any);
+                      }}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                        isSelected
+                          ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-indigo-300"
+                      }`}
+                    >
+                      {o}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">

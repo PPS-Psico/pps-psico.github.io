@@ -1,8 +1,11 @@
 import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
+import {
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
+} from "../../constants";
 import { FilterType, useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
-import { normalizeStringForComparison } from "../../utils/formatters";
+import { normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
 import CollapsibleSection from "../CollapsibleSection";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
@@ -136,11 +139,23 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
             ...filteredData.respondidasPendienteDecision,
           ].filter((pps: any) => {
             const lastUpdate = pps.updated_at || pps.created_at;
-            if (!lastUpdate) return true;
-            const daysSince = Math.floor(
-              (now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24)
-            );
-            return daysSince >= 2;
+            const daysSince = lastUpdate
+              ? Math.floor((now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24))
+              : 99; // Si no hay fecha, está demorada
+
+            // Verificar si tiene un recordatorio futuro
+            const reminderDate = pps[FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS];
+            let isSnoozed = false;
+            if (reminderDate) {
+              const d = parseToUTCDate(reminderDate);
+              if (d) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                isSnoozed = d > today;
+              }
+            }
+
+            return daysSince >= 2 && !isSnoozed;
           });
 
           if (allStagnant.length === 0 && filterType === "demoradas") {

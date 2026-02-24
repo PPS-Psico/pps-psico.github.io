@@ -440,6 +440,7 @@ export type Database = {
           requisito_obligatorio: string | null;
           updated_at: string | null;
           historial_gestion: string | null;
+          proximo_seguimiento: string | null;
         };
         Insert: {
           actividades_label?: string | null;
@@ -476,6 +477,7 @@ export type Database = {
           req_certificado_trabajo?: boolean | null;
           req_cv?: boolean | null;
           requisito_obligatorio?: string | null;
+          proximo_seguimiento?: string | null;
         };
         Update: {
           actividades_label?: string | null;
@@ -514,6 +516,7 @@ export type Database = {
           requisito_obligatorio?: string | null;
           updated_at?: string | null;
           historial_gestion?: string | null;
+          proximo_seguimiento?: string | null;
         };
         Relationships: [];
       };
