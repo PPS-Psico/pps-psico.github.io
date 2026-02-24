@@ -410,7 +410,11 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
   ]);
   const [actividades, setActividades] = useState<string[]>([]);
 
-  const isMultiOrientation = (formData.orientacion as string[])?.length >= 2;
+  const isMultiOrientation = useMemo(() => {
+    const orientations = (formData.orientacion as string[]) || [];
+    const unique = new Set(orientations.map((o) => normalizeStringForComparison(o)));
+    return unique.size >= 2;
+  }, [formData.orientacion]);
 
   // Legacy: We still save it effectively, but we don't focus on it as much in UI.
 
@@ -540,9 +544,25 @@ Responde SOLO con el JSON válido.
             ? parsed.actividades
             : actividades;
 
-        // Detect and filter orientations from the AI
+        // Detect and filter orientations from the AI with normalization
         const detectedOrientations = Array.isArray(parsed.orientaciones)
-          ? parsed.orientaciones.filter((o: string) => ALL_ORIENTACIONES.includes(o))
+          ? ([
+              ...new Set(
+                parsed.orientaciones
+                  .map(
+                    (o: string) =>
+                      ALL_ORIENTACIONES.find(
+                        (std) =>
+                          normalizeStringForComparison(std) === normalizeStringForComparison(o)
+                      ) || o
+                  )
+                  .filter((o: string) =>
+                    ALL_ORIENTACIONES.some(
+                      (std) => normalizeStringForComparison(std) === normalizeStringForComparison(o)
+                    )
+                  )
+              ),
+            ] as string[])
           : [];
 
         setFormData((prev) => ({
@@ -1113,6 +1133,18 @@ Responde SOLO con el JSON válido.
       orientationList = orientationRaw;
     }
 
+    // Normalize and unique
+    orientationList = [
+      ...new Set(
+        orientationList.map((o) => {
+          const found = ALL_ORIENTACIONES.find(
+            (std) => normalizeStringForComparison(std) === normalizeStringForComparison(o)
+          );
+          return found || o;
+        })
+      ),
+    ];
+
     setFormData((prev) => ({
       ...prev,
       orientacion: orientationList,
@@ -1180,7 +1212,14 @@ Responde SOLO con el JSON válido.
       [FIELD_NOMBRE_PPS_LANZAMIENTOS]: formData.nombrePPS,
       [FIELD_FECHA_INICIO_LANZAMIENTOS]: formData.fechaInicio, // Always launch start date
       [FIELD_FECHA_FIN_LANZAMIENTOS]: formData.fechaFin,
-      [FIELD_ORIENTACION_LANZAMIENTOS]: formData.orientacion.join(", "),
+      [FIELD_ORIENTACION_LANZAMIENTOS]: formData.orientacion
+        .map((o) => {
+          const found = ALL_ORIENTACIONES.find(
+            (std) => normalizeStringForComparison(std) === normalizeStringForComparison(o)
+          );
+          return found || o;
+        })
+        .join(", "),
       [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: Number(formData.horasAcreditadas),
       [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: Number(formData.cuposDisponibles),
       [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: horarioFinal,
@@ -1502,15 +1541,27 @@ Responde SOLO con el JSON válido.
                 <InputWrapper label="Orientaciones" icon="school">
                   <div className="flex flex-wrap gap-2">
                     {ALL_ORIENTACIONES.map((o) => {
-                      const isSelected = (formData.orientacion as string[])?.includes(o);
+                      const isSelected = (formData.orientacion as string[])?.some(
+                        (selected) =>
+                          normalizeStringForComparison(selected) === normalizeStringForComparison(o)
+                      );
                       return (
                         <button
                           key={o}
                           type="button"
                           onClick={() => {
                             const current = (formData.orientacion as string[]) || [];
-                            const next = current.includes(o)
-                              ? current.filter((x: string) => x !== o)
+                            const isAlreadySelected = current.some(
+                              (x) =>
+                                normalizeStringForComparison(x) === normalizeStringForComparison(o)
+                            );
+
+                            const next = isAlreadySelected
+                              ? current.filter(
+                                  (x) =>
+                                    normalizeStringForComparison(x) !==
+                                    normalizeStringForComparison(o)
+                                )
                               : [...current, o];
                             setFormData((prev) => ({ ...prev, orientacion: next }));
                           }}
