@@ -1,10 +1,8 @@
-import js from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
+import prettier from 'eslint-plugin-prettier/recommended';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
-import jsxA11y from 'eslint-plugin-jsx-a11y';
-import prettier from 'eslint-plugin-prettier/recommended';
 import security from 'eslint-plugin-security';
 
 export default [
@@ -26,7 +24,10 @@ export default [
       'jest-setup.ts',
       'supabase/**',
       '__ANTIGRAVITY_PROBE__.txt',
-      '.storybook/**'
+      '.storybook/**',
+      '.agent/**',
+      'temp_skills/**',
+      'testsprite_tests/**'
     ]
   },
   {
