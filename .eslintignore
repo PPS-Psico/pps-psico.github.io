@@ -1,6 +1,0 @@
-node_modules
-dist
-public/sw.js
-generate_keys.cjs
-vapid_keys_gen.json
-vapid_result.json
