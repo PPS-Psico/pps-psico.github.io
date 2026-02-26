@@ -1,6 +1,6 @@
 import React from "react";
-import Button from "../../ui/Button";
 import ConvocatoriaCardPremium from "../../ConvocatoriaCardPremium";
+import Button from "../../ui/Button";
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -71,7 +71,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
             <ConvocatoriaCardPremium
               id="preview"
               nombre={formData.nombrePPS || "Nombre de la PPS"}
-              orientacion={formData.orientacion || "Clinica"}
+              orientacion={formData.orientacion || "Clínica"}
               direccion={formData.direccion || "Dirección no especificada"}
               descripcion={formData.descripcion || "Descripción no disponible"}
               actividades={actividades.filter(Boolean)}

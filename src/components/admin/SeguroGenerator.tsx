@@ -1,45 +1,43 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
+  FIELD_CORREO_ESTUDIANTES,
+  FIELD_DIRECCION_CONVOCATORIAS,
+  FIELD_DIRECCION_LANZAMIENTOS,
+  FIELD_DNI_ESTUDIANTES,
+  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
+  FIELD_FECHA_FIN_CONVOCATORIAS,
+  FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_CONVOCATORIAS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_HORARIO_ASIGNADO_CONVOCATORIAS,
+  FIELD_HORARIO_FORMULA_CONVOCATORIAS,
+  FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+  FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_NOMBRE_PPS_CONVOCATORIAS,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
+  FIELD_ORIENTACION_CONVOCATORIAS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
+  FIELD_TELEFONO_ESTUDIANTES,
+} from "../../constants";
 import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
 import {
   formatDate,
+  formatPhoneNumber,
   normalizeStringForComparison,
   simpleNameSplit,
-  safeGetId,
-  formatPhoneNumber,
 } from "../../utils/formatters";
-import type { Convocatoria } from "../../types";
-import {
-  FIELD_NOMBRE_PPS_CONVOCATORIAS,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
-  FIELD_FECHA_INICIO_CONVOCATORIAS,
-  FIELD_FECHA_FIN_CONVOCATORIAS,
-  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_DNI_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
-  FIELD_TELEFONO_ESTUDIANTES,
-  FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
-  FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
-  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_DIRECCION_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_FIN_LANZAMIENTOS,
-  FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_DIRECCION_CONVOCATORIAS,
-  FIELD_HORARIO_FORMULA_CONVOCATORIAS,
-  FIELD_HORARIO_ASIGNADO_CONVOCATORIAS,
-  FIELD_ORIENTACION_CONVOCATORIAS,
-  FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
-} from "../../constants";
-import Loader from "../Loader";
 import EmptyState from "../EmptyState";
+import Loader from "../Loader";
+import Card from "../ui/Card";
 import Checkbox from "../ui/Checkbox";
 import Toast from "../ui/Toast";
-import Card from "../ui/Card";
 
 interface SeguroGeneratorProps {
   showModal: (title: string, message: string) => void;
@@ -215,7 +213,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
           lugarCompleto: "Hosp Test - Calle 1",
           duracionCompleta: "Periodo: Ene-Jun. Horario: 9-18",
           tutor: "Tutor 1",
-          orientacion: "Clinica",
+          orientacion: "Clínica",
         },
       ]);
       setStep("review");

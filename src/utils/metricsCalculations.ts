@@ -1,27 +1,27 @@
+import { differenceInDays } from "date-fns";
 import {
-  FIELD_ESTADO_ESTUDIANTES,
-  FIELD_FECHA_FINALIZACION_ESTUDIANTES,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
-  FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_FECHA_INICIO_PRACTICAS,
-  FIELD_ESTADO_PPS,
-  FIELD_ULTIMA_ACTUALIZACION_PPS,
-  FIELD_ESTADO_FINALIZACION,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_ESTADO_ESTUDIANTES,
+  FIELD_ESTADO_FINALIZACION,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_HORAS_PRACTICAS,
+  FIELD_ESTADO_PPS,
   FIELD_ESTADO_PRACTICA,
   FIELD_ESTUDIANTE_FINALIZACION,
+  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_FECHA_FINALIZACION_ESTUDIANTES,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_FECHA_SOLICITUD_FINALIZACION,
+  FIELD_HORAS_PRACTICAS,
+  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_NOMBRE_INSTITUCIONES,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
+  FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../constants";
-import { parseToUTCDate, safeGetId, normalizeStringForComparison } from "./formatters";
-import { differenceInDays } from "date-fns";
+import { normalizeStringForComparison, parseToUTCDate, safeGetId } from "./formatters";
 
 const getGroupName = (name: string | undefined): string => {
   if (!name) return "Sin Nombre";
@@ -217,7 +217,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     raw_value: string;
   }
   const occupancyByOrientation: Record<string, OccupancyEntry[]> = {
-    Clinica: [],
+    Clínica: [],
     Educacional: [],
     Laboral: [],
     Comunitaria: [],
@@ -252,7 +252,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     const normalized = normalizeStringForComparison(
       (launch as any)?.[FIELD_ORIENTACION_LANZAMIENTOS]
     );
-    if (normalized.includes("clinica")) occupancyByOrientation["Clinica"].push(studentEntry);
+    if (normalized.includes("clinica")) occupancyByOrientation["Clínica"].push(studentEntry);
     else if (normalized.includes("educacional") || normalized.includes("educacion"))
       occupancyByOrientation["Educacional"].push(studentEntry);
     else if (normalized.includes("laboral") || normalized.includes("trabajo"))

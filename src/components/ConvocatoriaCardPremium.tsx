@@ -56,7 +56,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
     : orientacion
       ? [orientacion]
       : [];
-  const primaryOrientacion = orientationsArray[0] || "Clinica";
+  const primaryOrientacion = orientationsArray[0] || "Clínica";
   const theme = getEspecialidadClasses(primaryOrientacion);
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);

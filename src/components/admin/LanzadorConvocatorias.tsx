@@ -113,7 +113,7 @@ const mockInstitutions = [
 
 const mockLastLanzamiento = {
   id: "recLanzMock1",
-  [FIELD_ORIENTACION_LANZAMIENTOS]: "Clinica",
+  [FIELD_ORIENTACION_LANZAMIENTOS]: "Clínica",
   [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 120,
   [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 5,
   [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: "Lunes 9 a 13hs; Miércoles 14 a 18hs",
@@ -393,7 +393,7 @@ const LAUNCH_TABLE_CONFIG = {
       key: FIELD_ORIENTACION_LANZAMIENTOS,
       label: "Orientaciones",
       type: "text" as const,
-      description: "Ej: Clinica, Laboral, Educacional",
+      description: "Ej: Clínica, Laboral, Educacional",
     },
     {
       key: FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,

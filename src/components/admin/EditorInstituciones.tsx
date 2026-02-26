@@ -1,32 +1,32 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+  FIELD_DIRECCION_INSTITUCIONES,
+  FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+  FIELD_NOMBRE_INSTITUCIONES,
+  FIELD_ORIENTACIONES_INSTITUCIONES,
+  FIELD_TELEFONO_INSTITUCIONES,
+  FIELD_TUTOR_INSTITUCIONES,
+  TABLE_NAME_INSTITUCIONES,
+} from "../../constants";
+import { MOCK_INSTITUCIONES } from "../../data/mockData";
 import { db } from "../../lib/db";
 import { schema } from "../../lib/dbSchema";
 import {
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_TELEFONO_INSTITUCIONES,
-  FIELD_DIRECCION_INSTITUCIONES,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-  TABLE_NAME_INSTITUCIONES,
-  FIELD_TUTOR_INSTITUCIONES,
-  FIELD_ORIENTACIONES_INSTITUCIONES,
-  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_ESPECIALIDAD_PRACTICAS,
-} from "../../constants";
-import Loader from "../Loader";
-import RecordEditModal from "./RecordEditModal";
-import Toast from "../ui/Toast";
-import ContextMenu from "./ContextMenu";
-import Button from "../ui/Button";
-import PaginationControls from "../PaginationControls";
-import {
-  normalizeStringForComparison,
-  getEspecialidadClasses,
   cleanInstitutionName,
+  getEspecialidadClasses,
+  normalizeStringForComparison,
   toTitleCase,
 } from "../../utils/formatters";
 import ConfirmModal from "../ConfirmModal";
-import { MOCK_INSTITUCIONES } from "../../data/mockData";
+import Loader from "../Loader";
+import PaginationControls from "../PaginationControls";
+import Button from "../ui/Button";
+import Toast from "../ui/Toast";
+import ContextMenu from "./ContextMenu";
+import RecordEditModal from "./RecordEditModal";
 
 const TABLE_CONFIG = {
   label: "Instituciones",
@@ -73,7 +73,7 @@ const LISTA_CONVENIOS_2025 = [
   "Randstad",
   "Sanatorio Juan XXIII",
   "Subsecretaría de Familia",
-  "Clinica Fava",
+  "Clínica Fava",
   "ACUCADES",
 ];
 

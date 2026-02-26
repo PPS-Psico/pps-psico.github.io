@@ -1,5 +1,5 @@
-import { supabase } from "../lib/supabaseClient";
 import { KEY_EMAIL_COUNT, KEY_EMAIL_MONTH } from "../constants";
+import { supabase } from "../lib/supabaseClient";
 
 type EmailScenario = "seleccion" | "solicitud" | "sac";
 
@@ -75,6 +75,7 @@ const getDataConfig = (label: string) => {
   if (lower.includes("instituci")) return { icon: "📍", color: "#dc2626" };
   if (lower.includes("horario") || lower.includes("comisi"))
     return { icon: "📅", color: "#2563eb" };
+  if (lower.includes("encuentro")) return { icon: "🤝", color: "#7e22ce" };
   return { icon: "👉", color: "#475569" };
 };
 
@@ -126,7 +127,8 @@ export const generateHtmlTemplate = (
       (line.includes("Institución") ||
         line.includes("Horario") ||
         line.includes("Estado") ||
-        line.includes("Comisión"))
+        line.includes("Comisión") ||
+        line.includes("Encuentro"))
     ) {
       const label = dataMatch[1].trim();
       const val = dataMatch[2].trim();
@@ -181,7 +183,20 @@ export const sendSmartEmail = async (
     // ya se maneja en useSeleccionadorLogic.ts enviando undefined en schedule
     const horarioText = data.schedule ? `⏰ Horario/Comisión asignada: ${data.schedule}\n` : "";
 
-    const textBody = bodyTmpl
+    let processedBody = bodyTmpl;
+    // Auto-inject encuentro_inicial if data exists but placeholder is missing in the template (for old records)
+    if (data.encuentroInicial && !processedBody.includes("{{encuentro_inicial}}")) {
+      if (processedBody.includes("{{nombre_pps}}")) {
+        processedBody = processedBody.replace(
+          "{{nombre_pps}}",
+          "{{nombre_pps}}\n{{encuentro_inicial}}"
+        );
+      } else {
+        processedBody = processedBody + "\n{{encuentro_inicial}}";
+      }
+    }
+
+    const textBody = processedBody
       .replace(/{{nombre_alumno}}/g, data.studentName)
       .replace(/{{nombre_pps}}/g, data.ppsName || "")
       .replace(/{{horario}}/g, horarioText)

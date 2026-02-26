@@ -24,7 +24,7 @@ const EMAIL_SCENARIOS: AutomationScenario[] = [
     label: "Alumno Seleccionado",
     description: 'Se envía cuando marcas a un estudiante como "Seleccionado" en una convocatoria.',
     icon: "how_to_reg",
-    variables: ["{{nombre_alumno}}", "{{nombre_pps}}", "{{horario}}"],
+    variables: ["{{nombre_alumno}}", "{{nombre_pps}}", "{{encuentro_inicial}}", "{{horario}}"],
     defaultSubject: "Confirmación de Asignación PPS: {{nombre_pps}} 🎓",
     defaultBody: `Hola {{nombre_alumno}},
 
@@ -33,6 +33,7 @@ Espero que estés muy bien.
 Nos complace informarte que has sido seleccionado/a para realizar tu Práctica Profesional Supervisada en:
 
 Institución: {{nombre_pps}}
+{{encuentro_inicial}}
 Horario/Comisión asignada: {{horario}}
 
 💡 Recomendaciones para tu Práctica
@@ -218,10 +219,28 @@ const EmailAutomationManager: React.FC = () => {
       let finalSubject = subject;
 
       if (scenario.id === "seleccion") {
-        rawTextBody = rawTextBody
-          .replace("{{nombre_pps}}", "Clínica Demo UFLO")
-          .replace("{{horario}}", "Lunes 14hs");
+        const mockEncuentro = "Encuentro Inicial: Próximo Lunes 10:00 hs";
+        const mockPPS = "Clínica Demo UFLO";
+        const mockHorario = "Lunes de 16:00 a 19:00 hs";
+
+        // Subject handling
         finalSubject = finalSubject.replace("{{nombre_pps}}", "Clínica Demo");
+
+        // Body handling: first handle the encounter injection logic
+        if (!rawTextBody.includes("{{encuentro_inicial}}")) {
+          // If placeholder missing, simulate auto-injection after PPS name or at end
+          if (rawTextBody.includes("{{nombre_pps}}")) {
+            rawTextBody = rawTextBody.replace("{{nombre_pps}}", `{{nombre_pps}}\n${mockEncuentro}`);
+          } else {
+            rawTextBody += `\n${mockEncuentro}`;
+          }
+        }
+
+        // Final placeholders replacement
+        rawTextBody = rawTextBody
+          .replace("{{nombre_pps}}", mockPPS)
+          .replace("{{horario}}", mockHorario)
+          .replace("{{encuentro_inicial}}", mockEncuentro);
       } else if (scenario.id === "solicitud") {
         rawTextBody = rawTextBody
           .replace("{{institucion}}", "Hospital Modelo")

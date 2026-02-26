@@ -60,7 +60,7 @@ export interface AppErrorResponse {
   error: AppError | string;
 }
 
-export const ALL_ORIENTACIONES = ["Clinica", "Educacional", "Laboral", "Comunitaria"] as const;
+export const ALL_ORIENTACIONES = ["Clínica", "Educacional", "Laboral", "Comunitaria"] as const;
 export type Orientacion = (typeof ALL_ORIENTACIONES)[number];
 
 export type TabId =

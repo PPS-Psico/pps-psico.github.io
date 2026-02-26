@@ -1,11 +1,11 @@
-import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
-import type { Practica } from "../types";
 import {
-  FIELD_ESTADO_PRACTICA,
-  FIELD_HORAS_PRACTICAS,
   FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
   FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_HORAS_PRACTICAS,
 } from "../constants";
+import type { Practica } from "../types";
+import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
 
 /**
  * Business Logic Layer for Student Rules
@@ -86,14 +86,23 @@ export const calculateSpecialtyHours = (
  * Extracts unique orientations from a list of practices.
  */
 export const getUniqueOrientations = (practices: Practica[]): string[] => {
-  return [
-    ...new Set(
-      practices
-        .map((p) => p[FIELD_ESPECIALIDAD_PRACTICAS])
-        .filter(Boolean)
-        .map(String)
-    ),
-  ];
+  const normalizedMap = new Map<string, string>();
+
+  practices.forEach((p) => {
+    const raw = String(p[FIELD_ESPECIALIDAD_PRACTICAS] || "");
+    if (!raw) return;
+
+    const normalized = normalizeStringForComparison(raw);
+
+    // Si ya existe y es la versión con acento, no hacemos nada.
+    // Si no existe, o si es 'clinica' y queremos asegurar el acento:
+    if (!normalizedMap.has(normalized) || (normalized === "clinica" && !raw.includes("í"))) {
+      const valueToSet = normalized === "clinica" ? "Clínica" : raw;
+      normalizedMap.set(normalized, valueToSet);
+    }
+  });
+
+  return Array.from(normalizedMap.values());
 };
 
 /**

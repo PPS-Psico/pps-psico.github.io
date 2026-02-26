@@ -448,7 +448,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Seleccioná una orientación</option>
-                {["Clinica", "Educacional", "Laboral", "Comunitaria"].map((ori) => (
+                {["Clínica", "Educacional", "Laboral", "Comunitaria"].map((ori) => (
                   <option key={ori} value={ori}>
                     {ori}
                   </option>

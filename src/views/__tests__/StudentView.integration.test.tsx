@@ -38,7 +38,7 @@ const mockLanzamiento = {
   id: "lanz_test_enroll",
   created_at: "",
   [FIELD_NOMBRE_PPS_LANZAMIENTOS]: "PPS de Integración",
-  [FIELD_ORIENTACION_LANZAMIENTOS]: "Clinica",
+  [FIELD_ORIENTACION_LANZAMIENTOS]: "Clínica",
   [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Abierta",
   [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: "Lunes 9 a 13hs; Martes 14 a 18hs",
   [FIELD_FECHA_INICIO_LANZAMIENTOS]: "2024-09-01",

@@ -182,4 +182,4 @@ export const FIELD_PENALIZACION_PUNTAJE = "puntaje_penalizacion";
 export const FIELD_PENALIZACION_CONVOCATORIA_LINK = "convocatoria_afectada";
 
 // Orientaciones
-export const ALL_ORIENTACIONES = ["Clinica", "Educacional", "Laboral", "Comunitaria"] as const;
+export const ALL_ORIENTACIONES = ["Clínica", "Educacional", "Laboral", "Comunitaria"] as const;

@@ -46,7 +46,7 @@ const DesignSystemView: React.FC = () => {
     ...sampleData,
     id: "2",
     nombre: "H. Castro Rendón",
-    orientacion: "Clinica",
+    orientacion: "Clínica",
     descripcion:
       "Práctica clínica en el Hospital Regional. Rotación por servicios de Salud Mental y Adicciones.",
     logoUrl: undefined, // Test default monogram

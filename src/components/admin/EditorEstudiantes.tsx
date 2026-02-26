@@ -1,33 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { db } from "../../lib/db";
-import { schema } from "../../lib/dbSchema";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useEffect, useState } from "react";
 import {
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_DNI_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
-  FIELD_TELEFONO_ESTUDIANTES,
-  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
-  FIELD_ESTADO_ESTUDIANTES,
-  FIELD_FECHA_FINALIZACION_ESTUDIANTES,
-  FIELD_NOTAS_INTERNAS_ESTUDIANTES,
-  FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
   FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
+  FIELD_CORREO_ESTUDIANTES,
+  FIELD_DNI_ESTUDIANTES,
+  FIELD_ESTADO_ESTUDIANTES,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_FECHA_FINALIZACION_ESTUDIANTES,
   FIELD_HORAS_PRACTICAS,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
+  FIELD_NOTAS_INTERNAS_ESTUDIANTES,
+  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
+  FIELD_TELEFONO_ESTUDIANTES,
   TABLE_NAME_ESTUDIANTES,
 } from "../../constants";
+import { MOCK_ESTUDIANTES, MOCK_PRACTICAS } from "../../data/mockData";
+import { db } from "../../lib/db";
+import { schema } from "../../lib/dbSchema";
 import { ALL_ESTADOS_ESTUDIANTE } from "../../schemas";
-import Loader from "../Loader";
-import Toast from "../ui/Toast";
-import RecordEditModal from "./RecordEditModal";
-import PaginationControls from "../PaginationControls";
-import ContextMenu from "./ContextMenu";
-import Button from "../ui/Button";
 import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
-import { MOCK_ESTUDIANTES, MOCK_PRACTICAS } from "../../data/mockData";
+import Loader from "../Loader";
+import PaginationControls from "../PaginationControls";
+import Button from "../ui/Button";
+import Toast from "../ui/Toast";
+import ContextMenu from "./ContextMenu";
+import RecordEditModal from "./RecordEditModal";
 
 const TABLE_CONFIG = {
   label: "Estudiantes",
@@ -47,7 +47,7 @@ const TABLE_CONFIG = {
       key: FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
       label: "Orientación",
       type: "select" as const,
-      options: ["", "Clinica", "Educacional", "Laboral", "Comunitaria"],
+      options: ["", "Clínica", "Educacional", "Laboral", "Comunitaria"],
     },
     {
       key: FIELD_ESTADO_ESTUDIANTES,

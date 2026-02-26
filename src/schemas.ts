@@ -1,7 +1,7 @@
 import { z } from "zod";
 import * as C from "./constants";
 
-export const ALL_ORIENTACIONES = ["Clinica", "Educacional", "Laboral", "Comunitaria"] as const;
+export const ALL_ORIENTACIONES = ["Clínica", "Educacional", "Laboral", "Comunitaria"] as const;
 export const ALL_ESTADOS_ESTUDIANTE = [
   "Activo",
   "Finalizado",

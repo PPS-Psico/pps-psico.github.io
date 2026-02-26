@@ -1,26 +1,26 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { fetchAllData, updateRecord } from "../services/supabaseService";
-import type { LanzamientoPPS } from "../types";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_FECHA_FIN_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
+  FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
+  TABLE_NAME_LANZAMIENTOS_PPS,
 } from "../constants";
-import Loader from "./Loader";
+import { fetchAllData, updateRecord } from "../services/supabaseService";
+import type { LanzamientoPPS } from "../types";
+import { formatDate, getEspecialidadClasses, getStatusVisuals } from "../utils/formatters";
 import EmptyState from "./EmptyState";
+import Loader from "./Loader";
 import Toast from "./ui/Toast";
-import { getEspecialidadClasses, formatDate, getStatusVisuals } from "../utils/formatters";
 
 const mockLanzamientosStatus: LanzamientoPPS[] = [
   {
     id: "lanz_status_1",
     [FIELD_NOMBRE_PPS_LANZAMIENTOS]: "Prueba Abierta",
     [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Abierta",
-    [FIELD_ORIENTACION_LANZAMIENTOS]: "Clinica",
+    [FIELD_ORIENTACION_LANZAMIENTOS]: "Clínica",
   } as any,
   {
     id: "lanz_status_2",

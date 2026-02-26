@@ -1,45 +1,41 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+  FIELD_CORREO_ESTUDIANTES,
+  FIELD_DIRECCION_INSTITUCIONES,
+  FIELD_DNI_ESTUDIANTES,
+  FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
+  FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_FECHA_INICIO_PRACTICAS,
+  FIELD_HORAS_PRACTICAS,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+  FIELD_NOMBRE_INSTITUCIONES,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_NOTA_PRACTICAS,
+  FIELD_NOTAS_INTERNAS_ESTUDIANTES,
+  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
+  FIELD_ORIENTACIONES_INSTITUCIONES,
+  FIELD_TELEFONO_ESTUDIANTES,
+  FIELD_TELEFONO_INSTITUCIONES,
+  FIELD_TUTOR_INSTITUCIONES,
+} from "../../constants";
 import { db } from "../../lib/db";
 import { schema } from "../../lib/dbSchema";
 import type { AppRecord } from "../../types";
-import SubTabs from "../SubTabs";
-import Loader from "../Loader";
+import { ALL_ORIENTACIONES } from "../../types";
+import { formatDate, getEspecialidadClasses } from "../../utils/formatters";
 import EmptyState from "../EmptyState";
+import Loader from "../Loader";
+import SubTabs from "../SubTabs";
+import Card from "../ui/Card";
 import Toast from "../ui/Toast";
 import RecordEditModal from "./RecordEditModal";
-import {
-  formatDate,
-  normalizeStringForComparison,
-  getEspecialidadClasses,
-} from "../../utils/formatters";
-import Card from "../ui/Card";
-import { ALL_ORIENTACIONES } from "../../types";
-import {
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
-  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_FECHA_INICIO_PRACTICAS,
-  FIELD_DNI_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
-  FIELD_TELEFONO_ESTUDIANTES,
-  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
-  FIELD_NOTAS_INTERNAS_ESTUDIANTES,
-  FIELD_FECHA_FIN_PRACTICAS,
-  FIELD_HORAS_PRACTICAS,
-  FIELD_ESTADO_PRACTICA,
-  FIELD_ESPECIALIDAD_PRACTICAS,
-  FIELD_NOTA_PRACTICAS,
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_TELEFONO_INSTITUCIONES,
-  FIELD_DIRECCION_INSTITUCIONES,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-  FIELD_TUTOR_INSTITUCIONES,
-  FIELD_ORIENTACIONES_INSTITUCIONES,
-} from "../../constants";
 
 interface FieldConfig {
   key: string;
@@ -78,7 +74,7 @@ const EDITABLE_TABLES: Record<string, TableConfig & { icon: string }> = {
         key: FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
         label: "Orientación Elegida",
         type: "select",
-        options: ["", "Clinica", "Educacional", "Laboral", "Comunitaria"],
+        options: ["", "Clínica", "Educacional", "Laboral", "Comunitaria"],
       },
       { key: FIELD_NOTAS_INTERNAS_ESTUDIANTES, label: "Notas Internas", type: "textarea" },
     ],
