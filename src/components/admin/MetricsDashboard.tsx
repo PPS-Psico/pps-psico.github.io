@@ -378,7 +378,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
               title="Próximos a Finalizar"
               value={metrics.proximosAFinalizar.value}
               icon="hourglass_top"
-              description=">=230hs o Completos con Práctica Activa"
+              description=">=230hs sin solicitud de acreditación en trámite, cargada o realizada"
               onClick={() =>
                 openModal({
                   title: "Alumnos Próximos a Finalizar",
@@ -388,7 +388,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                     { key: "legajo", label: "Legajo" },
                   ],
                   description:
-                    "Listado de alumnos con más de 230 horas acumuladas o que ya cumplen los requisitos pero tienen prácticas 'En curso' impidiendo el cierre.",
+                    "Listado de alumnos con más de 230 horas que NO tienen solicitud de acreditación en trámite, cargada o ya realizada.",
                 })
               }
               isLoading={false}

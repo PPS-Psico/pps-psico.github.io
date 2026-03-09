@@ -31,6 +31,8 @@ import {
   FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
   FIELD_REQ_CV_LANZAMIENTOS,
   FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS,
+  FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
+  FIELD_ARCHIVO_DESCARGABLE_URL,
   FIELD_TELEFONO_INSTITUCIONES,
   FIELD_TUTOR_INSTITUCIONES,
 } from "../../constants";
@@ -124,6 +126,8 @@ const mockLastLanzamiento = {
   descripcion: "Mock description",
   actividades: ["Act 1"],
   requisitoObligatorio: "",
+  archivoDescargableNombre: "",
+  archivoDescargableUrl: "",
 };
 
 type FormData = {
@@ -143,6 +147,8 @@ type FormData = {
   direccion: string | undefined;
   descripcion: string;
   requisitoObligatorio: string;
+  archivoDescargableNombre: string;
+  archivoDescargableUrl: string;
   programarLanzamiento: boolean;
   fechaPublicacion: string;
   mensajeWhatsApp: string;
@@ -167,6 +173,8 @@ const initialState: FormData = {
   direccion: "",
   descripcion: "",
   requisitoObligatorio: "",
+  archivoDescargableNombre: "",
+  archivoDescargableUrl: "",
   // New Scheduling
   programarLanzamiento: false,
   fechaPublicacion: "",
@@ -503,6 +511,7 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
   // AI Loading State
   const [rawActivityText, setRawActivityText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
   );
@@ -1238,6 +1247,8 @@ Responde SOLO con el JSON válido.
       descripcion: (lastLanzamiento[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "",
       requisitoObligatorio:
         (lastLanzamiento[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] as string) || "",
+      archivoDescargableNombre: (lastLanzamiento[FIELD_ARCHIVO_DESCARGABLE_NOMBRE] as string) || "",
+      archivoDescargableUrl: (lastLanzamiento[FIELD_ARCHIVO_DESCARGABLE_URL] as string) || "",
       fechaEncuentroInicial:
         (lastLanzamiento[FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS] as string) || "",
       fechaInicioInscripcion: "",
@@ -1317,6 +1328,8 @@ Responde SOLO con el JSON válido.
       [FIELD_DESCRIPCION_LANZAMIENTOS]: formData.descripcion,
       [FIELD_ACTIVIDADES_LANZAMIENTOS]: actividadesFinal,
       [FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS]: formData.requisitoObligatorio,
+      [FIELD_ARCHIVO_DESCARGABLE_NOMBRE]: formData.archivoDescargableNombre,
+      [FIELD_ARCHIVO_DESCARGABLE_URL]: formData.archivoDescargableUrl,
       [FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS]: formData.fechaInicioInscripcion,
       [FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]: formData.fechaFinInscripcion,
       [FIELD_FECHA_PUBLICACION_LANZAMIENTOS]: formData.programarLanzamiento
@@ -1995,6 +2008,104 @@ Responde SOLO con el JSON válido.
                     placeholder="Ej: Solo estudiantes con Psicoanálisis aprobado"
                   />
                 </InputWrapper>
+
+                <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/10 border border-violet-200/50 dark:border-violet-800/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-icons text-violet-500 !text-lg">attach_file</span>
+                    <span className="text-sm font-bold text-violet-700 dark:text-violet-300">
+                      Archivo Descargable (Opcional)
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    <Input
+                      name="archivoDescargableNombre"
+                      value={formData.archivoDescargableNombre}
+                      onChange={handleChange}
+                      placeholder="Ej: Descarga la fundamentación completa de la PPS"
+                    />
+                    {formData.archivoDescargableUrl ? (
+                      <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <span className="material-icons text-green-500 !text-sm">check_circle</span>
+                        <span className="text-sm text-green-700 dark:text-green-300 flex-1 truncate">
+                          Archivo subido correctamente
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              archivoDescargableUrl: "",
+                              archivoDescargableFile: null,
+                            }))
+                          }
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <span className="material-icons !text-sm">close</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-violet-300 dark:border-violet-700 border-dashed rounded-lg cursor-pointer bg-violet-50/50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <span className="material-icons text-violet-400 !text-2xl mb-1">
+                            cloud_upload
+                          </span>
+                          <p className="text-xs text-violet-600 dark:text-violet-400">
+                            Arrastrá o <span className="font-semibold">elegí</span> un archivo
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            try {
+                              setUploadingFile(true);
+                              const fileExt = file.name.split(".").pop();
+                              const fileName = `convocatorias/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+                              const { error: uploadError } = await supabase.storage
+                                .from("documentos_pps")
+                                .upload(fileName, file, { upsert: true });
+
+                              if (uploadError) throw uploadError;
+
+                              const { data: urlData } = supabase.storage
+                                .from("documentos_pps")
+                                .getPublicUrl(fileName);
+
+                              setFormData((prev) => ({
+                                ...prev,
+                                archivoDescargableUrl: urlData.publicUrl,
+                              }));
+
+                              setToastInfo({
+                                message: "Archivo subido correctamente",
+                                type: "success",
+                              });
+                            } catch (err: any) {
+                              console.error("Error uploading file:", err);
+                              setToastInfo({
+                                message: "Error al subir archivo: " + err.message,
+                                type: "error",
+                              });
+                            } finally {
+                              setUploadingFile(false);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                    <Input
+                      name="archivoDescargableUrl"
+                      value={formData.archivoDescargableUrl}
+                      onChange={handleChange}
+                      placeholder="O pegá una URL externa aquí..."
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2175,6 +2286,8 @@ Responde SOLO con el JSON válido.
                           }
                           cupo={String(formData.cuposDisponibles || 0)}
                           requisitoObligatorio={formData.requisitoObligatorio}
+                          archivoDescargableNombre={formData.archivoDescargableNombre}
+                          archivoDescargableUrl={formData.archivoDescargableUrl}
                           reqCv={formData.reqCv}
                           horariosFijos={formData.horariosFijos}
                           fechaEncuentroInicial={formData.fechaEncuentroInicial}

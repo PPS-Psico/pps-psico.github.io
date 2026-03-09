@@ -413,7 +413,9 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                   )}
                 </div>
                 <h4
-                  className="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 leading-tight truncate pr-2"
+                  className={`font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 leading-tight pr-2 ${
+                    isExpanded ? "whitespace-normal" : "truncate"
+                  }`}
                   title={pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
                 >
                   {pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}

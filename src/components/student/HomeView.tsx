@@ -181,6 +181,8 @@ const HomeView: React.FC<HomeViewProps> = ({
         horariosCursada={lanzamiento[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || "A definir"}
         cupo={String(lanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0)}
         requisitoObligatorio={lanzamiento.requisito_obligatorio || ""}
+        archivoDescargableNombre={lanzamiento.archivo_descargable_nombre || ""}
+        archivoDescargableUrl={lanzamiento.archivo_descargable_url || ""}
         reqCv={lanzamiento[FIELD_REQ_CV_LANZAMIENTOS] || false}
         timeline={{
           inscripcion:

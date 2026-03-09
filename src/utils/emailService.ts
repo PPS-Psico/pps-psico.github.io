@@ -19,9 +19,9 @@ Hay novedades sobre tu solicitud de PPS en "{{institucion}}".
 Nuevo Estado: {{estado_nuevo}}`,
   },
   sac: {
-    subject: "Acreditación de Prácticas en SAC ✅",
+    subject: "Relevamiento del Ejercicio Profesional en Psicología - PPS UFLO 📋",
     body: `Hola {{nombre_alumno}},
-Queremos avisarte que tus horas de la PPS "{{nombre_pps}}" fueron acreditadas correctamente y ya podés visualizarlas en el sistema SAC.`,
+{{notas}}`,
   },
 };
 

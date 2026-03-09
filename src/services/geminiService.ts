@@ -60,16 +60,13 @@ export const testGeminiModel = async (model: string): Promise<ModelDiagnostic> =
 };
 
 export const generateWithGemini = async (prompt: string): Promise<string> => {
-  // CONFIGURACIÓN DE PRIORIDAD BASADA EN DIAGNÓSTICO EXITOSO
-  // 1. gemini-3-flash-preview (Tu 3.0 con 20 usos)
-  // 2. gemini-2.0-flash (Existe pero suele estar saturado)
-  // 3. gemini-2.5-flash (Tu modelo principal estable)
-  // 4. gemini-2.5-flash-lite (Tu reserva de 20 usos)
+  // CONFIGURACIÓN DE PRIORIDAD - Fallback automático entre modelos
+  // Si un modelo falla (alta demanda, cuota, no encontrado), se prueba el siguiente
   const models = [
     "gemini-3-flash-preview",
-    "gemini-2.0-flash",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
     "gemini-1.5-flash",
   ];
 
@@ -91,11 +88,13 @@ export const generateWithGemini = async (prompt: string): Promise<string> => {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error?.message || `Error ${response.status}`;
 
-        // Si el modelo no existe, no está soportado o no tiene cuota, saltar al siguiente
+        // Si el modelo no existe, no está soportado, no tiene cuota, o tiene alta demanda, saltar al siguiente
         const isSkippable =
           errorMessage.toLowerCase().includes("not found") ||
           errorMessage.toLowerCase().includes("not supported") ||
           errorMessage.toLowerCase().includes("quota") ||
+          errorMessage.toLowerCase().includes("high demand") ||
+          errorMessage.toLowerCase().includes("temporal") ||
           response.status === 429 ||
           response.status === 404;
 
@@ -115,7 +114,9 @@ export const generateWithGemini = async (prompt: string): Promise<string> => {
         const isDataSkippable =
           msg.toLowerCase().includes("quota") ||
           msg.toLowerCase().includes("not found") ||
-          msg.toLowerCase().includes("not supported");
+          msg.toLowerCase().includes("not supported") ||
+          msg.toLowerCase().includes("high demand") ||
+          msg.toLowerCase().includes("temporal");
 
         if (isDataSkippable) {
           console.warn(`DEBUG - Saltando (data.error) ${model}: ${msg}`);
@@ -130,15 +131,25 @@ export const generateWithGemini = async (prompt: string): Promise<string> => {
         throw new Error("No content returned from Gemini");
       }
 
+      console.log(`DEBUG - Modelo ${model} exitoso`);
       return text;
     } catch (error: any) {
       console.error(`Error con modelo ${model}:`, error);
       lastError = error;
-      // Si el error no es de cuota, quizás sea mejor no seguir?
-      // Pero por seguridad, intentamos el siguiente si el error contiene "quota"
-      if (!error.message.toLowerCase().includes("quota")) {
-        throw error;
+      // Continuar con el siguiente modelo si el error es de cuota, alta demanda o temporal
+      const errorMsg = error.message?.toLowerCase() || "";
+      if (
+        errorMsg.includes("quota") ||
+        errorMsg.includes("high demand") ||
+        errorMsg.includes("temporal") ||
+        errorMsg.includes("not found") ||
+        errorMsg.includes("not supported")
+      ) {
+        console.warn(`DEBUG - Saltando al siguiente modelo por error: ${error.message}`);
+        continue;
       }
+      // Otros errores (como red) los lanzamos inmediatamente
+      throw error;
     }
   }
 

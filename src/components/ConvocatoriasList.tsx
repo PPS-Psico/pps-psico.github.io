@@ -127,6 +127,8 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
             horariosCursada={lanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] || "A definir"}
             cupo={String(lanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0)}
             requisitoObligatorio={lanzamiento.requisito_obligatorio || ""}
+            archivoDescargableNombre={lanzamiento.archivo_descargable_nombre || ""}
+            archivoDescargableUrl={lanzamiento.archivo_descargable_url || ""}
             reqCv={lanzamiento.req_cv || false}
             timeline={{
               inscripcion:

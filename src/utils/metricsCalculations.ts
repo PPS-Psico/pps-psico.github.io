@@ -203,8 +203,18 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
   const proximosAFinalizarList = activosList.filter((s: any) => {
     const totalHours = studentHoursMap.get(s.id) || 0;
-    if (totalHours >= 230) return true;
-    return false;
+    if (totalHours < 230) return false;
+
+    const estadoEstudiante = normalizeStringForComparison(s[FIELD_ESTADO_ESTUDIANTES]);
+    if (estadoEstudiante === "finalizado") return false;
+
+    const finalizacion = finalizacionMap.get(s.id);
+    if (finalizacion) {
+      const estado = normalizeStringForComparison(finalizacion[FIELD_ESTADO_FINALIZACION]);
+      if (estado === "tramite" || estado === "realizada" || estado === "cargado") return false;
+    }
+
+    return true;
   });
 
   const enPpsEnCursoList = activosList.filter((s: any) => studentActivePracticesMap.get(s.id));

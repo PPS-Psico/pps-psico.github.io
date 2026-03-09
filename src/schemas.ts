@@ -100,6 +100,9 @@ export const lanzamientoPPSFieldsSchema = z.object({
   [C.FIELD_PERMITE_CERTIFICADO_LANZAMIENTOS]: z.boolean().optional().nullable(),
 
   [C.FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: z.string().optional().nullable(),
+  requisito_obligatorio: z.string().optional().nullable(),
+  archivo_descargable_nombre: z.string().optional().nullable(),
+  archivo_descargable_url: z.string().optional().nullable(),
 });
 
 export const convocatoriaFieldsSchema = z.object({

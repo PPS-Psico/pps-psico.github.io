@@ -13,6 +13,8 @@ export interface ConvocatoriaDetailProps {
   horariosCursada: string;
   cupo: string;
   requisitoObligatorio: string;
+  archivoDescargableNombre?: string;
+  archivoDescargableUrl?: string;
   reqCv?: boolean;
   timeline: {
     inscripcion: string;
@@ -41,6 +43,8 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   horariosCursada,
   cupo,
   requisitoObligatorio,
+  archivoDescargableNombre,
+  archivoDescargableUrl,
   reqCv = false,
   timeline,
   status = "abierta",
@@ -196,7 +200,11 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         <div className="flex-1 min-w-0">
           {/* Title row with chevron for mobile */}
           <div className="flex items-center gap-2">
-            <h2 className="flex-1 text-lg md:text-2xl font-black text-slate-800 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+            <h2
+              className={`flex-1 text-lg md:text-2xl font-black text-slate-800 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ${
+                isExpanded ? "" : "line-clamp-2"
+              }`}
+            >
               {nombre}
             </h2>
 
@@ -466,6 +474,35 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                       {requisitoObligatorio}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* Archivo Descargable */}
+              {archivoDescargableNombre && archivoDescargableUrl && (
+                <div className="mt-6 md:mt-8 animate-fade-in-up">
+                  <a
+                    href={archivoDescargableUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-4 md:p-5 rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/10 border border-violet-200/50 dark:border-violet-800/30 shadow-sm hover:shadow-md transition-shadow group"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
+                        <span className="material-icons text-violet-500 !text-xl">download</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                          Archivo Adjunto
+                        </span>
+                        <p className="text-violet-900 dark:text-violet-200 text-sm md:text-base font-bold leading-tight group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">
+                          {archivoDescargableNombre}
+                        </p>
+                      </div>
+                      <span className="material-icons text-violet-400 group-hover:text-violet-600 transition-colors">
+                        arrow_forward
+                      </span>
+                    </div>
+                  </a>
                 </div>
               )}
             </div>

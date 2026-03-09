@@ -5,6 +5,7 @@ import SeguroGenerator from "../components/admin/SeguroGenerator";
 import NuevosConvenios from "../components/admin/NuevosConvenios";
 import ExecutiveReportGenerator from "../components/admin/ExecutiveReportGenerator";
 import PenalizationManager from "../components/admin/PenalizationManager";
+import ProximosFinalizarPanel from "../components/admin/ProximosFinalizarPanel";
 import { useModal } from "../contexts/ModalContext";
 import type { AirtableRecord, EstudianteFields } from "../types";
 
@@ -22,6 +23,7 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect }) 
     { id: "insurance", label: "Seguros", icon: "shield" },
     { id: "convenios", label: "Convenios Nuevos", icon: "handshake" },
     { id: "executive-report", label: "Reporte Ejecutivo", icon: "summarize" },
+    { id: "proximos-finalizar", label: "Próximos a Finalizar", icon: "school" },
   ];
 
   return (
@@ -41,6 +43,7 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({ onStudentSelect }) 
         {activeHerramientasTabId === "insurance" && <SeguroGenerator showModal={showModal} />}
         {activeHerramientasTabId === "convenios" && <NuevosConvenios />}
         {activeHerramientasTabId === "executive-report" && <ExecutiveReportGenerator />}
+        {activeHerramientasTabId === "proximos-finalizar" && <ProximosFinalizarPanel />}
       </div>
     </>
   );
