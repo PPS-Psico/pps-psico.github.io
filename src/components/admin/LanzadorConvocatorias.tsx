@@ -501,10 +501,12 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
   const [actividades, setActividades] = useState<string[]>([]);
 
   const isMultiOrientation = useMemo(() => {
-    const orientations = (formData.orientacion as string[]) || [];
+    const orientations = Array.isArray(formData.orientacion) ? formData.orientacion : [];
     const unique = new Set(orientations.map((o) => normalizeStringForComparison(o)));
     return unique.size >= 2;
   }, [formData.orientacion]);
+
+  const safeOrientacion = Array.isArray(formData.orientacion) ? formData.orientacion : [];
 
   // Legacy: We still save it effectively, but we don't focus on it as much in UI.
 
@@ -778,7 +780,7 @@ Responde SOLO con el JSON válido.
 
 👥 *Cupos:* ${formData.cuposDisponibles}
 
-⏱️ *Acredita:* ${formData.horasAcreditadas} horas de ${formData.orientacion || ""}`;
+⏱️ *Acredita:* ${formData.horasAcreditadas} horas de ${safeOrientacion || ""}`;
 
     if (formData.reqCertificadoTrabajo || formData.reqCv) {
       const reqList = [];
@@ -1281,7 +1283,7 @@ Responde SOLO con el JSON válido.
     const horas = Number(formData.horasAcreditadas);
     const hasHours = !isNaN(horas); // Allow 0, but check if it's a number
 
-    if (!formData.nombrePPS || !fechaRealInicio || !formData.orientacion.length || !hasHours) {
+    if (!formData.nombrePPS || !fechaRealInicio || !safeOrientacion.length || !hasHours) {
       setToastInfo({
         message: "Por favor, complete los campos requeridos (Nombre, Fecha, Orientación, Horas).",
         type: "error",
@@ -1305,7 +1307,7 @@ Responde SOLO con el JSON válido.
       [FIELD_NOMBRE_PPS_LANZAMIENTOS]: formData.nombrePPS,
       [FIELD_FECHA_INICIO_LANZAMIENTOS]: formData.fechaInicio, // Always launch start date
       [FIELD_FECHA_FIN_LANZAMIENTOS]: formData.fechaFin,
-      [FIELD_ORIENTACION_LANZAMIENTOS]: formData.orientacion
+      [FIELD_ORIENTACION_LANZAMIENTOS]: safeOrientacion
         .map((o) => {
           const found = ALL_ORIENTACIONES.find(
             (std) => normalizeStringForComparison(std) === normalizeStringForComparison(o)
@@ -1636,7 +1638,7 @@ Responde SOLO con el JSON válido.
                 <InputWrapper label="Orientaciones" icon="school">
                   <div className="flex flex-wrap gap-2">
                     {ALL_ORIENTACIONES.map((o) => {
-                      const isSelected = (formData.orientacion as string[])?.some(
+                      const isSelected = (safeOrientacion as string[])?.some(
                         (selected) =>
                           normalizeStringForComparison(selected) === normalizeStringForComparison(o)
                       );
@@ -1645,7 +1647,7 @@ Responde SOLO con el JSON válido.
                           key={o}
                           type="button"
                           onClick={() => {
-                            const current = (formData.orientacion as string[]) || [];
+                            const current = (safeOrientacion as string[]) || [];
                             const isAlreadySelected = current.some(
                               (x) =>
                                 normalizeStringForComparison(x) === normalizeStringForComparison(o)
@@ -2164,7 +2166,7 @@ Responde SOLO con el JSON válido.
                           onChange={(e) => handleScheduleChange(idx, "orientacion", e.target.value)}
                         >
                           <option value="">Cualquiera</option>
-                          {((formData.orientacion as string[]) || []).map((o) => (
+                          {((safeOrientacion as string[]) || []).map((o) => (
                             <option key={o} value={o}>
                               {o}
                             </option>
@@ -2265,7 +2267,7 @@ Responde SOLO con el JSON válido.
                         <ConvocatoriaCardPremium
                           id="preview"
                           nombre={formData.nombrePPS || "Sin Nombre"}
-                          orientacion={formData.orientacion || "Sin Orientación"}
+                          orientacion={safeOrientacion || "Sin Orientación"}
                           direccion={formData.direccion || "Sin Dirección"}
                           descripcion={formData.descripcion || "Sin descripción..."}
                           actividades={
