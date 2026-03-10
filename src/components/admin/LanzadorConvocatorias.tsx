@@ -2156,7 +2156,7 @@ Responde SOLO con el JSON válido.
                         placeholder="Ej: Lunes 9 a 12hs - Lic. Pérez"
                       />
                     </div>
-                    {isMultiOrientation && (
+                    {isMultiOrientation && safeOrientacion.length >= 2 && (
                       <div className="w-full md:w-48">
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">
                           Orientación vinculada
@@ -2166,7 +2166,7 @@ Responde SOLO con el JSON válido.
                           onChange={(e) => handleScheduleChange(idx, "orientacion", e.target.value)}
                         >
                           <option value="">Cualquiera</option>
-                          {((safeOrientacion as string[]) || []).map((o) => (
+                          {(safeOrientacion || []).map((o) => (
                             <option key={o} value={o}>
                               {o}
                             </option>
