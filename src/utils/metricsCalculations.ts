@@ -364,7 +364,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     // Resumen General
     matriculaGenerada: {
       value: totalMatriculaGenerada,
-      list: [...activosList, ...acreditadosList],
+      list: ingresantesList,
     },
     alumnosFinalizados: { value: acreditadosList.length, list: acreditadosList },
     matriculaActiva: { value: activosList.length, list: activosList },
