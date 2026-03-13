@@ -204,7 +204,9 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     const correo = s[FIELD_CORREO_ESTUDIANTES];
     if (!correo || correo.trim() === "") return false;
 
-    return !studentHasAnyPractice.has(s.id);
+    // Usar safeGetId para consistencia en la comparación
+    const studentId = safeGetId(s.id);
+    return studentId ? !studentHasAnyPractice.has(studentId) : true;
   });
 
   const proximosAFinalizarList = activosList.filter((s: any) => {
