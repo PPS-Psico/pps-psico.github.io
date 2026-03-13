@@ -1266,12 +1266,12 @@ Responde SOLO con el JSON válido.
     setToastInfo({ message: "Datos anteriores cargados.", type: "success" });
   }, [lastLanzamiento]);
 
-  // Effect to auto-load last data
+  // Effect to auto-load last data when institution changes
   useEffect(() => {
-    if (lastLanzamiento && selectedInstitution && formData.horasAcreditadas === 0) {
+    if (lastLanzamiento && selectedInstitution) {
       handleLoadLastData();
     }
-  }, [lastLanzamiento, selectedInstitution, handleLoadLastData, formData.horasAcreditadas]);
+  }, [lastLanzamiento, selectedInstitution]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
