@@ -1,6 +1,7 @@
 import { differenceInDays } from "date-fns";
 import {
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+  FIELD_CORREO_ESTUDIANTES,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_ESTADO_ESTUDIANTES,
   FIELD_ESTADO_FINALIZACION,
@@ -195,9 +196,14 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   });
 
   const sinNingunaPpsList = allData.estudiantes.filter((s: any) => {
-    // Solo estudiantes activos que NO tienen ninguna práctica
+    // Solo estudiantes activos que NO tienen ninguna práctica Y tienen correo (cuenta creada)
     const estado = normalizeStringForComparison(s[FIELD_ESTADO_ESTUDIANTES]);
     if (estado !== "activo") return false;
+
+    // Verificar que tenga correo (cuenta creada en el sistema)
+    const correo = s[FIELD_CORREO_ESTUDIANTES];
+    if (!correo || correo.trim() === "") return false;
+
     return !studentHasAnyPractice.has(s.id);
   });
 
