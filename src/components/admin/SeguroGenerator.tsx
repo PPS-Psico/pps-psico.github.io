@@ -755,7 +755,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
               const telefono = firstInstitution?.institucionTelefono;
               if (telefono) {
                 const cleanPhone = telefono.replace(/\D/g, "");
-                const whatsappUrl = `https://wa.me/${cleanPhone}?text=Hola%2C%20te%20contacto%20de%20parte%20de%20la%20Universidad%20de%20Flores%20-%20Licenciatura%20en%20Psicolog%C3%ADa.%20Te%20env%C3%ADo%20el%20listado%20de%20estudiantes%20para%20el%20seguro%20de%20pr%C3%A1cticas.`;
+                const whatsappUrl = `https://wa.me/${cleanPhone}`;
                 return (
                   <a
                     href={whatsappUrl}
