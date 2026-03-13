@@ -1374,6 +1374,34 @@ Responde SOLO con el JSON válido.
     setTimeout(() => setCopiedLaunchId(null), 2000);
   };
 
+  const generateWhatsAppMessage = (launch: any): string => {
+    const nombre = launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS";
+    const orientacion = launch[FIELD_ORIENTACION_LANZAMIENTOS] || "";
+    const horas = launch[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0;
+    const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0;
+    const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS] || "";
+    const fechaFin = launch[FIELD_FECHA_FIN_LANZAMIENTOS] || "";
+    const reqObligatorio = (launch[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] as string) || "";
+
+    let message = `📢 *NUEVA CONVOCATORIA DE PRÁCTICAS*\n\n`;
+    message += `🏥 *PPS:* ${nombre}\n`;
+    message += `📚 *Orientación:* ${orientacion}\n`;
+    message += `⏱️ *Horas:* ${horas}\n`;
+    message += `👥 *Cupos:* ${cupos}\n\n`;
+
+    if (fechaInicio) {
+      message += `📅 *Período:* ${formatDate(fechaInicio)}${fechaFin ? ` al ${formatDate(fechaFin)}` : ""}\n\n`;
+    }
+
+    if (reqObligatorio) {
+      message += `📜 *Requisito:* ${reqObligatorio}\n\n`;
+    }
+
+    message += `💡 *Para inscribirte, consulta en Campus o escribe a pps@uflo.com.ar`;
+
+    return message;
+  };
+
   const selectedLaunch = editingLaunch;
 
   const renderLaunchItem = useCallback(
@@ -1455,9 +1483,13 @@ Responde SOLO con el JSON válido.
                 <span className="material-icons !text-xl">lock_open</span>
               </button>
             )}
-            {(isAbierta || isProgramada) && mensajeWhatsApp && (
+            {(isAbierta || isProgramada) && (
               <button
-                onClick={() => copyToClipboard(mensajeWhatsApp || "")}
+                onClick={() => {
+                  // Generar mensaje de WhatsApp si no existe
+                  const wsMessage = mensajeWhatsApp || generateWhatsAppMessage(launch);
+                  copyToClipboard(wsMessage);
+                }}
                 className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
                   isCopied
                     ? "bg-emerald-500 text-white shadow-emerald-500/20"
@@ -1467,7 +1499,7 @@ Responde SOLO con el JSON válido.
                 <span className="material-icons !text-lg">
                   {isCopied ? "done_all" : "content_copy"}
                 </span>
-                {isCopied ? "Copiado!" : "Copiar mensaje WhatsApp"}
+                {isCopied ? "Copiado!" : "Copiar WhatsApp"}
               </button>
             )}
             <button
