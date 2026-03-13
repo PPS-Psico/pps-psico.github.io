@@ -1486,20 +1486,21 @@ Responde SOLO con el JSON válido.
             {(isAbierta || isProgramada) && (
               <button
                 onClick={() => {
-                  // Generar mensaje de WhatsApp si no existe
                   const wsMessage = mensajeWhatsApp || generateWhatsAppMessage(launch);
-                  copyToClipboard(wsMessage);
+                  navigator.clipboard.writeText(wsMessage);
+                  setCopiedLaunchId(launch.id);
+                  setTimeout(() => setCopiedLaunchId(null), 2000);
                 }}
                 className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
-                  isCopied
+                  copiedLaunchId === launch.id
                     ? "bg-emerald-500 text-white shadow-emerald-500/20"
                     : "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400"
                 }`}
               >
                 <span className="material-icons !text-lg">
-                  {isCopied ? "done_all" : "content_copy"}
+                  {copiedLaunchId === launch.id ? "done_all" : "content_copy"}
                 </span>
-                {isCopied ? "Copiado!" : "Copiar WhatsApp"}
+                {copiedLaunchId === launch.id ? "Copiado!" : "Copiar WhatsApp"}
               </button>
             )}
             <button
@@ -2236,19 +2237,11 @@ Responde SOLO con el JSON válido.
           <div className="pt-8 border-t border-slate-200 dark:border-slate-700 flex justify-end sticky bottom-6 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 rounded-xl">
             <Button
               variant="primary"
-              type="submit"
-              isLoading={createLaunchMutation.isPending}
-              className="h-14 px-8 text-lg shadow-xl shadow-blue-500/20"
-            >
-              Lanzar Convocatoria
-            </Button>
-            <Button
-              variant="secondary"
               type="button"
               onClick={handleSmartPreview}
-              className="h-14 px-8 text-lg ml-4"
+              className="h-14 px-8 text-lg shadow-xl shadow-blue-500/20"
             >
-              Previsualizar
+              Previsualizar y Lanzar
             </Button>
           </div>
 
