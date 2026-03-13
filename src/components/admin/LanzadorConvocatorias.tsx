@@ -1455,7 +1455,7 @@ Responde SOLO con el JSON válido.
                 <span className="material-icons !text-xl">lock_open</span>
               </button>
             )}
-            {mensajeWhatsApp && (
+            {(isAbierta || isProgramada) && mensajeWhatsApp && (
               <button
                 onClick={() => copyToClipboard(mensajeWhatsApp || "")}
                 className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
