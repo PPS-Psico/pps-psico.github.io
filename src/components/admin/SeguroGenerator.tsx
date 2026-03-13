@@ -24,6 +24,8 @@ import {
   FIELD_ORIENTACION_CONVOCATORIAS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_TELEFONO_ESTUDIANTES,
+  FIELD_TELEFONO_INSTITUCIONES,
+  FIELD_INSTITUCION_LINK_PRACTICAS,
 } from "../../constants";
 import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
@@ -54,6 +56,7 @@ interface StudentForReview {
   correo: string;
   telefono: string;
   institucion: string;
+  institucionTelefono: string;
   direccion: string;
   periodo: string;
   horario: string;
@@ -105,8 +108,8 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
     }
 
     try {
-      // Fetch both Convocatorias and Lanzamientos to ensure we have dates/names
-      const [records, lanzamientos] = await Promise.all([
+      // Fetch Convocatorias, Lanzamientos and Instituciones
+      const [records, lanzamientoRes] = await Promise.all([
         db.convocatorias.getAll({
           filters: { [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Seleccionado" },
           sort: [{ field: FIELD_FECHA_INICIO_CONVOCATORIAS, direction: "desc" }],
@@ -114,7 +117,17 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         db.lanzamientos.getAll(),
       ]);
 
-      const lanzamientoMap = new Map(lanzamientos.map((l) => [l.id, l]));
+      // Fetch instituciones separately to get telefono
+      const institucionRes = await db.instituciones.getAll();
+      const institucionDataMap = new Map(institucionRes.map((i: any) => [i.id, i]));
+
+      // Build a quick lookup for telefonos
+      const institucionTelefonos: Record<string, string> = {};
+      institucionRes.forEach((i: any) => {
+        institucionTelefonos[i.id] = i[FIELD_TELEFONO_INSTITUCIONES] || "";
+      });
+
+      const lanzamientoMap = new Map(lanzamientoRes.map((l: any) => [l.id, l]));
       const groupedConvocatorias = new Map<string, any>();
 
       records.forEach((record) => {
@@ -206,6 +219,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
           correo: "j@t.com",
           telefono: "111",
           institucion: "Hosp Test",
+          institucionTelefono: "2999999999",
           direccion: "Calle 1",
           periodo: "Ene-Jun",
           horario: "9-18",
@@ -260,6 +274,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       });
 
       const compiledList: StudentForReview[] = [];
+      const institucionTelefonos: Record<string, string> = {};
 
       for (const group of selectedGroups) {
         const groupLanzamientoId = group[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
@@ -276,6 +291,13 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
             ppsData?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] ||
             group[FIELD_NOMBRE_PPS_CONVOCATORIAS] ||
             "N/A";
+
+          // Get telefono de la institución
+          const institucionId = ppsData?.[FIELD_INSTITUCION_LINK_PRACTICAS];
+          const institucionTelefono = institucionId
+            ? institucionTelefonos[institucionId] || ""
+            : "";
+
           const direccion =
             ppsData?.[FIELD_DIRECCION_LANZAMIENTOS] || group[FIELD_DIRECCION_CONVOCATORIAS] || "";
           const fechaInicio =
@@ -338,6 +360,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
             correo: String(student[FIELD_CORREO_ESTUDIANTES] || "N/A"),
             telefono: formatPhoneNumber(String(student[FIELD_TELEFONO_ESTUDIANTES] || "")),
             institucion,
+            institucionTelefono: "",
             direccion,
             periodo: periodoValue,
             horario,
@@ -718,14 +741,35 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
           )
         )}
 
-        <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-700 gap-3">
           <button
             onClick={handleGenerateSelectionExcel}
             className="bg-slate-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md hover:bg-slate-700 flex items-center gap-2"
           >
             <span className="material-icons !text-base">table_view</span>
-            Descargar Listado General
+            4. Descargar Excel
           </button>
+          {Object.keys(grouped).length === 1 &&
+            (() => {
+              const firstInstitution = studentsForReview[0];
+              const telefono = firstInstitution?.institucionTelefono;
+              if (telefono) {
+                const cleanPhone = telefono.replace(/\D/g, "");
+                const whatsappUrl = `https://wa.me/${cleanPhone}?text=Hola%2C%20te%20contacto%20de%20parte%20de%20la%20Universidad%20de%20Flores%20-%20Licenciatura%20en%20Psicolog%C3%ADa.%20Te%20env%C3%ADo%20el%20listado%20de%20estudiantes%20para%20el%20seguro%20de%20pr%C3%A1cticas.`;
+                return (
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-green-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md hover:bg-green-700 flex items-center gap-2"
+                  >
+                    <span className="material-icons !text-base">chat</span>
+                    Enviar por WhatsApp
+                  </a>
+                );
+              }
+              return null;
+            })()}
         </div>
       </div>
     );
