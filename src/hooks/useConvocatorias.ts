@@ -48,6 +48,7 @@ import {
   FIELD_CV_CONVOCATORIAS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
+  FIELD_ESTADO_ESTUDIANTES,
 } from "../constants";
 import { normalizeStringForComparison, cleanInstitutionName, safeGetId } from "../utils/formatters";
 
@@ -154,6 +155,22 @@ export const useConvocatorias = (
       }
 
       if (!studentAirtableId) throw new Error("No student ID");
+
+      // Validar estado del estudiante antes de permitir inscripción
+      const estadoEstudiante = normalizeStringForComparison(
+        studentDetails?.[FIELD_ESTADO_ESTUDIANTES]
+      );
+      if (estadoEstudiante !== "activo") {
+        throw new Error("Tu cuenta no está activa. Comunicate con coordinación de PPS.");
+      }
+
+      // Validar que tenga DNI cargado
+      const dniEstudiante = studentDetails?.[FIELD_DNI_ESTUDIANTES];
+      if (!dniEstudiante || String(dniEstudiante).trim() === "") {
+        throw new Error(
+          "Tu registro no tiene DNI cargado. Comunicate con coordinación de PPS para completar tus datos."
+        );
+      }
 
       if (formData.trabaja !== undefined || formData.certificadoTrabajoUrl) {
         await db.estudiantes.update(studentAirtableId, {
