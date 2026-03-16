@@ -16,15 +16,18 @@ import {
   FIELD_USER_ID_ESTUDIANTES,
   FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES,
   FIELD_ROLE_ESTUDIANTES,
+  FIELD_DNI_ESTUDIANTES,
 } from "../constants";
 
 export type AuthUser = {
   id?: string;
+  studentId?: string;
   legajo: string;
   nombre: string;
   role?: "Jefe" | "SuperUser" | "Directivo" | "AdminTester" | "Reportero";
   orientaciones?: string[];
   mustChangePassword?: boolean;
+  needsDataCompletion?: boolean;
 };
 
 interface AuthContextType {
@@ -108,11 +111,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       try {
-        // Fetch profile from DB
+        // Fetch profile from DB including DNI for validation
         const { data: profile, error } = await supabase
           .from("estudiantes")
           .select(
-            `${FIELD_LEGAJO_ESTUDIANTES}, ${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES}, ${FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES}, ${FIELD_ROLE_ESTUDIANTES}`
+            `id, ${FIELD_LEGAJO_ESTUDIANTES}, ${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES}, ${FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES}, ${FIELD_ROLE_ESTUDIANTES}, ${FIELD_DNI_ESTUDIANTES}, estado`
           )
           .eq(FIELD_USER_ID_ESTUDIANTES, session.user.id)
           .maybeSingle();
@@ -121,18 +124,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (profile && !error) {
             const dbRole = profile[FIELD_ROLE_ESTUDIANTES] as AuthUser["role"] | undefined;
 
+            // Verificar si le faltan datos esenciales (DNI)
+            const hasDni =
+              profile[FIELD_DNI_ESTUDIANTES] &&
+              String(profile[FIELD_DNI_ESTUDIANTES]).trim() !== "";
+            const needsDataCompletion = !hasDni;
+
             // Stabilization: Delay the state update slightly to let previous React tree unmount cleanly
             if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
 
             authStabilizationTimer.current = setTimeout(() => {
               setAuthenticatedUser({
                 id: session.user.id,
+                studentId: profile.id,
                 legajo: profile[FIELD_LEGAJO_ESTUDIANTES] || "", // Fallback to empty string
                 nombre: profile[FIELD_NOMBRE_ESTUDIANTES] || "Usuario", // Fallback
                 orientaciones: profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]
                   ? [profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]]
                   : [],
                 mustChangePassword: !!profile[FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES], // Boolean cast
+                needsDataCompletion,
                 role: dbRole,
               });
               setIsAuthLoading(false);

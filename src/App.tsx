@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import {
   Navigate,
   Route,
@@ -24,6 +24,7 @@ import { PwaInstallProvider } from "./contexts/PwaInstallContext";
 import { StudentPanelProvider } from "./contexts/StudentPanelContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import PracticasView from "./views/student/PracticasView";
+import DataCompletionModal from "./components/student/DataCompletionModal";
 
 // Views
 const StudentView = lazy(() => import("./views/StudentView"));
@@ -55,6 +56,25 @@ const AdminStudentWrapper = () => {
       <StudentDashboard key={legajo} showExportButton />
     </StudentPanelProvider>
   );
+};
+
+const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
+  const { authenticatedUser } = useAuth();
+  const [dataCompleted, setDataCompleted] = useState(false);
+
+  const isStudent = !authenticatedUser?.role;
+
+  if (authenticatedUser?.needsDataCompletion && !dataCompleted && isStudent) {
+    return (
+      <DataCompletionModal
+        studentId={authenticatedUser.studentId || ""}
+        legajo={authenticatedUser.legajo}
+        onComplete={() => setDataCompleted(true)}
+      />
+    );
+  }
+
+  return <>{children}</>;
 };
 
 const AppRoutes = () => {
@@ -90,7 +110,9 @@ const AppRoutes = () => {
         path="/student"
         element={
           <ProtectedRoute allowedRoles={["Student"]}>
-            <StudentView />
+            <StudentWrapper>
+              <StudentView />
+            </StudentWrapper>
           </ProtectedRoute>
         }
       >

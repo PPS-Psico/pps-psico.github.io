@@ -368,7 +368,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           }
 
           if (userId) {
-            // Garantizar datos actualizados con DNI limpio
+            // Garantizar datos actualizados con DNI limpio y cambiar estado a Activo
             await (supabase.rpc as any)("register_new_student", {
               legajo_input: legajoTrimmed,
               userid_input: userId,
@@ -376,6 +376,16 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               correo_input: inputEmail,
               telefono_input: telefono,
             });
+
+            // Actualizar estado a Activo
+            const { data: studentData } = await (supabase.rpc as any)(
+              "get_student_details_by_legajo",
+              { legajo_input: legajoTrimmed }
+            );
+            if (studentData && studentData.length > 0) {
+              const studentId = studentData[0].id;
+              await supabase.from("estudiantes").update({ estado: "Activo" }).eq("id", studentId);
+            }
           }
         }
       } catch (err: any) {

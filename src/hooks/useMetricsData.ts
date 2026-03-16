@@ -43,6 +43,6 @@ export const useMetricsData = ({
 
       return calculateDashboardMetrics(allData, targetYear);
     },
-    staleTime: 1000 * 60 * 5, // 5 minutos de cache
+    staleTime: 1000 * 60 * 1, // 1 minuto de cache para datos más reactivos
   });
 };

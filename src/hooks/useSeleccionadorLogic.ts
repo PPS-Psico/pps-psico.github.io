@@ -28,6 +28,8 @@ import {
   FIELD_TERMINO_CURSAR_CONVOCATORIAS,
   FIELD_TRABAJA_CONVOCATORIAS,
   FIELD_TRABAJA_ESTUDIANTES,
+  FIELD_DNI_ESTUDIANTES,
+  FIELD_ESTADO_ESTUDIANTES,
   FIELD_USER_ID_ESTUDIANTES,
 } from "../constants";
 import { db } from "../lib/db";
@@ -586,6 +588,25 @@ export const useSeleccionadorLogic = (
           [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "seleccionado",
         });
       } else {
+        const student = await db.estudiantes.get({ filters: { id: studentId } });
+        if (student && student.length > 0) {
+          const est = student[0];
+          const estado = normalizeStringForComparison(
+            est[FIELD_ESTADO_ESTUDIANTES as keyof typeof est] as string
+          );
+          if (estado !== "activo") {
+            throw new Error("El estudiante no está activo. No se puede inscribir.");
+          }
+          if (
+            !est[FIELD_DNI_ESTUDIANTES as keyof typeof est] ||
+            String(est[FIELD_DNI_ESTUDIANTES as keyof typeof est]).trim() === ""
+          ) {
+            throw new Error(
+              "El estudiante no tiene DNI cargado. Complete los datos del estudiante primero."
+            );
+          }
+        }
+
         await db.convocatorias.create({
           [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: selectedLanzamiento.id,
           [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentId,
@@ -598,8 +619,8 @@ export const useSeleccionadorLogic = (
       queryClient.invalidateQueries({ queryKey: ["availableStudents"] });
       setToastInfo({ message: "Estudiante inscripto correctamente", type: "success" });
     },
-    onError: () => {
-      setToastInfo({ message: "Error al inscribir estudiante", type: "error" });
+    onError: (error: any) => {
+      setToastInfo({ message: error.message || "Error al inscribir estudiante", type: "error" });
     },
   });
 
