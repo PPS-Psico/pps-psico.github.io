@@ -31,13 +31,13 @@ export const useMetricsData = ({
         supabase.from(TABLE_NAME_INSTITUCIONES).select("*"),
       ]);
 
-      // Get auth users for registration dates
-      const { data: authUsers } = await (supabase as any).auth.admin.listUsers();
+      // Get auth users for registration dates via RPC
+      const { data: authUsers } = await (supabase.rpc as any)("get_user_creation_dates");
 
       // Map user creation dates to estudiantes
       const userCreationDates: Record<string, string> = {};
       (authUsers || []).forEach((u: any) => {
-        userCreationDates[u.id] = u.created_at;
+        userCreationDates[u.user_id] = u.created_at;
       });
 
       // Attach user creation date to each estudiante that has a user_id
