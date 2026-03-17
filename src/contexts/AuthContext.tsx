@@ -41,6 +41,7 @@ interface AuthContextType {
   login: (user: AuthUser) => void;
   logout: () => void;
   completePasswordChange: () => void;
+  refreshAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -231,6 +232,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAuthenticatedUser((prev) => (prev ? { ...prev, mustChangePassword: false } : null));
   }, []);
 
+  const refreshAuth = useCallback(() => {
+    setAuthenticatedUser((prev) => (prev ? { ...prev, needsDataCompletion: false } : null));
+  }, []);
+
   const isSuperUserMode =
     authenticatedUser?.role === "SuperUser" || authenticatedUser?.legajo === "admin";
   const isJefeMode = authenticatedUser?.role === "Jefe";
@@ -251,6 +256,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         logout,
         completePasswordChange,
+        refreshAuth,
       }}
     >
       {children}

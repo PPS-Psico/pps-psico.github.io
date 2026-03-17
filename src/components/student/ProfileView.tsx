@@ -131,7 +131,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   isLoading,
   updateInternalNotes,
 }) => {
-  const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
+  const { isSuperUserMode, isJefeMode, authenticatedUser, refreshAuth } = useAuth();
   const { showModal } = useModal();
   const queryClient = useQueryClient();
 
@@ -279,6 +279,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       showModal("Actualizado", "Tus datos de contacto han sido guardados correctamente.");
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ["student"] });
+      refreshAuth();
     },
     onError: (error: any) => {
       showModal("Error", `No se pudo actualizar: ${error.message}`);
