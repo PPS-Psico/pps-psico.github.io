@@ -113,6 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       try {
         // Fetch profile from DB including DNI for validation
+        console.log("[Auth] Buscando estudiante con user_id:", session.user.id);
         const { data: profile, error } = await supabase
           .from("estudiantes")
           .select(
@@ -120,6 +121,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           )
           .eq(FIELD_USER_ID_ESTUDIANTES, session.user.id)
           .maybeSingle();
+
+        console.log("[Auth] Profile encontrado:", profile, "error:", error);
 
         if (isMounted) {
           if (profile && !error) {
