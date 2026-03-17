@@ -17,6 +17,8 @@ import {
   FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES,
   FIELD_ROLE_ESTUDIANTES,
   FIELD_DNI_ESTUDIANTES,
+  FIELD_CORREO_ESTUDIANTES,
+  FIELD_TELEFONO_ESTUDIANTES,
 } from "../constants";
 
 export type AuthUser = {
@@ -138,6 +140,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               String(dniValue).trim() !== "";
             const needsDataCompletion = !hasDni;
             console.log("[Auth] hasDni:", hasDni, "needsDataCompletion:", needsDataCompletion);
+
+            // Auto-activar si tiene DNI válido y está inactivo
+            const currentEstado = profile.estado;
+            const hasValidData =
+              hasDni && profile[FIELD_CORREO_ESTUDIANTES] && profile[FIELD_TELEFONO_ESTUDIANTES];
+            if (hasValidData && currentEstado !== "Activo" && currentEstado !== "Finalizado") {
+              console.log("[Auth] Auto-activando estudiante:", profile.id);
+              supabase
+                .from("estudiantes")
+                .update({ estado: "Activo" })
+                .eq("id", profile.id)
+                .then(() => {
+                  console.log("[Auth] Estudiante activado");
+                });
+            }
 
             // Stabilization: Delay the state update slightly to let previous React tree unmount cleanly
             if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
