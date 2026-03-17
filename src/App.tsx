@@ -62,6 +62,13 @@ const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
   const { authenticatedUser } = useAuth();
   const [dataCompleted, setDataCompleted] = useState(false);
 
+  console.log(
+    "[StudentWrapper] needsDataCompletion:",
+    authenticatedUser?.needsDataCompletion,
+    "role:",
+    authenticatedUser?.role
+  );
+
   const isStudent = !authenticatedUser?.role;
 
   if (authenticatedUser?.needsDataCompletion && !dataCompleted && isStudent) {

@@ -127,12 +127,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             // Verificar si le faltan datos esenciales (DNI)
             const dniValue = profile[FIELD_DNI_ESTUDIANTES];
+            console.log("[Auth] DNI value:", dniValue, "type:", typeof dniValue);
             const hasDni =
               dniValue !== null &&
               dniValue !== undefined &&
               dniValue !== 0 &&
               String(dniValue).trim() !== "";
             const needsDataCompletion = !hasDni;
+            console.log("[Auth] hasDni:", hasDni, "needsDataCompletion:", needsDataCompletion);
 
             // Stabilization: Delay the state update slightly to let previous React tree unmount cleanly
             if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
