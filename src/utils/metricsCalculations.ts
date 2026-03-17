@@ -18,6 +18,7 @@ import {
   FIELD_HORAS_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_NOMBRE_INSTITUCIONES,
+  FIELD_USER_ID_ESTUDIANTES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
@@ -86,10 +87,13 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   });
 
   // --- 1. CÁLCULO DE INGRESANTES (Año Objetivo) ---
-  // Son aquellos cuya `firstActivity` cae dentro de `targetYear`
+  // Son estudiantes que crearon cuenta (user_id) en el año objetivo
   const ingresantesList = allData.estudiantes.filter((s: any) => {
-    const timeline = studentTimelineMap.get(s.id);
-    return timeline && timeline.firstActivity.getUTCFullYear() === targetYear;
+    // Tiene cuenta creada
+    if (!s[FIELD_USER_ID_ESTUDIANTES]) return false;
+    // Su fecha de creación es del año objetivo
+    const createdAt = s.created_at ? new Date(s.created_at) : null;
+    return createdAt && createdAt.getUTCFullYear() === targetYear;
   });
 
   // --- 2. EVOLUCIÓN ANUAL DE MATRÍCULA (No mensual) ---
