@@ -69,7 +69,8 @@ const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
     authenticatedUser?.role
   );
 
-  const isStudent = !authenticatedUser?.role;
+  const role = authenticatedUser?.role as string | undefined;
+  const isStudent = !role || role === "Alumno";
 
   if (authenticatedUser?.needsDataCompletion && !dataCompleted && isStudent) {
     return (
