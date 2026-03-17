@@ -88,12 +88,21 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
   // --- 1. CÁLCULO DE INGRESANTES (Año Objetivo) ---
   // Son estudiantes que crearon cuenta (user_id) en el año objetivo
+  // Si no hay datos en el año objetivo, usa el año anterior
+  const yearToUse = (() => {
+    const countInTargetYear = allData.estudiantes.filter((s: any) => {
+      if (!s[FIELD_USER_ID_ESTUDIANTES]) return false;
+      const createdAt = s.created_at ? new Date(s.created_at) : null;
+      return createdAt && createdAt.getUTCFullYear() === targetYear;
+    }).length;
+
+    return countInTargetYear > 0 ? targetYear : targetYear - 1;
+  })();
+
   const ingresantesList = allData.estudiantes.filter((s: any) => {
-    // Tiene cuenta creada
     if (!s[FIELD_USER_ID_ESTUDIANTES]) return false;
-    // Su fecha de creación es del año objetivo
     const createdAt = s.created_at ? new Date(s.created_at) : null;
-    return createdAt && createdAt.getUTCFullYear() === targetYear;
+    return createdAt && createdAt.getUTCFullYear() === yearToUse;
   });
 
   // --- 2. EVOLUCIÓN ANUAL DE MATRÍCULA (No mensual) ---
