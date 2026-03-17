@@ -164,9 +164,11 @@ export const useConvocatorias = (
         throw new Error("Tu cuenta no está activa. Comunicate con coordinación de PPS.");
       }
 
-      // Validar que tenga DNI cargado
+      // Validar que tenga DNI cargado (considerar 0 como "sin DNI")
       const dniEstudiante = studentDetails?.[FIELD_DNI_ESTUDIANTES];
-      if (!dniEstudiante || String(dniEstudiante).trim() === "") {
+      const tieneDniValido =
+        dniEstudiante && dniEstudiante !== 0 && String(dniEstudiante).trim() !== "";
+      if (!tieneDniValido) {
         throw new Error(
           "Tu registro no tiene DNI cargado. Ve a Mi Perfil para completar tus datos."
         );

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   FIELD_CORREO_ESTUDIANTES,
   FIELD_DNI_ESTUDIANTES,
+  FIELD_ESTADO_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_NOTAS_INTERNAS_ESTUDIANTES,
@@ -269,10 +270,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { correo: string; telefono: string; dni: string }) => {
       if (!(studentDetails as any).id) throw new Error("ID no encontrado");
+
+      const dniValue = data.dni ? parseInt(data.dni, 10) : null;
+      const tieneDatosCompletos = dniValue && dniValue > 0 && data.correo && data.telefono;
+
       return db.estudiantes.update((studentDetails as any).id, {
         [FIELD_CORREO_ESTUDIANTES]: data.correo,
         [FIELD_TELEFONO_ESTUDIANTES]: data.telefono,
-        [FIELD_DNI_ESTUDIANTES]: data.dni ? parseInt(data.dni, 10) : null,
+        [FIELD_DNI_ESTUDIANTES]: dniValue,
+        ...(tieneDatosCompletos ? { [FIELD_ESTADO_ESTUDIANTES]: "Activo" } : {}),
       });
     },
     onSuccess: () => {
