@@ -168,7 +168,23 @@ export const useConvocatorias = (
       const dniEstudiante = studentDetails?.[FIELD_DNI_ESTUDIANTES];
       if (!dniEstudiante || String(dniEstudiante).trim() === "") {
         throw new Error(
-          "Tu registro no tiene DNI cargado. Comunicate con coordinación de PPS para completar tus datos."
+          "Tu registro no tiene DNI cargado. Ve a Mi Perfil para completar tus datos."
+        );
+      }
+
+      // Validar teléfono
+      const telefonoEstudiante = studentDetails?.[FIELD_TELEFONO_ESTUDIANTES];
+      if (!telefonoEstudiante || String(telefonoEstudiante).trim() === "") {
+        throw new Error(
+          "Tu registro no tiene teléfono cargado. Ve a Mi Perfil para completar tus datos."
+        );
+      }
+
+      // Validar correo
+      const correoEstudiante = studentDetails?.[FIELD_CORREO_ESTUDIANTES];
+      if (!correoEstudiante || String(correoEstudiante).trim() === "") {
+        throw new Error(
+          "Tu registro no tiene correo cargado. Ve a Mi Perfil para completar tus datos."
         );
       }
 

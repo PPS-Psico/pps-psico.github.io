@@ -138,9 +138,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const [internalNotes, setInternalNotes] = useState("");
   const [isNotesChanged, setIsNotesChanged] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<{ correo: string; telefono: string }>({
+  const [editForm, setEditForm] = useState<{ correo: string; telefono: string; dni: string }>({
     correo: "",
     telefono: "",
+    dni: "",
   });
 
   // FCM state
@@ -248,6 +249,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       setEditForm({
         correo: String(studentDetails[FIELD_CORREO_ESTUDIANTES] || ""),
         telefono: String(studentDetails[FIELD_TELEFONO_ESTUDIANTES] || ""),
+        dni: String(studentDetails[FIELD_DNI_ESTUDIANTES] || ""),
       });
     }
     setIsNotesChanged(false);
@@ -265,11 +267,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { correo: string; telefono: string }) => {
+    mutationFn: async (data: { correo: string; telefono: string; dni: string }) => {
       if (!(studentDetails as any).id) throw new Error("ID no encontrado");
       return db.estudiantes.update((studentDetails as any).id, {
         [FIELD_CORREO_ESTUDIANTES]: data.correo,
         [FIELD_TELEFONO_ESTUDIANTES]: data.telefono,
+        [FIELD_DNI_ESTUDIANTES]: data.dni ? parseInt(data.dni, 10) : null,
       });
     },
     onSuccess: () => {
@@ -363,7 +366,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Info Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <ProfileCard label="Legajo" value={legajo} icon="numbers" delay={0.1} />
-        <ProfileCard label="DNI" value={dni} icon="fingerprint" delay={0.3} />
+        <ProfileCard
+          label="DNI"
+          value={isEditing ? editForm.dni : dni}
+          icon="fingerprint"
+          isEditable={isEditing}
+          name="dni"
+          onChange={handleEditChange}
+          type="text"
+          delay={0.3}
+        />
 
         <ProfileCard
           label="Correo Electrónico"
@@ -408,6 +420,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 setEditForm({
                   correo: String(studentDetails[FIELD_CORREO_ESTUDIANTES] || ""),
                   telefono: String(studentDetails[FIELD_TELEFONO_ESTUDIANTES] || ""),
+                  dni: String(studentDetails[FIELD_DNI_ESTUDIANTES] || ""),
                 });
               }}
               disabled={updateProfileMutation.isPending}
