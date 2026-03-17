@@ -156,10 +156,18 @@ export const useConvocatorias = (
 
       if (!studentAirtableId) throw new Error("No student ID");
 
+      console.log("[Enrollment] Validando estudiante:", {
+        legajo,
+        studentAirtableId,
+        estado: studentDetails?.[FIELD_ESTADO_ESTUDIANTES],
+        dni: studentDetails?.[FIELD_DNI_ESTUDIANTES],
+      });
+
       // Validar estado del estudiante antes de permitir inscripción
       const estadoEstudiante = normalizeStringForComparison(
         studentDetails?.[FIELD_ESTADO_ESTUDIANTES]
       );
+      console.log("[Enrollment] Estado estudiante:", estadoEstudiante);
       if (estadoEstudiante !== "activo") {
         throw new Error("Tu cuenta no está activa. Comunicate con coordinación de PPS.");
       }
