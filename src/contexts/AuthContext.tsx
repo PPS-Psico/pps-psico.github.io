@@ -125,9 +125,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const dbRole = profile[FIELD_ROLE_ESTUDIANTES] as AuthUser["role"] | undefined;
 
             // Verificar si le faltan datos esenciales (DNI)
+            const dniValue = profile[FIELD_DNI_ESTUDIANTES];
             const hasDni =
-              profile[FIELD_DNI_ESTUDIANTES] &&
-              String(profile[FIELD_DNI_ESTUDIANTES]).trim() !== "";
+              dniValue !== null &&
+              dniValue !== undefined &&
+              dniValue !== 0 &&
+              String(dniValue).trim() !== "";
             const needsDataCompletion = !hasDni;
 
             // Stabilization: Delay the state update slightly to let previous React tree unmount cleanly
