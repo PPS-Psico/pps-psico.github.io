@@ -31,8 +31,23 @@ export const useMetricsData = ({
         supabase.from(TABLE_NAME_INSTITUCIONES).select("*"),
       ]);
 
+      // Get auth users for registration dates
+      const { data: authUsers } = await (supabase as any).auth.admin.listUsers();
+
+      // Map user creation dates to estudiantes
+      const userCreationDates: Record<string, string> = {};
+      (authUsers || []).forEach((u: any) => {
+        userCreationDates[u.id] = u.created_at;
+      });
+
+      // Attach user creation date to each estudiante that has a user_id
+      const estudiantesWithRegDate = (est.data || []).map((e: any) => ({
+        ...e,
+        user_created_at: e.user_id ? userCreationDates[e.user_id] || null : null,
+      }));
+
       const allData = {
-        estudiantes: est.data || [],
+        estudiantes: estudiantesWithRegDate,
         solicitudes: req.data || [],
         lanzamientos: lanz.data || [],
         convocatorias: conv.data || [],
