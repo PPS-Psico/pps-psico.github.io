@@ -5,6 +5,7 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
   TABLE_NAME_INSTITUCIONES,
   TABLE_NAME_LANZAMIENTOS_PPS,
 } from "../constants";
@@ -286,9 +287,24 @@ export const useGestionConvocatorias = ({
       // FINISHED - Now categorize by contact status
       const daysSinceEnd = Math.abs(daysLeft);
 
+      // Función para verificar si tiene recordatorio activo (futuro)
+      const tieneRecordatorioActivo = (pps: LanzamientoPPS): boolean => {
+        const reminderDate = pps[FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS];
+        if (!reminderDate) return false;
+        const d = parseToUTCDate(reminderDate);
+        if (!d) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return d > today;
+      };
+
       // FLUJO DE CONTACTO:
-      // 1. Pendiente de Gestión → Por Contactar
+      // 1. Pendiente de Gestión → Por Contactar (excluir si tiene recordatorio activo)
       if (status === "pendiente de gestion") {
+        // Si tiene recordatorio activo, no mostrar en vencidas
+        if (tieneRecordatorioActivo(relevantPPS)) {
+          return;
+        }
         const urgency = daysSinceEnd <= 30 ? "high" : "normal";
         porContactar.push({
           ...relevantPPS,
@@ -330,12 +346,14 @@ export const useGestionConvocatorias = ({
         return;
       }
 
-      // Any other status for finished PPS goes to "Por Contactar" for manual review
-      porContactar.push({
-        ...relevantPPS,
-        daysSinceEnd,
-        urgency: "normal",
-      });
+      // Any other status for finished PPS goes to "Por Contactar" for manual review (excluir si tiene recordatorio activo)
+      if (!tieneRecordatorioActivo(relevantPPS)) {
+        porContactar.push({
+          ...relevantPPS,
+          daysSinceEnd,
+          urgency: "normal",
+        });
+      }
     });
 
     // Sort each category by urgency/elapsed time
