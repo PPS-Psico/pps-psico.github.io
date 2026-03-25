@@ -8,8 +8,10 @@ import {
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_NOTAS_INTERNAS_ESTUDIANTES,
+  FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
   FIELD_TELEFONO_ESTUDIANTES,
 } from "../../constants";
+import { ALL_ORIENTACIONES, Orientacion } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { useModal } from "../../contexts/ModalContext";
 import { db } from "../../lib/db";
@@ -19,6 +21,8 @@ import type { EstudianteFields } from "../../types";
 import { SkeletonBox } from "../Skeletons";
 
 // Premium Profile Card Component
+import Select from "../ui/Select";
+
 const ProfileCard: React.FC<{
   label: string;
   value?: string | number | null;
@@ -139,10 +143,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const [internalNotes, setInternalNotes] = useState("");
   const [isNotesChanged, setIsNotesChanged] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<{ correo: string; telefono: string; dni: string }>({
+  const [editForm, setEditForm] = useState<{
+    correo: string;
+    telefono: string;
+    dni: string;
+    orientacion: string;
+  }>({
     correo: "",
     telefono: "",
     dni: "",
+    orientacion: "",
   });
 
   // FCM state
@@ -251,6 +261,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         correo: String(studentDetails[FIELD_CORREO_ESTUDIANTES] || ""),
         telefono: String(studentDetails[FIELD_TELEFONO_ESTUDIANTES] || ""),
         dni: String(studentDetails[FIELD_DNI_ESTUDIANTES] || ""),
+        orientacion: String(studentDetails[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || ""),
       });
     }
     setIsNotesChanged(false);
@@ -268,7 +279,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { correo: string; telefono: string; dni: string }) => {
+    mutationFn: async (data: {
+      correo: string;
+      telefono: string;
+      dni: string;
+      orientacion: string;
+    }) => {
       if (!(studentDetails as any).id) throw new Error("ID no encontrado");
 
       const dniValue = data.dni ? parseInt(data.dni, 10) : null;
@@ -278,6 +294,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         [FIELD_CORREO_ESTUDIANTES]: data.correo,
         [FIELD_TELEFONO_ESTUDIANTES]: data.telefono,
         [FIELD_DNI_ESTUDIANTES]: dniValue,
+        [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: data.orientacion || null,
         ...(tieneDatosCompletos ? { [FIELD_ESTADO_ESTUDIANTES]: "Activo" } : {}),
       });
     },
@@ -292,7 +309,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     },
   });
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -404,6 +421,56 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           type="tel"
           delay={0.5}
         />
+        {isEditing ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+            className="relative group overflow-hidden rounded-2xl border transition-all duration-300 bg-gradient-to-br from-purple-50/80 to-white dark:from-purple-900/20 dark:to-slate-900/50 border-purple-200 dark:border-purple-800/50 shadow-sm shadow-purple-500/10"
+          >
+            <div className="relative z-10 flex items-center gap-4 p-4">
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white"
+              >
+                <span className="material-icons !text-xl">psychology</span>
+              </motion.div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black text-purple-400 dark:text-purple-500 uppercase tracking-wider mb-1">
+                  Especialidad
+                </p>
+                <select
+                  name="orientacion"
+                  value={editForm.orientacion}
+                  onChange={handleEditChange}
+                  className="w-full bg-transparent border-b-2 border-purple-300 dark:border-purple-700 text-base font-bold text-purple-900 dark:text-purple-100 focus:outline-none focus:border-purple-500 pb-1 transition-colors"
+                >
+                  <option value="">Seleccionar...</option>
+                  {ALL_ORIENTACIONES.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+                className="material-icons text-purple-400 !text-lg"
+              >
+                edit
+              </motion.span>
+            </div>
+          </motion.div>
+        ) : (
+          <ProfileCard
+            label="Especialidad"
+            value={studentDetails[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "No definida"}
+            icon="psychology"
+            delay={0.6}
+          />
+        )}
       </div>
 
       {/* Action Buttons */}
@@ -416,7 +483,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         {!isEditing ? (
           <PremiumButton onClick={() => setIsEditing(true)}>
             <span className="material-icons !text-lg">edit_note</span>
-            Editar Datos de Contacto
+            Editar Datos
           </PremiumButton>
         ) : (
           <div className="flex gap-3">
@@ -428,6 +495,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   correo: String(studentDetails[FIELD_CORREO_ESTUDIANTES] || ""),
                   telefono: String(studentDetails[FIELD_TELEFONO_ESTUDIANTES] || ""),
                   dni: String(studentDetails[FIELD_DNI_ESTUDIANTES] || ""),
+                  orientacion: String(studentDetails[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || ""),
                 });
               }}
               disabled={updateProfileMutation.isPending}
