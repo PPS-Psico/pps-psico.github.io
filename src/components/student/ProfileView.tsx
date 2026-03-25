@@ -426,7 +426,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.6 }}
-            className="relative group overflow-hidden rounded-2xl border transition-all duration-300 bg-gradient-to-br from-purple-50/80 to-white dark:from-purple-900/20 dark:to-slate-900/50 border-purple-200 dark:border-purple-800/50 shadow-sm shadow-purple-500/10"
+            className="relative group overflow-hidden rounded-2xl border transition-all duration-300 bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-800/50 shadow-sm shadow-purple-500/10"
           >
             <div className="relative z-10 flex items-center gap-4 p-4">
               <motion.div
@@ -444,7 +444,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   name="orientacion"
                   value={editForm.orientacion}
                   onChange={handleEditChange}
-                  className="w-full bg-transparent border-b-2 border-purple-300 dark:border-purple-700 text-base font-bold text-purple-900 dark:text-purple-100 focus:outline-none focus:border-purple-500 pb-1 transition-colors"
+                  className="w-full bg-white dark:bg-slate-800 border-b-2 border-purple-300 dark:border-purple-600 text-base font-bold text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-400 pb-1 transition-colors rounded"
                 >
                   <option value="">Seleccionar...</option>
                   {ALL_ORIENTACIONES.map((o) => (
