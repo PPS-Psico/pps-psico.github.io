@@ -122,6 +122,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
   informeTasks = [],
 }) => {
   const [showWarningModal, setShowWarningModal] = useState(false);
+  const [isEditingOrientation, setIsEditingOrientation] = useState(false);
 
   // Incluimos verificación de informes pendientes en la lógica
   const hasPendingCorrections = useMemo(
@@ -454,20 +455,58 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
                       {selectedOrientacion || "Especialidad"}
                     </span>
                   </div>
-                  <span
-                    className={`text-lg font-black ${
-                      criterios.cumpleHorasOrientacion
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-slate-600 dark:text-slate-400"
-                    }`}
-                  >
-                    {selectedOrientacion
-                      ? `${Math.round(criterios.horasOrientacionElegida)}hs`
-                      : "-"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-lg font-black ${
+                        criterios.cumpleHorasOrientacion
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      {selectedOrientacion
+                        ? `${Math.round(criterios.horasOrientacionElegida)}hs`
+                        : "-"}
+                    </span>
+                    <button
+                      onClick={() => setIsEditingOrientation(!isEditingOrientation)}
+                      className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 flex items-center justify-center transition-all"
+                      aria-label="Cambiar orientación"
+                    >
+                      <span className="material-icons !text-xs">edit</span>
+                    </button>
+                  </div>
                 </div>
 
-                {selectedOrientacion && (
+                <AnimatePresence>
+                  {isEditingOrientation && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-2 mb-1">
+                        <OrientacionSelector
+                          selectedOrientacion={selectedOrientacion}
+                          onOrientacionChange={(orientacion) => {
+                            handleOrientacionChange(orientacion);
+                            setIsEditingOrientation(false);
+                          }}
+                          showSaveConfirmation={showSaveConfirmation}
+                        />
+                        <button
+                          onClick={() => setIsEditingOrientation(false)}
+                          className="mt-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {selectedOrientacion && !isEditingOrientation && (
                   <div className="relative h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <motion.div
                       className={`absolute inset-y-0 left-0 rounded-full ${
@@ -602,15 +641,24 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
         <div className="col-span-1 flex flex-col gap-6">
           {/* Tarjeta Especialidad */}
           <div className="flex-1">
-            {selectedOrientacion ? (
-              <DetailCard
-                icon="psychology"
-                label={`Especialidad: ${selectedOrientacion}`}
-                value={Math.round(criterios.horasOrientacionElegida)}
-                subValue={`/ ${HORAS_OBJETIVO_ORIENTACION}`}
-                isCompleted={criterios.cumpleHorasOrientacion}
-                colorClass="text-purple-600 dark:text-purple-400"
-              />
+            {selectedOrientacion && !isEditingOrientation ? (
+              <div className="relative">
+                <DetailCard
+                  icon="psychology"
+                  label={`Especialidad: ${selectedOrientacion}`}
+                  value={Math.round(criterios.horasOrientacionElegida)}
+                  subValue={`/ ${HORAS_OBJETIVO_ORIENTACION}`}
+                  isCompleted={criterios.cumpleHorasOrientacion}
+                  colorClass="text-purple-600 dark:text-purple-400"
+                />
+                <button
+                  onClick={() => setIsEditingOrientation(true)}
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 flex items-center justify-center transition-all"
+                  aria-label="Cambiar orientación"
+                >
+                  <span className="material-icons !text-sm">edit</span>
+                </button>
+              </div>
             ) : (
               <div className="h-full glass-panel rounded-[2rem] p-6 flex flex-col justify-center items-center text-center hover:border-blue-300 dark:hover:border-blue-700 transition-all group cursor-pointer relative overflow-hidden border-dashed border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                 <div className="relative z-10 w-full">
@@ -619,9 +667,20 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
                   </div>
                   <OrientacionSelector
                     selectedOrientacion={selectedOrientacion}
-                    onOrientacionChange={handleOrientacionChange}
+                    onOrientacionChange={(orientacion) => {
+                      handleOrientacionChange(orientacion);
+                      setIsEditingOrientation(false);
+                    }}
                     showSaveConfirmation={showSaveConfirmation}
                   />
+                  {isEditingOrientation && (
+                    <button
+                      onClick={() => setIsEditingOrientation(false)}
+                      className="mt-3 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  )}
                 </div>
               </div>
             )}
