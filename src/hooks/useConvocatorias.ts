@@ -242,6 +242,40 @@ export const useConvocatorias = (
         newRecordFields[FIELD_DNI_CONVOCATORIAS] = studentDetails[FIELD_DNI_ESTUDIANTES];
       }
 
+      const existingConvocatorias = await db.convocatorias.getAll({
+        filters: {
+          [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: selectedLanzamiento.id,
+          [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentAirtableId,
+        },
+      });
+
+      const canceledEnrollment = existingConvocatorias.find(
+        (c: any) =>
+          normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) ===
+          "inscripcion cancelada"
+      );
+
+      if (canceledEnrollment) {
+        console.log(
+          "[Enrollment] Re-enrolling: Found canceled enrollment, updating:",
+          canceledEnrollment.id
+        );
+        return db.convocatorias.update(canceledEnrollment.id, {
+          [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
+          ...newRecordFields,
+        });
+      }
+
+      const existingActive = existingConvocatorias.find(
+        (c: any) =>
+          normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) === "inscripto" ||
+          normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) === "seleccionado"
+      );
+
+      if (existingActive) {
+        throw new Error("Ya estás inscripto a esta PPS.");
+      }
+
       return db.convocatorias.create(newRecordFields);
     },
     onMutate: async () => {

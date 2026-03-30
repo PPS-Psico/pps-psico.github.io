@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type {
   Convocatoria,
   LanzamientoPPS,
@@ -30,6 +30,7 @@ import {
 import { normalizeStringForComparison, formatDate } from "../../utils/formatters";
 import ConvocatoriaCardPremium from "../ConvocatoriaCardPremium";
 import EmptyState from "../EmptyState";
+import ConfirmModal from "../ConfirmModal";
 import { useModal } from "../../contexts/ModalContext";
 import { fetchSeleccionados } from "../../services/dataService";
 import { useMutation } from "@tanstack/react-query";
@@ -68,13 +69,17 @@ const HomeView: React.FC<HomeViewProps> = ({
   const { openSeleccionadosModal, showModal } = useModal();
   const { authenticatedUser } = useAuth();
   const isTesting = authenticatedUser?.legajo === "99999";
+  const [pendingCancel, setPendingCancel] = useState<{ id: string; nombre: string } | null>(null);
 
   const handleCancelarInscripcion = (convocatoriaId: string, nombrePPS: string) => {
-    showModal(
-      "Cancelar Inscripción",
-      `¿Estás seguro de que querés cancelar tu inscripción a "${nombrePPS}"? Esta acción no se puede deshacer.`
-    );
-    onCancelarInscripcion(convocatoriaId);
+    setPendingCancel({ id: convocatoriaId, nombre: nombrePPS });
+  };
+
+  const confirmCancelarInscripcion = () => {
+    if (pendingCancel) {
+      onCancelarInscripcion(pendingCancel.id);
+      setPendingCancel(null);
+    }
   };
 
   const seleccionadosMutation = useMutation({
@@ -260,6 +265,16 @@ const HomeView: React.FC<HomeViewProps> = ({
           size="lg"
         />
       )}
+      <ConfirmModal
+        isOpen={!!pendingCancel}
+        title="Cancelar Inscripción"
+        message={`¿Estás seguro de que deseas cancelar tu inscripción a "${pendingCancel?.nombre}"?\n\nEsta acción no se puede deshacer.`}
+        confirmText="Sí, cancelar inscripción"
+        cancelText="Volver"
+        type="danger"
+        onConfirm={confirmCancelarInscripcion}
+        onClose={() => setPendingCancel(null)}
+      />
     </div>
   );
 };

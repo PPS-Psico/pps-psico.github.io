@@ -200,6 +200,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     updateNota,
     updateFechaFin,
     enrollStudent,
+    cancelEnrollment,
     refetchAll,
     criterios,
     enrollmentMap,
