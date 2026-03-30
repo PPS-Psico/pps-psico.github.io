@@ -262,6 +262,25 @@ export const useConvocatorias = (
     },
   });
 
+  const cancelEnrollmentMutation = useMutation<
+    AirtableRecord<ConvocatoriaFields> | null,
+    Error,
+    { convocatoriaId: string }
+  >({
+    mutationFn: async ({ convocatoriaId }) => {
+      if (legajo === "99999") {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return null;
+      }
+      return db.convocatorias.update(convocatoriaId, {
+        [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripcion cancelada",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentAirtableId] });
+    },
+  });
+
   const confirmInformeMutation = useMutation({
     mutationFn: async (task: InformeTask) => {
       if (legajo === "99999") return;
@@ -298,6 +317,12 @@ export const useConvocatorias = (
     isConvocatoriasLoading,
     convocatoriasError,
     enrollStudent,
+    cancelEnrollment: {
+      mutate: (convocatoriaId: string) => {
+        cancelEnrollmentMutation.mutate({ convocatoriaId });
+      },
+      isPending: cancelEnrollmentMutation.isPending,
+    },
     confirmInforme: confirmInformeMutation,
     refetchConvocatorias,
     institutionAddressMap,

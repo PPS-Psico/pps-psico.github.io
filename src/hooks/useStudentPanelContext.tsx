@@ -50,6 +50,7 @@ interface StudentPanelContextType {
   >;
   updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string }, unknown>;
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
+  cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
   confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
   refetchAll: () => void;
   refetchPracticas: () => void;
@@ -95,6 +96,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     isConvocatoriasLoading,
     convocatoriasError,
     enrollStudent,
+    cancelEnrollment,
     confirmInforme,
     refetchConvocatorias,
     institutionAddressMap,
@@ -152,6 +154,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     updateNota,
     updateFechaFin,
     enrollStudent,
+    cancelEnrollment,
     confirmInforme,
     refetchAll,
     refetchPracticas,

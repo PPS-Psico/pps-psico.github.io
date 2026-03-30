@@ -42,6 +42,7 @@ interface StudentAcademicContextType {
     unknown
   >;
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
+  cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
   confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
   refetchAcademic: () => void;
   updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string }, unknown>;
@@ -74,6 +75,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     isConvocatoriasLoading,
     convocatoriasError,
     enrollStudent,
+    cancelEnrollment,
     confirmInforme,
     refetchConvocatorias,
     institutionAddressMap,
@@ -134,6 +136,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     updateNota,
     updateFechaFin,
     enrollStudent,
+    cancelEnrollment,
     confirmInforme,
     refetchAcademic,
     criterios,

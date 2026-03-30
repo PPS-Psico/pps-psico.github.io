@@ -42,6 +42,8 @@ interface HomeViewProps {
   lanzamientos: LanzamientoPPS[];
   student: EstudianteFields | null;
   onInscribir: (lanzamiento: LanzamientoPPS) => void;
+  onCancelarInscripcion: (convocatoriaId: string) => void;
+  isCancelandoInscripcion?: boolean;
   institutionAddressMap: Map<string, string>;
   institutionLogoMap?: Map<string, { url: string; invert: boolean }>;
   enrollmentMap: Map<string, Convocatoria>;
@@ -60,10 +62,20 @@ const HomeView: React.FC<HomeViewProps> = ({
   enrollmentMap,
   completedLanzamientoIds,
   onInscribir,
+  onCancelarInscripcion,
+  isCancelandoInscripcion,
 }) => {
   const { openSeleccionadosModal, showModal } = useModal();
   const { authenticatedUser } = useAuth();
   const isTesting = authenticatedUser?.legajo === "99999";
+
+  const handleCancelarInscripcion = (convocatoriaId: string, nombrePPS: string) => {
+    showModal(
+      "Cancelar Inscripción",
+      `¿Estás seguro de que querés cancelar tu inscripción a "${nombrePPS}"? Esta acción no se puede deshacer.`
+    );
+    onCancelarInscripcion(convocatoriaId);
+  };
 
   const seleccionadosMutation = useMutation({
     mutationFn: async (lanzamiento: LanzamientoPPS) => {
@@ -195,8 +207,17 @@ const HomeView: React.FC<HomeViewProps> = ({
         }}
         status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]}
         estadoInscripcion={enrollmentStatus as any}
+        enrollment={enrollment}
         isCompleted={isCompleted}
         onInscribirse={() => onInscribir(lanzamiento)}
+        onCancelarInscripcion={() =>
+          enrollment &&
+          handleCancelarInscripcion(
+            enrollment.id,
+            lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "esta PPS"
+          )
+        }
+        isCancelandoInscripcion={isCancelandoInscripcion}
         onVerConvocados={() => seleccionadosMutation.mutate(lanzamiento)}
         horariosFijos={!!lanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS]}
         fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}

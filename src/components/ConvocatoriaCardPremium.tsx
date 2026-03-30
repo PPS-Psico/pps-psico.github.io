@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { getEspecialidadClasses } from "../utils/formatters";
+import type { Convocatoria } from "../types";
 
 export interface ConvocatoriaDetailProps {
   id: string;
@@ -24,7 +25,10 @@ export interface ConvocatoriaDetailProps {
   logoUrl?: string;
   status?: string;
   estadoInscripcion?: "inscripto" | "seleccionado" | "no_seleccionado" | null;
+  enrollment?: Convocatoria | null;
   onInscribirse?: () => void;
+  onCancelarInscripcion?: () => void;
+  isCancelandoInscripcion?: boolean;
   onVerConvocados?: () => void;
   invertLogo?: boolean;
   horariosFijos?: boolean;
@@ -49,7 +53,10 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   timeline,
   status = "abierta",
   estadoInscripcion = null,
+  enrollment,
   onInscribirse,
+  onCancelarInscripcion,
+  isCancelandoInscripcion = false,
   onVerConvocados,
   horariosFijos = false,
   isCompleted = false,
@@ -118,9 +125,10 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
       return {
         text: "INSCRIPTO",
         icon: "how_to_reg",
-        // Professional teal/slate feel for "pending/sent"
-        classes: `${baseClasses} bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700 cursor-default shadow-none`,
-        disabled: true,
+        classes: `${baseClasses} bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700 cursor-pointer shadow-none`,
+        disabled: false,
+        onClick: undefined,
+        showCancelButton: true,
       };
     }
 
@@ -285,18 +293,47 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         {/* Right Side: Button & Chevron (Desktop only) */}
         <div className="flex items-center gap-2 md:gap-3 md:self-start">
           {/* Mobile: Button below title */}
-          <button
-            disabled={btnConfig.disabled}
-            onClick={btnConfig.onClick}
-            className={`${btnConfig.classes} md:order-none`}
-          >
-            {btnConfig.content || <span className="text-[10px] md:text-xs">{btnConfig.text}</span>}
-            {btnConfig.icon && (
-              <span className="material-icons !text-base md:!text-lg relative z-10">
-                {btnConfig.icon}
-              </span>
-            )}
-          </button>
+          {btnConfig.showCancelButton ? (
+            <div className="flex items-center gap-2">
+              <button disabled={btnConfig.disabled} className={`${btnConfig.classes}`}>
+                {btnConfig.icon && (
+                  <span className="material-icons !text-base md:!text-lg relative z-10">
+                    {btnConfig.icon}
+                  </span>
+                )}
+                <span className="text-[10px] md:text-xs">{btnConfig.text}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancelarInscripcion?.();
+                }}
+                disabled={isCancelandoInscripcion}
+                className="px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-[14px] font-bold text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 md:gap-2 transition-all duration-300 h-9 md:h-11 border shadow-sm bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200 border-rose-300 dark:border-rose-700 hover:bg-rose-200 dark:hover:bg-rose-900/80 cursor-pointer"
+              >
+                {isCancelandoInscripcion ? (
+                  <span className="w-4 h-4 border-2 border-rose-500/50 border-t-rose-500 rounded-full animate-spin" />
+                ) : (
+                  <span className="material-icons !text-base md:!text-lg">close</span>
+                )}
+              </button>
+            </div>
+          ) : (
+            <button
+              disabled={btnConfig.disabled}
+              onClick={btnConfig.onClick}
+              className={`${btnConfig.classes} md:order-none`}
+            >
+              {btnConfig.content || (
+                <span className="text-[10px] md:text-xs">{btnConfig.text}</span>
+              )}
+              {btnConfig.icon && (
+                <span className="material-icons !text-base md:!text-lg relative z-10">
+                  {btnConfig.icon}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Chevron Toggle - Desktop */}
           <div

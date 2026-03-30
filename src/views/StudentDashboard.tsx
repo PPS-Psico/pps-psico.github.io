@@ -95,6 +95,7 @@ export const StudentHome: React.FC = () => {
     allLanzamientos,
     institutionAddressMap,
     enrollStudent,
+    cancelEnrollment,
     criterios,
     enrollmentMap,
     completedLanzamientoIds,
@@ -138,6 +139,8 @@ export const StudentHome: React.FC = () => {
         onNavigate={(id) => navigate(`/student/${id === "inicio" ? "" : id}`)}
         student={studentDetails}
         onInscribir={enrollStudent.mutate}
+        onCancelarInscripcion={cancelEnrollment.mutate}
+        isCancelandoInscripcion={cancelEnrollment.isPending}
         institutionAddressMap={institutionAddressMap}
         enrollmentMap={enrollmentMap}
         completedLanzamientoIds={completedLanzamientoIds}
@@ -329,6 +332,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           onNavigate={(id) => setCurrentActiveTab(id)}
           student={studentDetails}
           onInscribir={enrollStudent.mutate}
+          onCancelarInscripcion={cancelEnrollment.mutate}
+          isCancelandoInscripcion={cancelEnrollment.isPending}
           institutionAddressMap={institutionAddressMap}
           institutionLogoMap={institutionLogoMap}
           enrollmentMap={enrollmentMap}
