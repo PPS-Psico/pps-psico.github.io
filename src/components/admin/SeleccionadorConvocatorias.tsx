@@ -21,11 +21,12 @@ import Toast from "../ui/Toast";
 
 // Componente Premium para selección de horarios
 interface ScheduleSelectorProps {
-  horariosSolicitados: string; // Horarios originales que solicitó el estudiante
-  horarioAsignado?: string; // Horario final asignado por el admin
-  isEditMode?: boolean; // true cuando se edita desde historial
+  horariosSolicitados: string;
+  horarioAsignado?: string;
+  isEditMode?: boolean;
   onScheduleChange: (newSchedule: string) => void;
   disabled?: boolean;
+  horariosDisponibles?: string[];
 }
 
 const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
@@ -34,11 +35,13 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   isEditMode = false,
   onScheduleChange,
   disabled = false,
+  horariosDisponibles = [],
 }) => {
   const [activeTooltip, setActiveTooltip] = React.useState<number | null>(null);
+  const [showDropdown, setShowDropdown] = React.useState(false);
   const tooltipRef = React.useRef<HTMLDivElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  // Parsear horarios solicitados (los originales)
   const allSolicitados = React.useMemo(() => {
     if (!horariosSolicitados) return [];
     return horariosSolicitados
@@ -47,9 +50,31 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       .filter(Boolean);
   }, [horariosSolicitados]);
 
+  const parsedAsignado = React.useMemo(() => {
+    if (!horarioAsignado) return [];
+    return horarioAsignado
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [horarioAsignado]);
+
+  const displaySchedules = React.useMemo(() => {
+    if (isEditMode) return parsedAsignado.length > 0 ? parsedAsignado : allSolicitados;
+    return allSolicitados;
+  }, [isEditMode, parsedAsignado, allSolicitados]);
+
   const handleRemoveSchedule = (scheduleToRemove: string) => {
-    const newSchedules = allSolicitados.filter((s) => s !== scheduleToRemove);
+    const newSchedules = displaySchedules.filter((s) => s !== scheduleToRemove);
     onScheduleChange(newSchedules.join("; "));
+  };
+
+  const handleAddSchedule = (schedule: string) => {
+    const currentSchedules = displaySchedules.length > 0 ? displaySchedules : [];
+    if (!currentSchedules.includes(schedule)) {
+      const newSchedules = [...currentSchedules, schedule];
+      onScheduleChange(newSchedules.join("; "));
+    }
+    setShowDropdown(false);
   };
 
   const handleScheduleClick = (index: number, event: React.MouseEvent) => {
@@ -64,12 +89,15 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
         setActiveTooltip(null);
       }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
     };
-    if (activeTooltip !== null) {
+    if (activeTooltip !== null || showDropdown) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [activeTooltip]);
+  }, [activeTooltip, showDropdown]);
 
   if (disabled) {
     const displaySchedule = isEditMode
@@ -82,10 +110,44 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     );
   }
 
-  if (allSolicitados.length === 0) {
+  if (displaySchedules.length === 0) {
+    if (isEditMode && horariosDisponibles.length > 0) {
+      return (
+        <div className="flex-grow lg:w-auto min-w-[200px] max-w-[320px]" ref={dropdownRef}>
+          {!showDropdown ? (
+            <button
+              onClick={() => setShowDropdown(true)}
+              className="w-full px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border-2 border-dashed border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all flex items-center justify-center gap-1.5"
+            >
+              <span className="material-icons text-[14px]">add_circle</span>
+              Asignar horario
+            </button>
+          ) : (
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-lg overflow-hidden">
+              <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-700 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                Seleccionar horario:
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {horariosDisponibles.map((horario, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleAddSchedule(horario)}
+                    className="w-full px-3 py-2.5 text-xs text-left text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors border-b border-slate-100 dark:border-slate-700 last:border-b-0 flex items-center gap-2"
+                  >
+                    <span className="material-icons text-[14px] text-emerald-500">schedule</span>
+                    <span className="truncate">{horario}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="flex-grow lg:w-auto min-w-[200px] max-w-[320px] px-3 py-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-        Sin horarios solicitados
+        Sin horarios asignados
       </div>
     );
   }
@@ -93,7 +155,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   return (
     <div className="flex-grow lg:w-auto min-w-[200px] max-w-[320px]">
       <div className="flex flex-col gap-2">
-        {allSolicitados.map((schedule, index) => {
+        {displaySchedules.map((schedule, index) => {
           const isAsignado = isEditMode && horarioAsignado === schedule;
 
           return (
@@ -123,14 +185,14 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                 {schedule}
               </span>
 
-              {/* Botón eliminar (solo en modo normal) */}
-              {!isEditMode && (
+              {/* Botón eliminar (siempre visible en modo edición, oculto en modo normal) */}
+              {isEditMode && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemoveSchedule(schedule);
                   }}
-                  className="flex-shrink-0 ml-1 p-1 text-blue-500 dark:text-blue-400 hover:text-white hover:bg-red-500 dark:hover:bg-red-600 rounded-md transition-all duration-150"
+                  className="flex-shrink-0 ml-1 p-1 text-red-500 dark:text-red-400 hover:text-white hover:bg-red-500 dark:hover:bg-red-600 rounded-md transition-all duration-150"
                   title="Eliminar horario"
                 >
                   <span className="material-icons text-[13px]">close</span>
@@ -179,6 +241,7 @@ const StudentRow: React.FC<{
   isEditMode?: boolean;
   showScheduleSelector?: boolean;
   onShowPracticas?: (student: EnrichedStudent) => void;
+  horariosDisponibles?: string[];
 }> = ({
   student,
   onToggleSelection,
@@ -188,6 +251,7 @@ const StudentRow: React.FC<{
   isEditMode = false,
   showScheduleSelector = true,
   onShowPracticas,
+  horariosDisponibles = [],
 }) => {
   const isSelected = normalizeStringForComparison(student.status) === "seleccionado";
 
@@ -338,9 +402,10 @@ const StudentRow: React.FC<{
           <ScheduleSelector
             horariosSolicitados={student.horarioSeleccionado || ""}
             horarioAsignado={student.horarioAsignado}
-            isEditMode={false}
+            isEditMode={isEditMode}
             onScheduleChange={(newSchedule) => onUpdateSchedule(student, newSchedule)}
             disabled={!showScheduleSelector}
+            horariosDisponibles={horariosDisponibles}
           />
 
           <button
@@ -913,6 +978,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               isReviewMode={viewMode === "review"}
               isEditMode={isEditMode}
               showScheduleSelector={scheduleInfo?.showScheduleSelector ?? true}
+              horariosDisponibles={scheduleInfo?.horariosDisponibles ?? []}
               onShowPracticas={(student) => {
                 setSelectedStudentForPracticas(student);
                 setShowPracticasModal(true);

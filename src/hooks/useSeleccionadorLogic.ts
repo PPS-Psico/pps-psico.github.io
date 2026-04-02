@@ -370,16 +370,17 @@ export const useSeleccionadorLogic = (
         ? FIELD_HORARIO_ASIGNADO_CONVOCATORIAS
         : FIELD_HORARIO_FORMULA_CONVOCATORIAS;
 
+      const updateData: Record<string, string> = { [fieldToUpdate]: schedule };
+      if (isEditMode) {
+        updateData[FIELD_HORARIO_FORMULA_CONVOCATORIAS] = schedule;
+      }
+
       if (!isTestingMode && isSelected && selectedLanzamiento) {
-        // If student is already selected, sync the orientation in the Practica record
         await updatePracticaFromSchedule(student.studentId, selectedLanzamiento.id, schedule);
       }
 
-      if (isTestingMode)
-        return mockDb.update("convocatorias", id, {
-          [fieldToUpdate]: schedule,
-        });
-      return db.convocatorias.update(id, { [fieldToUpdate]: schedule });
+      if (isTestingMode) return mockDb.update("convocatorias", id, updateData);
+      return db.convocatorias.update(id, updateData);
     },
     onSuccess: () => {
       setToastInfo({ message: "Horario actualizado.", type: "success" });

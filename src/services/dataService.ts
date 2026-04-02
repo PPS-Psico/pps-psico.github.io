@@ -345,6 +345,17 @@ export const fetchConvocatoriasData = async (
   };
 };
 
+function normalizeSchedule(s: string): string {
+  return s
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("; ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 export const fetchSeleccionados = async (
   lanzamiento: LanzamientoPPS
 ): Promise<GroupedSeleccionados | null> => {
@@ -361,15 +372,32 @@ export const fetchSeleccionados = async (
       // Define RPC result type
       interface PostulanteRPC {
         horario?: string;
+        horario_asignado?: string;
         nombre?: string;
         legajo?: string;
       }
 
       (rpcData as any as PostulanteRPC[]).forEach((row) => {
-        const horario = row.horario || "No especificado";
-        if (!grouped[horario]) grouped[horario] = [];
+        let horario = row.horario_asignado || row.horario || "No especificado";
+        horario = horario
+          .split(";")
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+          .join("; ")
+          .replace(/\s+/g, " ")
+          .trim();
 
-        grouped[horario].push({
+        let matchKey = horario;
+        for (const existingKey of Object.keys(grouped)) {
+          if (normalizeSchedule(existingKey) === normalizeSchedule(horario)) {
+            matchKey = existingKey;
+            break;
+          }
+        }
+        const groupKey = matchKey || horario;
+        if (!grouped[groupKey]) grouped[groupKey] = [];
+
+        grouped[groupKey].push({
           nombre: row.nombre || "Estudiante",
           legajo: row.legajo || "---",
         });
@@ -405,13 +433,32 @@ export const fetchSeleccionados = async (
 
   const grouped: GroupedSeleccionados = {};
   selectedEnrollments.forEach((row) => {
-    const horario = (row[C.FIELD_HORARIO_FORMULA_CONVOCATORIAS] as string) || "No especificado";
+    let horario =
+      (row[C.FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] as string) ||
+      (row[C.FIELD_HORARIO_FORMULA_CONVOCATORIAS] as string) ||
+      "No especificado";
+    horario = horario
+      .split(";")
+      .map((s: string) => s.trim())
+      .filter(Boolean)
+      .join("; ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    let matchKey: string | null = null;
+    for (const existingKey of Object.keys(grouped)) {
+      if (normalizeSchedule(existingKey) === normalizeSchedule(horario)) {
+        matchKey = existingKey;
+        break;
+      }
+    }
+    const groupKey = matchKey || horario;
     const sId = safeGetId(row[C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
     const student = sId ? studentMap.get(sId) : null;
     const nombre = student ? (student[C.FIELD_NOMBRE_ESTUDIANTES] as string) : "Estudiante";
     const legajo = student ? String(student[C.FIELD_LEGAJO_ESTUDIANTES]) : "---";
-    if (!grouped[horario]) grouped[horario] = [];
-    grouped[horario].push({ nombre, legajo });
+    if (!grouped[groupKey]) grouped[groupKey] = [];
+    grouped[groupKey].push({ nombre, legajo });
   });
 
   for (const h in grouped) grouped[h].sort((a, b) => a.nombre.localeCompare(b.nombre));
