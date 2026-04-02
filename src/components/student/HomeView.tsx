@@ -27,6 +27,7 @@ import {
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
 } from "../../constants";
+import { getHorarioEfectivo } from "../../utils/scheduleUtils";
 import { normalizeStringForComparison, formatDate } from "../../utils/formatters";
 import ConvocatoriaCardPremium from "../ConvocatoriaCardPremium";
 import EmptyState from "../EmptyState";
@@ -195,15 +196,13 @@ const HomeView: React.FC<HomeViewProps> = ({
               : []
         }
         horasAcreditadas={String(lanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0)}
-        horariosCursada={(() => {
-          if (enrollment && enrollment.horario_asignado) {
-            return enrollment.horario_asignado;
-          }
-          if (enrollment && enrollment.horario_seleccionado) {
-            return enrollment.horario_seleccionado;
-          }
-          return lanzamiento[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || "A definir";
-        })()}
+        horariosCursada={
+          enrollment
+            ? getHorarioEfectivo(enrollment) ||
+              lanzamiento[FIELD_HORARIO_FORMULA_CONVOCATORIAS] ||
+              "A definir"
+            : lanzamiento[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || "A definir"
+        }
         cupo={String(lanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0)}
         requisitoObligatorio={lanzamiento.requisito_obligatorio || ""}
         archivoDescargableNombre={lanzamiento.archivo_descargable_nombre || ""}

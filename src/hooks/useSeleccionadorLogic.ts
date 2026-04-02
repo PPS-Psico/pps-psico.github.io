@@ -354,7 +354,6 @@ export const useSeleccionadorLogic = (
     mutationFn: async ({
       id,
       schedule,
-      isEditMode,
       student,
       isSelected,
     }: {
@@ -364,16 +363,9 @@ export const useSeleccionadorLogic = (
       student: EnrichedStudent;
       isSelected: boolean;
     }) => {
-      // Si estamos en modo edición (convocatoria cerrada), actualizamos horario_asignado
-      // Si estamos en modo normal (convocatoria abierta), actualizamos horario_seleccionado
-      const fieldToUpdate = isEditMode
-        ? FIELD_HORARIO_ASIGNADO_CONVOCATORIAS
-        : FIELD_HORARIO_FORMULA_CONVOCATORIAS;
-
-      const updateData: Record<string, string> = { [fieldToUpdate]: schedule };
-      if (isEditMode) {
-        updateData[FIELD_HORARIO_FORMULA_CONVOCATORIAS] = schedule;
-      }
+      const updateData: Record<string, string> = {
+        [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: schedule,
+      };
 
       if (!isTestingMode && isSelected && selectedLanzamiento) {
         await updatePracticaFromSchedule(student.studentId, selectedLanzamiento.id, schedule);
@@ -524,15 +516,6 @@ export const useSeleccionadorLogic = (
             [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
           });
         }
-
-        // Copiar horario_seleccionado a horario_asignado para todos los estudiantes seleccionados
-        // Esto debe hacerse tanto en cierre normal como en modo edición
-        const updatePromises = selectedCandidates.map((student) => {
-          return db.convocatorias.update(student.enrollmentId, {
-            [FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: student.horarioSeleccionado,
-          });
-        });
-        await Promise.all(updatePromises);
       } else {
         await mockDb.update("lanzamientos_pps", selectedLanzamiento.id, {
           [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",

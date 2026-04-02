@@ -18,6 +18,7 @@ import {
   normalizeStringForComparison,
   safeGetId,
 } from "../utils/formatters";
+import { cleanSchedule, findMatchingGroupKey } from "../utils/scheduleUtils";
 
 export const fetchStudentData = async (
   legajo: string
@@ -345,15 +346,22 @@ export const fetchConvocatoriasData = async (
   };
 };
 
-function normalizeSchedule(s: string): string {
-  return s
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join("; ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+function addToGrouped(
+  grouped: GroupedSeleccionados,
+  rawHorario: string,
+  nombre: string,
+  legajo: string
+) {
+  const horario = cleanSchedule(rawHorario) || "No especificado";
+  const matchKey = findMatchingGroupKey(horario, Object.keys(grouped));
+  const groupKey = matchKey || horario;
+  if (!grouped[groupKey]) grouped[groupKey] = [];
+  grouped[groupKey].push({ nombre, legajo });
+}
+
+function sortGrouped(grouped: GroupedSeleccionados): GroupedSeleccionados {
+  for (const h in grouped) grouped[h].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return grouped;
 }
 
 export const fetchSeleccionados = async (
@@ -369,49 +377,17 @@ export const fetchSeleccionados = async (
 
     if (!rpcError && rpcData) {
       const grouped: GroupedSeleccionados = {};
-      // Define RPC result type
-      interface PostulanteRPC {
-        horario?: string;
-        horario_asignado?: string;
-        nombre?: string;
-        legajo?: string;
-      }
 
-      (rpcData as any as PostulanteRPC[]).forEach((row) => {
-        let horario = row.horario_asignado || row.horario || "No especificado";
-        horario = horario
-          .split(";")
-          .map((s: string) => s.trim())
-          .filter(Boolean)
-          .join("; ")
-          .replace(/\s+/g, " ")
-          .trim();
-
-        let matchKey = horario;
-        for (const existingKey of Object.keys(grouped)) {
-          if (normalizeSchedule(existingKey) === normalizeSchedule(horario)) {
-            matchKey = existingKey;
-            break;
-          }
-        }
-        const groupKey = matchKey || horario;
-        if (!grouped[groupKey]) grouped[groupKey] = [];
-
-        grouped[groupKey].push({
-          nombre: row.nombre || "Estudiante",
-          legajo: row.legajo || "---",
-        });
+      (rpcData as any[]).forEach((row: any) => {
+        const horario = row.horario_asignado || row.horario || "";
+        addToGrouped(grouped, horario, row.nombre || "Estudiante", row.legajo || "---");
       });
 
       if (Object.keys(grouped).length === 0) return null;
-
-      for (const horario in grouped) {
-        grouped[horario].sort((a, b) => a.nombre.localeCompare(b.nombre));
-      }
-      return grouped;
+      return sortGrouped(grouped);
     }
   } catch (e) {
-    // Fallback or ignore RPC error
+    // Fallback below
   }
 
   const enrollments = await db.convocatorias.getAll({
@@ -433,36 +409,21 @@ export const fetchSeleccionados = async (
 
   const grouped: GroupedSeleccionados = {};
   selectedEnrollments.forEach((row) => {
-    let horario =
+    const horario =
       (row[C.FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] as string) ||
       (row[C.FIELD_HORARIO_FORMULA_CONVOCATORIAS] as string) ||
-      "No especificado";
-    horario = horario
-      .split(";")
-      .map((s: string) => s.trim())
-      .filter(Boolean)
-      .join("; ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    let matchKey: string | null = null;
-    for (const existingKey of Object.keys(grouped)) {
-      if (normalizeSchedule(existingKey) === normalizeSchedule(horario)) {
-        matchKey = existingKey;
-        break;
-      }
-    }
-    const groupKey = matchKey || horario;
+      "";
     const sId = safeGetId(row[C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
     const student = sId ? studentMap.get(sId) : null;
-    const nombre = student ? (student[C.FIELD_NOMBRE_ESTUDIANTES] as string) : "Estudiante";
-    const legajo = student ? String(student[C.FIELD_LEGAJO_ESTUDIANTES]) : "---";
-    if (!grouped[groupKey]) grouped[groupKey] = [];
-    grouped[groupKey].push({ nombre, legajo });
+    addToGrouped(
+      grouped,
+      horario,
+      student ? (student[C.FIELD_NOMBRE_ESTUDIANTES] as string) : "Estudiante",
+      student ? String(student[C.FIELD_LEGAJO_ESTUDIANTES]) : "---"
+    );
   });
 
-  for (const h in grouped) grouped[h].sort((a, b) => a.nombre.localeCompare(b.nombre));
-  return grouped;
+  return sortGrouped(grouped);
 };
 
 export const toggleStudentSelection = async (

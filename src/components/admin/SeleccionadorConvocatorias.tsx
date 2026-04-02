@@ -14,6 +14,7 @@ import {
   getEspecialidadClasses,
   normalizeStringForComparison,
 } from "../../utils/formatters";
+import { parseSchedules, cleanSchedule } from "../../utils/scheduleUtils";
 import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
@@ -42,21 +43,11 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   const tooltipRef = React.useRef<HTMLDivElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const allSolicitados = React.useMemo(() => {
-    if (!horariosSolicitados) return [];
-    return horariosSolicitados
-      .split(";")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [horariosSolicitados]);
-
-  const parsedAsignado = React.useMemo(() => {
-    if (!horarioAsignado) return [];
-    return horarioAsignado
-      .split(";")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [horarioAsignado]);
+  const allSolicitados = React.useMemo(
+    () => parseSchedules(horariosSolicitados),
+    [horariosSolicitados]
+  );
+  const parsedAsignado = React.useMemo(() => parseSchedules(horarioAsignado), [horarioAsignado]);
 
   const displaySchedules = React.useMemo(() => {
     if (isEditMode) return parsedAsignado.length > 0 ? parsedAsignado : allSolicitados;
@@ -69,10 +60,8 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   };
 
   const handleAddSchedule = (schedule: string) => {
-    const currentSchedules = displaySchedules.length > 0 ? displaySchedules : [];
-    if (!currentSchedules.includes(schedule)) {
-      const newSchedules = [...currentSchedules, schedule];
-      onScheduleChange(newSchedules.join("; "));
+    if (!displaySchedules.includes(schedule)) {
+      onScheduleChange([...displaySchedules, schedule].join("; "));
     }
     setShowDropdown(false);
   };
@@ -101,8 +90,8 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
 
   if (disabled) {
     const displaySchedule = isEditMode
-      ? horarioAsignado || allSolicitados[0] || ""
-      : horarioAsignado || horariosSolicitados;
+      ? cleanSchedule(horarioAsignado || "") || allSolicitados[0] || ""
+      : cleanSchedule(horarioAsignado || horariosSolicitados || "");
     return (
       <div className="flex-grow lg:w-auto min-w-[200px] px-3 py-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
         {displaySchedule || "Horario predefinido"}
