@@ -261,7 +261,11 @@ export const useSeleccionadorLogic = (
             finalesAdeuda: enrollment[FIELD_FINALES_ADEUDA_CONVOCATORIAS] || "",
             notasEstudiante: enrollment[FIELD_OTRA_SITUACION_CONVOCATORIAS] || "",
             horarioSeleccionado: enrollment[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || "",
-            horarioAsignado: enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] || "",
+            horarioAsignado:
+              enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] !== undefined &&
+              enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] !== null
+                ? String(enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS])
+                : null,
             totalHoras,
             cantPracticas,
             penalizacionAcumulada,
@@ -376,7 +380,12 @@ export const useSeleccionadorLogic = (
     },
     onSuccess: () => {
       setToastInfo({ message: "Horario actualizado.", type: "success" });
-      refetchCandidates();
+      refetchCandidates().then(() => {
+        queryClient.invalidateQueries();
+      });
+    },
+    onError: (err) => {
+      setToastInfo({ message: `Error: ${err.message}`, type: "error" });
     },
   });
 

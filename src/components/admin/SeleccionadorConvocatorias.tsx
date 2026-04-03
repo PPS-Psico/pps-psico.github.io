@@ -50,9 +50,15 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   const parsedAsignado = React.useMemo(() => parseSchedules(horarioAsignado), [horarioAsignado]);
 
   const displaySchedules = React.useMemo(() => {
-    if (isEditMode) return parsedAsignado.length > 0 ? parsedAsignado : allSolicitados;
+    if (isEditMode) {
+      if (parsedAsignado.length > 0) return parsedAsignado;
+      if (horarioAsignado === null || horarioAsignado === undefined) {
+        return allSolicitados;
+      }
+      return [];
+    }
     return allSolicitados;
-  }, [isEditMode, parsedAsignado, allSolicitados]);
+  }, [isEditMode, parsedAsignado, allSolicitados, horarioAsignado]);
 
   const handleRemoveSchedule = (scheduleToRemove: string) => {
     const newSchedules = displaySchedules.filter((s) => s !== scheduleToRemove);
@@ -90,8 +96,10 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
 
   if (disabled) {
     const displaySchedule = isEditMode
-      ? cleanSchedule(horarioAsignado || "") || allSolicitados[0] || ""
-      : cleanSchedule(horarioAsignado || horariosSolicitados || "");
+      ? parsedAsignado.length > 0
+        ? displaySchedules[0]
+        : allSolicitados[0]
+      : horarioAsignado || horariosSolicitados;
     return (
       <div className="flex-grow lg:w-auto min-w-[200px] px-3 py-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
         {displaySchedule || "Horario predefinido"}
