@@ -1,4 +1,15 @@
 import * as C from "../constants";
+import {
+  COMPROMISO_PPS_BLOCKS,
+  COMPROMISO_PPS_CHECK_COMPROMISO,
+  COMPROMISO_PPS_CHECK_LECTURA,
+  COMPROMISO_PPS_DECLARACION,
+  COMPROMISO_PPS_FULL_TEXT,
+  COMPROMISO_PPS_INTRO,
+  COMPROMISO_PPS_SUBTITLE,
+  COMPROMISO_PPS_TITLE,
+  COMPROMISO_PPS_VERSION,
+} from "../constants/commitmentConstants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -1086,9 +1097,9 @@ export const submitCompromisoPPS = async (payload: {
     [C.FIELD_COMPROMISO_ESTUDIANTE]: payload.studentId,
     [C.FIELD_COMPROMISO_CONVOCATORIA]: payload.convocatoriaId,
     [C.FIELD_COMPROMISO_LANZAMIENTO]: payload.lanzamientoId,
-    [C.FIELD_COMPROMISO_VERSION]: C.COMPROMISO_PPS_VERSION,
+    [C.FIELD_COMPROMISO_VERSION]: COMPROMISO_PPS_VERSION,
     [C.FIELD_COMPROMISO_ESTADO]: "aceptado",
-    [C.FIELD_COMPROMISO_TEXTO_ACTA]: C.COMPROMISO_PPS_FULL_TEXT,
+    [C.FIELD_COMPROMISO_TEXTO_ACTA]: COMPROMISO_PPS_FULL_TEXT,
     [C.FIELD_COMPROMISO_ACEPTA_LECTURA]: true,
     [C.FIELD_COMPROMISO_ACEPTA_COMPROMISO]: true,
     [C.FIELD_COMPROMISO_NOMBRE]: payload.fullName,
@@ -1136,7 +1147,7 @@ Legajo: ${data.legajo}
 
 Texto aceptado:
 
-${C.COMPROMISO_PPS_FULL_TEXT}
+${COMPROMISO_PPS_FULL_TEXT}
 
 Esta copia se emite como constancia del compromiso asumido a través de Mi Panel.
 
@@ -1178,7 +1189,7 @@ export const sendCompromisoAcceptanceEmailV2 = async (data: {
     timeStyle: "short",
   });
 
-  const structuredActa = C.COMPROMISO_PPS_BLOCKS.flatMap((block) => [
+  const structuredActa = COMPROMISO_PPS_BLOCKS.flatMap((block) => [
     `**${block.title}**`,
     ...block.clauses.map((clause) => `${clause.label}: ${clause.text}`),
     "",
@@ -1192,7 +1203,7 @@ Se registró correctamente tu aceptación digital del Acta de Compromiso corresp
 Institución / PPS: ${data.ppsName}
 Horario / Comisión asignada: ${data.schedule || "A confirmar"}
 Fecha de aceptación: ${acceptedDate}
-Versión del acta: ${C.COMPROMISO_PPS_VERSION}
+Versión del acta: ${COMPROMISO_PPS_VERSION}
 
 **Firma declarada**
 Nombre completo: ${data.fullName}
@@ -1200,17 +1211,17 @@ DNI: ${data.dni || "No informado"}
 Legajo: ${data.legajo}
 
 **Declaración ratificada**
-1. ${C.COMPROMISO_PPS_CHECK_LECTURA}
-2. ${C.COMPROMISO_PPS_CHECK_COMPROMISO}
+1. ${COMPROMISO_PPS_CHECK_LECTURA}
+2. ${COMPROMISO_PPS_CHECK_COMPROMISO}
 
 **Declaración final**
-${C.COMPROMISO_PPS_DECLARACION}
+${COMPROMISO_PPS_DECLARACION}
 
 **Texto del acta aceptada**
-${C.COMPROMISO_PPS_TITLE}
-${C.COMPROMISO_PPS_SUBTITLE}
+${COMPROMISO_PPS_TITLE}
+${COMPROMISO_PPS_SUBTITLE}
 
-${C.COMPROMISO_PPS_INTRO}
+${COMPROMISO_PPS_INTRO}
 
 ${structuredActa}
 **Cierre institucional**
@@ -1286,9 +1297,9 @@ Resumen de condiciones aceptadas:
 - Cumplimiento de la documentaci?n requerida y entrega del informe final en plazo.
 
 Constancia formal:
-${C.COMPROMISO_PPS_DECLARACION}
+${COMPROMISO_PPS_DECLARACION}
 
-Versi?n del acta aceptada: ${C.COMPROMISO_PPS_VERSION}
+Versi?n del acta aceptada: ${COMPROMISO_PPS_VERSION}
 
 Conserv? este correo como comprobante de tu confirmaci?n.
 
@@ -1390,11 +1401,11 @@ UFLO Universidad`;
 
                 <div style="margin-bottom: 24px; border-radius: 12px; padding: 22px 24px; background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border: 1px solid #dbeafe;">
                   <div style="margin-bottom: 10px; font-family: ${fontStack}; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #1e3a8a;">Constancia formal</div>
-                  <p style="margin: 0; color: #1e293b; font-family: ${fontStack}; font-size: 15px; line-height: 1.7;">${escapeHtml(C.COMPROMISO_PPS_DECLARACION)}</p>
+                  <p style="margin: 0; color: #1e293b; font-family: ${fontStack}; font-size: 15px; line-height: 1.7;">${escapeHtml(COMPROMISO_PPS_DECLARACION)}</p>
                 </div>
 
                 <div style="margin-bottom: 28px; padding: 18px 20px; border-radius: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0;">
-                  <div style="font-family: ${fontStack}; font-size: 13px; line-height: 1.7; color: #334155;"><strong style="color: #0f172a;">Versi?n del acta aceptada:</strong> ${escapeHtml(C.COMPROMISO_PPS_VERSION)}<br /><strong style="color: #0f172a;">Importante:</strong> Conserv? este correo como comprobante de tu confirmaci?n.</div>
+                  <div style="font-family: ${fontStack}; font-size: 13px; line-height: 1.7; color: #334155;"><strong style="color: #0f172a;">Versi?n del acta aceptada:</strong> ${escapeHtml(COMPROMISO_PPS_VERSION)}<br /><strong style="color: #0f172a;">Importante:</strong> Conserv? este correo como comprobante de tu confirmaci?n.</div>
                 </div>
 
                 <div style="margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 20px;">

@@ -8,7 +8,7 @@ import {
   COMPROMISO_PPS_INTRO,
   COMPROMISO_PPS_SUBTITLE,
   COMPROMISO_PPS_TITLE,
-} from "../../constants";
+} from "../../constants/commitmentConstants";
 import type { Convocatoria, Estudiante, LanzamientoPPS } from "../../types";
 import Button from "../ui/Button";
 import Checkbox from "../ui/Checkbox";
