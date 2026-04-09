@@ -37,7 +37,7 @@ import { supabase } from "../lib/supabaseClient";
 import { toggleStudentSelection, updatePracticaFromSchedule } from "../services/dataService";
 import { mockDb } from "../services/mockDb";
 import type { AirtableRecord, ConvocatoriaFields, EnrichedStudent, LanzamientoPPS } from "../types";
-import { sendSmartEmail } from "../utils/emailService";
+import { getPublicPanelUrl, sendSmartEmail } from "../utils/emailService";
 import { cleanDbValue, normalizeStringForComparison } from "../utils/formatters";
 
 const SCORE_WEIGHTS = {
@@ -191,7 +191,8 @@ export const useSeleccionadorLogic = (
 
       let studentsRes: any[] = [],
         practicasRes: any[] = [],
-        penaltiesRes: any[] = [];
+        penaltiesRes: any[] = [],
+        compromisosRes: any[] = [];
       if (isTestingMode) {
         [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
           mockDb.getAll("estudiantes", { id: studentIds }),
@@ -200,16 +201,29 @@ export const useSeleccionadorLogic = (
         ]);
       } else {
         // Using 'in' filter for array of IDs
-        [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
+        const [students, practicas, penalties, compromisos] = await Promise.all([
           db.estudiantes.getAll({ filters: { id: studentIds } }),
           db.practicas.getAll({ filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds } }),
           db.penalizaciones.getAll({
             filters: { [FIELD_PENALIZACION_ESTUDIANTE_LINK]: studentIds },
           }),
+          supabase
+            .from("compromisos_pps")
+            .select("convocatoria_id, estado, accepted_at")
+            .eq("lanzamiento_id", launchId),
         ]);
+        studentsRes = students;
+        practicasRes = practicas;
+        penaltiesRes = penalties;
+        compromisosRes = compromisos.data || [];
       }
 
       const studentMap = new Map(studentsRes.map((s) => [s.id, s]));
+      const compromisoMap = new Map(
+        (compromisosRes || [])
+          .filter((item) => !!item.convocatoria_id)
+          .map((item) => [item.convocatoria_id, item])
+      );
 
       const enrichedList: EnrichedStudent[] = enrollments
         .map((enrollment) => {
@@ -246,6 +260,7 @@ export const useSeleccionadorLogic = (
           const cvUrl = enrollment[FIELD_CV_CONVOCATORIAS] as string | null;
 
           const puntajeTotal = calculateScore(enrollment, totalHoras, penalizacionAcumulada, works);
+          const compromiso = compromisoMap.get(enrollment.id);
 
           return {
             enrollmentId: enrollment.id,
@@ -273,6 +288,8 @@ export const useSeleccionadorLogic = (
             trabaja: works,
             certificadoTrabajo: cert as string,
             cvUrl: cvUrl,
+            compromisoEstado: compromiso?.estado || null,
+            compromisoFecha: compromiso?.accepted_at || null,
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null) as EnrichedStudent[];
@@ -471,6 +488,7 @@ export const useSeleccionadorLogic = (
             // Si no hay horario seleccionado pero hay un solo horario disponible, usar ese
             const horarioAsignado =
               student.horarioSeleccionado || (tieneUnSoloHorario ? horariosDisponibles[0] : "");
+            const panelUrl = getPublicPanelUrl();
 
             return sendSmartEmail("seleccion", {
               studentName: student.nombre,
@@ -478,6 +496,7 @@ export const useSeleccionadorLogic = (
               ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
               schedule: horarioAsignado || undefined,
               encuentroInicial: encuentroText || undefined,
+              panelUrl,
             });
           });
           await Promise.all(emailPromises);

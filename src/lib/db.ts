@@ -12,6 +12,7 @@ import {
   mapPenalizacion,
   mapSolicitud,
   mapFinalizacion,
+  mapCompromiso,
 } from "../utils/mappers";
 
 type Tables = Database["public"]["Tables"];
@@ -146,4 +147,5 @@ export const db = {
   penalizaciones: createTableInterface("penalizaciones", mapPenalizacion),
   solicitudes: createTableInterface("solicitudes_pps", mapSolicitud),
   finalizacion: createTableInterface("finalizacion_pps", mapFinalizacion),
+  compromisos: createTableInterface("compromisos_pps", mapCompromiso),
 };

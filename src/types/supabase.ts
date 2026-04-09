@@ -157,6 +157,85 @@ export type Database = {
           },
         ];
       };
+      compromisos_pps: {
+        Row: {
+          accepted_at: string | null;
+          acepta_compromiso: boolean;
+          acepta_lectura: boolean;
+          convocatoria_id: string;
+          created_at: string | null;
+          dni: number | null;
+          estado: string;
+          estudiante_id: string;
+          firma_texto: string;
+          id: string;
+          lanzamiento_id: string;
+          legajo: string;
+          nombre_completo: string;
+          texto_acta: string;
+          updated_at: string | null;
+          version: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          acepta_compromiso?: boolean;
+          acepta_lectura?: boolean;
+          convocatoria_id: string;
+          created_at?: string | null;
+          dni?: number | null;
+          estado?: string;
+          estudiante_id: string;
+          firma_texto: string;
+          id?: string;
+          lanzamiento_id: string;
+          legajo: string;
+          nombre_completo: string;
+          texto_acta: string;
+          updated_at?: string | null;
+          version: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          acepta_compromiso?: boolean;
+          acepta_lectura?: boolean;
+          convocatoria_id?: string;
+          created_at?: string | null;
+          dni?: number | null;
+          estado?: string;
+          estudiante_id?: string;
+          firma_texto?: string;
+          id?: string;
+          lanzamiento_id?: string;
+          legajo?: string;
+          nombre_completo?: string;
+          texto_acta?: string;
+          updated_at?: string | null;
+          version?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "compromisos_pps_convocatoria_id_fkey";
+            columns: ["convocatoria_id"];
+            isOneToOne: false;
+            referencedRelation: "convocatorias";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "compromisos_pps_estudiante_id_fkey";
+            columns: ["estudiante_id"];
+            isOneToOne: false;
+            referencedRelation: "estudiantes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "compromisos_pps_lanzamiento_id_fkey";
+            columns: ["lanzamiento_id"];
+            isOneToOne: false;
+            referencedRelation: "lanzamientos_pps";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       debug_logs: {
         Row: {
           created_at: string | null;
@@ -408,6 +487,8 @@ export type Database = {
           actividades_label: string | null;
           actividades_lista: string[] | null;
           airtable_id: string | null;
+          archivo_descargable_nombre: string | null;
+          archivo_descargable_url: string | null;
           codigo_tarjeta_campus: string | null;
           created_at: string | null;
           cupos_disponibles: number | null;
@@ -446,6 +527,8 @@ export type Database = {
           actividades_label?: string | null;
           actividades_lista?: string[] | null;
           airtable_id?: string | null;
+          archivo_descargable_nombre?: string | null;
+          archivo_descargable_url?: string | null;
           codigo_tarjeta_campus?: string | null;
           created_at?: string | null;
           cupos_disponibles?: number | null;
@@ -483,6 +566,8 @@ export type Database = {
           actividades_label?: string | null;
           actividades_lista?: string[] | null;
           airtable_id?: string | null;
+          archivo_descargable_nombre?: string | null;
+          archivo_descargable_url?: string | null;
           codigo_tarjeta_campus?: string | null;
           created_at?: string | null;
           cupos_disponibles?: number | null;

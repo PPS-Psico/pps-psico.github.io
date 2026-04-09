@@ -1027,7 +1027,7 @@ Responde SOLO con el JSON válido.
       }
 
       setFormData(initialState);
-      setSchedules([""]);
+      setSchedules([{ time: "", orientacion: "" }]);
       setActividades([]);
 
       setInstiSearch("");

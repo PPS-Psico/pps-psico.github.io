@@ -101,6 +101,8 @@ export const StudentHome: React.FC = () => {
     completedLanzamientoIds,
     informeTasks,
     finalizacionRequest,
+    compromisoMap,
+    acceptCompromiso,
   } = useStudentPanel();
 
   const handleOpenFinalization = useCallback(() => {
@@ -143,9 +145,14 @@ export const StudentHome: React.FC = () => {
         isCancelandoInscripcion={cancelEnrollment.isPending}
         institutionAddressMap={institutionAddressMap}
         enrollmentMap={enrollmentMap}
+        compromisoMap={compromisoMap}
         completedLanzamientoIds={completedLanzamientoIds}
         criterios={criterios}
         onOpenFinalization={handleOpenFinalization}
+        onAcceptCompromiso={async (payload) => {
+          await acceptCompromiso.mutateAsync(payload);
+        }}
+        isSubmittingCompromiso={acceptCompromiso.isPending}
       />
     </ErrorBoundary>
   );
@@ -207,6 +214,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     completedLanzamientoIds,
     informeTasks,
     finalizacionRequest,
+    compromisoMap,
+    acceptCompromiso,
   } = useStudentPanel();
 
   const [internalActiveTab, setInternalActiveTab] = useState<TabId>(
@@ -338,9 +347,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           institutionAddressMap={institutionAddressMap}
           institutionLogoMap={institutionLogoMap}
           enrollmentMap={enrollmentMap}
+          compromisoMap={compromisoMap}
           completedLanzamientoIds={completedLanzamientoIds}
           criterios={criterios}
           onOpenFinalization={handleOpenFinalization}
+          onAcceptCompromiso={
+            !isAdminViewing
+              ? async (payload) => {
+                  await acceptCompromiso.mutateAsync(payload);
+                }
+              : undefined
+          }
+          isSubmittingCompromiso={!isAdminViewing ? acceptCompromiso.isPending : false}
         />
       </ErrorBoundary>
     ),
@@ -352,9 +370,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       studentDetails,
       enrollStudent.mutate,
       institutionAddressMap,
+      compromisoMap,
       completedLanzamientoIds,
       criterios,
       handleOpenFinalization,
+      acceptCompromiso,
+      isAdminViewing,
       setCurrentActiveTab,
     ]
   );

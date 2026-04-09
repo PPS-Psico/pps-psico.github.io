@@ -24,6 +24,7 @@ export type FinalizacionPPS = Tables["finalizacion_pps"]["Row"];
 export type Penalizacion = Tables["penalizaciones"]["Row"];
 export type SolicitudModificacionPPS = Tables["solicitudes_modificacion_pps"]["Row"];
 export type SolicitudNuevaPPS = Tables["solicitudes_nueva_pps"]["Row"];
+export type CompromisoPPS = Tables["compromisos_pps"]["Row"];
 
 // Helper aliases for components that expect "Fields" suffix
 export type EstudianteFields = Estudiante;
@@ -36,6 +37,7 @@ export type FinalizacionPPSFields = FinalizacionPPS;
 export type PenalizacionFields = Penalizacion;
 export type SolicitudModificacionPPSFields = SolicitudModificacionPPS;
 export type SolicitudNuevaPPSFields = SolicitudNuevaPPS;
+export type CompromisoPPSFields = CompromisoPPS;
 
 // --- Strict Joined Types for Services ---
 export type PracticaWithLanzamiento = Practica & {
@@ -99,7 +101,12 @@ export interface InformeTask {
   // informeTask: string;
 }
 
-export type SelectedStudent = { nombre: string; legajo: string };
+export type SelectedStudent = {
+  nombre: string;
+  legajo: string;
+  compromisoEstado?: string | null;
+  compromisoFecha?: string | null;
+};
 export type GroupedSeleccionados = { [key: string]: SelectedStudent[] };
 
 export interface EnrichedStudent {
@@ -124,6 +131,8 @@ export interface EnrichedStudent {
   trabaja: boolean;
   certificadoTrabajo: string | null;
   cvUrl: string | null;
+  compromisoEstado?: string | null;
+  compromisoFecha?: string | null;
 }
 
 export interface InformeCorreccionStudent {

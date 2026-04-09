@@ -9,6 +9,7 @@ import type {
   InstitucionFields,
   PenalizacionFields,
   FinalizacionPPSFields,
+  CompromisoPPSFields,
 } from "../types";
 import { cleanDbValue } from "./formatters";
 
@@ -111,6 +112,17 @@ export const mapFinalizacion = (
   const cleanRow = { ...row };
   cleanRow.estado = cleanDbValue(row.estado);
   return toAppRecord(cleanRow) as AppRecord<FinalizacionPPSFields>;
+};
+
+export const mapCompromiso = (
+  row: Tables["compromisos_pps"]["Row"]
+): AppRecord<CompromisoPPSFields> => {
+  const cleanRow = { ...row };
+  cleanRow.estado = cleanDbValue(row.estado);
+  cleanRow.nombre_completo = cleanDbValue(row.nombre_completo);
+  cleanRow.legajo = cleanDbValue(row.legajo);
+  cleanRow.firma_texto = cleanDbValue(row.firma_texto);
+  return toAppRecord(cleanRow) as AppRecord<CompromisoPPSFields>;
 };
 
 // Utility export for components that need to clean array fields from DB

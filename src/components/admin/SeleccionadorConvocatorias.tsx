@@ -20,6 +20,75 @@ import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
 
+const isCommitmentAccepted = (status?: string | null) =>
+  normalizeStringForComparison(status) === "aceptado";
+
+const formatCommitmentDate = (dateStr?: string | null) => {
+  if (!dateStr) return "";
+
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const CommitmentStatusChip: React.FC<{
+  status?: string | null;
+  acceptedAt?: string | null;
+  compact?: boolean;
+}> = ({ status, acceptedAt, compact = false }) => {
+  const accepted = isCommitmentAccepted(status);
+
+  if (compact) {
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border whitespace-nowrap ${
+          accepted
+            ? "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-800"
+            : "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800"
+        }`}
+        title={
+          accepted && acceptedAt
+            ? `Confirmado el ${formatCommitmentDate(acceptedAt)}`
+            : "Pendiente de confirmación"
+        }
+      >
+        {accepted ? "Confirmado" : "Pendiente"}
+      </span>
+    );
+  }
+
+  return (
+    <div
+      className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border ${
+        accepted
+          ? "bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/20 dark:border-sky-800 dark:text-sky-300"
+          : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300"
+      }`}
+    >
+      <span className="material-icons !text-[16px]">
+        {accepted ? "verified" : "pending_actions"}
+      </span>
+      <div className="flex flex-col leading-tight">
+        <span className="text-[10px] font-black uppercase tracking-wider">
+          {accepted ? "Compromiso confirmado" : "Compromiso pendiente"}
+        </span>
+        <span className="text-[11px] font-medium opacity-80">
+          {accepted && acceptedAt
+            ? `Aceptado el ${formatCommitmentDate(acceptedAt)}`
+            : "Aún no confirmó desde Mi Panel"}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 // Componente Premium para selección de horarios
 interface ScheduleSelectorProps {
   horariosSolicitados: string;
@@ -251,10 +320,18 @@ const StudentRow: React.FC<{
   horariosDisponibles = [],
 }) => {
   const isSelected = normalizeStringForComparison(student.status) === "seleccionado";
+  const isCommitmentConfirmed = isSelected && isCommitmentAccepted(student.compromisoEstado);
+  const showCommitmentStatus = isSelected && (isReviewMode || isEditMode);
 
   return (
     <div
-      className={`rounded-xl border transition-all duration-200 ${isSelected ? "bg-emerald-50/60 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800 shadow-sm" : "bg-white dark:bg-[#0B1120] border-slate-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800"}`}
+      className={`rounded-xl border transition-all duration-200 ${
+        isCommitmentConfirmed
+          ? "bg-sky-50/70 border-sky-200 dark:bg-[#0F172A] dark:border-sky-800/70 shadow-sm"
+          : isSelected
+            ? "bg-emerald-50/60 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800 shadow-sm"
+            : "bg-white dark:bg-[#0B1120] border-slate-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800"
+      }`}
     >
       <div className="p-3 sm:p-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center">
         <div className="flex items-center gap-3 min-w-[200px]">
@@ -383,6 +460,14 @@ const StudentRow: React.FC<{
             </span>
           )}
 
+          {showCommitmentStatus && (
+            <CommitmentStatusChip
+              status={student.compromisoEstado}
+              acceptedAt={student.compromisoFecha}
+              compact
+            />
+          )}
+
           {student.notasEstudiante && (
             <div className="inline-flex items-start gap-1.5 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-800/30 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300 w-full break-words mt-1">
               <span className="font-bold text-[10px] uppercase text-yellow-700 dark:text-yellow-500 shrink-0 mt-[1px]">
@@ -396,6 +481,14 @@ const StudentRow: React.FC<{
         </div>
 
         <div className="flex items-center gap-2 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+          {showCommitmentStatus && (
+            <div className="hidden 2xl:flex mr-1">
+              <CommitmentStatusChip
+                status={student.compromisoEstado}
+                acceptedAt={student.compromisoFecha}
+              />
+            </div>
+          )}
           <ScheduleSelector
             horariosSolicitados={student.horarioSeleccionado || ""}
             horarioAsignado={student.horarioAsignado}
@@ -410,7 +503,9 @@ const StudentRow: React.FC<{
             disabled={isUpdating}
             className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm ${
               isSelected
-                ? "bg-emerald-600 text-white hover:bg-rose-600 hover:ring-rose-100 ring-2 ring-emerald-100 dark:ring-emerald-900"
+                ? isCommitmentConfirmed
+                  ? "bg-sky-600 text-white hover:bg-rose-600 hover:ring-rose-100 ring-2 ring-sky-100 dark:ring-sky-900"
+                  : "bg-emerald-600 text-white hover:bg-rose-600 hover:ring-rose-100 ring-2 ring-emerald-100 dark:ring-emerald-900"
                 : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-400 hover:text-blue-600 hover:border-blue-300 dark:hover:border-blue-500 dark:hover:text-blue-400"
             }`}
             title={isSelected ? "Dar de Baja (con penalización)" : "Seleccionar Alumno"}
@@ -700,6 +795,17 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   const [selectedStudentForPracticas, setSelectedStudentForPracticas] =
     useState<EnrichedStudent | null>(null);
 
+  const commitmentStats = React.useMemo(() => {
+    const confirmed = selectedCandidates.filter((student) =>
+      isCommitmentAccepted(student.compromisoEstado)
+    ).length;
+
+    return {
+      confirmed,
+      pending: Math.max(selectedCandidates.length - confirmed, 0),
+    };
+  }, [selectedCandidates]);
+
   // Handler mejorado para toggle con penalización
   const handleToggleWithPenalty = (student: EnrichedStudent) => {
     const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
@@ -881,6 +987,32 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
                 Cupos: {selectedLanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]} | Postulantes:{" "}
                 {candidates.length} | Seleccionados: {selectedCandidates.length}
               </p>
+              {selectedCandidates.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900">
+                    <span className="material-icons !text-sm">verified</span>
+                    {commitmentStats.confirmed} confirmados
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900">
+                    <span className="material-icons !text-sm">pending_actions</span>
+                    {commitmentStats.pending} pendientes
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold border ${
+                      commitmentStats.pending === 0
+                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900"
+                        : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700"
+                    }`}
+                  >
+                    <span className="material-icons !text-sm">
+                      {commitmentStats.pending === 0 ? "task_alt" : "hourglass_top"}
+                    </span>
+                    {commitmentStats.pending === 0
+                      ? "Lista para iniciar"
+                      : `Faltan ${commitmentStats.pending}`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-2">

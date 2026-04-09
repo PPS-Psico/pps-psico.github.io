@@ -7,14 +7,14 @@ import { FIELD_HORAS_PRACTICAS, FIELD_ESPECIALIDAD_PRACTICAS } from "../../const
 
 // Mock data
 const mockPracticas: Practica[] = [
-  { id: "p1", [FIELD_ESPECIALIDAD_PRACTICAS]: "Clinica", [FIELD_HORAS_PRACTICAS]: 100 } as Practica,
+  { id: "p1", [FIELD_ESPECIALIDAD_PRACTICAS]: "Clínica", [FIELD_HORAS_PRACTICAS]: 100 } as Practica,
   {
     id: "p2",
     [FIELD_ESPECIALIDAD_PRACTICAS]: "Educacional",
     [FIELD_HORAS_PRACTICAS]: 80,
   } as Practica,
   { id: "p3", [FIELD_ESPECIALIDAD_PRACTICAS]: "Laboral", [FIELD_HORAS_PRACTICAS]: 70 } as Practica,
-  { id: "p4", [FIELD_ESPECIALIDAD_PRACTICAS]: "Clinica", [FIELD_HORAS_PRACTICAS]: 20 } as Practica,
+  { id: "p4", [FIELD_ESPECIALIDAD_PRACTICAS]: "Clínica", [FIELD_HORAS_PRACTICAS]: 20 } as Practica,
 ];
 
 const mockConfig = {
@@ -25,7 +25,7 @@ const mockConfig = {
 
 describe("calculateCriterios", () => {
   it("should return initial state for no practicas", () => {
-    const result = calculateCriterios([], "Clinica", mockConfig);
+    const result = calculateCriterios([], "Clínica", mockConfig);
     expect(result.horasTotales).toBe(0);
     expect(result.cumpleHorasTotales).toBe(false);
     expect(result.orientacionesCursadasCount).toBe(0);
@@ -34,15 +34,15 @@ describe("calculateCriterios", () => {
 
   it("should correctly calculate total hours", () => {
     // 100 + 80 + 70 + 20 = 270
-    const result = calculateCriterios(mockPracticas, "Clinica", mockConfig);
+    const result = calculateCriterios(mockPracticas, "Clínica", mockConfig);
     expect(result.horasTotales).toBe(270);
     expect(result.cumpleHorasTotales).toBe(true);
   });
 
   it("should correctly calculate unique orientations and rotation criteria", () => {
-    const result = calculateCriterios(mockPracticas, "Clinica", mockConfig);
+    const result = calculateCriterios(mockPracticas, "Clínica", mockConfig);
     expect(result.orientacionesCursadasCount).toBe(3);
-    expect(result.orientacionesUnicas).toEqual(["Clinica", "Educacional", "Laboral"]);
+    expect(result.orientacionesUnicas).toEqual(["Clínica", "Educacional", "Laboral"]);
     expect(result.cumpleRotacion).toBe(true);
   });
 
@@ -50,7 +50,7 @@ describe("calculateCriterios", () => {
     const practicasInsuficientes: Practica[] = [
       {
         id: "p1",
-        [FIELD_ESPECIALIDAD_PRACTICAS]: "Clinica",
+        [FIELD_ESPECIALIDAD_PRACTICAS]: "Clínica",
         [FIELD_HORAS_PRACTICAS]: 100,
       } as Practica,
       {
@@ -59,20 +59,20 @@ describe("calculateCriterios", () => {
         [FIELD_HORAS_PRACTICAS]: 80,
       } as Practica,
     ];
-    const result = calculateCriterios(practicasInsuficientes, "Clinica", mockConfig);
+    const result = calculateCriterios(practicasInsuficientes, "Clínica", mockConfig);
     expect(result.orientacionesCursadasCount).toBe(2);
     expect(result.cumpleRotacion).toBe(false);
   });
 
   it("should calculate hours for a selected orientation", () => {
-    const result = calculateCriterios(mockPracticas, "Clinica", mockConfig);
+    const result = calculateCriterios(mockPracticas, "Clínica", mockConfig);
     // 100 (p1) + 20 (p4) = 120
     expect(result.horasOrientacionElegida).toBe(120);
     expect(result.cumpleHorasOrientacion).toBe(true);
   });
 
   it("should handle case-insensitivity for selected orientation", () => {
-    const result = calculateCriterios(mockPracticas, "clinica" as Orientacion, mockConfig);
+    const result = calculateCriterios(mockPracticas, "clínica" as Orientacion, mockConfig);
     expect(result.horasOrientacionElegida).toBe(120);
     expect(result.cumpleHorasOrientacion).toBe(true);
   });
@@ -89,11 +89,11 @@ describe("calculateCriterios", () => {
     const practicasInsuficientes: Practica[] = [
       {
         id: "p1",
-        [FIELD_ESPECIALIDAD_PRACTICAS]: "Clinica",
+        [FIELD_ESPECIALIDAD_PRACTICAS]: "Clínica",
         [FIELD_HORAS_PRACTICAS]: 50,
       } as Practica,
     ];
-    const result3 = calculateCriterios(practicasInsuficientes, "Clinica", mockConfig);
+    const result3 = calculateCriterios(practicasInsuficientes, "Clínica", mockConfig);
     expect(result3.horasOrientacionElegida).toBe(50);
     expect(result3.cumpleHorasOrientacion).toBe(false);
   });

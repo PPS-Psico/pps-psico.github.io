@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type {
+  CompromisoPPS,
   Convocatoria,
   LanzamientoPPS,
   EstudianteFields,
@@ -32,6 +33,7 @@ import { normalizeStringForComparison, formatDate } from "../../utils/formatters
 import ConvocatoriaCardPremium from "../ConvocatoriaCardPremium";
 import EmptyState from "../EmptyState";
 import ConfirmModal from "../ConfirmModal";
+import CompromisoPPSModal from "./CompromisoPPSModal";
 import { useModal } from "../../contexts/ModalContext";
 import { fetchSeleccionados } from "../../services/dataService";
 import { useMutation } from "@tanstack/react-query";
@@ -49,12 +51,22 @@ interface HomeViewProps {
   institutionAddressMap: Map<string, string>;
   institutionLogoMap?: Map<string, { url: string; invert: boolean }>;
   enrollmentMap: Map<string, Convocatoria>;
+  compromisoMap?: Map<string, CompromisoPPS>;
   completedLanzamientoIds: Set<string>;
   informeTasks: InformeTask[];
   onNavigate: (tabId: TabId) => void;
   criterios: CriteriosCalculados;
   onOpenFinalization: () => void;
   finalizacionRequest?: FinalizacionPPS | null;
+  onAcceptCompromiso?: (payload: {
+    convocatoriaId: string;
+    lanzamientoId: string;
+    fullName: string;
+    dni: number | null;
+    legajo: string;
+    signature: string;
+  }) => Promise<void>;
+  isSubmittingCompromiso?: boolean;
 }
 
 const HomeView: React.FC<HomeViewProps> = ({
@@ -62,15 +74,23 @@ const HomeView: React.FC<HomeViewProps> = ({
   institutionAddressMap,
   institutionLogoMap,
   enrollmentMap,
+  compromisoMap,
   completedLanzamientoIds,
   onInscribir,
   onCancelarInscripcion,
   isCancelandoInscripcion,
+  student,
+  onAcceptCompromiso,
+  isSubmittingCompromiso,
 }) => {
   const { openSeleccionadosModal, showModal } = useModal();
   const { authenticatedUser } = useAuth();
   const isTesting = authenticatedUser?.legajo === "99999";
   const [pendingCancel, setPendingCancel] = useState<{ id: string; nombre: string } | null>(null);
+  const [pendingCompromiso, setPendingCompromiso] = useState<{
+    lanzamiento: LanzamientoPPS;
+    enrollment: Convocatoria;
+  } | null>(null);
 
   const handleCancelarInscripcion = (convocatoriaId: string, nombrePPS: string) => {
     setPendingCancel({ id: convocatoriaId, nombre: nombrePPS });
@@ -161,6 +181,7 @@ const HomeView: React.FC<HomeViewProps> = ({
     const { key_suffix, ...lanzamiento } = lanzamientoWithSuffix;
     const enrollment = enrollmentMap.get(lanzamiento.id);
     const enrollmentStatus = enrollment ? enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] : null;
+    const compromiso = enrollment ? compromisoMap?.get(enrollment.id) : null;
     const ppsName = lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
     const groupName = ppsName.split(" - ")[0].trim();
     const finalDireccion =
@@ -219,6 +240,7 @@ const HomeView: React.FC<HomeViewProps> = ({
         }}
         status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]}
         estadoInscripcion={enrollmentStatus as any}
+        compromisoEstado={compromiso?.estado || null}
         enrollment={enrollment}
         isCompleted={isCompleted}
         onInscribirse={() => onInscribir(lanzamiento)}
@@ -231,6 +253,11 @@ const HomeView: React.FC<HomeViewProps> = ({
         }
         isCancelandoInscripcion={isCancelandoInscripcion}
         onVerConvocados={() => seleccionadosMutation.mutate(lanzamiento)}
+        onConfirmCompromiso={() => {
+          if (enrollment) {
+            setPendingCompromiso({ lanzamiento, enrollment });
+          }
+        }}
         horariosFijos={!!lanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS]}
         fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
       />
@@ -281,6 +308,17 @@ const HomeView: React.FC<HomeViewProps> = ({
         type="danger"
         onConfirm={confirmCancelarInscripcion}
         onClose={() => setPendingCancel(null)}
+      />
+      <CompromisoPPSModal
+        isOpen={!!pendingCompromiso}
+        onClose={() => setPendingCompromiso(null)}
+        student={student}
+        lanzamiento={pendingCompromiso?.lanzamiento || null}
+        enrollment={pendingCompromiso?.enrollment || null}
+        onSubmit={async (payload) => {
+          await onAcceptCompromiso?.(payload);
+        }}
+        isSubmitting={isSubmittingCompromiso}
       />
     </div>
   );

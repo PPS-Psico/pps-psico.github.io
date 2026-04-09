@@ -25,11 +25,13 @@ export interface ConvocatoriaDetailProps {
   logoUrl?: string;
   status?: string;
   estadoInscripcion?: "inscripto" | "seleccionado" | "no_seleccionado" | null;
+  compromisoEstado?: string | null;
   enrollment?: Convocatoria | null;
   onInscribirse?: () => void;
   onCancelarInscripcion?: () => void;
   isCancelandoInscripcion?: boolean;
   onVerConvocados?: () => void;
+  onConfirmCompromiso?: () => void;
   invertLogo?: boolean;
   horariosFijos?: boolean;
   isCompleted?: boolean;
@@ -53,11 +55,13 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   timeline,
   status = "abierta",
   estadoInscripcion = null,
+  compromisoEstado = null,
   enrollment,
   onInscribirse,
   onCancelarInscripcion,
   isCancelandoInscripcion = false,
   onVerConvocados,
+  onConfirmCompromiso,
   horariosFijos = false,
   isCompleted = false,
   fechaEncuentroInicial,
@@ -91,29 +95,48 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
     const estadoLower = estadoInscripcion?.toLowerCase();
     const statusLower = status?.toLowerCase();
 
-    // PRIORITY 2: Check if convocatoria is cerrada/cerrado BEFORE checking estadoInscripcion
-    // This ensures closed convocatorias show the correct status regardless of student's enrollment state
-    if (statusLower === "cerrada" || statusLower === "cerrado") {
-      // Student was inscripto but convocatoria is now closed - show "VER RESULTADOS"
-      const wasInscripto = estadoLower === "inscripto";
+    if (estadoLower === "seleccionado") {
+      if (!onConfirmCompromiso) {
+        return {
+          text: "SELECCIONADO",
+          icon: "stars",
+          classes: `${baseClasses} bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-500 dark:to-teal-500 text-white border-transparent shadow-emerald-500/25 dark:shadow-emerald-900/50 active:scale-95`,
+          disabled: false,
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            onVerConvocados?.();
+          },
+        };
+      }
+
+      if ((compromisoEstado || "").toLowerCase() === "aceptado") {
+        return {
+          text: "CONFIRMADO",
+          icon: "verified",
+          classes: `${baseClasses} bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-transparent shadow-emerald-500/25 active:scale-95`,
+          disabled: true,
+        };
+      }
+
       return {
-        text: wasInscripto ? "Ver Seleccionados" : "Ver Seleccionados",
-        icon: "groups",
-        classes: `${baseClasses} bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900 hover:border-indigo-400 dark:hover:border-indigo-600 active:scale-95`,
+        text: "CONFIRMAR PLAZA",
+        icon: "fact_check",
+        classes: `${baseClasses} bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-500 dark:to-orange-500 text-white border-transparent shadow-amber-500/25 dark:shadow-amber-900/50 active:scale-95`,
         disabled: false,
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
-          onVerConvocados?.();
+          onConfirmCompromiso?.();
         },
       };
     }
 
-    if (estadoLower === "seleccionado") {
+    // If the convocatoria is already closed, non-selected students can only view results.
+    if (statusLower === "cerrada" || statusLower === "cerrado") {
       return {
-        text: "SELECCIONADO",
-        icon: "stars",
-        classes: `${baseClasses} bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-500 dark:to-teal-500 text-white border-transparent shadow-emerald-500/25 dark:shadow-emerald-900/50 active:scale-95`,
-        disabled: false, // Clickable to see convocados or detail
+        text: "Ver Seleccionados",
+        icon: "groups",
+        classes: `${baseClasses} bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900 hover:border-indigo-400 dark:hover:border-indigo-600 active:scale-95`,
+        disabled: false,
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           onVerConvocados?.();

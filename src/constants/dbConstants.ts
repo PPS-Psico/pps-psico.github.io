@@ -10,6 +10,7 @@ export const TABLE_FINALIZACION = "finalizacion_pps";
 export const TABLE_PENALIZACIONES = "penalizaciones";
 export const TABLE_SOLICITUDES_MODIFICACION = "solicitudes_modificacion_pps";
 export const TABLE_SOLICITUDES_NUEVA = "solicitudes_nueva_pps";
+export const TABLE_COMPROMISOS_PPS = "compromisos_pps";
 
 // Legacy Aliases for Tables (Kept for compatibility)
 export const TABLE_NAME_PPS = TABLE_PPS;
@@ -23,6 +24,7 @@ export const TABLE_NAME_FINALIZACION = TABLE_FINALIZACION;
 export const TABLE_NAME_PENALIZACIONES = TABLE_PENALIZACIONES;
 export const TABLE_NAME_SOLICITUDES_MODIFICACION = TABLE_SOLICITUDES_MODIFICACION;
 export const TABLE_NAME_SOLICITUDES_NUEVA = TABLE_SOLICITUDES_NUEVA;
+export const TABLE_NAME_COMPROMISOS_PPS = TABLE_COMPROMISOS_PPS;
 
 // --- DB COLUMN NAMES (Mapped to FIELD_ constants for app compatibility) ---
 
@@ -125,6 +127,21 @@ export const FIELD_CERTIFICADO_CONVOCATORIAS = "certificado_url";
 export const FIELD_TRABAJA_CONVOCATORIAS = "trabaja";
 export const FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS = "certificado_trabajo";
 export const FIELD_CV_CONVOCATORIAS = "cv_url";
+
+// Compromisos PPS
+export const FIELD_COMPROMISO_ESTUDIANTE = "estudiante_id";
+export const FIELD_COMPROMISO_CONVOCATORIA = "convocatoria_id";
+export const FIELD_COMPROMISO_LANZAMIENTO = "lanzamiento_id";
+export const FIELD_COMPROMISO_VERSION = "version";
+export const FIELD_COMPROMISO_ESTADO = "estado";
+export const FIELD_COMPROMISO_TEXTO_ACTA = "texto_acta";
+export const FIELD_COMPROMISO_ACEPTA_LECTURA = "acepta_lectura";
+export const FIELD_COMPROMISO_ACEPTA_COMPROMISO = "acepta_compromiso";
+export const FIELD_COMPROMISO_NOMBRE = "nombre_completo";
+export const FIELD_COMPROMISO_DNI = "dni";
+export const FIELD_COMPROMISO_LEGAJO = "legajo";
+export const FIELD_COMPROMISO_FIRMA = "firma_texto";
+export const FIELD_COMPROMISO_FECHA_ACEPTACION = "accepted_at";
 
 // Solicitudes PPS
 export const FIELD_ESTADO_PPS = "estado_seguimiento";

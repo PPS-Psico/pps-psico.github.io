@@ -5,12 +5,23 @@ type EmailScenario = "seleccion" | "solicitud" | "sac";
 
 const DEFAULT_TEMPLATES: Record<EmailScenario, { subject: string; body: string }> = {
   seleccion: {
-    subject: "Confirmación de Asignación PPS: {{nombre_pps}} 🎓",
+    subject: "Confirmación de Asignación PPS: {{nombre_pps}}",
     body: `Hola {{nombre_alumno}},
 Nos complace informarte que has sido seleccionado/a para realizar tu Práctica Profesional Supervisada en:
 Institución: {{nombre_pps}}
-{{encuentro_inicial}}
-{{horario}}`,
+{{encuentro_inicial}}{{horario}}
+
+**Acción requerida** Ingresá a Mi Panel, revisá el acta de compromiso y registrá tu aceptación digital para reservar tu vacante antes del inicio de la PPS.
+[[button|Ingresar a Mi Panel|{{panel_url}}]]
+
+Si tenés dudas o surge alguna dificultad, comunicate con la Coordinación lo antes posible.
+
+Saludos,
+
+Blas
+Coordinador de Prácticas Profesionales Supervisadas
+Licenciatura en Psicología
+UFLO`,
   },
   solicitud: {
     subject: "Actualización de tu Solicitud de PPS - UFLO",
@@ -19,7 +30,7 @@ Hay novedades sobre tu solicitud de PPS en "{{institucion}}".
 Nuevo Estado: {{estado_nuevo}}`,
   },
   sac: {
-    subject: "Relevamiento del Ejercicio Profesional en Psicología - PPS UFLO 📋",
+    subject: "Relevamiento del Ejercicio Profesional en Psicología - PPS UFLO",
     body: `Hola {{nombre_alumno}},
 {{notas}}`,
   },
@@ -30,11 +41,20 @@ interface EmailData {
   studentEmail: string;
   ppsName?: string;
   schedule?: string;
+  panelUrl?: string;
   institution?: string;
   newState?: string;
   notes?: string;
-  encuentroInicial?: string; // NEW: Fecha de encuentro inicial
+  encuentroInicial?: string;
 }
+
+export const getPublicPanelUrl = (): string => {
+  const baseUrl = (import.meta.env.VITE_PUBLIC_APP_URL || "https://pps-psico.github.io").replace(
+    /\/$/,
+    ""
+  );
+  return `${baseUrl}/#/student`;
+};
 
 const incrementCounter = () => {
   const now = new Date();
@@ -47,6 +67,7 @@ const incrementCounter = () => {
   } else {
     localStorage.setItem(KEY_EMAIL_MONTH, currentMonthKey);
   }
+
   localStorage.setItem(KEY_EMAIL_COUNT, String(currentCount + 1));
 };
 
@@ -59,23 +80,38 @@ export const stripGreeting = (text: string): string => {
 
 const getBlockConfig = (title: string) => {
   const lower = title.toLowerCase();
-  if (lower.includes("puntualidad") || lower.includes("asistencia"))
+
+  if (lower.includes("acción requerida")) {
+    return { titleColor: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe" };
+  }
+
+  if (lower.includes("puntualidad") || lower.includes("asistencia")) {
     return { titleColor: "#1e40af", bg: "#eff6ff", border: "#bfdbfe" };
-  if (lower.includes("ética") || lower.includes("confidencialidad"))
+  }
+
+  if (lower.includes("ética") || lower.includes("confidencialidad")) {
     return { titleColor: "#047857", bg: "#ecfdf5", border: "#a7f3d0" };
-  if (lower.includes("rol") || lower.includes("activo"))
+  }
+
+  if (lower.includes("rol") || lower.includes("activo")) {
     return { titleColor: "#7e22ce", bg: "#faf5ff", border: "#e9d5ff" };
-  if (lower.includes("documentación"))
+  }
+
+  if (lower.includes("documentación")) {
     return { titleColor: "#be123c", bg: "#fff1f2", border: "#fecdd3" };
+  }
+
   return { titleColor: "#334155", bg: "#f8fafc", border: "#e2e8f0" };
 };
 
 const getDataConfig = (label: string) => {
   const lower = label.toLowerCase();
+
   if (lower.includes("instituci")) return { icon: "📍", color: "#dc2626" };
-  if (lower.includes("horario") || lower.includes("comisi"))
-    return { icon: "📅", color: "#2563eb" };
+  if (lower.includes("horario") || lower.includes("comisión"))
+    return { icon: "🕒", color: "#2563eb" };
   if (lower.includes("encuentro")) return { icon: "🤝", color: "#7e22ce" };
+
   return { icon: "👉", color: "#475569" };
 };
 
@@ -88,13 +124,14 @@ export const generateHtmlTemplate = (
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   const lines = cleanText.split(/\n/);
-  let contentHtml = "";
   const fontStack =
     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  let contentHtml = "";
   let isSignatureBlock = false;
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i].trim();
+
     if (!line) {
       contentHtml += '<div style="height: 12px;">&nbsp;</div>';
       continue;
@@ -114,15 +151,26 @@ export const generateHtmlTemplate = (
       continue;
     }
 
+    const ctaMatch = line.match(/^\[\[button\|(.*?)\|(.*?)\]\]$/i);
     const blockMatch = line.match(/^\*\*(.*?)\*\*[:]?\s*(.*)/);
     const dataMatch = line.match(/^([^:]+):[:]?\s*(.*)/);
+
+    if (ctaMatch) {
+      const label = ctaMatch[1].trim();
+      const url = ctaMatch[2].trim();
+      contentHtml += `<div style="margin: 24px 0 28px 0;"><a href="${url}" style="display: inline-block; background: linear-gradient(135deg, #00B2A9 0%, #1e40af 100%); color: #ffffff; text-decoration: none; font-family: ${fontStack}; font-size: 15px; font-weight: 800; padding: 14px 24px; border-radius: 10px; box-shadow: 0 10px 20px rgba(30,64,175,0.18);">${label}</a></div>`;
+      continue;
+    }
 
     if (blockMatch) {
       const blockTitle = blockMatch[1].trim();
       const blockContent = blockMatch[2].trim();
       const style = getBlockConfig(blockTitle);
       contentHtml += `<div style="margin-bottom: 12px; background-color: ${style.bg}; border: 1px solid ${style.border}; border-left: 4px solid ${style.titleColor}; border-radius: 6px; padding: 16px 20px;"><div style="color: ${style.titleColor}; font-family: ${fontStack}; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">${blockTitle}</div><div style="color: #334155; font-family: ${fontStack}; font-size: 15px; line-height: 1.6;">${blockContent}</div></div>`;
-    } else if (
+      continue;
+    }
+
+    if (
       dataMatch &&
       (line.includes("Institución") ||
         line.includes("Horario") ||
@@ -134,12 +182,14 @@ export const generateHtmlTemplate = (
       const val = dataMatch[2].trim();
       const config = getDataConfig(label);
       contentHtml += `<div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid ${config.color}; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px;"><table width="100%" border="0"><tr><td width="24" align="center" style="font-size: 18px;">${config.icon}</td><td style="font-family: ${fontStack}; padding-left: 12px;"><div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">${label}</div><div style="font-size: 15px; color: #0f172a; font-weight: 600;">${val}</div></td></tr></table></div>`;
-    } else {
-      const boldLine = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      contentHtml += `<p style="margin: 0 0 16px 0; color: #475569; font-family: ${fontStack}; font-size: 15px; line-height: 1.6;">${boldLine}</p>`;
+      continue;
     }
+
+    const boldLine = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    contentHtml += `<p style="margin: 0 0 16px 0; color: #475569; font-family: ${fontStack}; font-size: 15px; line-height: 1.6;">${boldLine}</p>`;
   }
-  if (isSignatureBlock) contentHtml += `</div>`;
+
+  if (isSignatureBlock) contentHtml += "</div>";
 
   const year = new Date().getFullYear();
   const headerStyle =
@@ -161,38 +211,56 @@ export const sendSmartEmail = async (
 
     if (dbError) throw new Error("Error al consultar plantillas: " + dbError.message);
     if (template && template.is_active === false) {
-      return { success: true, message: "Automación desactivada" };
+      return { success: true, message: "Automatización desactivada" };
     }
 
     if (!data.studentEmail) return { success: false, message: "Falta email del alumno." };
 
-    const subjectTmpl = template?.subject || DEFAULT_TEMPLATES[scenario].subject;
-    const bodyTmpl = template?.body || DEFAULT_TEMPLATES[scenario].body;
+    const hasLegacySelectionCopy =
+      scenario === "seleccion" &&
+      typeof template?.body === "string" &&
+      (template.body.includes("Recomendaciones para tu Práctica") ||
+        template.body.includes("Puntualidad y Asistencia") ||
+        template.body.includes("Confirmación obligatoria desde Mi Panel"));
+
+    const subjectTmpl =
+      scenario === "seleccion"
+        ? template?.subject || DEFAULT_TEMPLATES[scenario].subject
+        : template?.subject || DEFAULT_TEMPLATES[scenario].subject;
+
+    let processedBody =
+      scenario === "seleccion" && (hasLegacySelectionCopy || !template?.body)
+        ? DEFAULT_TEMPLATES[scenario].body
+        : template?.body || DEFAULT_TEMPLATES[scenario].body;
 
     const finalSubject = subjectTmpl
       .replace(/{{nombre_pps}}/g, data.ppsName || "")
       .replace(/{{institucion}}/g, data.institution || "");
 
-    // Build encuentro inicial text (siempre primero si existe)
     const encuentroText = data.encuentroInicial
-      ? `📅 Encuentro Inicial Obligatorio: ${data.encuentroInicial}\n(Es obligatorio para todos los seleccionados)\n\n`
+      ? `Encuentro inicial: ${data.encuentroInicial}\n`
       : "";
 
-    // Build horario text (siempre que exista)
-    // La lógica de ocultar horario cuando es fijo/único + hay encuentro inicial
-    // ya se maneja en useSeleccionadorLogic.ts enviando undefined en schedule
-    const horarioText = data.schedule ? `⏰ Horario/Comisión asignada: ${data.schedule}\n` : "";
+    const horarioText = data.schedule ? `Horario/Comisión asignada: ${data.schedule}\n` : "";
+    const panelUrl = data.panelUrl || getPublicPanelUrl();
 
-    let processedBody = bodyTmpl;
-    // Auto-inject encuentro_inicial if data exists but placeholder is missing in the template (for old records)
-    if (data.encuentroInicial && !processedBody.includes("{{encuentro_inicial}}")) {
-      if (processedBody.includes("{{nombre_pps}}")) {
+    if (scenario === "seleccion") {
+      if (data.encuentroInicial && !processedBody.includes("{{encuentro_inicial}}")) {
         processedBody = processedBody.replace(
           "{{nombre_pps}}",
           "{{nombre_pps}}\n{{encuentro_inicial}}"
         );
-      } else {
-        processedBody = processedBody + "\n{{encuentro_inicial}}";
+      }
+
+      if (data.schedule && !processedBody.includes("{{horario}}")) {
+        processedBody = processedBody.replace(
+          "{{encuentro_inicial}}",
+          "{{encuentro_inicial}}{{horario}}"
+        );
+      }
+
+      if (!processedBody.includes("{{panel_url}}")) {
+        processedBody += `\n\n[[button|Ingresar a Mi Panel|{{panel_url}}]]`;
       }
     }
 
@@ -200,6 +268,7 @@ export const sendSmartEmail = async (
       .replace(/{{nombre_alumno}}/g, data.studentName)
       .replace(/{{nombre_pps}}/g, data.ppsName || "")
       .replace(/{{horario}}/g, horarioText)
+      .replace(/{{panel_url}}/g, panelUrl)
       .replace(/{{institucion}}/g, data.institution || "")
       .replace(/{{estado_nuevo}}/g, data.newState || "")
       .replace(/{{notas}}/g, data.notes || "")

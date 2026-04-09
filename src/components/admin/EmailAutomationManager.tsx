@@ -22,39 +22,36 @@ const EMAIL_SCENARIOS: AutomationScenario[] = [
   {
     id: "seleccion",
     label: "Alumno Seleccionado",
-    description: 'Se envía cuando marcas a un estudiante como "Seleccionado" en una convocatoria.',
+    description: 'Se env?a cuando marcas a un estudiante como "Seleccionado" en una convocatoria.',
     icon: "how_to_reg",
-    variables: ["{{nombre_alumno}}", "{{nombre_pps}}", "{{encuentro_inicial}}", "{{horario}}"],
-    defaultSubject: "Confirmación de Asignación PPS: {{nombre_pps}} 🎓",
+    variables: [
+      "{{nombre_alumno}}",
+      "{{nombre_pps}}",
+      "{{encuentro_inicial}}",
+      "{{horario}}",
+      "{{panel_url}}",
+    ],
+    defaultSubject: "Confirmaci?n de Asignaci?n PPS: {{nombre_pps}}",
     defaultBody: `Hola {{nombre_alumno}},
 
-Espero que estés muy bien.
+Nos complace informarte que has sido seleccionado/a para realizar tu Pr?ctica Profesional Supervisada en:
 
-Nos complace informarte que has sido seleccionado/a para realizar tu Práctica Profesional Supervisada en:
-
-Institución: {{nombre_pps}}
+Instituci?n: {{nombre_pps}}
 {{encuentro_inicial}}
-Horario/Comisión asignada: {{horario}}
+{{horario}}
 
-💡 Recomendaciones para tu Práctica
+**Acci?n requerida** Ingres? a Mi Panel, revis? el acta de compromiso y registr? tu aceptaci?n digital para reservar tu vacante antes del inicio de la PPS.
+[[button|Ingresar a Mi Panel|{{panel_url}}]]
 
-**Puntualidad y Asistencia:** La puntualidad es la primera señal de compromiso profesional. Si surge un imprevisto de fuerza mayor, avisá con la mayor antelación posible tanto a la institución como a la Universidad. Recordá que faltar sin previo aviso es motivo suficiente de suspensión de la PPS.
+Si ten?s dudas o surge alguna dificultad, comunicate con la Coordinaci?n lo antes posible.
 
-**Ética y Confidencialidad:** Vas a trabajar con personas y, en muchos casos, con información sensible. El secreto profesional y el respeto por la privacidad son fundamentales desde el primer momento.
-
-**Rol Activo:** No te quedes solo con "observar". Preguntá, mostrá interés, llevá cuaderno para anotar y participá de los espacios de supervisión. La PPS te devuelve lo que vos le pongas de energía.
-
-**Documentación Final:** No te olvides de terminar la PPS con tu planilla de asistencia firmada y conservarla (exceptuando las Online que no se firma). Recordá que tenés 30 días para la entrega del informe final una vez finalizada la PPS.
-
-Por favor, respondenos a este correo confirmando que recibiste la información y que aceptás la vacante asignada.
-
-¡Te deseamos un excelente comienzo!
+Te deseamos un excelente comienzo.
 
 Saludos,
 
 Blas
-Coordinador de Prácticas Profesionales Supervisadas
-Licenciatura en Psicología
+Coordinador de Pr?cticas Profesionales Supervisadas
+Licenciatura en Psicolog?a
 UFLO`,
   },
   {

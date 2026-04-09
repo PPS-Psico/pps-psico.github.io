@@ -7,12 +7,14 @@ import { useStudentData } from "../hooks/useStudentData";
 import { useStudentFinalizacion } from "../hooks/useStudentFinalizacion";
 import { useStudentPracticas } from "../hooks/useStudentPracticas";
 import { useStudentSolicitudes } from "../hooks/useStudentSolicitudes";
+import { useStudentCommitments } from "../hooks/useStudentCommitments";
 import { calculateCriterios, initialCriterios } from "../utils/criteriaCalculations";
 import { processAndLinkStudentData } from "../utils/dataLinker";
 
 import type { UseMutationResult } from "@tanstack/react-query";
 import type {
   AirtableRecord,
+  CompromisoPPS,
   Convocatoria,
   CriteriosCalculados,
   EstudianteFields,
@@ -39,6 +41,7 @@ interface StudentPanelContextType {
   institutionAddressMap: Map<string, string>;
   institutionLogoMap?: Map<string, { url: string; invert: boolean }>;
   finalizacionRequest: FinalizacionPPS | null;
+  compromisoMap: Map<string, CompromisoPPS>;
 
   // Aggregated states
   isLoading: boolean;
@@ -47,6 +50,7 @@ interface StudentPanelContextType {
   isSolicitudesLoading: boolean;
   isConvocatoriasLoading: boolean;
   isFinalizationLoading: boolean;
+  isCommitmentsLoading: boolean;
   error: Error | null;
 
   // Mutations and refetch functions
@@ -63,6 +67,19 @@ interface StudentPanelContextType {
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
   confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
+  acceptCompromiso: UseMutationResult<
+    any,
+    Error,
+    {
+      convocatoriaId: string;
+      lanzamientoId: string;
+      fullName: string;
+      dni: number | null;
+      legajo: string;
+      signature: string;
+    },
+    unknown
+  >;
   refetchAll: () => void;
   refetchPracticas: () => void;
 }
@@ -118,6 +135,19 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
   // New Hook for Finalization
   const { finalizacionRequest, isFinalizationLoading, finalizationError, refetchFinalizacion } =
     useStudentFinalizacion(legajo, studentAirtableId);
+  const {
+    compromisoMap,
+    isCommitmentsLoading,
+    commitmentsError,
+    acceptCompromiso,
+    refetchCompromisos,
+  } = useStudentCommitments(
+    studentAirtableId,
+    legajo,
+    studentDetails,
+    allLanzamientos,
+    myEnrollments
+  );
 
   // Aggregate loading and error states into a single source of truth.
   const isLoading =
@@ -125,9 +155,15 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     isPracticasLoading ||
     isSolicitudesLoading ||
     isConvocatoriasLoading ||
-    isFinalizationLoading;
+    isFinalizationLoading ||
+    isCommitmentsLoading;
   const error =
-    studentError || practicasError || solicitudesError || convocatoriasError || finalizationError;
+    studentError ||
+    practicasError ||
+    solicitudesError ||
+    convocatoriasError ||
+    finalizationError ||
+    commitmentsError;
 
   // Create a memoized function to refetch all data at once.
   const refetchAll = useCallback(() => {
@@ -136,12 +172,14 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     refetchSolicitudes();
     refetchConvocatorias();
     refetchFinalizacion();
+    refetchCompromisos();
   }, [
     refetchStudent,
     refetchPracticas,
     refetchSolicitudes,
     refetchConvocatorias,
     refetchFinalizacion,
+    refetchCompromisos,
   ]);
 
   // Safely access the orientation field
@@ -178,12 +216,14 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     institutionAddressMap,
     institutionLogoMap,
     finalizacionRequest,
+    compromisoMap,
     isLoading,
     isStudentLoading,
     isPracticasLoading,
     isSolicitudesLoading,
     isConvocatoriasLoading,
     isFinalizationLoading,
+    isCommitmentsLoading,
     error,
     updateOrientation,
     updateInternalNotes,
@@ -193,6 +233,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     enrollStudent,
     cancelEnrollment,
     confirmInforme,
+    acceptCompromiso,
     refetchAll,
     refetchPracticas,
     criterios,
