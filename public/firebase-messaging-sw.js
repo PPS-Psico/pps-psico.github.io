@@ -141,15 +141,6 @@ messaging.onBackgroundMessage((payload) => {
   return self.registration.showNotification(title, options);
 });
 
-// Force SW update immediately
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(clients.claim());
-});
-
 // Handle notification click
 self.addEventListener("notificationclick", (event) => {
   console.log("[SW] Notification click received", event);

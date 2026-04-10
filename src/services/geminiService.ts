@@ -8,10 +8,6 @@ const getAuthToken = async (): Promise<string> => {
   return session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
 };
 
-interface GenerateContentRequest {
-  prompt: string;
-}
-
 interface GenerateContentResponse {
   candidates?: Array<{
     content?: {
@@ -31,13 +27,41 @@ export interface ModelDiagnostic {
   message: string;
 }
 
+const ERROR_MESSAGES: Record<string, string> = {
+  quota: "Se agotó la cuota del modelo",
+  "high demand": "El modelo está saturado, intentando con otro...",
+  temporal: "Error temporal del servicio",
+  "not found": "Modelo no disponible",
+  "not supported": "Modelo no soportado",
+};
+
+const isSkippableError = (msg: string): boolean => {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("not found") ||
+    lower.includes("not supported") ||
+    lower.includes("quota") ||
+    lower.includes("high demand") ||
+    lower.includes("temporal")
+  );
+};
+
+const getUserFriendlyError = (technicalMsg: string): string => {
+  const lower = technicalMsg.toLowerCase();
+  for (const [key, friendly] of Object.entries(ERROR_MESSAGES)) {
+    if (lower.includes(key)) return friendly;
+  }
+  return "Error al conectar con el servicio de IA. Intenta nuevamente.";
+};
+
 export const testGeminiModel = async (model: string): Promise<ModelDiagnostic> => {
   try {
+    const token = await getAuthToken();
     const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-content`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ prompt: "Responder solo 'OK'", model }),
     });
@@ -68,8 +92,6 @@ export const testGeminiModel = async (model: string): Promise<ModelDiagnostic> =
 };
 
 export const generateWithGemini = async (prompt: string): Promise<string> => {
-  // CONFIGURACIÓN DE PRIORIDAD - Fallback automático entre modelos
-  // Si un modelo falla (alta demanda, cuota, no encontrado), se prueba el siguiente
   const models = [
     "gemini-3-flash-preview",
     "gemini-2.5-flash",
@@ -78,16 +100,17 @@ export const generateWithGemini = async (prompt: string): Promise<string> => {
     "gemini-1.5-flash",
   ];
 
-  let lastError = new Error("No se pudo conectar con los servicios de IA de Google");
+  let lastError = new Error("No se pudo generar contenido. Intenta nuevamente en unos minutos.");
+  const token = await getAuthToken();
 
-  for (const model of models) {
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
     try {
-      console.log(`DEBUG - Probando modelo: ${model}`);
       const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-content`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ prompt, model }),
       });
@@ -96,67 +119,44 @@ export const generateWithGemini = async (prompt: string): Promise<string> => {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error?.message || `Error ${response.status}`;
 
-        // Si el modelo no existe, no está soportado, no tiene cuota, o tiene alta demanda, saltar al siguiente
         const isSkippable =
-          errorMessage.toLowerCase().includes("not found") ||
-          errorMessage.toLowerCase().includes("not supported") ||
-          errorMessage.toLowerCase().includes("quota") ||
-          errorMessage.toLowerCase().includes("high demand") ||
-          errorMessage.toLowerCase().includes("temporal") ||
-          response.status === 429 ||
-          response.status === 404;
+          isSkippableError(errorMessage) || response.status === 429 || response.status === 404;
 
         if (isSkippable) {
-          console.warn(`DEBUG - Saltando ${model}: ${errorMessage}`);
-          lastError = new Error(errorMessage);
+          lastError = new Error(
+            i < models.length - 1
+              ? getUserFriendlyError(errorMessage)
+              : "Todos los modelos de IA están saturados. Intenta nuevamente en unos minutos."
+          );
           continue;
         }
 
-        throw new Error(errorMessage);
+        throw new Error(getUserFriendlyError(errorMessage));
       }
 
       const data: GenerateContentResponse = await response.json();
 
       if (data.error) {
         const msg = data.error.message;
-        const isDataSkippable =
-          msg.toLowerCase().includes("quota") ||
-          msg.toLowerCase().includes("not found") ||
-          msg.toLowerCase().includes("not supported") ||
-          msg.toLowerCase().includes("high demand") ||
-          msg.toLowerCase().includes("temporal");
-
-        if (isDataSkippable) {
-          console.warn(`DEBUG - Saltando (data.error) ${model}: ${msg}`);
-          lastError = new Error(msg);
+        if (isSkippableError(msg)) {
+          lastError = new Error(getUserFriendlyError(msg));
           continue;
         }
-        throw new Error(msg);
+        throw new Error(getUserFriendlyError(msg));
       }
 
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) {
-        throw new Error("No content returned from Gemini");
+        throw new Error("El servicio de IA no devolvió contenido.");
       }
 
-      console.log(`DEBUG - Modelo ${model} exitoso`);
       return text;
     } catch (error: any) {
-      console.error(`Error con modelo ${model}:`, error);
       lastError = error;
-      // Continuar con el siguiente modelo si el error es de cuota, alta demanda o temporal
       const errorMsg = error.message?.toLowerCase() || "";
-      if (
-        errorMsg.includes("quota") ||
-        errorMsg.includes("high demand") ||
-        errorMsg.includes("temporal") ||
-        errorMsg.includes("not found") ||
-        errorMsg.includes("not supported")
-      ) {
-        console.warn(`DEBUG - Saltando al siguiente modelo por error: ${error.message}`);
+      if (isSkippableError(errorMsg)) {
         continue;
       }
-      // Otros errores (como red) los lanzamos inmediatamente
       throw error;
     }
   }
