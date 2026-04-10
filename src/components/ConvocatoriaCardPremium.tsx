@@ -113,7 +113,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         return {
           text: "CONFIRMADO",
           icon: "verified",
-          classes: `${baseClasses} bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-transparent shadow-emerald-500/25 active:scale-95`,
+          classes: `${baseClasses} bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-sky-500 dark:to-indigo-500 text-white border-transparent shadow-emerald-500/25 dark:shadow-sky-950/50 active:scale-95`,
           disabled: true,
         };
       }
@@ -121,7 +121,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
       return {
         text: "CONFIRMAR PLAZA",
         icon: "fact_check",
-        classes: `${baseClasses} bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-500 dark:to-orange-500 text-white border-transparent shadow-amber-500/25 dark:shadow-amber-900/50 active:scale-95`,
+        classes: `${baseClasses} bg-gradient-to-br from-amber-500 to-orange-600 dark:from-violet-500 dark:to-fuchsia-500 text-white border-transparent shadow-amber-500/25 dark:shadow-violet-950/50 active:scale-95`,
         disabled: false,
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
