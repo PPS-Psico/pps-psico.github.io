@@ -88,6 +88,11 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                 Tu acreditación ha sido completada exitosamente. <br className="hidden sm:block" />
                 Tus horas de PPS ya se encuentran cargadas en el sistema académico SAC.
               </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Este panel funciona como apoyo de seguimiento interno. La confirmacion oficial de
+                acreditacion siempre corresponde a SAC y a la documentacion institucional validada
+                por la facultad.
+              </p>
             </div>
 
             <div className="mt-6">
@@ -128,6 +133,11 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
     bannerColorClass =
       "text-indigo-600 bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800";
     currentStepIndex = 1;
+  }
+
+  if (isEnProceso) {
+    bannerText =
+      "Tus documentos fueron validados correctamente y el expediente se encuentra en el circuito de acreditacion interna. La acreditacion oficial sigue dependiendo de la carga institucional final en SAC.";
   }
 
   const steps = [

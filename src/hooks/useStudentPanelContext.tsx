@@ -18,7 +18,7 @@ import type {
   Convocatoria,
   Orientacion,
   InformeTask,
-  AirtableRecord,
+  AppRecord,
   CriteriosCalculados,
 } from "../types";
 
@@ -43,7 +43,7 @@ interface StudentPanelContextType {
   updateOrientation: UseMutationResult<any, Error, Orientacion | "", unknown>;
   updateInternalNotes: UseMutationResult<any, Error, string, unknown>;
   updateNota: UseMutationResult<
-    (AirtableRecord<any> | null)[],
+    (AppRecord<any> | null)[],
     Error,
     { practicaId: string; nota: string; convocatoriaId?: string },
     unknown
@@ -72,7 +72,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
   // Call all the individual data hooks in one central place.
   const {
     studentDetails,
-    studentAirtableId,
+    studentId,
     isStudentLoading,
     studentError,
     updateOrientation,
@@ -88,7 +88,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     refetchPracticas,
   } = useStudentPracticas(legajo);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
-    useStudentSolicitudes(legajo, studentAirtableId);
+    useStudentSolicitudes(legajo, studentId);
   const {
     lanzamientos,
     myEnrollments,
@@ -101,7 +101,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     refetchConvocatorias,
     institutionAddressMap,
     // FIX: Pass the `studentDetails` object to the `useConvocatorias` hook as the third argument.
-  } = useConvocatorias(legajo, studentAirtableId, studentDetails, isSuperUserMode);
+  } = useConvocatorias(legajo, studentId, studentDetails, isSuperUserMode);
 
   // Aggregate loading and error states into a single source of truth.
   const isLoading =

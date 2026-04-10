@@ -13,7 +13,7 @@ import { processAndLinkStudentData } from "../utils/dataLinker";
 
 import type { UseMutationResult } from "@tanstack/react-query";
 import type {
-  AirtableRecord,
+  AppRecord,
   CompromisoPPS,
   Convocatoria,
   CriteriosCalculados,
@@ -29,7 +29,7 @@ import type {
 interface StudentPanelContextType {
   // Data
   studentDetails: EstudianteFields | null;
-  studentAirtableId: string | null;
+  studentId: string | null;
   practicas: Practica[];
   solicitudes: SolicitudPPS[];
   lanzamientos: LanzamientoPPS[];
@@ -57,7 +57,7 @@ interface StudentPanelContextType {
   updateOrientation: UseMutationResult<any, Error, Orientacion | "", unknown>;
   updateInternalNotes: UseMutationResult<any, Error, string, unknown>;
   updateNota: UseMutationResult<
-    (AirtableRecord<any> | null)[],
+    (AppRecord<any> | null)[],
     Error,
     { practicaId: string; nota: string; convocatoriaId?: string },
     unknown
@@ -100,7 +100,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
   // Call all the individual data hooks in one central place.
   const {
     studentDetails,
-    studentAirtableId,
+    studentId,
     isStudentLoading,
     studentError,
     updateOrientation,
@@ -117,7 +117,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     refetchPracticas,
   } = useStudentPracticas(legajo);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
-    useStudentSolicitudes(legajo, studentAirtableId);
+    useStudentSolicitudes(legajo, studentId);
   const {
     lanzamientos,
     myEnrollments,
@@ -130,24 +130,18 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     refetchConvocatorias,
     institutionAddressMap,
     institutionLogoMap,
-  } = useConvocatorias(legajo, studentAirtableId, studentDetails, isSuperUserMode);
+  } = useConvocatorias(legajo, studentId, studentDetails, isSuperUserMode);
 
   // New Hook for Finalization
   const { finalizacionRequest, isFinalizationLoading, finalizationError, refetchFinalizacion } =
-    useStudentFinalizacion(legajo, studentAirtableId);
+    useStudentFinalizacion(legajo, studentId);
   const {
     compromisoMap,
     isCommitmentsLoading,
     commitmentsError,
     acceptCompromiso,
     refetchCompromisos,
-  } = useStudentCommitments(
-    studentAirtableId,
-    legajo,
-    studentDetails,
-    allLanzamientos,
-    myEnrollments
-  );
+  } = useStudentCommitments(studentId, legajo, studentDetails, allLanzamientos, myEnrollments);
 
   // Aggregate loading and error states into a single source of truth.
   const isLoading =
@@ -208,7 +202,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
 
   const value = {
     studentDetails,
-    studentAirtableId,
+    studentId,
     practicas,
     solicitudes,
     lanzamientos,

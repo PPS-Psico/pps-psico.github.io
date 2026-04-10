@@ -8,7 +8,9 @@ import "@testing-library/jest-dom";
 process.env.VITE_SUPABASE_URL = "https://test.supabase.co";
 process.env.VITE_SUPABASE_ANON_KEY = "test-anon-key";
 process.env.VITE_VAPID_PUBLIC_KEY = "test-vapid-key";
-process.env.VITE_GEMINI_API_KEY = "test-gemini-key";
+process.env.VITE_GA4_MEASUREMENT_ID = "G-TEST123456";
+process.env.VITE_ENABLE_MONITORING_IN_DEV = "true";
+process.env.VITE_APP_VERSION = "test";
 
 // Polyfill import.meta.env for Jest
 // This must be done before any code that uses import.meta.env
@@ -16,10 +18,10 @@ const mockImportMeta = {
   env: {
     VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || "https://test.supabase.co",
     VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || "test-anon-key",
-    VITE_GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY || "test-gemini-key",
+    VITE_GA4_MEASUREMENT_ID: process.env.VITE_GA4_MEASUREMENT_ID || "G-TEST123456",
+    VITE_ENABLE_MONITORING_IN_DEV: process.env.VITE_ENABLE_MONITORING_IN_DEV || "true",
+    VITE_APP_VERSION: process.env.VITE_APP_VERSION || "test",
     VITE_VAPID_PUBLIC_KEY: process.env.VITE_VAPID_PUBLIC_KEY || "test-vapid-key",
-    VITE_AIRTABLE_PAT: process.env.VITE_AIRTABLE_PAT || "test-pat",
-    VITE_AIRTABLE_BASE_ID: process.env.VITE_AIRTABLE_BASE_ID || "test-base-id",
   },
 };
 

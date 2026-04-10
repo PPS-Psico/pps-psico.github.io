@@ -6,7 +6,7 @@ import { mockDb } from "../services/mockDb";
 import type {
   LanzamientoPPS,
   InformeTask,
-  AirtableRecord,
+  AppRecord,
   ConvocatoriaFields,
   Estudiante,
 } from "../types";
@@ -54,7 +54,7 @@ import { normalizeStringForComparison, cleanInstitutionName, safeGetId } from ".
 
 export const useConvocatorias = (
   legajo: string,
-  studentAirtableId: string | null,
+  studentId: string | null,
   studentDetails: Estudiante | null,
   isSuperUserMode: boolean
 ) => {
@@ -68,12 +68,12 @@ export const useConvocatorias = (
     error: convocatoriasError,
     refetch: refetchConvocatorias,
   } = useQuery({
-    queryKey: ["convocatorias", legajo, studentAirtableId],
+    queryKey: ["convocatorias", legajo, studentId],
     queryFn: async () => {
       if (legajo === "99999") {
         const [myConvs, allLanz] = await Promise.all([
           mockDb.getAll("convocatorias", {
-            [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentAirtableId || "st_999",
+            [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentId || "st_999",
           }),
           mockDb.getAll("lanzamientos_pps"),
         ]);
@@ -118,9 +118,9 @@ export const useConvocatorias = (
           institutionLogoMap: new Map(),
         };
       }
-      return fetchConvocatoriasData(studentAirtableId);
+      return fetchConvocatoriasData(studentId);
     },
-    enabled: !!studentAirtableId || isSuperUserMode || legajo === "99999",
+    enabled: !!studentId || isSuperUserMode || legajo === "99999",
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
   });
@@ -134,7 +134,7 @@ export const useConvocatorias = (
   } = (convocatoriasData as any) || {};
 
   const enrollmentMutation = useMutation<
-    AirtableRecord<ConvocatoriaFields> | null,
+    AppRecord<ConvocatoriaFields> | null,
     Error,
     { formData: any; selectedLanzamiento: LanzamientoPPS }
   >({
@@ -154,11 +154,11 @@ export const useConvocatorias = (
         return newRecord as any;
       }
 
-      if (!studentAirtableId) throw new Error("No student ID");
+      if (!studentId) throw new Error("No student ID");
 
       console.log("[Enrollment] Validando estudiante:", {
         legajo,
-        studentAirtableId,
+        studentId,
         estado: studentDetails?.[FIELD_ESTADO_ESTUDIANTES],
         dni: studentDetails?.[FIELD_DNI_ESTUDIANTES],
       });
@@ -199,7 +199,7 @@ export const useConvocatorias = (
       }
 
       if (formData.trabaja !== undefined || formData.certificadoTrabajoUrl) {
-        await db.estudiantes.update(studentAirtableId, {
+        await db.estudiantes.update(studentId, {
           [FIELD_TRABAJA_ESTUDIANTES]: formData.trabaja,
           [FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES]:
             formData.certificadoTrabajoUrl ||
@@ -211,7 +211,7 @@ export const useConvocatorias = (
       // Added FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS and FIELD_FINALES_ADEUDA_CONVOCATORIAS
       const newRecordFields: any = {
         [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: safeGetId(selectedLanzamiento.id),
-        [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: safeGetId(studentAirtableId),
+        [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: safeGetId(studentId),
         [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
         [FIELD_TERMINO_CURSAR_CONVOCATORIAS]: formData.terminoDeCursar ? "Sí" : "No",
         [FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS]: formData.cursandoElectivas ? "Sí" : "No",
@@ -245,7 +245,7 @@ export const useConvocatorias = (
       const existingConvocatorias = await db.convocatorias.getAll({
         filters: {
           [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: selectedLanzamiento.id,
-          [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentAirtableId,
+          [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentId,
         },
       });
 
@@ -279,7 +279,7 @@ export const useConvocatorias = (
       return db.convocatorias.create(newRecordFields);
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["convocatorias", legajo, studentAirtableId] });
+      await queryClient.cancelQueries({ queryKey: ["convocatorias", legajo, studentId] });
       setIsSubmittingEnrollment(true);
     },
     onError: (err) => {
@@ -287,7 +287,7 @@ export const useConvocatorias = (
     },
     onSuccess: () => {
       showModal("¡Inscripción Exitosa!", "Tu solicitud ha sido registrada correctamente.");
-      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentAirtableId] });
+      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
       queryClient.invalidateQueries({ queryKey: ["student", legajo] });
       closeEnrollmentForm();
     },
@@ -297,7 +297,7 @@ export const useConvocatorias = (
   });
 
   const cancelEnrollmentMutation = useMutation<
-    AirtableRecord<ConvocatoriaFields> | null,
+    AppRecord<ConvocatoriaFields> | null,
     Error,
     { convocatoriaId: string }
   >({
@@ -311,7 +311,7 @@ export const useConvocatorias = (
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentAirtableId] });
+      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
     },
   });
 
@@ -330,7 +330,7 @@ export const useConvocatorias = (
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentAirtableId] });
+      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
       queryClient.invalidateQueries({ queryKey: ["practicas", legajo] });
     },
   });

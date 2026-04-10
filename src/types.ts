@@ -51,6 +51,8 @@ export type SolicitudWithEstudiante = SolicitudPPS & {
   estudiante: Pick<Estudiante, "nombre" | "legajo" | "correo"> | null;
 };
 
+export type EntityRecord<T> = AppRecord<T>;
+// Legacy alias kept temporarily for compatibility during the naming cleanup.
 export type AirtableRecord<T> = AppRecord<T>;
 
 export interface AppError {

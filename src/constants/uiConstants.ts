@@ -27,11 +27,11 @@ export const ROTACION_OBJETIVO_ORIENTACIONES = 3;
 // --- UI text constants ---
 export const ALERT_PRACTICAS_TITLE = "Aviso Importante";
 export const ALERT_PRACTICAS_TEXT =
-  "La información visualizada es una herramienta de seguimiento interno y no constituye un registro académico oficial, por lo que podría contener discrepancias. Para un registro más preciso, se recomienda utilizar su Planilla de Seguimiento personal. Recuerde que tiene la posibilidad de editar la fecha de finalización de sus prácticas directamente en este panel. Las correcciones de datos no son obligatorias, pero si desea realizarlas, deberá enviar las planillas correspondientes.";
+  "La informacion visualizada es una herramienta de seguimiento interno y no constituye un registro academico oficial, por lo que podria contener discrepancias. La acreditacion real y cualquier validacion institucional dependen de las planillas, revisiones docentes y la carga final en SAC. Para un registro mas preciso, se recomienda utilizar tu planilla de seguimiento personal. Recuerda que puedes editar la fecha de finalizacion de tus practicas directamente en este panel; si deseas corregir informacion, deberas respaldarla con la documentacion correspondiente.";
 export const ALERT_INFORMES_TITLE = "Sobre las Fechas de Entrega de Informes";
 export const ALERT_INFORMES_TEXT =
-  "Las fechas de entrega de los informes pueden variar levemente, ya que se basan en la proyección de finalización de una PPS. Si la fecha no coincide con la finalización real, no te preocupes: siempre se respetarán los 30 días reglamentarios para entregar el informe. Puedes solicitar una corrección de fecha a través del correo.";
+  "Las fechas de entrega de los informes pueden variar levemente, ya que se basan en la proyeccion de finalizacion de una PPS. Si la fecha no coincide con la finalizacion real, no te preocupes: siempre se respetaran los 30 dias reglamentarios para entregar el informe. Puedes solicitar una correccion de fecha a traves del correo.";
 
 // --- Misc ---
 export const EMAIL_SEGUROS = "mesadeayuda.patagonia@uflouniversidad.edu.ar";
-export const TEMPLATE_PPS_NAME = "Colegio Virgen de Luján";
+export const TEMPLATE_PPS_NAME = "Colegio Virgen de Lujan";

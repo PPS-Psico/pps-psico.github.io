@@ -1075,9 +1075,38 @@ export type Database = {
         };
         Returns: undefined;
       };
+      reset_student_password_verified: {
+        Args: {
+          correo_input: string;
+          dni_input: number;
+          legajo_input: string;
+          new_password?: string | null;
+          telefono_input?: string | null;
+        };
+        Returns: undefined;
+      };
       save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean };
       show_limit: { Args: never; Returns: number };
       show_trgm: { Args: { "": string }; Returns: string[] };
+      verify_student_identity: {
+        Args: {
+          correo_input: string;
+          dni_input: number;
+          legajo_input: string;
+          telefono_input?: string | null;
+        };
+        Returns: {
+          correo: string;
+          dni: number;
+          id: string;
+          legajo: string;
+          must_change_password: boolean;
+          nombre: string;
+          role: string;
+          telefono: string;
+          user_id: string;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

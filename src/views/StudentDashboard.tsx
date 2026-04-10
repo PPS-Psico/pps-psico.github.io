@@ -90,7 +90,7 @@ export const StudentHome: React.FC = () => {
 
   const {
     studentDetails,
-    studentAirtableId,
+    studentId,
     lanzamientos,
     allLanzamientos,
     institutionAddressMap,
@@ -130,7 +130,7 @@ export const StudentHome: React.FC = () => {
     <ErrorBoundary>
       <FinalizacionForm
         isOpen={isFinalizationModalOpen}
-        studentAirtableId={studentAirtableId}
+        studentId={studentId}
         onClose={() => setIsFinalizationModalOpen(false)}
       />
       <HomeView
@@ -191,7 +191,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const {
     studentDetails,
-    studentAirtableId,
+    studentId,
     practicas,
     solicitudes,
     lanzamientos,
@@ -235,7 +235,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     queryFn: () => db.instituciones.getAll({ fields: ["nombre"] }),
   });
 
-  const getStudentId = () => studentAirtableId || currentUser?.id || null;
+  const getStudentId = () => studentId || currentUser?.id || null;
 
   const handleOrientacionChange = useCallback(
     (orientacion: Orientacion | "") => {
@@ -565,7 +565,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       )}
       <FinalizacionForm
         isOpen={isFinalizationModalOpen}
-        studentAirtableId={getStudentId()}
+        studentId={getStudentId()}
         onClose={() => setIsFinalizationModalOpen(false)}
       />
       <div className="print-only">

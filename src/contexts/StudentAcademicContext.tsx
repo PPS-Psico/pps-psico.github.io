@@ -15,7 +15,7 @@ import type {
   LanzamientoPPS,
   Convocatoria,
   InformeTask,
-  AirtableRecord,
+  AppRecord,
   CriteriosCalculados,
   FinalizacionPPS,
   Orientacion,
@@ -36,7 +36,7 @@ interface StudentAcademicContextType {
   isAcademicLoading: boolean;
   academicError: Error | null;
   updateNota: UseMutationResult<
-    (AirtableRecord<any> | null)[],
+    (AppRecord<any> | null)[],
     Error,
     { practicaId: string; nota: string; convocatoriaId?: string },
     unknown
@@ -55,7 +55,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
   children,
 }) => {
   const { isSuperUserMode } = useAuth();
-  const { studentDetails, studentAirtableId } = useStudentContextData();
+  const { studentDetails, studentId } = useStudentContextData();
   const config = useAppConfig();
 
   const {
@@ -67,7 +67,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     refetchPracticas,
   } = useStudentPracticas(legajo);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
-    useStudentSolicitudes(legajo, studentAirtableId);
+    useStudentSolicitudes(legajo, studentId);
   const {
     lanzamientos,
     myEnrollments,
@@ -79,7 +79,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     confirmInforme,
     refetchConvocatorias,
     institutionAddressMap,
-  } = useConvocatorias(legajo, studentAirtableId, studentDetails, isSuperUserMode);
+  } = useConvocatorias(legajo, studentId, studentDetails, isSuperUserMode);
 
   const {
     data: finalizacionRequest = null,
@@ -87,8 +87,8 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     refetch: refetchFinalizacion,
   } = useQuery({
     queryKey: ["finalizacionRequest", legajo],
-    queryFn: () => fetchFinalizacionRequest(legajo, studentAirtableId),
-    enabled: !!studentAirtableId,
+    queryFn: () => fetchFinalizacionRequest(legajo, studentId),
+    enabled: !!studentId,
   });
 
   const isAcademicLoading =

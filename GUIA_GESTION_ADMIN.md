@@ -1,48 +1,67 @@
-# 📘 Guía de Gestión Administrativa - Panel PPS
+# Guia de gestion admin
 
-## 1. El Dashboard de Inicio (Centro de Mando)
+## Proposito
 
-El tablero de inicio funciona como un "semáforo" de tareas urgentes. No es solo información visual; cada tarjeta es un filtro inteligente que te lleva a la carga de trabajo real.
+Esta guia resume el uso operativo del panel admin desde la perspectiva de coordinacion diaria. No describe toda la arquitectura, sino la logica de trabajo esperada.
 
-### Tarjetas de Operatividad:
+## Que resuelve el panel
 
-- **🔴 Instituciones Vencidas**: Son PPS que terminaron su ciclo (ej: 2025) y no han tenido ninguna gestión de relanzamiento aún. Es la "bandeja de entrada" de lo que falta empezar.
-- **🟠 Demoradas**: Son gestiones activas que llevan **más de 2 días sin movimiento**. El sistema detecta esto automáticamente comparando la fecha de hoy con la última nota o cambio de estado que hiciste.
-- **🔵 Próximas a Vencer**: Alerta preventiva. Muestra PPS que finalizan en los próximos **5 días**. Sirve para preparar el terreno antes de que pasen a "Vencidas".
-- **🟢 Solicitudes Pendientes**: El número "quemante" del día. Suma 3 áreas críticas:
-  1.  **PPS Nuevas**: Alumnos que subieron un proyecto y esperan aprobación.
-  2.  **Acreditaciones (Egresos)**: Estudiantes que terminaron sus horas. El sistema **ignora automáticamente** las que están "En Proceso SAC", para que solo veas las que tú debes gestionar.
-  3.  **Correcciones**: Solicitudes de modificación de proyectos (Solicitudes de Modificación).
+El panel admin centraliza tareas de PPS como:
 
----
+- seguimiento de instituciones y lanzamientos;
+- seleccion de estudiantes;
+- gestion de solicitudes;
+- seguimiento de practicas;
+- correccion de informes;
+- herramientas operativas adicionales como backups, automatizaciones y reportes.
 
-## 2. El Panel de Gestión (Flujo de Trabajo)
+## Logica de trabajo
 
-Aquí es donde ocurre la comunicación con las instituciones. Se divide en etapas claras:
+### 1. Detectar pendientes
 
-1.  **Instituciones Vencidas**: Todo lo que hay que contactar.
-2.  **En Gestión**:
-    - **Esperando Respuesta**: Ya les escribiste (o usaste el botón de WhatsApp) y estás esperando que te contesten.
-    - **En Conversación**: Estás negociando cupos, horarios o detalles de la práctica.
-3.  **Confirmadas / Lanzadas**: Ya pasaron por el proceso y están listas o activas para el ciclo actual.
+El dashboard deberia ayudarte a identificar rapidamente:
 
----
+- que esta vencido;
+- que esta demorado;
+- que requiere decision;
+- que puede escalar a problema operativo si no se atiende.
 
-## 3. Blindaje de Tiempos (Sistema de Historial)
+### 2. Gestionar por excepcion
 
-Una parte crítica del sistema es el **Historial de Gestión**.
+La forma mas util de usar el panel no es recorrer modulos porque si, sino entrar por pendientes reales:
 
-### ¿Cómo funciona?
+- instituciones sin relanzamiento;
+- conversaciones abiertas sin movimiento;
+- solicitudes que esperan validacion;
+- informes y cierres pendientes.
 
-Debido a que los sistemas de base de datos a veces se actualizan solos (por backups o ráfagas técnicas), implementamos un **blindaje manual**:
+### 3. Dejar rastro
 
-- Cada vez que cambias un estado o escribes una nota y guardas, se genera una entrada en el historial con fecha (ej: `18/02: Cambio de estado...`).
-- **El contador de "Sin Movimiento" siempre prioriza tu historial manual.** Si el historial dice que lo tocaste hace 3 días, dirá "3 d", aunque la base de datos se haya actualizado hoy por un proceso de fondo.
+Cuando un flujo tiene notas, historial o cambio de estado, conviene registrar la accion para que el sistema no dependa de memoria personal.
 
----
+## Criterios practicos
 
-## 4. Consejos para el Coordinador
+### Estados y notas
 
-- **WhatsApp Directo**: Usa el botón de chat de la tarjeta para agilizar.
-- **Notas Rápidas**: El sistema genera notas automáticas al cambiar estados, pero poner una nota manual (ej: "Hablé con RRHH, llaman el lunes") blinda la fecha de gestión personal.
-- **Solicitudes**: Si una acreditación está en estado "En Proceso SAC", el panel la oculta de tus pendientes porque ya no requiere tu intervención.
+- usar cambios de estado de forma consistente;
+- agregar notas cuando una decision o contacto necesite contexto futuro;
+- evitar que informacion critica quede solo en WhatsApp o memoria informal.
+
+### Solicitudes y acreditaciones
+
+No todas las solicitudes tienen la misma urgencia. La prioridad real suele estar en:
+
+- PPS nuevas por aprobar;
+- acreditaciones pendientes de intervencion humana;
+- correcciones o modificaciones que bloquean avance.
+
+### Gestion con instituciones
+
+El panel puede convivir con contacto externo por WhatsApp, mail o llamada, pero el criterio importante es que el avance relevante quede reflejado en el sistema.
+
+## Limites de esta guia
+
+- el panel sigue evolucionando;
+- algunos nombres visuales o indicadores pueden cambiar;
+- para prioridades estructurales del modulo admin, usar tambien el plan maestro:
+  [docs/internal-professionalization-plan.md](./docs/internal-professionalization-plan.md)

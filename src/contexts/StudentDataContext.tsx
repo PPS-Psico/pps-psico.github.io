@@ -5,7 +5,7 @@ import type { Estudiante, Orientacion } from "../types";
 
 interface StudentDataContextType {
   studentDetails: Estudiante | null;
-  studentAirtableId: string | null;
+  studentId: string | null;
   isStudentLoading: boolean;
   studentError: Error | null;
   updateOrientation: UseMutationResult<any, Error, Orientacion | "", unknown>;

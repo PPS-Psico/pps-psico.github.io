@@ -37,7 +37,7 @@ export const useStudentData = (legajo: string) => {
       if (legajo === "99999") {
         await new Promise((resolve) => setTimeout(resolve, 500));
         const mockStudent = (await mockDb.getAll("estudiantes", { legajo: "99999" }))[0];
-        return { studentDetails: mockStudent, studentAirtableId: mockStudent.id };
+        return { studentDetails: mockStudent, studentId: mockStudent.id };
       }
       return fetchStudentData(legajo);
     },
@@ -46,33 +46,29 @@ export const useStudentData = (legajo: string) => {
   });
 
   const studentDetails = data?.studentDetails ?? null;
-  const studentAirtableId = data?.studentAirtableId ?? null;
+  const studentId = data?.studentId ?? null;
 
-  // --- LÓGICA DE AUTO-REPARACIÓN DE ESTADO ---
   useEffect(() => {
-    if (studentDetails && studentAirtableId && legajo !== "99999") {
+    if (studentDetails && studentId && legajo !== "99999") {
       const currentStatusInDb = studentDetails[FIELD_ESTADO_ESTUDIANTES];
       const hasContactInfo =
         hasData(studentDetails[FIELD_DNI_ESTUDIANTES]) ||
         hasData(studentDetails[FIELD_CORREO_ESTUDIANTES]) ||
         hasData(studentDetails[FIELD_TELEFONO_ESTUDIANTES]);
 
-      // Si la DB dice que es nuevo pero tiene mail/dni, lo "sacamos" de nuevo en Supabase
       if (currentStatusInDb === "Nuevo (Sin cuenta)" && hasContactInfo) {
-        console.log(`🔧 Sanando estado para legajo ${legajo}...`);
-        db.estudiantes
-          .update(studentAirtableId, { [FIELD_ESTADO_ESTUDIANTES]: "Inactivo" })
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: ["metricsData"] });
-          });
+        console.log(`Sanando estado para legajo ${legajo}...`);
+        db.estudiantes.update(studentId, { [FIELD_ESTADO_ESTUDIANTES]: "Inactivo" }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["metricsData"] });
+        });
       }
     }
-  }, [studentDetails, studentAirtableId, legajo, queryClient]);
+  }, [studentDetails, studentId, legajo, queryClient]);
 
   const updateOrientation = useMutation({
     mutationFn: async (orientacion: Orientacion | "") => {
-      if (!studentAirtableId) throw new Error("ID no disponible.");
-      return db.estudiantes.update(studentAirtableId, {
+      if (!studentId) throw new Error("ID no disponible.");
+      return db.estudiantes.update(studentId, {
         [FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]: orientacion || null,
       });
     },
@@ -82,21 +78,21 @@ export const useStudentData = (legajo: string) => {
 
   const updateInternalNotes = useMutation({
     mutationFn: async (notes: string) => {
-      if (!studentAirtableId) throw new Error("ID no disponible.");
-      return db.estudiantes.update(studentAirtableId, {
+      if (!studentId) throw new Error("ID no disponible.");
+      return db.estudiantes.update(studentId, {
         [FIELD_NOTAS_INTERNAS_ESTUDIANTES]: notes || null,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student", legajo] });
-      showModal("Éxito", "Notas guardadas correctamente.");
+      showModal("Exito", "Notas guardadas correctamente.");
     },
     onError: (error) => showModal("Error", `Error: ${error.message}`),
   });
 
   return {
     studentDetails,
-    studentAirtableId,
+    studentId,
     isStudentLoading,
     studentError,
     updateOrientation,

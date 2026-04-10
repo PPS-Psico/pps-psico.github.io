@@ -164,7 +164,7 @@ const SolicitudesView: React.FC = () => {
 
       <FinalizacionForm
         isOpen={isFinalizationModalOpen}
-        studentAirtableId={getStudentId()}
+        studentId={getStudentId()}
         onClose={() => setIsFinalizationModalOpen(false)}
       />
     </>

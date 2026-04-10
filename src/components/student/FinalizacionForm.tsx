@@ -9,7 +9,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useNotifications } from "../../contexts/NotificationContext";
 
 interface FinalizacionFormProps {
-  studentAirtableId: string | null;
+  studentId: string | null;
   onClose?: () => void;
   isOpen: boolean;
 }
@@ -22,11 +22,7 @@ interface FileCategoryState {
   uploadedData: { url: string; filename: string }[];
 }
 
-const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
-  studentAirtableId,
-  onClose,
-  isOpen,
-}) => {
+const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentId, onClose, isOpen }) => {
   const { showToast } = useNotifications();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
@@ -116,7 +112,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (!studentAirtableId) throw new Error("ID de estudiante no disponible.");
+      if (!studentId) throw new Error("ID de estudiante no disponible.");
 
       const categories = Object.keys(fileCategories) as FileUploadType[];
 
@@ -138,7 +134,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
         const typeUploads: { url: string; filename: string }[] = [];
         try {
           for (const file of categoryState.files) {
-            const url = await uploadFinalizationFile(file, studentAirtableId, type);
+            const url = await uploadFinalizationFile(file, studentId, type);
             typeUploads.push({ url, filename: file.name });
           }
           uploadedResults[type] = typeUploads;
@@ -153,7 +149,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
         }
       }
 
-      await submitFinalizationRequest(studentAirtableId, {
+      await submitFinalizationRequest(studentId, {
         informes: uploadedResults.informe || [],
         horas: uploadedResults.horas || [],
         asistencias: uploadedResults.asistencia || [],

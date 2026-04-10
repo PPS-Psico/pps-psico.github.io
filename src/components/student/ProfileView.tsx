@@ -635,7 +635,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         )}
       </motion.div>
 
-      {/* Notas Internas (Solo Admin) */}
+      {/* Notas de seguimiento interno */}
       {(isSuperUserMode || isJefeMode) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -650,15 +650,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex items-center gap-2 mb-4 text-amber-800 dark:text-amber-500">
               <span className="material-icons">lock</span>
               <h3 className="font-bold text-sm uppercase tracking-wide">
-                Notas Internas (Privado)
+                Notas de Seguimiento Interno
               </h3>
             </div>
+            <p className="mb-4 text-xs leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+              Este campo es solo de seguimiento interno y puede contener observaciones cargadas por
+              el propio estudiante. No constituye un registro academico oficial ni reemplaza las
+              planillas, evaluaciones docentes o la acreditacion final en SAC.
+            </p>
             <textarea
               value={internalNotes}
               onChange={handleNotesChange}
               rows={4}
               className="w-full text-sm rounded-xl border border-amber-200 dark:border-amber-800 bg-white/80 dark:bg-slate-900/50 p-4 focus:ring-2 focus:ring-amber-500 outline-none resize-none transition-all"
-              placeholder="Escribir nota..."
+              placeholder="Anotar observaciones personales o recordatorios de seguimiento..."
             />
             <div className="mt-3 flex justify-end">
               <motion.button

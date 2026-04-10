@@ -984,3 +984,94 @@ Cuando una IA tome este documento como base, debería trabajar así:
 - dejar trazabilidad de decisiones;
 - documentar nuevos contratos;
 - bajar deuda sin frenar evolución funcional.
+
+---
+
+## 13. Estado de avance
+
+### Sesiones cerradas
+
+- SesiÃ³n 1: completada
+  - resultado visible en la documentaciÃ³n base actualizada del repo;
+  - arquitectura real ya documentada en `docs/architecture-current.md`.
+
+- SesiÃ³n 2: completada
+  - inventario de base y seguridad documentado en `docs/supabase-security-inventory.md`;
+  - validado contra la base real del proyecto Supabase `qxnxtnhtbpsgzprqtrjl`;
+  - apoyado en MCP Supabase y documentaciÃ³n oficial actual de Supabase sobre RLS.
+
+### Siguiente sesiÃ³n sugerida
+
+- SesiÃ³n 3. Endurecimiento inicial de RLS
+- orden sugerido:
+  - cerrar `debug_logs`;
+  - eliminar `UPDATE/DELETE` amplios en tablas crÃ­ticas;
+  - separar polÃ­ticas admin por operaciÃ³n;
+  - fijar `search_path` en funciones sensibles.
+
+### Estado parcial adicional de la Sesion 3
+
+- `debug_logs` ya fue contenida:
+  - RLS activado;
+  - lectura solo para admins autenticados;
+  - sin escritura directa desde clientes;
+  - migracion: `supabase/migrations/20260409131500_secure_debug_logs.sql`.
+- `convocatorias` ya fue endurecida en una primera pasada:
+  - eliminado `DELETE` abierto para cualquier autenticado;
+  - reemplazado `UPDATE` abierto por `UPDATE` de inscripcion propia;
+  - `is_admin()` corregida con `search_path` fijo;
+  - migracion: `supabase/migrations/20260409143000_harden_convocatorias_and_is_admin.sql`.
+- `estudiantes`, `instituciones`, `lanzamientos_pps` y `penalizaciones` ya no conservan `UPDATE/DELETE` abiertos para cualquier autenticado;
+  - se mantuvieron las policies propias o admin necesarias;
+  - migracion: `supabase/migrations/20260409150000_remove_open_write_policies.sql`.
+- las RPC sensibles de FCM ya fueron endurecidas:
+  - `save_fcm_token(...)` ya no acepta escritura arbitraria por `uid`;
+  - `get_all_fcm_tokens()` quedo restringida a `service_role`;
+  - se removio ejecucion para `anon` y `PUBLIC` en las RPC de FCM;
+  - se fijaron `search_path` de funciones sensibles de la app;
+  - migracion: `supabase/migrations/20260409162000_harden_fcm_rpcs_and_fix_search_paths.sql`.
+- las policies admin `ALL` de las tablas PPS criticas ya fueron separadas por operacion:
+  - `convocatorias`
+  - `estudiantes`
+  - `finalizacion_pps`
+  - `instituciones`
+  - `lanzamientos_pps`
+  - `penalizaciones`
+  - `practicas`
+  - `solicitudes_pps`
+  - migracion: `supabase/migrations/20260409170000_split_admin_all_policies.sql`.
+- se hizo una pasada adicional de endurecimiento y optimizacion RLS:
+  - `backup_history` y `fcm_tokens` ahora usan `public.is_admin()` en vez de checks legacy por claims;
+  - varias policies de ownership pasaron a `to authenticated`;
+  - se normalizo el uso de `(select auth.uid())` en tablas clave de seguimiento estudiantil;
+  - se elimino una policy duplicada de `practicas`;
+  - migracion: `supabase/migrations/20260409180000_optimize_remaining_rls_policies.sql`.
+- se completo una pasada complementaria sobre tablas auxiliares y operativas:
+  - `backup_config` ahora usa policies admin con `public.is_admin()`;
+  - `email_templates` dejo de estar abierta a cualquier autenticado y paso a admin-only por operacion;
+  - `reminders` quedo optimizada como tabla por usuario;
+  - `compromisos_pps` mantuvo el modelo actual, incluyendo lectura para `Reportero`, pero sin llamadas directas a `auth.uid()`;
+  - se agrego indice para `backup_history.created_by`;
+  - migracion: `supabase/migrations/20260410101500_harden_admin_tables_and_optimize_remaining_rls.sql`.
+- se hizo una auditoria y limpieza inicial de funciones privilegiadas:
+  - se eliminaron funciones `security definer` ajenas al proyecto que provenian de otra aplicacion;
+  - `get_user_creation_dates()` y `get_dashboard_metrics()` dejaron de estar abiertas a `PUBLIC/anon`;
+  - se exigio rol operativo valido para esas funciones;
+  - se corrigio `search_path` en funciones pendientes;
+  - migraciones:
+    - `supabase/migrations/20260410113000_remove_foreign_security_definer_functions.sql`
+    - `supabase/migrations/20260410121500_harden_reporting_functions_and_search_paths.sql`
+- se completo una pasada puntual sobre RPCs sensibles del flujo de auth:
+  - se movio la verificacion de identidad sensible al servidor con `verify_student_identity(...)` y `reset_student_password_verified(...)`;
+  - `register_new_student(...)` ahora exige sesion autenticada propia y coincidencia de `dni` antes de vincular `user_id`;
+  - `admin_reset_password(...)` y `get_student_details_by_legajo(...)` quedaron cerradas para `anon/authenticated`;
+  - `get_my_role()` y `mark_password_changed()` dejaron de estar abiertas a `anon`;
+  - el frontend dejo de depender de `get_student_details_by_legajo(...)` para login, recuperacion y activacion;
+  - migracion: `supabase/migrations/20260410140000_harden_auth_rpcs.sql`.
+
+### Siguiente subpaso sugerido
+
+- decidir si vale la pena consolidar algunas policies `admin + own` en tablas PPS o si ese warning puede aceptarse como costo menor del modelo real;
+- revisar si alguna lectura publica/semipublica en `convocatorias` merece separarse en una tabla o vista especifica para bajar warnings sin tocar la UX;
+- decidir si conviene mover las RPC privilegiadas de auth fuera de `public` o si alcanza con el cierre actual de grants para este panel interno;
+- decidir si `debug_logs` sigue teniendo valor operativo o conviene retirarla.

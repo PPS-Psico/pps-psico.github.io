@@ -84,6 +84,44 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     setFieldError(null);
   };
 
+  const parseVerificationDni = (value: string) => {
+    const cleanDni = value.replace(/\D/g, "").trim();
+    const parsedDni = parseInt(cleanDni, 10);
+
+    if (isNaN(parsedDni) || parsedDni === 0) {
+      throw new Error("El DNI debe ser un número válido.");
+    }
+
+    return parsedDni;
+  };
+
+  const buildIdentityVerificationArgs = (includePhone: boolean) => ({
+    legajo_input: legajo.trim(),
+    dni_input: parseVerificationDni(verificationData.dni),
+    correo_input: verificationData.correo.trim().toLowerCase(),
+    telefono_input: includePhone ? verificationData.telefono.trim() : null,
+  });
+
+  const verifyStudentIdentity = async (includePhone: boolean) => {
+    const { data, error } = await (supabase.rpc as any)(
+      "verify_student_identity",
+      buildIdentityVerificationArgs(includePhone)
+    );
+
+    if (error) {
+      throw new Error("No pudimos validar tu identidad en este momento. Intenta nuevamente.");
+    }
+
+    return data && (data as any[]).length > 0 ? (data as any[])[0] : null;
+  };
+
+  const resetPasswordWithVerifiedIdentity = async (includePhone: boolean) => {
+    return (supabase.rpc as any)("reset_student_password_verified", {
+      ...buildIdentityVerificationArgs(includePhone),
+      new_password: password,
+    });
+  };
+
   const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const legajoTrimmed = legajo.trim();
@@ -110,20 +148,19 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         if (!legajoTrimmed || !passwordTrimmed)
           throw new Error("Por favor, completa todos los campos.");
 
-        // 1. Intentar obtener datos del estudiante
-        // Use cast to any to avoid RPC typing issues
         const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
-          "get_student_details_by_legajo",
+          "get_student_email_by_legajo",
           { legajo_input: legajoTrimmed }
         );
 
         if (rpcError) throw new Error("Error de conexión al validar legajo. Intenta nuevamente.");
-        const studentData = rpcData && (rpcData as any[]).length > 0 ? (rpcData as any[])[0] : null;
 
-        if (!studentData)
-          throw new Error("Legajo no encontrado. Verificá el número o creá una cuenta nueva.");
-
-        const email = studentData[FIELD_CORREO_ESTUDIANTES];
+        const email =
+          rpcData && typeof rpcData === "object" && "email" in (rpcData as Record<string, unknown>)
+            ? String((rpcData as { email: string }).email || "")
+                .trim()
+                .toLowerCase()
+            : "";
 
         if (!email)
           throw new Error(
@@ -167,33 +204,10 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
             throw new Error("Por favor completa los campos para validar tu identidad.");
           }
 
-          const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
-            "get_student_details_by_legajo",
-            { legajo_input: legajoTrimmed }
-          );
+          const studentData = await verifyStudentIdentity(false);
 
-          if (rpcError) throw new Error("Error de conexión. Intenta más tarde.");
-          const studentData =
-            rpcData && (rpcData as any[]).length > 0 ? (rpcData as any[])[0] : null;
-
-          if (!studentData) throw new Error("No encontramos un estudiante con ese legajo.");
-
-          // Verificar coincidencia de datos
-          const dbDni = String(studentData[FIELD_DNI_ESTUDIANTES] || "").trim();
-          const dbEmail = String(studentData[FIELD_CORREO_ESTUDIANTES] || "")
-            .trim()
-            .toLowerCase();
-
-          // Sanitize input DNI for comparison (remove dots, spaces)
-          const inputDni = verificationData.dni.replace(/\D/g, "").trim();
-          const inputEmail = verificationData.correo.trim().toLowerCase();
-
-          // Compare against DB (DB might have dots or not, so we sanitize both just in case, though DB should be clean)
-          const cleanDbDni = dbDni.replace(/\D/g, "");
-
-          if (cleanDbDni !== inputDni || dbEmail !== inputEmail) {
+          if (!studentData)
             throw new Error("Los datos ingresados no coinciden con nuestros registros.");
-          }
 
           setFoundStudent(studentData as unknown as AirtableRecord<EstudianteFields>);
           setMigrationStep(2);
@@ -229,10 +243,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               console.log("Usuario ya existe en Auth, intentando forzar actualización de clave...");
 
               // Si ya existe, usamos RPC para resetear la clave Y REPARAR EL VINCULO
-              const { error: rpcResetError } = await (supabase.rpc as any)("admin_reset_password", {
-                legajo_input: legajoTrimmed,
-                new_password: password,
-              });
+              const { error: rpcResetError } = await resetPasswordWithVerifiedIdentity(false);
 
               if (rpcResetError) {
                 console.error("RPC Reset Error:", rpcResetError);
@@ -319,13 +330,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
 
           const inputEmail = correo.trim().toLowerCase();
-
-          // CLEAN DNI: Remove dots, spaces, ensure it's a number
-          const cleanDniString = dni.replace(/\D/g, "");
-          const cleanDniInt = parseInt(cleanDniString, 10);
-          if (isNaN(cleanDniInt) || cleanDniInt === 0) {
-            throw new Error("El DNI debe ser un número válido.");
-          }
+          const cleanDniInt = parseVerificationDni(dni);
 
           // Intentar crear usuario
           const { data: authData, error: signUpError } = await (supabase.auth as any).signUp({
@@ -338,12 +343,18 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
           // MANEJO ROBUSTO DE "USUARIO YA EXISTE"
           if (signUpError || !userId) {
-            console.warn("SignUp failed, attempting fix via admin_reset_password");
+            console.warn("SignUp failed, attempting verified password recovery flow");
 
-            const { error: fixError } = await (supabase.rpc as any)("admin_reset_password", {
-              legajo_input: legajoTrimmed,
-              new_password: password,
-            });
+            const { error: fixError } = await (supabase.rpc as any)(
+              "reset_student_password_verified",
+              {
+                legajo_input: legajoTrimmed,
+                dni_input: cleanDniInt,
+                correo_input: inputEmail,
+                telefono_input: telefono.trim(),
+                new_password: password,
+              }
+            );
 
             if (fixError) {
               console.error("Fix failed:", fixError);
@@ -377,15 +388,10 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               telefono_input: telefono,
             });
 
-            // Actualizar estado a Activo
-            const { data: studentData } = await (supabase.rpc as any)(
-              "get_student_details_by_legajo",
-              { legajo_input: legajoTrimmed }
-            );
-            if (studentData && studentData.length > 0) {
-              const studentId = studentData[0].id;
-              await supabase.from("estudiantes").update({ estado: "Activo" }).eq("id", studentId);
-            }
+            await supabase
+              .from("estudiantes")
+              .update({ estado: "Activo" })
+              .eq("legajo", legajoTrimmed);
           }
         }
       } catch (err: any) {
@@ -410,56 +416,10 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
             throw new Error("Por favor completa todos los campos para validar tu identidad.");
           }
 
-          const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
-            "get_student_details_by_legajo",
-            { legajo_input: legajoTrimmed }
-          );
+          const studentData = await verifyStudentIdentity(true);
 
-          if (rpcError) {
-            addLog("error", "RPC Error durante verificación", { rpcError });
-            throw new Error("Error de conexión. Intenta más tarde.");
-          }
-
-          const studentData =
-            rpcData && (rpcData as any[]).length > 0 ? (rpcData as any[])[0] : null;
-
-          if (!studentData) throw new Error("No encontramos un estudiante con ese legajo.");
-
-          addLog("success", "Estudiante encontrado en base de datos");
-
-          const dbDni = String(studentData[FIELD_DNI_ESTUDIANTES] || "").replace(/\D/g, "");
-          const dbEmail = String(studentData[FIELD_CORREO_ESTUDIANTES] || "")
-            .trim()
-            .toLowerCase();
-          const dbPhone = normalizePhone(studentData[FIELD_TELEFONO_ESTUDIANTES]);
-
-          const inputDni = verificationData.dni.replace(/\D/g, "");
-          const inputEmail = verificationData.correo.trim().toLowerCase();
-          const inputPhone = normalizePhone(verificationData.telefono);
-
-          addLog("info", "Verificando coincidencia de datos", {
-            legajo: legajoTrimmed,
-            dbDni,
-            inputDni,
-            dbEmail,
-            inputEmail,
-            dbPhone,
-            inputPhone,
-            phoneMatch: !dbPhone || !inputPhone.includes(dbPhone.slice(-6)),
-          });
-
-          let mismatch = false;
-          if (dbDni !== inputDni) mismatch = true;
-          if (dbEmail !== inputEmail) mismatch = true;
-          if (!dbPhone || !inputPhone.includes(dbPhone.slice(-6))) mismatch = true;
-
-          if (mismatch) {
-            addLog("error", "Datos no coinciden", {
-              dbDni,
-              inputDni,
-              dbEmail,
-              inputEmail,
-            });
+          if (!studentData) {
+            addLog("error", "Datos no coinciden para recuperación", { legajo: legajoTrimmed });
             throw new Error("Los datos ingresados no coinciden con nuestros registros.");
           }
 
@@ -476,10 +436,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
             throw new Error("La contraseña debe tener al menos 6 caracteres.");
           if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
 
-          const { error: rpcResetError } = await (supabase.rpc as any)("admin_reset_password", {
-            legajo_input: legajoTrimmed,
-            new_password: password,
-          });
+          const { error: rpcResetError } = await resetPasswordWithVerifiedIdentity(true);
 
           if (rpcResetError) {
             addLog("error", "RPC Error al restablecer contraseña", {
@@ -497,20 +454,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
             ) {
               addLog("info", "Usuario no encontrado en auth, intentando crear usuario...");
 
-              const { data: studentData } = await (supabase.rpc as any)(
-                "get_student_details_by_legajo",
-                { legajo_input: legajoTrimmed }
-              );
-
-              const student = studentData && studentData.length > 0 ? studentData[0] : null;
-
-              if (!student) {
-                throw new Error("No se encontraron datos del estudiante. Contacta a soporte.");
-              }
-
-              const studentEmail = String(student[FIELD_CORREO_ESTUDIANTES] || "")
-                .trim()
-                .toLowerCase();
+              const studentEmail = verificationData.correo.trim().toLowerCase();
 
               addLog("info", "Creando usuario en auth con email:", { email: studentEmail });
 
@@ -531,9 +475,9 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               );
 
               const { error: retryResetError } = await (supabase.rpc as any)(
-                "admin_reset_password",
+                "reset_student_password_verified",
                 {
-                  legajo_input: legajoTrimmed,
+                  ...buildIdentityVerificationArgs(true),
                   new_password: password,
                 }
               );
@@ -570,18 +514,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
           addLog("success", "Contraseña restablecida exitosamente");
 
-          const { data: studentLoginData } = await (supabase.rpc as any)(
-            "get_student_details_by_legajo",
-            { legajo_input: legajoTrimmed }
-          );
-
-          const student =
-            studentLoginData && studentLoginData.length > 0 ? studentLoginData[0] : null;
-          const studentEmail = student
-            ? String(student[FIELD_CORREO_ESTUDIANTES] || "")
-                .trim()
-                .toLowerCase()
-            : "";
+          const studentEmail = verificationData.correo.trim().toLowerCase();
 
           addLog("info", "Intentando login automático", { email: studentEmail });
 

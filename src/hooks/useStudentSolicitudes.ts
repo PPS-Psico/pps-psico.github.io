@@ -4,7 +4,7 @@ import { mockDb } from "../services/mockDb";
 import { FIELD_LEGAJO_PPS, FIELD_ESTADO_PPS } from "../constants";
 import type { SolicitudPPS } from "../types";
 
-export const useStudentSolicitudes = (legajo: string, studentAirtableId: string | null) => {
+export const useStudentSolicitudes = (legajo: string, studentId: string | null) => {
   const {
     data: solicitudes = [],
     isLoading: isSolicitudesLoading,
@@ -19,7 +19,7 @@ export const useStudentSolicitudes = (legajo: string, studentAirtableId: string 
         });
         return recs.filter((r) => r[FIELD_ESTADO_PPS] !== "Archivado");
       }
-      return fetchSolicitudes(legajo, studentAirtableId);
+      return fetchSolicitudes(legajo, studentId);
     },
     enabled: !!legajo,
     staleTime: 1000 * 60 * 5,
