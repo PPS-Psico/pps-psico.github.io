@@ -49,7 +49,7 @@ interface HomeViewProps {
   allLanzamientos: LanzamientoPPS[];
   lanzamientos: LanzamientoPPS[];
   student: EstudianteFields | null;
-  onInscribir: (lanzamiento: LanzamientoPPS) => void;
+  onInscribir: (lanzamiento: LanzamientoPPS, completedOrientaciones?: string[]) => void;
   onCancelarInscripcion: (convocatoriaId: string) => void;
   isCancelandoInscripcion?: boolean;
   institutionAddressMap: Map<string, string>;
@@ -274,7 +274,7 @@ const HomeView: React.FC<HomeViewProps> = ({
         enrollment={enrollment}
         isCompleted={isCompleted}
         completedOrientaciones={completedOrientationsList}
-        onInscribirse={() => onInscribir(lanzamiento)}
+        onInscribirse={() => onInscribir(lanzamiento, completedOrientationsList)}
         onCancelarInscripcion={() =>
           enrollment &&
           handleCancelarInscripcion(

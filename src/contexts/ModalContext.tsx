@@ -13,11 +13,13 @@ interface ModalContextType {
   // Enrollment Form Modal
   isEnrollmentFormOpen: boolean;
   selectedLanzamientoForEnrollment: LanzamientoPPS | null;
-  studentProfileForEnrollment: Estudiante | null; // Nuevo: datos del estudiante
+  studentProfileForEnrollment: Estudiante | null;
+  completedOrientacionesForEnrollment: string[];
   openEnrollmentForm: (
     lanzamiento: LanzamientoPPS,
     studentProfile: Estudiante | null,
-    onSubmit: OnSubmitEnrollment
+    onSubmit: OnSubmitEnrollment,
+    completedOrientaciones?: string[]
   ) => void;
   closeEnrollmentForm: () => void;
   onSubmitEnrollment: OnSubmitEnrollment | null;
@@ -51,6 +53,9 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   );
   const [onSubmitEnrollment, setOnSubmitEnrollment] = useState<OnSubmitEnrollment | null>(null);
   const [isSubmittingEnrollment, setIsSubmittingEnrollment] = useState(false);
+  const [completedOrientacionesForEnrollment, setCompletedOrientacionesForEnrollment] = useState<
+    string[]
+  >([]);
 
   const [isSeleccionadosModalOpen, setIsSeleccionadosModalOpen] = useState(false);
   const [seleccionadosData, setSeleccionadosData] = useState<GroupedSeleccionados | null>(null);
@@ -73,11 +78,13 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     (
       lanzamiento: LanzamientoPPS,
       studentProfile: Estudiante | null,
-      onSubmit: OnSubmitEnrollment
+      onSubmit: OnSubmitEnrollment,
+      completedOrientaciones: string[] = []
     ) => {
       setSelectedLanzamientoForEnrollment(lanzamiento);
       setStudentProfileForEnrollment(studentProfile);
       setOnSubmitEnrollment(() => onSubmit);
+      setCompletedOrientacionesForEnrollment(completedOrientaciones);
       setIsEnrollmentFormOpen(true);
     },
     []
@@ -119,6 +126,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     isEnrollmentFormOpen,
     selectedLanzamientoForEnrollment,
     studentProfileForEnrollment,
+    completedOrientacionesForEnrollment,
     openEnrollmentForm,
     closeEnrollmentForm,
     onSubmitEnrollment,

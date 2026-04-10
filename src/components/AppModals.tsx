@@ -21,6 +21,7 @@ const AppModals: React.FC = () => {
     closeEnrollmentForm,
     selectedLanzamientoForEnrollment,
     studentProfileForEnrollment,
+    completedOrientacionesForEnrollment,
     isSeleccionadosModalOpen,
     closeSeleccionadosModal,
     seleccionadosData,
@@ -36,12 +37,21 @@ const AppModals: React.FC = () => {
 
   const horariosStr =
     selectedLanzamientoForEnrollment?.[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] || "";
-  const horariosArray = horariosStr
+  const allHorarios = horariosStr
     ? horariosStr
         .split(";")
         .map((h) => h.trim())
         .filter(Boolean)
     : [];
+  const horariosArray =
+    completedOrientacionesForEnrollment.length > 0
+      ? allHorarios.filter((h) => {
+          const horarioLower = h.toLowerCase();
+          return !completedOrientacionesForEnrollment.some((o) =>
+            horarioLower.includes(`[${o.toLowerCase()}]`)
+          );
+        })
+      : allHorarios;
   const permiteCertificado =
     !!selectedLanzamientoForEnrollment?.[FIELD_PERMITE_CERTIFICADO_LANZAMIENTOS];
 

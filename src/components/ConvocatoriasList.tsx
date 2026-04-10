@@ -26,7 +26,7 @@ import { useAuth } from "../contexts/AuthContext";
 interface ConvocatoriasListProps {
   lanzamientos: LanzamientoPPS[];
   student: EstudianteFields | null;
-  onInscribir: (lanzamiento: LanzamientoPPS) => void;
+  onInscribir: (lanzamiento: LanzamientoPPS, completedOrientaciones?: string[]) => void;
   institutionAddressMap: Map<string, string>;
   institutionLogoMap?: Map<string, { url: string; invert: boolean }>;
   enrollmentMap: Map<string, Convocatoria>;
@@ -173,7 +173,7 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
             completedOrientaciones={completedOrientacionesList}
             horariosFijos={lanzamiento.horarios_fijos || false}
             fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
-            onInscribirse={() => onInscribir(lanzamiento)}
+            onInscribirse={() => onInscribir(lanzamiento, completedOrientacionesList)}
           />
         );
       })}

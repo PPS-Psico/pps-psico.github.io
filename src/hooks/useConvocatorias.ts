@@ -336,10 +336,15 @@ export const useConvocatorias = (
   });
 
   const enrollStudent = {
-    mutate: (lanzamiento: LanzamientoPPS) => {
-      openEnrollmentForm(lanzamiento, studentDetails, async (fd) => {
-        await enrollmentMutation.mutateAsync({ formData: fd, selectedLanzamiento: lanzamiento });
-      });
+    mutate: (lanzamiento: LanzamientoPPS, completedOrientaciones?: string[]) => {
+      openEnrollmentForm(
+        lanzamiento,
+        studentDetails,
+        async (fd) => {
+          await enrollmentMutation.mutateAsync({ formData: fd, selectedLanzamiento: lanzamiento });
+        },
+        completedOrientaciones
+      );
     },
     isPending: enrollmentMutation.isPending,
   };
