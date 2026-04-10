@@ -180,7 +180,10 @@ export const useSeleccionadorLogic = (
 
       // FILTER: Enrollments for this launch
       const enrollments = allEnrollments.filter(
-        (c) => c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === launchId
+        (c) =>
+          c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === launchId &&
+          normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) !==
+            "inscripcion cancelada"
       );
 
       if (enrollments.length === 0) return [];
