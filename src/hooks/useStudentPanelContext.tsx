@@ -31,6 +31,7 @@ interface StudentPanelContextType {
   allLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
   completedLanzamientoIds: Set<string>;
+  completedOrientationsByInstitution: Map<string, Set<string>>;
   informeTasks: InformeTask[];
   criterios: CriteriosCalculados;
   institutionAddressMap: Map<string, string>;
@@ -129,11 +130,17 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     [practicas, selectedOrientacion, isLoading, config]
   );
 
-  const { enrollmentMap, completedLanzamientoIds, informeTasks } = useMemo(() => {
+  const {
+    enrollmentMap,
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
+    informeTasks,
+  } = useMemo(() => {
     if (isConvocatoriasLoading || isPracticasLoading) {
       return {
         enrollmentMap: new Map<string, Convocatoria>(),
         completedLanzamientoIds: new Set<string>(),
+        completedOrientationsByInstitution: new Map<string, Set<string>>(),
         informeTasks: [] as InformeTask[],
       };
     }
@@ -161,6 +168,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     criterios,
     enrollmentMap,
     completedLanzamientoIds,
+    completedOrientationsByInstitution,
     informeTasks,
   };
 

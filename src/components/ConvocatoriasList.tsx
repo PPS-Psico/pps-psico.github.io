@@ -31,6 +31,7 @@ interface ConvocatoriasListProps {
   institutionLogoMap?: Map<string, { url: string; invert: boolean }>;
   enrollmentMap: Map<string, Convocatoria>;
   completedLanzamientoIds: Set<string>;
+  completedOrientationsByInstitution: Map<string, Set<string>>;
 }
 
 const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
@@ -41,6 +42,7 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
   institutionLogoMap,
   enrollmentMap,
   completedLanzamientoIds,
+  completedOrientationsByInstitution,
 }) => {
   const { openSeleccionadosModal, showModal } = useModal();
   const { authenticatedUser } = useAuth();
@@ -86,11 +88,41 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
           ? enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]
           : null;
 
-        // Check ID match OR Full Name match
+        // Check ID match OR Full Name match (orientation-aware)
         const ppsName = lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
-        const isCompleted =
+        const groupName = ppsName.split(" - ")[0].trim();
+        const normalizedGroupName = normalizeStringForComparison(groupName);
+        const normalizedPpsName = normalizeStringForComparison(ppsName);
+
+        const launchOrientaciones = Array.isArray(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS])
+          ? (lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string[])
+          : lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]
+            ? [lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string]
+            : [];
+
+        const completedOrientations =
+          completedOrientationsByInstitution.get(normalizedGroupName) ||
+          completedOrientationsByInstitution.get(normalizedPpsName) ||
+          new Set<string>();
+
+        const allOrientationsCompleted =
+          launchOrientaciones.length > 0 &&
+          launchOrientaciones.every((o) =>
+            completedOrientations.has(normalizeStringForComparison(o))
+          );
+
+        const isFullyCompleted =
           completedLanzamientoIds.has(lanzamiento.id) ||
-          completedLanzamientoIds.has(normalizeStringForComparison(ppsName));
+          completedLanzamientoIds.has(normalizedPpsName);
+
+        const isCompleted =
+          launchOrientaciones.length > 1 ? allOrientationsCompleted : isFullyCompleted;
+
+        const completedOrientacionesList = allOrientationsCompleted
+          ? launchOrientaciones
+          : launchOrientaciones.filter((o) =>
+              completedOrientations.has(normalizeStringForComparison(o))
+            );
 
         const lanzamientoDireccion = lanzamiento[FIELD_DIRECCION_LANZAMIENTOS];
         const institutionName = lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS];
@@ -142,6 +174,7 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
             status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]}
             estadoInscripcion={enrollmentStatus as any}
             isCompleted={isCompleted}
+            completedOrientaciones={completedOrientacionesList}
             horariosFijos={lanzamiento.horarios_fijos || false}
             fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
             onInscribirse={() => onInscribir(lanzamiento)}

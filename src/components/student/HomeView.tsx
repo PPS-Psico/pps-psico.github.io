@@ -53,6 +53,7 @@ interface HomeViewProps {
   enrollmentMap: Map<string, Convocatoria>;
   compromisoMap?: Map<string, CompromisoPPS>;
   completedLanzamientoIds: Set<string>;
+  completedOrientationsByInstitution: Map<string, Set<string>>;
   informeTasks: InformeTask[];
   onNavigate: (tabId: TabId) => void;
   criterios: CriteriosCalculados;
@@ -76,6 +77,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   enrollmentMap,
   compromisoMap,
   completedLanzamientoIds,
+  completedOrientationsByInstitution,
   onInscribir,
   onCancelarInscripcion,
   isCancelandoInscripcion,
@@ -194,10 +196,38 @@ const HomeView: React.FC<HomeViewProps> = ({
       (institutionLogoMap.get(normalizeStringForComparison(ppsName)) ||
         institutionLogoMap.get(normalizeStringForComparison(groupName)));
 
-    // Check if this PPS was already completed by the student
+    // Check if this PPS was already completed by the student (orientation-aware)
     const normalizedPpsName = normalizeStringForComparison(ppsName);
-    const isCompleted =
+    const normalizedGroupName = normalizeStringForComparison(groupName);
+    const launchOrientaciones = Array.isArray(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS])
+      ? (lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string[])
+      : lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]
+        ? [lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string]
+        : [];
+
+    const completedOrientations =
+      completedOrientationsByInstitution.get(normalizedGroupName) ||
+      completedOrientationsByInstitution.get(normalizedPpsName) ||
+      new Set<string>();
+
+    const allOrientationsCompleted =
+      launchOrientaciones.length > 0 &&
+      launchOrientaciones.every((o) => completedOrientations.has(normalizeStringForComparison(o)));
+
+    // Single-orientation launch: block by ID or name as before
+    const isFullyCompleted =
       completedLanzamientoIds.has(lanzamiento.id) || completedLanzamientoIds.has(normalizedPpsName);
+
+    // Multi-orientation: block only if ALL orientations are completed
+    // Single-orientation or no orientation: block if completed by ID/name
+    const isCompleted =
+      launchOrientaciones.length > 1 ? allOrientationsCompleted : isFullyCompleted;
+
+    const completedOrientationsList = allOrientationsCompleted
+      ? launchOrientaciones
+      : launchOrientaciones.filter((o) =>
+          completedOrientations.has(normalizeStringForComparison(o))
+        );
 
     return (
       <ConvocatoriaCardPremium
@@ -243,6 +273,7 @@ const HomeView: React.FC<HomeViewProps> = ({
         compromisoEstado={compromiso?.estado || null}
         enrollment={enrollment}
         isCompleted={isCompleted}
+        completedOrientaciones={completedOrientationsList}
         onInscribirse={() => onInscribir(lanzamiento)}
         onCancelarInscripcion={() =>
           enrollment &&

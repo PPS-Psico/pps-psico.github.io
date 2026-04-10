@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { getEspecialidadClasses } from "../utils/formatters";
+import { getEspecialidadClasses, normalizeStringForComparison } from "../utils/formatters";
 import type { Convocatoria } from "../types";
 
 export interface ConvocatoriaDetailProps {
@@ -35,6 +35,7 @@ export interface ConvocatoriaDetailProps {
   invertLogo?: boolean;
   horariosFijos?: boolean;
   isCompleted?: boolean;
+  completedOrientaciones?: string[];
   fechaEncuentroInicial?: string;
 }
 
@@ -64,6 +65,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   onConfirmCompromiso,
   horariosFijos = false,
   isCompleted = false,
+  completedOrientaciones = [],
   fechaEncuentroInicial,
 }) => {
   const orientationsArray = Array.isArray(orientacion)
@@ -76,6 +78,8 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const completedSet = new Set(completedOrientaciones.map((o) => normalizeStringForComparison(o)));
+
   // --- Dynamic Button Logic ---
   const getButtonConfig = () => {
     // Shared base classes for all states to maintain consistent sizing with better mobile support
@@ -85,7 +89,10 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
     // PRIORITY 1: If already completed, block enrollment entirely
     if (isCompleted) {
       return {
-        text: "YA REALIZADA",
+        text:
+          completedOrientaciones.length > 0 && orientationsArray.length > 1
+            ? "ORIENT. COMPLETADAS"
+            : "YA REALIZADA",
         icon: "check_circle",
         classes: `${baseClasses} bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 cursor-not-allowed opacity-80`,
         disabled: true,
@@ -254,14 +261,24 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
 
           {/* Desktop: Show orientation tag and address */}
           <div className="hidden md:flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
-            {orientationsArray.map((o) => (
-              <span
-                key={o}
-                className={`px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black tracking-wider border ${getEspecialidadClasses(o).tag}`}
-              >
-                {o}
-              </span>
-            ))}
+            {orientationsArray.map((o) => {
+              const isOrientCompleted = completedSet.has(normalizeStringForComparison(o));
+              return (
+                <span
+                  key={o}
+                  className={`px-2.5 py-0.5 rounded-lg text-[10px] uppercase font-black tracking-wider border flex items-center gap-1 ${
+                    isOrientCompleted
+                      ? "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 line-through"
+                      : getEspecialidadClasses(o).tag
+                  }`}
+                >
+                  {isOrientCompleted && (
+                    <span className="material-icons !text-[10px]">check_circle</span>
+                  )}
+                  {o}
+                </span>
+              );
+            })}
 
             {/* Logic: Hours only visible when collapsed. */}
             {!isExpanded && (

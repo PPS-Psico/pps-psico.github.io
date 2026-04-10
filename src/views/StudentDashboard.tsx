@@ -99,6 +99,7 @@ export const StudentHome: React.FC = () => {
     criterios,
     enrollmentMap,
     completedLanzamientoIds,
+    completedOrientationsByInstitution,
     informeTasks,
     finalizacionRequest,
     compromisoMap,
@@ -147,6 +148,7 @@ export const StudentHome: React.FC = () => {
         enrollmentMap={enrollmentMap}
         compromisoMap={compromisoMap}
         completedLanzamientoIds={completedLanzamientoIds}
+        completedOrientationsByInstitution={completedOrientationsByInstitution}
         criterios={criterios}
         onOpenFinalization={handleOpenFinalization}
         onAcceptCompromiso={async (payload) => {
@@ -212,6 +214,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     criterios,
     enrollmentMap,
     completedLanzamientoIds,
+    completedOrientationsByInstitution,
     informeTasks,
     finalizacionRequest,
     compromisoMap,
@@ -349,6 +352,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           enrollmentMap={enrollmentMap}
           compromisoMap={compromisoMap}
           completedLanzamientoIds={completedLanzamientoIds}
+          completedOrientationsByInstitution={completedOrientationsByInstitution}
           criterios={criterios}
           onOpenFinalization={handleOpenFinalization}
           onAcceptCompromiso={

@@ -13,6 +13,7 @@ import {
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+  FIELD_ESPECIALIDAD_PRACTICAS,
 } from "../constants";
 
 interface LinkDataParams {
@@ -65,6 +66,7 @@ export function processAndLinkStudentData({
 
   // Step 3: Identify completed practices
   const completedLanzamientoIds = new Set<string>();
+  const completedOrientationsByInstitution = new Map<string, Set<string>>();
   const finalizadaStatuses = ["finalizada", "pps realizada", "convenio realizado", "aprobada"];
 
   practicas.forEach((practica) => {
@@ -82,6 +84,17 @@ export function processAndLinkStudentData({
       if (pName.trim()) {
         const normalizedName = normalizeStringForComparison(pName);
         completedLanzamientoIds.add(normalizedName);
+      }
+
+      // Track completed orientations per institution (for multi-orientation support)
+      const especialidad = String(practica[FIELD_ESPECIALIDAD_PRACTICAS] || "").trim();
+      if (pName.trim() && especialidad) {
+        const normalizedName = normalizeStringForComparison(pName);
+        const normalizedEsp = normalizeStringForComparison(especialidad);
+        if (!completedOrientationsByInstitution.has(normalizedName)) {
+          completedOrientationsByInstitution.set(normalizedName, new Set());
+        }
+        completedOrientationsByInstitution.get(normalizedName)!.add(normalizedEsp);
       }
     }
   });
@@ -152,5 +165,10 @@ export function processAndLinkStudentData({
     return dateA - dateB;
   });
 
-  return { enrollmentMap, completedLanzamientoIds, informeTasks };
+  return {
+    enrollmentMap,
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
+    informeTasks,
+  };
 }

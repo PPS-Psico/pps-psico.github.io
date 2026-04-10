@@ -29,6 +29,7 @@ interface StudentAcademicContextType {
   allLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
   completedLanzamientoIds: Set<string>;
+  completedOrientationsByInstitution: Map<string, Set<string>>;
   informeTasks: InformeTask[];
   criterios: CriteriosCalculados;
   institutionAddressMap: Map<string, string>;
@@ -117,9 +118,19 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     [practicas, selectedOrientacion, isAcademicLoading, config]
   );
 
-  const { enrollmentMap, completedLanzamientoIds, informeTasks } = useMemo(() => {
+  const {
+    enrollmentMap,
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
+    informeTasks,
+  } = useMemo(() => {
     if (isConvocatoriasLoading || isPracticasLoading) {
-      return { enrollmentMap: new Map(), completedLanzamientoIds: new Set(), informeTasks: [] };
+      return {
+        enrollmentMap: new Map(),
+        completedLanzamientoIds: new Set(),
+        completedOrientationsByInstitution: new Map<string, Set<string>>(),
+        informeTasks: [],
+      };
     }
     return processAndLinkStudentData({ myEnrollments, allLanzamientos, practicas });
   }, [myEnrollments, allLanzamientos, practicas, isConvocatoriasLoading, isPracticasLoading]);
@@ -142,6 +153,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     criterios,
     enrollmentMap,
     completedLanzamientoIds,
+    completedOrientationsByInstitution,
     informeTasks,
   };
 
