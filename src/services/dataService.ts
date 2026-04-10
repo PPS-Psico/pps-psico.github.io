@@ -35,7 +35,7 @@ import { cleanSchedule, findMatchingGroupKey } from "../utils/scheduleUtils";
 
 export const fetchStudentData = async (
   legajo: string
-): Promise<{ studentDetails: Estudiante | null; studentAirtableId: string | null }> => {
+): Promise<{ studentDetails: Estudiante | null; studentId: string | null }> => {
   const { data, error } = await supabase
     .from("estudiantes")
     .select("*")
@@ -45,15 +45,15 @@ export const fetchStudentData = async (
   const studentData = data as Estudiante | null;
   if (error || !studentData) {
     console.warn("Estudiante no encontrado por legajo:", legajo);
-    return { studentDetails: null, studentAirtableId: null };
+    return { studentDetails: null, studentId: null };
   }
 
-  return { studentDetails: studentData, studentAirtableId: studentData.id };
+  return { studentDetails: studentData, studentId: studentData.id };
 };
 
 export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
-  const { studentAirtableId } = await fetchStudentData(legajo);
-  if (!studentAirtableId) return [];
+  const { studentId } = await fetchStudentData(legajo);
+  if (!studentId) return [];
 
   const { data, error } = await supabase
     .from("practicas")
@@ -68,7 +68,7 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
           )
       `
     )
-    .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentAirtableId);
+    .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId);
 
   if (error || !data) {
     console.error("Error fetching practicas:", error);
@@ -145,11 +145,11 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
 
 export const fetchSolicitudes = async (
   legajo: string,
-  studentAirtableId: string | null
+  studentId: string | null
 ): Promise<SolicitudPPS[]> => {
-  let targetId = studentAirtableId;
+  let targetId = studentId;
   if (!targetId) {
-    const { studentAirtableId: fetchedId } = await fetchStudentData(legajo);
+    const { studentId: fetchedId } = await fetchStudentData(legajo);
     targetId = fetchedId;
   }
   if (!targetId) return [];
@@ -195,12 +195,12 @@ export const fetchSolicitudes = async (
 
 export const fetchFinalizacionRequest = async (
   legajo: string,
-  studentAirtableId: string | null
+  studentId: string | null
 ): Promise<FinalizacionPPS | null> => {
   try {
-    let targetId = studentAirtableId;
+    let targetId = studentId;
     if (!targetId) {
-      const { studentAirtableId: fetchedId } = await fetchStudentData(legajo);
+      const { studentId: fetchedId } = await fetchStudentData(legajo);
       targetId = fetchedId;
     }
     if (!targetId) return null;
@@ -221,7 +221,7 @@ export const fetchFinalizacionRequest = async (
 
 // Removed unused arguments to fix linter
 export const fetchConvocatoriasData = async (
-  studentAirtableId: string | null
+  studentId: string | null
 ): Promise<{
   lanzamientos: LanzamientoPPS[];
   myEnrollments: Convocatoria[];
@@ -232,9 +232,9 @@ export const fetchConvocatoriasData = async (
   let myEnrollments: Convocatoria[] = [];
   const enrolledLaunchIds = new Set<string>();
 
-  if (studentAirtableId) {
+  if (studentId) {
     const enrollments = await db.convocatorias.getAll({
-      filters: { [C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentAirtableId },
+      filters: { [C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: studentId },
     });
     myEnrollments = enrollments;
 
@@ -1276,36 +1276,36 @@ export const sendCompromisoAcceptanceEmailV3 = async (data: {
 
   const body = `Hola ${data.studentName},
 
-Se registr? correctamente tu aceptaci?n digital del compromiso correspondiente al inicio de tu Pr?ctica Profesional Supervisada.
+Se registró correctamente tu aceptación digital del compromiso correspondiente al inicio de tu Práctica Profesional Supervisada.
 
-Instituci?n / PPS: ${data.ppsName}
+Institución / PPS: ${data.ppsName}
 Horario asignado: ${data.schedule || "A confirmar"}
 ${
   formattedInitialMeeting
     ? `Encuentro inicial: ${formattedInitialMeeting}
 `
     : ""
-}Fecha y hora de aceptaci?n: ${acceptedDate}
+}Fecha y hora de aceptación: ${acceptedDate}
 Nombre completo: ${data.fullName}
 DNI: ${data.dni || "No informado"}
 Legajo: ${data.legajo}
 
 Resumen de condiciones aceptadas:
-- Asistencia m?nima del 80% a las actividades previstas.
-- Obligaci?n de informar inasistencias o dificultades de manera inmediata.
-- Compromiso de confidencialidad, responsabilidad y representaci?n institucional.
-- Cumplimiento de la documentaci?n requerida y entrega del informe final en plazo.
+- Asistencia mínima del 80% a las actividades previstas.
+- Obligación de informar inasistencias o dificultades de manera inmediata.
+- Compromiso de confidencialidad, responsabilidad y representación institucional.
+- Cumplimiento de la documentación requerida y entrega del informe final en plazo.
 
 Constancia formal:
 ${COMPROMISO_PPS_DECLARACION}
 
-Versi?n del acta aceptada: ${COMPROMISO_PPS_VERSION}
+Versión del acta aceptada: ${COMPROMISO_PPS_VERSION}
 
-Conserv? este correo como comprobante de tu confirmaci?n.
+Conservá este correo como comprobante de tu confirmación.
 
 Saludos,
 
-Coordinaci?n de Pr?cticas Profesionales Supervisadas
+Coordinación de Prácticas Profesionales Supervisadas
 UFLO Universidad`;
 
   const escapeHtml = (value: string) =>
@@ -1320,12 +1320,12 @@ UFLO Universidad`;
     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
   const detailRows = [
-    { label: "Instituci?n / PPS", value: data.ppsName },
+    { label: "Institución / PPS", value: data.ppsName },
     { label: "Horario asignado", value: data.schedule || "A confirmar" },
     ...(formattedInitialMeeting
       ? [{ label: "Encuentro inicial", value: formattedInitialMeeting }]
       : []),
-    { label: "Fecha y hora de aceptaci?n", value: acceptedDate },
+    { label: "Fecha y hora de aceptación", value: acceptedDate },
     { label: "Nombre completo", value: data.fullName },
     { label: "DNI", value: data.dni ? String(data.dni) : "No informado" },
     { label: "Legajo", value: data.legajo },
@@ -1346,10 +1346,10 @@ UFLO Universidad`;
     .join("");
 
   const conditions = [
-    "Asistencia m?nima del 80% a las actividades previstas.",
-    "Obligaci?n de informar inasistencias o dificultades de manera inmediata.",
-    "Compromiso de confidencialidad, responsabilidad y representaci?n institucional.",
-    "Cumplimiento de la documentaci?n requerida y entrega del informe final en plazo.",
+    "Asistencia mínima del 80% a las actividades previstas.",
+    "Obligación de informar inasistencias o dificultades de manera inmediata.",
+    "Compromiso de confidencialidad, responsabilidad y representación institucional.",
+    "Cumplimiento de la documentación requerida y entrega del informe final en plazo.",
   ];
 
   const conditionsHtml = conditions
@@ -1380,13 +1380,13 @@ UFLO Universidad`;
                 <div style="color: #ffffff; font-family: ${fontStack}; font-size: 11px; text-transform: uppercase; letter-spacing: 3px; opacity: 0.9;">Universidad</div>
               </td>
             </tr>
-            <tr>
-              <td style="padding: 40px;">
-                <h1 style="margin: 0 0 18px 0; color: #0f172a; font-size: 24px; font-weight: 800; line-height: 1.25;">Confirmaci?n registrada de tu compromiso para PPS</h1>
-                <p style="margin: 0 0 28px 0; color: #475569; font-family: ${fontStack}; font-size: 15px; line-height: 1.7;">Se registr? correctamente tu aceptaci?n digital del compromiso correspondiente al inicio de tu Pr?ctica Profesional Supervisada.</p>
+              <tr>
+                <td style="padding: 40px;">
+                  <h1 style="margin: 0 0 18px 0; color: #0f172a; font-size: 24px; font-weight: 800; line-height: 1.25;">Confirmación registrada de tu compromiso para PPS</h1>
+                  <p style="margin: 0 0 28px 0; color: #475569; font-family: ${fontStack}; font-size: 15px; line-height: 1.7;">Se registró correctamente tu aceptación digital del compromiso correspondiente al inicio de tu Práctica Profesional Supervisada.</p>
 
                 <div style="margin-bottom: 24px; border: 1px solid #dbeafe; border-radius: 12px; overflow: hidden; background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);">
-                  <div style="padding: 14px 20px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-family: ${fontStack}; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #1e3a8a;">Datos de tu confirmaci?n</div>
+                  <div style="padding: 14px 20px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-family: ${fontStack}; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #1e3a8a;">Datos de tu confirmación</div>
                   <div style="padding: 0 20px 4px 20px;">
                     <table border="0" cellpadding="0" cellspacing="0" width="100%">${detailHtml}
                     </table>
@@ -1405,19 +1405,19 @@ UFLO Universidad`;
                 </div>
 
                 <div style="margin-bottom: 28px; padding: 18px 20px; border-radius: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0;">
-                  <div style="font-family: ${fontStack}; font-size: 13px; line-height: 1.7; color: #334155;"><strong style="color: #0f172a;">Versi?n del acta aceptada:</strong> ${escapeHtml(COMPROMISO_PPS_VERSION)}<br /><strong style="color: #0f172a;">Importante:</strong> Conserv? este correo como comprobante de tu confirmaci?n.</div>
+                  <div style="font-family: ${fontStack}; font-size: 13px; line-height: 1.7; color: #334155;"><strong style="color: #0f172a;">Versión del acta aceptada:</strong> ${escapeHtml(COMPROMISO_PPS_VERSION)}<br /><strong style="color: #0f172a;">Importante:</strong> Conservá este correo como comprobante de tu confirmación.</div>
                 </div>
 
                 <div style="margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
                   <p style="margin: 0 0 6px 0; color: #64748b; font-size: 14px; font-family: ${fontStack};">Saludos,</p>
-                  <p style="margin: 4px 0; color: #0f172a; font-weight: 700; font-size: 16px; font-family: ${fontStack};">Coordinaci?n de Pr?cticas Profesionales Supervisadas</p>
+                  <p style="margin: 4px 0; color: #0f172a; font-weight: 700; font-size: 16px; font-family: ${fontStack};">Coordinación de Prácticas Profesionales Supervisadas</p>
                   <p style="margin: 4px 0; color: #64748b; font-size: 13px; font-family: ${fontStack};">UFLO Universidad</p>
                 </div>
               </td>
             </tr>
             <tr>
               <td style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
-                <p style="margin: 0; font-size: 11px; color: #94a3b8; font-family: ${fontStack};"><strong>Facultad de Psicolog?a y Ciencias Sociales</strong><br />Pr?cticas Profesionales Supervisadas<br />&copy; ${new Date().getFullYear()} Universidad de Flores</p>
+                <p style="margin: 0; font-size: 11px; color: #94a3b8; font-family: ${fontStack};"><strong>Facultad de Psicología y Ciencias Sociales</strong><br />Prácticas Profesionales Supervisadas<br />&copy; ${new Date().getFullYear()} Universidad de Flores</p>
               </td>
             </tr>
           </table>
@@ -1430,7 +1430,7 @@ UFLO Universidad`;
   const { error } = await supabase.functions.invoke("send-email", {
     body: {
       to: data.studentEmail,
-      subject: `Confirmaci?n registrada - Compromiso PPS - ${data.ppsName}`,
+      subject: `Confirmación registrada - Compromiso PPS - ${data.ppsName}`,
       text: stripGreeting(body),
       html: htmlBody,
       name: data.studentName,
