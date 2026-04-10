@@ -37,6 +37,7 @@ import {
   FIELD_TUTOR_INSTITUCIONES,
 } from "../../constants";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../constants/configConstants";
+import { generateWithGemini } from "../../services/geminiService";
 import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
 import type {
@@ -588,38 +589,7 @@ Genera un objeto JSON con:
 Responde SOLO con el JSON válido.
 `;
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-content`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error en la edge function: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      let text = "";
-      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        const parts = data.candidates[0].content.parts;
-        text = parts.map((p: any) => p.text).join("");
-      } else if (data.error) {
-        throw new Error(data.error.message || "Error desconocido de Gemini");
-      }
+      const text = await generateWithGemini(prompt);
 
       const cleanJson = text
         .replace(/```json/g, "")
