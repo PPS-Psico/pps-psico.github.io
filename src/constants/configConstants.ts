@@ -5,16 +5,21 @@ export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
 export const testSupabaseConnection = async () => {
   console.log("=== TESTING SUPABASE CONNECTION ===");
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.log("❌ ERROR: Missing Supabase URL or Anon Key");
+      return { success: false, error: "Missing configuration" };
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/estudiantes?select=id&limit=1`, {
       method: "GET",
       headers: {
         apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         "Content-Type": "application/json",
       },
     });
     const status = response.status;
-    console.log("Supabase API Status:", status);
-    if (status === 200) {
+    if (status === 200 || status === 206) {
       console.log("✅ SUCCESS: Supabase connection is valid!");
       return { success: true, status };
     } else if (status === 401) {

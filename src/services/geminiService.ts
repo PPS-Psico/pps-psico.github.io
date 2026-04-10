@@ -1,4 +1,12 @@
 import { SUPABASE_URL } from "../constants";
+import { supabase } from "../lib/supabaseClient";
+
+const getAuthToken = async (): Promise<string> => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+};
 
 interface GenerateContentRequest {
   prompt: string;

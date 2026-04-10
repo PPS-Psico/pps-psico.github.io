@@ -15,8 +15,24 @@ let cachedToken: string | null = null;
 let isGettingToken = false;
 let tokenPromise: Promise<string | null> | null = null;
 
+const isPushSupported = (): boolean => {
+  if (!("serviceWorker" in navigator)) return false;
+  if (!("PushManager" in window)) return false;
+  try {
+    const sw = navigator.serviceWorker?.ready;
+    if (!sw) return false;
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const initializeFCM = async () => {
   try {
+    if (!isPushSupported()) {
+      console.log("[FCM] Push not supported in this environment, skipping.");
+      return { app: null, messaging: null };
+    }
     if (!app) {
       app = initializeApp(firebaseConfig);
       messaging = getMessaging(app);
@@ -24,8 +40,8 @@ export const initializeFCM = async () => {
     }
     return { app, messaging };
   } catch (error: any) {
-    console.error("[FCM] Failed to initialize:", error);
-    throw error;
+    console.warn("[FCM] Failed to initialize:", error.message);
+    return { app: null, messaging: null };
   }
 };
 
@@ -46,6 +62,10 @@ export const getFCMToken = async (): Promise<string | null> => {
   isGettingToken = true;
   tokenPromise = (async () => {
     try {
+      if (!isPushSupported()) {
+        console.log("[FCM] Push not supported, skipping token request.");
+        return null;
+      }
       const { messaging } = await initializeFCM();
 
       // Request notification permission first

@@ -138,7 +138,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               dniValue !== undefined &&
               dniValue !== 0 &&
               String(dniValue).trim() !== "";
-            const needsDataCompletion = !hasDni;
+            const isAdminRole = ["SuperUser", "Jefe", "Directivo", "AdminTester"].includes(
+              dbRole || ""
+            );
+            const needsDataCompletion = !hasDni && !isAdminRole;
             console.log("[Auth] hasDni:", hasDni, "needsDataCompletion:", needsDataCompletion);
 
             // Auto-activar si tiene DNI válido y está inactivo
