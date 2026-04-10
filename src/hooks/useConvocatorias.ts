@@ -296,19 +296,13 @@ export const useConvocatorias = (
     },
   });
 
-  const cancelEnrollmentMutation = useMutation<
-    AppRecord<ConvocatoriaFields> | null,
-    Error,
-    { convocatoriaId: string }
-  >({
+  const cancelEnrollmentMutation = useMutation<void, Error, { convocatoriaId: string }>({
     mutationFn: async ({ convocatoriaId }) => {
       if (legajo === "99999") {
         await new Promise((resolve) => setTimeout(resolve, 500));
-        return null;
+        return;
       }
-      return db.convocatorias.update(convocatoriaId, {
-        [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripcion cancelada",
-      });
+      await db.convocatorias.delete(convocatoriaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
