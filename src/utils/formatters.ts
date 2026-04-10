@@ -29,6 +29,17 @@ export function normalizeStringForComparison(str?: any): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+export function parseOrientaciones(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((v): v is string => typeof v === "string");
+  if (typeof raw === "string" && raw.trim()) {
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 /**
  * Returns visual style configuration based on the specialty area.
  */

@@ -29,7 +29,11 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
 } from "../../constants";
 import { getHorarioEfectivo } from "../../utils/scheduleUtils";
-import { normalizeStringForComparison, formatDate } from "../../utils/formatters";
+import {
+  normalizeStringForComparison,
+  parseOrientaciones,
+  formatDate,
+} from "../../utils/formatters";
 import ConvocatoriaCardPremium from "../ConvocatoriaCardPremium";
 import EmptyState from "../EmptyState";
 import ConfirmModal from "../ConfirmModal";
@@ -199,11 +203,7 @@ const HomeView: React.FC<HomeViewProps> = ({
     // Check if this PPS was already completed by the student (orientation-aware)
     const normalizedPpsName = normalizeStringForComparison(ppsName);
     const normalizedGroupName = normalizeStringForComparison(groupName);
-    const launchOrientaciones = Array.isArray(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS])
-      ? (lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string[])
-      : lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]
-        ? [lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string]
-        : [];
+    const launchOrientaciones = parseOrientaciones(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
 
     const completedOrientations =
       completedOrientationsByInstitution.get(normalizedGroupName) ||

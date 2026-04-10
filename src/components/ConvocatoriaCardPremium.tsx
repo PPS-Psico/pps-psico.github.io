@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import { getEspecialidadClasses, normalizeStringForComparison } from "../utils/formatters";
+import {
+  getEspecialidadClasses,
+  normalizeStringForComparison,
+  parseOrientaciones,
+} from "../utils/formatters";
 import type { Convocatoria } from "../types";
 
 export interface ConvocatoriaDetailProps {
@@ -68,11 +72,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   completedOrientaciones = [],
   fechaEncuentroInicial,
 }) => {
-  const orientationsArray = Array.isArray(orientacion)
-    ? orientacion
-    : orientacion
-      ? [orientacion]
-      : [];
+  const orientationsArray = parseOrientaciones(orientacion);
   const primaryOrientacion = orientationsArray[0] || "Clínica";
   const theme = getEspecialidadClasses(primaryOrientacion);
   const [isHovered, setIsHovered] = useState(false);

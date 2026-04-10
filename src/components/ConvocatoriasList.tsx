@@ -19,7 +19,7 @@ import {
 } from "../constants";
 import EmptyState from "./EmptyState";
 import { useModal } from "../contexts/ModalContext";
-import { normalizeStringForComparison, formatDate } from "../utils/formatters";
+import { normalizeStringForComparison, parseOrientaciones, formatDate } from "../utils/formatters";
 import { fetchSeleccionados } from "../services/dataService";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -94,11 +94,7 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
         const normalizedGroupName = normalizeStringForComparison(groupName);
         const normalizedPpsName = normalizeStringForComparison(ppsName);
 
-        const launchOrientaciones = Array.isArray(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS])
-          ? (lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string[])
-          : lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]
-            ? [lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string]
-            : [];
+        const launchOrientaciones = parseOrientaciones(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
 
         const completedOrientations =
           completedOrientationsByInstitution.get(normalizedGroupName) ||
