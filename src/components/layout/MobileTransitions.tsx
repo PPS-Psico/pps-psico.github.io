@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { isInteractiveTouchTarget } from "../../hooks/useSwipe";
 
 type SlideDirection = "left" | "right" | "up" | "down";
 
@@ -115,6 +116,8 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
   const threshold = 80;
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isInteractiveTouchTarget(e.target)) return;
+
     if (window.scrollY === 0 && !isRefreshing) {
       startYRef.current = e.touches[0].clientY;
       setIsPulling(true);
@@ -151,6 +154,11 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     setPullDistance(0);
   };
 
+  const handleTouchCancel = () => {
+    setIsPulling(false);
+    setPullDistance(0);
+  };
+
   const progress = Math.min(pullDistance / threshold, 1);
   const rotation = progress * 360;
 
@@ -161,6 +169,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
     >
       {/* Pull indicator */}
       <div

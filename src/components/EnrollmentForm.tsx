@@ -93,7 +93,8 @@ const FileUploadButton: React.FC<{
   label: string;
   hasError?: boolean;
 }> = ({ onClick, fileName, label, hasError }) => (
-  <div
+  <button
+    type="button"
     onClick={onClick}
     className={`
             group relative cursor-pointer border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center transition-all duration-200
@@ -119,7 +120,7 @@ const FileUploadButton: React.FC<{
     <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 text-center max-w-[180px] truncate pointer-events-none">
       {fileName || "PDF o Imagen (JPG, PNG) - Máx 5MB"}
     </span>
-  </div>
+  </button>
 );
 
 interface EnrollmentFormProps {
@@ -182,6 +183,12 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   const formRef = useRef<HTMLFormElement>(null);
   const certFileInputRef = useRef<HTMLInputElement>(null);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
+
+  const openFilePicker = (inputRef: React.MutableRefObject<HTMLInputElement | null>) => {
+    if (!inputRef.current) return;
+    inputRef.current.value = "";
+    inputRef.current.click();
+  };
 
   const isSingleSchedule = horariosDisponibles.length === 1;
   const showHorariosSelection = horariosDisponibles.length > 1 && !horariosFijos;
@@ -321,9 +328,6 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       if (fieldName === "certificadoTrabajoFile")
         setErrors((prev) => ({ ...prev, trabaja: undefined }));
       if (fieldName === "cvFile") setErrors((prev) => ({ ...prev, cvFile: undefined }));
-
-      // Clear the value so the same file can be selected again if needed
-      e.target.value = "";
     }
   };
 
@@ -528,25 +532,23 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                         id="cert-file-upload"
                         type="file"
                         ref={certFileInputRef}
-                        className="hidden"
+                        className="sr-only"
                         accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif"
                         onChange={(e) => handleFileChange(e, "certificadoTrabajoFile")}
                       />
 
-                      <label htmlFor="cert-file-upload" className="block cursor-pointer">
-                        <FileUploadButton
-                          onClick={() => {}} // Debounce/Prevent double trigger if needed, but label handles it
-                          label={
-                            formData.certificadoTrabajoFile
-                              ? "Cambiar Archivo"
-                              : formData.existingCertificadoTrabajo
-                                ? "Actualizar Certificado"
-                                : "Subir Certificado"
-                          }
-                          fileName={formData.certificadoTrabajoFile?.name}
-                          hasError={!!errors.trabaja}
-                        />
-                      </label>
+                      <FileUploadButton
+                        onClick={() => openFilePicker(certFileInputRef)}
+                        label={
+                          formData.certificadoTrabajoFile
+                            ? "Cambiar Archivo"
+                            : formData.existingCertificadoTrabajo
+                              ? "Actualizar Certificado"
+                              : "Subir Certificado"
+                        }
+                        fileName={formData.certificadoTrabajoFile?.name}
+                        hasError={!!errors.trabaja}
+                      />
                       {errors.trabaja && (
                         <p className="text-xs text-rose-500 font-semibold mt-2 flex items-center gap-1">
                           <span className="material-icons !text-xs">error</span> {errors.trabaja}
@@ -726,18 +728,16 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                 id="cv-file-upload"
                 type="file"
                 ref={cvFileInputRef}
-                className="hidden"
+                className="sr-only"
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx"
                 onChange={(e) => handleFileChange(e, "cvFile")}
               />
-              <label htmlFor="cv-file-upload" className="block cursor-pointer">
-                <FileUploadButton
-                  onClick={() => {}}
-                  label={formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF, Imagen o Word)"}
-                  fileName={formData.cvFile?.name}
-                  hasError={!!errors.cvFile}
-                />
-              </label>
+              <FileUploadButton
+                onClick={() => openFilePicker(cvFileInputRef)}
+                label={formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF, Imagen o Word)"}
+                fileName={formData.cvFile?.name}
+                hasError={!!errors.cvFile}
+              />
               {errors.cvFile && (
                 <p className="text-xs text-rose-500 font-semibold mt-2 flex items-center gap-1">
                   <span className="material-icons !text-xs">error</span> {errors.cvFile}

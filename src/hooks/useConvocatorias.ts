@@ -302,10 +302,26 @@ export const useConvocatorias = (
         await new Promise((resolve) => setTimeout(resolve, 500));
         return;
       }
+      console.log("[Enrollment] Attempting hard delete of convocatoria:", {
+        convocatoriaId,
+        studentId,
+        legajo,
+      });
       await db.convocatorias.delete(convocatoriaId);
     },
     onSuccess: () => {
+      console.log("[Enrollment] Convocatoria deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
+      showModal("Inscripción eliminada", "La inscripción se eliminó correctamente.");
+    },
+    onError: (err, variables) => {
+      console.error("[Enrollment] Error deleting convocatoria", {
+        convocatoriaId: variables.convocatoriaId,
+        studentId,
+        legajo,
+        message: err.message,
+      });
+      showModal("No se pudo eliminar la inscripción", err.message);
     },
   });
 

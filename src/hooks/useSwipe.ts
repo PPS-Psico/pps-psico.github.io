@@ -16,6 +16,24 @@ interface SwipeState {
   direction: "left" | "right" | "up" | "down" | null;
 }
 
+const INTERACTIVE_TARGET_SELECTOR = [
+  "button",
+  "a",
+  "input",
+  "select",
+  "textarea",
+  "label",
+  "[role='button']",
+  "[role='link']",
+  "[contenteditable='true']",
+  "[data-no-swipe='true']",
+].join(", ");
+
+export function isInteractiveTouchTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return !!target.closest(INTERACTIVE_TARGET_SELECTOR);
+}
+
 export function useSwipe(config: SwipeConfig = {}) {
   const {
     threshold = 50,
@@ -38,7 +56,7 @@ export function useSwipe(config: SwipeConfig = {}) {
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (!enabled) return;
+      if (!enabled || isInteractiveTouchTarget(e.target)) return;
 
       const touch = e.touches[0];
       touchStart.current = { x: touch.clientX, y: touch.clientY };

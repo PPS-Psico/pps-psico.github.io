@@ -195,6 +195,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   };
 
   const btnConfig = getButtonConfig();
+  const handleToggleExpanded = () => setIsExpanded((prev) => !prev);
 
   // Logic for hiding requirements when CV is not requested
   const showCvMetric = reqCv;
@@ -214,7 +215,6 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
       `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => setIsExpanded(!isExpanded)}
       style={{
         transform: isHovered && !isExpanded ? "translateY(-2px)" : "translateY(0)",
         boxShadow:
@@ -237,7 +237,13 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         {/* Brand & Title with Chevron */}
         <div className="flex-1 min-w-0">
           {/* Title row with chevron for mobile */}
-          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleToggleExpanded}
+            className="flex w-full items-center gap-2 rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? "Contraer" : "Expandir"} detalles de ${nombre}`}
+          >
             <h2
               className={`flex-1 text-lg md:text-2xl font-black text-slate-800 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ${
                 isExpanded ? "" : "line-clamp-2"
@@ -257,7 +263,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
             >
               <span className="material-icons !text-lg">expand_more</span>
             </div>
-          </div>
+          </button>
 
           {/* Desktop: Show orientation tag and address */}
           <div className="hidden md:flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
@@ -335,7 +341,11 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
           {/* Mobile: Button below title */}
           {btnConfig.showCancelButton ? (
             <div className="flex items-center gap-2">
-              <button disabled={btnConfig.disabled} className={`${btnConfig.classes}`}>
+              <button
+                type="button"
+                disabled={btnConfig.disabled}
+                className={`${btnConfig.classes}`}
+              >
                 {btnConfig.icon && (
                   <span className="material-icons !text-base md:!text-lg relative z-10">
                     {btnConfig.icon}
@@ -344,11 +354,14 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                 <span className="text-[10px] md:text-xs">{btnConfig.text}</span>
               </button>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCancelarInscripcion?.();
                 }}
+                onPointerDown={(e) => e.stopPropagation()}
                 disabled={isCancelandoInscripcion}
+                aria-label="Cancelar inscripción"
                 className="px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-[14px] font-bold text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 md:gap-2 transition-all duration-300 h-9 md:h-11 border shadow-sm bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200 border-rose-300 dark:border-rose-700 hover:bg-rose-200 dark:hover:bg-rose-900/80 cursor-pointer"
               >
                 {isCancelandoInscripcion ? (
@@ -360,6 +373,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
             </div>
           ) : (
             <button
+              type="button"
               disabled={btnConfig.disabled}
               onClick={btnConfig.onClick}
               className={`${btnConfig.classes} md:order-none`}
@@ -376,16 +390,20 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
           )}
 
           {/* Chevron Toggle - Desktop */}
-          <div
+          <button
+            type="button"
+            onClick={handleToggleExpanded}
             className={`
               hidden md:flex w-10 h-10 rounded-full items-center justify-center
               bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500
               transition-all duration-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700
               ${isExpanded ? "rotate-180 bg-blue-50 text-blue-500" : ""}
             `}
+            aria-label={`${isExpanded ? "Contraer" : "Expandir"} detalles de ${nombre}`}
+            aria-expanded={isExpanded}
           >
             <span className="material-icons">expand_more</span>
-          </div>
+          </button>
         </div>
       </div>
 
