@@ -1,7 +1,7 @@
 import { KEY_EMAIL_COUNT, KEY_EMAIL_MONTH } from "../constants";
 import { supabase } from "../lib/supabaseClient";
 
-type EmailScenario = "seleccion" | "solicitud" | "sac";
+type EmailScenario = "seleccion" | "solicitud" | "sac" | "recordatorio_consentimiento";
 
 const DEFAULT_TEMPLATES: Record<EmailScenario, { subject: string; body: string }> = {
   seleccion: {
@@ -34,6 +34,25 @@ Nuevo Estado: {{estado_nuevo}}`,
     body: `Hola {{nombre_alumno}},
 {{notas}}`,
   },
+  recordatorio_consentimiento: {
+    subject: "Recordatorio urgente: Tenés 12 horas para confirmar tu PPS",
+    body: `Hola {{nombre_alumno}},
+Te recordamos que fuiste seleccionado/a para la Práctica Profesional Supervisada en:
+Institución: {{nombre_pps}}
+
+**Tiempo límite** Pasaron 12 horas desde tu selección y aún no registraste tu aceptación digital del compromiso.
+
+**Acción requerida** Tenés 12 horas restantes para ingresar a Mi Panel y confirmar tu participación. Si no confirmás en ese plazo, se dará de baja automáticamente tu asignación.
+
+Si ya no podés realizar la PPS, comunicate con la Coordinación respondiendo este correo.
+
+Saludos,
+
+Blas
+Coordinador de Prácticas Profesionales Supervisadas
+Licenciatura en Psicología
+UFLO`,
+  },
 };
 
 interface EmailData {
@@ -46,6 +65,11 @@ interface EmailData {
   newState?: string;
   notes?: string;
   encuentroInicial?: string;
+  coordinatorEmail?: string;
+  coordinatorName?: string;
+  studentCorreo?: string;
+  selectedAt?: string;
+  reminderSentAt?: string;
 }
 
 export const getPublicPanelUrl = (): string => {
@@ -83,6 +107,10 @@ const getBlockConfig = (title: string) => {
 
   if (lower.includes("acción requerida")) {
     return { titleColor: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe" };
+  }
+
+  if (lower.includes("tiempo límite")) {
+    return { titleColor: "#ea580c", bg: "#fff7ed", border: "#fed7aa" };
   }
 
   if (lower.includes("puntualidad") || lower.includes("asistencia")) {
@@ -244,7 +272,7 @@ export const sendSmartEmail = async (
     const horarioText = data.schedule ? `Horario/Comisión asignada: ${data.schedule}\n` : "";
     const panelUrl = data.panelUrl || getPublicPanelUrl();
 
-    if (scenario === "seleccion") {
+    if (scenario === "seleccion" || scenario === "recordatorio_consentimiento") {
       if (data.encuentroInicial && !processedBody.includes("{{encuentro_inicial}}")) {
         processedBody = processedBody.replace(
           "{{nombre_pps}}",
@@ -275,7 +303,8 @@ export const sendSmartEmail = async (
       .replace(/{{encuentro_inicial}}/g, encuentroText);
 
     const firstName = data.studentName.split(" ")[0];
-    const htmlTitle = `Hola, <span style="color: #2563eb;">${firstName}</span>`;
+    const nameColor = scenario === "recordatorio_consentimiento" ? "#ea580c" : "#2563eb";
+    const htmlTitle = `Hola, <span style="color: ${nameColor};">${firstName}</span>`;
     const htmlBody = generateHtmlTemplate(textBody, htmlTitle);
     const cleanTextBody = stripGreeting(textBody);
 

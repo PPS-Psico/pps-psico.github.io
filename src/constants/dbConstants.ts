@@ -127,6 +127,9 @@ export const FIELD_CERTIFICADO_CONVOCATORIAS = "certificado_url";
 export const FIELD_TRABAJA_CONVOCATORIAS = "trabaja";
 export const FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS = "certificado_trabajo";
 export const FIELD_CV_CONVOCATORIAS = "cv_url";
+export const FIELD_SELECTED_AT_CONVOCATORIAS = "selected_at";
+export const FIELD_REMINDER_SENT_AT_CONVOCATORIAS = "reminder_sent_at";
+export const FIELD_BAJA_AUTOMATICA_AT_CONVOCATORIAS = "baja_automatica_at";
 
 // Compromisos PPS
 export const FIELD_COMPROMISO_ESTUDIANTE = "estudiante_id";

@@ -14,6 +14,7 @@ import {
 } from "../constants";
 
 const AppModals: React.FC = () => {
+  const isStudentView = typeof window !== "undefined" && window.location.hash.includes("/student");
   const {
     modalInfo,
     closeModal,
@@ -93,6 +94,7 @@ const AppModals: React.FC = () => {
         onClose={closeSeleccionadosModal}
         seleccionados={seleccionadosData}
         convocatoriaName={convocatoriaForModal}
+        simpleMode={isStudentView}
       />
 
       <SolicitudPPSForm

@@ -423,6 +423,29 @@ export const fetchSeleccionados = async (
   const students = await db.estudiantes.getAll({ filters: { id: studentIds } });
   const studentMap = new Map(students.map((s) => [s.id, s]));
 
+  const needsRpc = students.length === 0 && selectedEnrollments.length > 0;
+  if (needsRpc) {
+    try {
+      const { data: rpcData } = await supabase.rpc("get_seleccionados_for_launch", {
+        p_lanzamiento_id: lanzamientoId,
+      });
+      if (rpcData && (rpcData as any[]).length > 0) {
+        const grouped: GroupedSeleccionados = {};
+        (rpcData as { horario: string; nombre: string; legajo: string }[]).forEach((row) => {
+          addToGrouped(grouped, row.horario, {
+            nombre: row.nombre,
+            legajo: row.legajo,
+            compromisoEstado: null,
+            compromisoFecha: null,
+          });
+        });
+        return sortGrouped(grouped);
+      }
+    } catch (rpcErr) {
+      console.warn("[fetchSeleccionados] RPC fallback failed:", rpcErr);
+    }
+  }
+
   const grouped: GroupedSeleccionados = {};
   selectedEnrollments.forEach((row) => {
     const horario =
@@ -452,9 +475,19 @@ export const toggleStudentSelection = async (
   const newStatus = isSelecting ? "Seleccionado" : "Inscripto";
   try {
     // 1. Actualizar estado en convocatoria
-    await db.convocatorias.update(convocatoriaId, {
+    const updatePayload: Record<string, any> = {
       [C.FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: newStatus,
-    });
+    };
+    if (isSelecting) {
+      updatePayload.selected_at = new Date().toISOString();
+      updatePayload.reminder_sent_at = null;
+      updatePayload.baja_automatica_at = null;
+    } else {
+      updatePayload.selected_at = null;
+      updatePayload.reminder_sent_at = null;
+      updatePayload.baja_automatica_at = null;
+    }
+    await db.convocatorias.update(convocatoriaId, updatePayload);
 
     // 2. Sincronizar registro de Práctica automáticamente
     if (isSelecting) {

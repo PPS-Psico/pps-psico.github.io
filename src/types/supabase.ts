@@ -35,6 +35,7 @@ export type Database = {
       convocatorias: {
         Row: {
           airtable_id: string | null;
+          baja_automatica_at: string | null;
           certificado_trabajo: string | null;
           certificado_url: string | null;
           correo: string | null;
@@ -60,12 +61,15 @@ export type Database = {
           nombre_pps: string | null;
           orientacion: string | null;
           otra_situacion_academica: string | null;
+          reminder_sent_at: string | null;
+          selected_at: string | null;
           telefono: string | null;
           termino_cursar: string | null;
           trabaja: boolean | null;
         };
         Insert: {
           airtable_id?: string | null;
+          baja_automatica_at?: string | null;
           certificado_trabajo?: string | null;
           certificado_url?: string | null;
           correo?: string | null;
@@ -91,12 +95,15 @@ export type Database = {
           nombre_pps?: string | null;
           orientacion?: string | null;
           otra_situacion_academica?: string | null;
+          reminder_sent_at?: string | null;
+          selected_at?: string | null;
           telefono?: string | null;
           termino_cursar?: string | null;
           trabaja?: boolean | null;
         };
         Update: {
           airtable_id?: string | null;
+          baja_automatica_at?: string | null;
           certificado_trabajo?: string | null;
           certificado_url?: string | null;
           correo?: string | null;
@@ -122,6 +129,8 @@ export type Database = {
           nombre_pps?: string | null;
           orientacion?: string | null;
           otra_situacion_academica?: string | null;
+          reminder_sent_at?: string | null;
+          selected_at?: string | null;
           telefono?: string | null;
           termino_cursar?: string | null;
           trabaja?: boolean | null;
@@ -1105,6 +1114,16 @@ export type Database = {
           role: string;
           telefono: string;
           user_id: string;
+        }[];
+      };
+      get_seleccionados_for_launch: {
+        Args: {
+          p_lanzamiento_id: string;
+        };
+        Returns: {
+          horario: string;
+          nombre: string;
+          legajo: string;
         }[];
       };
     };

@@ -9,6 +9,7 @@ interface SeleccionadosModalProps {
   onClose: () => void;
   seleccionados: GroupedSeleccionados | null;
   convocatoriaName: string;
+  simpleMode?: boolean;
 }
 
 type StatusFilter = "all" | "confirmed" | "pending";
@@ -75,7 +76,10 @@ const FilterChip: React.FC<{
   </button>
 );
 
-const StudentListItem: React.FC<{ student: SelectedStudent }> = ({ student }) => (
+const StudentListItem: React.FC<{ student: SelectedStudent; simpleMode?: boolean }> = ({
+  student,
+  simpleMode,
+}) => (
   <motion.li
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
@@ -101,33 +105,41 @@ const StudentListItem: React.FC<{ student: SelectedStudent }> = ({ student }) =>
         >
           {student.nombre}
         </span>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 sm:hidden">
-            {student.legajo}
-          </span>
-          <CommitmentBadge status={student.compromisoEstado} />
-          {isConfirmed(student) && student.compromisoFecha && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="material-icons !text-[12px]">schedule</span>
-              {formatAcceptedAt(student.compromisoFecha)}
+        {!simpleMode && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 sm:hidden">
+              {student.legajo}
             </span>
-          )}
-        </div>
+            <CommitmentBadge status={student.compromisoEstado} />
+            {isConfirmed(student) && student.compromisoFecha && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="material-icons !text-[12px]">schedule</span>
+                {formatAcceptedAt(student.compromisoFecha)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
 
-    <div className="hidden sm:flex items-center gap-3">
-      {isConfirmed(student) && student.compromisoFecha && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-          <span className="material-icons !text-[12px]">schedule</span>
-          {formatAcceptedAt(student.compromisoFecha)}
+    {!simpleMode ? (
+      <div className="hidden sm:flex items-center gap-3">
+        {isConfirmed(student) && student.compromisoFecha && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+            <span className="material-icons !text-[12px]">schedule</span>
+            {formatAcceptedAt(student.compromisoFecha)}
+          </span>
+        )}
+        <CommitmentBadge status={student.compromisoEstado} />
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700">
+          {student.legajo}
         </span>
-      )}
-      <CommitmentBadge status={student.compromisoEstado} />
+      </div>
+    ) : (
       <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700">
         {student.legajo}
       </span>
-    </div>
+    )}
   </motion.li>
 );
 
@@ -136,6 +148,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
   onClose,
   seleccionados,
   convocatoriaName,
+  simpleMode = false,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -256,7 +269,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
                   >
                     {convocatoriaName}
                   </h2>
-                  {totalCount > 0 && (
+                  {totalCount > 0 && !simpleMode && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900">
                         <span className="material-icons !text-sm">verified</span>
@@ -293,28 +306,30 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
               </div>
 
               <div className="mt-4 flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
-                  <FilterChip
-                    active={statusFilter === "all"}
-                    label="Todos"
-                    count={totalCount}
-                    onClick={() => setStatusFilter("all")}
-                  />
-                  <FilterChip
-                    active={statusFilter === "confirmed"}
-                    label="Confirmados"
-                    count={confirmationStats.confirmed}
-                    onClick={() => setStatusFilter("confirmed")}
-                  />
-                  <FilterChip
-                    active={statusFilter === "pending"}
-                    label="Pendientes"
-                    count={confirmationStats.pending}
-                    onClick={() => setStatusFilter("pending")}
-                  />
-                </div>
+                {!simpleMode && (
+                  <div className="flex flex-wrap gap-2">
+                    <FilterChip
+                      active={statusFilter === "all"}
+                      label="Todos"
+                      count={totalCount}
+                      onClick={() => setStatusFilter("all")}
+                    />
+                    <FilterChip
+                      active={statusFilter === "confirmed"}
+                      label="Confirmados"
+                      count={confirmationStats.confirmed}
+                      onClick={() => setStatusFilter("confirmed")}
+                    />
+                    <FilterChip
+                      active={statusFilter === "pending"}
+                      label="Pendientes"
+                      count={confirmationStats.pending}
+                      onClick={() => setStatusFilter("pending")}
+                    />
+                  </div>
+                )}
 
-                {(totalCount >= 20 || statusFilter !== "all") && (
+                {!simpleMode && (totalCount >= 20 || statusFilter !== "all") && (
                   <div className="relative animate-fade-in">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-lg">
                       search
@@ -329,7 +344,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
                   </div>
                 )}
 
-                {statusFilter !== "all" && (
+                {!simpleMode && statusFilter !== "all" && (
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     Mostrando {visibleCount} alumno{visibleCount === 1 ? "" : "s"} con filtro{" "}
                     {statusFilter === "confirmed" ? "confirmados" : "pendientes"}.
@@ -377,6 +392,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
                             <StudentListItem
                               key={`${student.legajo}-${horario}`}
                               student={student}
+                              simpleMode={simpleMode}
                             />
                           ))}
                         </AnimatePresence>

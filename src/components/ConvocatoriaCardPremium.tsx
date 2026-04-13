@@ -41,6 +41,7 @@ export interface ConvocatoriaDetailProps {
   isCompleted?: boolean;
   completedOrientaciones?: string[];
   fechaEncuentroInicial?: string;
+  hideCompromisoStatus?: boolean;
 }
 
 const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
@@ -71,6 +72,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   isCompleted = false,
   completedOrientaciones = [],
   fechaEncuentroInicial,
+  hideCompromisoStatus = false,
 }) => {
   const orientationsArray = parseOrientaciones(orientacion);
   const primaryOrientacion = orientationsArray[0] || "Clínica";
@@ -103,7 +105,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
     const statusLower = status?.toLowerCase();
 
     if (estadoLower === "seleccionado") {
-      if (!onConfirmCompromiso) {
+      if (!onConfirmCompromiso || hideCompromisoStatus) {
         return {
           text: "SELECCIONADO",
           icon: "stars",
