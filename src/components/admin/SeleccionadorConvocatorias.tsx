@@ -126,6 +126,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       }
       return [];
     }
+    if (parsedAsignado.length > 0) return parsedAsignado;
     return allSolicitados;
   }, [isEditMode, parsedAsignado, allSolicitados, horarioAsignado]);
 
@@ -177,7 +178,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   }
 
   if (displaySchedules.length === 0) {
-    if (isEditMode && horariosDisponibles.length > 0) {
+    if (horariosDisponibles.length > 0) {
       return (
         <div className="flex-grow lg:w-auto min-w-[200px] max-w-[320px]" ref={dropdownRef}>
           {!showDropdown ? (
@@ -253,6 +254,19 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
 
               {/* Botón eliminar (siempre visible en modo edición, oculto en modo normal) */}
               {isEditMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveSchedule(schedule);
+                  }}
+                  className="flex-shrink-0 ml-1 p-1 text-red-500 dark:text-red-400 hover:text-white hover:bg-red-500 dark:hover:bg-red-600 rounded-md transition-all duration-150"
+                  title="Eliminar horario"
+                >
+                  <span className="material-icons text-[13px]">close</span>
+                </button>
+              )}
+
+              {!isEditMode && displaySchedules.length > 1 && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
