@@ -12,8 +12,6 @@ export {
   fetchStudentCompromisos,
   submitCompromisoPPS,
   sendCompromisoAcceptanceEmail,
-  sendCompromisoAcceptanceEmailV2,
-  sendCompromisoAcceptanceEmailV3,
 } from "./compromisosService";
 
 export {

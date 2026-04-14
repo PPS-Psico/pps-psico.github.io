@@ -1,19 +1,13 @@
 import * as C from "../constants";
 import {
-  COMPROMISO_PPS_BLOCKS,
-  COMPROMISO_PPS_CHECK_COMPROMISO,
-  COMPROMISO_PPS_CHECK_LECTURA,
   COMPROMISO_PPS_DECLARACION,
   COMPROMISO_PPS_FULL_TEXT,
-  COMPROMISO_PPS_INTRO,
-  COMPROMISO_PPS_SUBTITLE,
-  COMPROMISO_PPS_TITLE,
   COMPROMISO_PPS_VERSION,
 } from "../constants/commitmentConstants";
 import { supabase } from "../lib/supabaseClient";
 import type { CompromisoPPS } from "../types";
 import { Database } from "../types/supabase";
-import { generateHtmlTemplate, stripGreeting } from "../utils/emailService";
+import { stripGreeting } from "../utils/emailService";
 
 export const fetchStudentCompromisos = async (studentId: string): Promise<CompromisoPPS[]> => {
   const { data, error } = await supabase
@@ -65,136 +59,6 @@ export const submitCompromisoPPS = async (payload: {
 };
 
 export const sendCompromisoAcceptanceEmail = async (data: {
-  studentEmail: string;
-  studentName: string;
-  ppsName: string;
-  schedule?: string | null;
-  acceptedAt: string;
-  fullName: string;
-  dni?: number | null;
-  legajo: string;
-}) => {
-  const acceptedDate = new Date(data.acceptedAt).toLocaleString("es-AR", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
-
-  const body = `Hola ${data.studentName},
-
-Esta es tu constancia de aceptación del Acta de Compromiso para el inicio de tu Práctica Profesional Supervisada.
-
-Institución / PPS: ${data.ppsName}
-Horario asignado: ${data.schedule || "A confirmar"}
-Fecha de aceptación: ${acceptedDate}
-Nombre declarado: ${data.fullName}
-DNI: ${data.dni || "No informado"}
-Legajo: ${data.legajo}
-
-Texto aceptado:
-
-${COMPROMISO_PPS_FULL_TEXT}
-
-Esta copia se emite como constancia del compromiso asumido a través de Mi Panel.
-
-Saludos,
-
-Coordinación de Prácticas Profesionales Supervisadas
-UFLO Universidad`;
-
-  const htmlBody = generateHtmlTemplate(body, "Copia de tu compromiso PPS");
-
-  const { error } = await supabase.functions.invoke("send-email", {
-    body: {
-      to: data.studentEmail,
-      subject: `Constancia de compromiso PPS - ${data.ppsName}`,
-      text: stripGreeting(body),
-      html: htmlBody,
-      name: data.studentName,
-    },
-  });
-
-  if (error) {
-    throw new Error(error.message || "No se pudo enviar la constancia por correo");
-  }
-};
-
-export const sendCompromisoAcceptanceEmailV2 = async (data: {
-  studentEmail: string;
-  studentName: string;
-  ppsName: string;
-  schedule?: string | null;
-  encuentroInicial?: string | null;
-  acceptedAt: string;
-  fullName: string;
-  dni?: number | null;
-  legajo: string;
-}) => {
-  const acceptedDate = new Date(data.acceptedAt).toLocaleString("es-AR", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
-
-  const structuredActa = COMPROMISO_PPS_BLOCKS.flatMap((block) => [
-    `**${block.title}**`,
-    ...block.clauses.map((clause) => `${clause.label}: ${clause.text}`),
-    "",
-  ]).join("\n");
-
-  const body = `Hola ${data.studentName},
-
-Se registró correctamente tu aceptación digital del Acta de Compromiso correspondiente al inicio de tu Práctica Profesional Supervisada.
-
-**Datos de tu confirmación**
-Institución / PPS: ${data.ppsName}
-Horario / Comisión asignada: ${data.schedule || "A confirmar"}
-Fecha de aceptación: ${acceptedDate}
-Versión del acta: ${COMPROMISO_PPS_VERSION}
-
-**Firma declarada**
-Nombre completo: ${data.fullName}
-DNI: ${data.dni || "No informado"}
-Legajo: ${data.legajo}
-
-**Declaración ratificada**
-1. ${COMPROMISO_PPS_CHECK_LECTURA}
-2. ${COMPROMISO_PPS_CHECK_COMPROMISO}
-
-**Declaración final**
-${COMPROMISO_PPS_DECLARACION}
-
-**Texto del acta aceptada**
-${COMPROMISO_PPS_TITLE}
-${COMPROMISO_PPS_SUBTITLE}
-
-${COMPROMISO_PPS_INTRO}
-
-${structuredActa}
-**Cierre institucional**
-Esta copia se emite como constancia formal del compromiso asumido a través de Mi Panel y quedará vinculada a tu registro académico-administrativo de PPS.
-
-Saludos,
-
-Coordinación de Prácticas Profesionales Supervisadas
-UFLO Universidad`;
-
-  const htmlBody = generateHtmlTemplate(body, "Constancia de aceptación registrada");
-
-  const { error } = await supabase.functions.invoke("send-email", {
-    body: {
-      to: data.studentEmail,
-      subject: `Constancia de aceptación PPS - ${data.ppsName}`,
-      text: stripGreeting(body),
-      html: htmlBody,
-      name: data.studentName,
-    },
-  });
-
-  if (error) {
-    throw new Error(error.message || "No se pudo enviar la constancia por correo");
-  }
-};
-
-export const sendCompromisoAcceptanceEmailV3 = async (data: {
   studentEmail: string;
   studentName: string;
   ppsName: string;

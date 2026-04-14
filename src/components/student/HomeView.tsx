@@ -291,7 +291,6 @@ const HomeView: React.FC<HomeViewProps> = ({
         }}
         horariosFijos={!!lanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS]}
         fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
-        hideCompromisoStatus
       />
     );
   };

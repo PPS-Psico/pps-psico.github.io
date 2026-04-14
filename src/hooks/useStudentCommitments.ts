@@ -3,7 +3,7 @@ import { useModal } from "../contexts/ModalContext";
 import type { Convocatoria, Estudiante, LanzamientoPPS } from "../types";
 import {
   fetchStudentCompromisos,
-  sendCompromisoAcceptanceEmailV3,
+  sendCompromisoAcceptanceEmail,
   submitCompromisoPPS,
 } from "../services";
 import { getHorarioEfectivo } from "../utils/scheduleUtils";
@@ -59,7 +59,7 @@ export const useStudentCommitments = (
         const enrollment = myEnrollments.find((item) => item.id === payload.convocatoriaId);
 
         if (studentDetails?.correo) {
-          await sendCompromisoAcceptanceEmailV3({
+          await sendCompromisoAcceptanceEmail({
             studentEmail: studentDetails.correo,
             studentName: studentDetails.nombre || payload.fullName,
             ppsName: launch?.nombre_pps || enrollment?.nombre_pps || "PPS seleccionada",
