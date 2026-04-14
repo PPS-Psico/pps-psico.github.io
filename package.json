@@ -16,7 +16,8 @@
     "test": "npx jest",
     "prep-github": "node ./scripts/prepare-deploy.js",
     "deploy": "npm run prep-github && npm run build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "gen-types": "npx supabase gen types typescript --project-id qxnxtnhtbpsgzprqtrjl --schema public > src/types/supabase.ts"
   },
   "engines": {
     "node": ">=20.x"

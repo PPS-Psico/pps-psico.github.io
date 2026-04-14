@@ -8,6 +8,45 @@ export type Database = {
   };
   public: {
     Tables: {
+      admin_action_log: {
+        Row: {
+          action_type: string;
+          actor_legajo: string | null;
+          actor_name: string | null;
+          actor_user_id: string | null;
+          created_at: string;
+          id: string;
+          metadata: Json;
+          summary: string;
+          target_id: string;
+          target_table: string;
+        };
+        Insert: {
+          action_type: string;
+          actor_legajo?: string | null;
+          actor_name?: string | null;
+          actor_user_id?: string | null;
+          created_at?: string;
+          id?: string;
+          metadata?: Json;
+          summary: string;
+          target_id: string;
+          target_table: string;
+        };
+        Update: {
+          action_type?: string;
+          actor_legajo?: string | null;
+          actor_name?: string | null;
+          actor_user_id?: string | null;
+          created_at?: string;
+          id?: string;
+          metadata?: Json;
+          summary?: string;
+          target_id?: string;
+          target_table?: string;
+        };
+        Relationships: [];
+      };
       app_config: {
         Row: {
           created_at: string;
@@ -31,6 +70,169 @@ export type Database = {
           rotacion_objetivo?: number;
         };
         Relationships: [];
+      };
+      backup_config: {
+        Row: {
+          backup_time: string | null;
+          created_at: string | null;
+          enabled: boolean | null;
+          frequency: string;
+          id: string;
+          include_tables: string[] | null;
+          last_backup_at: string | null;
+          retain_count: number | null;
+          storage_bucket: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          backup_time?: string | null;
+          created_at?: string | null;
+          enabled?: boolean | null;
+          frequency?: string;
+          id?: string;
+          include_tables?: string[] | null;
+          last_backup_at?: string | null;
+          retain_count?: number | null;
+          storage_bucket?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          backup_time?: string | null;
+          created_at?: string | null;
+          enabled?: boolean | null;
+          frequency?: string;
+          id?: string;
+          include_tables?: string[] | null;
+          last_backup_at?: string | null;
+          retain_count?: number | null;
+          storage_bucket?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      backup_history: {
+        Row: {
+          backup_type: string;
+          completed_at: string | null;
+          created_by: string | null;
+          error_message: string | null;
+          file_size_bytes: number | null;
+          id: string;
+          metadata: Json | null;
+          record_count: number | null;
+          started_at: string | null;
+          status: string;
+          storage_path: string | null;
+          tables_backed_up: string[] | null;
+        };
+        Insert: {
+          backup_type?: string;
+          completed_at?: string | null;
+          created_by?: string | null;
+          error_message?: string | null;
+          file_size_bytes?: number | null;
+          id?: string;
+          metadata?: Json | null;
+          record_count?: number | null;
+          started_at?: string | null;
+          status?: string;
+          storage_path?: string | null;
+          tables_backed_up?: string[] | null;
+        };
+        Update: {
+          backup_type?: string;
+          completed_at?: string | null;
+          created_by?: string | null;
+          error_message?: string | null;
+          file_size_bytes?: number | null;
+          id?: string;
+          metadata?: Json | null;
+          record_count?: number | null;
+          started_at?: string | null;
+          status?: string;
+          storage_path?: string | null;
+          tables_backed_up?: string[] | null;
+        };
+        Relationships: [];
+      };
+      compromisos_pps: {
+        Row: {
+          accepted_at: string | null;
+          acepta_compromiso: boolean;
+          acepta_lectura: boolean;
+          convocatoria_id: string;
+          created_at: string | null;
+          dni: number | null;
+          estado: string;
+          estudiante_id: string;
+          firma_texto: string;
+          id: string;
+          lanzamiento_id: string;
+          legajo: string;
+          nombre_completo: string;
+          texto_acta: string;
+          updated_at: string | null;
+          version: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          acepta_compromiso?: boolean;
+          acepta_lectura?: boolean;
+          convocatoria_id: string;
+          created_at?: string | null;
+          dni?: number | null;
+          estado?: string;
+          estudiante_id: string;
+          firma_texto: string;
+          id?: string;
+          lanzamiento_id: string;
+          legajo: string;
+          nombre_completo: string;
+          texto_acta: string;
+          updated_at?: string | null;
+          version: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          acepta_compromiso?: boolean;
+          acepta_lectura?: boolean;
+          convocatoria_id?: string;
+          created_at?: string | null;
+          dni?: number | null;
+          estado?: string;
+          estudiante_id?: string;
+          firma_texto?: string;
+          id?: string;
+          lanzamiento_id?: string;
+          legajo?: string;
+          nombre_completo?: string;
+          texto_acta?: string;
+          updated_at?: string | null;
+          version?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "compromisos_pps_convocatoria_id_fkey";
+            columns: ["convocatoria_id"];
+            isOneToOne: true;
+            referencedRelation: "convocatorias";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "compromisos_pps_estudiante_id_fkey";
+            columns: ["estudiante_id"];
+            isOneToOne: false;
+            referencedRelation: "estudiantes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "compromisos_pps_lanzamiento_id_fkey";
+            columns: ["lanzamiento_id"];
+            isOneToOne: false;
+            referencedRelation: "lanzamientos_pps";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       convocatorias: {
         Row: {
@@ -159,85 +361,6 @@ export type Database = {
           },
           {
             foreignKeyName: "fk_convocatoria_lanzamiento";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      compromisos_pps: {
-        Row: {
-          accepted_at: string | null;
-          acepta_compromiso: boolean;
-          acepta_lectura: boolean;
-          convocatoria_id: string;
-          created_at: string | null;
-          dni: number | null;
-          estado: string;
-          estudiante_id: string;
-          firma_texto: string;
-          id: string;
-          lanzamiento_id: string;
-          legajo: string;
-          nombre_completo: string;
-          texto_acta: string;
-          updated_at: string | null;
-          version: string;
-        };
-        Insert: {
-          accepted_at?: string | null;
-          acepta_compromiso?: boolean;
-          acepta_lectura?: boolean;
-          convocatoria_id: string;
-          created_at?: string | null;
-          dni?: number | null;
-          estado?: string;
-          estudiante_id: string;
-          firma_texto: string;
-          id?: string;
-          lanzamiento_id: string;
-          legajo: string;
-          nombre_completo: string;
-          texto_acta: string;
-          updated_at?: string | null;
-          version: string;
-        };
-        Update: {
-          accepted_at?: string | null;
-          acepta_compromiso?: boolean;
-          acepta_lectura?: boolean;
-          convocatoria_id?: string;
-          created_at?: string | null;
-          dni?: number | null;
-          estado?: string;
-          estudiante_id?: string;
-          firma_texto?: string;
-          id?: string;
-          lanzamiento_id?: string;
-          legajo?: string;
-          nombre_completo?: string;
-          texto_acta?: string;
-          updated_at?: string | null;
-          version?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "compromisos_pps_convocatoria_id_fkey";
-            columns: ["convocatoria_id"];
-            isOneToOne: false;
-            referencedRelation: "convocatorias";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "compromisos_pps_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "compromisos_pps_lanzamiento_id_fkey";
             columns: ["lanzamiento_id"];
             isOneToOne: false;
             referencedRelation: "lanzamientos_pps";
@@ -512,6 +635,7 @@ export type Database = {
           fecha_inicio_inscripcion: string | null;
           fecha_publicacion: string | null;
           fecha_relanzamiento: string | null;
+          historial_gestion: string | null;
           horario_seleccionado: string | null;
           horarios_fijos: boolean | null;
           horas_acreditadas: number | null;
@@ -525,12 +649,11 @@ export type Database = {
           permite_certificado: boolean | null;
           plantilla_seguro_url: string | null;
           plazo_inscripcion_dias: number | null;
+          proximo_seguimiento: string | null;
           req_certificado_trabajo: boolean | null;
           req_cv: boolean | null;
           requisito_obligatorio: string | null;
           updated_at: string | null;
-          historial_gestion: string | null;
-          proximo_seguimiento: string | null;
         };
         Insert: {
           actividades_label?: string | null;
@@ -552,7 +675,7 @@ export type Database = {
           fecha_inicio_inscripcion?: string | null;
           fecha_publicacion?: string | null;
           fecha_relanzamiento?: string | null;
-          horario_asignado?: string | null;
+          historial_gestion?: string | null;
           horario_seleccionado?: string | null;
           horarios_fijos?: boolean | null;
           horas_acreditadas?: number | null;
@@ -566,10 +689,11 @@ export type Database = {
           permite_certificado?: boolean | null;
           plantilla_seguro_url?: string | null;
           plazo_inscripcion_dias?: number | null;
+          proximo_seguimiento?: string | null;
           req_certificado_trabajo?: boolean | null;
           req_cv?: boolean | null;
           requisito_obligatorio?: string | null;
-          proximo_seguimiento?: string | null;
+          updated_at?: string | null;
         };
         Update: {
           actividades_label?: string | null;
@@ -591,7 +715,7 @@ export type Database = {
           fecha_inicio_inscripcion?: string | null;
           fecha_publicacion?: string | null;
           fecha_relanzamiento?: string | null;
-          horario_asignado?: string | null;
+          historial_gestion?: string | null;
           horario_seleccionado?: string | null;
           horarios_fijos?: boolean | null;
           horas_acreditadas?: number | null;
@@ -605,12 +729,11 @@ export type Database = {
           permite_certificado?: boolean | null;
           plantilla_seguro_url?: string | null;
           plazo_inscripcion_dias?: number | null;
+          proximo_seguimiento?: string | null;
           req_certificado_trabajo?: boolean | null;
           req_cv?: boolean | null;
           requisito_obligatorio?: string | null;
           updated_at?: string | null;
-          historial_gestion?: string | null;
-          proximo_seguimiento?: string | null;
         };
         Relationships: [];
       };
@@ -1005,6 +1128,27 @@ export type Database = {
           },
         ];
       };
+      verification_attempts: {
+        Row: {
+          created_at: string;
+          id: string;
+          ip_address: string;
+          legajo_input: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          ip_address: string;
+          legajo_input: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          ip_address?: string;
+          legajo_input?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1017,12 +1161,14 @@ export type Database = {
       auth_email: { Args: never; Returns: string };
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean };
       clean_dirty_text: { Args: { val: string }; Returns: string };
+      cleanup_old_verification_attempts: { Args: never; Returns: undefined };
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined };
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
       get_all_fcm_tokens: {
         Args: never;
         Returns: {
           fcm_token: string;
+          user_id: string;
         }[];
       };
       get_dashboard_metrics: { Args: { target_year: number }; Returns: Json };
@@ -1037,6 +1183,14 @@ export type Database = {
       };
       get_seleccionados: {
         Args: { lanzamiento_id_input: string };
+        Returns: {
+          horario: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_seleccionados_for_launch: {
+        Args: { p_lanzamiento_id: string };
         Returns: {
           horario: string;
           legajo: string;
@@ -1071,9 +1225,17 @@ export type Database = {
           user_id: string;
         }[];
       };
+      get_user_creation_dates: {
+        Args: never;
+        Returns: {
+          created_at: string;
+          user_id: string;
+        }[];
+      };
       increment_snooze_count: { Args: { reminder_id: string }; Returns: number };
       is_admin: { Args: never; Returns: boolean };
       mark_password_changed: { Args: never; Returns: undefined };
+      process_consentimiento_timeouts: { Args: never; Returns: undefined };
       register_new_student: {
         Args: {
           correo_input: string;
@@ -1089,8 +1251,8 @@ export type Database = {
           correo_input: string;
           dni_input: number;
           legajo_input: string;
-          new_password?: string | null;
-          telefono_input?: string | null;
+          new_password?: string;
+          telefono_input?: string;
         };
         Returns: undefined;
       };
@@ -1102,7 +1264,7 @@ export type Database = {
           correo_input: string;
           dni_input: number;
           legajo_input: string;
-          telefono_input?: string | null;
+          telefono_input?: string;
         };
         Returns: {
           correo: string;
@@ -1114,16 +1276,6 @@ export type Database = {
           role: string;
           telefono: string;
           user_id: string;
-        }[];
-      };
-      get_seleccionados_for_launch: {
-        Args: {
-          p_lanzamiento_id: string;
-        };
-        Returns: {
-          horario: string;
-          nombre: string;
-          legajo: string;
         }[];
       };
     };
