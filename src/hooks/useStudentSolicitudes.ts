@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchSolicitudes } from "../services/dataService";
+import { fetchSolicitudes } from "../services";
 import { mockDb } from "../services/mockDb";
 import { FIELD_LEGAJO_PPS, FIELD_ESTADO_PPS } from "../constants";
 import type { SolicitudPPS } from "../types";

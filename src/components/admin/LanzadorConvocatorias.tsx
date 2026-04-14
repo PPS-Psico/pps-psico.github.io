@@ -51,7 +51,7 @@ import type {
 // import { LaunchHistory } from "../launcher/LaunchHistory";
 // import { LaunchInscriptosModal } from "../launcher/LaunchInscriptosModal";
 import { schema } from "../../lib/dbSchema";
-import { uploadInstitutionLogo } from "../../services/dataService";
+import { uploadInstitutionLogo } from "../../services";
 import { ALL_ORIENTACIONES, Orientacion } from "../../types";
 import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import CollapsibleSection from "../CollapsibleSection";

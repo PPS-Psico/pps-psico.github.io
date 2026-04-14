@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useModal } from "../contexts/ModalContext";
-import { fetchConvocatoriasData } from "../services/dataService";
+import { fetchConvocatoriasData } from "../services";
 import { db } from "../lib/db";
 import { mockDb } from "../services/mockDb";
 import type {

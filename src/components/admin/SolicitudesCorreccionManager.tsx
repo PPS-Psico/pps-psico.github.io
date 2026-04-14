@@ -9,7 +9,7 @@ import {
   fetchAllSolicitudesNuevaPPS,
   rejectSolicitudModificacion,
   rejectSolicitudNuevaPPS,
-} from "../../services/dataService";
+} from "../../services";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Button from "../ui/Button";

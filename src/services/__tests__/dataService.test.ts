@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import * as supabaseService from "../supabaseService";
-import { fetchSeleccionados } from "../dataService";
+import { fetchSeleccionados } from "..";
 import {
   TABLE_NAME_ESTUDIANTES,
   TABLE_NAME_CONVOCATORIAS,

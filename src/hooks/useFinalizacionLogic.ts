@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "../lib/db";
 import { fetchAllData } from "../services/supabaseService";
 import { sendSmartEmail } from "../utils/emailService";
-import { deleteFinalizationRequest } from "../services/dataService";
+import { deleteFinalizationRequest } from "../services";
 import { mockDb } from "../services/mockDb";
 import {
   TABLE_NAME_FINALIZACION,

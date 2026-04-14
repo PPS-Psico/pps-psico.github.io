@@ -8,7 +8,7 @@ import { calculateCriterios, initialCriterios } from "../utils/criteriaCalculati
 import { processAndLinkStudentData } from "../utils/dataLinker";
 import { FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES } from "../constants";
 import { useQuery, UseMutationResult } from "@tanstack/react-query";
-import { fetchFinalizacionRequest } from "../services/dataService";
+import { fetchFinalizacionRequest } from "../services";
 import type {
   Practica,
   SolicitudPPS,

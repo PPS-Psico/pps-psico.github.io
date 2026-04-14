@@ -20,7 +20,7 @@ import {
 import EmptyState from "./EmptyState";
 import { useModal } from "../contexts/ModalContext";
 import { normalizeStringForComparison, parseOrientaciones, formatDate } from "../utils/formatters";
-import { fetchSeleccionados } from "../services/dataService";
+import { fetchSeleccionados } from "../services";
 import { useAuth } from "../contexts/AuthContext";
 
 interface ConvocatoriasListProps {

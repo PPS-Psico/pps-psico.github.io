@@ -39,7 +39,7 @@ import EmptyState from "../EmptyState";
 import ConfirmModal from "../ConfirmModal";
 import CompromisoPPSModal from "./CompromisoPPSModal";
 import { useModal } from "../../contexts/ModalContext";
-import { fetchSeleccionados } from "../../services/dataService";
+import { fetchSeleccionados } from "../../services";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "../../contexts/AuthContext";
 import { mockDb } from "../../services/mockDb";

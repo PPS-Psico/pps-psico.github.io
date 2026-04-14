@@ -34,7 +34,7 @@ import {
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import { toggleStudentSelection, updatePracticaFromSchedule } from "../services/dataService";
+import { toggleStudentSelection, updatePracticaFromSchedule } from "../services";
 import { mockDb } from "../services/mockDb";
 import type { AirtableRecord, ConvocatoriaFields, EnrichedStudent, LanzamientoPPS } from "../types";
 import { getPublicPanelUrl, sendSmartEmail } from "../utils/emailService";

@@ -8,7 +8,7 @@ import {
 } from "../../constants/dbConstants";
 import { useNotifications } from "../../contexts/NotificationContext";
 import { supabase } from "../../lib/supabaseClient";
-import { submitSolicitudNuevaPPS, uploadSolicitudFile } from "../../services/dataService";
+import { submitSolicitudNuevaPPS, uploadSolicitudFile } from "../../services";
 import type { Institucion, LanzamientoPPS } from "../../types";
 import Button from "../ui/Button";
 

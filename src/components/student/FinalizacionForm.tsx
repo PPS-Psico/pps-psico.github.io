@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { uploadFinalizationFile, submitFinalizationRequest } from "../../services/dataService";
+import { uploadFinalizationFile, submitFinalizationRequest } from "../../services";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 import EmptyState from "../EmptyState";

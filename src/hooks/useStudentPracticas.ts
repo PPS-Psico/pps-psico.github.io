@@ -8,7 +8,7 @@ import {
 } from "../constants";
 import { useModal } from "../contexts/ModalContext";
 import { db } from "../lib/db";
-import { fetchPracticas } from "../services/dataService";
+import { fetchPracticas } from "../services";
 import { mockDb } from "../services/mockDb";
 import type { Practica } from "../types";
 import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";

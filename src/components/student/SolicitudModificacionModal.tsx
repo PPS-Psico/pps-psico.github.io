@@ -3,11 +3,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "../ui/Button";
 import { useNotifications } from "../../contexts/NotificationContext";
-import {
-  uploadSolicitudFile,
-  submitSolicitudModificacion,
-  deletePractica,
-} from "../../services/dataService";
+import { uploadSolicitudFile, submitSolicitudModificacion, deletePractica } from "../../services";
 import type { Practica } from "../../types";
 import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchCorrectionPanelData } from "../../services/dataService";
+import { fetchCorrectionPanelData } from "../../services";
 import { db } from "../../lib/db";
 import Loader from "../Loader";
 import EmptyState from "../EmptyState";

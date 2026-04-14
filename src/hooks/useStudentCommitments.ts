@@ -5,7 +5,7 @@ import {
   fetchStudentCompromisos,
   sendCompromisoAcceptanceEmailV3,
   submitCompromisoPPS,
-} from "../services/dataService";
+} from "../services";
 import { getHorarioEfectivo } from "../utils/scheduleUtils";
 
 export const useStudentCommitments = (

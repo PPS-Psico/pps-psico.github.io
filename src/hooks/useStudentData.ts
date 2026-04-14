@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchStudentData } from "../services/dataService";
+import { fetchStudentData } from "../services";
 import { db } from "../lib/db";
 import { mockDb } from "../services/mockDb";
 import type { Orientacion } from "../types";
