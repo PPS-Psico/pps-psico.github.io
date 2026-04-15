@@ -235,13 +235,15 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
       {/* ─── 1. HEADER SECTION (Always Visible) ─── */}
       {/* Mobile: Column layout with title+chevron row and button below */}
       {/* Desktop: Row layout */}
-      <div className="pt-6 pb-4 px-4 md:pt-10 md:pb-8 md:px-8 flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-6 relative z-10 bg-gradient-to-b from-transparent via-transparent to-slate-50/30 dark:to-slate-800/20">
+      <div
+        className="pt-6 pb-4 px-4 md:pt-10 md:pb-8 md:px-8 flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-6 relative z-10 bg-gradient-to-b from-transparent via-transparent to-slate-50/30 dark:to-slate-800/20 cursor-pointer"
+        onClick={handleToggleExpanded}
+      >
         {/* Brand & Title with Chevron */}
         <div className="flex-1 min-w-0">
           {/* Title row with chevron for mobile */}
           <button
             type="button"
-            onClick={handleToggleExpanded}
             className="flex w-full items-center gap-2 rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
             aria-expanded={isExpanded}
             aria-label={`${isExpanded ? "Contraer" : "Expandir"} detalles de ${nombre}`}
@@ -342,7 +344,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         <div className="flex items-center gap-2 md:gap-3 md:self-start">
           {/* Mobile: Button below title */}
           {btnConfig.showCancelButton ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 disabled={btnConfig.disabled}
@@ -377,7 +379,10 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
             <button
               type="button"
               disabled={btnConfig.disabled}
-              onClick={btnConfig.onClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                btnConfig.onClick?.(e as any);
+              }}
               className={`${btnConfig.classes} md:order-none`}
             >
               {btnConfig.content || (
