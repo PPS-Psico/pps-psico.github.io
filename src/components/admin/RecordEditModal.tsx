@@ -7,6 +7,7 @@ import {
 } from "../../constants";
 import type { AirtableRecord } from "../../types";
 import { cleanDbValue } from "../../utils/formatters";
+import { supabase } from "../../lib/supabaseClient";
 
 interface FieldConfig {
   key: string;
@@ -20,10 +21,13 @@ interface FieldConfig {
     | "tel"
     | "select"
     | "checkbox"
+    | "file"
     | "section";
   options?: readonly string[] | { value: string; label: string }[];
   isFullWidth?: boolean;
   description?: string;
+  fileBucket?: string;
+  filePath?: string;
 }
 
 interface TableConfig {
@@ -284,7 +288,85 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
     let inputValue = value;
     if (field.type === "date" && typeof value === "string") {
-      inputValue = value.split("T")[0]; // Ensure YYYY-MM-DD format for <input type="date">
+      inputValue = value.split("T")[0];
+    }
+
+    if (field.type === "file") {
+      const bucket = field.fileBucket || "documentos_pps";
+      const basePath = field.filePath || "convocatorias";
+      const [uploading, setUploading] = useState(false);
+
+      return (
+        <div className={wrapperClasses}>
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+            {field.label}
+          </label>
+          {value ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <span className="material-icons text-green-500 !text-sm">check_circle</span>
+                <span className="text-sm text-green-700 dark:text-green-300 flex-1 truncate">
+                  Archivo cargado
+                </span>
+                <a
+                  href={value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <span className="material-icons !text-sm">open_in_new</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev: any) => ({ ...prev, [field.key]: "" }))}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <span className="material-icons !text-sm">close</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-violet-300 dark:border-violet-700 border-dashed rounded-lg cursor-pointer bg-violet-50/50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <span className="material-icons text-violet-400 !text-2xl mb-1">
+                  {uploading ? "hourglass_top" : "cloud_upload"}
+                </span>
+                <p className="text-xs text-violet-600 dark:text-violet-400">
+                  {uploading ? "Subiendo..." : "Arrastrá o elegí un archivo"}
+                </p>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    setUploading(true);
+                    const fileExt = file.name.split(".").pop();
+                    const fileName = `${basePath}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const { error: uploadError } = await supabase.storage
+                      .from(bucket)
+                      .upload(fileName, file, { upsert: true });
+                    if (uploadError) throw uploadError;
+                    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+                    setFormData((prev: any) => ({ ...prev, [field.key]: urlData.publicUrl }));
+                  } catch (err: any) {
+                    console.error("Error uploading file:", err);
+                    alert("Error al subir archivo: " + err.message);
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+              />
+            </label>
+          )}
+          {field.description && (
+            <p className="mt-1.5 text-[10px] text-slate-400 leading-none">{field.description}</p>
+          )}
+        </div>
+      );
     }
 
     return (

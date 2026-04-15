@@ -468,6 +468,25 @@ const LAUNCH_TABLE_CONFIG = {
     },
 
     { key: "sec_internal", label: "Notas e Internos", type: "section" as const },
+
+    { key: "sec_file", label: "Archivo Descargable", type: "section" as const },
+    {
+      key: FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
+      label: "Descripción del archivo",
+      type: "text" as const,
+      isFullWidth: true,
+      description: "Ej: Descargá la fundamentación completa de la PPS",
+    },
+    {
+      key: FIELD_ARCHIVO_DESCARGABLE_URL,
+      label: "Archivo",
+      type: "file" as const,
+      isFullWidth: true,
+      fileBucket: "documentos_pps",
+      filePath: "convocatorias",
+    },
+
+    { key: "sec_notes", label: "Notas de Gestión", type: "section" as const },
     {
       key: FIELD_NOTAS_GESTION_LANZAMIENTOS,
       label: "Notas de Gestión",

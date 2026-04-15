@@ -575,7 +575,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               )}
 
               {/* Archivo Descargable */}
-              {archivoDescargableNombre && archivoDescargableUrl && (
+              {archivoDescargableUrl && (
                 <div className="mt-6 md:mt-8 animate-fade-in-up">
                   <a
                     href={archivoDescargableUrl}
@@ -592,7 +592,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                           Archivo Adjunto
                         </span>
                         <p className="text-violet-900 dark:text-violet-200 text-sm md:text-base font-bold leading-tight group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">
-                          {archivoDescargableNombre}
+                          {archivoDescargableNombre || "Descargar documento"}
                         </p>
                       </div>
                       <span className="material-icons text-violet-400 group-hover:text-violet-600 transition-colors">
