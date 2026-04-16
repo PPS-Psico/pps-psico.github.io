@@ -44,6 +44,11 @@ export const mapEstudiante = (row: Tables["estudiantes"]["Row"]): AppRecord<Estu
   if (row.nombre) cleanRow.nombre = cleanDbValue(row.nombre);
   if (row.correo) cleanRow.correo = cleanDbValue(row.correo);
 
+  if (!cleanRow.nombre || cleanRow.nombre.trim() === "") {
+    const parts = [row.nombre_separado, row.apellido_separado].filter(Boolean).join(" ");
+    if (parts) cleanRow.nombre = parts;
+  }
+
   return toAppRecord(cleanRow) as AppRecord<EstudianteFields>;
 };
 
