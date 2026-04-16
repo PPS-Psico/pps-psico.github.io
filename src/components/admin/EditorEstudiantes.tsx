@@ -213,13 +213,31 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       }
       return db.estudiantes.update(vars.id, fields);
     },
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-students"] });
+      const prev = queryClient.getQueryData(["editor-students"]);
+      queryClient.setQueryData(["editor-students"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-students"], context.prev);
+      setToastInfo({ message: "Error al actualizar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-students"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Estudiante actualizado" : "Estudiante actualizado",
         type: "success",
       });
       setEditingRecord(null);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-students"] });
     },
   });
 
@@ -255,13 +273,28 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
       if (isTestingMode) {
-        // MODO TESTING: Simular eliminación (no afecta DB real)
         return Promise.resolve(true);
       }
       return db.estudiantes.delete(id);
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-students"] });
+      const prev = queryClient.getQueryData(["editor-students"]);
+      queryClient.setQueryData(["editor-students"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.filter((r: any) => r.id !== id),
+          total: Math.max(0, (old.total || 0) - 1),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-students"], context.prev);
+      setToastInfo({ message: "Error al eliminar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-students"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Estudiante eliminado" : "Estudiante eliminado",
         type: "success",
@@ -269,9 +302,8 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       setIdToDelete(null);
       setSelectedRowId(null);
     },
-    onError: (err: any) => {
-      setToastInfo({ message: `Error al eliminar: ${err.message}`, type: "error" });
-      setIdToDelete(null);
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-students"] });
     },
   });
 

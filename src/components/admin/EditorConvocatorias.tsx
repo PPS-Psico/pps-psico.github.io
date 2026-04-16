@@ -217,13 +217,31 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       }
       return db.convocatorias.update(vars.id, vars.fields);
     },
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-convocatorias"] });
+      const prev = queryClient.getQueryData(["editor-convocatorias"]);
+      queryClient.setQueryData(["editor-convocatorias"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-convocatorias"], context.prev);
+      setToastInfo({ message: "Error al actualizar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-convocatorias"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Inscripción actualizada" : "Inscripción actualizada",
         type: "success",
       });
       setEditingRecord(null);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-convocatorias"] });
     },
   });
 
@@ -251,8 +269,24 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       }
       return db.convocatorias.delete(id);
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-convocatorias"] });
+      const prev = queryClient.getQueryData(["editor-convocatorias"]);
+      queryClient.setQueryData(["editor-convocatorias"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.filter((r: any) => r.id !== id),
+          total: Math.max(0, (old.total || 0) - 1),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-convocatorias"], context.prev);
+      setToastInfo({ message: "Error al eliminar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-convocatorias"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Inscripción eliminada" : "Inscripción eliminada",
         type: "success",
@@ -260,9 +294,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       setIdToDelete(null);
       setSelectedRowId(null);
     },
-    onError: () => {
-      setToastInfo({ message: "Error al eliminar", type: "error" });
-      setIdToDelete(null);
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-convocatorias"] });
     },
   });
 
@@ -294,10 +327,9 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       />
 
       {/* --- FILTROS --- */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-6 items-end shadow-sm">
-        {/* Filtro Estudiante */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4 items-end shadow-sm">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
             Estudiante
           </label>
           {!filterStudentId ? (
@@ -310,13 +342,13 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
               />
             </div>
           ) : (
-            <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 h-11 px-4 rounded-xl border border-indigo-200 dark:border-indigo-800">
-              <span className="text-xs font-bold truncate text-indigo-800 dark:text-indigo-300">
+            <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 h-11 px-4 rounded-xl border border-blue-200 dark:border-blue-800">
+              <span className="text-xs font-bold truncate text-blue-800 dark:text-blue-300">
                 {studentLabel}
               </span>
               <button
                 onClick={() => setFilterStudentId("")}
-                className="material-icons !text-sm text-indigo-400 hover:text-indigo-600 transition-colors"
+                className="material-icons !text-sm text-blue-500 hover:text-blue-700"
               >
                 close
               </button>
@@ -324,16 +356,15 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           )}
         </div>
 
-        {/* Filtro Lanzamiento */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
             Lanzamiento / PPS
           </label>
           <div className="relative">
             <select
               value={filterLanzamientoId}
               onChange={(e) => setFilterLanzamientoId(e.target.value)}
-              className="w-full h-11 pl-4 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none transition-all text-slate-700 dark:text-slate-200"
+              className="w-full h-11 pl-4 pr-10 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none transition-all text-slate-700 dark:text-slate-200"
             >
               <option value="">Todas las convocatorias</option>
               {launches.map((l) => (
@@ -343,7 +374,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 </option>
               ))}
             </select>
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 pointer-events-none">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 dark:text-slate-500 pointer-events-none !text-lg">
               expand_more
             </span>
           </div>
@@ -353,22 +384,22 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           <Button
             onClick={() => setEditingRecord({ isCreating: true })}
             icon="add_card"
-            className="h-11 w-full md:w-auto bg-indigo-600 hover:bg-indigo-700"
+            className="h-11 w-full md:w-auto bg-blue-600 hover:bg-blue-700 shadow-md"
           >
             Nueva Inscripción
           </Button>
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={() => selectedRowId && setIdToDelete(selectedRowId)}
-          disabled={!selectedRowId}
-          className={`bg-white border border-rose-300 text-rose-600 font-bold py-2 px-5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all ${!selectedRowId ? "opacity-50 cursor-not-allowed" : "hover:bg-rose-50 shadow-sm"}`}
-        >
-          <span className="material-icons !text-lg">delete</span>
-          Eliminar
-        </button>
+      <div className="flex justify-end h-10">
+        {selectedRowId && (
+          <button
+            onClick={() => setIdToDelete(selectedRowId)}
+            className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-rose-100 border border-rose-200 transition-all animate-fade-in"
+          >
+            <span className="material-icons !text-base">delete</span> Eliminar Selección
+          </button>
+        )}
       </div>
 
       {/* --- TABLA --- */}
@@ -377,10 +408,10 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           <Loader />
         </div>
       ) : (
-        <div className="border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 shadow-lg">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-indigo-50/70 dark:bg-indigo-900/10 border-b border-indigo-100 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 uppercase text-[10px] font-black tracking-widest">
+              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
                 <tr>
                   <th className="px-6 py-4">Estudiante</th>
                   <th className="px-6 py-4">Convocatoria PPS</th>
@@ -396,10 +427,10 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                   return (
                     <tr
                       key={c.id}
-                      className={`transition-colors cursor-pointer group ${
+                      className={`transition-all cursor-pointer group ${
                         isSelected
-                          ? "bg-blue-100 dark:bg-blue-900/40 ring-1 ring-inset ring-blue-300 dark:ring-blue-700"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                          ? "bg-blue-50 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-200 dark:ring-blue-800"
+                          : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40"
                       }`}
                       onClick={() => setSelectedRowId(isSelected ? null : c.id)}
                       onDoubleClick={() => setEditingRecord(c)}
@@ -407,25 +438,24 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-white dark:from-indigo-900 dark:to-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-sm font-bold border border-indigo-100 dark:border-indigo-800 shadow-sm">
-                            {(c.__studentName || "?").charAt(0)}
+                          <div
+                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shadow-sm border transition-transform group-hover:scale-110 ${isSelected ? "bg-blue-600 text-white border-blue-400" : "bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"}`}
+                          >
+                            {(c.__studentName || "?").charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          <span
+                            className={`font-bold transition-colors ${isSelected ? "text-blue-700 dark:text-blue-300" : "text-slate-700 dark:text-slate-200 group-hover:text-blue-600"}`}
+                          >
                             {c.__studentName}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-start gap-2">
-                          <span className="material-icons text-slate-300 !text-base mt-0.5">
-                            business
-                          </span>
-                          <div
-                            className="font-medium text-slate-700 dark:text-slate-300 text-xs sm:text-sm truncate max-w-[280px]"
-                            title={c.__ppsName}
-                          >
-                            {c.__ppsName}
-                          </div>
+                        <div
+                          className="font-medium text-slate-700 dark:text-slate-300 text-sm truncate max-w-[280px]"
+                          title={c.__ppsName}
+                        >
+                          {c.__ppsName}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -439,7 +469,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-black border uppercase tracking-wide shadow-sm ${badgeClass}`}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wide ${badgeClass}`}
                         >
                           {c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] || "Pendiente"}
                         </span>

@@ -306,13 +306,31 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       }
       return db.practicas.update(vars.id, sanitizeFields(vars.fields));
     },
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-practicas"] });
+      const prev = queryClient.getQueryData(["editor-practicas"]);
+      queryClient.setQueryData(["editor-practicas"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-practicas"], context.prev);
+      setToastInfo({ message: "Error al actualizar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-practicas"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Registro actualizado" : "Registro actualizado",
         type: "success",
       });
       setEditingRecord(null);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-practicas"] });
     },
   });
 
@@ -366,14 +384,33 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       }
       return db.practicas.delete(id);
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-practicas"] });
+      const prev = queryClient.getQueryData(["editor-practicas"]);
+      queryClient.setQueryData(["editor-practicas"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.filter((r: any) => r.id !== id),
+          total: Math.max(0, (old.total || 0) - 1),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-practicas"], context.prev);
+      setToastInfo({ message: "Error al eliminar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-practicas"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Registro eliminado" : "Registro eliminado",
         type: "success",
       });
       setIdToDelete(null);
       setSelectedRowId(null);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-practicas"] });
     },
   });
 

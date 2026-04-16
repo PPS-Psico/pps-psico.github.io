@@ -164,7 +164,6 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: val,
       };
       if (isTestingMode) {
-        // MODO TESTING: Simular actualización (no afecta DB real)
         return Promise.resolve({
           ...MOCK_INSTITUCIONES.find((i) => i.id === vars.id),
           ...cleanFields,
@@ -172,15 +171,32 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       }
       return db.instituciones.update(vars.id, cleanFields);
     },
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-instituciones"] });
+      const prev = queryClient.getQueryData(["editor-instituciones"]);
+      queryClient.setQueryData(["editor-instituciones"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-instituciones"], context.prev);
+      setToastInfo({ message: "Error al actualizar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-instituciones"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Institución actualizada" : "Institución actualizada",
         type: "success",
       });
       setEditingRecord(null);
     },
-    onError: handleError,
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-instituciones"] });
+    },
   });
 
   const createMutation = useMutation({
@@ -205,22 +221,36 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
       if (isTestingMode) {
-        // MODO TESTING: Simular eliminación (no afecta DB real)
         return Promise.resolve(true);
       }
       return db.instituciones.delete(id);
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["editor-instituciones"] });
+      const prev = queryClient.getQueryData(["editor-instituciones"]);
+      queryClient.setQueryData(["editor-instituciones"], (old: any) => {
+        if (!old?.records) return old;
+        return {
+          ...old,
+          records: old.records.filter((r: any) => r.id !== id),
+          total: Math.max(0, (old.total || 0) - 1),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(["editor-instituciones"], context.prev);
+      setToastInfo({ message: "Error al eliminar", type: "error" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["editor-instituciones"] });
       setToastInfo({
         message: isTestingMode ? "Simulación: Institución eliminada" : "Institución eliminada",
         type: "success",
       });
       setIdToDelete(null);
     },
-    onError: (err) => {
-      handleError(err as Error);
-      setIdToDelete(null);
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["editor-instituciones"] });
     },
   });
 
@@ -426,20 +456,20 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       />
 
       {/* --- BARRA DE FILTROS (INDIGO) --- */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-end gap-6 shadow-sm">
-        <div className="relative flex-1 w-full md:w-auto space-y-2">
-          <label className="text-[10px] font-black text-indigo-400 dark:text-indigo-300 uppercase tracking-widest ml-1">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-end gap-4 shadow-sm">
+        <div className="relative flex-1 w-full md:w-auto space-y-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
             Buscador
           </label>
-          <div className="relative">
+          <div className="relative group">
             <input
               type="search"
               placeholder="Buscar Institución..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-100"
+              className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-200"
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-lg">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors">
               search
             </span>
           </div>
@@ -461,7 +491,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           <button
             onClick={handleBatchFix}
             disabled={isFixingData}
-            className="h-11 px-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-xl font-bold text-xs border border-indigo-100 dark:border-indigo-800 flex items-center gap-2 hover:bg-indigo-100 transition-colors"
+            className="h-11 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-xl font-bold text-xs border border-blue-100 dark:border-blue-800 flex items-center gap-2 hover:bg-blue-100 transition-colors"
           >
             {isFixingData ? (
               <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -473,7 +503,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           <Button
             onClick={() => setEditingRecord({ isCreating: true })}
             icon="add_business"
-            className="h-11 bg-indigo-600 hover:bg-indigo-700"
+            className="h-11 bg-blue-600 hover:bg-blue-700 shadow-md"
           >
             Nueva
           </Button>
@@ -486,10 +516,10 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           <Loader />
         </div>
       ) : (
-        <div className="border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 shadow-lg">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-indigo-50/70 dark:bg-indigo-900/10 border-b border-indigo-100 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 uppercase text-[10px] font-black tracking-widest">
+              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
                 <tr>
                   <th className="px-6 py-4">Institución</th>
                   <th className="px-6 py-4">Orientaciones</th>
