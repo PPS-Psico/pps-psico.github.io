@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
   FIELD_DIRECCION_INSTITUCIONES,
@@ -79,8 +79,17 @@ const LISTA_CONVENIOS_2025 = [
 
 const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; record: any } | null>(null);
@@ -92,15 +101,15 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["editor-instituciones", currentPage, itemsPerPage, searchTerm, isTestingMode],
+    queryKey: ["editor-instituciones", currentPage, itemsPerPage, debouncedSearch, isTestingMode],
     queryFn: async () => {
       // TESTING MODE: Usar datos mock
       if (isTestingMode) {
         let filteredRecords = [...MOCK_INSTITUCIONES];
 
         // Filtro de búsqueda
-        if (searchTerm) {
-          const searchLower = searchTerm.toLowerCase();
+        if (debouncedSearch) {
+          const searchLower = debouncedSearch.toLowerCase();
           filteredRecords = filteredRecords.filter(
             (i) =>
               (i[FIELD_NOMBRE_INSTITUCIONES] || "").toLowerCase().includes(searchLower) ||
@@ -117,21 +126,23 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         };
       }
 
-      // MODO REAL: Consultar base de datos
       const result = await db.instituciones.getPage(currentPage, itemsPerPage, {
-        searchTerm,
+        searchTerm: debouncedSearch,
         searchFields: TABLE_CONFIG.searchFields,
         sort: { field: FIELD_CONVENIO_NUEVO_INSTITUCIONES, direction: "desc" },
       });
 
-      // FILTRO DE SEGURIDAD: Ocultar registros que empiezan con "UFLO -"
       if (result.records) {
+        const before = result.records.length;
         result.records = result.records.filter(
           (r: any) =>
             !String(r[FIELD_NOMBRE_INSTITUCIONES] || "")
               .toUpperCase()
               .startsWith("UFLO -")
         );
+        if (result.records.length < before && result.total) {
+          result.total -= before - result.records.length;
+        }
       }
       return result;
     },

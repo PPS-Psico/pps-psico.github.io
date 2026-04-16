@@ -56,6 +56,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
   isSaving,
 }) => {
   const [formData, setFormData] = useState<any>({});
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
   const isCreateMode = !record;
 
   const mouseDownTarget = useRef<EventTarget | null>(null);
@@ -294,7 +295,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     if (field.type === "file") {
       const bucket = field.fileBucket || "documentos_pps";
       const basePath = field.filePath || "convocatorias";
-      const [uploading, setUploading] = useState(false);
+      const isUploading = uploadingField === field.key;
 
       return (
         <div className={wrapperClasses}>
@@ -329,10 +330,10 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
             <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-violet-300 dark:border-violet-700 border-dashed rounded-lg cursor-pointer bg-violet-50/50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors">
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 <span className="material-icons text-violet-400 !text-2xl mb-1">
-                  {uploading ? "hourglass_top" : "cloud_upload"}
+                  {isUploading ? "hourglass_top" : "cloud_upload"}
                 </span>
                 <p className="text-xs text-violet-600 dark:text-violet-400">
-                  {uploading ? "Subiendo..." : "Arrastrá o elegí un archivo"}
+                  {isUploading ? "Subiendo..." : "Arrastrá o elegí un archivo"}
                 </p>
               </div>
               <input
@@ -343,7 +344,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
                   const file = e.target.files?.[0];
                   if (!file) return;
                   try {
-                    setUploading(true);
+                    setUploadingField(field.key);
                     const fileExt = file.name.split(".").pop();
                     const fileName = `${basePath}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                     const { error: uploadError } = await supabase.storage
@@ -356,7 +357,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
                     console.error("Error uploading file:", err);
                     alert("Error al subir archivo: " + err.message);
                   } finally {
-                    setUploading(false);
+                    setUploadingField(null);
                   }
                 }}
               />

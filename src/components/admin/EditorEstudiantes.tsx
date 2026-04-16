@@ -186,13 +186,22 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
   const updateMutation = useMutation({
     mutationFn: (vars: any) => {
       if (isTestingMode) {
-        // MODO TESTING: Simular actualización (no afecta DB real)
         return Promise.resolve({
           ...MOCK_ESTUDIANTES.find((s) => s.id === vars.id),
           ...vars.fields,
         } as any);
       }
-      return db.estudiantes.update(vars.id, vars.fields);
+      const fields = { ...vars.fields };
+      if (
+        FIELD_NOMBRE_SEPARADO_ESTUDIANTES in fields ||
+        FIELD_APELLIDO_SEPARADO_ESTUDIANTES in fields
+      ) {
+        const nombre = fields[FIELD_NOMBRE_SEPARADO_ESTUDIANTES] || "";
+        const apellido = fields[FIELD_APELLIDO_SEPARADO_ESTUDIANTES] || "";
+        const fullName = [nombre, apellido].filter(Boolean).join(" ");
+        if (fullName) fields[FIELD_NOMBRE_ESTUDIANTES] = fullName;
+      }
+      return db.estudiantes.update(vars.id, fields);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["editor-students"] });
@@ -207,8 +216,19 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
   const createMutation = useMutation({
     mutationFn: (fields: any) => {
       if (isTestingMode) {
-        // MODO TESTING: Simular creación (no afecta DB real)
         return Promise.resolve({ id: `st_${Date.now()}`, ...fields } as any);
+      }
+      if (
+        fields[FIELD_NOMBRE_SEPARADO_ESTUDIANTES] ||
+        fields[FIELD_APELLIDO_SEPARADO_ESTUDIANTES]
+      ) {
+        const fullName = [
+          fields[FIELD_NOMBRE_SEPARADO_ESTUDIANTES],
+          fields[FIELD_APELLIDO_SEPARADO_ESTUDIANTES],
+        ]
+          .filter(Boolean)
+          .join(" ");
+        if (fullName) fields[FIELD_NOMBRE_ESTUDIANTES] = fullName;
       }
       return db.estudiantes.create(fields);
     },

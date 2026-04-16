@@ -218,31 +218,34 @@ export function cleanDbValue(input?: any): string {
 
   const str = String(input).trim();
 
-  // 2. Handle stringified arrays (e.g. '["Colegio..."]') or quoted strings
+  if (str.length === 0) return str;
+
+  // 2. Skip URLs and file paths — never strip braces/quotes from these
+  if (str.startsWith("http://") || str.startsWith("https://") || str.startsWith("/")) {
+    return str;
+  }
+
+  // 3. Handle stringified arrays (e.g. '["Colegio..."]') or quoted strings
   if (
     (str.startsWith('["') && str.endsWith('"]')) ||
     (str.startsWith("['") && str.endsWith("']"))
   ) {
     try {
-      // A simple JSON parse might work for standard JSON arrays
-      const parsed = JSON.parse(str.replace(/'/g, '"')); // Replace single quotes for JSON compat
+      const parsed = JSON.parse(str.replace(/'/g, '"'));
       if (Array.isArray(parsed) && parsed.length > 0) return cleanDbValue(parsed[0]);
     } catch (e) {
-      // Fallback regex extraction if JSON parse fails
       const match = str.match(/^\[["'](.+)["']\]$/);
       if (match && match[1]) return match[1];
     }
   }
 
-  // 3. Handle simple Quotes if any (e.g. '"Colegio"')
+  // 4. Handle simple Quotes if any (e.g. '"Colegio"')
   if (str.startsWith('"') && str.endsWith('"') && str.length > 1) {
     return str.slice(1, -1);
   }
 
-  // 4. Handle Postgres Array String format (e.g. '{Colegio...}')
+  // 5. Handle Postgres Array String format (e.g. '{Colegio...}')
   if (str.startsWith("{") && str.endsWith("}")) {
-    // Remove braces and quotes if inner content is quoted
-    // Example: {"Colegio"} or {Colegio}
     const inner = str.slice(1, -1);
     if (
       (inner.startsWith('"') && inner.endsWith('"')) ||
