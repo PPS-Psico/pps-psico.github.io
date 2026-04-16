@@ -35,11 +35,13 @@ const TABLE_CONFIG = {
       key: FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
       label: "ID Estudiante",
       type: "text" as const,
+      required: true,
     },
     {
       key: FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
       label: "ID Lanzamiento",
       type: "text" as const,
+      required: true,
     },
     {
       key: FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,

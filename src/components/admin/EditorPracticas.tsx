@@ -49,13 +49,24 @@ const TABLE_CONFIG = {
   tableName: TABLE_NAME_PRACTICAS,
   schema: schema.practicas,
   fieldConfig: [
-    { key: FIELD_ESTUDIANTE_LINK_PRACTICAS, label: "ID Estudiante", type: "text" as const },
-    { key: FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, label: "ID Lanzamiento", type: "text" as const },
+    {
+      key: FIELD_ESTUDIANTE_LINK_PRACTICAS,
+      label: "ID Estudiante",
+      type: "text" as const,
+      required: true,
+    },
+    {
+      key: FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+      label: "ID Lanzamiento",
+      type: "text" as const,
+      required: true,
+    },
     {
       key: FIELD_ESPECIALIDAD_PRACTICAS,
       label: "Especialidad",
       type: "select" as const,
       options: ALL_ORIENTACIONES,
+      required: true,
     },
     { key: FIELD_HORAS_PRACTICAS, label: "Horas", type: "number" as const },
     { key: FIELD_FECHA_INICIO_PRACTICAS, label: "Inicio", type: "date" as const },

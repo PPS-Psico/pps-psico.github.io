@@ -391,6 +391,7 @@ const LAUNCH_TABLE_CONFIG = {
       label: "Nombre PPS",
       type: "text" as const,
       isFullWidth: true,
+      required: true,
     },
     {
       key: FIELD_DIRECCION_LANZAMIENTOS,

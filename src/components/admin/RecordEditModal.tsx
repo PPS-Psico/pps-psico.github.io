@@ -28,6 +28,8 @@ interface FieldConfig {
   description?: string;
   fileBucket?: string;
   filePath?: string;
+  required?: boolean;
+  minLength?: number;
 }
 
 interface TableConfig {
@@ -57,6 +59,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<any>({});
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const isCreateMode = !record;
 
   const mouseDownTarget = useRef<EventTarget | null>(null);
@@ -87,6 +90,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
       }
     });
     setFormData(data);
+    setValidationErrors({});
   }, [record, tableConfig, isCreateMode, initialData]);
 
   const handleChange = (
@@ -99,15 +103,50 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
       ...prev,
       [name]: isCheckbox ? checkedValue : value,
     }));
+    if (validationErrors[name]) {
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSave = () => {
+    const errors: Record<string, string> = {};
+
+    tableConfig.fieldConfig.forEach((field) => {
+      if (field.type === "section" || field.type === "file") return;
+      const val = formData[field.key];
+
+      if (field.required) {
+        if (val === null || val === undefined || String(val).trim() === "") {
+          errors[field.key] = `${field.label} es obligatorio`;
+        }
+      }
+
+      if (
+        !errors[field.key] &&
+        field.minLength &&
+        typeof val === "string" &&
+        val.trim().length > 0 &&
+        val.trim().length < field.minLength
+      ) {
+        errors[field.key] = `Mínimo ${field.minLength} caracteres`;
+      }
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
     const cleanedData = { ...formData };
 
     tableConfig.fieldConfig.forEach((field) => {
       const val = cleanedData[field.key];
 
-      // Garantizar tipos primitivos correctos
       if (field.type === "number") {
         if (val === "" || val === null || val === undefined) {
           cleanedData[field.key] = null;
@@ -115,7 +154,6 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
           cleanedData[field.key] = Number(val);
         }
       } else if (field.type === "text" || field.type === "textarea" || field.type === "select") {
-        // DOUBLE CLEAN ON SAVE: Ensure we send clean string
         cleanedData[field.key] = cleanDbValue(val);
       }
     });
@@ -132,7 +170,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
     const inputClasses = `
             w-full rounded-xl border-2
-            border-slate-300 dark:border-slate-500
+            ${validationErrors[field.key] ? "border-red-400 dark:border-red-500" : "border-slate-300 dark:border-slate-500"}
             p-2.5 text-sm font-medium
             bg-white dark:bg-slate-950
             text-slate-900 dark:text-slate-100
@@ -141,6 +179,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
             outline-none transition-all
             ${isCheckbox ? "h-5 w-5 text-blue-600 rounded cursor-pointer" : ""}
         `;
+
+    const errorMsg = validationErrors[field.key];
 
     if (!isCreateMode && record) {
       let displayValue = null;
@@ -207,6 +247,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
         <div className={wrapperClasses}>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
             {field.label}
+            {field.required && <span className="text-red-400 text-[10px]">●</span>}
             {field.description && (
               <span className="normal-case font-normal text-[10px] text-slate-400">
                 {field.description}
@@ -220,6 +261,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
             rows={3}
             className={inputClasses}
           />
+          {errorMsg && <p className="mt-1 text-[10px] text-red-500 font-semibold">{errorMsg}</p>}
         </div>
       );
     }
@@ -227,8 +269,9 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     if (field.type === "select") {
       return (
         <div className={wrapperClasses}>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
             {field.label}
+            {field.required && <span className="text-red-400 text-[10px]">●</span>}
           </label>
           <div className="relative">
             <select
@@ -257,6 +300,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
               expand_more
             </span>
           </div>
+          {errorMsg && <p className="mt-1 text-[10px] text-red-500 font-semibold">{errorMsg}</p>}
         </div>
       );
     }
@@ -372,8 +416,9 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
     return (
       <div className={wrapperClasses}>
-        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
           {field.label}
+          {field.required && <span className="text-red-400 text-[10px]">●</span>}
         </label>
         <input
           type={field.type}
@@ -382,7 +427,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
           onChange={handleChange}
           className={inputClasses}
         />
-        {field.description && (
+        {errorMsg && <p className="mt-1 text-[10px] text-red-500 font-semibold">{errorMsg}</p>}
+        {field.description && !errorMsg && (
           <p className="mt-1.5 text-[10px] text-slate-400 leading-none">{field.description}</p>
         )}
       </div>

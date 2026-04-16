@@ -34,7 +34,7 @@ const TABLE_CONFIG = {
   schema: schema.instituciones,
   searchFields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_DIRECCION_INSTITUCIONES],
   fieldConfig: [
-    { key: FIELD_NOMBRE_INSTITUCIONES, label: "Nombre", type: "text" as const },
+    { key: FIELD_NOMBRE_INSTITUCIONES, label: "Nombre", type: "text" as const, required: true },
     { key: FIELD_TELEFONO_INSTITUCIONES, label: "Teléfono", type: "tel" as const },
     { key: FIELD_DIRECCION_INSTITUCIONES, label: "Dirección", type: "text" as const },
     {

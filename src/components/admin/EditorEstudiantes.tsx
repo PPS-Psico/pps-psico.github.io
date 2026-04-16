@@ -37,9 +37,19 @@ const TABLE_CONFIG = {
   // DNI es numérico y ilike falla. Búsqueda por Legajo y Nombre es suficiente para la mayoría de casos.
   searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES],
   fieldConfig: [
-    { key: FIELD_LEGAJO_ESTUDIANTES, label: "Legajo", type: "text" as const },
-    { key: FIELD_NOMBRE_SEPARADO_ESTUDIANTES, label: "Nombre", type: "text" as const },
-    { key: FIELD_APELLIDO_SEPARADO_ESTUDIANTES, label: "Apellido", type: "text" as const },
+    { key: FIELD_LEGAJO_ESTUDIANTES, label: "Legajo", type: "text" as const, required: true },
+    {
+      key: FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
+      label: "Nombre",
+      type: "text" as const,
+      required: true,
+    },
+    {
+      key: FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
+      label: "Apellido",
+      type: "text" as const,
+      required: true,
+    },
     { key: FIELD_DNI_ESTUDIANTES, label: "DNI", type: "number" as const },
     { key: FIELD_CORREO_ESTUDIANTES, label: "Correo", type: "email" as const },
     { key: FIELD_TELEFONO_ESTUDIANTES, label: "Teléfono", type: "tel" as const },
