@@ -23,12 +23,12 @@ import {
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../constants";
-import { normalizeStringForComparison, parseToUTCDate, safeGetId } from "./formatters";
-
-const getGroupName = (name: string | undefined): string => {
-  if (!name) return "Sin Nombre";
-  return name.split(/ [-–] /)[0].trim();
-};
+import {
+  normalizeStringForComparison,
+  parseToUTCDate,
+  safeGetId,
+  getGroupName,
+} from "./formatters";
 
 // Proyección de usuarios habilitados sin cuenta para el año actual
 // Este valor se suma a los nuevos inscriptos reales para la proyección

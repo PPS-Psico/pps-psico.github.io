@@ -35,12 +35,7 @@ import {
   ReportType,
   TimelineMonthData,
 } from "../types";
-import { safeGetId, parseToUTCDate, formatDate } from "../utils/formatters";
-
-const getGroupName = (name: string | undefined): string => {
-  if (!name) return "Sin Nombre";
-  return name.split(/ [-–] /)[0].trim();
-};
+import { safeGetId, parseToUTCDate, formatDate, getGroupName } from "../utils/formatters";
 
 const cleanRawValue = (val: any): string => {
   if (val === null || val === undefined) return "";

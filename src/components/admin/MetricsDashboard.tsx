@@ -1,13 +1,9 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { useMetricsData } from "../../hooks/useMetricsData";
+import { useMetricsData, useMetricsYears } from "../../hooks/useMetricsData";
+import { fetchMetricList, fetchOrientationList } from "../../services/metricsLists";
 import type { StudentInfo } from "../../types";
-import {
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-} from "../../constants";
 import EmptyState from "../EmptyState";
 import StudentListModal from "../StudentListModal";
-import Card from "../ui/Card";
 import MetricCard from "../MetricCard";
 import HeroMetric from "../MetricHero";
 import { MetricsSkeleton } from "../Skeletons";
@@ -81,8 +77,12 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
   onModalOpen,
 }) => {
   const [modalData, setModalData] = useState<ModalData | null>(null);
+  const [loadingModal, setLoadingModal] = useState(false);
   const [targetYear, setTargetYear] = useState<number>(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState<"overview" | "students" | "institutions">("overview");
+
+  const { data: years } = useMetricsYears(isTestingMode);
+  const { data: metrics, isLoading, error } = useMetricsData({ targetYear, isTestingMode });
 
   const openModal = useCallback(
     (payload: ModalData) => {
@@ -95,22 +95,68 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
   const closeModal = useCallback(() => {
     setModalData(null);
+    setLoadingModal(false);
     onModalOpen?.(false);
     document.body.classList.remove("metrics-modal-open");
   }, [onModalOpen]);
 
-  const { data: metrics, isLoading, error } = useMetricsData({ targetYear, isTestingMode });
+  const openListModal = useCallback(
+    async (key: string, title: string) => {
+      setLoadingModal(true);
+      openModal({ title, students: [] });
+      try {
+        const result = await fetchMetricList(key, targetYear);
+        setModalData({ title, ...result });
+      } catch {
+        setModalData({ title, students: [], description: "Error al cargar los datos." });
+      } finally {
+        setLoadingModal(false);
+      }
+    },
+    [openModal, targetYear]
+  );
+
+  const openOrientationModal = useCallback(
+    async (orientation: string) => {
+      setLoadingModal(true);
+      openModal({ title: `Alumnos en Area: ${orientation}`, students: [] });
+      try {
+        const result = await fetchOrientationList(
+          targetYear,
+          orientation,
+          metrics?.orientation_distribution || {}
+        );
+        setModalData({ title: `Alumnos en Area: ${orientation}`, ...result });
+      } catch {
+        setModalData({
+          title: `Alumnos en Area: ${orientation}`,
+          students: [],
+          description: "Error al cargar los datos.",
+        });
+      } finally {
+        setLoadingModal(false);
+      }
+    },
+    [openModal, targetYear, metrics?.orientation_distribution]
+  );
 
   const distributionData = useMemo(() => {
-    if (!metrics?.occupancyDistribution) return [];
-
-    return (Object.entries(metrics.occupancyDistribution) as [string, any[]][])
-      .map(([name, list]) => ({ name, value: list.length }))
+    if (!metrics?.orientation_distribution) return [];
+    return Object.entries(metrics.orientation_distribution)
+      .map(([name, value]) => ({ name, value }))
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value);
   }, [metrics]);
 
-  if (isLoading) return <MetricsSkeleton />;
+  const enrollmentChartData = useMemo(() => {
+    if (!metrics?.enrollment_evolution) return [];
+    return metrics.enrollment_evolution.map((e) => ({
+      ...e,
+      label: "Nuevos Inscriptos",
+    }));
+  }, [metrics]);
+
+  if (isLoading && !metrics) return <MetricsSkeleton />;
   if (error) return <EmptyState icon="error" title="Error" message={(error as any).message} />;
   if (!metrics) return null;
 
@@ -124,7 +170,6 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         headers={modalData?.headers}
         description={modalData?.description}
         onStudentClick={(s) => {
-          // Permitir clic solo si tiene legajo válido para navegar
           if (
             s.legajo &&
             s.legajo !== "Confirmado" &&
@@ -143,7 +188,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         </h2>
         <div className="flex items-center gap-3">
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-            {[2024, 2025, 2026].map((year) => (
+            {(years || [2024, 2025, 2026]).map((year) => (
               <button
                 key={year}
                 onClick={() => {
@@ -159,68 +204,47 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         </div>
       </div>
 
-      {/* Hero Cards: Grid de 3 (Solicitudes en curso eliminada) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <HeroMetric
           title="Matricula Generada"
-          value={metrics.matriculaGenerada.value}
+          value={metrics.matricula_generada}
           icon="group_add"
-          description={`Total histórico en ${targetYear}`}
-          onClick={() =>
-            openModal({
-              title: `Matricula Generada ${targetYear}`,
-              students: metrics.matriculaGenerada.list as StudentInfo[],
-            })
-          }
+          description={`Total historico en ${targetYear}`}
+          onClick={() => openListModal("matricula_generada", `Matricula Generada ${targetYear}`)}
           color="indigo"
           trend={
             metrics.trends
-              ? {
-                  value: metrics.trends.matriculaGenerada,
-                  label: `vs ${targetYear - 1}`,
-                }
+              ? { value: metrics.trends.matricula_generada, label: `vs ${targetYear - 1}` }
               : undefined
           }
         />
         <HeroMetric
           title="Finalizados"
-          value={metrics.alumnosFinalizados.value}
+          value={metrics.alumnos_finalizados}
           icon="military_tech"
           description={`Completaron PPS en ${targetYear}`}
-          onClick={() =>
-            openModal({
-              title: `Finalizados en ${targetYear}`,
-              students: metrics.alumnosFinalizados.list as StudentInfo[],
-            })
-          }
+          onClick={() => openListModal("alumnos_finalizados", `Finalizados en ${targetYear}`)}
           color="emerald"
           trend={
             metrics.trends
-              ? {
-                  value: metrics.trends.acreditados,
-                  label: `vs ${targetYear - 1}`,
-                }
+              ? { value: metrics.trends.acreditados, label: `vs ${targetYear - 1}` }
               : undefined
           }
         />
         <HeroMetric
           title="Matricula Activa"
-          value={metrics.matriculaActiva.value}
+          value={metrics.matricula_activa}
           icon="play_circle"
-          description={targetYear === 2025 ? "Alumnos activos hoy" : "Activos a fin de ciclo"}
-          onClick={() =>
-            openModal({
-              title: `Matricula Activa ${targetYear}`,
-              students: metrics.matriculaActiva.list as StudentInfo[],
-            })
+          description={
+            targetYear === new Date().getFullYear()
+              ? "Alumnos activos hoy"
+              : "Activos a fin de ciclo"
           }
+          onClick={() => openListModal("matricula_activa", `Matricula Activa ${targetYear}`)}
           color="blue"
           trend={
             metrics.trends
-              ? {
-                  value: metrics.trends.activos,
-                  label: `vs ${targetYear - 1}`,
-                }
+              ? { value: metrics.trends.activos, label: `vs ${targetYear - 1}` }
               : undefined
           }
         />
@@ -231,15 +255,15 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         onChange={(t) => setActiveTab(t as any)}
         counts={{
           students:
-            (metrics.nuevosIngresantes?.value || 0) +
-            (metrics.alumnosSinPPS?.value || 0) +
-            (metrics.proximosAFinalizar?.value || 0) +
-            (metrics.haciendoPPS?.value || 0),
+            metrics.matricula_generada +
+            metrics.sin_pps +
+            metrics.proximos_finalizar +
+            metrics.haciendo_pps,
           institutions:
-            (metrics.ppsLanzadas?.value || 0) +
-            (metrics.institucionesActivas?.value || 0) +
-            (metrics.cuposOfrecidos?.value || 0) +
-            (metrics.conveniosNuevos?.value || 0),
+            metrics.pps_lanzadas +
+            metrics.instituciones_activas +
+            metrics.cupos_ofrecidos +
+            metrics.nuevos_convenios,
         }}
       />
 
@@ -248,60 +272,34 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
           <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-6">
-                {/* Nuevos Inscriptos: Solo mostrar para 2025 o superior */}
                 {targetYear >= 2025 && (
                   <EnrollmentEvolutionChart
-                    data={metrics.enrollmentEvolution}
+                    data={enrollmentChartData}
                     onBarClick={(item) =>
-                      item.year !== "2024" &&
-                      openModal({
-                        title: `Estudiantes ${item.year}`,
-                        students: item.list as StudentInfo[],
-                        description: item.isProjection
-                          ? 'Alumnos detectados con estado "Nuevo" pendientes de matriculacion completa.'
-                          : "Alumnos que iniciaron su recorrido en este ciclo.",
-                      })
+                      openListModal("nuevosIngresantes", `Estudiantes ${item.year}`)
                     }
                   />
                 )}
-
-                {/* Distribución por Área: Ocultar en 2024 */}
                 {targetYear !== 2024 && <OrientationDistributionChart data={distributionData} />}
               </div>
-
               <div className="space-y-6">
-                {/* Gráfico de Tendencia Restaurado */}
-                <EnrollmentTrendChart data={metrics.trendData} />
-
-                {/* Cupos Ocupados por Área: Ocultar en 2024 */}
+                <EnrollmentTrendChart data={metrics.trend_data || []} />
                 {targetYear !== 2024 && (
-                  <Card
-                    title="Cupos Ocupados por Area"
-                    icon="list"
-                    description="Distribucion de vacantes segun el area de la PPS."
-                  >
-                    <div className="mt-4 space-y-2">
+                  <div className="bg-white dark:bg-slate-900/80 p-6 rounded-[1.5rem] border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="material-icons text-blue-600 !text-lg">list</span>
+                      <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Cupos Ocupados por Area
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                      Distribucion de vacantes segun el area de la PPS.
+                    </p>
+                    <div className="space-y-2">
                       {distributionData.map((item) => (
                         <button
                           key={item.name}
-                          onClick={() =>
-                            openModal({
-                              title: `Alumnos en Area: ${item.name}`,
-                              students: metrics.occupancyDistribution[item.name] as StudentInfo[],
-                              headers: [
-                                { key: "nombre", label: "Nombre" },
-                                { key: "legajo", label: "Legajo" },
-                                { key: "institucion", label: "Institucion" },
-                                ...(item.name === "Sin definir"
-                                  ? [{ key: "raw_value", label: "Valor en DB" }]
-                                  : []),
-                              ],
-                              description:
-                                item.name === "Sin definir"
-                                  ? "Estos registros tienen orientaciones no reconocidas en el lanzamiento de origen. Revisa la columna 'Valor en DB'."
-                                  : `Estudiantes seleccionados en vacantes de ${item.name} durante el ciclo ${targetYear}.`,
-                            })
-                          }
+                          onClick={() => openOrientationModal(item.name)}
                           className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
                         >
                           <div className="flex items-center gap-3">
@@ -323,7 +321,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                         </button>
                       ))}
                     </div>
-                  </Card>
+                  </div>
                 )}
               </div>
             </div>
@@ -332,85 +330,39 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
         {activeTab === "students" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* 1. Ingresantes */}
             <MetricCard
               title={`Ingresantes ${targetYear}`}
-              value={metrics.nuevosIngresantes.value}
+              value={metrics.matricula_generada}
               icon="person_add"
               description={`Nuevos matriculados en ${targetYear}`}
-              onClick={() =>
-                openModal({
-                  title: `Nuevos Ingresantes ${targetYear}`,
-                  students: metrics.nuevosIngresantes.list as any,
-                  headers: [
-                    { key: "nombre", label: "Nombre" },
-                    { key: "legajo", label: "Legajo" },
-                  ],
-                })
-              }
+              onClick={() => openListModal("nuevosIngresantes", `Nuevos Ingresantes ${targetYear}`)}
               isLoading={false}
               className="bg-blue-50/50 border-blue-200"
             />
-
-            {/* 2. Sin PPS */}
             <MetricCard
               title="Sin Ninguna PPS"
-              value={metrics.alumnosSinPPS.value}
+              value={metrics.sin_pps}
               icon="person_off"
               description="Alumnos activos sin actividad registrada"
-              onClick={() =>
-                openModal({
-                  title: "Alumnos Activos Sin PPS",
-                  students: metrics.alumnosSinPPS.list as any,
-                  headers: [
-                    { key: "nombre", label: "Nombre" },
-                    { key: "legajo", label: "Legajo" },
-                    { key: "correo", label: "Email" },
-                  ],
-                })
-              }
+              onClick={() => openListModal("sin_pps", "Alumnos Activos Sin PPS")}
               isLoading={false}
               className="bg-rose-50/30 border-rose-200"
             />
-
-            {/* 3. Próximos a Finalizar */}
             <MetricCard
-              title="Próximos a Finalizar"
-              value={metrics.proximosAFinalizar.value}
+              title="Proximos a Finalizar"
+              value={metrics.proximos_finalizar}
               icon="hourglass_top"
-              description=">=230hs sin solicitud de acreditación en trámite, cargada o realizada"
-              onClick={() =>
-                openModal({
-                  title: "Alumnos Próximos a Finalizar",
-                  students: metrics.proximosAFinalizar.list as any,
-                  headers: [
-                    { key: "nombre", label: "Nombre" },
-                    { key: "legajo", label: "Legajo" },
-                  ],
-                  description:
-                    "Listado de alumnos con más de 230 horas que NO tienen solicitud de acreditación en trámite, cargada o ya realizada.",
-                })
-              }
+              description=">=230hs sin solicitud de acreditacion"
+              onClick={() => openListModal("proximos_finalizar", "Alumnos Proximos a Finalizar")}
               isLoading={false}
               className="bg-amber-50/30 border-amber-200"
             />
-
-            {/* 4. Haciendo PPS */}
             <MetricCard
               title="Haciendo PPS"
-              value={metrics.haciendoPPS.value}
+              value={metrics.haciendo_pps}
               icon="engineering"
-              description="Alumnos con prácticas en curso ahora"
-              onClick={() =>
-                openModal({
-                  title: "Alumnos Cursando PPS",
-                  students: metrics.haciendoPPS.list as any,
-                  headers: [
-                    { key: "nombre", label: "Nombre" },
-                    { key: "legajo", label: "Legajo" },
-                  ],
-                })
-              }
+              description="Alumnos con practicas en curso ahora"
+              onClick={() => openListModal("haciendo_pps", "Alumnos Cursando PPS")}
               isLoading={false}
               className="bg-emerald-50/30 border-emerald-200"
             />
@@ -421,66 +373,36 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <MetricCard
               title="PPS Lanzadas"
-              value={metrics.ppsLanzadas.value}
+              value={metrics.pps_lanzadas}
               icon="rocket_launch"
               description={`Convocatorias publicadas en ${targetYear}`}
-              onClick={() =>
-                openModal({
-                  title: `PPS Lanzadas en ${targetYear}`,
-                  students: metrics.ppsLanzadasList || [],
-                  headers: [
-                    { key: "nombre", label: "PPS" },
-                    { key: "legajo", label: "Cupos" },
-                  ],
-                })
-              }
+              onClick={() => openListModal("pps_lanzadas", `PPS Lanzadas en ${targetYear}`)}
               isLoading={false}
             />
             <MetricCard
               title="Instituciones Activas"
-              value={metrics.institucionesActivas?.value || 0}
+              value={metrics.instituciones_activas}
               icon="apartment"
               description={`Sedes con actividad en ${targetYear}`}
               onClick={() =>
-                openModal({
-                  title: `Instituciones Activas ${targetYear}`,
-                  students: metrics.institucionesActivas?.list as any,
-                })
+                openListModal("instituciones_activas", `Instituciones Activas ${targetYear}`)
               }
               isLoading={false}
             />
             <MetricCard
               title="Cupos Ofrecidos"
-              value={metrics.cuposOfrecidos.value}
+              value={metrics.cupos_ofrecidos}
               icon="groups"
               description="Total de vacantes disponibles."
-              onClick={() =>
-                openModal({
-                  title: `Cupos por PPS en ${targetYear}`,
-                  students: (metrics.cuposOfrecidos.list || []).map((l: any) => ({
-                    nombre:
-                      l.nombre_pps_lanzamientos || l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre",
-                    legajo: l.cupos_disponibles || l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0,
-                  })),
-                  headers: [
-                    { key: "nombre", label: "PPS" },
-                    { key: "legajo", label: "Cupos" },
-                  ],
-                })
-              }
+              onClick={() => openListModal("cupos_ofrecidos", `Cupos por PPS en ${targetYear}`)}
               isLoading={false}
             />
             <MetricCard
               title="Nuevos Convenios"
-              value={metrics.conveniosNuevos.value}
+              value={metrics.nuevos_convenios}
               icon="handshake"
               description="Instituciones incorporadas este ciclo."
-              onClick={() =>
-                openModal({
-                  title: "Nuevos Convenios",
-                  students: metrics.conveniosNuevos.list as any,
-                })
-              }
+              onClick={() => openListModal("nuevos_convenios", "Nuevos Convenios")}
               isLoading={false}
               className="bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800"
             />

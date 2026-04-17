@@ -10,15 +10,10 @@ import {
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_TUTOR_INSTITUCIONES,
 } from "../../constants";
-import { normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
+import { normalizeStringForComparison, parseToUTCDate, getGroupName } from "../../utils/formatters";
 import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
-
-const getGroupName = (name: string | undefined): string => {
-  if (!name) return "Sin Nombre";
-  return name.split(/\s*[-–—]\s*/)[0].trim();
-};
 
 interface ReportData {
   institucion: string;

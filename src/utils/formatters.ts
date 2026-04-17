@@ -277,6 +277,11 @@ export function addBusinessDays(date: Date | string, days: number): Date {
 /**
  * Calculates the difference in business days between two dates.
  */
+export function getGroupName(name: string | undefined | unknown): string {
+  if (!name || typeof name !== "string") return "Sin Nombre";
+  return name.split(/\s*[-–—]\s*/)[0].trim();
+}
+
 export function getBusinessDaysDiff(start: Date | string, end: Date | string): number {
   const startDate = new Date(start);
   const endDate = new Date(end);

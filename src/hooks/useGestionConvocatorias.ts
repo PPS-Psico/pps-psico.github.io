@@ -13,17 +13,11 @@ import { db } from "../lib/db";
 import { mockDb } from "../services/mockDb";
 import { fetchPaginatedData } from "../services/supabaseService";
 import type { LanzamientoPPS } from "../types";
-import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
+import { normalizeStringForComparison, parseToUTCDate, getGroupName } from "../utils/formatters";
 import { mapLanzamiento } from "../utils/mappers";
 
 type LoadingState = "initial" | "loading" | "loaded" | "error";
 export type FilterType = "all" | "vencidas" | "enGestion" | "confirmadas" | "demoradas";
-
-const getGroupName = (name: unknown): string => {
-  const strName = String(name || "");
-  if (!strName) return "Sin Nombre";
-  return strName.split(/ [-–] /)[0].trim();
-};
 
 interface UseGestionConvocatoriasProps {
   forcedOrientations?: string[];

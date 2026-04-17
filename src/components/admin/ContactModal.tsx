@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { LanzamientoPPS, InstitucionFields } from "../../types";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS } from "../../constants";
+import { getGroupName } from "../../utils/formatters";
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -19,11 +20,6 @@ const ContactModal: React.FC<ContactModalProps> = ({
 }) => {
   const [customMessage, setCustomMessage] = useState("");
   const [sent, setSent] = useState(false);
-
-  const getGroupName = (name: string | undefined): string => {
-    if (!name) return "Institución";
-    return name.split(/ [-–] /)[0].trim();
-  };
 
   const institutionName = getGroupName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
   const institutionPhone = institution?.phone || "";

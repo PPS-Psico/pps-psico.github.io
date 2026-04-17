@@ -11,7 +11,7 @@ import {
 } from "../constants";
 import Loader from "./Loader";
 import EmptyState from "./EmptyState";
-import { parseToUTCDate } from "../utils/formatters";
+import { parseToUTCDate, getGroupName } from "../utils/formatters";
 import { mapLanzamiento } from "../utils/mappers";
 
 const MOCK_TIMELINE_DATA: any[] = [
@@ -77,11 +77,6 @@ const MONTH_NAMES = [
   "Noviembre",
   "Diciembre",
 ];
-
-const getGroupName = (name: string | undefined): string => {
-  if (!name) return "Sin Nombre";
-  return name.split(" - ")[0].trim();
-};
 
 interface TimelineViewProps {
   isTestingMode?: boolean;

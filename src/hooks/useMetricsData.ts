@@ -1,15 +1,45 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient";
-import {
-  TABLE_NAME_ESTUDIANTES,
-  TABLE_NAME_PPS,
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_CONVOCATORIAS,
-  TABLE_NAME_PRACTICAS,
-  TABLE_NAME_FINALIZACION,
-  TABLE_NAME_INSTITUCIONES,
-} from "../constants";
-import { calculateDashboardMetrics } from "../utils/metricsCalculations";
+
+export interface MetricsKPIs {
+  matricula_generada: number;
+  alumnos_finalizados: number;
+  matricula_activa: number;
+  sin_pps: number;
+  proximos_finalizar: number;
+  haciendo_pps: number;
+  pps_lanzadas: number;
+  instituciones_activas: number;
+  cupos_ofrecidos: number;
+  nuevos_convenios: number;
+  orientation_distribution: Record<string, number>;
+  enrollment_evolution: { year: string; value: number }[];
+  trend_data: { year: string; value: number }[];
+  trends: {
+    matricula_generada: number;
+    acreditados: number;
+    activos: number;
+  };
+  target_year: number;
+}
+
+const emptyKPIs = (year: number): MetricsKPIs => ({
+  matricula_generada: 0,
+  alumnos_finalizados: 0,
+  matricula_activa: 0,
+  sin_pps: 0,
+  proximos_finalizar: 0,
+  haciendo_pps: 0,
+  pps_lanzadas: 0,
+  instituciones_activas: 0,
+  cupos_ofrecidos: 0,
+  nuevos_convenios: 0,
+  orientation_distribution: {},
+  enrollment_evolution: [],
+  trend_data: [],
+  trends: { matricula_generada: 0, acreditados: 0, activos: 0 },
+  target_year: year,
+});
 
 export const useMetricsData = ({
   targetYear,
@@ -19,45 +49,32 @@ export const useMetricsData = ({
   isTestingMode?: boolean;
 }) => {
   return useQuery({
-    queryKey: ["metricsData", targetYear, isTestingMode],
-    queryFn: async () => {
-      const [est, req, lanz, conv, prac, fin, inst] = await Promise.all([
-        supabase.from(TABLE_NAME_ESTUDIANTES).select("*"),
-        supabase.from(TABLE_NAME_PPS).select("*"),
-        supabase.from(TABLE_NAME_LANZAMIENTOS_PPS).select("*"),
-        supabase.from(TABLE_NAME_CONVOCATORIAS).select("*"),
-        supabase.from(TABLE_NAME_PRACTICAS).select("*"),
-        supabase.from(TABLE_NAME_FINALIZACION).select("*"),
-        supabase.from(TABLE_NAME_INSTITUCIONES).select("*"),
-      ]);
-
-      // Get auth users for registration dates via RPC
-      const { data: authUsers } = await (supabase.rpc as any)("get_user_creation_dates");
-
-      // Map user creation dates to estudiantes
-      const userCreationDates: Record<string, string> = {};
-      (authUsers || []).forEach((u: any) => {
-        userCreationDates[u.user_id] = u.created_at;
+    queryKey: ["metricsKPIs", targetYear, isTestingMode],
+    queryFn: async (): Promise<MetricsKPIs> => {
+      if (isTestingMode) return emptyKPIs(targetYear);
+      const { data, error } = await supabase.rpc("get_admin_metrics_kpis", {
+        p_year: targetYear,
       });
-
-      // Attach user creation date to each estudiante that has a user_id
-      const estudiantesWithRegDate = (est.data || []).map((e: any) => ({
-        ...e,
-        user_created_at: e.user_id ? userCreationDates[e.user_id] || null : null,
-      }));
-
-      const allData = {
-        estudiantes: estudiantesWithRegDate,
-        solicitudes: req.data || [],
-        lanzamientos: lanz.data || [],
-        convocatorias: conv.data || [],
-        practicas: prac.data || [],
-        finalizaciones: fin.data || [],
-        instituciones: inst.data || [],
-      };
-
-      return calculateDashboardMetrics(allData, targetYear);
+      if (error) throw error;
+      return data as unknown as MetricsKPIs;
     },
-    staleTime: 1000 * 60 * 1, // 1 minuto de cache para datos más reactivos
+    staleTime: 1000 * 60 * 2,
+    placeholderData: (prev) => prev,
+  });
+};
+
+export const useMetricsYears = (isTestingMode = false) => {
+  return useQuery({
+    queryKey: ["metricsYears"],
+    queryFn: async (): Promise<number[]> => {
+      if (isTestingMode) {
+        const now = new Date().getFullYear();
+        return [now, now - 1, now - 2];
+      }
+      const { data, error } = await supabase.rpc("get_metrics_years");
+      if (error) throw error;
+      return ((data || []) as unknown as number[]).sort((a, b) => b - a);
+    },
+    staleTime: 1000 * 60 * 10,
   });
 };

@@ -341,41 +341,28 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
           let userId = authData?.user?.id;
 
-          // MANEJO ROBUSTO DE "USUARIO YA EXISTE"
           if (signUpError || !userId) {
-            console.warn("SignUp failed, attempting verified password recovery flow");
+            console.warn("SignUp failed:", signUpError);
+            const errorMsg = signUpError?.message || "";
+            const lowerMsg = errorMsg.toLowerCase();
 
-            const { error: fixError } = await (supabase.rpc as any)(
-              "reset_student_password_verified",
-              {
-                legajo_input: legajoTrimmed,
-                dni_input: cleanDniInt,
-                correo_input: inputEmail,
-                telefono_input: telefono.trim(),
-                new_password: password,
-              }
-            );
-
-            if (fixError) {
-              console.error("Fix failed:", fixError);
+            if (lowerMsg.includes("already registered") || lowerMsg.includes("exists")) {
               throw new Error(
-                "Este correo ya está registrado y no se pudo vincular a tu legajo. Contacta soporte."
+                "Ya existe una cuenta con este correo. Por favor, usa la opción '¿Olvidaste tu contraseña?' desde Iniciar Sesión."
+              );
+            } else if (lowerMsg.includes("password") || lowerMsg.includes("contraseña")) {
+              throw new Error(
+                `La contraseña no cumple con los requisitos del sistema: ${errorMsg}`
+              );
+            } else if (lowerMsg.includes("rate limit") || lowerMsg.includes("seconds")) {
+              throw new Error(
+                "Demasiados intentos. Por favor espera un minuto y vuelve a intentarlo."
+              );
+            } else {
+              throw new Error(
+                `No se pudo crear la cuenta: ${errorMsg || "Verifica los datos ingresados."}`
               );
             }
-
-            const { data: loginData, error: loginError } = await (
-              supabase.auth as any
-            ).signInWithPassword({
-              email: inputEmail,
-              password,
-            });
-
-            if (loginError || !loginData.user) {
-              throw new Error(
-                "Cuenta reparada pero falló el inicio de sesión. Intenta ingresar normalmente."
-              );
-            }
-            userId = loginData.user.id;
           }
 
           if (userId) {

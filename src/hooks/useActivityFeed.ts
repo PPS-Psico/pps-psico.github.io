@@ -292,7 +292,7 @@ export const useActivityFeed = (isTestingMode = false) => {
         return [];
       }
     },
-    refetchInterval: 10000,
+    refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
 };

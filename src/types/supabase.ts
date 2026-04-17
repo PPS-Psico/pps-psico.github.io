@@ -1164,6 +1164,8 @@ export type Database = {
       cleanup_old_verification_attempts: { Args: never; Returns: undefined };
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined };
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
+      get_activos_list: { Args: { p_year: number }; Returns: Json };
+      get_admin_metrics_kpis: { Args: { p_year: number }; Returns: Json };
       get_all_fcm_tokens: {
         Args: never;
         Returns: {
@@ -1172,11 +1174,45 @@ export type Database = {
         }[];
       };
       get_dashboard_metrics: { Args: { target_year: number }; Returns: Json };
+      get_finalizados_list: {
+        Args: { p_year: number };
+        Returns: {
+          id: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_haciendo_pps_list: {
+        Args: { p_year: number };
+        Returns: {
+          id: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_ingresantes_list: {
+        Args: { p_year: number };
+        Returns: {
+          id: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_metrics_years: { Args: never; Returns: Json };
       get_my_role: { Args: never; Returns: string };
       get_postulantes_seleccionados: {
         Args: { lanzamiento_uuid: string };
         Returns: {
           horario: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_proximos_finalizar_list: {
+        Args: { p_year: number };
+        Returns: {
+          horas_total: number;
+          id: string;
           legajo: string;
           nombre: string;
         }[];
@@ -1193,6 +1229,15 @@ export type Database = {
         Args: { p_lanzamiento_id: string };
         Returns: {
           horario: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_sin_pps_list: {
+        Args: { p_year: number };
+        Returns: {
+          correo: string;
+          id: string;
           legajo: string;
           nombre: string;
         }[];
@@ -1256,6 +1301,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      safe_date_cast: { Args: { val: string }; Returns: string };
       save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean };
       show_limit: { Args: never; Returns: number };
       show_trgm: { Args: { "": string }; Returns: string[] };

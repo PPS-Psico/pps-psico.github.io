@@ -14,13 +14,12 @@ import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
 import Button from "../ui/Button";
-import { normalizeStringForComparison, parseToUTCDate, formatDate } from "../../utils/formatters";
-
-const getGroupName = (name: string | undefined): string => {
-  if (!name) return "Sin Nombre";
-  // Splits by a hyphen, en-dash, or em-dash with optional surrounding spaces for robustness.
-  return name.split(/\s*[-–—]\s*/)[0].trim();
-};
+import {
+  normalizeStringForComparison,
+  parseToUTCDate,
+  formatDate,
+  getGroupName,
+} from "../../utils/formatters";
 
 interface PotentialAgreement {
   institutionId: string;
