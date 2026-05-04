@@ -63,20 +63,42 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     queryFn: async () => {
       const { data } = await supabase
         .from("lanzamientos_pps")
-        .select("*")
+        .select("id, institucion_id, cupos_disponibles")
         .order("created_at", { ascending: false });
-      return (data as LanzamientoPPS[]) || [];
+      return (data as any[]) || [];
     },
     enabled: isOpen,
   });
 
-  // Filtrar lanzamientos que coincidan con el nombre ingresado
-  const lanzamientosCoincidentes = useMemo(() => {
+  // Agrupar lanzamientos por institucion_id para filtrar por cupos
+  const lanzamientosPorInstitucion = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const l of lanzamientos) {
+      const existing = map.get(l.institucion_id) || [];
+      existing.push(l);
+      map.set(l.institucion_id, existing);
+    }
+    return map;
+  }, [lanzamientos]);
+
+  // Filtrar lanzamientos que coincidan con el nombre ingresado, deshabilitando las de cupos=1
+  const institucionesCoincidentes = useMemo(() => {
     const busquedaNormalizada = searchTerm.toLowerCase().trim();
     if (!busquedaNormalizada) return [];
 
-    return instituciones.filter((inst) => inst.nombre?.toLowerCase().includes(busquedaNormalizada));
-  }, [searchTerm, instituciones]);
+    return instituciones
+      .filter((inst) => inst.nombre?.toLowerCase().includes(busquedaNormalizada))
+      .map((inst) => {
+        const instLanzamientos = lanzamientosPorInstitucion.get(inst.id) || [];
+        const cuposMax = Math.max(0, ...instLanzamientos.map((l) => l.cupos_disponibles || 0));
+        const hasCuposGrupales = cuposMax >= 3;
+        return {
+          ...inst,
+          disabled: !hasCuposGrupales,
+          cuposInfo: cuposMax,
+        };
+      });
+  }, [searchTerm, instituciones, lanzamientosPorInstitucion]);
 
   // Filtrar lanzamientos que coincidan con la institución seleccionada
   const lanzamientosDeInstitucion = useMemo(() => {
@@ -409,21 +431,48 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                   <>
                     <div className="fixed inset-0 z-[100]" onClick={() => setShowResults(false)} />
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[101] max-h-60 overflow-y-auto overflow-x-hidden py-2 backdrop-blur-xl">
-                      {lanzamientosCoincidentes.length > 0 ? (
-                        lanzamientosCoincidentes.map((inst) => (
+                      {institucionesCoincidentes.length > 0 ? (
+                        institucionesCoincidentes.map((inst) => (
                           <button
                             key={inst.id}
                             onClick={() => {
+                              if (inst.disabled) return;
                               setInstitucionSeleccionada(inst as any);
                               setSearchTerm(inst.nombre || "");
                               setShowResults(false);
                             }}
-                            className="w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-between"
+                            className={`w-full text-left px-4 py-3 transition-colors flex items-center justify-between ${
+                              inst.disabled
+                                ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50"
+                                : "hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-700 dark:text-slate-200"
+                            }`}
+                            disabled={inst.disabled}
                           >
-                            <span className="font-medium">{inst.nombre}</span>
-                            <span className="material-icons text-blue-500 text-sm">
-                              add_circle_outline
-                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`font-medium ${inst.disabled ? "text-slate-400" : ""}`}
+                                >
+                                  {inst.nombre}
+                                </span>
+                                {inst.disabled && (
+                                  <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
+                                    <span className="material-icons !text-xs">lock</span>
+                                    Cupo individual
+                                  </span>
+                                )}
+                              </div>
+                              {inst.disabled && (
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                  Temporalmente deshabilitado • Solo grupos de 3+ estudiantes
+                                </p>
+                              )}
+                            </div>
+                            {!inst.disabled && (
+                              <span className="material-icons text-blue-500 text-sm">
+                                add_circle_outline
+                              </span>
+                            )}
                           </button>
                         ))
                       ) : (

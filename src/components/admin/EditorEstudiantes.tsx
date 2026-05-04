@@ -246,19 +246,23 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       if (isTestingMode) {
         return Promise.resolve({ id: `st_${Date.now()}`, ...fields } as any);
       }
+      const fieldsToCreate = { ...fields };
       if (
-        fields[FIELD_NOMBRE_SEPARADO_ESTUDIANTES] ||
-        fields[FIELD_APELLIDO_SEPARADO_ESTUDIANTES]
+        fieldsToCreate[FIELD_NOMBRE_SEPARADO_ESTUDIANTES] ||
+        fieldsToCreate[FIELD_APELLIDO_SEPARADO_ESTUDIANTES]
       ) {
         const fullName = [
-          fields[FIELD_NOMBRE_SEPARADO_ESTUDIANTES],
-          fields[FIELD_APELLIDO_SEPARADO_ESTUDIANTES],
+          fieldsToCreate[FIELD_NOMBRE_SEPARADO_ESTUDIANTES],
+          fieldsToCreate[FIELD_APELLIDO_SEPARADO_ESTUDIANTES],
         ]
           .filter(Boolean)
           .join(" ");
-        if (fullName) fields[FIELD_NOMBRE_ESTUDIANTES] = fullName;
+        if (fullName) fieldsToCreate[FIELD_NOMBRE_ESTUDIANTES] = fullName;
       }
-      return db.estudiantes.create(fields);
+      if (!fieldsToCreate[FIELD_ESTADO_ESTUDIANTES]) {
+        fieldsToCreate[FIELD_ESTADO_ESTUDIANTES] = "Nuevo (Sin cuenta)";
+      }
+      return db.estudiantes.create(fieldsToCreate);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["editor-students"] });
