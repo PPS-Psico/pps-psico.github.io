@@ -1,7 +1,12 @@
 import { KEY_EMAIL_COUNT, KEY_EMAIL_MONTH } from "../constants";
 import { supabase } from "../lib/supabaseClient";
 
-type EmailScenario = "seleccion" | "solicitud" | "sac" | "recordatorio_consentimiento";
+type EmailScenario =
+  | "seleccion"
+  | "solicitud"
+  | "sac"
+  | "recordatorio_consentimiento"
+  | "contacto_institucion";
 
 const DEFAULT_TEMPLATES: Record<EmailScenario, { subject: string; body: string }> = {
   seleccion: {
@@ -53,6 +58,22 @@ Coordinador de Prácticas Profesionales Supervisadas
 Licenciatura en Psicología
 UFLO`,
   },
+  contacto_institucion: {
+    subject: "Contacto Coordinación PPS - Solicitud de práctica profesional",
+    body: `Estimados de {{nombre_institucion}},
+
+Me contacto desde la Coordinación de Prácticas Profesionales Supervisadas de la Licenciatura en Psicología de la Universidad de Flores (UFLO).
+
+Me pongo en contacto con ustedes en relación a una solicitud de un estudiante para realizar su práctica profesional supervisada en su institución.
+
+Quedo a disposición para coordinar los aspectos formales y académicos del convenio si están interesados.
+
+Saludos,
+
+Blas Rivera
+Coordinador de PPS - UFLO Psicología
+Contacto: 2213503808`,
+  },
 };
 
 interface EmailData {
@@ -70,6 +91,7 @@ interface EmailData {
   studentCorreo?: string;
   selectedAt?: string;
   reminderSentAt?: string;
+  institutionEmail?: string;
 }
 
 export const getPublicPanelUrl = (): string => {
@@ -242,7 +264,8 @@ export const sendSmartEmail = async (
       return { success: true, message: "Automatización desactivada" };
     }
 
-    if (!data.studentEmail) return { success: false, message: "Falta email del alumno." };
+    const recipientEmail = data.institutionEmail || data.studentEmail;
+    if (!recipientEmail) return { success: false, message: "Falta email de destino." };
 
     const hasLegacySelectionCopy =
       scenario === "seleccion" &&
@@ -298,11 +321,13 @@ export const sendSmartEmail = async (
       .replace(/{{horario}}/g, horarioText)
       .replace(/{{panel_url}}/g, panelUrl)
       .replace(/{{institucion}}/g, data.institution || "")
+      .replace(/{{nombre_institucion}}/g, data.institution || "")
       .replace(/{{estado_nuevo}}/g, data.newState || "")
       .replace(/{{notas}}/g, data.notes || "")
       .replace(/{{encuentro_inicial}}/g, encuentroText);
 
-    const firstName = data.studentName.split(" ")[0];
+    const firstName =
+      scenario === "contacto_institucion" ? "Equipo institucional" : data.studentName.split(" ")[0];
     const nameColor = scenario === "recordatorio_consentimiento" ? "#ea580c" : "#2563eb";
     const htmlTitle = `Hola, <span style="color: ${nameColor};">${firstName}</span>`;
     const htmlBody = generateHtmlTemplate(textBody, htmlTitle);
@@ -310,7 +335,7 @@ export const sendSmartEmail = async (
 
     const { error: invokeError } = await supabase.functions.invoke("send-email", {
       body: {
-        to: data.studentEmail,
+        to: recipientEmail,
         subject: finalSubject,
         text: cleanTextBody,
         html: htmlBody,

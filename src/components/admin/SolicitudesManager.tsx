@@ -7,7 +7,12 @@ import { supabase } from "../../lib/supabaseClient";
 import { mockDb } from "../../services/mockDb";
 import type { SolicitudPPSFields } from "../../types";
 import { sendSmartEmail } from "../../utils/emailService";
-import { getStatusVisuals, normalizeStringForComparison } from "../../utils/formatters";
+import {
+  getStatusVisuals,
+  normalizeStringForComparison,
+  getWhatsAppUrl,
+  isValidWhatsAppFormat,
+} from "../../utils/formatters";
 import CollapsibleSection from "../CollapsibleSection";
 import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
@@ -74,7 +79,8 @@ const RequestListItem: React.FC<{
   onDeleteRequest: (id: string) => void;
   onUpdate: (id: string, fields: Partial<SolicitudPPSFields>) => Promise<void>;
   isUpdatingParent: boolean;
-}> = ({ req, onDeleteRequest, onUpdate, isUpdatingParent }) => {
+  onToast?: (info: { message: string; type: "success" | "error" }) => void;
+}> = ({ req, onDeleteRequest, onUpdate, isUpdatingParent, onToast }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [status, setStatus] = useState(req.estado_seguimiento || "Pendiente");
   const [notes, setNotes] = useState(req.notas || "");
@@ -117,15 +123,34 @@ const RequestListItem: React.FC<{
     setHasChanges(false);
   };
 
-  const handleDraftEmail = (e: React.MouseEvent) => {
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendEmailToInstitution = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const subject = `Propuesta de Convenio PPS - UFLO - Alumno: ${req._studentName}`;
-    const body = `Estimados ${institucion},\n\nMe comunico desde la coordinación de Prácticas Profesionales...\n`;
-    const mailto = `mailto:${instEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(mailto, "_blank");
-    if (status === "Pendiente") {
-      setStatus("En conversaciones");
-      setHasChanges(true);
+    if (!req.email_institucion) return;
+
+    setIsSendingEmail(true);
+    try {
+      const result = await sendSmartEmail("contacto_institucion", {
+        studentName: req._studentName,
+        studentEmail: req.email_institucion,
+        institution: req.nombre_institucion,
+        institutionEmail: req.email_institucion,
+      });
+
+      if (result.success) {
+        onToast?.({ message: "Email enviado a la institución", type: "success" });
+        if (status === "Pendiente") {
+          setStatus("En conversaciones");
+          setHasChanges(true);
+        }
+      } else {
+        onToast?.({ message: result.message || "Error al enviar email", type: "error" });
+      }
+    } catch (err: any) {
+      onToast?.({ message: `Error: ${err.message}`, type: "error" });
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -226,15 +251,20 @@ const RequestListItem: React.FC<{
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          const cleanPhone = String(req.telefono_institucion).replace(/\D/g, "");
-                          const message = `Hola, buen día. Soy Blas Rivera, Coordinador de PPS de UFLO Psicología.\n\nMe contactó el estudiante ${req._studentName} comentándome que estuvo conversando con ustedes sobre la posibilidad de realizar sus prácticas profesionales allí. Me pongo a disposición para coordinar los aspectos formales y académicos del convenio si están interesados.\n\n¡Muchas gracias!`;
-                          window.open(
-                            `https://wa.me/${cleanPhone}/?text=${encodeURIComponent(message)}`,
-                            "_blank"
+                          const whatsappUrl = getWhatsAppUrl(
+                            req.telefono_institucion,
+                            `Hola, buen día. Soy Blas Rivera, Coordinador de PPS de UFLO Psicología.\n\nMe contactó el estudiante ${req._studentName} comentándome que estuvo conversando con ustedes sobre la posibilidad de realizar sus prácticas profesionales allí. Me pongo a disposición para coordinar los aspectos formales y académicos del convenio si están interesados.\n\n¡Muchas gracias!`
                           );
+                          if (whatsappUrl) {
+                            window.open(whatsappUrl, "_blank");
+                          }
                         }}
                         className="p-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-md transition-colors flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:border-emerald-200 dark:hover:border-emerald-800"
-                        title="Enviar WhatsApp"
+                        title={
+                          isValidWhatsAppFormat(req.telefono_institucion)
+                            ? "Enviar WhatsApp"
+                            : "Número inválido para WhatsApp"
+                        }
                       >
                         <svg
                           viewBox="0 0 24 24"
@@ -341,10 +371,16 @@ const RequestListItem: React.FC<{
               <div className="flex justify-end gap-3 pt-4 border-t border-transparent">
                 {req.email_institucion && (
                   <button
-                    onClick={handleDraftEmail}
-                    className="mr-auto px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 transition-colors"
+                    onClick={handleSendEmailToInstitution}
+                    disabled={isSendingEmail}
+                    className="mr-auto px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
                   >
-                    <span className="material-icons !text-sm">mail</span> Contactar
+                    {isSendingEmail ? (
+                      <div className="w-4 h-4 border-2 border-blue-600/50 border-t-blue-600 rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-icons !text-sm">mail</span>
+                    )}
+                    {isSendingEmail ? "Enviando..." : "Enviar Email"}
                   </button>
                 )}
                 <button
@@ -658,6 +694,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
                         await updateMutation.mutateAsync({ recordId: id, fields });
                       }}
                       isUpdatingParent={updateMutation.isPending}
+                      onToast={setToastInfo}
                     />
                   ))}
                 </div>
@@ -683,6 +720,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
                         await updateMutation.mutateAsync({ recordId: id, fields });
                       }}
                       isUpdatingParent={updateMutation.isPending}
+                      onToast={setToastInfo}
                     />
                   ))}
                 </div>

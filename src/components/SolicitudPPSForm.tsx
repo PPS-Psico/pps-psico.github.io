@@ -4,6 +4,7 @@ import { z } from "zod";
 import Input from "./ui/Input";
 import Button from "./ui/Button";
 import Select from "./ui/Select";
+import { cleanWhatsAppNumber } from "../utils/formatters";
 
 interface SolicitudPPSFormProps {
   isOpen: boolean;
@@ -63,7 +64,17 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
   const [formData, setFormData] = useState<FormData>(initialData);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (formData.telefonoInstitucion) {
+      const { isValid, hint } = cleanWhatsAppNumber(formData.telefonoInstitucion);
+      setPhoneWarning(isValid ? null : hint || "Formato inválido");
+    } else {
+      setPhoneWarning(null);
+    }
+  }, [formData.telefonoInstitucion]);
 
   useEffect(() => {
     if (isOpen) {
@@ -253,8 +264,15 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
                   type="tel"
                   value={formData.telefonoInstitucion}
                   onChange={handleChange}
-                  placeholder="Cod. Área + Número"
+                  placeholder="Ej: 2991234567"
                 />
+                {phoneWarning && (
+                  <p className="text-amber-600 text-xs mt-1 font-medium flex items-center gap-1">
+                    <span className="material-icons !text-xs">warning</span>
+                    {phoneWarning} - Formato WhatsApp: código país + área + número (ej: 542991234567
+                    para Argentina)
+                  </p>
+                )}
                 {errors.telefonoInstitucion && (
                   <p className="text-red-500 text-xs mt-1 font-semibold">
                     {errors.telefonoInstitucion}

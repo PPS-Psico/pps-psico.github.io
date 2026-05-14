@@ -198,6 +198,43 @@ export function formatPhoneNumber(phone?: string | null): string {
   return cleaned;
 }
 
+export function cleanWhatsAppNumber(phone?: string | null): {
+  number: string;
+  isValid: boolean;
+  hint?: string;
+} {
+  if (!phone) return { number: "", isValid: false, hint: "Teléfono vacío" };
+
+  let cleaned = String(phone).replace(/[^\d+]/g, "");
+
+  cleaned = cleaned.replace(/^\+/, "");
+
+  if (!/^\d{8,15}$/.test(cleaned)) {
+    return { number: cleaned, isValid: false, hint: "El número debe tener entre 8 y 15 dígitos" };
+  }
+
+  let finalNumber = cleaned;
+
+  if (cleaned.length === 10 && !cleaned.startsWith("54")) {
+    finalNumber = "54" + cleaned;
+  }
+
+  return { number: finalNumber, isValid: true };
+}
+
+export function getWhatsAppUrl(phone?: string | null, message?: string): string | null {
+  const { number, isValid } = cleanWhatsAppNumber(phone);
+  if (!isValid) return null;
+
+  const encodedMessage = message ? encodeURIComponent(message) : "";
+  return `https://wa.me/${number}?text=${encodedMessage}`.replace("/?text=", "/");
+}
+
+export function isValidWhatsAppFormat(phone?: string | null): boolean {
+  const { isValid } = cleanWhatsAppNumber(phone);
+  return isValid;
+}
+
 export function cleanInstitutionName(input?: any): string {
   return cleanDbValue(input);
 }
