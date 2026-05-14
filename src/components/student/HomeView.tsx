@@ -304,7 +304,15 @@ const HomeView: React.FC<HomeViewProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Convocatorias Abiertas
           </h3>
           <div className="grid grid-cols-1 gap-6">
-            {openLanzamientos.map((l, idx) => renderCard({ ...l, key_suffix: `active-${idx}` }))}
+            {openLanzamientos.map((l, idx) => (
+              <div
+                key={`active-card-${l.id || idx}`}
+                className="animate-home-card-enter"
+                style={{ animationDelay: `${Math.min(idx, 5) * 35}ms` }}
+              >
+                {renderCard({ ...l, key_suffix: `active-${idx}` })}
+              </div>
+            ))}
           </div>
         </div>
       ) : null}
@@ -317,7 +325,15 @@ const HomeView: React.FC<HomeViewProps> = ({
             Finalizadas
           </h3>
           <div className="grid grid-cols-1 gap-6 opacity-85 hover:opacity-100 transition-opacity">
-            {closedLanzamientos.map((l, idx) => renderCard({ ...l, key_suffix: `closed-${idx}` }))}
+            {closedLanzamientos.map((l, idx) => (
+              <div
+                key={`closed-card-${l.id || idx}`}
+                className="animate-home-card-enter"
+                style={{ animationDelay: `${Math.min(idx, 5) * 35}ms` }}
+              >
+                {renderCard({ ...l, key_suffix: `closed-${idx}` })}
+              </div>
+            ))}
           </div>
         </div>
       ) : null}

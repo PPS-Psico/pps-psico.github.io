@@ -160,6 +160,39 @@ html.dark body {
   animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes homeCardEnter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.985);
+    filter: blur(4px);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translate3d(0, -1px, 0) scale(1.002);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-home-card-enter {
+  opacity: 0;
+  animation: homeCardEnter 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-home-card-enter {
+    opacity: 1;
+    animation: none;
+  }
+}
+
 /* 3. Subtle Bob para Ilustraciones */
 @keyframes subtle-bob {
   0%,
