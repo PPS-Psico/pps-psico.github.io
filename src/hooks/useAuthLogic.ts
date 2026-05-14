@@ -18,6 +18,8 @@ const normalizePhone = (phone: any) => {
   return String(phone).replace(/\D/g, "");
 };
 
+const getFirstRow = (data: unknown) => (Array.isArray(data) && data.length > 0 ? data[0] : null);
+
 export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps) => {
   const [mode, setMode] = useState<
     "login" | "register" | "forgot" | "reset" | "migration" | "recover"
@@ -120,6 +122,72 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
       ...buildIdentityVerificationArgs(includePhone),
       new_password: password,
     });
+  };
+
+  const getSignupStatus = async (email?: string) => {
+    const { data, error } = await (supabase.rpc as any)("get_student_signup_status", {
+      legajo_input: legajo.trim(),
+      correo_input: email?.trim().toLowerCase() || null,
+    });
+
+    if (error) {
+      const missingRpc =
+        error.code === "PGRST202" ||
+        String(error.message || "").includes("get_student_signup_status");
+
+      if (missingRpc) {
+        const { data: fallbackData, error: fallbackError } = await (supabase.rpc as any)(
+          "get_student_for_signup",
+          { legajo_input: legajo.trim() }
+        );
+        if (fallbackError)
+          throw new Error("No pudimos validar el legajo en este momento. Intenta nuevamente.");
+
+        const fallbackStudent = getFirstRow(fallbackData) as Record<string, any> | null;
+        return fallbackStudent
+          ? {
+              ...fallbackStudent,
+              signup_status: fallbackStudent.user_id ? "linked" : "available",
+            }
+          : { legajo: legajo.trim(), signup_status: "not_found" };
+      }
+
+      throw new Error("No pudimos validar el legajo en este momento. Intenta nuevamente.");
+    }
+    return getFirstRow(data);
+  };
+
+  const hydrateRegistrationForm = (student: Record<string, any>) => {
+    setFoundStudent(student as unknown as AirtableRecord<EstudianteFields>);
+    setVerificationData({
+      dni: student.dni ? String(student.dni).replace(/\D/g, "") : "",
+      correo: student.correo ? String(student.correo).trim().toLowerCase() : "",
+      telefono: student.telefono ? String(student.telefono).trim() : "",
+    });
+  };
+
+  const assertSignupStatusAllowsCreation = (student: Record<string, any> | null) => {
+    const status = student?.signup_status || (student?.user_id ? "linked" : "available");
+
+    if (!student || status === "not_found") {
+      throw new Error(
+        "El legajo no figura como estudiante habilitado. Revisá el número ingresado o contactá a coordinación."
+      );
+    }
+
+    if (status === "linked") {
+      throw new Error(
+        "Este legajo ya tiene una cuenta activa. Iniciá sesión o usá Recuperar Acceso si olvidaste tu contraseña."
+      );
+    }
+
+    if (status === "email_in_use") {
+      throw new Error(
+        "El correo indicado ya tiene una cuenta creada. Usá Recuperar Acceso para restablecer la contraseña."
+      );
+    }
+
+    return student;
   };
 
   const handleFormSubmit = async (e: FormEvent) => {
@@ -300,24 +368,12 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
       try {
         if (registerStep === 1) {
           if (!legajoTrimmed) throw new Error("Por favor ingresa tu legajo.");
-          const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
-            "get_student_for_signup",
-            { legajo_input: legajoTrimmed }
+
+          const student = assertSignupStatusAllowsCreation(
+            (await getSignupStatus()) as Record<string, any> | null
           );
 
-          if (rpcError) throw new Error(rpcError.message);
-          const student = rpcData && (rpcData as any[]).length > 0 ? (rpcData as any[])[0] : null;
-
-          if (!student)
-            throw new Error(
-              "El legajo no figura en la lista o ya tiene usuario. Prueba 'Recuperar Acceso'."
-            );
-          if (student.user_id)
-            throw new Error(
-              "Este legajo ya tiene cuenta activa. Usa 'Recuperar Acceso' si olvidaste la clave."
-            );
-
-          setFoundStudent(student as unknown as AirtableRecord<EstudianteFields>);
+          hydrateRegistrationForm(student);
           setRegisterStep(2);
           setIsLoading(false);
           return;
@@ -327,10 +383,15 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           const { dni, correo, telefono } = verificationData;
           if (!dni || !correo || !telefono || !password)
             throw new Error("Todos los campos son obligatorios.");
+          if (password.length < 6)
+            throw new Error("La contraseña debe tener al menos 6 caracteres.");
           if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
 
           const inputEmail = correo.trim().toLowerCase();
           const cleanDniInt = parseVerificationDni(dni);
+          assertSignupStatusAllowsCreation(
+            (await getSignupStatus(inputEmail)) as Record<string, any> | null
+          );
 
           // Intentar crear usuario
           const { data: authData, error: signUpError } = await (supabase.auth as any).signUp({
@@ -367,13 +428,25 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
           if (userId) {
             // Garantizar datos actualizados con DNI limpio y cambiar estado a Activo
-            await (supabase.rpc as any)("register_new_student", {
+            const { error: linkError } = await (supabase.rpc as any)("register_new_student", {
               legajo_input: legajoTrimmed,
               userid_input: userId,
               dni_input: cleanDniInt,
               correo_input: inputEmail,
               telefono_input: telefono,
             });
+
+            if (linkError) {
+              const msg = String(linkError.message || "").toLowerCase();
+              if (msg.includes("cuenta vinculada") || msg.includes("already")) {
+                throw new Error(
+                  "La cuenta se creó, pero el legajo ya aparece vinculado. Intentá ingresar o usá Recuperar Acceso."
+                );
+              }
+              throw new Error(
+                "La cuenta se creó, pero no pudimos completar tus datos. Contactá a coordinación para vincular el legajo."
+              );
+            }
 
             await supabase
               .from("estudiantes")
