@@ -60,17 +60,19 @@ UFLO`,
   },
   contacto_institucion: {
     subject: "Contacto Coordinación PPS - Solicitud de práctica profesional",
-    body: `Estimados de {{nombre_institucion}},
+    body: `Hola, {{nombre_institucion}}:
 
-Me contacto desde la Coordinación de Prácticas Profesionales Supervisadas de la Licenciatura en Psicología de la Universidad de Flores (UFLO).
+Mi nombre es Blas Ricera y soy el coordinador de Prácticas Profesionales Supervisadas de la Licenciatura en Psicología de UFLO.
 
-Me pongo en contacto con ustedes en relación a una solicitud de un estudiante para realizar su práctica profesional supervisada en su institución.
+Me pongo en contacto debido a que {{nombre_alumno}} se comunicó con ustedes para explorar la posibilidad de realizar una práctica profesional supervisada en su institución.
 
-Quedo a disposición para coordinar los aspectos formales y académicos del convenio si están interesados.
+Para evaluar esta posibilidad y avanzar con los aspectos formales, les pido por favor que nos pongamos en contacto.
+
+Les dejo mi celular: 2213503808.
 
 Saludos,
 
-Blas Rivera
+Blas Ricera
 Coordinador de PPS - UFLO Psicología
 Contacto: 2213503808`,
   },
@@ -280,9 +282,11 @@ export const sendSmartEmail = async (
         : template?.subject || DEFAULT_TEMPLATES[scenario].subject;
 
     let processedBody =
-      scenario === "seleccion" && (hasLegacySelectionCopy || !template?.body)
+      scenario === "contacto_institucion"
         ? DEFAULT_TEMPLATES[scenario].body
-        : template?.body || DEFAULT_TEMPLATES[scenario].body;
+        : scenario === "seleccion" && (hasLegacySelectionCopy || !template?.body)
+          ? DEFAULT_TEMPLATES[scenario].body
+          : template?.body || DEFAULT_TEMPLATES[scenario].body;
 
     const finalSubject = subjectTmpl
       .replace(/{{nombre_pps}}/g, data.ppsName || "")

@@ -240,7 +240,25 @@ const RequestListItem: React.FC<{
                   label="Email Contacto"
                   value={req.email_institucion}
                   icon="email"
-                  action={req.email_institucion && <CopyButton text={req.email_institucion} />}
+                  action={
+                    req.email_institucion && (
+                      <div className="flex items-center gap-1">
+                        <CopyButton text={req.email_institucion} />
+                        <button
+                          onClick={handleSendEmailToInstitution}
+                          disabled={isSendingEmail}
+                          className="p-1 rounded transition-all flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 disabled:opacity-50"
+                          title="Enviar correo automático a la institución"
+                        >
+                          {isSendingEmail ? (
+                            <div className="w-3 h-3 border-2 border-blue-600/40 border-t-blue-600 rounded-full animate-spin" />
+                          ) : (
+                            <span className="material-icons !text-[14px]">outgoing_mail</span>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  }
                 />
                 <GridItem
                   label="Teléfono"
@@ -380,7 +398,7 @@ const RequestListItem: React.FC<{
                     ) : (
                       <span className="material-icons !text-sm">mail</span>
                     )}
-                    {isSendingEmail ? "Enviando..." : "Enviar Email"}
+                    {isSendingEmail ? "Enviando..." : "Contactar institución"}
                   </button>
                 )}
                 <button

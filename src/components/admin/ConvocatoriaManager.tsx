@@ -1,11 +1,12 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  FIELD_ESTADO_GESTION_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
 } from "../../constants";
 import { FilterType, useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
-import { normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
+import { getGroupName, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
 import CollapsibleSection from "../CollapsibleSection";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
@@ -17,12 +18,57 @@ interface ConvocatoriaManagerProps {
   isTestingMode?: boolean;
 }
 
+const PHONE_DIRECTORY = [
+  { name: "ACUCADES", phone: "2996232713" },
+  { name: "Asociación Civil Programa Aser", phone: "2993247492" },
+  { name: "Asociación Civil Pensar Programa Aser", phone: "2993247492" },
+  { name: "Centro de Inclusión Social y Laboral APASIDO", phone: "2984617520" },
+  { name: "Centro Evaluador Camioneros", phone: "2994569610" },
+  { name: "Centro Salud Parque Industrial", phone: "2994587083" },
+  { name: "Centro de Salud Parque Industrial", phone: "2994587083" },
+  { name: "Centro SENSUS", phone: "2995160061" },
+  { name: "Cita Salud", phone: "2995274960" },
+  { name: "Clínica Fava", phone: "2995467311" },
+  { name: "Colegio Nuestra Señora de Fátima", phone: "2994771182" },
+  { name: "Colegio Psicólogos CPAVZO", phone: "2994092421" },
+  { name: "Colegio San José Obrero de Neuquén", phone: "2942508177" },
+  { name: "Colegio Virgen de Luján", phone: "2994047602" },
+  { name: "Consultorios Las Lilas", phone: "2995353419" },
+  { name: "Corporate Resources", phone: "2996100984" },
+  { name: "Dige Espacio Terapéutico", phone: "1168733671" },
+  { name: "Escuela Cristiana Vida", phone: "2994680666" },
+  { name: "Escuela de Formación Cooperativa y Laboral N8", phone: "2604310174" },
+  {
+    name: "Escuela Integral de Adolescentes y Jóvenes con Discapacidad N7",
+    phone: "2994193469",
+  },
+  { name: "Fundación Austral de Salud Integral", phone: "2995551529" },
+  { name: "Fundación Kano", phone: "2984199042" },
+  { name: "Fundación Lanna", phone: "2994118855" },
+  { name: "Fundación Tiempo", phone: "1154152586" },
+  { name: "Institución Fernando Ulloa", phone: "1127470681" },
+  { name: "Instituto de Formación Docente N6", phone: "2994163682" },
+  { name: "Instituto Liens", phone: "2994281417" },
+  { name: "Instituto Ruca Suyay", phone: "2994769427" },
+  { name: "ISI College", phone: "2994484812" },
+  { name: "Ministerio de Trabajo y Desarrollo Laboral", phone: "2994523457" },
+  { name: "Municipalidad de General Fernandez Oro", phone: "2994838857" },
+  { name: "Randstad", phone: "3417434859" },
+  { name: "Sanatorio Juan XXIII", phone: "2984775371" },
+  {
+    name: "Subsecretaria de Ciudades Saludables y Prevención de Consumos problemáticos Neuquén",
+    phone: "2994194673",
+  },
+  { name: "Supervisión Educación Primaria", phone: "2984228687" },
+].sort((a, b) => b.name.length - a.name.length);
+
 const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
   forcedOrientations,
   isTestingMode = false,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = (searchParams.get("filter") as FilterType) || "all";
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
 
   const {
     institutionsMap,
@@ -39,6 +85,159 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
     filterType,
     setFilterType,
   } = useGestionConvocatorias({ forcedOrientations, isTestingMode, initialFilter });
+
+  const getInstitutionForPpsName = (ppsName?: string | null) => {
+    const normalizedFullName = normalizeStringForComparison(ppsName || "");
+    const normalizedGroupName = normalizeStringForComparison(getGroupName(ppsName || ""));
+
+    const dbMatch =
+      institutionsMap.get(normalizedFullName) ||
+      institutionsMap.get(normalizedGroupName) ||
+      Array.from(institutionsMap.entries()).find(([name]) => {
+        if (!normalizedGroupName) return false;
+        return name.includes(normalizedGroupName) || normalizedGroupName.includes(name);
+      })?.[1];
+
+    if (dbMatch?.phone) return dbMatch;
+
+    const directoryMatch = PHONE_DIRECTORY.find((entry) => {
+      const normalizedEntry = normalizeStringForComparison(entry.name);
+      if (!normalizedEntry) return false;
+      if (
+        normalizedGroupName.includes("fundacion tiempo de ninos") &&
+        normalizedEntry === "fundacion tiempo"
+      ) {
+        return false;
+      }
+      return (
+        normalizedFullName.includes(normalizedEntry) ||
+        normalizedGroupName.includes(normalizedEntry) ||
+        normalizedEntry.includes(normalizedGroupName)
+      );
+    });
+
+    if (directoryMatch) {
+      return {
+        id: dbMatch?.id || `phone-directory-${normalizeStringForComparison(directoryMatch.name)}`,
+        phone: directoryMatch.phone,
+      };
+    }
+
+    return dbMatch;
+  };
+
+  const managementBrief = useMemo(() => {
+    const endingSoon = filteredData.activasPorFinalizar || [];
+    const overdue = filteredData.porContactar || [];
+    const waiting = filteredData.contactadasEsperandoRespuesta || [];
+    const decision = filteredData.respondidasPendienteDecision || [];
+
+    const missingPhoneCount = [...endingSoon, ...overdue, ...waiting, ...decision].filter(
+      (pps: any) => !getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])?.phone
+    ).length;
+
+    const baseActionItems = [
+      ...endingSoon.map((pps: any) => ({
+        id: `ending-${pps.id}`,
+        pps,
+        priority: pps.daysLeft <= 7 ? "Alta" : "Media",
+        label: "Contactar antes del cierre",
+        detail:
+          pps.daysLeft === 0
+            ? "finaliza hoy"
+            : `finaliza en ${pps.daysLeft} dia${pps.daysLeft === 1 ? "" : "s"}`,
+        nextStep: "Confirmar continuidad",
+        targetStatus: "Esperando Respuesta",
+        icon: "event_busy",
+        tone:
+          pps.daysLeft <= 7
+            ? "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-100"
+            : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100",
+        rank: pps.daysLeft <= 7 ? 0 : 1,
+        sortDays: pps.daysLeft || 0,
+      })),
+      ...overdue.map((pps: any) => ({
+        id: `overdue-${pps.id}`,
+        pps,
+        priority: "Alta",
+        label: "Contactar para relanzamiento",
+        detail: `finalizada hace ${pps.daysSinceEnd} dia${pps.daysSinceEnd === 1 ? "" : "s"}`,
+        nextStep: "Enviar consulta",
+        targetStatus: "Esperando Respuesta",
+        icon: "campaign",
+        tone: "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-900/20 dark:text-red-100",
+        rank: 2,
+        sortDays: -(pps.daysSinceEnd || 0),
+      })),
+      ...waiting
+        .filter((pps: any) => (pps.daysWaiting || 0) >= 3)
+        .map((pps: any) => ({
+          id: `waiting-${pps.id}`,
+          pps,
+          priority: (pps.daysWaiting || 0) >= 7 ? "Alta" : "Media",
+          label: "Reinsistir",
+          detail: `sin respuesta hace ${pps.daysWaiting} dia${pps.daysWaiting === 1 ? "" : "s"}`,
+          nextStep: "Reenviar mensaje",
+          targetStatus: "Esperando Respuesta",
+          icon: "mark_email_unread",
+          tone: "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-100",
+          rank: 3,
+          sortDays: -(pps.daysWaiting || 0),
+        })),
+      ...decision.map((pps: any) => ({
+        id: `decision-${pps.id}`,
+        pps,
+        priority: "Media",
+        label: "Definir continuidad",
+        detail: `conversacion abierta hace ${pps.daysSinceResponse || 0} dia${
+          (pps.daysSinceResponse || 0) === 1 ? "" : "s"
+        }`,
+        nextStep: "Cerrar decisión",
+        targetStatus: "En Conversación",
+        icon: "forum",
+        tone: "border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-100",
+        rank: 4,
+        sortDays: -(pps.daysSinceResponse || 0),
+      })),
+    ];
+
+    const actionItems = baseActionItems
+      .map((item: any) => {
+        const ppsName = item.pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
+        const institution = getInstitutionForPpsName(ppsName);
+
+        if (!institution?.phone) {
+          return {
+            ...item,
+            priority: "Alta",
+            label: "Completar contacto",
+            nextStep: "Cargar telefono",
+            targetStatus: item.pps[FIELD_ESTADO_GESTION_LANZAMIENTOS] || "Pendiente de Gestión",
+            icon: "add_call",
+            rank: Math.min(item.rank, 1.5),
+            tone: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100",
+          };
+        }
+
+        return item;
+      })
+      .sort((a, b) => (a.rank === b.rank ? a.sortDays - b.sortDays : a.rank - b.rank));
+
+    return {
+      endingSoon,
+      overdue,
+      waiting,
+      decision,
+      missingPhoneCount,
+      actionItems,
+      totalActionItems: actionItems.length,
+    };
+  }, [filteredData, institutionsMap]);
+
+  const selectedAction =
+    managementBrief.actionItems.find((item: any) => item.id === selectedActionId) ||
+    managementBrief.actionItems[0] ||
+    null;
 
   // Sync state with URL when it changes manually
   useEffect(() => {
@@ -127,6 +326,271 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
         </div>
       </div>
 
+      {/* ==================== AGENDA OPERATIVA ==================== */}
+      <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="material-icons text-blue-600 dark:text-blue-400">inbox</span>
+                  Bandeja de gestión institucional
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Acciones ordenadas por impacto operativo: completar contacto, escribir, reinsistir
+                  o cerrar decisión.
+                </p>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                {[
+                  {
+                    label: "Terminan",
+                    value: managementBrief.endingSoon.length,
+                    filter: "confirmadas" as FilterType,
+                    color: "text-emerald-600 dark:text-emerald-400",
+                  },
+                  {
+                    label: "Vencidas",
+                    value: managementBrief.overdue.length,
+                    filter: "vencidas" as FilterType,
+                    color: "text-red-600 dark:text-red-400",
+                  },
+                  {
+                    label: "Reinsistir",
+                    value: managementBrief.waiting.filter((pps: any) => (pps.daysWaiting || 0) >= 3)
+                      .length,
+                    filter: "demoradas" as FilterType,
+                    color: "text-orange-600 dark:text-orange-400",
+                  },
+                  {
+                    label: "Sin tel.",
+                    value: managementBrief.missingPhoneCount,
+                    filter: "all" as FilterType,
+                    color: "text-amber-600 dark:text-amber-400",
+                  },
+                ].map((metric) => (
+                  <button
+                    key={metric.label}
+                    type="button"
+                    onClick={() => setFilterType(metric.filter)}
+                    className="min-w-[72px] rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-3 py-2 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <p className={`text-lg font-black leading-none ${metric.color}`}>
+                      {metric.value}
+                    </p>
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">
+                      {metric.label}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {managementBrief.actionItems.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-950/40 text-[11px] uppercase text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                  <tr>
+                    <th className="text-left font-bold px-4 py-3">Prioridad</th>
+                    <th className="text-left font-bold px-4 py-3">Institución</th>
+                    <th className="text-left font-bold px-4 py-3">Motivo</th>
+                    <th className="text-left font-bold px-4 py-3">Próximo paso</th>
+                    <th className="text-right font-bold px-4 py-3">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {managementBrief.actionItems.slice(0, 12).map((item: any) => {
+                    const ppsName = item.pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS sin nombre";
+                    const institution = getInstitutionForPpsName(ppsName);
+                    const groupName = getGroupName(ppsName);
+                    const isSelected = selectedAction?.id === item.id;
+                    const priorityClass =
+                      item.priority === "Alta"
+                        ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800"
+                        : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800";
+
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => setSelectedActionId(item.id)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected
+                            ? "bg-blue-50/80 dark:bg-blue-900/20"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <td className="px-4 py-3 align-top">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold ${priorityClass}`}
+                          >
+                            <span className="material-icons !text-xs">{item.icon}</span>
+                            {item.priority}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 align-top min-w-[220px]">
+                          <p className="font-bold text-slate-900 dark:text-white">{groupName}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[320px]">
+                            {ppsName}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 align-top min-w-[180px]">
+                          <p className="font-semibold text-slate-700 dark:text-slate-200">
+                            {item.label}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {item.detail}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 align-top">
+                          <span className="inline-flex rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            {institution?.phone ? item.nextStep : "Completar teléfono"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 align-top">
+                          <div className="flex items-center justify-end gap-2">
+                            {institution?.phone ? (
+                              <a
+                                href={`https://wa.me/${String(institution.phone).replace(/[^0-9]/g, "")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300"
+                                title="Abrir WhatsApp"
+                              >
+                                <span className="material-icons !text-base">chat</span>
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedActionId(item.id);
+                                }}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300"
+                                title="Completar contacto"
+                              >
+                                <span className="material-icons !text-base">add_call</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSearchTerm(groupName === "Sin Nombre" ? ppsName : groupName);
+                              }}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                              title="Ver tarjetas relacionadas"
+                            >
+                              <span className="material-icons !text-base">visibility</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-center text-slate-500 dark:text-slate-400">
+              No hay contactos urgentes para gestionar hoy.
+            </div>
+          )}
+        </div>
+
+        <aside className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          {selectedAction ? (
+            (() => {
+              const ppsName = selectedAction.pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS sin nombre";
+              const institution = getInstitutionForPpsName(ppsName);
+              const groupName = getGroupName(ppsName);
+              const cleanPhone = String(institution?.phone || "").replace(/[^0-9]/g, "");
+
+              return (
+                <div className="p-5 space-y-5">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase text-slate-400 dark:text-slate-500">
+                      Foco actual
+                    </p>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1">
+                      {groupName}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{ppsName}</p>
+                  </div>
+
+                  <div className={`rounded-lg border p-3 ${selectedAction.tone}`}>
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                      <span className="material-icons !text-base">{selectedAction.icon}</span>
+                      {selectedAction.label}
+                    </div>
+                    <p className="text-xs mt-1 opacity-80">{selectedAction.detail}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-lg bg-slate-50 dark:bg-slate-950/40 p-3">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Próximo paso</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">
+                        {institution?.phone ? selectedAction.nextStep : "Completar teléfono"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 dark:bg-slate-950/40 p-3">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Contacto</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-100 mt-1 truncate">
+                        {institution?.phone || "Sin teléfono"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {institution?.phone && (
+                      <a
+                        href={`https://wa.me/${cleanPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 transition-colors"
+                      >
+                        <span className="material-icons !text-base">chat</span>
+                        Abrir WhatsApp
+                      </a>
+                    )}
+                    {institution?.phone && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSave(selectedAction.pps.id, {
+                            [FIELD_ESTADO_GESTION_LANZAMIENTOS]: selectedAction.targetStatus,
+                          })
+                        }
+                        disabled={updatingIds.has(selectedAction.pps.id)}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold py-2.5 transition-colors"
+                      >
+                        <span className="material-icons !text-base">done</span>
+                        Marcar próximo paso
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSearchTerm(groupName === "Sin Nombre" ? ppsName : groupName)
+                      }
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-2.5 transition-colors"
+                    >
+                      <span className="material-icons !text-base">manage_search</span>
+                      Ver detalle abajo
+                    </button>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="p-6 text-center text-slate-500 dark:text-slate-400">
+              Seleccioná una institución para ver el próximo paso.
+            </div>
+          )}
+        </aside>
+      </section>
+
       {/* ==================== SECCIÓN: DEMORADAS (filter=demoradas or integrated in all) ==================== */}
       {filteredData.contactadasEsperandoRespuesta &&
         filteredData.respondidasPendienteDecision &&
@@ -192,9 +656,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                     onSave={handleSave}
                     isUpdating={updatingIds.has(pps.id)}
                     cardType="demoradas"
-                    institution={institutionsMap.get(
-                      normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-                    )}
+                    institution={getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
                     onSavePhone={handleUpdateInstitutionPhone}
                     daysLeft={-(pps.daysSinceEnd || 0)}
                   />
@@ -231,9 +693,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                   onSave={handleSave}
                   isUpdating={updatingIds.has(pps.id)}
                   cardType="porContactar"
-                  institution={institutionsMap.get(
-                    normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-                  )}
+                  institution={getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
                   onSavePhone={handleUpdateInstitutionPhone}
                   daysLeft={-(pps.daysSinceEnd || 0)}
                   urgency={pps.urgency}
@@ -267,9 +727,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                   onSave={handleSave}
                   isUpdating={updatingIds.has(pps.id)}
                   cardType="contactadas"
-                  institution={institutionsMap.get(
-                    normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-                  )}
+                  institution={getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
                   onSavePhone={handleUpdateInstitutionPhone}
                   daysLeft={-(pps.daysSinceEnd || 0)}
                 />
@@ -302,9 +760,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                   onSave={handleSave}
                   isUpdating={updatingIds.has(pps.id)}
                   cardType="respondidas"
-                  institution={institutionsMap.get(
-                    normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-                  )}
+                  institution={getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
                   onSavePhone={handleUpdateInstitutionPhone}
                   daysLeft={-(pps.daysSinceEnd || 0)}
                 />
@@ -316,32 +772,30 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {/* ==================== CATEGORÍAS EXISTENTES ==================== */}
 
       {/* SECCIÓN: ACTIVAS Y POR FINALIZAR */}
-      {filteredData.activasYPorFinalizar &&
-        filteredData.activasYPorFinalizar.length > 0 &&
+      {filteredData.activasPorFinalizar &&
+        filteredData.activasPorFinalizar.length > 0 &&
         (filterType === "all" || filterType === "confirmadas") && (
           <CollapsibleSection
-            title="📅 Lanzadas - Activas y Por Finalizar"
-            count={filteredData.activasYPorFinalizar.length}
+            title="Lanzadas - Proximas a terminar"
+            count={filteredData.activasPorFinalizar.length}
             icon="notifications_active"
             iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"
             iconColor="text-emerald-600 dark:text-emerald-400"
             borderColor="border-emerald-300 dark:border-emerald-800"
-            defaultOpen={false}
+            defaultOpen={true}
           >
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 pl-4 border-l-4 border-emerald-300 dark:border-emerald-700">
               Prácticas que aún están activas o por finalizar.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
-              {filteredData.activasYPorFinalizar.map((pps: any) => (
+              {filteredData.activasPorFinalizar.map((pps: any) => (
                 <GestionCard
                   key={pps.id}
                   pps={pps}
                   onSave={handleSave}
                   isUpdating={updatingIds.has(pps.id)}
                   cardType="activas"
-                  institution={institutionsMap.get(
-                    normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-                  )}
+                  institution={getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
                   onSavePhone={handleUpdateInstitutionPhone}
                   daysLeft={pps.daysLeft}
                 />
@@ -374,9 +828,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                   onSave={handleSave}
                   isUpdating={updatingIds.has(pps.id)}
                   cardType="relanzamientosConfirmados"
-                  institution={institutionsMap.get(
-                    normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-                  )}
+                  institution={getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
                   onSavePhone={handleUpdateInstitutionPhone}
                 />
               ))}
@@ -407,9 +859,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                   onSave={handleSave}
                   isUpdating={updatingIds.has(pps.id)}
                   cardType="indefinidas"
-                  institution={institutionsMap.get(
-                    normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-                  )}
+                  institution={getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
                   onSavePhone={handleUpdateInstitutionPhone}
                 />
               ))}
@@ -421,7 +871,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       {!filteredData.porContactar?.length &&
         !filteredData.contactadasEsperandoRespuesta?.length &&
         !filteredData.respondidasPendienteDecision?.length &&
-        !filteredData.activasYPorFinalizar?.length &&
+        !filteredData.activasPorFinalizar?.length &&
         !filteredData.relanzamientosConfirmados?.length && (
           <EmptyState
             icon="task_alt"

@@ -189,13 +189,15 @@ class ReminderService {
   async getPendingReminders(limit: number = 50): Promise<Reminder[]> {
     if (!this.userId) return [];
 
+    const now = new Date().toISOString();
+
     try {
       const { data, error } = await (supabase
         .from("reminders" as any)
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
-        .is("snoozed_until", null)
+        .or(`snoozed_until.is.null,snoozed_until.lte.${now}`)
         .order("due_date", { ascending: true })
         .limit(limit) as any);
 
@@ -221,6 +223,7 @@ class ReminderService {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const now = new Date().toISOString();
 
     try {
       const { data, error } = await (supabase
@@ -228,6 +231,7 @@ class ReminderService {
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
+        .or(`snoozed_until.is.null,snoozed_until.lte.${now}`)
         .gte("due_date", today.toISOString())
         .lt("due_date", tomorrow.toISOString())
         .order("priority", { ascending: false })
@@ -255,6 +259,7 @@ class ReminderService {
     today.setHours(0, 0, 0, 0);
     const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
+    const now = new Date().toISOString();
 
     try {
       const { data, error } = await (supabase
@@ -262,6 +267,7 @@ class ReminderService {
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
+        .or(`snoozed_until.is.null,snoozed_until.lte.${now}`)
         .gte("due_date", today.toISOString())
         .lt("due_date", nextWeek.toISOString())
         .order("due_date", { ascending: true }) as any);
@@ -292,6 +298,7 @@ class ReminderService {
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
+        .or(`snoozed_until.is.null,snoozed_until.lte.${now}`)
         .lt("due_date", now)
         .order("due_date", { ascending: true })
         .limit(20) as any);

@@ -207,6 +207,14 @@ export const useGestionConvocatorias = ({
       daysLeft?: number;
       urgency?: "high" | "normal";
     })[] = [];
+    const activasPorFinalizar: (LanzamientoPPS & {
+      daysLeft?: number;
+      urgency?: "high" | "normal";
+    })[] = [];
+    const activasEnCurso: (LanzamientoPPS & {
+      daysLeft?: number;
+      urgency?: "high" | "normal";
+    })[] = [];
     const activasIndefinidas: LanzamientoPPS[] = [];
 
     // 1. Group by Institution Base Name to process lifecycle
@@ -239,7 +247,17 @@ export const useGestionConvocatorias = ({
       });
 
       if (futureLaunch) {
-        relanzamientosConfirmados.push(futureLaunch);
+        const endDate = parseToUTCDate(futureLaunch[FIELD_FECHA_FIN_LANZAMIENTOS]);
+        if (endDate) {
+          const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
+          relanzamientosConfirmados.push({
+            ...futureLaunch,
+            daysLeft,
+            urgency: daysLeft <= 15 ? "high" : "normal",
+          } as LanzamientoPPS);
+        } else {
+          relanzamientosConfirmados.push(futureLaunch);
+        }
         return; // Already managed this year
       }
 
@@ -269,12 +287,18 @@ export const useGestionConvocatorias = ({
 
       if (daysLeft >= 0) {
         // STILL ACTIVE - Not finished yet
-        const urgency = daysLeft <= 5 ? "high" : "normal";
-        activasYPorFinalizar.push({
+        const urgency: "high" | "normal" = daysLeft <= 15 ? "high" : "normal";
+        const activeItem = {
           ...relevantPPS,
           daysLeft,
           urgency,
-        });
+        };
+        activasYPorFinalizar.push(activeItem);
+        if (daysLeft <= 45) {
+          activasPorFinalizar.push(activeItem);
+        } else {
+          activasEnCurso.push(activeItem);
+        }
         return;
       }
 
@@ -356,13 +380,13 @@ export const useGestionConvocatorias = ({
       porContactar: porContactar.sort((a, b) => {
         if (a.urgency === "high" && b.urgency !== "high") return -1;
         if (a.urgency !== "high" && b.urgency === "high") return 1;
-        return a.daysSinceEnd - b.daysSinceEnd;
+        return b.daysSinceEnd - a.daysSinceEnd;
       }),
       contactadasEsperandoRespuesta: contactadasEsperandoRespuesta.sort(
         (a, b) => b.daysWaiting - a.daysWaiting
       ),
       respondidasPendienteDecision: respondidasPendienteDecision.sort(
-        (a, b) => (a.daysSinceResponse || 0) - (b.daysSinceResponse || 0)
+        (a, b) => (b.daysSinceResponse || 0) - (a.daysSinceResponse || 0)
       ),
 
       // Categorías existentes
@@ -370,6 +394,10 @@ export const useGestionConvocatorias = ({
       activasYPorFinalizar: activasYPorFinalizar.sort(
         (a, b) => (a.daysLeft || 999) - (b.daysLeft || 999)
       ),
+      activasPorFinalizar: activasPorFinalizar.sort(
+        (a, b) => (a.daysLeft || 999) - (b.daysLeft || 999)
+      ),
+      activasEnCurso: activasEnCurso.sort((a, b) => (a.daysLeft || 999) - (b.daysLeft || 999)),
       activasIndefinidas,
     };
   }, [lanzamientos, debouncedSearch]);

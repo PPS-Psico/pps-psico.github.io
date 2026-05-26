@@ -12,7 +12,6 @@ const GestionView = lazy(() => import("./admin/GestionView"));
 const SolicitudesManager = lazy(() => import("../components/admin/SolicitudesManager"));
 const HerramientasView = lazy(() => import("./admin/HerramientasView"));
 const MetricsView = lazy(() => import("./admin/MetricsView"));
-const RecordatoriosView = lazy(() => import("./admin/RecordatoriosView"));
 
 interface AdminViewProps {
   isTestingMode?: boolean;
@@ -178,7 +177,6 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
               <div className="p-8 text-center text-slate-500">Módulo desactivado</div>
             ))}
           {localTab === "solicitudes" && <SolicitudesManager isTestingMode={true} />}
-          {/* {localTab === "recordatorios" && <RecordatoriosView />} */}
           {localTab === "metrics" && (
             <MetricsView
               onStudentSelect={handleTestStudentSelect}
