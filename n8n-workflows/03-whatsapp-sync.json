@@ -1,0 +1,110 @@
+{
+  "name": "PPS — 03 WhatsApp Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 5 * * *" }] }
+      },
+      "id": "cron",
+      "name": "Cron 5am diario",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "name contains 'msgstore' and name contains 'crypt15' and trashed = false",
+        "returnAll": false,
+        "limit": 5,
+        "filter": {},
+        "options": {
+          "orderBy": "modifiedTime desc",
+          "fields": "id,name,modifiedTime,size,mimeType"
+        }
+      },
+      "id": "drive-search",
+      "name": "Drive: buscar msgstore",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [520, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "QOKbHwsKEjFgwkTA",
+          "name": "Drive Personal (blas.r7@gmail.com)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Toma el primer (más reciente) msgstore.db.crypt15.\nconst items = $input.all();\nif (!items.length) throw new Error('No se encontró ningún msgstore.db.crypt15 en Drive. Revisar que el backup E2E esté terminado.');\nconst f = items[0].json;\nreturn [{ json: { id: f.id, name: f.name, modifiedTime: f.modifiedTime, size: f.size } }];"
+      },
+      "id": "pick-latest",
+      "name": "Elegir más reciente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": { "binaryPropertyName": "data" }
+      },
+      "id": "drive-download",
+      "name": "Drive: descargar",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1040, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "QOKbHwsKEjFgwkTA",
+          "name": "Drive Personal (blas.r7@gmail.com)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pps-hermes.n8n-blas.com.ar/tasks/process_whatsapp_backup",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "since_days", "value": "60" }]
+        },
+        "options": { "timeout": 300000 }
+      },
+      "id": "post-hermes",
+      "name": "Hermes — process backup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 5am diario": {
+      "main": [[{ "node": "Drive: buscar msgstore", "type": "main", "index": 0 }]]
+    },
+    "Drive: buscar msgstore": {
+      "main": [[{ "node": "Elegir más reciente", "type": "main", "index": 0 }]]
+    },
+    "Elegir más reciente": {
+      "main": [[{ "node": "Drive: descargar", "type": "main", "index": 0 }]]
+    },
+    "Drive: descargar": {
+      "main": [[{ "node": "Hermes — process backup", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" }
+}
