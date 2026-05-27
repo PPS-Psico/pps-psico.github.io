@@ -589,19 +589,29 @@ async def process_whatsapp_backup(
 
 # ---------- task: sync_whatsapp_backup (auto via wabdd) ----------
 
-def _process_messages_to_db(messages: list[dict[str, Any]]) -> dict[str, Any]:
-    """Mapea a institucion_id y upsertea. Compartido entre los dos endpoints."""
+def _process_messages_to_db(messages: list[dict[str, Any]], *, only_institutions: bool = True) -> dict[str, Any]:
+    """Mapea a institucion_id y upsertea. Compartido entre los dos endpoints.
+
+    Si only_institutions=True (default): SOLO upserta los mensajes cuyo teléfono matchea
+    con un registro en `instituciones`. El resto se descarta — privacy por defecto.
+    """
     phone_index = _load_institucion_phone_index()
     matched = 0
+    skipped_no_match = 0
     rows_for_db = []
     for m in messages:
         phone = m.pop("_phone", "")
         inst_id = phone_index.get(phone) or phone_index.get(phone[-10:] if len(phone) >= 10 else "")
         if inst_id:
             m["institucion_id"] = inst_id
+            m["raw"] = {"source": "wabdd"}
+            rows_for_db.append(m)
             matched += 1
-        m["raw"] = {"source": "wabdd"}
-        rows_for_db.append(m)
+        else:
+            skipped_no_match += 1
+            if not only_institutions:
+                m["raw"] = {"source": "wabdd"}
+                rows_for_db.append(m)
     upserted = 0
     for i in range(0, len(rows_for_db), 500):
         batch = rows_for_db[i:i + 500]
@@ -613,13 +623,16 @@ def _process_messages_to_db(messages: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "mensajes_parseados": len(messages),
         "mensajes_mapeados_a_institucion": matched,
+        "mensajes_skip_sin_match": skipped_no_match,
         "mensajes_upserted": upserted,
+        "only_institutions": only_institutions,
     }
 
 
 class SyncWhatsAppInput(BaseModel):
     since_days: int = 60
     exclude_media: bool = True
+    only_institutions: bool = True   # drop mensajes cuyo teléfono no esté en instituciones
 
 
 def _refresh_wabdd_auth_token() -> str:
@@ -663,37 +676,57 @@ def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> di
         token_file.write_text(auth_token)
         key_file.write_text(WHATSAPP_E2E_KEY)
 
-        cmd = [
+        # Paso 1: download (solo baja, no desencripta msgstore.db; --decryption-key-file
+        # parece reservado para otros archivos. msgstore.db necesita 'wabdd decrypt' aparte).
+        # Excluyo stickers y media para no bajar GB innecesarios.
+        dl_cmd = [
             "wabdd", "download",
             "--token-file", str(token_file),
-            "--decryption-key-file", str(key_file),
             "--output", str(out_dir),
+            "--exclude", "Backups/Stickers/*",
         ]
         if payload.exclude_media:
-            cmd += ["--exclude", "Media/*"]
+            dl_cmd += ["--exclude", "Media/*"]
 
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+            dl_proc = subprocess.run(dl_cmd, capture_output=True, text=True, timeout=900)
         except subprocess.TimeoutExpired:
-            audit("wa_sync.error", {"step": "wabdd_timeout"}, invocation_id=invocation_id, error="timeout")
+            audit("wa_sync.error", {"step": "wabdd_download_timeout"}, invocation_id=invocation_id, error="timeout")
             raise HTTPException(status_code=504, detail="wabdd download timed out (15 min)")
-
-        if proc.returncode != 0:
-            err_tail = (proc.stderr or proc.stdout or "")[-1200:]
-            audit("wa_sync.error", {"step": "wabdd", "stderr_tail": err_tail},
+        if dl_proc.returncode != 0:
+            err_tail = (dl_proc.stderr or dl_proc.stdout or "")[-1200:]
+            audit("wa_sync.error", {"step": "wabdd_download", "stderr_tail": err_tail},
                   invocation_id=invocation_id, error=err_tail)
-            raise HTTPException(status_code=500, detail=f"wabdd falló: {err_tail}")
+            raise HTTPException(status_code=500, detail=f"wabdd download falló: {err_tail}")
 
-        # Encontrar el msgstore.db desencriptado en el árbol de salida.
-        candidates = list(out_dir.rglob("msgstore.db"))
-        if not candidates:
-            # algunos layouts dejan el archivo dentro de un subdir 'decrypted/'
-            candidates = list(out_dir.rglob("*.db"))
-        if not candidates:
-            audit("wa_sync.error", {"step": "locate_db", "stdout_tail": (proc.stdout or "")[-800:]},
-                  invocation_id=invocation_id, error="no msgstore found")
-            raise HTTPException(status_code=500, detail="no se encontró msgstore.db desencriptado en la salida")
-        msgstore = max(candidates, key=lambda p: p.stat().st_size)  # el más grande suele ser msgstore
+        # Paso 2: decrypt — produce un dir paralelo <out_dir>-decrypted/
+        dec_cmd = [
+            "wabdd", "decrypt",
+            "--key-file", str(key_file),
+            "dump", str(out_dir),
+        ]
+        try:
+            dec_proc = subprocess.run(dec_cmd, capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            audit("wa_sync.error", {"step": "wabdd_decrypt_timeout"}, invocation_id=invocation_id, error="timeout")
+            raise HTTPException(status_code=504, detail="wabdd decrypt timed out (5 min)")
+        if dec_proc.returncode != 0:
+            err_tail = (dec_proc.stderr or dec_proc.stdout or "")[-1200:]
+            audit("wa_sync.error", {"step": "wabdd_decrypt", "stderr_tail": err_tail},
+                  invocation_id=invocation_id, error=err_tail)
+            raise HTTPException(status_code=500, detail=f"wabdd decrypt falló: {err_tail}")
+
+        decrypted_dir = out_dir.parent / f"{out_dir.name}-decrypted"
+        msgstore_candidate = decrypted_dir / "Databases" / "msgstore.db"
+        if not msgstore_candidate.exists():
+            # fallback: cualquier msgstore.db dentro del árbol desencriptado
+            cands = list(decrypted_dir.rglob("msgstore.db")) if decrypted_dir.exists() else []
+            if not cands:
+                audit("wa_sync.error", {"step": "locate_db"}, invocation_id=invocation_id, error="no msgstore.db")
+                raise HTTPException(status_code=500, detail="no se encontró msgstore.db desencriptado")
+            msgstore = max(cands, key=lambda p: p.stat().st_size)
+        else:
+            msgstore = msgstore_candidate
 
         try:
             messages = _parse_msgstore(msgstore, since_days=payload.since_days)
