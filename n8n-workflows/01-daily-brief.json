@@ -95,13 +95,8 @@
       "parameters": {
         "method": "POST",
         "url": "https://pps-hermes.n8n-blas.com.ar/tasks/daily_brief",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "X-Hermes-Token", "value": "={{$env.HERMES_INTERNAL_TOKEN}}" },
-            { "name": "Content-Type", "value": "application/json" }
-          ]
-        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
@@ -111,7 +106,10 @@
       "name": "Hermes — daily_brief",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, 360]
+      "position": [1100, 360],
+      "credentials": {
+        "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
+      }
     }
   ],
   "connections": {
