@@ -70,18 +70,28 @@ def require_token(x_hermes_token: str = Header(default="")) -> None:
 
 # ---------- audit ----------
 
-def audit(event: str, payload: dict[str, Any], suggestion_id: str | None = None) -> None:
+def audit(
+    tool: str,
+    input_: dict[str, Any] | None = None,
+    output: dict[str, Any] | None = None,
+    *,
+    invocation_id: str,
+    suggestion_id: str | None = None,
+    duration_ms: int | None = None,
+    error: str | None = None,
+) -> None:
     try:
         sb.table("agent_audit_log").insert({
-            "event": event,
-            "payload": payload,
+            "invocation_id": invocation_id,
+            "tool": tool,
+            "input": {"mode": HERMES_MODE, "model": HERMES_MODEL, **(input_ or {})},
+            "output": output,
             "suggestion_id": suggestion_id,
-            "mode": HERMES_MODE,
-            "model": HERMES_MODEL,
+            "duration_ms": duration_ms,
+            "error": error,
         }).execute()
     except Exception as exc:  # noqa: BLE001
-        # nunca tumbamos el request por un fallo de auditoría, pero lo dejamos visible
-        print(f"[audit] fallo al loguear {event}: {exc}", flush=True)
+        print(f"[audit] fallo al loguear {tool}: {exc}", flush=True)
 
 
 # ---------- llm call ----------
@@ -130,7 +140,8 @@ class DailyBriefInput(BaseModel):
 @app.post("/tasks/daily_brief", dependencies=[Depends(require_token)])
 def daily_brief(payload: DailyBriefInput) -> dict[str, Any]:
     t0 = time.time()
-    audit("daily_brief.start", payload.model_dump())
+    invocation_id = str(uuid.uuid4())
+    audit("daily_brief.start", payload.model_dump(), invocation_id=invocation_id)
 
     schema = (
         '{"bullets":[{"prioridad":"alta|media|baja",'
@@ -148,13 +159,17 @@ def daily_brief(payload: DailyBriefInput) -> dict[str, Any]:
     suggestion_id = str(uuid.uuid4())
     sb.table("agent_suggestions").insert({
         "id": suggestion_id,
-        "kind": "daily_brief",
-        "status": "pending",
-        "content": result,
-        "model": HERMES_MODEL,
+        "tipo": "daily_brief",
+        "payload": result,
+        "contexto": {"model": HERMES_MODEL, "input_summary": {k: len(v) for k, v in payload.model_dump().items()}},
     }).execute()
 
-    audit("daily_brief.done", {"ms": int((time.time() - t0) * 1000)}, suggestion_id=suggestion_id)
+    audit(
+        "daily_brief.done",
+        invocation_id=invocation_id,
+        suggestion_id=suggestion_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
     return {"suggestion_id": suggestion_id, "content": result}
 
 
@@ -171,7 +186,8 @@ class DraftReplyInput(BaseModel):
 @app.post("/tasks/draft_reply", dependencies=[Depends(require_token)])
 def draft_reply(payload: DraftReplyInput) -> dict[str, Any]:
     t0 = time.time()
-    audit("draft_reply.start", payload.model_dump())
+    invocation_id = str(uuid.uuid4())
+    audit("draft_reply.start", payload.model_dump(), invocation_id=invocation_id)
 
     institucion_md = ""
     if payload.institucion_id:
@@ -198,16 +214,25 @@ def draft_reply(payload: DraftReplyInput) -> dict[str, Any]:
     )
     result = llm_json(user, schema_hint=schema)
 
+    tipo = "email_draft" if payload.source == "gmail" else "whatsapp_followup"
     suggestion_id = str(uuid.uuid4())
     sb.table("agent_suggestions").insert({
         "id": suggestion_id,
-        "kind": "draft_reply",
-        "status": "pending",
-        "content": result,
-        "model": HERMES_MODEL,
-        "ref_thread_id": payload.thread_id,
-        "ref_institucion_id": payload.institucion_id,
+        "tipo": tipo,
+        "payload": result,
+        "contexto": {
+            "model": HERMES_MODEL,
+            "source": payload.source,
+            "thread_id": payload.thread_id,
+            "extra": payload.contexto_extra,
+        },
+        "institucion_id": payload.institucion_id,
     }).execute()
 
-    audit("draft_reply.done", {"ms": int((time.time() - t0) * 1000)}, suggestion_id=suggestion_id)
+    audit(
+        "draft_reply.done",
+        invocation_id=invocation_id,
+        suggestion_id=suggestion_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
     return {"suggestion_id": suggestion_id, "content": result}
