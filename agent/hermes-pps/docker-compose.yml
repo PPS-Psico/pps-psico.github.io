@@ -1,0 +1,30 @@
+services:
+  hermes-pps:
+    build: .
+    container_name: hermes-pps
+    restart: unless-stopped
+    mem_limit: 1500m
+    env_file:
+      - .env
+    volumes:
+      - /opt/obsidian-pps:/vault
+      - hermes_pps_data:/data
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hermes-pps.rule=Host(`pps-hermes.n8n-blas.com.ar`)"
+      - "traefik.http.routers.hermes-pps.entrypoints=websecure"
+      - "traefik.http.routers.hermes-pps.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.hermes-pps.middlewares=hermes-pps-auth"
+      - "traefik.http.services.hermes-pps.loadbalancer.server.port=8080"
+      # Basic Auth — generar con: htpasswd -nb USER PASS  (escapar $ → $$)
+      - "traefik.http.middlewares.hermes-pps-auth.basicauth.users=${BASIC_AUTH_USERS}"
+
+volumes:
+  hermes_pps_data:
+
+networks:
+  traefik_net:
+    external: true
+    name: n8n-traefik_default

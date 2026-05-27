@@ -1,0 +1,168 @@
+{
+  "name": "PPS — 01 Daily Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8 * * 1-5" }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cron 8am L-V",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select id, institucion_id, estudiante_id, estado, created_at from solicitudes_pps where estado in ('pendiente','en_revision') and created_at < now() - interval '48 hours' order by created_at asc limit 25;"
+      },
+      "id": "sb-solicitudes",
+      "name": "Solicitudes pendientes >48h",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 120],
+      "credentials": {
+        "supabaseApi": { "id": "REEMPLAZAR-SUPABASE-CRED-ID", "name": "Supabase UFLO PPS" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select id, institucion_id, nombre, fecha_limite from lanzamientos_pps where activo = true and fecha_limite between current_date and current_date + interval '7 days' order by fecha_limite asc limit 25;"
+      },
+      "id": "sb-lanzamientos",
+      "name": "Lanzamientos por vencer",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 260],
+      "credentials": {
+        "supabaseApi": { "id": "REEMPLAZAR-SUPABASE-CRED-ID", "name": "Supabase UFLO PPS" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select i.id, i.nombre, max(coalesce(g.fecha, w.fecha)) as ultimo_contacto from instituciones i left join gmail_hilos g on g.institucion_id = i.id left join whatsapp_mensajes w on w.institucion_id = i.id where i.activo = true group by i.id, i.nombre having max(coalesce(g.fecha, w.fecha)) < now() - interval '30 days' or max(coalesce(g.fecha, w.fecha)) is null order by ultimo_contacto asc nulls first limit 15;"
+      },
+      "id": "sb-inst-frias",
+      "name": "Instituciones sin contacto >30d",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 400],
+      "credentials": {
+        "supabaseApi": { "id": "REEMPLAZAR-SUPABASE-CRED-ID", "name": "Supabase UFLO PPS" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select id, thread_id, asunto, remitente, fecha from gmail_hilos where requiere_respuesta = true and respondido = false order by fecha asc limit 20;"
+      },
+      "id": "sb-gmail",
+      "name": "Gmail sin responder",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 540],
+      "credentials": {
+        "supabaseApi": { "id": "REEMPLAZAR-SUPABASE-CRED-ID", "name": "Supabase UFLO PPS" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select id, institucion_id, remitente, mensaje, fecha from whatsapp_mensajes where pendiente = true order by fecha asc limit 20;"
+      },
+      "id": "sb-wa",
+      "name": "WhatsApp pendientes",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [520, 680],
+      "credentials": {
+        "supabaseApi": { "id": "REEMPLAZAR-SUPABASE-CRED-ID", "name": "Supabase UFLO PPS" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const get = (name) => $items(name).map(i => i.json);\nreturn [{ json: {\n  solicitudes_pendientes: get('Solicitudes pendientes >48h'),\n  lanzamientos_por_vencer: get('Lanzamientos por vencer'),\n  instituciones_sin_contacto: get('Instituciones sin contacto >30d'),\n  gmail_sin_responder: get('Gmail sin responder'),\n  whatsapp_pendientes: get('WhatsApp pendientes')\n} }];"
+      },
+      "id": "merge",
+      "name": "Armar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [820, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pps-hermes.n8n-blas.com.ar/tasks/daily_brief",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Hermes-Token", "value": "={{$env.HERMES_INTERNAL_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "call-hermes",
+      "name": "Hermes — daily_brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 400]
+    },
+    {
+      "parameters": {
+        "sendTo": "blas.rivera@uflouniversidad.edu.ar",
+        "subject": "=Hermes-PPS — Daily Brief {{ $now.toFormat('yyyy-MM-dd') }}",
+        "emailType": "html",
+        "message": "=<h2>Hermes-PPS — Daily Brief</h2>\n<p><b>Resumen:</b> {{ $json.content.resumen }}</p>\n<ul>\n{{ ($json.content.bullets || []).map(b => `<li><b>[${b.prioridad}]</b> ${b.titulo}<br/><i>${b.por_que}</i><br/>→ ${b.accion_sugerida}${b.recurso ? ` (<a href=\"${b.recurso}\">link</a>)` : ''}</li>`).join('') }}\n</ul>\n<hr/>\n<p style=\"color:#888;font-size:12px\">Suggestion ID: {{ $json.suggestion_id }} — revisalo en el panel para aprobar/descartar.</p>",
+        "options": {}
+      },
+      "id": "mail-brief",
+      "name": "Mail a Blas",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1380, 400],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REEMPLAZAR-GMAIL-CRED-ID",
+          "name": "Gmail — blas.rivera@uflouniversidad.edu.ar"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 8am L-V": {
+      "main": [
+        [
+          { "node": "Solicitudes pendientes >48h", "type": "main", "index": 0 },
+          { "node": "Lanzamientos por vencer", "type": "main", "index": 0 },
+          { "node": "Instituciones sin contacto >30d", "type": "main", "index": 0 },
+          { "node": "Gmail sin responder", "type": "main", "index": 0 },
+          { "node": "WhatsApp pendientes", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Solicitudes pendientes >48h": {
+      "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]]
+    },
+    "Lanzamientos por vencer": {
+      "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]]
+    },
+    "Instituciones sin contacto >30d": {
+      "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]]
+    },
+    "Gmail sin responder": { "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]] },
+    "WhatsApp pendientes": { "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]] },
+    "Armar payload": { "main": [[{ "node": "Hermes — daily_brief", "type": "main", "index": 0 }]] },
+    "Hermes — daily_brief": { "main": [[{ "node": "Mail a Blas", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" },
+  "active": false,
+  "tags": [{ "name": "pps-hermes" }]
+}
