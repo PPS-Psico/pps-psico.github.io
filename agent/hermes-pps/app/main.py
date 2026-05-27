@@ -46,7 +46,9 @@ HERMES_MODE = os.environ.get("HERMES_MODE", "shadow")
 HERMES_INTERNAL_TOKEN = os.environ["HERMES_INTERNAL_TOKEN"]
 VAULT_PATH = pathlib.Path(os.environ.get("VAULT_PATH", "/vault"))
 WHATSAPP_E2E_KEY = os.environ.get("WHATSAPP_E2E_KEY", "")
-WABDD_OAUTH_TOKEN = os.environ.get("WABDD_OAUTH_TOKEN", "")
+WABDD_MASTER_TOKEN = os.environ.get("WABDD_MASTER_TOKEN", "")
+WABDD_ANDROID_ID = os.environ.get("WABDD_ANDROID_ID", "")
+WABDD_EMAIL = os.environ.get("WABDD_EMAIL", "")
 
 SYSTEM_PROMPT_PATH = pathlib.Path(__file__).parent.parent / "system_prompt.md"
 
@@ -620,13 +622,32 @@ class SyncWhatsAppInput(BaseModel):
     exclude_media: bool = True
 
 
+def _refresh_wabdd_auth_token() -> str:
+    """Usa el master_token de Google (long-lived) para obtener un auth_token fresco
+    con los scopes específicos de WhatsApp backup (drive.appdata, app=com.whatsapp).
+    Equivale a lo que hace gpsoauth_helper.get_auth_token() de wabdd.
+    """
+    import gpsoauth
+    if not (WABDD_MASTER_TOKEN and WABDD_ANDROID_ID and WABDD_EMAIL):
+        raise HTTPException(status_code=500, detail="WABDD_MASTER_TOKEN/ANDROID_ID/EMAIL no configurados")
+    resp = gpsoauth.perform_oauth(
+        WABDD_EMAIL, WABDD_MASTER_TOKEN, WABDD_ANDROID_ID,
+        service="oauth2:https://www.googleapis.com/auth/drive.appdata",
+        app="com.whatsapp",
+        client_sig="38a0f7d505fe18fec64fbf343ecaaaf310dbd799",
+    )
+    if "Auth" not in resp:
+        raise HTTPException(status_code=500, detail=f"gpsoauth no devolvió Auth: {resp}")
+    return resp["Auth"]
+
+
 @app.post("/tasks/sync_whatsapp_backup", dependencies=[Depends(require_token)])
 def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> dict[str, Any]:
     """Pipeline completo: bajá backup via wabdd (Drive interno), desencriptá, parseá, upserteá."""
-    if not WABDD_OAUTH_TOKEN:
-        raise HTTPException(status_code=500, detail="WABDD_OAUTH_TOKEN no configurado")
     if not WHATSAPP_E2E_KEY:
         raise HTTPException(status_code=500, detail="WHATSAPP_E2E_KEY no configurado")
+    # refresca auth_token desde master_token (largoplacista)
+    auth_token = _refresh_wabdd_auth_token()
 
     t0 = time.time()
     invocation_id = str(uuid.uuid4())
@@ -639,7 +660,7 @@ def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> di
         out_dir = tdp / "out"
         out_dir.mkdir()
 
-        token_file.write_text(WABDD_OAUTH_TOKEN)
+        token_file.write_text(auth_token)
         key_file.write_text(WHATSAPP_E2E_KEY)
 
         cmd = [
