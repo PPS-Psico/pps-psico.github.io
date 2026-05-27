@@ -1,0 +1,88 @@
+{
+  "name": "PPS — 02 Gmail Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7,13,19 * * 1-5" }]
+        }
+      },
+      "id": "cron",
+      "name": "Cron 7/13/19 L-V",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {
+          "labelIds": ["INBOX"],
+          "q": "newer_than:1d -category:promotions -category:social -category:forums -from:noreply -from:no-reply -from:notifications -from:newsletter -from:updates -from:hello -from:team -from:security -from:billing -from:@openrouter.ai -from:@n8n.io -from:@supabase.io -from:@supabase.com -from:@baserow.io -from:@github.com -from:@google.com -from:@accounts.google.com -from:@docs.google.com -from:@accounts.youtube.com"
+        },
+        "options": {}
+      },
+      "id": "gmail-list",
+      "name": "Gmail: list recent",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [520, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "hkyG2g0VcR6ryzjN",
+          "name": "Gmail PPS (blas.rivera@uflouniversidad.edu.ar)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agrupa mensajes por threadId y arma upsert para gmail_hilos.\n// Estado: si el ÚLTIMO mensaje del hilo lo mandó Blas -> respondido_por_nos; si no -> esperando_respuesta.\n// Tag de prioridad por dominio: @uflouniversidad.edu.ar es alta.\nconst me = 'blas.rivera@uflouniversidad.edu.ar';\nconst items = $input.all();\nconst byThread = new Map();\nfor (const item of items) {\n  const m = item.json;\n  const tid = m.threadId || m.id;\n  if (!tid) continue;\n  const headers = (m.payload?.headers || []).reduce((acc,h)=>{ acc[h.name.toLowerCase()] = h.value; return acc; }, {});\n  const from = headers['from'] || '';\n  const to = headers['to'] || '';\n  const subject = headers['subject'] || '(sin asunto)';\n  const dateMs = parseInt(m.internalDate || '0', 10) || Date.parse(headers['date'] || '') || Date.now();\n  const fromEmail = (from.match(/<([^>]+)>/) || [, from])[1].toLowerCase().trim();\n  const fromMe = fromEmail.includes(me.toLowerCase());\n  const existing = byThread.get(tid);\n  if (!existing || dateMs > existing.last_ms) {\n    byThread.set(tid, {\n      thread_id: tid,\n      asunto: subject.replace(/^(Re:|Fwd:|RE:|FW:)\\s*/i, ''),\n      ultimo_mensaje_at: new Date(dateMs).toISOString(),\n      ultimo_mensaje_de: from,\n      from_email: fromEmail,\n      from_me: fromMe,\n      last_ms: dateMs,\n      participantes: existing?.participantes || new Set(),\n      mensajes: existing?.mensajes || []\n    });\n  }\n  const t = byThread.get(tid);\n  t.participantes.add(fromEmail);\n  if (to) for (const e of to.split(',')) t.participantes.add(e.trim().toLowerCase());\n  t.mensajes.push({ from, subject, snippet: m.snippet || '', date: new Date(dateMs).toISOString() });\n  if (!t.primer_mensaje_at || dateMs < Date.parse(t.primer_mensaje_at)) t.primer_mensaje_at = new Date(dateMs).toISOString();\n}\nconst out = [];\nfor (const t of byThread.values()) {\n  const estado = t.from_me ? 'respondido_por_nos' : 'esperando_respuesta';\n  const uflo = t.from_email.endsWith('@uflouniversidad.edu.ar') || [...t.participantes].some(p => p.endsWith('@uflouniversidad.edu.ar'));\n  out.push({ json: {\n    thread_id: t.thread_id,\n    asunto: t.asunto,\n    participantes: [...t.participantes],\n    primer_mensaje_at: t.primer_mensaje_at || t.ultimo_mensaje_at,\n    ultimo_mensaje_at: t.ultimo_mensaje_at,\n    ultimo_mensaje_de: t.ultimo_mensaje_de,\n    estado,\n    clasificacion: uflo ? 'uflo_interno' : 'externo',\n    raw_mensajes: t.mensajes.slice(-5)\n  } });\n}\nreturn out;"
+      },
+      "id": "code-group",
+      "name": "Agrupar por thread",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/gmail_hilos?on_conflict=thread_id",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "sb-upsert",
+      "name": "Upsert gmail_hilos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 7/13/19 L-V": {
+      "main": [[{ "node": "Gmail: list recent", "type": "main", "index": 0 }]]
+    },
+    "Gmail: list recent": {
+      "main": [[{ "node": "Agrupar por thread", "type": "main", "index": 0 }]]
+    },
+    "Agrupar por thread": {
+      "main": [[{ "node": "Upsert gmail_hilos", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" }
+}
