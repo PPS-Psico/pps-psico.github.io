@@ -18,7 +18,9 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import sqlite3
+import subprocess
 import tempfile
 import time
 import uuid
@@ -44,6 +46,7 @@ HERMES_MODE = os.environ.get("HERMES_MODE", "shadow")
 HERMES_INTERNAL_TOKEN = os.environ["HERMES_INTERNAL_TOKEN"]
 VAULT_PATH = pathlib.Path(os.environ.get("VAULT_PATH", "/vault"))
 WHATSAPP_E2E_KEY = os.environ.get("WHATSAPP_E2E_KEY", "")
+WABDD_OAUTH_TOKEN = os.environ.get("WABDD_OAUTH_TOKEN", "")
 
 SYSTEM_PROMPT_PATH = pathlib.Path(__file__).parent.parent / "system_prompt.md"
 
@@ -576,6 +579,115 @@ async def process_whatsapp_backup(
     audit(
         "wa_backup.done",
         output=summary,
+        invocation_id=invocation_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
+    return summary
+
+
+# ---------- task: sync_whatsapp_backup (auto via wabdd) ----------
+
+def _process_messages_to_db(messages: list[dict[str, Any]]) -> dict[str, Any]:
+    """Mapea a institucion_id y upsertea. Compartido entre los dos endpoints."""
+    phone_index = _load_institucion_phone_index()
+    matched = 0
+    rows_for_db = []
+    for m in messages:
+        phone = m.pop("_phone", "")
+        inst_id = phone_index.get(phone) or phone_index.get(phone[-10:] if len(phone) >= 10 else "")
+        if inst_id:
+            m["institucion_id"] = inst_id
+            matched += 1
+        m["raw"] = {"source": "wabdd"}
+        rows_for_db.append(m)
+    upserted = 0
+    for i in range(0, len(rows_for_db), 500):
+        batch = rows_for_db[i:i + 500]
+        try:
+            sb.table("whatsapp_mensajes").upsert(batch, on_conflict="id").execute()
+            upserted += len(batch)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[wa] fallo upsert batch {i}: {exc}", flush=True)
+    return {
+        "mensajes_parseados": len(messages),
+        "mensajes_mapeados_a_institucion": matched,
+        "mensajes_upserted": upserted,
+    }
+
+
+class SyncWhatsAppInput(BaseModel):
+    since_days: int = 60
+    exclude_media: bool = True
+
+
+@app.post("/tasks/sync_whatsapp_backup", dependencies=[Depends(require_token)])
+def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> dict[str, Any]:
+    """Pipeline completo: bajá backup via wabdd (Drive interno), desencriptá, parseá, upserteá."""
+    if not WABDD_OAUTH_TOKEN:
+        raise HTTPException(status_code=500, detail="WABDD_OAUTH_TOKEN no configurado")
+    if not WHATSAPP_E2E_KEY:
+        raise HTTPException(status_code=500, detail="WHATSAPP_E2E_KEY no configurado")
+
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("wa_sync.start", payload.model_dump(), invocation_id=invocation_id)
+
+    with tempfile.TemporaryDirectory() as td:
+        tdp = pathlib.Path(td)
+        token_file = tdp / "token.txt"
+        key_file = tdp / "key.txt"
+        out_dir = tdp / "out"
+        out_dir.mkdir()
+
+        token_file.write_text(WABDD_OAUTH_TOKEN)
+        key_file.write_text(WHATSAPP_E2E_KEY)
+
+        cmd = [
+            "wabdd", "download",
+            "--token-file", str(token_file),
+            "--decryption-key-file", str(key_file),
+            "--output", str(out_dir),
+        ]
+        if payload.exclude_media:
+            cmd += ["--exclude", "Media/*"]
+
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+        except subprocess.TimeoutExpired:
+            audit("wa_sync.error", {"step": "wabdd_timeout"}, invocation_id=invocation_id, error="timeout")
+            raise HTTPException(status_code=504, detail="wabdd download timed out (15 min)")
+
+        if proc.returncode != 0:
+            err_tail = (proc.stderr or proc.stdout or "")[-1200:]
+            audit("wa_sync.error", {"step": "wabdd", "stderr_tail": err_tail},
+                  invocation_id=invocation_id, error=err_tail)
+            raise HTTPException(status_code=500, detail=f"wabdd falló: {err_tail}")
+
+        # Encontrar el msgstore.db desencriptado en el árbol de salida.
+        candidates = list(out_dir.rglob("msgstore.db"))
+        if not candidates:
+            # algunos layouts dejan el archivo dentro de un subdir 'decrypted/'
+            candidates = list(out_dir.rglob("*.db"))
+        if not candidates:
+            audit("wa_sync.error", {"step": "locate_db", "stdout_tail": (proc.stdout or "")[-800:]},
+                  invocation_id=invocation_id, error="no msgstore found")
+            raise HTTPException(status_code=500, detail="no se encontró msgstore.db desencriptado en la salida")
+        msgstore = max(candidates, key=lambda p: p.stat().st_size)  # el más grande suele ser msgstore
+
+        try:
+            messages = _parse_msgstore(msgstore, since_days=payload.since_days)
+        except Exception as exc:  # noqa: BLE001
+            audit("wa_sync.error", {"step": "parse", "err": str(exc)},
+                  invocation_id=invocation_id, error=str(exc))
+            raise HTTPException(status_code=500, detail=f"fallo al parsear msgstore: {exc}")
+
+        summary = _process_messages_to_db(messages)
+
+    summary["since_days"] = payload.since_days
+    summary["wabdd_stdout_tail"] = (proc.stdout or "")[-400:]
+    audit(
+        "wa_sync.done",
+        output={k: v for k, v in summary.items() if k != "wabdd_stdout_tail"},
         invocation_id=invocation_id,
         duration_ms=int((time.time() - t0) * 1000),
     )
