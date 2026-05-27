@@ -16,82 +16,74 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/solicitudes_pps?select=id,estudiante_id,nombre_alumno,nombre_institucion,estado_seguimiento,actualizacion,created_at&order=created_at.desc&limit=25",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
-          ]
-        },
+        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/solicitudes_pps?select=id,estudiante_id,nombre_alumno,nombre_institucion,estado_seguimiento,actualizacion,created_at&order=created_at.desc&limit=25",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "options": {}
       },
       "id": "sb-solicitudes",
       "name": "Solicitudes recientes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 120]
+      "position": [520, 120],
+      "credentials": {
+        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
+      }
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/lanzamientos_pps?select=id,nombre_pps,orientacion,fecha_inicio,fecha_finalizacion,estado_gestion,estado_convocatoria,cupos_disponibles,proximo_seguimiento&estado_gestion=neq.Archivado&order=fecha_finalizacion.asc&limit=30",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
-          ]
-        },
+        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/lanzamientos_pps?select=id,nombre_pps,orientacion,fecha_inicio,fecha_finalizacion,estado_gestion,estado_convocatoria,cupos_disponibles,proximo_seguimiento&estado_gestion=neq.Archivado&order=fecha_finalizacion.asc&limit=30",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "options": {}
       },
       "id": "sb-lanzamientos",
       "name": "Lanzamientos activos",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 280]
+      "position": [520, 280],
+      "credentials": {
+        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
+      }
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/gmail_hilos?select=thread_id,asunto,ultimo_mensaje_de,ultimo_mensaje_at,estado,clasificacion,institucion_id&estado=eq.esperando_respuesta&order=ultimo_mensaje_at.asc&limit=20",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
-          ]
-        },
+        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/gmail_hilos?select=thread_id,asunto,ultimo_mensaje_de,ultimo_mensaje_at,estado,clasificacion,institucion_id&estado=eq.esperando_respuesta&order=ultimo_mensaje_at.asc&limit=20",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "options": {}
       },
       "id": "sb-gmail",
       "name": "Gmail esperando respuesta",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 440]
+      "position": [520, 440],
+      "credentials": {
+        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
+      }
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/whatsapp_mensajes?select=id,chat_jid,institucion_id,autor,texto,timestamp&from_me=eq.false&order=timestamp.desc&limit=20",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$env.SUPABASE_SERVICE_ROLE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}" }
-          ]
-        },
+        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/whatsapp_mensajes?select=id,chat_jid,institucion_id,autor,texto,timestamp&from_me=eq.false&order=timestamp.desc&limit=20",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "options": {}
       },
       "id": "sb-wa",
       "name": "WhatsApp entrantes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 600]
+      "position": [520, 600],
+      "credentials": {
+        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// Combina las 4 fuentes y filtra lo que importa por edad.\nconst now = new Date();\nconst hoursSince = (iso) => (now - new Date(iso)) / 36e5;\n\nconst solicitudes = ($input.first().json || []).filter ? $input.first().json : [];\nconst lanzamientos = ($input.last().json || []);\nconst all = $input.all();\n\n// $input.all() viene en orden de los nodos conectados. Tomar por índice.\nconst raw = all.map(i => Array.isArray(i.json) ? i.json : (i.json ? [i.json] : []));\nconst [solis, lanzs, gmails, whats] = raw;\n\nconst solis_pendientes = (solis||[]).filter(s => hoursSince(s.created_at) > 48).slice(0,15);\nconst lanzs_por_vencer = (lanzs||[]).filter(l => {\n  if (!l.fecha_finalizacion) return false;\n  const d = new Date(l.fecha_finalizacion);\n  const diffDays = (d - now) / (1000*60*60*24);\n  return diffDays >= -1 && diffDays <= 7;\n}).slice(0,15);\n\nreturn [{ json: {\n  solicitudes_pendientes: solis_pendientes,\n  lanzamientos_por_vencer: lanzs_por_vencer,\n  instituciones_sin_contacto: [],\n  gmail_sin_responder: gmails || [],\n  whatsapp_pendientes: whats || []\n} }];"
+        "jsCode": "const now = new Date();\nconst hoursSince = (iso) => (now - new Date(iso)) / 36e5;\nconst all = $input.all();\nconst raw = all.map(i => Array.isArray(i.json) ? i.json : (i.json ? [i.json] : []));\nconst [solis, lanzs, gmails, whats] = raw;\nconst solis_pendientes = (solis||[]).filter(s => hoursSince(s.created_at) > 48).slice(0, 15);\nconst lanzs_por_vencer = (lanzs||[]).filter(l => {\n  if (!l.fecha_finalizacion) return false;\n  const d = new Date(l.fecha_finalizacion);\n  const diffDays = (d - now) / (1000 * 60 * 60 * 24);\n  return diffDays >= -1 && diffDays <= 7;\n}).slice(0, 15);\nreturn [{ json: {\n  solicitudes_pendientes: solis_pendientes,\n  lanzamientos_por_vencer: lanzs_por_vencer,\n  instituciones_sin_contacto: [],\n  gmail_sin_responder: gmails || [],\n  whatsapp_pendientes: whats || []\n} }];"
       },
       "id": "merge",
       "name": "Armar payload",
