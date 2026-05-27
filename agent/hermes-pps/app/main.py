@@ -18,11 +18,13 @@ import json
 import os
 import pathlib
 import re
+import sqlite3
+import tempfile
 import time
 import uuid
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from openai import OpenAI
 from pydantic import BaseModel
 from supabase import Client, create_client
@@ -41,6 +43,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 HERMES_MODE = os.environ.get("HERMES_MODE", "shadow")
 HERMES_INTERNAL_TOKEN = os.environ["HERMES_INTERNAL_TOKEN"]
 VAULT_PATH = pathlib.Path(os.environ.get("VAULT_PATH", "/vault"))
+WHATSAPP_E2E_KEY = os.environ.get("WHATSAPP_E2E_KEY", "")
 
 SYSTEM_PROMPT_PATH = pathlib.Path(__file__).parent.parent / "system_prompt.md"
 
@@ -423,3 +426,157 @@ def learn_from_feedback(payload: LearnInput) -> dict[str, Any]:
         duration_ms=int((time.time() - t0) * 1000),
     )
     return {"vault_path": vault_path, "content": result}
+
+
+# ---------- task: process_whatsapp_backup ----------
+
+def _normalize_phone(raw: str) -> str:
+    """Deja solo dígitos. Ej. '+54 911 4012-3456' -> '5491140123456'."""
+    return re.sub(r"\D", "", raw or "")
+
+
+def _load_institucion_phone_index() -> dict[str, str]:
+    """Devuelve {telefono_normalizado: institucion_id} desde la tabla instituciones."""
+    try:
+        rows = sb.table("instituciones").select("id,telefono").execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        print(f"[wa] no se pudo leer instituciones: {exc}", flush=True)
+        return {}
+    index: dict[str, str] = {}
+    for r in rows:
+        p = _normalize_phone(r.get("telefono") or "")
+        if not p:
+            continue
+        # WhatsApp usa formato sin '+'. Indexamos por terminación (últimos 10) y completo.
+        index[p] = r["id"]
+        if len(p) >= 10:
+            index[p[-10:]] = r["id"]
+    return index
+
+
+def _decrypt_crypt15(input_path: pathlib.Path, output_path: pathlib.Path, key_hex: str) -> None:
+    """Decrypts msgstore.db.crypt15 using wa-crypt-tools. Raises on failure."""
+    from wa_crypt_tools.lib.key.keyfactory import KeyFactory
+    from wa_crypt_tools.lib.db.db15 import Database15
+
+    key = KeyFactory.new(key_hex)  # acepta 64 hex chars
+    db = Database15(key=key, encrypted=input_path.open("rb"))
+    raw = db.decrypt(db.encrypted.read())
+    output_path.write_bytes(raw)
+
+
+def _parse_msgstore(db_path: pathlib.Path, since_days: int = 60) -> list[dict[str, Any]]:
+    """Lee msgstore.db (SQLite) y devuelve mensajes 1-on-1 normalizados."""
+    cutoff_ms = int((time.time() - since_days * 86400) * 1000)
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    out: list[dict[str, Any]] = []
+    try:
+        # Schema moderno (WA 2.23+). Si la query falla por nombres distintos, dejamos un fallback.
+        rows = con.execute("""
+          SELECT
+            m.key_id          AS key_id,
+            m._id             AS row_id,
+            m.from_me         AS from_me,
+            m.text_data       AS texto,
+            m.timestamp       AS ts_ms,
+            j.user            AS user_phone,
+            j.server          AS jid_server,
+            c.subject         AS chat_subject
+          FROM message m
+          JOIN chat c ON c._id = m.chat_row_id
+          JOIN jid  j ON j._id = c.jid_row_id
+          WHERE m.timestamp > ?
+            AND j.server = 's.whatsapp.net'   -- 1-on-1; grupos son 'g.us'
+          ORDER BY m.timestamp DESC
+          LIMIT 5000
+        """, (cutoff_ms,)).fetchall()
+        for r in rows:
+            phone = (r["user_phone"] or "").lstrip("+")
+            out.append({
+                "id": r["key_id"] or f"row-{r['row_id']}",
+                "chat_jid": f"{phone}@{r['jid_server']}",
+                "from_me": bool(r["from_me"]),
+                "autor": (r["chat_subject"] or phone) if not r["from_me"] else None,
+                "texto": r["texto"],
+                "timestamp": dt.datetime.fromtimestamp(int(r["ts_ms"]) / 1000, dt.timezone.utc).isoformat(),
+                "media_tipo": None,
+                "_phone": phone,
+            })
+    finally:
+        con.close()
+    return out
+
+
+@app.post("/tasks/process_whatsapp_backup", dependencies=[Depends(require_token)])
+async def process_whatsapp_backup(
+    file: UploadFile = File(...),
+    since_days: int = 60,
+) -> dict[str, Any]:
+    """Recibe un msgstore.db.crypt15 vía multipart, lo desencripta, parsea y upserta.
+
+    El cliente (n8n) baja el backup de Drive y lo sube acá.
+    """
+    if not WHATSAPP_E2E_KEY:
+        raise HTTPException(status_code=500, detail="WHATSAPP_E2E_KEY no configurada en el servidor")
+
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("wa_backup.start", {"filename": file.filename, "since_days": since_days}, invocation_id=invocation_id)
+
+    with tempfile.TemporaryDirectory() as td:
+        tdp = pathlib.Path(td)
+        enc = tdp / "msgstore.db.crypt15"
+        dec = tdp / "msgstore.db"
+        try:
+            content = await file.read()
+            enc.write_bytes(content)
+            _decrypt_crypt15(enc, dec, WHATSAPP_E2E_KEY)
+        except Exception as exc:  # noqa: BLE001
+            audit("wa_backup.error", {"step": "decrypt", "err": str(exc)},
+                  invocation_id=invocation_id, error=str(exc))
+            raise HTTPException(status_code=500, detail=f"fallo al desencriptar: {exc}")
+
+        try:
+            messages = _parse_msgstore(dec, since_days=since_days)
+        except Exception as exc:  # noqa: BLE001
+            audit("wa_backup.error", {"step": "parse", "err": str(exc)},
+                  invocation_id=invocation_id, error=str(exc))
+            raise HTTPException(status_code=500, detail=f"fallo al parsear msgstore: {exc}")
+
+    # mapear a institucion_id
+    phone_index = _load_institucion_phone_index()
+    matched = 0
+    rows_for_db = []
+    for m in messages:
+        phone = m.pop("_phone", "")
+        inst_id = phone_index.get(phone) or phone_index.get(phone[-10:] if len(phone) >= 10 else "")
+        if inst_id:
+            m["institucion_id"] = inst_id
+            matched += 1
+        m["raw"] = {"source": "msgstore.db.crypt15"}
+        rows_for_db.append(m)
+
+    # upsert por batches
+    upserted = 0
+    for i in range(0, len(rows_for_db), 500):
+        batch = rows_for_db[i:i + 500]
+        try:
+            sb.table("whatsapp_mensajes").upsert(batch, on_conflict="id").execute()
+            upserted += len(batch)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[wa] fallo upsert batch {i}: {exc}", flush=True)
+
+    summary = {
+        "mensajes_parseados": len(messages),
+        "mensajes_mapeados_a_institucion": matched,
+        "mensajes_upserted": upserted,
+        "since_days": since_days,
+    }
+    audit(
+        "wa_backup.done",
+        output=summary,
+        invocation_id=invocation_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
+    return summary
