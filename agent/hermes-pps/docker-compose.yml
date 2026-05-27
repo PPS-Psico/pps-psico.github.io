@@ -15,7 +15,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.hermes-pps.rule=Host(`pps-hermes.n8n-blas.com.ar`)"
       - "traefik.http.routers.hermes-pps.entrypoints=websecure"
-      - "traefik.http.routers.hermes-pps.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.hermes-pps.tls.certresolver=le"
       - "traefik.http.routers.hermes-pps.middlewares=hermes-pps-auth"
       - "traefik.http.services.hermes-pps.loadbalancer.server.port=8080"
       # Basic Auth — generar con: htpasswd -nb USER PASS  (escapar $ → $$)
