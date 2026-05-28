@@ -30,11 +30,34 @@
       "credentials": {
         "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
       }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pps-hermes.n8n-blas.com.ar/tasks/classify_pps_contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"limit\": 50, \"dry_run\": false}",
+        "options": { "timeout": 300000 }
+      },
+      "id": "post-classify",
+      "name": "Hermes — classify contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
+      }
     }
   ],
   "connections": {
     "Cron 5am diario": {
       "main": [[{ "node": "Hermes — sync whatsapp", "type": "main", "index": 0 }]]
+    },
+    "Hermes — sync whatsapp": {
+      "main": [[{ "node": "Hermes — classify contacts", "type": "main", "index": 0 }]]
     }
   },
   "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" }
