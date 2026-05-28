@@ -60,12 +60,24 @@ sb: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
 def load_system_prompt() -> str:
+    """Inyecta el system prompt base + todo el contenido de tuyas/ (incluyendo el manual).
+
+    Orden de prioridad (más arriba = más visible para el modelo):
+      1. system_prompt.md
+      2. tuyas/criterios.md y contexto-uflo.md (legacy)
+      3. tuyas/manual/*.md (en orden alfabético: 00-, 01-, 02-...)
+    """
     base = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
     extras = []
+    tuyas = VAULT_PATH / "tuyas"
     for name in ("criterios.md", "contexto-uflo.md"):
-        p = VAULT_PATH / "tuyas" / name
+        p = tuyas / name
         if p.exists():
-            extras.append(f"\n\n---\n# {name} (criterios personales del operador)\n\n{p.read_text(encoding='utf-8')}")
+            extras.append(f"\n\n---\n# tuyas/{name}\n\n{p.read_text(encoding='utf-8')}")
+    manual = tuyas / "manual"
+    if manual.is_dir():
+        for path in sorted(manual.glob("*.md")):
+            extras.append(f"\n\n---\n# tuyas/manual/{path.name}\n\n{path.read_text(encoding='utf-8')}")
     return base + "".join(extras)
 
 
@@ -269,12 +281,17 @@ def vault_write(rel_path: str, body: str, *, append: bool = False) -> str:
 
 
 def _read_tuyas() -> str:
-    """Lee criterios.md y contexto-uflo.md del operador para contexto del LLM."""
+    """Lee criterios.md + contexto-uflo.md + manual/*.md del operador."""
     parts = []
+    tuyas = VAULT_PATH / "tuyas"
     for name in ("criterios.md", "contexto-uflo.md"):
-        p = VAULT_PATH / "tuyas" / name
+        p = tuyas / name
         if p.exists():
             parts.append(f"# tuyas/{name}\n{p.read_text(encoding='utf-8')}")
+    manual = tuyas / "manual"
+    if manual.is_dir():
+        for path in sorted(manual.glob("*.md")):
+            parts.append(f"# tuyas/manual/{path.name}\n{path.read_text(encoding='utf-8')}")
     return "\n\n".join(parts)
 
 
