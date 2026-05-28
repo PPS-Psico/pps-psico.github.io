@@ -5,7 +5,7 @@ import type { LanzamientoPPS } from "../../types";
 import { getGroupName } from "../../utils/formatters";
 import { getPpsInstitutionContact, type InstitutionContact } from "../../utils/institutionContacts";
 
-type ActionTone = "rose" | "amber" | "blue" | "emerald" | "slate";
+type ActionTone = "rose" | "amber" | "blue" | "emerald" | "slate" | "purple";
 
 interface AdminActionCenterProps {
   filteredData: any;
@@ -14,6 +14,7 @@ interface AdminActionCenterProps {
   pendingRequestsCount?: number;
   pendingFinalizationsCount?: number;
   pendingCorrectionsCount?: number;
+  pendingClassificationsCount?: number;
   compact?: boolean;
 }
 
@@ -56,6 +57,13 @@ const toneStyles: Record<
     border: "border-slate-200 dark:border-slate-800",
     text: "text-slate-700 dark:text-slate-300",
   },
+  purple: {
+    icon: "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-300",
+    badge: "bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300",
+    button: "bg-purple-600 hover:bg-purple-700 text-white",
+    border: "border-purple-200 dark:border-purple-900/50",
+    text: "text-purple-700 dark:text-purple-300",
+  },
 };
 
 const getPpsName = (pps?: LanzamientoPPS) =>
@@ -74,6 +82,7 @@ const AdminActionCenter: React.FC<AdminActionCenterProps> = ({
   pendingRequestsCount = 0,
   pendingFinalizationsCount = 0,
   pendingCorrectionsCount = 0,
+  pendingClassificationsCount = 0,
   compact = false,
 }) => {
   const navigate = useNavigate();
@@ -151,6 +160,19 @@ const AdminActionCenter: React.FC<AdminActionCenterProps> = ({
         tone: "slate" as ActionTone,
         route: "/admin/gestion",
       },
+      {
+        id: "clasificaciones",
+        title: "Clasificación WhatsApp",
+        count: pendingClassificationsCount,
+        detail:
+          pendingClassificationsCount > 0
+            ? `${pendingClassificationsCount} contactos nuevos`
+            : "Sin sugerencias",
+        hint: "Hermes detectó contactos sin clasificar",
+        icon: "chat",
+        tone: "purple" as ActionTone,
+        route: "/admin/herramientas",
+      },
     ].sort((a, b) => b.count - a.count);
 
     const total = actions.reduce((sum, action) => sum + action.count, 0);
@@ -163,6 +185,7 @@ const AdminActionCenter: React.FC<AdminActionCenterProps> = ({
     pendingCorrectionsCount,
     pendingFinalizationsCount,
     pendingRequestsCount,
+    pendingClassificationsCount,
   ]);
 
   if (isLoading) {

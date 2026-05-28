@@ -1,5 +1,7 @@
 import { differenceInDays } from "date-fns";
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
@@ -151,6 +153,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
     completeReminder,
   } = useReminders(authenticatedUser?.id);
 
+  // IA WhatsApp Contact classifications pending count
+  const { data: pendingClassificationsCount = 0 } = useQuery({
+    queryKey: ["pendingClassificationsCountDashboard"],
+    queryFn: async () => {
+      if (isTestingMode) return 0;
+      const { count, error } = await (supabase as any)
+        .from("agent_suggestions")
+        .select("*", { count: "exact", head: true })
+        .eq("tipo", "clasificacion")
+        .eq("estado", "pending");
+      if (error) {
+        console.error("Error fetching classifications count:", error);
+        return 0;
+      }
+      return count || 0;
+    },
+    enabled: !isTestingMode,
+  });
+
   if (isOpLoading) return <AdminDashboardSkeleton />;
 
   if (opError) {
@@ -257,6 +278,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
         pendingRequestsCount={opData?.pendingRequests?.length || 0}
         pendingFinalizationsCount={filteredPendingFinalizations.length}
         pendingCorrectionsCount={opData?.pendingCorrectionsCount || 0}
+        pendingClassificationsCount={pendingClassificationsCount}
       />
 
       {toastInfo && (

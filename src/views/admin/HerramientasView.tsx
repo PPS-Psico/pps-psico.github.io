@@ -33,6 +33,9 @@ const GestionRelanzamientoReport = lazy(
 const PersonalizationPanel = lazy(() => import("../../components/PersonalizationPanel"));
 const BackupManager = lazy(() => import("../../components/admin/BackupManager"));
 const ConvenioGenerator = lazy(() => import("../../components/admin/ConvenioGenerator"));
+const WhatsAppContactClassifier = lazy(
+  () => import("../../components/admin/WhatsAppContactClassifier")
+);
 
 const QUICK_STUDENT_CONFIG = {
   label: "Estudiante",
@@ -79,6 +82,7 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
     const availableTabs = [
       { id: "editor-db", label: "Editor DB", icon: "storage" },
       { id: "search", label: "Buscar Alumno", icon: "person_search" },
+      { id: "contactos-wa", label: "Contactos WhatsApp", icon: "chat" },
     ];
 
     if (preferences.showNewAgreements)
@@ -128,6 +132,12 @@ const HerramientasView: React.FC<HerramientasViewProps> = ({
           {activeTabId === "editor-db" && (
             <ErrorBoundary>
               <DatabaseEditor isTestingMode={isTestingMode} />
+            </ErrorBoundary>
+          )}
+
+          {activeTabId === "contactos-wa" && (
+            <ErrorBoundary>
+              <WhatsAppContactClassifier />
             </ErrorBoundary>
           )}
 
