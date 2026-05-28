@@ -15,98 +15,18 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/solicitudes_pps?select=id,estudiante_id,nombre_alumno,nombre_institucion,estado_seguimiento,actualizacion,created_at&order=created_at.desc&limit=25",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "sb-solicitudes",
-      "name": "Solicitudes recientes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 120],
-      "credentials": {
-        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
-      }
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/lanzamientos_pps?select=id,nombre_pps,orientacion,fecha_inicio,fecha_finalizacion,estado_gestion,estado_convocatoria,cupos_disponibles,proximo_seguimiento&estado_gestion=neq.Archivado&order=fecha_finalizacion.asc&limit=30",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "sb-lanzamientos",
-      "name": "Lanzamientos activos",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 280],
-      "credentials": {
-        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
-      }
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/gmail_hilos?select=thread_id,asunto,ultimo_mensaje_de,ultimo_mensaje_at,estado,clasificacion,institucion_id&estado=eq.esperando_respuesta&order=ultimo_mensaje_at.asc&limit=20",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "sb-gmail",
-      "name": "Gmail esperando respuesta",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 440],
-      "credentials": {
-        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
-      }
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://qxnxtnhtbpsgzprqtrjl.supabase.co/rest/v1/whatsapp_mensajes?select=id,chat_jid,institucion_id,autor,texto,timestamp&from_me=eq.false&order=timestamp.desc&limit=20",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "sb-wa",
-      "name": "WhatsApp entrantes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 600],
-      "credentials": {
-        "httpHeaderAuth": { "id": "hJGG3rIntFd0J3UA", "name": "Supabase PostgREST (apikey)" }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const now = new Date();\nconst hoursSince = (iso) => (now - new Date(iso)) / 36e5;\nconst all = $input.all();\nconst raw = all.map(i => Array.isArray(i.json) ? i.json : (i.json ? [i.json] : []));\nconst [solis, lanzs, gmails, whats] = raw;\nconst solis_pendientes = (solis||[]).filter(s => hoursSince(s.created_at) > 48).slice(0, 15);\nconst lanzs_por_vencer = (lanzs||[]).filter(l => {\n  if (!l.fecha_finalizacion) return false;\n  const d = new Date(l.fecha_finalizacion);\n  const diffDays = (d - now) / (1000 * 60 * 60 * 24);\n  return diffDays >= -1 && diffDays <= 7;\n}).slice(0, 15);\nreturn [{ json: {\n  solicitudes_pendientes: solis_pendientes,\n  lanzamientos_por_vencer: lanzs_por_vencer,\n  instituciones_sin_contacto: [],\n  gmail_sin_responder: gmails || [],\n  whatsapp_pendientes: whats || []\n} }];"
-      },
-      "id": "merge",
-      "name": "Armar payload",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [820, 360]
-    },
-    {
-      "parameters": {
         "method": "POST",
-        "url": "https://pps-hermes.n8n-blas.com.ar/tasks/daily_brief",
+        "url": "https://pps-hermes.n8n-blas.com.ar/tasks/daily_brief_from_db",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendBody": false,
         "options": { "timeout": 60000 }
       },
       "id": "call-hermes",
-      "name": "Hermes — daily_brief",
+      "name": "Hermes - daily_brief_from_db",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, 360],
+      "position": [520, 300],
       "credentials": {
         "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
       }
@@ -114,24 +34,8 @@
   ],
   "connections": {
     "Cron 8am L-V": {
-      "main": [
-        [
-          { "node": "Solicitudes recientes", "type": "main", "index": 0 },
-          { "node": "Lanzamientos activos", "type": "main", "index": 0 },
-          { "node": "Gmail esperando respuesta", "type": "main", "index": 0 },
-          { "node": "WhatsApp entrantes", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "Solicitudes recientes": {
-      "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]]
-    },
-    "Lanzamientos activos": { "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]] },
-    "Gmail esperando respuesta": {
-      "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]]
-    },
-    "WhatsApp entrantes": { "main": [[{ "node": "Armar payload", "type": "main", "index": 0 }]] },
-    "Armar payload": { "main": [[{ "node": "Hermes — daily_brief", "type": "main", "index": 0 }]] }
+      "main": [[{ "node": "Hermes - daily_brief_from_db", "type": "main", "index": 0 }]]
+    }
   },
   "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" }
 }

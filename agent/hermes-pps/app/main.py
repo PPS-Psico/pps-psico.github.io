@@ -160,11 +160,10 @@ class DailyBriefInput(BaseModel):
     whatsapp_pendientes: list[dict[str, Any]] = []
 
 
-@app.post("/tasks/daily_brief", dependencies=[Depends(require_token)])
-def daily_brief(payload: DailyBriefInput) -> dict[str, Any]:
+def _create_daily_brief(payload: DailyBriefInput, *, source: str) -> dict[str, Any]:
     t0 = time.time()
     invocation_id = str(uuid.uuid4())
-    audit("daily_brief.start", payload.model_dump(), invocation_id=invocation_id)
+    audit("daily_brief.start", {"source": source, **payload.model_dump()}, invocation_id=invocation_id)
 
     schema = (
         '{"bullets":[{"prioridad":"alta|media|baja",'
@@ -184,7 +183,11 @@ def daily_brief(payload: DailyBriefInput) -> dict[str, Any]:
         "id": suggestion_id,
         "tipo": "daily_brief",
         "payload": result,
-        "contexto": {"model": HERMES_MODEL, "input_summary": {k: len(v) for k, v in payload.model_dump().items()}},
+        "contexto": {
+            "model": HERMES_MODEL,
+            "source": source,
+            "input_summary": {k: len(v) for k, v in payload.model_dump().items()},
+        },
     }).execute()
 
     audit(
@@ -194,6 +197,111 @@ def daily_brief(payload: DailyBriefInput) -> dict[str, Any]:
         duration_ms=int((time.time() - t0) * 1000),
     )
     return {"suggestion_id": suggestion_id, "content": result}
+
+
+@app.post("/tasks/daily_brief", dependencies=[Depends(require_token)])
+def daily_brief(payload: DailyBriefInput) -> dict[str, Any]:
+    return _create_daily_brief(payload, source="payload")
+
+
+@app.post("/tasks/daily_brief_from_db", dependencies=[Depends(require_token)])
+def daily_brief_from_db() -> dict[str, Any]:
+    """Arma el brief leyendo Supabase directo para evitar merges fragiles en n8n."""
+    now = dt.datetime.now(dt.timezone.utc)
+    solicitudes_pendientes: list[dict[str, Any]] = []
+    lanzamientos_por_vencer: list[dict[str, Any]] = []
+    gmail_sin_responder: list[dict[str, Any]] = []
+    whatsapp_pendientes: list[dict[str, Any]] = []
+
+    try:
+        solis = sb.table("solicitudes_pps").select(
+            "id,estudiante_id,nombre_alumno,nombre_institucion,estado_seguimiento,actualizacion,created_at"
+        ).order("created_at", desc=True).limit(25).execute().data or []
+        solicitudes_pendientes = [
+            s for s in solis
+            if s.get("created_at")
+            and (now - dt.datetime.fromisoformat(str(s["created_at"]).replace("Z", "+00:00"))).total_seconds() > 48 * 3600
+        ][:15]
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_brief_from_db] solicitudes: {exc}", flush=True)
+
+    try:
+        lanzs = sb.table("lanzamientos_pps").select(
+            "id,nombre_pps,orientacion,fecha_inicio,fecha_finalizacion,estado_gestion,"
+            "estado_convocatoria,cupos_disponibles,proximo_seguimiento"
+        ).neq("estado_gestion", "Archivado").order("fecha_finalizacion").limit(30).execute().data or []
+        for l in lanzs:
+            if not l.get("fecha_finalizacion"):
+                continue
+            end = dt.datetime.fromisoformat(str(l["fecha_finalizacion"]).replace("Z", "+00:00"))
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=dt.timezone.utc)
+            diff_days = (end - now).total_seconds() / 86400
+            if -1 <= diff_days <= 7:
+                lanzamientos_por_vencer.append(l)
+        lanzamientos_por_vencer = lanzamientos_por_vencer[:15]
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_brief_from_db] lanzamientos: {exc}", flush=True)
+
+    try:
+        gmail_sin_responder = sb.table("gmail_hilos").select(
+            "thread_id,asunto,ultimo_mensaje_de,ultimo_mensaje_at,estado,clasificacion,institucion_id"
+        ).eq("estado", "esperando_respuesta").order("ultimo_mensaje_at").limit(20).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_brief_from_db] gmail: {exc}", flush=True)
+
+    try:
+        whatsapp_pendientes = sb.table("whatsapp_mensajes").select(
+            "id,chat_jid,institucion_id,autor,texto,timestamp"
+        ).eq("from_me", False).order("timestamp", desc=True).limit(20).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_brief_from_db] whatsapp: {exc}", flush=True)
+
+    instituciones_sin_contacto: list[dict[str, Any]] = []
+    try:
+        # Cruza instituciones vs último contacto registrado en gmail_hilos / whatsapp_mensajes.
+        # Para instituciones activas (estado_gestion != Archivado) cuyo último contacto fue >30 días.
+        cutoff = (now - dt.timedelta(days=30)).isoformat()
+        instituciones = sb.table("instituciones").select(
+            "id,nombre,convenio_nuevo,orientaciones,tutor,telefono,email_institucion"
+        ).limit(200).execute().data or []
+        gmail_recent = sb.table("gmail_hilos").select("institucion_id,ultimo_mensaje_at").gte(
+            "ultimo_mensaje_at", cutoff
+        ).limit(500).execute().data or []
+        wa_recent = sb.table("whatsapp_mensajes").select("institucion_id,timestamp").gte(
+            "timestamp", cutoff
+        ).limit(2000).execute().data or []
+        active_ids = {r["institucion_id"] for r in gmail_recent if r.get("institucion_id")}
+        active_ids |= {r["institucion_id"] for r in wa_recent if r.get("institucion_id")}
+        # solo las que tienen algún lanzamiento activo / no archivado (para no inundar con todo el catálogo)
+        active_launch_ids = set()
+        try:
+            active_launches = sb.table("lanzamientos_pps").select("institucion_id").neq(
+                "estado_gestion", "Archivado"
+            ).limit(500).execute().data or []
+            active_launch_ids = {r["institucion_id"] for r in active_launches if r.get("institucion_id")}
+        except Exception:  # noqa: BLE001
+            pass
+        for inst in instituciones:
+            if inst["id"] in active_ids:
+                continue
+            if active_launch_ids and inst["id"] not in active_launch_ids:
+                continue
+            instituciones_sin_contacto.append(inst)
+        instituciones_sin_contacto = instituciones_sin_contacto[:15]
+    except Exception as exc:  # noqa: BLE001
+        print(f"[daily_brief_from_db] instituciones_sin_contacto: {exc}", flush=True)
+
+    return _create_daily_brief(
+        DailyBriefInput(
+            solicitudes_pendientes=solicitudes_pendientes,
+            lanzamientos_por_vencer=lanzamientos_por_vencer,
+            instituciones_sin_contacto=instituciones_sin_contacto,
+            gmail_sin_responder=gmail_sin_responder,
+            whatsapp_pendientes=whatsapp_pendientes,
+        ),
+        source="supabase",
+    )
 
 
 # ---------- task: draft_reply ----------
@@ -269,6 +377,171 @@ class ClassifyEmailInput(BaseModel):
     asunto: str | None = None
     remitente: str | None = None
     institucion_id: str | None = None
+
+
+class GmailSyncInput(BaseModel):
+    messages: list[dict[str, Any]] = []
+
+
+def _headers_dict(message: dict[str, Any]) -> dict[str, str]:
+    headers = message.get("payload", {}).get("headers", []) or []
+    return {
+        str(header.get("name", "")).lower(): str(header.get("value", ""))
+        for header in headers
+        if header.get("name")
+    }
+
+
+def _extract_email(value: str) -> str:
+    match = re.search(r"<([^>]+)>", value or "")
+    return (match.group(1) if match else value or "").lower().strip()
+
+
+def _split_emails(value: str) -> list[str]:
+    emails: list[str] = []
+    for part in (value or "").split(","):
+        email = _extract_email(part)
+        if email:
+            emails.append(email)
+    return emails
+
+
+def _message_date_ms(message: dict[str, Any], headers: dict[str, str]) -> int:
+    candidates = (
+        message.get("internalDate"),
+        message.get("date"),
+        message.get("Date"),
+        headers.get("date"),
+    )
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        try:
+            numeric = int(str(candidate))
+            if numeric > 10_000_000_000:
+                return numeric
+            if numeric > 0:
+                return numeric * 1000
+        except ValueError:
+            pass
+        try:
+            parsed = dt.datetime.fromisoformat(str(candidate).replace("Z", "+00:00"))
+            return int(parsed.timestamp() * 1000)
+        except ValueError:
+            try:
+                return int(dt.datetime.strptime(str(candidate), "%a, %d %b %Y %H:%M:%S %z").timestamp() * 1000)
+            except ValueError:
+                continue
+    return int(time.time() * 1000)
+
+
+def _normalize_gmail_threads(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    me = "blas.rivera@uflouniversidad.edu.ar"
+    by_thread: dict[str, dict[str, Any]] = {}
+
+    for message in messages:
+        thread_id = message.get("threadId") or message.get("thread_id") or message.get("id")
+        if not thread_id:
+            continue
+
+        headers = _headers_dict(message)
+        from_ = headers.get("from") or message.get("From") or message.get("from") or ""
+        to = headers.get("to") or message.get("To") or message.get("to") or ""
+        subject = headers.get("subject") or message.get("Subject") or message.get("subject") or "(sin asunto)"
+        snippet = message.get("snippet") or message.get("textPlain") or message.get("textHtml") or ""
+        date_ms = _message_date_ms(message, headers)
+        date_iso = dt.datetime.fromtimestamp(date_ms / 1000, tz=dt.timezone.utc).isoformat()
+        from_email = _extract_email(str(from_))
+        from_me = me in from_email
+
+        existing = by_thread.get(str(thread_id))
+        if not existing:
+            existing = {
+                "thread_id": str(thread_id),
+                "asunto": re.sub(r"^(Re:|Fwd:|RE:|FW:)\s*", "", str(subject), flags=re.I),
+                "participantes": set(),
+                "primer_mensaje_at": date_iso,
+                "ultimo_mensaje_at": date_iso,
+                "ultimo_mensaje_de": str(from_),
+                "from_email": from_email,
+                "from_me": from_me,
+                "last_ms": date_ms,
+                "mensajes": [],
+            }
+            by_thread[str(thread_id)] = existing
+        elif date_ms > int(existing["last_ms"]):
+            existing.update({
+                "asunto": re.sub(r"^(Re:|Fwd:|RE:|FW:)\s*", "", str(subject), flags=re.I),
+                "ultimo_mensaje_at": date_iso,
+                "ultimo_mensaje_de": str(from_),
+                "from_email": from_email,
+                "from_me": from_me,
+                "last_ms": date_ms,
+            })
+
+        if from_email:
+            existing["participantes"].add(from_email)
+        for email in _split_emails(str(to)):
+            existing["participantes"].add(email)
+
+        if date_ms < int(dt.datetime.fromisoformat(existing["primer_mensaje_at"]).timestamp() * 1000):
+            existing["primer_mensaje_at"] = date_iso
+
+        existing["mensajes"].append({
+            "from": str(from_),
+            "to": str(to),
+            "subject": str(subject),
+            "snippet": str(snippet)[:1000],
+            "date": date_iso,
+        })
+
+    rows: list[dict[str, Any]] = []
+    for thread in by_thread.values():
+        participantes = sorted(thread["participantes"])
+        uflo = thread["from_email"].endswith("@uflouniversidad.edu.ar") or any(
+            email.endswith("@uflouniversidad.edu.ar") for email in participantes
+        )
+        rows.append({
+            "thread_id": thread["thread_id"],
+            "asunto": thread["asunto"],
+            "participantes": participantes,
+            "primer_mensaje_at": thread["primer_mensaje_at"],
+            "ultimo_mensaje_at": thread["ultimo_mensaje_at"],
+            "ultimo_mensaje_de": thread["ultimo_mensaje_de"],
+            "estado": "respondido_por_nos" if thread["from_me"] else "esperando_respuesta",
+            "clasificacion": "uflo_interno" if uflo else "externo",
+            "raw_mensajes": thread["mensajes"][-5:],
+        })
+    return rows
+
+
+@app.post("/tasks/sync_gmail_messages", dependencies=[Depends(require_token)])
+def sync_gmail_messages(payload: GmailSyncInput) -> dict[str, Any]:
+    """Recibe mensajes crudos de Gmail desde n8n y los persiste con service role."""
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit(
+        "gmail_sync.start",
+        {"messages_count": len(payload.messages)},
+        invocation_id=invocation_id,
+    )
+
+    rows = _normalize_gmail_threads(payload.messages)
+    if rows:
+        sb.table("gmail_hilos").upsert(rows, on_conflict="thread_id").execute()
+
+    output = {
+        "messages_count": len(payload.messages),
+        "threads_upserted": len(rows),
+        "waiting_response": sum(1 for row in rows if row.get("estado") == "esperando_respuesta"),
+    }
+    audit(
+        "gmail_sync.done",
+        output=output,
+        invocation_id=invocation_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
+    return output
 
 
 @app.post("/tasks/classify_email", dependencies=[Depends(require_token)])
@@ -483,14 +756,63 @@ class LearnInput(BaseModel):
     payload_original: dict[str, Any]
     payload_final: dict[str, Any] | None = None
     motivo: str | None = None      # comentario libre del operador
+    tipo: str | None = None        # tipo de la suggestion (para side-effects)
+    validado_por: str | None = None  # auth.user.id que tomó la decisión
+
+
+def _materialize_clasificacion(
+    suggestion_id: str,
+    payload: dict[str, Any],
+    *,
+    validado_por: str | None,
+) -> dict[str, Any] | None:
+    """Upsertea una clasificación aprobada en whatsapp_contactos.
+
+    Espera payload con: chat_jid, phone, nombre_contacto, tipo, institucion_id?, confidence?
+    """
+    chat_jid = payload.get("chat_jid")
+    tipo = payload.get("tipo")
+    if not chat_jid or not tipo:
+        return None
+    row = {
+        "chat_jid": chat_jid,
+        "phone": payload.get("phone"),
+        "nombre_contacto": payload.get("nombre_contacto"),
+        "tipo": tipo,
+        "institucion_id": payload.get("institucion_id"),
+        "confidence": payload.get("confidence"),
+        "clasificado_por": "hermes",
+        "validado_por": validado_por,
+        "validado_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "notas": payload.get("notas"),
+        "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    try:
+        sb.table("whatsapp_contactos").upsert(row, on_conflict="chat_jid").execute()
+        return {"materialized": True, "chat_jid": chat_jid, "tipo": tipo}
+    except Exception as exc:  # noqa: BLE001
+        print(f"[learn] fallo materializar clasificacion {chat_jid}: {exc}", flush=True)
+        return {"materialized": False, "error": str(exc)}
 
 
 @app.post("/tasks/learn_from_feedback", dependencies=[Depends(require_token)])
 def learn_from_feedback(payload: LearnInput) -> dict[str, Any]:
-    """Cuando Blas resuelve una suggestion, Hermes destila lo aprendido al vault."""
+    """Cuando Blas resuelve una suggestion, Hermes destila lo aprendido al vault.
+
+    Además, si la suggestion es de tipo `clasificacion` y se aprobó/editó,
+    materializa el registro en `whatsapp_contactos`.
+    """
     t0 = time.time()
     invocation_id = str(uuid.uuid4())
     audit("learn.start", payload.model_dump(), invocation_id=invocation_id)
+
+    side_effect: dict[str, Any] | None = None
+    if payload.tipo == "clasificacion" and payload.accion in ("approved", "edited"):
+        # Usar payload_final si fue editado, sino el original
+        final = payload.payload_final or payload.payload_original
+        side_effect = _materialize_clasificacion(
+            payload.suggestion_id, final, validado_por=payload.validado_por
+        )
 
     schema = (
         '{"aprendizaje":"string (1-2 frases concretas)",'
@@ -522,12 +844,12 @@ def learn_from_feedback(payload: LearnInput) -> dict[str, Any]:
 
     audit(
         "learn.done",
-        output={"vault_path": vault_path, "tag": result.get("tag")},
+        output={"vault_path": vault_path, "tag": result.get("tag"), "side_effect": side_effect},
         invocation_id=invocation_id,
         suggestion_id=payload.suggestion_id,
         duration_ms=int((time.time() - t0) * 1000),
     )
-    return {"vault_path": vault_path, "content": result}
+    return {"vault_path": vault_path, "content": result, "side_effect": side_effect}
 
 
 # ---------- task: process_whatsapp_backup ----------
@@ -861,7 +1183,16 @@ def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> di
             messages = [m for m in messages if m.get("_phone", "") in pps_phones
                         or (len(m.get("_phone", "")) >= 10 and m["_phone"][-10:] in {p[-10:] for p in pps_phones})]
 
+        summary = _process_messages_to_db(
+            messages,
+            only_institutions=payload.only_institutions and not bool(pps_phones),
+        )
         summary["pps_label_contactos"] = len(pps_phones)
+        summary["filter_mode"] = (
+            "pps_label"
+            if pps_phones
+            else ("instituciones" if payload.only_institutions else "todos")
+        )
 
     summary["since_days"] = payload.since_days
     audit(
@@ -1005,32 +1336,58 @@ def classify_pps_contacts(payload: ClassifyContactsInput = ClassifyContactsInput
     result = llm_json(user_prompt, schema_hint=schema)
     classifications = result.get("classifications", [])
 
+    valid_types = {
+        "autoridad_uflo",
+        "institucion_con_convenio",
+        "sin_convenio",
+        "coordinador_externo",
+        "otro",
+    }
+    institution_ids = {str(inst.get("id")) for inst in institutions if inst.get("id")}
+
     suggestion_ids = []
+    insert_failures = []
     if not payload.dry_run:
         for c in classifications:
             sugg_id = str(uuid.uuid4())
+            chat_jid = c.get("chat_jid")
+            tipo = c.get("tipo") if c.get("tipo") in valid_types else "otro"
+            institucion_id = c.get("institucion_id")
+            if institucion_id not in institution_ids:
+                institucion_id = None
+            clean_payload = {
+                **c,
+                "tipo": tipo,
+                "institucion_id": institucion_id,
+            }
             try:
                 # Insertamos una sugerencia individual en agent_suggestions para clasificacion
                 sb.table("agent_suggestions").insert({
                     "id": sugg_id,
                     "tipo": "clasificacion",
                     "estado": "pending",
-                    "payload": c,
+                    "payload": clean_payload,
                     "contexto": {
                         "model": HERMES_MODEL,
-                        "chat_jid": c.get("chat_jid"),
+                        "chat_jid": chat_jid,
                         "phone": c.get("phone"),
                         "nombre_contacto": c.get("nombre_contacto")
                     },
-                    "institucion_id": c.get("institucion_id") if c.get("institucion_id") else None
+                    "institucion_id": institucion_id
                 }).execute()
                 suggestion_ids.append(sugg_id)
             except Exception as exc:  # noqa: BLE001
-                print(f"[classify] fallo al insertar sugerencia para {c.get('chat_jid')}: {exc}", flush=True)
+                insert_failures.append({"chat_jid": chat_jid, "error": str(exc)})
+                print(f"[classify] fallo al insertar sugerencia para {chat_jid}: {exc}", flush=True)
 
     audit(
         "classify_contacts.done",
-        output={"candidates_count": len(candidates), "classifications_count": len(classifications), "suggestion_ids": suggestion_ids},
+        output={
+            "candidates_count": len(candidates),
+            "classifications_count": len(classifications),
+            "suggestion_ids": suggestion_ids,
+            "insert_failures": insert_failures,
+        },
         invocation_id=invocation_id,
         duration_ms=int((time.time() - t0) * 1000),
     )
@@ -1040,4 +1397,3 @@ def classify_pps_contacts(payload: ClassifyContactsInput = ClassifyContactsInput
         "classifications": classifications,
         "dry_run": payload.dry_run
     }
-

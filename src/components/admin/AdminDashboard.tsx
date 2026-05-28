@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
+import { useAgentSuggestions } from "../../hooks/useAgentSuggestions";
 import { useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
 import { useOperationalData } from "../../hooks/useOperationalData";
 import { useReminders } from "../../hooks/useReminders";
@@ -15,6 +16,8 @@ import { AdminDashboardSkeleton } from "../Skeletons";
 import Toast from "../ui/Toast";
 import ActivityFeed from "./ActivityFeed";
 import AdminActionCenter from "./AdminActionCenter";
+import HermesBriefing from "./HermesBriefing";
+import EmailDraftsPanel from "./EmailDraftsPanel";
 
 interface AdminDashboardProps {
   isTestingMode?: boolean;
@@ -120,6 +123,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
   );
+
+  // ── Hermes AI data ──────────────────────────────────────────────────────
+  const { dailyBrief, emailDrafts, isBriefLoading, isDraftsLoading, approveDraft, discardDraft } =
+    useAgentSuggestions(isTestingMode);
+
+  const handleApproveDraft = async (id: string, editedText: string) => {
+    await approveDraft.mutateAsync({ id, editedText });
+    setToastInfo({ message: "Borrador aprobado y listo para enviar", type: "success" });
+  };
+
+  const handleDiscardDraft = async (id: string) => {
+    await discardDraft.mutateAsync({ id });
+    setToastInfo({ message: "Borrador descartado", type: "success" });
+  };
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -270,7 +287,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
   };
 
   return (
-    <div className="space-y-12 animate-fade-in-up pb-10">
+    <div className="space-y-8 animate-fade-in-up pb-10">
+      {/* ── Hermes Brief del día ── */}
+      <HermesBriefing
+        dailyBrief={dailyBrief}
+        isLoading={isBriefLoading}
+        userName={authenticatedUser?.nombre || "Coordinador"}
+      />
+
+      {/* ── Borradores de Email pendientes ── */}
+      <EmailDraftsPanel
+        drafts={emailDrafts}
+        isLoading={isDraftsLoading}
+        onApprove={handleApproveDraft}
+        onDiscard={handleDiscardDraft}
+      />
+
+      {/* ── Action Center (selección, gestión pendiente) ── */}
       <AdminActionCenter
         filteredData={gestionActionData}
         institutionsMap={gestionInstitutionsMap}

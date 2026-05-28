@@ -46,3 +46,11 @@ coverage
 .env
 .env.local
 .env.*.local
+
+# Prototipo de la página nueva — vive aparte, sigue desarrollándose por separado
+Pagina PPS/
+
+# Documentos generados por IA / extracciones intermedias (no son fuente)
+docs/_doc_extract/
+docs/trabajo_pps_panel_web_y_agente_ia.docx
+scripts/create_pps_work_ai_agent_doc.py

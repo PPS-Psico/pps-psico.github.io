@@ -1,10 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
 async function main() {
-  const supabaseUrl = "https://qxnxtnhtbpsgzprqtrjl.supabase.co";
-  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4bnh0bmh0YnBzZ3pwcnF0cmpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjIzNDEsImV4cCI6MjA3OTAzODM0MX0.Lwj2kZPjYaM6M7VbUX48hSnCh3N2YB6iMJtdhFP9brU";
-  const hermesToken = "8KqNm3vR7tYxL2pH9wJ4sZ6bF1cA5dG0eU8iO3kP4qX7vN2mL9";
-  const hermesUrl = "https://pps-hermes.n8n-blas.com.ar/tasks/daily_brief";
+  const supabaseUrl = process.env.SUPABASE_URL || "https://qxnxtnhtbpsgzprqtrjl.supabase.co";
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const hermesToken = process.env.HERMES_INTERNAL_TOKEN;
+  const hermesUrl =
+    process.env.HERMES_DAILY_BRIEF_URL || "https://pps-hermes.n8n-blas.com.ar/tasks/daily_brief";
+
+  if (!supabaseKey) {
+    throw new Error("Missing SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY");
+  }
+  if (!hermesToken) {
+    throw new Error("Missing HERMES_INTERNAL_TOKEN");
+  }
 
   const sb = createClient(supabaseUrl, supabaseKey);
 

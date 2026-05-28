@@ -17,7 +17,8 @@
     "prep-github": "node ./scripts/prepare-deploy.js",
     "deploy": "npm run prep-github && npm run build",
     "prepare": "husky",
-    "gen-types": "npx supabase gen types typescript --project-id qxnxtnhtbpsgzprqtrjl --schema public > src/types/supabase.ts"
+    "gen-types": "npx supabase gen types typescript --project-id qxnxtnhtbpsgzprqtrjl --schema public > src/types/supabase.ts",
+    "proto": "npx -y http-server \"Pagina PPS\" -p 8080"
   },
   "engines": {
     "node": ">=20.x"
