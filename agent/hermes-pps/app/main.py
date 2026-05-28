@@ -470,6 +470,22 @@ def _decrypt_crypt15(input_path: pathlib.Path, output_path: pathlib.Path, key_he
     output_path.write_bytes(raw)
 
 
+def _load_pps_label_phones(db_path: pathlib.Path, label_name: str = "PPS") -> set[str]:
+    """Devuelve los teléfonos (sin '+') que están en la lista de WhatsApp `label_name`."""
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        rows = con.execute("""
+          SELECT j.user
+          FROM labels l
+          JOIN labeled_jid lj ON lj.label_id = l._id
+          JOIN jid j ON j._id = lj.jid_row_id
+          WHERE l.label_name = ? AND j.server = 's.whatsapp.net'
+        """, (label_name,)).fetchall()
+    finally:
+        con.close()
+    return {(r[0] or "").lstrip("+") for r in rows if r[0]}
+
+
 def _parse_msgstore(db_path: pathlib.Path, since_days: int = 60) -> list[dict[str, Any]]:
     """Lee msgstore.db (SQLite) y devuelve mensajes 1-on-1 normalizados."""
     cutoff_ms = int((time.time() - since_days * 86400) * 1000)
@@ -632,7 +648,8 @@ def _process_messages_to_db(messages: list[dict[str, Any]], *, only_institutions
 class SyncWhatsAppInput(BaseModel):
     since_days: int = 60
     exclude_media: bool = True
-    only_institutions: bool = True   # drop mensajes cuyo teléfono no esté en instituciones
+    only_institutions: bool = True   # fallback: si no hay lista PPS, filtra por instituciones.telefono
+    pps_label: str = "PPS"            # nombre de la lista en WhatsApp que define el allowlist
 
 
 def _refresh_wabdd_auth_token() -> str:
@@ -729,13 +746,26 @@ def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> di
             msgstore = msgstore_candidate
 
         try:
+            pps_phones = _load_pps_label_phones(msgstore, label_name=payload.pps_label)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[wa] no se pudo leer lista PPS: {exc}", flush=True)
+            pps_phones = set()
+
+        try:
             messages = _parse_msgstore(msgstore, since_days=payload.since_days)
         except Exception as exc:  # noqa: BLE001
             audit("wa_sync.error", {"step": "parse", "err": str(exc)},
                   invocation_id=invocation_id, error=str(exc))
             raise HTTPException(status_code=500, detail=f"fallo al parsear msgstore: {exc}")
 
-        summary = _process_messages_to_db(messages)
+        # Filtro principal: si hay lista PPS con contactos, usar SOLO esos teléfonos.
+        # Fallback: si la lista está vacía, caer al match contra instituciones (only_institutions).
+        if pps_phones:
+            messages = [m for m in messages if m.get("_phone", "") in pps_phones
+                        or (len(m.get("_phone", "")) >= 10 and m["_phone"][-10:] in {p[-10:] for p in pps_phones})]
+
+        summary = _process_messages_to_db(messages, only_institutions=payload.only_institutions and not pps_phones)
+        summary["pps_label_contactos"] = len(pps_phones)
 
     summary["since_days"] = payload.since_days
     summary["wabdd_stdout_tail"] = (proc.stdout or "")[-400:]
