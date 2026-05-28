@@ -1,0 +1,41 @@
+{
+  "name": "PPS — 04 Institucion Resumen",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 6 * * 1-5" }] }
+      },
+      "id": "cron",
+      "name": "Cron 6am L-V",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pps-hermes.n8n-blas.com.ar/tasks/institucion_resumen",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"limit\": 50, \"only_with_activity\": true}",
+        "options": { "timeout": 900000 }
+      },
+      "id": "post-hermes",
+      "name": "Hermes — institucion_resumen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
+      }
+    }
+  ],
+  "connections": {
+    "Cron 6am L-V": {
+      "main": [[{ "node": "Hermes — institucion_resumen", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" }
+}

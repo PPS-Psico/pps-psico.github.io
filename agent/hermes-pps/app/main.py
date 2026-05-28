@@ -369,6 +369,150 @@ def draft_reply(payload: DraftReplyInput) -> dict[str, Any]:
     return {"suggestion_id": suggestion_id, "content": result}
 
 
+# ---------- task: institucion_resumen ----------
+
+class InstitucionResumenInput(BaseModel):
+    institucion_id: str | None = None  # si no se da, refresca hasta `limit` instituciones activas
+    limit: int = 30
+    only_with_activity: bool = True    # default: solo refrescar las que tuvieron actividad reciente
+
+
+def _refresh_one_institucion_resumen(institucion_id: str) -> dict[str, Any]:
+    """Genera/actualiza el resumen para una institución. Devuelve métricas."""
+    try:
+        inst_rows = sb.table("instituciones").select("*").eq("id", institucion_id).limit(1).execute().data
+    except Exception as exc:  # noqa: BLE001
+        return {"institucion_id": institucion_id, "error": f"read inst: {exc}"}
+    if not inst_rows:
+        return {"institucion_id": institucion_id, "error": "institucion no encontrada"}
+    inst = inst_rows[0]
+
+    # contexto: lanzamientos, gmail, whatsapp, resumen previo
+    lanzamientos = sb.table("lanzamientos_pps").select(
+        "id,nombre_pps,orientacion,fecha_inicio,fecha_finalizacion,estado_gestion,"
+        "estado_convocatoria,cupos_disponibles,proximo_seguimiento,horas_acreditadas"
+    ).eq("institucion_id", institucion_id).neq("estado_gestion", "Archivado").limit(20).execute().data or []
+    gmail = sb.table("gmail_hilos").select(
+        "thread_id,asunto,ultimo_mensaje_de,ultimo_mensaje_at,estado,clasificacion"
+    ).eq("institucion_id", institucion_id).order("ultimo_mensaje_at", desc=True).limit(20).execute().data or []
+    whatsapp = sb.table("whatsapp_mensajes").select(
+        "id,autor,texto,from_me,timestamp"
+    ).eq("institucion_id", institucion_id).order("timestamp", desc=True).limit(30).execute().data or []
+    prev = sb.table("institucion_resumen").select("*").eq("institucion_id", institucion_id).limit(1).execute().data
+    prev_row = prev[0] if prev else None
+
+    # último contacto + canal
+    last_dates = []
+    for g in gmail:
+        if g.get("ultimo_mensaje_at"):
+            last_dates.append((g["ultimo_mensaje_at"], "gmail"))
+    for w in whatsapp:
+        if w.get("timestamp"):
+            last_dates.append((w["timestamp"], "whatsapp"))
+    ultimo_contacto_at, ultimo_canal = (None, None)
+    if last_dates:
+        last_dates.sort(reverse=True)
+        ultimo_contacto_at, ultimo_canal = last_dates[0]
+
+    schema = (
+        '{"resumen":"string (1-2 frases del estado actual del vínculo)",'
+        '"sugerencia":"string (1 frase con próximo paso concreto para Blas, o null)",'
+        '"pendientes_concretos":["string"]}'
+    )
+    tuyas_md = _read_tuyas()
+    user_prompt = (
+        "Hermes, generá un resumen ejecutivo del vínculo con esta institución para la "
+        "ficha del panel. El campo `sugerencia` es la caja morada 'Hermes sugiere' — sé "
+        "concreto, accionable, mencioná la institución por nombre. Si no hay nada útil, "
+        "devolvé null en sugerencia. NO inventes datos que no estén en lo que te paso.\n\n"
+        f"--- criterios del operador (tuyas/) ---\n{tuyas_md[:3000] if tuyas_md else '(vacío)'}\n\n"
+        f"--- institución ---\n{json.dumps(inst, ensure_ascii=False, indent=2)}\n\n"
+        f"--- lanzamientos activos ({len(lanzamientos)}) ---\n{json.dumps(lanzamientos, ensure_ascii=False, indent=2)}\n\n"
+        f"--- gmail recientes ({len(gmail)}) ---\n{json.dumps(gmail, ensure_ascii=False, indent=2)}\n\n"
+        f"--- whatsapp recientes ({len(whatsapp)}) ---\n{json.dumps(whatsapp[:15], ensure_ascii=False, indent=2)}\n\n"
+        f"--- resumen previo (si existe) ---\n{json.dumps(prev_row or {}, ensure_ascii=False, indent=2)}"
+    )
+    result = llm_json(user_prompt, schema_hint=schema)
+
+    row = {
+        "institucion_id": institucion_id,
+        "resumen": result.get("resumen") or "(sin resumen)",
+        "ultimo_contacto_at": ultimo_contacto_at,
+        "ultimo_canal": ultimo_canal,
+        "pendientes_concretos": {
+            "items": result.get("pendientes_concretos", []),
+            "sugerencia": result.get("sugerencia"),
+        },
+        "actualizado_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "version_prompt": HERMES_MODEL,
+    }
+    try:
+        sb.table("institucion_resumen").upsert(row, on_conflict="institucion_id").execute()
+        return {
+            "institucion_id": institucion_id,
+            "nombre": inst.get("nombre"),
+            "sugerencia": result.get("sugerencia"),
+            "pendientes": len(result.get("pendientes_concretos", [])),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"institucion_id": institucion_id, "error": f"upsert: {exc}"}
+
+
+@app.post("/tasks/institucion_resumen", dependencies=[Depends(require_token)])
+def institucion_resumen(payload: InstitucionResumenInput = InstitucionResumenInput()) -> dict[str, Any]:
+    """Refresca el `institucion_resumen` (la caja morada 'Hermes sugiere').
+
+    - Si `institucion_id` viene: refresca solo esa.
+    - Si no viene: refresca las instituciones que tuvieron actividad reciente o
+      tienen lanzamientos activos, hasta `limit`.
+    """
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("institucion_resumen.start", payload.model_dump(), invocation_id=invocation_id)
+
+    if payload.institucion_id:
+        ids = [payload.institucion_id]
+    else:
+        try:
+            # IDs con actividad: lanzamientos activos + actividad reciente en gmail/whatsapp
+            launches = sb.table("lanzamientos_pps").select("institucion_id").neq(
+                "estado_gestion", "Archivado"
+            ).limit(500).execute().data or []
+            ids_set = {r["institucion_id"] for r in launches if r.get("institucion_id")}
+            if payload.only_with_activity:
+                cutoff = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=60)).isoformat()
+                gmail = sb.table("gmail_hilos").select("institucion_id").gte(
+                    "ultimo_mensaje_at", cutoff
+                ).limit(500).execute().data or []
+                ids_set |= {r["institucion_id"] for r in gmail if r.get("institucion_id")}
+                wa = sb.table("whatsapp_mensajes").select("institucion_id").gte(
+                    "timestamp", cutoff
+                ).limit(2000).execute().data or []
+                ids_set |= {r["institucion_id"] for r in wa if r.get("institucion_id")}
+            ids = sorted(ids_set)[: payload.limit]
+        except Exception as exc:  # noqa: BLE001
+            audit("institucion_resumen.error", {"step": "list", "err": str(exc)},
+                  invocation_id=invocation_id, error=str(exc))
+            raise HTTPException(status_code=500, detail=f"fallo listando: {exc}")
+
+    results = []
+    for iid in ids:
+        results.append(_refresh_one_institucion_resumen(iid))
+
+    summary = {
+        "instituciones_procesadas": len(results),
+        "con_sugerencia": sum(1 for r in results if r.get("sugerencia")),
+        "con_error": sum(1 for r in results if r.get("error")),
+    }
+    audit(
+        "institucion_resumen.done",
+        output={**summary, "sample": results[:5]},
+        invocation_id=invocation_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
+    return {"summary": summary, "results": results}
+
+
 # ---------- task: classify_email ----------
 
 class ClassifyEmailInput(BaseModel):
