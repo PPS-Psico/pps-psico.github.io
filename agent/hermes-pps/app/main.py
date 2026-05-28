@@ -261,6 +261,86 @@ def draft_reply(payload: DraftReplyInput) -> dict[str, Any]:
     return {"suggestion_id": suggestion_id, "content": result}
 
 
+# ---------- task: classify_email ----------
+
+class ClassifyEmailInput(BaseModel):
+    thread_id: str
+    mensaje: str
+    asunto: str | None = None
+    remitente: str | None = None
+    institucion_id: str | None = None
+
+
+@app.post("/tasks/classify_email", dependencies=[Depends(require_token)])
+def classify_email(payload: ClassifyEmailInput) -> dict[str, Any]:
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("classify_email.start", payload.model_dump(), invocation_id=invocation_id)
+
+    schema = (
+        '{"clasificacion": "interesado|sin_cupo|pide_convenio|requiere_llamada|pendiente_docs|otro",'
+        '"requiere_respuesta": true|false,'
+        '"justificacion": "string",'
+        '"borrador": "string (dejar vacio si requiere_respuesta=false o si requiere_decision_humana=true)",'
+        '"requiere_decision_humana": true|false,'
+        '"decision_motivo": "string (si requiere_decision_humana=true)",'
+        '"asunto_respuesta": "string (asunto sugerido para la respuesta)"}'
+    )
+    user = (
+        f"Asunto: {payload.asunto or '(sin asunto)'}\n"
+        f"De: {payload.remitente or 'Desconocido'}\n"
+        f"Cuerpo del mensaje:\n---\n{payload.mensaje}\n---\n\n"
+        "Clasificá este correo institucional de PPS en una de las categorías: "
+        "interesado (acepta alumnos/convenio), sin_cupo (no tiene vacantes), "
+        "pide_convenio (pregunta por convenios), requiere_llamada (pide reunión/contacto telefónico), "
+        "pendiente_docs (envía seguros, firmas o actas), u otro. "
+        "Si requiere respuesta, generá un borrador formal, claro y cortés de respuesta."
+    )
+    result = llm_json(user, schema_hint=schema)
+
+    # 1. Update the classification in gmail_hilos
+    try:
+        sb.table("gmail_hilos").update({
+            "clasificacion": result.get("clasificacion", "otro")
+        }).eq("thread_id", payload.thread_id).execute()
+    except Exception as exc:
+        print(f"[classify_email] failed to update gmail_hilos: {exc}", flush=True)
+
+    # 2. If it requires a response, insert it in agent_suggestions
+    suggestion_id = None
+    if result.get("requiere_respuesta") and not result.get("requiere_decision_humana"):
+        try:
+            suggestion_id = str(uuid.uuid4())
+            sb.table("agent_suggestions").insert({
+                "id": suggestion_id,
+                "tipo": "email_draft",
+                "payload": {
+                    "asunto": result.get("asunto_respuesta") or f"Re: {payload.asunto or 'PPS'}",
+                    "borrador": result.get("borrador") or "",
+                    "justificacion": result.get("justificacion") or "",
+                    "confidence": 0.88
+                },
+                "contexto": {
+                    "model": HERMES_MODEL,
+                    "thread_id": payload.thread_id,
+                    "remitente": payload.remitente,
+                    "mensaje_recibido": payload.mensaje[:1000]
+                },
+                "institucion_id": payload.institucion_id,
+                "estado": "pending"
+            }).execute()
+        except Exception as exc:
+            print(f"[classify_email] failed to insert suggestion: {exc}", flush=True)
+
+    audit(
+        "classify_email.done",
+        invocation_id=invocation_id,
+        suggestion_id=suggestion_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
+    return {"classification": result.get("clasificacion", "otro"), "suggestion_id": suggestion_id, "content": result}
+
+
 # ---------- vault writing ----------
 
 def _safe_slug(s: str) -> str:
