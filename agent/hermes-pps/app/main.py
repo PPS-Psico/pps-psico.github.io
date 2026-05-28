@@ -1541,3 +1541,188 @@ def classify_pps_contacts(payload: ClassifyContactsInput = ClassifyContactsInput
         "classifications": classifications,
         "dry_run": payload.dry_run
     }
+
+
+# ---------- task: verify_finalizacion ----------
+
+class VerifyFinalizacionInput(BaseModel):
+    solicitud_id: str | None = None         # id de la solicitud_pps (egreso)
+    estudiante_id: str | None = None
+    lanzamiento_id: str | None = None
+    planilla_horas_url: str | None = None
+    informe_final_url: str | None = None
+    planilla_asistencia_url: str | None = None
+    horas_declaradas: float | None = None
+    contexto_extra: str | None = None
+
+
+def _download_file(url: str) -> bytes | None:
+    """Descarga un archivo desde una URL (signed o pública). Devuelve bytes o None."""
+    if not url:
+        return None
+    try:
+        import httpx
+        with httpx.Client(timeout=60, follow_redirects=True) as client:
+            resp = client.get(url)
+            resp.raise_for_status()
+            return resp.content
+    except Exception as exc:  # noqa: BLE001
+        print(f"[verify] fallo descarga {url[:80]}: {exc}", flush=True)
+        return None
+
+
+def _extract_pdf_text(data: bytes, max_chars: int = 8000) -> str:
+    """Extrae texto de un PDF. Devuelve string vacío si falla."""
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        chunks = []
+        total = 0
+        for page in reader.pages:
+            txt = (page.extract_text() or "").strip()
+            if not txt:
+                continue
+            chunks.append(txt)
+            total += len(txt)
+            if total > max_chars:
+                break
+        return "\n\n".join(chunks)[:max_chars]
+    except Exception as exc:  # noqa: BLE001
+        return f"(no se pudo extraer texto: {exc})"
+
+
+def _read_file_as_text(url: str | None, label: str) -> dict[str, Any]:
+    """Descarga + extrae texto, devuelve metadata estructurada para el LLM."""
+    if not url:
+        return {"label": label, "presente": False}
+    data = _download_file(url)
+    if not data:
+        return {"label": label, "presente": False, "error": "no se pudo descargar"}
+    size_kb = len(data) // 1024
+    is_pdf = data[:4] == b"%PDF"
+    is_jpeg = data[:3] == b"\xff\xd8\xff"
+    is_png = data[:8] == b"\x89PNG\r\n\x1a\n"
+    if is_pdf:
+        return {
+            "label": label, "presente": True, "tipo": "pdf",
+            "size_kb": size_kb, "texto": _extract_pdf_text(data),
+        }
+    if is_jpeg or is_png:
+        return {
+            "label": label, "presente": True, "tipo": "imagen",
+            "size_kb": size_kb,
+            "texto": "(es una imagen escaneada — Hermes no puede leer el contenido en v1; verificar a ojo)",
+        }
+    return {"label": label, "presente": True, "tipo": "desconocido", "size_kb": size_kb,
+            "texto": "(formato no reconocido)"}
+
+
+@app.post("/tasks/verify_finalizacion", dependencies=[Depends(require_token)])
+def verify_finalizacion(payload: VerifyFinalizacionInput) -> dict[str, Any]:
+    """Verifica los 3 documentos de finalización contra el lanzamiento original y otras PPS.
+
+    Devuelve estado (`verified` / `attention` / `critical`), lista de checks aprobados
+    y lista de issues con severidad + sugerencia de acción.
+    Persiste como suggestion para que la UI pueda re-leer sin invocar de nuevo.
+    """
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("verify_finalizacion.start", payload.model_dump(), invocation_id=invocation_id)
+
+    # 1. Contexto del lanzamiento
+    lanzamiento_ctx: dict[str, Any] = {}
+    if payload.lanzamiento_id:
+        try:
+            res = sb.table("lanzamientos_pps").select(
+                "id,nombre_pps,orientacion,fecha_inicio,fecha_finalizacion,horas_acreditadas,"
+                "descripcion_larga,actividades_lista,requisito_obligatorio"
+            ).eq("id", payload.lanzamiento_id).limit(1).execute().data
+            if res:
+                lanzamiento_ctx = res[0]
+        except Exception as exc:  # noqa: BLE001
+            print(f"[verify] read lanzamiento: {exc}", flush=True)
+
+    # 2. Otras PPS del alumno (overlap check)
+    otras_pps: list[dict[str, Any]] = []
+    if payload.estudiante_id:
+        try:
+            res = sb.table("solicitudes_pps").select(
+                "id,nombre_institucion,estado_seguimiento,created_at"
+            ).eq("estudiante_id", payload.estudiante_id).limit(15).execute().data or []
+            otras_pps = [s for s in res if str(s.get("id")) != str(payload.solicitud_id)]
+        except Exception as exc:  # noqa: BLE001
+            print(f"[verify] read otras_pps: {exc}", flush=True)
+
+    # 3. Leer los 3 archivos
+    archivos = {
+        "planilla_horas": _read_file_as_text(payload.planilla_horas_url, "Planilla de horas"),
+        "informe_final": _read_file_as_text(payload.informe_final_url, "Informe final"),
+        "planilla_asistencia": _read_file_as_text(payload.planilla_asistencia_url, "Planilla de asistencia"),
+    }
+
+    # 4. Prompt LLM
+    schema = (
+        '{"estado":"verified|attention|critical",'
+        '"score_confianza":0.0,'
+        '"checks":[{"item":"string (corto)","ok":true,"detalle":"string"}],'
+        '"issues":[{"severidad":"warning|critical","detalle":"string (qué pasa)","sugerencia":"string (qué hacer)"}],'
+        '"resumen":"string (1 frase para el coordinador)"}'
+    )
+    tuyas_md = _read_tuyas()
+    user_prompt = (
+        "Sos Hermes verificando una solicitud de finalización de PPS. Tu trabajo es chequear:\n"
+        "  1) Horas declaradas coinciden con las horas del lanzamiento original.\n"
+        "  2) El informe final cubre los objetivos del programa (descripcion_larga + actividades).\n"
+        "  3) Las fechas en la planilla de asistencia caen dentro del rango del lanzamiento.\n"
+        "  4) No hay overlap con otras PPS del alumno en las mismas fechas.\n"
+        "  5) Los archivos tienen sustancia (no son PDFs vacíos ni informes de 2 líneas).\n\n"
+        "Devolvé estado=verified si los 5 puntos están OK, attention si hay warnings menores, "
+        "critical si hay al menos una inconsistencia que requiere corrección antes de subir al SAC. "
+        "NO inventes datos; si un archivo no se pudo leer (imagen escaneada), señalalo en `issues` "
+        "como warning con sugerencia de revisar manualmente.\n\n"
+        f"--- criterios del operador (tuyas/) ---\n{tuyas_md[:2500] if tuyas_md else '(vacío)'}\n\n"
+        f"--- horas declaradas por el alumno ---\n{payload.horas_declaradas if payload.horas_declaradas is not None else '(no informado)'}\n\n"
+        f"--- lanzamiento original ---\n{json.dumps(lanzamiento_ctx, ensure_ascii=False, indent=2)}\n\n"
+        f"--- otras PPS del alumno (para overlap) ---\n{json.dumps(otras_pps, ensure_ascii=False, indent=2)}\n\n"
+        f"--- archivos adjuntos ---\n{json.dumps(archivos, ensure_ascii=False)[:10000]}\n\n"
+        f"--- contexto extra del coordinador ---\n{payload.contexto_extra or '(sin contexto)'}"
+    )
+    result = llm_json(user_prompt, schema_hint=schema)
+
+    # 5. Persistir como suggestion (usamos tipo='update_estado' del CHECK constraint, etiqueta real va en contexto.kind)
+    suggestion_id = str(uuid.uuid4())
+    try:
+        sb.table("agent_suggestions").insert({
+            "id": suggestion_id,
+            "tipo": "update_estado",
+            "payload": {
+                "verificacion": result,
+                "solicitud_id": payload.solicitud_id,
+                "archivos_meta": {
+                    k: {kk: vv for kk, vv in v.items() if kk != "texto"}
+                    for k, v in archivos.items()
+                },
+            },
+            "contexto": {
+                "model": HERMES_MODEL,
+                "kind": "verificacion_finalizacion",
+                "lanzamiento_id": payload.lanzamiento_id,
+                "estudiante_id": payload.estudiante_id,
+            },
+        }).execute()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[verify] no se pudo persistir suggestion: {exc}", flush=True)
+
+    audit(
+        "verify_finalizacion.done",
+        output={
+            "estado": result.get("estado"),
+            "issues_count": len(result.get("issues", [])),
+            "checks_count": len(result.get("checks", [])),
+        },
+        invocation_id=invocation_id,
+        suggestion_id=suggestion_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
+    return {"suggestion_id": suggestion_id, "verificacion": result}
