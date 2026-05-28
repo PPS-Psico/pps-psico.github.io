@@ -1,6 +1,7 @@
 import React, { lazy, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import SubTabs from "../../components/SubTabs";
+import AdminActionCenter from "../../components/admin/AdminActionCenter";
 import ConvocatoriaManager from "../../components/admin/ConvocatoriaManager";
 import CalendarPlanning from "../../components/CalendarPlanning";
 import { useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
@@ -22,7 +23,9 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   );
 
   // Reutilizamos el hook aquí para pasar datos al calendario sin refetching
-  const { filteredData, loadingState, error } = useGestionConvocatorias({ isTestingMode });
+  const { filteredData, institutionsMap, loadingState, error } = useGestionConvocatorias({
+    isTestingMode,
+  });
 
   const gestionSubTabs = [
     { id: "manager", label: "Gestión de Relanzamientos", icon: "rocket_launch" },
@@ -57,6 +60,8 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   return (
     <div className="space-y-6">
       {/* Header Card removed as requested */}
+
+      <AdminActionCenter filteredData={filteredData} institutionsMap={institutionsMap} compact />
 
       <SubTabs
         tabs={gestionSubTabs}

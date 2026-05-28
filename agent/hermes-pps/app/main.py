@@ -781,7 +781,6 @@ def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> di
             messages = [m for m in messages if m.get("_phone", "") in pps_phones
                         or (len(m.get("_phone", "")) >= 10 and m["_phone"][-10:] in {p[-10:] for p in pps_phones})]
 
-        summary = _process_messages_to_db(messages, only_institutions=payload.only_institutions and not pps_phones)
         summary["pps_label_contactos"] = len(pps_phones)
 
     summary["since_days"] = payload.since_days
@@ -792,3 +791,173 @@ def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> di
         duration_ms=int((time.time() - t0) * 1000),
     )
     return summary
+
+
+# ---------- task: classify_pps_contacts ----------
+
+class ClassifyContactsInput(BaseModel):
+    limit: int = 50
+    dry_run: bool = False
+
+
+@app.post("/tasks/classify_pps_contacts", dependencies=[Depends(require_token)])
+def classify_pps_contacts(payload: ClassifyContactsInput = ClassifyContactsInput()) -> dict[str, Any]:
+    """Clasifica los contactos recientes de WhatsApp basándose en sus mensajes.
+    
+    Genera propuestas de clasificación en agent_suggestions que Blas puede validar en la UI.
+    """
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("classify_contacts.start", payload.model_dump(), invocation_id=invocation_id)
+
+    # 1. Obtener mensajes recientes para extraer remitentes y dar contexto
+    try:
+        msgs_res = sb.table("whatsapp_mensajes") \
+            .select("chat_jid,autor,texto,timestamp,id") \
+            .eq("from_me", False) \
+            .order("timestamp", desc=True) \
+            .limit(1000) \
+            .execute()
+        
+        all_msgs = msgs_res.data or []
+    except Exception as exc:  # noqa: BLE001
+        audit("classify_contacts.error", {"step": "fetch_messages", "err": str(exc)},
+              invocation_id=invocation_id, error=str(exc))
+        raise HTTPException(status_code=500, detail=f"error leyendo whatsapp_mensajes: {exc}")
+
+    # Agrupar mensajes por chat_jid para aislar candidatos
+    contacts_msgs: dict[str, dict[str, Any]] = {}
+    for m in all_msgs:
+        jid = m["chat_jid"]
+        if not jid:
+            continue
+        if jid not in contacts_msgs:
+            contacts_msgs[jid] = {
+                "chat_jid": jid,
+                "autor": m["autor"] or jid.split("@")[0],
+                "messages": []
+            }
+        # Guardamos hasta 10 mensajes para dar contexto de conversación
+        if len(contacts_msgs[jid]["messages"]) < 10:
+            contacts_msgs[jid]["messages"].append({
+                "id": m["id"],
+                "texto": m["texto"],
+                "timestamp": m["timestamp"]
+            })
+
+    # 2. Excluir contactos ya clasificados en la tabla whatsapp_contactos
+    try:
+        existing_res = sb.table("whatsapp_contactos").select("chat_jid").execute()
+        classified_jids = {c["chat_jid"] for c in (existing_res.data or [])}
+    except Exception as exc:  # noqa: BLE001
+        # Si la tabla aún no existe o no tiene registros, asumimos vacío
+        print(f"[classify] tabla whatsapp_contactos no consultada: {exc}", flush=True)
+        classified_jids = set()
+
+    # 3. Excluir contactos que ya tengan sugerencia pendiente de tipo clasificacion
+    try:
+        pending_res = sb.table("agent_suggestions") \
+            .select("contexto") \
+            .eq("tipo", "clasificacion") \
+            .eq("estado", "pending") \
+            .execute()
+        
+        pending_jids = set()
+        for s in (pending_res.data or []):
+            ctx = s.get("contexto") or {}
+            if "chat_jid" in ctx:
+                pending_jids.add(ctx["chat_jid"])
+    except Exception as exc:  # noqa: BLE001
+        print(f"[classify] error consultando sugerencias pendientes: {exc}", flush=True)
+        pending_jids = set()
+
+    # Filtrar candidatos viables
+    candidates = []
+    for jid, data in contacts_msgs.items():
+        if jid in classified_jids:
+            continue
+        if jid in pending_jids:
+            continue
+        candidates.append(data)
+
+    # Limitar lote
+    candidates = candidates[:payload.limit]
+
+    if not candidates:
+        audit("classify_contacts.done", {"msg": "no candidates to classify"}, invocation_id=invocation_id)
+        return {"suggestion_ids": [], "classifications": [], "msg": "No hay contactos nuevos para clasificar."}
+
+    # 4. Obtener instituciones cargadas para ayudar a vincularlas
+    try:
+        inst_res = sb.table("instituciones").select("id,nombre,tutor,convenio_nuevo").execute()
+        institutions = inst_res.data or []
+    except Exception as exc:  # noqa: BLE001
+        print(f"[classify] error leyendo instituciones: {exc}", flush=True)
+        institutions = []
+
+    # 5. Llamada al LLM
+    schema = (
+        '{"classifications": [{'
+        '"chat_jid": "string",'
+        '"phone": "string (solo digitos o vacio)",'
+        '"nombre_contacto": "string",'
+        '"tipo": "autoridad_uflo|institucion_con_convenio|sin_convenio|coordinador_externo|otro",'
+        '"institucion_id": "string (UUID de la institucion si tipo es institucion_con_convenio o coordinador_externo, null de lo contrario)",'
+        '"confidence": number (entre 0.0 y 1.0),'
+        '"justificacion": "string (max 2 frases)",'
+        '"evidence_message_ids": ["string (IDs de mensajes de evidencia)"],'
+        '"resumen_patron": "string (resumen muy breve de la interaccion o relacion detectada)"'
+        '}]}'
+    )
+
+    user_prompt = (
+        "Analizá los siguientes contactos recientes de WhatsApp del coordinador de PPS y sugerí su clasificación.\n\n"
+        "REGLAS DE CLASIFICACIÓN:\n"
+        "1. autoridad_uflo: Directores de carrera (ej: Agostina), vicerrectores (ej: Fabiana de Col) u otras autoridades académicas que consultan o piden cosas sobre el funcionamiento general de las PPS u otros temas institucionales.\n"
+        "2. institucion_con_convenio: Contactos que representan a una institución que ya está cargada en el panel de instituciones. Debes asociar su institucion_id correspondiente.\n"
+        "3. sin_convenio: Contactos de instituciones de PPS con las que aún no hay convenio formal o no se ha lanzado la PPS (ej: chats de prospección, primer contacto o solicitud de pps sin registrar).\n"
+        "4. coordinador_externo: Tutores o referentes individuales de instituciones que ya tienen convenio pero son contactos individuales.\n"
+        "5. otro: Otros chats personales, alumnos que te contactan por fuera de los canales oficiales, spam o que no corresponden a la gestión directa de PPS o autoridades.\n\n"
+        f"LISTA DE INSTITUCIONES EN EL PANEL (usar para mapear):\n{json.dumps(institutions, ensure_ascii=False, indent=2)}\n\n"
+        f"CONTACTOS A CLASIFICAR:\n{json.dumps(candidates, ensure_ascii=False, indent=2)}"
+    )
+
+    result = llm_json(user_prompt, schema_hint=schema)
+    classifications = result.get("classifications", [])
+
+    suggestion_ids = []
+    if not payload.dry_run:
+        for c in classifications:
+            sugg_id = str(uuid.uuid4())
+            try:
+                # Insertamos una sugerencia individual en agent_suggestions para clasificacion
+                sb.table("agent_suggestions").insert({
+                    "id": sugg_id,
+                    "tipo": "clasificacion",
+                    "estado": "pending",
+                    "payload": c,
+                    "contexto": {
+                        "model": HERMES_MODEL,
+                        "chat_jid": c.get("chat_jid"),
+                        "phone": c.get("phone"),
+                        "nombre_contacto": c.get("nombre_contacto")
+                    },
+                    "institucion_id": c.get("institucion_id") if c.get("institucion_id") else None
+                }).execute()
+                suggestion_ids.append(sugg_id)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[classify] fallo al insertar sugerencia para {c.get('chat_jid')}: {exc}", flush=True)
+
+    audit(
+        "classify_contacts.done",
+        output={"candidates_count": len(candidates), "classifications_count": len(classifications), "suggestion_ids": suggestion_ids},
+        invocation_id=invocation_id,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
+
+    return {
+        "suggestion_ids": suggestion_ids,
+        "classifications": classifications,
+        "dry_run": payload.dry_run
+    }
+

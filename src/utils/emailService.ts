@@ -94,7 +94,33 @@ interface EmailData {
   selectedAt?: string;
   reminderSentAt?: string;
   institutionEmail?: string;
+  customSubject?: string;
+  customBody?: string;
 }
+
+export interface EmailDraft {
+  to: string;
+  subject: string;
+  body: string;
+  institution: string;
+}
+
+export const buildInstitutionContactDraft = (data: {
+  studentName: string;
+  institution?: string;
+  institutionEmail: string;
+}): EmailDraft => {
+  const institution = data.institution?.trim() || "Equipo institucional";
+
+  return {
+    to: data.institutionEmail,
+    subject: DEFAULT_TEMPLATES.contacto_institucion.subject,
+    body: DEFAULT_TEMPLATES.contacto_institucion.body
+      .replace(/{{nombre_institucion}}/g, institution)
+      .replace(/{{nombre_alumno}}/g, data.studentName),
+    institution,
+  };
+};
 
 export const getPublicPanelUrl = (): string => {
   const baseUrl = (import.meta.env.VITE_PUBLIC_APP_URL || "https://pps-psico.github.io").replace(
@@ -277,12 +303,11 @@ export const sendSmartEmail = async (
         template.body.includes("Confirmación obligatoria desde Mi Panel"));
 
     const subjectTmpl =
-      scenario === "seleccion"
-        ? template?.subject || DEFAULT_TEMPLATES[scenario].subject
-        : template?.subject || DEFAULT_TEMPLATES[scenario].subject;
+      data.customSubject || template?.subject || DEFAULT_TEMPLATES[scenario].subject;
 
-    let processedBody =
-      scenario === "contacto_institucion"
+    let processedBody = data.customBody
+      ? data.customBody
+      : scenario === "contacto_institucion"
         ? DEFAULT_TEMPLATES[scenario].body
         : scenario === "seleccion" && (hasLegacySelectionCopy || !template?.body)
           ? DEFAULT_TEMPLATES[scenario].body
@@ -331,7 +356,9 @@ export const sendSmartEmail = async (
       .replace(/{{encuentro_inicial}}/g, encuentroText);
 
     const firstName =
-      scenario === "contacto_institucion" ? "Equipo institucional" : data.studentName.split(" ")[0];
+      scenario === "contacto_institucion"
+        ? data.institution?.trim() || "Equipo institucional"
+        : data.studentName.split(" ")[0];
     const nameColor = scenario === "recordatorio_consentimiento" ? "#ea580c" : "#2563eb";
     const htmlTitle = `Hola, <span style="color: ${nameColor};">${firstName}</span>`;
     const htmlBody = generateHtmlTemplate(textBody, htmlTitle);

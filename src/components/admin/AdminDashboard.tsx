@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
+import { useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
 import { useOperationalData } from "../../hooks/useOperationalData";
 import { useReminders } from "../../hooks/useReminders";
 import type { Reminder } from "../../services/reminderService";
@@ -11,6 +12,7 @@ import EmptyState from "../EmptyState";
 import { AdminDashboardSkeleton } from "../Skeletons";
 import Toast from "../ui/Toast";
 import ActivityFeed from "./ActivityFeed";
+import AdminActionCenter from "./AdminActionCenter";
 
 interface AdminDashboardProps {
   isTestingMode?: boolean;
@@ -133,6 +135,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
     error: opError,
   } = useOperationalData(isTestingMode);
 
+  const {
+    filteredData: gestionActionData,
+    institutionsMap: gestionInstitutionsMap,
+    loadingState: gestionLoadingState,
+  } = useGestionConvocatorias({ isTestingMode });
+
   // Hook de recordatorios
   const {
     todayReminders,
@@ -242,6 +250,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
 
   return (
     <div className="space-y-12 animate-fade-in-up pb-10">
+      <AdminActionCenter
+        filteredData={gestionActionData}
+        institutionsMap={gestionInstitutionsMap}
+        isLoading={gestionLoadingState === "loading" || gestionLoadingState === "initial"}
+        pendingRequestsCount={opData?.pendingRequests?.length || 0}
+        pendingFinalizationsCount={filteredPendingFinalizations.length}
+        pendingCorrectionsCount={opData?.pendingCorrectionsCount || 0}
+      />
+
       {toastInfo && (
         <Toast
           message={toastInfo.message}

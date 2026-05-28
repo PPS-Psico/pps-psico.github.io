@@ -6,7 +6,11 @@ import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
 import { mockDb } from "../../services/mockDb";
 import type { SolicitudPPSFields } from "../../types";
-import { sendSmartEmail } from "../../utils/emailService";
+import {
+  buildInstitutionContactDraft,
+  type EmailDraft,
+  sendSmartEmail,
+} from "../../utils/emailService";
 import {
   getStatusVisuals,
   normalizeStringForComparison,
@@ -26,6 +30,22 @@ import SolicitudesCorreccionManager from "./SolicitudesCorreccionManager";
 // Helper to extract nested values safely
 const safeVal = (val: any) =>
   val || <span className="text-slate-300 dark:text-slate-600 italic text-xs">No especificado</span>;
+
+const getInstitutionNameFromRequest = (req: any): string => {
+  const candidates = [
+    req.nombre_institucion,
+    req.nombre_institucion_manual,
+    req.institucion_nombre,
+    req.institucion,
+    req.empresa,
+  ];
+
+  return (
+    candidates
+      .map((value) => String(value || "").trim())
+      .find((value) => value && normalizeStringForComparison(value) !== "no especificado") || ""
+  );
+};
 
 // Quick Copy Component
 const CopyButton: React.FC<{ text: string; label?: string }> = ({ text, label }) => {
@@ -74,6 +94,126 @@ const GridItem: React.FC<{
   </div>
 );
 
+const EmailReviewModal: React.FC<{
+  draft: EmailDraft;
+  isSending: boolean;
+  onChange: (draft: EmailDraft) => void;
+  onClose: () => void;
+  onSend: (e: React.MouseEvent) => void;
+}> = ({ draft, isSending, onChange, onClose, onSend }) => (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+    onClick={(e) => {
+      e.stopPropagation();
+      if (!isSending) onClose();
+    }}
+  >
+    <div
+      className="w-full max-w-3xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-800">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+            Contacto institucional
+          </p>
+          <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-white">
+            Revisar correo antes de enviar
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isSending}
+          className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          title="Cerrar"
+        >
+          <span className="material-icons !text-lg">close</span>
+        </button>
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Para
+            </span>
+            <input
+              value={draft.to}
+              onChange={(e) => onChange({ ...draft, to: e.target.value })}
+              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Institucion
+            </span>
+            <input
+              value={draft.institution}
+              onChange={(e) => {
+                const institution = e.target.value;
+                onChange({
+                  ...draft,
+                  institution,
+                  body: draft.body.replace(/^Hola, .*?:/m, `Hola, ${institution}:`),
+                });
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </label>
+        </div>
+
+        <label className="block">
+          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Asunto
+          </span>
+          <input
+            value={draft.subject}
+            onChange={(e) => onChange({ ...draft, subject: e.target.value })}
+            className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Mensaje
+          </span>
+          <textarea
+            value={draft.body}
+            onChange={(e) => onChange({ ...draft, body: e.target.value })}
+            rows={13}
+            className="w-full resize-none rounded-lg border border-slate-300 bg-white p-3 text-sm leading-6 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </label>
+      </div>
+
+      <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 p-5 sm:flex-row sm:justify-end dark:border-slate-800 dark:bg-slate-950/40">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isSending}
+          className="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-800 disabled:opacity-50 dark:hover:text-slate-200"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={isSending || !draft.to.trim() || !draft.subject.trim()}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+        >
+          {isSending ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/50 border-t-white" />
+          ) : (
+            <span className="material-icons !text-lg">send</span>
+          )}
+          {isSending ? "Enviando..." : "Enviar correo"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const RequestListItem: React.FC<{
   req: any;
   onDeleteRequest: (id: string) => void;
@@ -100,7 +240,7 @@ const RequestListItem: React.FC<{
       "no se pudo concretar",
     ].includes(normalizedStatus);
   const daysStagnant = req._daysSinceUpdate;
-  const institucion = req.nombre_institucion;
+  const institucion = getInstitutionNameFromRequest(req);
   const instEmail = req.email_institucion;
   const updateTimeDisplay = req.actualizacion || req.created_at;
   const navigate = useLocation(); // Hook used to trigger navigate below
@@ -124,21 +264,38 @@ const RequestListItem: React.FC<{
   };
 
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
+
+  const handleOpenEmailReview = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!req.email_institucion) return;
+
+    setEmailDraft(
+      buildInstitutionContactDraft({
+        studentName: req._studentName,
+        institution: institucion,
+        institutionEmail: req.email_institucion,
+      })
+    );
+  };
 
   const handleSendEmailToInstitution = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!req.email_institucion) return;
+    if (!emailDraft) return;
 
     setIsSendingEmail(true);
     try {
       const result = await sendSmartEmail("contacto_institucion", {
         studentName: req._studentName,
-        studentEmail: req.email_institucion,
-        institution: req.nombre_institucion,
-        institutionEmail: req.email_institucion,
+        studentEmail: emailDraft.to,
+        institution: emailDraft.institution,
+        institutionEmail: emailDraft.to,
+        customSubject: emailDraft.subject,
+        customBody: emailDraft.body,
       });
 
       if (result.success) {
+        setEmailDraft(null);
         onToast?.({ message: "Email enviado a la institución", type: "success" });
         if (status === "Pendiente") {
           setStatus("En conversaciones");
@@ -165,6 +322,15 @@ const RequestListItem: React.FC<{
     <div
       className={`group relative bg-white dark:bg-slate-900 rounded-xl border transition-all duration-300 overflow-hidden ${isExpanded ? "border-blue-400 dark:border-blue-600 ring-1 ring-blue-100 dark:ring-blue-900/30 shadow-lg" : "border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 shadow-sm"} ${isStagnant && !isExpanded ? "border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/10" : ""}`}
     >
+      {emailDraft && (
+        <EmailReviewModal
+          draft={emailDraft}
+          isSending={isSendingEmail}
+          onChange={setEmailDraft}
+          onClose={() => setEmailDraft(null)}
+          onSend={handleSendEmailToInstitution}
+        />
+      )}
       <div
         className={`absolute left-0 top-0 bottom-0 w-1 transition-all duration-300 ${isExpanded ? "w-1" : "w-1.5"} ${statusVisuals.accentBg}`}
       ></div>
@@ -245,7 +411,7 @@ const RequestListItem: React.FC<{
                       <div className="flex items-center gap-1">
                         <CopyButton text={req.email_institucion} />
                         <button
-                          onClick={handleSendEmailToInstitution}
+                          onClick={handleOpenEmailReview}
                           disabled={isSendingEmail}
                           className="p-1 rounded transition-all flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 disabled:opacity-50"
                           title="Enviar correo automático a la institución"
@@ -389,7 +555,7 @@ const RequestListItem: React.FC<{
               <div className="flex justify-end gap-3 pt-4 border-t border-transparent">
                 {req.email_institucion && (
                   <button
-                    onClick={handleSendEmailToInstitution}
+                    onClick={handleOpenEmailReview}
                     disabled={isSendingEmail}
                     className="mr-auto px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
                   >
