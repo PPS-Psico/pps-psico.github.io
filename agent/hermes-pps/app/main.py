@@ -768,7 +768,6 @@ def sync_whatsapp_backup(payload: SyncWhatsAppInput = SyncWhatsAppInput()) -> di
         summary["pps_label_contactos"] = len(pps_phones)
 
     summary["since_days"] = payload.since_days
-    summary["wabdd_stdout_tail"] = (proc.stdout or "")[-400:]
     audit(
         "wa_sync.done",
         output={k: v for k, v in summary.items() if k != "wabdd_stdout_tail"},
