@@ -158,7 +158,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isTestingMode = false }
     queryKey: ["pendingClassificationsCountDashboard"],
     queryFn: async () => {
       if (isTestingMode) return 0;
-      const { count, error } = await (supabase as any)
+      const { count, error } = await supabase
         .from("agent_suggestions")
         .select("*", { count: "exact", head: true })
         .eq("tipo", "clasificacion")

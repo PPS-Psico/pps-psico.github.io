@@ -1,11 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5";
-  };
   public: {
     Tables: {
       admin_action_log: {
@@ -46,6 +41,103 @@ export type Database = {
           target_table?: string;
         };
         Relationships: [];
+      };
+      agent_audit_log: {
+        Row: {
+          duration_ms: number | null;
+          error: string | null;
+          id: string;
+          input: Json | null;
+          invocation_id: string;
+          output: Json | null;
+          suggestion_id: string | null;
+          timestamp: string;
+          tool: string;
+        };
+        Insert: {
+          duration_ms?: number | null;
+          error?: string | null;
+          id?: string;
+          input?: Json | null;
+          invocation_id: string;
+          output?: Json | null;
+          suggestion_id?: string | null;
+          timestamp?: string;
+          tool: string;
+        };
+        Update: {
+          duration_ms?: number | null;
+          error?: string | null;
+          id?: string;
+          input?: Json | null;
+          invocation_id?: string;
+          output?: Json | null;
+          suggestion_id?: string | null;
+          timestamp?: string;
+          tool?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agent_audit_log_suggestion_id_fkey";
+            columns: ["suggestion_id"];
+            isOneToOne: false;
+            referencedRelation: "agent_suggestions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      agent_suggestions: {
+        Row: {
+          contexto: Json | null;
+          created_at: string;
+          edited_payload: Json | null;
+          estado: string;
+          expires_at: string | null;
+          id: string;
+          institucion_id: string | null;
+          lanzamiento_id: string | null;
+          payload: Json;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          tipo: string;
+        };
+        Insert: {
+          contexto?: Json | null;
+          created_at?: string;
+          edited_payload?: Json | null;
+          estado?: string;
+          expires_at?: string | null;
+          id?: string;
+          institucion_id?: string | null;
+          lanzamiento_id?: string | null;
+          payload: Json;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          tipo: string;
+        };
+        Update: {
+          contexto?: Json | null;
+          created_at?: string;
+          edited_payload?: Json | null;
+          estado?: string;
+          expires_at?: string | null;
+          id?: string;
+          institucion_id?: string | null;
+          lanzamiento_id?: string | null;
+          payload?: Json;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          tipo?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agent_suggestions_lanzamiento_id_fkey";
+            columns: ["lanzamiento_id"];
+            isOneToOne: false;
+            referencedRelation: "lanzamientos_pps";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       app_config: {
         Row: {
@@ -568,6 +660,81 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      gmail_hilos: {
+        Row: {
+          asunto: string | null;
+          clasificacion: string | null;
+          estado: string;
+          ingested_at: string;
+          institucion_id: string | null;
+          participantes: Json | null;
+          primer_mensaje_at: string | null;
+          raw_mensajes: Json | null;
+          thread_id: string;
+          ultimo_mensaje_at: string | null;
+          ultimo_mensaje_de: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          asunto?: string | null;
+          clasificacion?: string | null;
+          estado?: string;
+          ingested_at?: string;
+          institucion_id?: string | null;
+          participantes?: Json | null;
+          primer_mensaje_at?: string | null;
+          raw_mensajes?: Json | null;
+          thread_id: string;
+          ultimo_mensaje_at?: string | null;
+          ultimo_mensaje_de?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          asunto?: string | null;
+          clasificacion?: string | null;
+          estado?: string;
+          ingested_at?: string;
+          institucion_id?: string | null;
+          participantes?: Json | null;
+          primer_mensaje_at?: string | null;
+          raw_mensajes?: Json | null;
+          thread_id?: string;
+          ultimo_mensaje_at?: string | null;
+          ultimo_mensaje_de?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      institucion_resumen: {
+        Row: {
+          actualizado_at: string;
+          institucion_id: string;
+          pendientes_concretos: Json | null;
+          resumen: string;
+          ultimo_canal: string | null;
+          ultimo_contacto_at: string | null;
+          version_prompt: string | null;
+        };
+        Insert: {
+          actualizado_at?: string;
+          institucion_id: string;
+          pendientes_concretos?: Json | null;
+          resumen: string;
+          ultimo_canal?: string | null;
+          ultimo_contacto_at?: string | null;
+          version_prompt?: string | null;
+        };
+        Update: {
+          actualizado_at?: string;
+          institucion_id?: string;
+          pendientes_concretos?: Json | null;
+          resumen?: string;
+          ultimo_canal?: string | null;
+          ultimo_contacto_at?: string | null;
+          version_prompt?: string | null;
+        };
+        Relationships: [];
       };
       instituciones: {
         Row: {
@@ -1149,6 +1316,101 @@ export type Database = {
         };
         Relationships: [];
       };
+      whatsapp_contactos: {
+        Row: {
+          chat_jid: string;
+          clasificado_por: string;
+          confidence: number | null;
+          created_at: string;
+          institucion_id: string | null;
+          last_seen_at: string | null;
+          nombre_contacto: string | null;
+          notas: string | null;
+          phone: string | null;
+          tipo: string;
+          updated_at: string;
+          validado_at: string | null;
+          validado_por: string | null;
+        };
+        Insert: {
+          chat_jid: string;
+          clasificado_por: string;
+          confidence?: number | null;
+          created_at?: string;
+          institucion_id?: string | null;
+          last_seen_at?: string | null;
+          nombre_contacto?: string | null;
+          notas?: string | null;
+          phone?: string | null;
+          tipo: string;
+          updated_at?: string;
+          validado_at?: string | null;
+          validado_por?: string | null;
+        };
+        Update: {
+          chat_jid?: string;
+          clasificado_por?: string;
+          confidence?: number | null;
+          created_at?: string;
+          institucion_id?: string | null;
+          last_seen_at?: string | null;
+          nombre_contacto?: string | null;
+          notas?: string | null;
+          phone?: string | null;
+          tipo?: string;
+          updated_at?: string;
+          validado_at?: string | null;
+          validado_por?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_contactos_institucion_id_fkey";
+            columns: ["institucion_id"];
+            isOneToOne: false;
+            referencedRelation: "instituciones";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      whatsapp_mensajes: {
+        Row: {
+          autor: string | null;
+          chat_jid: string;
+          from_me: boolean;
+          id: string;
+          ingested_at: string;
+          institucion_id: string | null;
+          media_tipo: string | null;
+          raw: Json | null;
+          texto: string | null;
+          timestamp: string;
+        };
+        Insert: {
+          autor?: string | null;
+          chat_jid: string;
+          from_me: boolean;
+          id: string;
+          ingested_at?: string;
+          institucion_id?: string | null;
+          media_tipo?: string | null;
+          raw?: Json | null;
+          texto?: string | null;
+          timestamp: string;
+        };
+        Update: {
+          autor?: string | null;
+          chat_jid?: string;
+          from_me?: boolean;
+          id?: string;
+          ingested_at?: string;
+          institucion_id?: string | null;
+          media_tipo?: string | null;
+          raw?: Json | null;
+          texto?: string | null;
+          timestamp?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1158,6 +1420,7 @@ export type Database = {
         Args: { legajo_input: string; new_password: string };
         Returns: undefined;
       };
+      archive_lanzamientos_after_start_grace: { Args: never; Returns: number };
       auth_email: { Args: never; Returns: string };
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean };
       clean_dirty_text: { Args: { val: string }; Returns: string };
@@ -1264,9 +1527,30 @@ export type Database = {
         Args: { legajo_input: string };
         Returns: {
           apellido_separado: string;
+          correo: string;
+          dni: number;
           id: string;
+          legajo: string;
           nombre: string;
           nombre_separado: string;
+          telefono: string;
+          user_id: string;
+        }[];
+      };
+      get_student_signup_status: {
+        Args: { correo_input?: string; legajo_input: string };
+        Returns: {
+          apellido_separado: string;
+          correo: string;
+          dni: number;
+          estado: string;
+          id: string;
+          legajo: string;
+          nombre: string;
+          nombre_separado: string;
+          signup_status: string;
+          status_message: string;
+          telefono: string;
           user_id: string;
         }[];
       };
@@ -1283,10 +1567,10 @@ export type Database = {
       process_consentimiento_timeouts: { Args: never; Returns: undefined };
       register_new_student: {
         Args: {
-          correo_input: string;
-          dni_input: number;
+          correo_input?: string;
+          dni_input?: number;
           legajo_input: string;
-          telefono_input: string;
+          telefono_input?: string;
           userid_input: string;
         };
         Returns: undefined;

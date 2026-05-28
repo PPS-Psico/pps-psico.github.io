@@ -86,19 +86,19 @@ export const WhatsAppContactClassifier: React.FC = () => {
   const [editedNotes, setEditedNotes] = useState("");
   const [instSearchQuery, setInstSearchQuery] = useState("");
 
-  // 1. Fetch pending suggestions (bypass stale types via any)
+  // 1. Fetch pending suggestions
   const { data: suggestions = [], isLoading: isLoadingSuggestions } = useQuery<PendingSuggestion[]>(
     {
       queryKey: ["pendingContactClassifications"],
       queryFn: async () => {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from("agent_suggestions")
           .select("*")
           .eq("tipo", "clasificacion")
           .eq("estado", "pending")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        return (data || []) as PendingSuggestion[];
+        return (data || []) as unknown as PendingSuggestion[];
       },
     }
   );
@@ -109,13 +109,13 @@ export const WhatsAppContactClassifier: React.FC = () => {
     queryFn: () => db.instituciones.getAll(),
   });
 
-  // 3. Fetch recent messages for context of selected JID (bypass stale types via any)
+  // 3. Fetch recent messages for context of selected JID
   const selectedJid = selectedSuggestion?.payload?.chat_jid || null;
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery<MessageContext[]>({
     queryKey: ["whatsapp-messages-context", selectedJid],
     queryFn: async () => {
       if (!selectedJid) return [];
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("whatsapp_mensajes")
         .select("id, texto, timestamp, from_me")
         .eq("chat_jid", selectedJid)
@@ -169,7 +169,7 @@ export const WhatsAppContactClassifier: React.FC = () => {
     );
   }, [institutions, instSearchQuery]);
 
-  // 4. Mutation to validate/approve classification (bypass stale types via any)
+  // 4. Mutation to validate/approve classification
   const approveMutation = useMutation({
     mutationFn: async ({
       suggestionId,
@@ -190,7 +190,7 @@ export const WhatsAppContactClassifier: React.FC = () => {
       const validadoAt = new Date().toISOString();
 
       // a. Insert/Upsert into whatsapp_contactos
-      const { error: upsertError } = await (supabase as any).from("whatsapp_contactos").upsert({
+      const { error: upsertError } = await supabase.from("whatsapp_contactos").upsert({
         chat_jid: payload.chat_jid,
         phone: payload.phone,
         nombre_contacto: payload.nombre_contacto,
@@ -207,7 +207,7 @@ export const WhatsAppContactClassifier: React.FC = () => {
       if (upsertError) throw upsertError;
 
       // b. Update suggestion state
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from("agent_suggestions")
         .update({
           estado: "approved",
@@ -235,11 +235,11 @@ export const WhatsAppContactClassifier: React.FC = () => {
     },
   });
 
-  // 5. Mutation to discard classification suggestion (bypass stale types via any)
+  // 5. Mutation to discard classification suggestion
   const discardMutation = useMutation({
     mutationFn: async (suggestionId: string) => {
       const validadoPor = authenticatedUser?.id || null;
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("agent_suggestions")
         .update({
           estado: "discarded",
@@ -359,7 +359,7 @@ export const WhatsAppContactClassifier: React.FC = () => {
                     className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-start gap-3 relative ${
                       isSelected
                         ? "border-blue-500 bg-blue-50/40 dark:bg-blue-900/10 dark:border-blue-600 shadow-sm"
-                        : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-950/20"
+                        : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-200 dark:hover:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-950/20"
                     }`}
                   >
                     <div
