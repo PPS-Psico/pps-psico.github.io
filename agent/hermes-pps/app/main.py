@@ -3,9 +3,15 @@
 Endpoints:
   GET  /health                      -> liveness
   POST /tasks/daily_brief           -> arma el brief de la mañana
+  POST /tasks/daily_brief_from_db   -> arma el brief leyendo Supabase directo
+  POST /tasks/plan_today            -> arma el tablero "Hoy con Hermes"
   POST /tasks/draft_reply           -> redacta borrador de respuesta
   POST /tasks/explore               -> investiga Supabase y escribe hallazgos al vault
   POST /tasks/learn_from_feedback   -> registra aprendizaje a partir de feedback humano
+
+Scheduler interno (ver final del archivo): regenera solo, cada mañana, el plan
+del día y —como respaldo— el daily brief si n8n no lo generó. Configurable por
+entorno (HERMES_SCHEDULER_ENABLED, HERMES_PLAN_TODAY_AT, etc.).
 
 Todas las rutas /tasks/* requieren header X-Hermes-Token == HERMES_INTERNAL_TOKEN.
 Toda invocación queda registrada en agent_audit_log.
@@ -27,6 +33,7 @@ import uuid
 from typing import Any
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from pydantic import BaseModel
 from supabase import Client, create_client
@@ -45,6 +52,19 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 HERMES_MODE = os.environ.get("HERMES_MODE", "shadow")
 HERMES_INTERNAL_TOKEN = os.environ["HERMES_INTERNAL_TOKEN"]
 VAULT_PATH = pathlib.Path(os.environ.get("VAULT_PATH", "/vault"))
+
+# Verificación de doble pasada en verify_finalizacion: una segunda llamada al LLM
+# audita la primera antes de persistir (idea tomada del verifier node de Hermes
+# Agent de Nous Research). Pensado para acreditaciones, donde equivocarse es caro.
+#   "1" (default) | "0" para apagarlo.
+HERMES_DOUBLE_CHECK_VERIFY = os.environ.get("HERMES_DOUBLE_CHECK_VERIFY", "1") == "1"
+
+# Webhook de n8n para acciones SALIENTES de Gmail (responder / archivar / leer).
+# n8n posee la credencial Gmail OAuth2; Hermes solo orquesta y audita.
+#   GMAIL_ACTION_WEBHOOK_URL  → URL del webhook n8n (POST)
+#   GMAIL_ACTION_WEBHOOK_TOKEN→ token opcional enviado en header X-Hermes-Token
+N8N_GMAIL_WEBHOOK_URL = os.environ.get("GMAIL_ACTION_WEBHOOK_URL", "")
+N8N_GMAIL_WEBHOOK_TOKEN = os.environ.get("GMAIL_ACTION_WEBHOOK_TOKEN", "")
 WHATSAPP_E2E_KEY = os.environ.get("WHATSAPP_E2E_KEY", "")
 WABDD_MASTER_TOKEN = os.environ.get("WABDD_MASTER_TOKEN", "")
 WABDD_ANDROID_ID = os.environ.get("WABDD_ANDROID_ID", "")
@@ -139,9 +159,77 @@ def llm_json(user_prompt: str, *, schema_hint: str) -> dict[str, Any]:
     raise HTTPException(status_code=502, detail="todos los modelos LLM fallaron")
 
 
+def llm_verify(original_prompt: str, candidate: dict[str, Any], *, schema_hint: str,
+               foco: str) -> dict[str, Any]:
+    """Segunda pasada: un verificador independiente audita la salida de la primera.
+
+    Idea tomada del verifier node del modo Swarm de Hermes Agent (Nous Research):
+    en vez de confiar en una sola inferencia, una segunda llamada revisa el
+    resultado contra el contexto original y puede corregirlo. Útil donde
+    equivocarse es caro (acreditaciones). No inventa datos nuevos: solo valida
+    los que ya están en el contexto y ajusta el veredicto si la primera pasada
+    fue demasiado laxa o demasiado dura.
+
+    Devuelve un dict con el MISMO shape que `candidate`, más:
+      "_verificador": {"coincide": bool, "ajustes": "string", "modelo": "..."}
+    Si la verificación falla por cualquier motivo, devuelve el candidate intacto
+    (degradación elegante: nunca peor que sin doble pasada).
+    """
+    audit_prompt = (
+        "Sos un VERIFICADOR independiente. Otra instancia de Hermes ya produjo el "
+        "JSON candidato de abajo a partir del contexto original. Tu único trabajo es "
+        "auditarlo, NO rehacerlo desde cero.\n\n"
+        f"Foco de la auditoría: {foco}\n\n"
+        "Revisá específicamente:\n"
+        "  - ¿El veredicto/estado es coherente con la evidencia del contexto? "
+        "(¿marcó verified algo que tiene una inconsistencia real? ¿marcó critical "
+        "algo que es solo un warning menor?)\n"
+        "  - ¿Hay datos inventados que NO están en el contexto? Si los hay, eliminalos.\n"
+        "  - ¿Falta señalar algo que el contexto deja en evidencia?\n\n"
+        "Si el candidato está bien, devolvelo igual. Si hay que corregirlo, devolvé "
+        "la versión corregida con EL MISMO shape. En ambos casos agregá la clave "
+        '`_verificador` con {"coincide": true/false, "ajustes": "qué cambiaste o '
+        '\'nada\'"}.\n\n'
+        f"--- contexto original (resumido) ---\n{original_prompt[:6000]}\n\n"
+        f"--- JSON candidato a auditar ---\n{json.dumps(candidate, ensure_ascii=False)[:6000]}\n\n"
+        f"--- shape esperado ---\n{schema_hint}"
+    )
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": audit_prompt},
+    ]
+    for model in (HERMES_MODEL, HERMES_MODEL_FALLBACK):
+        try:
+            resp = llm.chat.completions.create(
+                model=model,
+                messages=messages,
+                response_format={"type": "json_object"},
+                temperature=0.0,  # verificación = determinista
+            )
+            checked = json.loads(resp.choices[0].message.content or "{}")
+            if not isinstance(checked, dict) or not checked:
+                return candidate
+            checked.setdefault("_verificador", {})
+            if isinstance(checked["_verificador"], dict):
+                checked["_verificador"]["modelo"] = model
+            return checked
+        except Exception as exc:  # noqa: BLE001
+            print(f"[llm_verify] modelo {model} falló: {exc}", flush=True)
+    # Si la verificación entera falla, no degradamos la respuesta original.
+    return candidate
+
+
 # ---------- app ----------
 
 app = FastAPI(title="hermes-pps", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
@@ -160,6 +248,84 @@ class DailyBriefInput(BaseModel):
     whatsapp_pendientes: list[dict[str, Any]] = []
 
 
+def _sanitize_brief_refs(result: dict[str, Any], payload: "DailyBriefInput") -> dict[str, Any]:
+    """Valida y corrige los `ref` que el LLM adjuntó a cada bullet.
+
+    El modelo puede alucinar ids o copiarlos mal. Acá garantizamos que cada
+    `ref.id` exista REALMENTE en los datos de entrada. Si no, intentamos
+    resolverlo por texto; si tampoco, lo marcamos {tipo:'ninguno', id:''}.
+    """
+    import unicodedata
+
+    def norm(s: Any) -> str:
+        t = str(s or "").lower()
+        t = "".join(c for c in unicodedata.normalize("NFD", t) if unicodedata.category(c) != "Mn")
+        t = "".join(c if c.isalnum() else " " for c in t)
+        return " ".join(t.split())
+
+    indices: dict[str, dict[str, dict]] = {
+        "solicitud": {str(s.get("id")): s for s in payload.solicitudes_pendientes if s.get("id")},
+        "lanzamiento": {str(l.get("id")): l for l in payload.lanzamientos_por_vencer if l.get("id")},
+        "gmail": {str(g.get("thread_id")): g for g in payload.gmail_sin_responder if g.get("thread_id")},
+        "whatsapp": {str(w.get("chat_jid")): w for w in payload.whatsapp_pendientes if w.get("chat_jid")},
+        "institucion": {str(i.get("id")): i for i in payload.instituciones_sin_contacto if i.get("id")},
+    }
+    name_fields = {
+        "solicitud": ["nombre_alumno", "nombre_institucion"],
+        "lanzamiento": ["nombre_pps"],
+        "gmail": ["asunto"],
+        "whatsapp": ["autor", "chat_jid"],
+        "institucion": ["nombre"],
+    }
+
+    def resolve_by_text(tipo: str, text: str) -> str | None:
+        idx = indices.get(tipo) or {}
+        hay = norm(text)
+        if not hay:
+            return None
+        best_id, best_score = None, 0
+        for rid, rec in idx.items():
+            score = 0
+            for f in name_fields.get(tipo, []):
+                val = norm(rec.get(f))
+                if len(val) > 4 and val in hay:
+                    score += 2
+            if score > best_score:
+                best_id, best_score = rid, score
+        return best_id if best_score >= 2 else None
+
+    bullets = result.get("bullets") if isinstance(result, dict) else None
+    if not isinstance(bullets, list):
+        return result
+
+    valid_tipos = {"solicitud", "lanzamiento", "gmail", "whatsapp", "institucion"}
+    for b in bullets:
+        if not isinstance(b, dict):
+            continue
+        ref = b.get("ref") if isinstance(b.get("ref"), dict) else {}
+        tipo = str(ref.get("tipo") or "").strip().lower()
+        rid = str(ref.get("id") or "").strip()
+        text = f"{b.get('titulo', '')} {b.get('por_que', '')}"
+
+        resolved_tipo, resolved_id = "ninguno", ""
+        if tipo in valid_tipos and rid and rid in (indices.get(tipo) or {}):
+            resolved_tipo, resolved_id = tipo, rid
+        elif tipo in valid_tipos:
+            maybe = resolve_by_text(tipo, text)
+            if maybe:
+                resolved_tipo, resolved_id = tipo, maybe
+        if resolved_tipo == "ninguno":
+            for t in valid_tipos:
+                maybe = resolve_by_text(t, text)
+                if maybe:
+                    resolved_tipo, resolved_id = t, maybe
+                    break
+
+        b["ref"] = {"tipo": resolved_tipo, "id": resolved_id}
+
+    return result
+
+
 def _create_daily_brief(payload: DailyBriefInput, *, source: str) -> dict[str, Any]:
     t0 = time.time()
     invocation_id = str(uuid.uuid4())
@@ -168,15 +334,29 @@ def _create_daily_brief(payload: DailyBriefInput, *, source: str) -> dict[str, A
     schema = (
         '{"bullets":[{"prioridad":"alta|media|baja",'
         '"titulo":"string","por_que":"string",'
-        '"accion_sugerida":"string","recurso":"string"}],'
+        '"accion_sugerida":"string","recurso":"string",'
+        '"ref":{"tipo":"solicitud|lanzamiento|gmail|whatsapp|institucion|ninguno",'
+        '"id":"string (el identificador EXACTO del dato, copiado tal cual)"}}],'
         '"resumen":"string (1-2 frases)"}'
     )
     user = (
         "Armá el daily brief del coordinador. Máximo 7 bullets, priorizados. "
         "Mirá especialmente lo que se está cayendo entre las grietas.\n\n"
+        "MUY IMPORTANTE — trazabilidad: cada bullet DEBE incluir el objeto `ref` "
+        "que identifica el dato concreto del que hablás, para que el panel pueda "
+        "abrir esa ficha exacta (no una lista genérica). Reglas para `ref`:\n"
+        "  · solicitudes_pendientes  -> ref.tipo='solicitud',  ref.id = el campo `id` de esa solicitud.\n"
+        "  · lanzamientos_por_vencer -> ref.tipo='lanzamiento', ref.id = el campo `id` del lanzamiento.\n"
+        "  · gmail_sin_responder     -> ref.tipo='gmail',       ref.id = el `thread_id` del hilo.\n"
+        "  · whatsapp_pendientes     -> ref.tipo='whatsapp',    ref.id = el `chat_jid` del contacto.\n"
+        "  · instituciones_sin_contacto -> ref.tipo='institucion', ref.id = el `id` de la institución.\n"
+        "  · si el bullet es general y no mapea a un dato puntual -> ref.tipo='ninguno', ref.id=''.\n"
+        "Copiá el id EXACTO del dato (no lo inventes ni lo reformatees). Si un bullet "
+        "habla de varios datos, usá el más accionable.\n\n"
         f"DATOS:\n{json.dumps(payload.model_dump(), ensure_ascii=False, indent=2)}"
     )
     result = llm_json(user, schema_hint=schema)
+    result = _sanitize_brief_refs(result, payload)
 
     suggestion_id = str(uuid.uuid4())
     sb.table("agent_suggestions").insert({
@@ -215,13 +395,104 @@ def daily_brief_from_db() -> dict[str, Any]:
 
     try:
         solis = sb.table("solicitudes_pps").select(
-            "id,estudiante_id,nombre_alumno,nombre_institucion,estado_seguimiento,actualizacion,created_at"
+            "id,estudiante_id,nombre_alumno,nombre_institucion,estado_seguimiento,actualizacion,created_at,"
+            "telefono_institucion,email_institucion,referente_institucion"
         ).order("created_at", desc=True).limit(25).execute().data or []
-        solicitudes_pendientes = [
-            s for s in solis
-            if s.get("created_at")
-            and (now - dt.datetime.fromisoformat(str(s["created_at"]).replace("Z", "+00:00"))).total_seconds() > 48 * 3600
-        ][:15]
+
+        # Fetch messages and hilos to cross-reference recent contact history
+        all_wa = []
+        try:
+            all_wa = sb.table("whatsapp_mensajes").select("chat_jid,from_me,texto,timestamp").order("timestamp", desc=True).limit(1000).execute().data or []
+        except Exception as wa_exc:
+            print(f"[daily_brief_from_db] error querying whatsapp_mensajes: {wa_exc}", flush=True)
+
+        all_gmail = []
+        try:
+            all_gmail = sb.table("gmail_hilos").select("asunto,ultimo_mensaje_de,ultimo_mensaje_at,participantes,email_institucion").order("ultimo_mensaje_at", desc=True).limit(500).execute().data or []
+        except Exception as gm_exc:
+            print(f"[daily_brief_from_db] error querying gmail_hilos: {gm_exc}", flush=True)
+
+        wa_by_phone = {}
+        for m in all_wa:
+            jid = m.get("chat_jid") or ""
+            phone_part = jid.split("@")[0] if "@" in jid else jid
+            norm = _normalize_phone(phone_part)
+            if norm:
+                last_10 = norm[-10:]
+                if last_10 not in wa_by_phone:
+                    wa_by_phone[last_10] = {
+                        "from_me": m.get("from_me"),
+                        "texto": m.get("texto"),
+                        "timestamp": m.get("timestamp")
+                    }
+
+        gmail_by_email = {}
+        for t in all_gmail:
+            emails = []
+            if t.get("email_institucion"):
+                emails.append(t["email_institucion"].lower().strip())
+            parts = t.get("participantes")
+            if parts:
+                if isinstance(parts, list):
+                    for p in parts:
+                        if isinstance(p, str):
+                            emails.append(p.lower().strip())
+                        elif isinstance(p, dict) and p.get("email"):
+                            emails.append(p["email"].lower().strip())
+                elif isinstance(parts, str):
+                    for email_match in re.findall(r'[\w\.-]+@[\w\.-]+', parts):
+                        emails.append(email_match.lower().strip())
+            for email in emails:
+                if email not in gmail_by_email:
+                    gmail_by_email[email] = {
+                        "ultimo_mensaje_de": t.get("ultimo_mensaje_de"),
+                        "ultimo_mensaje_at": t.get("ultimo_mensaje_at"),
+                        "asunto": t.get("asunto")
+                    }
+
+        enriched_solicitudes = []
+        for s in solis:
+            created_at = s.get("created_at")
+            if not created_at:
+                continue
+            if (now - dt.datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))).total_seconds() <= 48 * 3600:
+                continue
+
+            tel = s.get("telefono_institucion")
+            email = s.get("email_institucion")
+            last_contact = None
+
+            if tel:
+                norm_tel = _normalize_phone(tel)
+                if norm_tel:
+                    last_10 = norm_tel[-10:]
+                    wa = wa_by_phone.get(last_10)
+                    if wa:
+                        last_contact = {
+                            "canal": "whatsapp",
+                            "hace_cuanto": wa["timestamp"],
+                            "de_nosotros": wa["from_me"],
+                            "snippet": wa["texto"]
+                        }
+
+            if email:
+                email_clean = email.lower().strip()
+                gm = gmail_by_email.get(email_clean)
+                if gm:
+                    gm_time = gm["ultimo_mensaje_at"]
+                    if not last_contact or (gm_time and gm_time > last_contact["hace_cuanto"]):
+                        last_contact = {
+                            "canal": "gmail",
+                            "hace_cuanto": gm_time,
+                            "de_nosotros": gm["ultimo_mensaje_de"] == "nos",
+                            "snippet": gm["asunto"]
+                        }
+
+            s_copy = dict(s)
+            s_copy["ultimo_contacto"] = last_contact
+            enriched_solicitudes.append(s_copy)
+
+        solicitudes_pendientes = enriched_solicitudes[:15]
     except Exception as exc:  # noqa: BLE001
         print(f"[daily_brief_from_db] solicitudes: {exc}", flush=True)
 
@@ -367,6 +638,646 @@ def draft_reply(payload: DraftReplyInput) -> dict[str, Any]:
         duration_ms=int((time.time() - t0) * 1000),
     )
     return {"suggestion_id": suggestion_id, "content": result}
+
+
+# ---------- task: draft_pending_emails (inteligente) ----------
+# Genera proactivamente borradores para los correos "esperando respuesta" que
+# todavía no tienen uno. El panel los muestra al instante (sin esperar al LLM).
+# Pensado para dispararse por cron (n8n) y también on-demand desde el panel.
+
+class DraftPendingInput(BaseModel):
+    limit: int = 10
+    only_missing: bool = True  # solo los hilos sin borrador vigente
+
+
+# Remitentes/dominios que NO son institucionales de PPS (ruido a filtrar del flujo).
+_RUIDO_REMITENTES = (
+    "cloudflare", "n8n", "noreply", "no-reply", "notifications", "newsletter",
+    "mailer-daemon", "postmaster", "github", "google.com", "accounts.google",
+    "supabase", "openrouter", "baserow", "youtube", "updates", "billing", "security@",
+    "hello@", "team@", "info@vercel", "atlassian", "slack",
+)
+# Palabras que indican que un correo SÍ es del dominio PPS.
+_SENALES_PPS = (
+    "pps", "practica", "práctica", "convenio", "acreditaci", "horas", "pasant",
+    "estudiante", "alumno", "alumna", "psicolog", "uflo", "supervis", "cupo",
+    "convocatoria", "institucion", "institución", "informe", "seguro", "tutor",
+)
+
+
+def _es_correo_pps(hilo: dict[str, Any]) -> bool:
+    """Heurística barata: ¿este hilo es realmente del dominio PPS?
+
+    Descarta ruido (Cloudflare, n8n, newsletters…) y exige alguna señal PPS en
+    asunto/cuerpo o un remitente @uflouniversidad.edu.ar.
+    """
+    parts = " ".join(str(p) for p in (hilo.get("participantes") or [])).lower()
+    raw = hilo.get("raw_mensajes") or []
+    from_field = ""
+    if isinstance(raw, list) and raw:
+        from_field = str(raw[-1].get("from", "")).lower()
+    quien = f"{parts} {from_field}"
+    # 1. Ruido explícito → fuera.
+    if any(r in quien for r in _RUIDO_REMITENTES):
+        # salvo que sea claramente uflo
+        if "uflouniversidad.edu.ar" not in quien:
+            return False
+    # 2. Remitente institucional UFLO → adentro.
+    if "uflouniversidad.edu.ar" in quien:
+        return True
+    # 3. Señal PPS en asunto o cuerpo.
+    texto = f"{hilo.get('asunto','')} {_thread_plaintext(hilo)}".lower()
+    return any(s in texto for s in _SENALES_PPS)
+
+
+def _thread_plaintext(hilo: dict[str, Any]) -> str:
+    """Arma el texto del último mensaje recibido a partir de raw_mensajes."""
+    raw = hilo.get("raw_mensajes") or []
+    if not isinstance(raw, list) or not raw:
+        return hilo.get("asunto") or ""
+    # último mensaje que NO sea nuestro
+    me = "blas.rivera@uflouniversidad.edu.ar"
+    theirs = [m for m in raw if me not in str(m.get("from", "")).lower()]
+    last = (theirs or raw)[-1]
+    return f"Asunto: {hilo.get('asunto', '')}\n\n{last.get('snippet') or last.get('body') or ''}"
+
+
+# Guía de tono compartida para los borradores de correo (cálido, no acartonado).
+_TONO_BORRADOR = (
+    "TONO Y FORMATO del borrador:\n"
+    "- Arrancá SIEMPRE con 'Hola [primer nombre],' usando el primer nombre de quien escribe "
+    "(deducilo del remitente o de la firma; si no se puede, usá 'Hola,').\n"
+    "- Cordial y cercano, NADA acartonado. Prohibido 'Estimado/a', 'Cordialmente', "
+    "'Por la presente', 'Quedo a la espera'.\n"
+    "- Tuteá. Frases cortas y claras. Cerrá con 'Saludos,\\nBlas'.\n"
+    "- Directo al punto: respondé lo que preguntan sin vueltas."
+)
+
+
+@app.post("/tasks/draft_pending_emails", dependencies=[Depends(require_token)])
+def draft_pending_emails(payload: DraftPendingInput) -> dict[str, Any]:
+    """Recorre los gmail_hilos esperando respuesta y genera borradores faltantes."""
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("draft_pending.start", payload.model_dump(), invocation_id=invocation_id)
+
+    try:
+        hilos = sb.table("gmail_hilos").select(
+            "thread_id,asunto,raw_mensajes,institucion_id,estado,ultimo_mensaje_at"
+        ).eq("estado", "esperando_respuesta").order("ultimo_mensaje_at", desc=True).limit(payload.limit).execute().data or []
+    except Exception as exc:  # noqa: BLE001
+        audit("draft_pending.error", error=str(exc), invocation_id=invocation_id)
+        raise HTTPException(status_code=500, detail=f"no se pudo leer gmail_hilos: {exc}")
+
+    # thread_ids que ya tienen un borrador pendiente
+    existing_ids: set[str] = set()
+    if payload.only_missing:
+        try:
+            sugg = sb.table("agent_suggestions").select("contexto").eq("tipo", "email_draft").eq("estado", "pending").limit(500).execute().data or []
+            for s in sugg:
+                tid = (s.get("contexto") or {}).get("thread_id")
+                if tid:
+                    existing_ids.add(str(tid))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[draft_pending] no se pudo leer suggestions: {exc}", flush=True)
+
+    schema = (
+        '{"requiere_decision_humana": true|false,'
+        '"motivo": "string (si requiere_decision_humana=true)",'
+        '"borrador": "string (vacio si requiere_decision_humana=true)",'
+        '"asunto": "string"}'
+    )
+
+    generated = 0
+    skipped = 0
+    for hilo in hilos:
+        tid = str(hilo.get("thread_id") or "")
+        if not tid or (payload.only_missing and tid in existing_ids):
+            skipped += 1
+            continue
+        # Filtrar ruido: solo correos realmente del dominio PPS.
+        if not _es_correo_pps(hilo):
+            skipped += 1
+            continue
+
+        institucion_md = ""
+        if hilo.get("institucion_id"):
+            try:
+                res = sb.table("institucion_resumen").select("*").eq("institucion_id", hilo["institucion_id"]).limit(1).execute()
+                if res.data:
+                    institucion_md = json.dumps(res.data[0], ensure_ascii=False, indent=2)
+            except Exception:  # noqa: BLE001
+                pass
+
+        user = (
+            "Origen: gmail\n"
+            f"Mensaje recibido:\n---\n{_thread_plaintext(hilo)}\n---\n\n"
+            f"Resumen de la institución (si aplica):\n{institucion_md or '(no hay)'}\n\n"
+            "Redactá una respuesta como coordinador de PPS.\n\n"
+            f"{_TONO_BORRADOR}\n\n"
+            "Si requiere una decisión institucional que no podés tomar, NO redactes: "
+            "explicá por qué y qué falta."
+        )
+        try:
+            result = llm_json(user, schema_hint=schema)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[draft_pending] LLM falló para {tid}: {exc}", flush=True)
+            continue
+
+        suggestion_id = str(uuid.uuid4())
+        try:
+            sb.table("agent_suggestions").insert({
+                "id": suggestion_id,
+                "tipo": "email_draft",
+                "payload": result,
+                "contexto": {
+                    "model": HERMES_MODEL,
+                    "source": "gmail",
+                    "thread_id": tid,
+                    "asunto": hilo.get("asunto"),
+                    "auto": True,
+                },
+                "institucion_id": hilo.get("institucion_id"),
+            }).execute()
+            generated += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f"[draft_pending] no se pudo guardar borrador {tid}: {exc}", flush=True)
+
+    output = {"hilos_revisados": len(hilos), "borradores_generados": generated, "omitidos": skipped}
+    audit("draft_pending.done", output=output, invocation_id=invocation_id, duration_ms=int((time.time() - t0) * 1000))
+    return output
+
+
+# ---------- task: plan_today (tablero de acciones del día) ----------
+# Hermes arma una lista priorizada de ACCIONES concretas para hoy, de varias
+# fuentes (no solo correos): responder mails PPS, reinsistir instituciones,
+# verificar finalizaciones, mover solicitudes estancadas. Cada acción se guarda
+# como agent_suggestions tipo "accion_dia" con un destino accionable.
+
+class PlanTodayInput(BaseModel):
+    limit: int = 9
+
+
+def _accion_link(tipo: str, ref: dict[str, Any]) -> str:
+    """Ruta interna del panel para resolver la acción."""
+    if tipo == "responder_mail":
+        return f"/admin/gestion?view=mails&mails=lista&thread={ref.get('thread_id','')}"
+    if tipo == "verificar_finalizacion":
+        return "/admin/solicitudes?tab=egreso"
+    if tipo == "mover_solicitud":
+        # Se acciona DENTRO de Gestión (panel derecho con el borrador listo),
+        # no navegamos a Solicitudes. El frontend abre el panel desde la acción.
+        return f"/admin/gestion?view=mails&accion_solicitud={ref.get('solicitud_id','')}"
+    if tipo == "correccion":
+        return "/admin/solicitudes?tab=correcciones"
+    return "/admin/gestion"
+
+
+def _dias_desde(valor: Any, *, ahora: dt.datetime) -> int | None:
+    """Días transcurridos desde `valor` (string ISO date o datetime) hasta `ahora`.
+
+    Tolera tanto fechas con hora y timezone (`2026-05-20T23:16:02+00:00`) como
+    fechas DATE puras de Postgres (`2026-05-20`), que al parsearse quedan naive.
+    A las naive les asignamos UTC para poder restarlas de `ahora` (aware) sin el
+    error 'can't subtract offset-naive and offset-aware datetimes'. Devuelve
+    None si no se puede parsear.
+    """
+    if not valor:
+        return None
+    try:
+        d = dt.datetime.fromisoformat(str(valor).replace("Z", "+00:00"))
+    except Exception:  # noqa: BLE001
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=dt.timezone.utc)
+    return int((ahora - d).total_seconds() // 86400)
+
+
+def _es_celular_ar(telefono: str) -> bool:
+    """Heurística: ¿este número argentino es un celular (sirve para WhatsApp)?
+
+    Reglas prácticas sobre el número normalizado (solo dígitos):
+      · Celular AR con prefijo internacional: 54 9 + área + abonado → tiene el
+        '9' después del 54 (ej. 5492604123456).
+      · Celular AR local sin 54: suele empezar con '15' o tener 10 dígitos con
+        prefijo de área móvil. Es difícil distinguir 100%, así que somos
+        conservadores: si NO podemos afirmar que es celular, devolvemos False
+        (preferimos mail antes que mandar un WhatsApp a un fijo).
+    """
+    n = _normalize_phone(telefono)
+    if not n:
+        return False
+    if n.startswith("549"):
+        return True
+    if n.startswith("54") and len(n) >= 12 and n[2] == "9":
+        return True
+    # '15' intermedio (formato local de celular): 0 área 15 abonado
+    if "15" in n and len(n) >= 10:
+        # señal débil; lo tratamos como celular solo si el número es largo
+        return len(n) >= 11
+    return False
+
+
+def _elegir_canal_contacto(sol: dict[str, Any]) -> dict[str, Any]:
+    """Decide cómo contactar a la institución de una solicitud estancada.
+
+    Devuelve {canal: 'whatsapp'|'email'|'ninguno', destino, telefono, email,
+    referente, es_celular}. Prioriza WhatsApp si hay un celular usable; si no,
+    cae a email; si no hay nada, 'ninguno'.
+    """
+    tel = (sol.get("telefono_institucion") or "").strip()
+    email = (sol.get("email_institucion") or sol.get("email") or "").strip()
+    referente = (sol.get("referente_institucion") or sol.get("contacto_tutor") or "").strip()
+    es_cel = _es_celular_ar(tel) if tel else False
+
+    if es_cel:
+        return {
+            "canal": "whatsapp", "destino": _normalize_phone(tel), "telefono": tel,
+            "email": email, "referente": referente, "es_celular": True,
+        }
+    if email:
+        return {
+            "canal": "email", "destino": email, "telefono": tel,
+            "email": email, "referente": referente, "es_celular": False,
+        }
+    if tel:
+        # Hay un teléfono pero no parece celular y no hay email: igual proponemos
+        # email vacío no sirve → marcamos whatsapp como último recurso si el
+        # número tiene pinta de móvil largo, si no 'ninguno'.
+        return {
+            "canal": "ninguno", "destino": tel, "telefono": tel,
+            "email": email, "referente": referente, "es_celular": False,
+        }
+    return {
+        "canal": "ninguno", "destino": "", "telefono": "", "email": "",
+        "referente": referente, "es_celular": False,
+    }
+
+
+# Tono compartido para los mensajes salientes (cálido, no acartonado).
+_TONO_OUTREACH = (
+    "TONO Y FORMATO:\n"
+    "- Cordial y cercano, NADA acartonado. Prohibido 'Estimado/a', 'Cordialmente', "
+    "'Por la presente', 'Quedo a la espera'. Tuteá. Sé breve, concreto y amable.\n"
+    "- Si hay nombre de referente, arrancá con 'Hola [primer nombre],'. Si no, 'Hola,'.\n"
+    "- Cerrá con 'Saludos,\\nBlas — Coordinación de PPS, UFLO Psicología'.\n"
+    "- WhatsApp: 1 párrafo corto, sin asunto. Email: incluí un asunto claro."
+)
+
+# Instrucciones según haya o no conversación previa.
+_OUTREACH_PRIMER_CONTACTO = (
+    "SITUACIÓN: PRIMER CONTACTO. NO hubo conversación previa con esta institución "
+    "por este canal. NO digas 'retomo', 'volvemos a escribir', 'como hablamos', "
+    "'el tema que veníamos viendo', 'que estábamos organizando' ni nada que implique "
+    "un intercambio anterior. Presentate: sos el coordinador de PPS de Psicología de "
+    "UFLO, y escribís para INICIAR el contacto y consultar si la institución estaría "
+    "interesada en recibir estudiantes en práctica. Sé claro sobre quién sos y para qué escribís."
+)
+_OUTREACH_SEGUIMIENTO = (
+    "SITUACIÓN: SEGUIMIENTO. YA hubo conversación previa (te paso los últimos "
+    "mensajes). Retomá el hilo de forma coherente con lo último que se habló, sin "
+    "repetir lo ya dicho. Hacé referencia natural a la conversación anterior."
+)
+
+
+def _historial_conversacion(sol: dict[str, Any], canal: str, *, limite: int = 6) -> list[dict[str, Any]]:
+    """Trae los últimos mensajes de la conversación con la institución.
+
+    Según el canal elegido busca el historial real:
+      · whatsapp → whatsapp_mensajes que matcheen el teléfono (últimos 10 dígitos).
+      · email    → gmail_hilos cuyo email_institucion/participantes matcheen, y
+                   sus raw_mensajes.
+    Devuelve una lista normalizada [{de_mi, autor, texto, fecha}] del más viejo
+    al más nuevo, recortada a `limite`. Vacía si no hay nada.
+    """
+    out: list[dict[str, Any]] = []
+    try:
+        if canal == "whatsapp":
+            tel = _normalize_phone(sol.get("telefono_institucion") or "")
+            if not tel:
+                return []
+            last10 = tel[-10:]
+            rows = sb.table("whatsapp_mensajes").select(
+                "chat_jid,from_me,autor,texto,timestamp"
+            ).order("timestamp", desc=True).limit(800).execute().data or []
+            msgs = []
+            for m in rows:
+                jid = m.get("chat_jid") or ""
+                jphone = _normalize_phone(jid.split("@")[0] if "@" in jid else jid)
+                if jphone and jphone[-10:] == last10:
+                    msgs.append({
+                        "de_mi": bool(m.get("from_me")),
+                        "autor": m.get("autor") or ("Vos" if m.get("from_me") else "Institución"),
+                        "texto": m.get("texto") or "",
+                        "fecha": m.get("timestamp"),
+                    })
+            msgs.sort(key=lambda x: str(x.get("fecha") or ""))
+            out = msgs[-limite:]
+        else:  # email
+            email = (sol.get("email_institucion") or sol.get("email") or "").lower().strip()
+            if not email:
+                return []
+            hilos = sb.table("gmail_hilos").select(
+                "asunto,email_institucion,participantes,raw_mensajes,ultimo_mensaje_at"
+            ).order("ultimo_mensaje_at", desc=True).limit(200).execute().data or []
+            hilo = None
+            for h in hilos:
+                blob = f"{h.get('email_institucion') or ''} {json.dumps(h.get('participantes') or '', ensure_ascii=False)}".lower()
+                if email in blob:
+                    hilo = h
+                    break
+            if not hilo:
+                return []
+            raw = hilo.get("raw_mensajes") or []
+            if isinstance(raw, list):
+                for m in raw[-limite:]:
+                    frm = str(m.get("from", "")).lower()
+                    out.append({
+                        "de_mi": "blas.rivera@uflouniversidad.edu.ar" in frm,
+                        "autor": str(m.get("from", "")) or "Contacto",
+                        "texto": str(m.get("snippet") or m.get("body") or ""),
+                        "fecha": str(m.get("date") or hilo.get("ultimo_mensaje_at") or ""),
+                    })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[plan_today] historial {canal}: {exc}", flush=True)
+        return []
+    return out
+
+
+def _draft_outreach_solicitud(
+    sol: dict[str, Any], canal: str, referente: str, dias: int, historial: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """Pide al LLM un mensaje listo para enviar (WhatsApp o email).
+
+    Distingue PRIMER CONTACTO (sin historial) de SEGUIMIENTO (con historial): el
+    tono cambia para no decir 'retomo el tema' cuando nunca se habló con la
+    institución.
+    """
+    alumno = sol.get("nombre_alumno") or "un/a estudiante"
+    institucion = sol.get("nombre_institucion") or "la institución"
+    orientacion = sol.get("orientacion_sugerida") or sol.get("tipo_practica") or ""
+    es_seguimiento = bool(historial)
+
+    if canal == "whatsapp":
+        schema = '{"mensaje":"string (1 párrafo, listo para WhatsApp)"}'
+        canal_hint = "Es un WhatsApp. Sin asunto. Un solo párrafo corto."
+    else:
+        schema = '{"asunto":"string","mensaje":"string (cuerpo del email)"}'
+        canal_hint = "Es un email. Incluí asunto."
+
+    # Bloque de conversación previa: SOLO si es seguimiento.
+    hist_txt = ""
+    if es_seguimiento:
+        lineas = []
+        for m in historial or []:
+            quien = "Vos" if m.get("de_mi") else (m.get("autor") or "Institución")
+            txt = (m.get("texto") or "").strip().replace("\n", " ")
+            if len(txt) > 240:
+                txt = txt[:240] + "…"
+            if txt:
+                lineas.append(f"  [{quien}] {txt}")
+        if lineas:
+            hist_txt = (
+                "\nÚltimos mensajes de la conversación (del más viejo al más nuevo):\n"
+                + "\n".join(lineas)
+                + "\n"
+            )
+
+    situacion = _OUTREACH_SEGUIMIENTO if es_seguimiento else _OUTREACH_PRIMER_CONTACTO
+    proposito = (
+        f"- La gestión lleva {dias} días sin avanzar.\n"
+        if es_seguimiento
+        else "- Es el primer mensaje a esta institución para esta PPS.\n"
+    )
+
+    user = (
+        f"Generá un mensaje para gestionar una PPS.\n\n"
+        f"{situacion}\n\n"
+        f"Datos:\n"
+        f"- Estudiante: {alumno}\n"
+        f"- Institución: {institucion}\n"
+        f"- Orientación/tipo: {orientacion or '(no especificada)'}\n"
+        f"- Referente en la institución: {referente or '(desconocido)'}\n"
+        f"{proposito}"
+        f"{hist_txt}\n"
+        f"{canal_hint}\n\n{_TONO_OUTREACH}"
+    )
+    try:
+        return llm_json(user, schema_hint=schema)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[plan_today] draft outreach falló: {exc}", flush=True)
+        return {}
+
+
+def _run_plan_today(limit: int = 9, *, source: str = "api") -> dict[str, Any]:
+    """Genera el tablero de acciones del día. Reemplaza las acciones previas
+    del día (tipo accion_dia, estado pending) por un set fresco y priorizado.
+
+    Núcleo reutilizable: lo llaman tanto el endpoint /tasks/plan_today como el
+    scheduler interno (run_plan_today_scheduled)."""
+    t0 = time.time()
+    invocation_id = str(uuid.uuid4())
+    audit("plan_today.start", {"limit": limit, "source": source}, invocation_id=invocation_id)
+    now = dt.datetime.now(dt.timezone.utc)
+    acciones: list[dict[str, Any]] = []
+
+    # ── Fuente 1: correos PPS esperando respuesta (con borrador si existe) ──
+    try:
+        hilos = sb.table("gmail_hilos").select(
+            "thread_id,asunto,raw_mensajes,institucion_id,estado,ultimo_mensaje_at,participantes"
+        ).eq("estado", "esperando_respuesta").order("ultimo_mensaje_at", desc=True).limit(40).execute().data or []
+        # borradores ya generados por thread
+        drafts = sb.table("agent_suggestions").select("contexto,payload").eq("tipo", "email_draft").eq("estado", "pending").limit(500).execute().data or []
+        draft_by_thread = {}
+        for d in drafts:
+            tid = (d.get("contexto") or {}).get("thread_id")
+            if tid:
+                draft_by_thread[str(tid)] = d.get("payload") or {}
+        for h in hilos:
+            if not _es_correo_pps(h):
+                continue
+            tid = str(h.get("thread_id") or "")
+            draft = draft_by_thread.get(tid)
+            dias = _dias_desde(h.get("ultimo_mensaje_at"), ahora=now) or 0
+            tiene_borrador = bool(draft and draft.get("borrador") and not draft.get("requiere_decision_humana"))
+            acciones.append({
+                "tipo": "responder_mail",
+                "titulo": f"Responder: {h.get('asunto') or '(sin asunto)'}",
+                "por_que": f"Mail esperando respuesta hace {dias} día(s)." + (" Hermes ya dejó un borrador." if tiene_borrador else ""),
+                "prioridad": "alta" if dias >= 5 else "media",
+                "tiene_borrador": tiene_borrador,
+                "ref": {"thread_id": tid, "institucion_id": h.get("institucion_id")},
+                "_score": (2 if dias >= 5 else 1) * 100 + dias,
+            })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[plan_today] gmail: {exc}", flush=True)
+
+    # ── Fuente 2: solicitudes de ingreso sin movimiento (+4 días) ──
+    try:
+        # OJO: los valores con espacios ("No se pudo concretar") DEBEN ir como
+        # lista de Python; pasarlos como string crudo "(a,b c,d)" rompe el filtro
+        # de PostgREST y no excluye nada (metía solicitudes ya terminadas).
+        estados_excluidos = ["Realizada", "No se pudo concretar", "Archivado"]
+        # Traemos también los datos de contacto para que Hermes prepare el
+        # mensaje de reactivación (WhatsApp o email) listo para enviar.
+        solis = sb.table("solicitudes_pps").select(
+            "id,nombre_alumno,nombre_institucion,estado_seguimiento,actualizacion,created_at,"
+            "telefono_institucion,email_institucion,email,referente_institucion,contacto_tutor,"
+            "orientacion_sugerida,tipo_practica"
+        ).not_.in_("estado_seguimiento", estados_excluidos).order("created_at", desc=True).limit(40).execute().data or []
+        # Cuántas de las solicitudes vamos a enriquecer con borrador (las más
+        # estancadas primero); generar mensajes con LLM cuesta, así que ponemos
+        # un tope por corrida.
+        outreach_presupuesto = 12
+        for s in solis:
+            # Guard defensivo: aunque el filtro de arriba debería bastar, nos
+            # aseguramos en Python de no incluir solicitudes ya terminadas.
+            if (s.get("estado_seguimiento") or "") in estados_excluidos:
+                continue
+            ref_date = s.get("actualizacion") or s.get("created_at")
+            dias = _dias_desde(ref_date, ahora=now)
+            if dias is None:
+                continue
+            if dias < 4:
+                continue
+
+            # Hermes decide canal (whatsapp/email/ninguno) según los datos de
+            # contacto cargados, y prepara el mensaje listo para enviar.
+            contacto = _elegir_canal_contacto(s)
+            outreach: dict[str, Any] = {}
+            historial: list[dict[str, Any]] = []
+            if contacto["canal"] != "ninguno" and outreach_presupuesto > 0:
+                historial = _historial_conversacion(s, contacto["canal"])
+                outreach = _draft_outreach_solicitud(
+                    s, contacto["canal"], contacto["referente"], dias, historial
+                )
+                outreach_presupuesto -= 1
+
+            canal = contacto["canal"]
+            es_seguimiento = bool(historial)
+            # Verbo según haya o no contacto previo: NO inventamos "reactivar"
+            # cuando nunca se habló con la institución.
+            verbo = "Seguir" if es_seguimiento else "Contactar"
+            canal_txt = (
+                "un WhatsApp" if canal == "whatsapp" else "un correo" if canal == "email" else None
+            )
+            if canal == "ninguno":
+                por_que = (
+                    f"Solicitud sin avanzar hace {dias} días (estado: {s.get('estado_seguimiento') or '—'}). "
+                    f"Sin datos de contacto cargados — revisá la solicitud."
+                )
+            elif es_seguimiento:
+                por_que = (
+                    f"Ya venías hablando con la institución y la gestión quedó frenada hace "
+                    f"{dias} días. Hermes preparó {canal_txt} para retomar el hilo."
+                )
+            else:
+                por_que = (
+                    f"Solicitud sin contacto registrado hace {dias} días. Hermes preparó "
+                    f"{canal_txt} de primer contacto, listo para enviar."
+                )
+
+            acciones.append({
+                "tipo": "mover_solicitud",
+                "titulo": f"{verbo}: {s.get('nombre_alumno') or 'Alumno'} · {s.get('nombre_institucion') or ''}".strip(),
+                "por_que": por_que,
+                "prioridad": "alta" if dias >= 10 else "media",
+                "tiene_borrador": bool(outreach.get("mensaje")),
+                "ref": {
+                    "solicitud_id": s.get("id"),
+                    "nombre_alumno": s.get("nombre_alumno"),
+                    "nombre_institucion": s.get("nombre_institucion"),
+                    "estado_seguimiento": s.get("estado_seguimiento"),
+                    "dias_sin_movimiento": dias,
+                    "canal": canal,
+                    "es_seguimiento": es_seguimiento,
+                    "destino": contacto["destino"],
+                    "telefono": contacto["telefono"],
+                    "email": contacto["email"],
+                    "referente": contacto["referente"],
+                    "outreach_asunto": outreach.get("asunto"),
+                    "outreach_mensaje": outreach.get("mensaje"),
+                    "historial": historial,
+                },
+                "_score": (2 if dias >= 10 else 1) * 100 + dias,
+            })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[plan_today] solicitudes: {exc}", flush=True)
+
+    # ── Fuente 3: finalizaciones por verificar ──
+    try:
+        verifs = sb.table("agent_suggestions").select("id,payload,contexto").eq("tipo", "update_estado").eq("estado", "pending").limit(40).execute().data or []
+        for v in verifs:
+            ctx = v.get("contexto") or {}
+            if ctx.get("kind") != "verificacion_finalizacion":
+                continue
+            vp = (v.get("payload") or {}).get("verificacion") or {}
+            estado = vp.get("estado")
+            acciones.append({
+                "tipo": "verificar_finalizacion",
+                "titulo": f"Verificar finalización: {ctx.get('nombre_alumno') or 'alumno'}",
+                "por_que": "Hermes analizó la documentación y " + (
+                    "marcó problemas críticos." if estado == "critical" else
+                    "dejó observaciones." if estado == "attention" else
+                    "la dio por verificada, falta tu OK."),
+                "prioridad": "alta" if estado == "critical" else "media",
+                "tiene_borrador": False,
+                "ref": {"suggestion_id": v.get("id")},
+                "_score": (2 if estado == "critical" else 1) * 100 + 5,
+            })
+    except Exception as exc:  # noqa: BLE001
+        print(f"[plan_today] finalizaciones: {exc}", flush=True)
+
+    # ── Fuente 4 (DESACTIVADA): instituciones para reinsistir ──
+    # El ciclo de vida institucional (recontactar / reinsistir / por finalizar)
+    # ahora lo aporta el FRONTEND directamente desde lanzamientos_pps, en la
+    # misma bandeja unificada "Hoy". Lo generábamos también acá y se duplicaba,
+    # así que lo quitamos del plan. Si en el futuro Hermes necesita redactar el
+    # borrador de reinsistencia, se reactiva acá con la misma forma que la
+    # Fuente 2 (con _draft_outreach_solicitud).
+
+    # Priorizar y recortar.
+    acciones.sort(key=lambda a: -a["_score"])
+    acciones = acciones[:limit]
+
+    # Reemplazar el plan del día: descartar acciones previas pendientes.
+    try:
+        sb.table("agent_suggestions").update({"estado": "discarded"}).eq("tipo", "accion_dia").eq("estado", "pending").execute()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[plan_today] no se pudo limpiar plan previo: {exc}", flush=True)
+
+    # Insertar las nuevas acciones.
+    inserted = 0
+    for orden, a in enumerate(acciones):
+        try:
+            sb.table("agent_suggestions").insert({
+                "id": str(uuid.uuid4()),
+                "tipo": "accion_dia",
+                "payload": {
+                    "tipo_accion": a["tipo"],
+                    "titulo": a["titulo"],
+                    "por_que": a["por_que"],
+                    "prioridad": a["prioridad"],
+                    "tiene_borrador": a["tiene_borrador"],
+                    "link": _accion_link(a["tipo"], a["ref"]),
+                    "orden": orden,
+                },
+                "contexto": {"model": HERMES_MODEL, "ref": a["ref"], "generado_at": now.isoformat(), "source": source},
+                "institucion_id": a["ref"].get("institucion_id"),
+            }).execute()
+            inserted += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f"[plan_today] no se pudo guardar accion: {exc}", flush=True)
+
+    output = {"acciones_generadas": inserted}
+    audit("plan_today.done", output=output, invocation_id=invocation_id, duration_ms=int((time.time() - t0) * 1000))
+    return output
+
+
+@app.post("/tasks/plan_today", dependencies=[Depends(require_token)])
+def plan_today(payload: PlanTodayInput) -> dict[str, Any]:
+    """Endpoint público: recalcula el plan del día on-demand (botón del panel)."""
+    return _run_plan_today(payload.limit, source="api")
 
 
 # ---------- task: institucion_resumen ----------
@@ -688,6 +1599,172 @@ def sync_gmail_messages(payload: GmailSyncInput) -> dict[str, Any]:
     return output
 
 
+# ---------- Gmail: acciones desde el panel (leer / responder / archivar) ----------
+
+class GmailThreadInput(BaseModel):
+    thread_id: str
+
+
+class GmailSendInput(BaseModel):
+    thread_id: str
+    to: str
+    subject: str
+    body: str
+
+
+class GmailModifyInput(BaseModel):
+    thread_id: str
+    action: str  # "archive" | "markRead" | "markUnread" | "trash"
+
+
+def _call_n8n_gmail(action: str, payload: dict[str, Any], *, timeout: int = 30) -> dict[str, Any]:
+    """Dispara el webhook de n8n que ejecuta la acción real con la credencial Gmail.
+
+    n8n es quien posee el OAuth2 de Gmail. Hermes solo orquesta y audita. Si el
+    webhook no está configurado, devolvemos un error claro (no rompemos).
+    """
+    if not N8N_GMAIL_WEBHOOK_URL:
+        raise HTTPException(
+            status_code=503,
+            detail="GMAIL_ACTION_WEBHOOK_URL no configurado en Hermes",
+        )
+    import httpx
+
+    headers = {"Content-Type": "application/json"}
+    if N8N_GMAIL_WEBHOOK_TOKEN:
+        headers["X-Hermes-Token"] = N8N_GMAIL_WEBHOOK_TOKEN
+    body = {"action": action, **payload}
+    with httpx.Client(timeout=timeout) as client:
+        resp = client.post(N8N_GMAIL_WEBHOOK_URL, json=body, headers=headers)
+        resp.raise_for_status()
+        try:
+            return resp.json()
+        except Exception:  # noqa: BLE001
+            return {"ok": True}
+
+
+@app.post("/tasks/gmail_thread", dependencies=[Depends(require_token)])
+def gmail_thread(payload: GmailThreadInput) -> dict[str, Any]:
+    """Devuelve el hilo completo. Intenta n8n (cuerpo completo de la Gmail API);
+    si no hay webhook, degrada a lo guardado en `gmail_hilos.raw_mensajes`."""
+    invocation_id = str(uuid.uuid4())
+    audit("gmail_thread.start", {"thread_id": payload.thread_id}, invocation_id=invocation_id)
+
+    # 1) intentar traer el hilo completo vía n8n (Capa 3: cuerpo completo on-demand)
+    if N8N_GMAIL_WEBHOOK_URL:
+        try:
+            data = _call_n8n_gmail("getThread", {"thread_id": payload.thread_id})
+            mensajes = data.get("mensajes") or data.get("messages") or []
+            if mensajes:
+                audit(
+                    "gmail_thread.done",
+                    output={"source": "n8n", "mensajes": len(mensajes)},
+                    invocation_id=invocation_id,
+                )
+                return {
+                    "thread_id": payload.thread_id,
+                    "asunto": data.get("asunto") or data.get("subject"),
+                    "participantes": data.get("participantes") or [],
+                    "mensajes": mensajes,
+                }
+        except Exception as exc:  # noqa: BLE001
+            print(f"[gmail_thread] n8n no disponible, uso raw_mensajes: {exc}", flush=True)
+
+    # 2) fallback: lo que ya guardamos en Supabase
+    row = (
+        sb.table("gmail_hilos")
+        .select("thread_id, asunto, participantes, raw_mensajes")
+        .eq("thread_id", payload.thread_id)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="hilo no encontrado")
+    r = row[0]
+    raw = r.get("raw_mensajes") or []
+    mensajes = [
+        {
+            "from": m.get("from", ""),
+            "to": m.get("to", ""),
+            "subject": m.get("subject", ""),
+            "date": m.get("date", ""),
+            "snippet": m.get("snippet", ""),
+            "body": m.get("snippet", ""),
+        }
+        for m in raw
+    ]
+    audit(
+        "gmail_thread.done",
+        output={"source": "raw_mensajes", "mensajes": len(mensajes)},
+        invocation_id=invocation_id,
+    )
+    return {
+        "thread_id": payload.thread_id,
+        "asunto": r.get("asunto"),
+        "participantes": r.get("participantes") or [],
+        "mensajes": mensajes,
+    }
+
+
+@app.post("/tasks/gmail_send", dependencies=[Depends(require_token)])
+def gmail_send(payload: GmailSendInput) -> dict[str, Any]:
+    """Responde dentro del hilo vía n8n (que posee la credencial Gmail)."""
+    invocation_id = str(uuid.uuid4())
+    audit(
+        "gmail_send.start",
+        {"thread_id": payload.thread_id, "to": payload.to, "subject": payload.subject},
+        invocation_id=invocation_id,
+    )
+    result = _call_n8n_gmail(
+        "send",
+        {
+            "thread_id": payload.thread_id,
+            "to": payload.to,
+            "subject": payload.subject,
+            "body": payload.body,
+        },
+    )
+    # Reflejar en Supabase: el hilo pasa a "respondido_por_nos".
+    try:
+        sb.table("gmail_hilos").update(
+            {
+                "estado": "respondido_por_nos",
+                "ultimo_mensaje_de": "nos",
+                "ultimo_mensaje_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        ).eq("thread_id", payload.thread_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[gmail_send] no se pudo actualizar gmail_hilos: {exc}", flush=True)
+    audit("gmail_send.done", output={"ok": True}, invocation_id=invocation_id)
+    return {"ok": True, "result": result}
+
+
+@app.post("/tasks/gmail_modify", dependencies=[Depends(require_token)])
+def gmail_modify(payload: GmailModifyInput) -> dict[str, Any]:
+    """Archiva / marca leído / etc. el hilo vía n8n."""
+    valid = {"archive", "markRead", "markUnread", "trash"}
+    if payload.action not in valid:
+        raise HTTPException(status_code=400, detail=f"acción inválida: {payload.action}")
+    invocation_id = str(uuid.uuid4())
+    audit(
+        "gmail_modify.start",
+        {"thread_id": payload.thread_id, "action": payload.action},
+        invocation_id=invocation_id,
+    )
+    result = _call_n8n_gmail("modify", {"thread_id": payload.thread_id, "gmail_action": payload.action})
+    # Reflejar "archive"/"trash" sacándolo de la bandeja activa.
+    if payload.action in ("archive", "trash"):
+        try:
+            sb.table("gmail_hilos").update({"estado": "archivado"}).eq(
+                "thread_id", payload.thread_id
+            ).execute()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[gmail_modify] no se pudo actualizar gmail_hilos: {exc}", flush=True)
+    audit("gmail_modify.done", output={"ok": True}, invocation_id=invocation_id)
+    return {"ok": True, "result": result}
+
+
 @app.post("/tasks/classify_email", dependencies=[Depends(require_token)])
 def classify_email(payload: ClassifyEmailInput) -> dict[str, Any]:
     t0 = time.time()
@@ -986,9 +2063,35 @@ def learn_from_feedback(payload: LearnInput) -> dict[str, Any]:
         )
         vault_path = vault_write("agent/aprendizajes.md", entry, append=True)
 
+        # Espejar la lección en Supabase para que el panel pueda mostrarla.
+        # (El vault sigue siendo la fuente narrativa; esto es solo para la UI.)
+        try:
+            sb.table("agent_aprendizajes").insert({
+                "suggestion_id": payload.suggestion_id,
+                "tipo": payload.tipo,
+                "accion": payload.accion,
+                "tag": result.get("tag"),
+                "aprendizaje": result["aprendizaje"],
+                "aplica_cuando": result.get("aplica_cuando"),
+                "model": HERMES_MODEL,
+            }).execute()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[learn] no se pudo espejar aprendizaje en supabase: {exc}", flush=True)
+
     audit(
         "learn.done",
-        output={"vault_path": vault_path, "tag": result.get("tag"), "side_effect": side_effect},
+        output={
+            "vault_path": vault_path,
+            "tag": result.get("tag"),
+            "side_effect": side_effect,
+            # Espejamos la leccion destilada en el propio audit log para que el
+            # panel pueda mostrarla sin necesitar una tabla nueva. Si no hubo
+            # aprendizaje (tag=sin_aprendizaje), estos campos quedan vacios.
+            "aprendizaje": result.get("aprendizaje"),
+            "aplica_cuando": result.get("aplica_cuando"),
+            "tipo": payload.tipo,
+            "accion": payload.accion,
+        },
         invocation_id=invocation_id,
         suggestion_id=payload.suggestion_id,
         duration_ms=int((time.time() - t0) * 1000),
@@ -1172,25 +2275,62 @@ def _process_messages_to_db(messages: list[dict[str, Any]], *, only_institutions
     """Mapea a institucion_id y upsertea. Compartido entre los dos endpoints.
 
     Si only_institutions=True (default): SOLO upserta los mensajes cuyo teléfono matchea
-    con un registro en `instituciones`. El resto se descarta — privacy por defecto.
+    con un registro en `instituciones` o está presente en `whatsapp_contactos` / `solicitudes_pps`.
+    El resto se descarta — privacy por defecto.
     """
     phone_index = _load_institucion_phone_index()
+    allowed_phones = set()
+
+    # Si only_institutions=True, también permitimos números de whatsapp_contactos y solicitudes_pps
+    if only_institutions:
+        try:
+            # 1. Cargar desde whatsapp_contactos
+            contacts = sb.table("whatsapp_contactos").select("phone,chat_jid").execute().data or []
+            for c in contacts:
+                p = _normalize_phone(c.get("phone") or (c.get("chat_jid") or "").split("@")[0])
+                if p and len(p) >= 10:
+                    allowed_phones.add(p[-10:])
+        except Exception as exc:
+            print(f"[wa] no se pudo leer whatsapp_contactos: {exc}", flush=True)
+
+        try:
+            # 2. Cargar desde solicitudes_pps
+            sols = sb.table("solicitudes_pps").select("telefono_institucion").execute().data or []
+            for s in sols:
+                tel = s.get("telefono_institucion")
+                if tel:
+                    p = _normalize_phone(tel)
+                    if p and len(p) >= 10:
+                        allowed_phones.add(p[-10:])
+        except Exception as exc:
+            print(f"[wa] no se pudo leer solicitudes_pps: {exc}", flush=True)
+
     matched = 0
     skipped_no_match = 0
     rows_for_db = []
     for m in messages:
         phone = m.pop("_phone", "")
         inst_id = phone_index.get(phone) or phone_index.get(phone[-10:] if len(phone) >= 10 else "")
+        last_10 = phone[-10:] if len(phone) >= 10 else ""
+
         if inst_id:
             m["institucion_id"] = inst_id
+            m["raw"] = {"source": "wabdd"}
+            rows_for_db.append(m)
+            matched += 1
+        elif only_institutions and last_10 and last_10 in allowed_phones:
+            # Es un contacto permitido pero sin institución formal aún
+            m["institucion_id"] = None
             m["raw"] = {"source": "wabdd"}
             rows_for_db.append(m)
             matched += 1
         else:
             skipped_no_match += 1
             if not only_institutions:
+                m["institucion_id"] = None
                 m["raw"] = {"source": "wabdd"}
                 rows_for_db.append(m)
+
     upserted = 0
     for i in range(0, len(rows_for_db), 500):
         batch = rows_for_db[i:i + 500]
@@ -1199,6 +2339,7 @@ def _process_messages_to_db(messages: list[dict[str, Any]], *, only_institutions
             upserted += len(batch)
         except Exception as exc:  # noqa: BLE001
             print(f"[wa] fallo upsert batch {i}: {exc}", flush=True)
+
     return {
         "mensajes_parseados": len(messages),
         "mensajes_mapeados_a_institucion": matched,
@@ -1690,8 +2831,20 @@ def verify_finalizacion(payload: VerifyFinalizacionInput) -> dict[str, Any]:
     )
     result = llm_json(user_prompt, schema_hint=schema)
 
+    # 4.b. Verificación de doble pasada (opcional, default ON). Una segunda
+    # instancia audita el veredicto antes de persistir: clave en acreditaciones,
+    # donde un falso "verified" es el error más caro. Degrada con elegancia: si
+    # la verificación falla, se queda con el resultado de la primera pasada.
+    if HERMES_DOUBLE_CHECK_VERIFY:
+        result = llm_verify(
+            user_prompt, result, schema_hint=schema,
+            foco=("verificación de finalización de PPS para acreditación — "
+                  "prioridad: no dejar pasar inconsistencias de horas, fechas u overlap"),
+        )
+
     # 5. Persistir como suggestion (usamos tipo='update_estado' del CHECK constraint, etiqueta real va en contexto.kind)
     suggestion_id = str(uuid.uuid4())
+    verif_meta = result.get("_verificador") if isinstance(result, dict) else None
     try:
         sb.table("agent_suggestions").insert({
             "id": suggestion_id,
@@ -1707,6 +2860,8 @@ def verify_finalizacion(payload: VerifyFinalizacionInput) -> dict[str, Any]:
             "contexto": {
                 "model": HERMES_MODEL,
                 "kind": "verificacion_finalizacion",
+                "doble_pasada": HERMES_DOUBLE_CHECK_VERIFY,
+                "verificador": verif_meta,
                 "lanzamiento_id": payload.lanzamiento_id,
                 "estudiante_id": payload.estudiante_id,
             },
@@ -1720,9 +2875,147 @@ def verify_finalizacion(payload: VerifyFinalizacionInput) -> dict[str, Any]:
             "estado": result.get("estado"),
             "issues_count": len(result.get("issues", [])),
             "checks_count": len(result.get("checks", [])),
+            "doble_pasada": HERMES_DOUBLE_CHECK_VERIFY,
+            "verificador_coincide": (verif_meta or {}).get("coincide") if isinstance(verif_meta, dict) else None,
         },
         invocation_id=invocation_id,
         suggestion_id=suggestion_id,
         duration_ms=int((time.time() - t0) * 1000),
     )
     return {"suggestion_id": suggestion_id, "verificacion": result}
+
+
+# ---------- scheduler interno ----------
+# Hermes regenera solo, cada mañana, el PLAN DEL DÍA (tablero "Hoy con Hermes")
+# y, como RESPALDO, el daily brief si n8n no lo generó. Vive dentro del propio
+# contenedor: al redesplegar arranca, sin depender de configurar n8n aparte.
+#
+# Config por entorno (.env, todas opcionales — traen defaults sanos):
+#   HERMES_SCHEDULER_ENABLED    "1" (default) | "0" para apagarlo
+#   HERMES_TZ_OFFSET            offset horario vs UTC en horas (Argentina = -3)
+#   HERMES_PLAN_TODAY_AT        "HH:MM" local para regenerar el plan (def 08:05)
+#   HERMES_DAILY_BRIEF_AT       "HH:MM" local para el brief de respaldo (def 08:00)
+#   HERMES_DAILY_BRIEF_FALLBACK "1" (default): genera el brief SOLO si no hay uno
+#                               de hoy (no pisa el de n8n); "0" para no tocarlo.
+#   HERMES_DRAFT_EMAILS_ENABLED "1" (default) | "0": genera borradores de correo.
+#   HERMES_DRAFT_EMAILS_AT      "HH:MM" local, ANTES del plan (def 07:55) para
+#                               que el plan ya detecte los borradores nuevos.
+#   HERMES_DRAFT_EMAILS_LIMIT   máximo de hilos a procesar por corrida (def 40).
+#
+# NOTA: pensado para un único worker uvicorn (así arranca el contenedor). Si
+# algún día se corre con --workers > 1, mover el scheduler a un proceso aparte
+# para no disparar los jobs N veces.
+
+import threading
+
+SCHEDULER_ENABLED = os.environ.get("HERMES_SCHEDULER_ENABLED", "1") == "1"
+try:
+    TZ_OFFSET_HOURS = float(os.environ.get("HERMES_TZ_OFFSET", "-3"))
+except ValueError:
+    TZ_OFFSET_HOURS = -3.0
+PLAN_TODAY_AT = os.environ.get("HERMES_PLAN_TODAY_AT", "08:05")
+DAILY_BRIEF_AT = os.environ.get("HERMES_DAILY_BRIEF_AT", "08:30")
+DAILY_BRIEF_FALLBACK = os.environ.get("HERMES_DAILY_BRIEF_FALLBACK", "1") == "1"
+# Borradores de correo: se generan ANTES del plan para que éste los detecte.
+DRAFT_EMAILS_ENABLED = os.environ.get("HERMES_DRAFT_EMAILS_ENABLED", "1") == "1"
+DRAFT_EMAILS_AT = os.environ.get("HERMES_DRAFT_EMAILS_AT", "07:55")
+try:
+    DRAFT_EMAILS_LIMIT = int(os.environ.get("HERMES_DRAFT_EMAILS_LIMIT", "40"))
+except ValueError:
+    DRAFT_EMAILS_LIMIT = 40
+
+_LOCAL_TZ = dt.timezone(dt.timedelta(hours=TZ_OFFSET_HOURS))
+
+
+def _parse_hhmm(s: str, default_h: int, default_m: int) -> tuple[int, int]:
+    try:
+        hh, mm = s.strip().split(":")
+        h, m = int(hh), int(mm)
+        if 0 <= h <= 23 and 0 <= m <= 59:
+            return h, m
+    except Exception:  # noqa: BLE001
+        pass
+    return default_h, default_m
+
+
+def _seconds_until(hh: int, mm: int) -> float:
+    """Segundos desde ahora hasta el próximo HH:MM en hora local."""
+    now = dt.datetime.now(_LOCAL_TZ)
+    target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    if target <= now:
+        target += dt.timedelta(days=1)
+    return (target - now).total_seconds()
+
+
+def _brief_exists_today() -> bool:
+    """¿Ya hay un daily_brief con fecha de hoy (hora local)?"""
+    try:
+        today_local = dt.datetime.now(_LOCAL_TZ).date()
+        start_local = dt.datetime.combine(today_local, dt.time.min, tzinfo=_LOCAL_TZ)
+        start_utc = start_local.astimezone(dt.timezone.utc)
+        res = sb.table("agent_suggestions").select("id").eq("tipo", "daily_brief").gte(
+            "created_at", start_utc.isoformat()
+        ).limit(1).execute().data or []
+        return len(res) > 0
+    except Exception as exc:  # noqa: BLE001
+        print(f"[scheduler] no se pudo verificar brief de hoy: {exc}", flush=True)
+        return False
+
+
+def _job_plan_today() -> None:
+    print("[scheduler] regenerando plan del día…", flush=True)
+    out = _run_plan_today(20, source="scheduler")
+    print(f"[scheduler] plan del día listo: {out}", flush=True)
+
+
+def _job_draft_emails() -> None:
+    print("[scheduler] generando borradores de correo faltantes…", flush=True)
+    out = draft_pending_emails(DraftPendingInput(limit=DRAFT_EMAILS_LIMIT, only_missing=True))
+    print(f"[scheduler] borradores de correo: {out}", flush=True)
+
+
+def _job_daily_brief() -> None:
+    if DAILY_BRIEF_FALLBACK and _brief_exists_today():
+        print("[scheduler] el brief de hoy ya existe (n8n); omito respaldo.", flush=True)
+        return
+    print("[scheduler] generando daily brief de respaldo…", flush=True)
+    out = daily_brief_from_db()
+    print(f"[scheduler] daily brief de respaldo: {out.get('suggestion_id')}", flush=True)
+
+
+def _scheduler_loop(name: str, hh: int, mm: int, job) -> None:
+    while True:
+        time.sleep(_seconds_until(hh, mm))
+        try:
+            job()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[scheduler:{name}] job falló: {exc}", flush=True)
+        # Colchón para no re-disparar dentro del mismo minuto objetivo.
+        time.sleep(61)
+
+
+@app.on_event("startup")
+def _start_scheduler() -> None:
+    if not SCHEDULER_ENABLED:
+        print("[scheduler] deshabilitado (HERMES_SCHEDULER_ENABLED=0).", flush=True)
+        return
+    ph, pm = _parse_hhmm(PLAN_TODAY_AT, 8, 5)
+    bh, bm = _parse_hhmm(DAILY_BRIEF_AT, 8, 30)
+    threading.Thread(
+        target=_scheduler_loop, args=("plan_today", ph, pm, _job_plan_today), daemon=True
+    ).start()
+    threading.Thread(
+        target=_scheduler_loop, args=("daily_brief", bh, bm, _job_daily_brief), daemon=True
+    ).start()
+    log_extra = ""
+    if DRAFT_EMAILS_ENABLED:
+        dh, dm = _parse_hhmm(DRAFT_EMAILS_AT, 7, 55)
+        threading.Thread(
+            target=_scheduler_loop, args=("draft_emails", dh, dm, _job_draft_emails), daemon=True
+        ).start()
+        log_extra = f" · draft_emails {dh:02d}:{dm:02d}"
+    print(
+        f"[scheduler] activo · plan_today {ph:02d}:{pm:02d} · "
+        f"daily_brief {bh:02d}:{bm:02d}{log_extra} (UTC{TZ_OFFSET_HOURS:+g})",
+        flush=True,
+    )

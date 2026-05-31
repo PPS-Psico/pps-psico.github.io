@@ -54,3 +54,6 @@ Pagina PPS/
 docs/_doc_extract/
 docs/trabajo_pps_panel_web_y_agente_ia.docx
 scripts/create_pps_work_ai_agent_doc.py
+
+# Backups locales de Hermes (no versionar)
+agent/hermes-pps/app/main.py.bak*
