@@ -1,12 +1,21 @@
+/**
+ * EmailAutomationManager — Rediseño v1 (Paper & Ink editorial)
+ *
+ * Solo cambia la capa visual. La lógica se preserva intacta:
+ *   · Plantillas de mail (3 escenarios) y push (2 escenarios) en email_templates.
+ *   · Activar/desactivar por escenario (toggleActiveMutation).
+ *   · Editar asunto/cuerpo con inserción de variables.
+ *   · Envío de prueba de mail (send-email) y de push (send-fcm-notification).
+ */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { generateHtmlTemplate, stripGreeting } from "../../utils/emailService";
 import Loader from "../Loader";
-import Button from "../ui/Button";
-import Input from "../ui/Input";
-import Select from "../ui/Select";
 import Toast from "../ui/Toast";
+import { injectScopedStyles } from "../../utils/injectScopedStyles";
+import { injectPremiumMotion } from "./premiumMotion";
+import { logger } from "../../utils/logger";
 
 interface AutomationScenario {
   id: string;
@@ -116,6 +125,99 @@ const PUSH_SCENARIOS: AutomationScenario[] = [
     defaultBody: "Se abrió una nueva convocatoria: {{nombre_pps}}. Entrá a la app para postularte.",
   },
 ];
+
+// ─── CSS scoped (Paper & Ink editorial) ───────────────────────────────────────
+
+const CSS = `
+.aut {
+  --paper:#F7F5F0; --paper-2:#EFECE4; --paper-3:#E5E1D7;
+  --ink:#14130F; --ink-2:#2A2823; --ink-3:#6B6660; --ink-4:#A8A39C;
+  --rule-2:#1413101A; --rule-3:#1413102E;
+  --accent:#1F3A8A; --accent-s:#1F3A8A14;
+  --warn:#B4501E; --warn-s:#B4501E14;
+  --ok:#2F5F3A; --ok-s:#2F5F3A14;
+  --ai:#5A2D86; --ai-s:#5A2D8612;
+  color:var(--ink); font-family:'Hanken Grotesk', system-ui, sans-serif;
+}
+html.dark .aut {
+  --paper:#0E0E0C; --paper-2:#17171A; --paper-3:#1F1F23;
+  --ink:#F2EFE8; --ink-2:#DAD6CD; --ink-3:#97928A; --ink-4:#5C5852;
+  --rule-2:#F2EFE822; --rule-3:#F2EFE836;
+  --accent:#8FB1FF; --accent-s:#8FB1FF1A;
+  --warn:#E4965D; --warn-s:#E4965D1A;
+  --ok:#88BD96; --ok-s:#88BD961A;
+  --ai:#C9A4F2; --ai-s:#C9A4F21A;
+}
+.aut .serif{ font-family:'Instrument Serif', serif; letter-spacing:-0.025em; }
+.aut .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
+.aut .eyebrow{ font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; font-weight:600; color:var(--ink-3); }
+
+.aut-head{ margin-bottom:20px; }
+.aut-head h2{ font-family:'Instrument Serif', serif; font-size:26px; font-weight:700; letter-spacing:-0.025em; margin:5px 0 0; }
+.aut-head p{ font-size:13.5px; color:var(--ink-3); margin:5px 0 0; max-width:560px; }
+
+/* Tabs canal */
+.aut-tabs{ display:inline-flex; gap:4px; padding:4px; border:1px solid var(--rule-2); border-radius:11px; background:var(--paper-2); margin-bottom:22px; }
+.aut-tab{ display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; border:none; background:transparent; color:var(--ink-3); transition:all .12s; }
+.aut-tab[data-on="1"]{ background:var(--paper); color:var(--ink); box-shadow:0 1px 2px rgba(20,19,16,0.06); }
+.aut-tab .material-icons{ font-size:16px; }
+
+/* Caja de prueba */
+.aut-test{ border:1px solid var(--rule-2); border-radius:14px; background:var(--paper); padding:18px 20px; margin-bottom:26px; }
+.aut-test-grid{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-top:14px; }
+.aut-label{ display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; font-weight:600; color:var(--ink-3); margin-bottom:6px; }
+.aut-field{ width:100%; padding:9px 12px; border:1px solid var(--rule-3); border-radius:9px; background:var(--paper-2); color:var(--ink); font-size:13.5px; font-family:inherit; outline:none; box-sizing:border-box; }
+.aut-field:focus{ border-color:var(--accent); }
+
+/* Botones */
+.aut-btn{ display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; padding:9px 15px; border-radius:9px; border:1px solid var(--rule-3); background:transparent; color:var(--ink); cursor:pointer; font-family:inherit; transition:background .12s; white-space:nowrap; }
+.aut-btn:hover{ background:var(--paper-2); }
+.aut-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.aut-btn-primary{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.aut-btn-primary:hover{ opacity:.9; background:var(--ink); }
+.aut-btn .material-icons{ font-size:16px; }
+
+/* Tarjeta de escenario */
+.aut-card{ border:1px solid var(--rule-2); border-radius:14px; background:var(--paper); overflow:hidden; transition:border-color .12s; }
+.aut-card + .aut-card{ margin-top:12px; }
+.aut-card[data-on="1"]{ border-left:3px solid var(--ok); }
+.aut-card-top{ display:flex; align-items:center; gap:14px; padding:16px 18px; }
+.aut-card-ico{ width:40px; height:40px; flex-shrink:0; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--paper-3); color:var(--ink-3); }
+.aut-card[data-on="1"] .aut-card-ico{ background:var(--ok-s); color:var(--ok); }
+.aut-card-ico .material-icons{ font-size:21px; }
+.aut-card-body{ flex:1; min-width:0; }
+.aut-card-title{ font-size:15px; font-weight:600; color:var(--ink); }
+.aut-card-desc{ font-size:12.5px; color:var(--ink-3); margin-top:2px; line-height:1.45; }
+.aut-card-ctrls{ display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.aut-state{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.aut-state[data-on="1"]{ color:var(--ok); }
+.aut-state[data-on="0"]{ color:var(--ink-4); }
+
+/* Toggle */
+.aut-switch{ position:relative; width:42px; height:23px; border-radius:999px; border:none; cursor:pointer; transition:background .15s; background:var(--rule-3); }
+.aut-switch[data-on="1"]{ background:var(--ok); }
+.aut-switch span{ position:absolute; top:2.5px; left:2.5px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .15s; }
+.aut-switch[data-on="1"] span{ transform:translateX(19px); }
+.aut-edit-btn{ width:34px; height:34px; border-radius:8px; border:1px solid var(--rule-3); background:transparent; color:var(--ink-2); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:background .12s; }
+.aut-edit-btn:hover{ background:var(--paper-2); }
+.aut-edit-btn[data-on="1"]{ background:var(--accent-s); color:var(--accent); border-color:transparent; }
+.aut-edit-btn .material-icons{ font-size:18px; }
+
+/* Editor */
+.aut-editor{ border-top:1px solid var(--rule-2); background:var(--paper-2); padding:18px 20px; }
+.aut-var{ font-size:10.5px; font-family:'JetBrains Mono', monospace; background:var(--paper-3); color:var(--ink-2); border:1px solid var(--rule-2); padding:2px 7px; border-radius:6px; cursor:pointer; transition:all .1s; }
+.aut-var:hover{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.aut-textarea{ width:100%; border:1px solid var(--rule-3); border-radius:10px; background:var(--paper); color:var(--ink); padding:12px; font-size:13px; font-family:'JetBrains Mono', monospace; line-height:1.6; outline:none; resize:vertical; box-sizing:border-box; }
+.aut-textarea:focus{ border-color:var(--accent); }
+.aut-tip{ display:flex; align-items:flex-start; gap:7px; font-size:11.5px; color:var(--ink-3); line-height:1.5; margin-top:8px; }
+.aut-tip .material-icons{ font-size:13px; color:var(--accent); flex-shrink:0; margin-top:1px; }
+@keyframes aut-spin{ to{ transform:rotate(360deg); } }
+.aut-spin{ width:15px; height:15px; border:2px solid var(--rule-3); border-top-color:currentColor; border-radius:999px; animation:aut-spin .8s linear infinite; }
+.aut-section-title{ font-family:'Instrument Serif', serif; font-size:19px; font-weight:700; letter-spacing:-0.02em; margin:0 0 14px; }
+`;
+
+injectScopedStyles("aut-styles", CSS);
+injectPremiumMotion();
 
 const EmailAutomationManager: React.FC = () => {
   const queryClient = useQueryClient();
@@ -267,13 +369,58 @@ const EmailAutomationManager: React.FC = () => {
 
       setToastInfo({ message: `Prueba de "${scenario.label}" enviada.`, type: "success" });
     } catch (error: any) {
-      console.error("Error sending test:", error);
+      logger.error("Error sending test:", error);
       setToastInfo({
         message: `Fallo el envío: ${error.message || "Error desconocido"}`,
         type: "error",
       });
     } finally {
       setIsSendingTest(false);
+    }
+  };
+
+  const handleSendTestPush = async () => {
+    setIsSendingCustomPush(true);
+    logger.info("[FCM Test] Starting test notification...");
+    try {
+      logger.info("[FCM Test] Invoking send-fcm-notification function...");
+      const { data, error } = await supabase.functions.invoke("send-fcm-notification", {
+        body: {
+          title: "🧪 Prueba de Notificación",
+          body: "Esta es una notificación de prueba para verificar que todo funciona correctamente.",
+          type: "message",
+          send_to_all: true,
+        },
+      });
+
+      logger.info("[FCM Test] Response:", { data, error });
+
+      if (data?.error) {
+        logger.error("[FCM Test] Server returned error:", data.error);
+        throw new Error(data.error);
+      }
+      if (error) {
+        logger.error("[FCM Test] Supabase function error:", error);
+        throw error;
+      }
+
+      if (data?.sent === 0) {
+        setToastInfo({
+          message:
+            "No hay suscriptores activos. Los usuarios deben activar las notificaciones primero.",
+          type: "warning",
+        });
+      } else {
+        setToastInfo({
+          message: `Notificación enviada a ${data?.sent || 0} suscriptor(es)${data?.failed > 0 ? ` (${data.failed} fallidos)` : ""}`,
+          type: "success",
+        });
+      }
+    } catch (error: any) {
+      logger.error("[FCM Test] Error:", error);
+      setToastInfo({ message: error.message || "Error al enviar notificación", type: "error" });
+    } finally {
+      setIsSendingCustomPush(false);
     }
   };
 
@@ -290,7 +437,7 @@ const EmailAutomationManager: React.FC = () => {
       id: scenario.id,
       subject: currentSubject,
       body: currentBody,
-      is_active: data.isActive,
+      is_active: data.isActive ?? undefined,
     });
   };
 
@@ -321,10 +468,134 @@ const EmailAutomationManager: React.FC = () => {
     }
   };
 
+  // ─── Tarjeta de escenario (mail o push) ──────────────────────────────────────
+  const ScenarioCard: React.FC<{ scenario: AutomationScenario; channel: "email" | "push" }> = ({
+    scenario,
+    channel,
+  }) => {
+    const isEditing = editingScenarioId === scenario.id;
+    const { isActive } = getTemplateData(scenario.id);
+    const isMail = channel === "email";
+
+    return (
+      <div className="aut-card" data-on={isActive ? "1" : "0"}>
+        <div className="aut-card-top">
+          <span className="aut-card-ico">
+            <span className="material-icons">{scenario.icon}</span>
+          </span>
+          <div className="aut-card-body">
+            <div className="aut-card-title">{scenario.label}</div>
+            <div className="aut-card-desc">{scenario.description}</div>
+          </div>
+          <div className="aut-card-ctrls">
+            <span className="aut-state" data-on={isActive ? "1" : "0"}>
+              {isActive ? "Activado" : "Desactivado"}
+            </span>
+            <button
+              className="aut-switch"
+              data-on={isActive ? "1" : "0"}
+              onClick={() => toggleActive(scenario)}
+              disabled={toggleActiveMutation.isPending}
+              aria-label={isActive ? "Desactivar" : "Activar"}
+            >
+              <span />
+            </button>
+            <button
+              className="aut-edit-btn"
+              data-on={isEditing ? "1" : "0"}
+              onClick={() => (isEditing ? setEditingScenarioId(null) : handleEditClick(scenario))}
+              aria-label={isEditing ? "Cerrar editor" : "Editar"}
+            >
+              <span className="material-icons">{isEditing ? "expand_less" : "edit"}</span>
+            </button>
+          </div>
+        </div>
+
+        {isEditing && (
+          <div className="aut-editor">
+            <div style={{ marginBottom: 14 }}>
+              <label className="aut-label">
+                {isMail ? "Asunto del correo" : "Título de la notificación"}
+              </label>
+              <input
+                className="aut-field"
+                value={currentSubject}
+                onChange={(e) => setCurrentSubject(e.target.value)}
+                placeholder={isMail ? "Asunto…" : "Título…"}
+              />
+            </div>
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                <label className="aut-label" style={{ margin: 0 }}>
+                  {isMail ? "Cuerpo del mensaje" : "Mensaje"}
+                </label>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {scenario.variables.map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => insertVariable(v)}
+                      className="aut-var"
+                      title="Insertar variable"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {isMail && (
+                <div className="aut-tip">
+                  <span className="material-icons">tips_and_updates</span>
+                  <span>
+                    Usá <strong>**Título:**</strong> para cajas de alerta. No incluyas el saludo
+                    inicial; el sistema lo agrega solo.
+                  </span>
+                </div>
+              )}
+              <textarea
+                id="body-editor"
+                className="aut-textarea"
+                value={currentBody}
+                onChange={(e) => setCurrentBody(e.target.value)}
+                rows={isMail ? 14 : 6}
+                style={{ marginTop: 8 }}
+              />
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+              <button className="aut-btn" onClick={() => setEditingScenarioId(null)}>
+                Cancelar
+              </button>
+              <button
+                className="aut-btn aut-btn-primary"
+                onClick={() => handleSaveScenario(scenario)}
+                disabled={updateTemplateMutation.isPending}
+              >
+                {updateTemplateMutation.isPending ? (
+                  <span className="aut-spin" style={{ borderTopColor: "var(--paper)" }} />
+                ) : (
+                  <span className="material-icons">save</span>
+                )}
+                Guardar cambios
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) return <Loader />;
 
   return (
-    <div className="space-y-6 animate-fade-in-up pb-10">
+    <div className="aut">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -333,454 +604,126 @@ const EmailAutomationManager: React.FC = () => {
         />
       )}
 
-      {/* Tabs */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-1">
-        <div className="flex gap-1">
-          <button
-            onClick={() => setActiveTab("emails")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold transition-all ${
-              activeTab === "emails"
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-            }`}
-          >
-            <span className="material-icons">mark_email_read</span>
-            Correos Automáticos
-          </button>
-          <button
-            onClick={() => setActiveTab("push")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold transition-all ${
-              activeTab === "push"
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-            }`}
-          >
-            <span className="material-icons">notifications_active</span>
-            Notificaciones Push
-          </button>
-        </div>
+      <div className="aut-head">
+        <span className="eyebrow">Sistema · comunicación</span>
+        <h2 className="serif">Automatizaciones</h2>
+        <p>
+          Editá las plantillas de mail y push, activá los escenarios que querés que se disparen
+          solos, y probá un envío antes de confiarlo.
+        </p>
+      </div>
+
+      <div className="aut-tabs">
+        <button
+          className="aut-tab"
+          data-on={activeTab === "emails" ? "1" : "0"}
+          onClick={() => setActiveTab("emails")}
+        >
+          <span className="material-icons">mark_email_read</span>
+          Correos
+        </button>
+        <button
+          className="aut-tab"
+          data-on={activeTab === "push" ? "1" : "0"}
+          onClick={() => setActiveTab("push")}
+        >
+          <span className="material-icons">notifications_active</span>
+          Push
+        </button>
       </div>
 
       {activeTab === "emails" ? (
         <>
-          {/* Email Configuration Header */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
-                <span className="material-icons !text-2xl">mark_email_read</span>
+          {/* Caja de prueba mail */}
+          <div className="aut-test">
+            <span className="eyebrow">Diagnóstico y pruebas</span>
+            <div className="aut-test-grid">
+              <div style={{ flex: "1 1 200px" }}>
+                <label className="aut-label">Plantilla a probar</label>
+                <select
+                  className="aut-field"
+                  value={testScenarioId}
+                  onChange={(e) => setTestScenarioId(e.target.value)}
+                >
+                  {EMAIL_SCENARIOS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  Gestor de Correos Automatizados
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Configura el contenido y activa/desactiva los envíos automáticos de correos
-                  electrónicos.
-                </p>
+              <div style={{ flex: "1 1 200px" }}>
+                <label className="aut-label">Enviar a</label>
+                <input
+                  className="aut-field"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="tu_correo@ejemplo.com"
+                />
               </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
-              <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
-                Diagnóstico y Pruebas
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                    Plantilla a probar:
-                  </label>
-                  <Select
-                    value={testScenarioId}
-                    onChange={(e) => setTestScenarioId(e.target.value)}
-                    className="w-full text-sm"
-                  >
-                    {EMAIL_SCENARIOS.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="flex gap-2 w-full">
-                  <div className="flex-grow">
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                      Enviar a:
-                    </label>
-                    <Input
-                      value={testEmail}
-                      onChange={(e) => setTestEmail(e.target.value)}
-                      placeholder="tu_correo@ejemplo.com"
-                      className="text-sm"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleSendTest}
-                    disabled={isSendingTest}
-                    size="md"
-                    icon="send"
-                    variant="secondary"
-                  >
-                    {isSendingTest ? "..." : "Probar"}
-                  </Button>
-                </div>
-              </div>
+              <button
+                className="aut-btn aut-btn-primary"
+                onClick={handleSendTest}
+                disabled={isSendingTest}
+              >
+                {isSendingTest ? (
+                  <span className="aut-spin" style={{ borderTopColor: "var(--paper)" }} />
+                ) : (
+                  <span className="material-icons">send</span>
+                )}
+                Probar
+              </button>
             </div>
           </div>
 
-          {/* Email Scenarios */}
+          {/* Escenarios mail */}
+          <h3 className="aut-section-title">Plantillas de correo</h3>
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
-              Plantillas de Correo
-            </h3>
-            <div className="grid grid-cols-1 gap-6">
-              {EMAIL_SCENARIOS.map((scenario) => {
-                const isEditing = editingScenarioId === scenario.id;
-                const { isActive } = getTemplateData(scenario.id);
-
-                return (
-                  <div
-                    key={scenario.id}
-                    className={`bg-white dark:bg-slate-800 rounded-xl border shadow-sm transition-all ${isActive ? "border-blue-200 dark:border-blue-800" : "border-slate-200 dark:border-slate-700 opacity-90"}`}
-                  >
-                    <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`p-3 rounded-full ${isActive ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"}`}
-                        >
-                          <span className="material-icons !text-2xl">{scenario.icon}</span>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-                            {scenario.label}
-                          </h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
-                            {scenario.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 self-end sm:self-center">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-bold ${isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`}
-                          >
-                            {isActive ? "ACTIVADO" : "DESACTIVADO"}
-                          </span>
-                          <button
-                            onClick={() => toggleActive(scenario)}
-                            disabled={toggleActiveMutation.isPending}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isActive ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"}`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isActive ? "translate-x-6" : "translate-x-1"}`}
-                            />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() =>
-                            isEditing ? setEditingScenarioId(null) : handleEditClick(scenario)
-                          }
-                          className={`p-2 rounded-lg border transition-colors ${isEditing ? "bg-blue-50 border-blue-200 text-blue-700" : "border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-300"}`}
-                        >
-                          <span className="material-icons !text-xl">
-                            {isEditing ? "expand_less" : "edit"}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {isEditing && (
-                      <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50/50 dark:bg-slate-900/30 animate-fade-in">
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                              Asunto del Correo
-                            </label>
-                            <Input
-                              value={currentSubject}
-                              onChange={(e) => setCurrentSubject(e.target.value)}
-                              placeholder="Asunto..."
-                            />
-                          </div>
-                          <div>
-                            <div className="flex justify-between items-center mb-1.5">
-                              <label className="block text-xs font-bold text-slate-500 uppercase">
-                                Cuerpo del Mensaje (Soporta **negrita** para títulos)
-                              </label>
-                              <div className="flex gap-1">
-                                {scenario.variables.map((v) => (
-                                  <button
-                                    key={v}
-                                    onClick={() => insertVariable(v)}
-                                    className="text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/50 dark:hover:text-blue-300 px-2 py-0.5 rounded cursor-pointer transition-colors"
-                                    title="Insertar variable"
-                                  >
-                                    {v}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="text-xs text-slate-400 mb-2 px-2 border-l-2 border-blue-200">
-                              Tip: Usa <strong>**Título:**</strong> para crear cajas de alerta
-                              visuales con íconos.
-                              <br />
-                              Nota: No incluyas el saludo inicial ("Hola..."), el sistema lo agrega
-                              automáticamente.
-                            </div>
-                            <textarea
-                              id="body-editor"
-                              value={currentBody}
-                              onChange={(e) => setCurrentBody(e.target.value)}
-                              rows={16}
-                              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono leading-relaxed"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => setEditingScenarioId(null)}
-                            >
-                              Cancelar
-                            </Button>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => handleSaveScenario(scenario)}
-                              isLoading={updateTemplateMutation.isPending}
-                              icon="save"
-                            >
-                              Guardar Cambios
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {EMAIL_SCENARIOS.map((scenario) => (
+              <ScenarioCard key={scenario.id} scenario={scenario} channel="email" />
+            ))}
           </div>
         </>
       ) : (
         <>
-          {/* Push Configuration Header */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
-                <span className="material-icons !text-2xl">notifications_active</span>
-              </div>
+          {/* Caja de prueba push */}
+          <div className="aut-test">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 14,
+                flexWrap: "wrap",
+              }}
+            >
               <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  Gestor de Notificaciones Push
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Configura notificaciones push automáticas y envía mensajes personalizados a todos
-                  los suscriptores.
+                <span className="eyebrow">Mensaje de prueba</span>
+                <p style={{ fontSize: 12.5, color: "var(--ink-3)", margin: "4px 0 0" }}>
+                  Enviar una notificación de prueba a todos los suscriptores activos.
                 </p>
               </div>
-            </div>
-
-            {/* Botón de Prueba */}
-            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300 mb-1">
-                    🧪 Mensaje de Prueba
-                  </h4>
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                    Enviar notificación de prueba a todos los suscriptores
-                  </p>
-                </div>
-                <Button
-                  onClick={async () => {
-                    setIsSendingCustomPush(true);
-                    console.log("[FCM Test] Starting test notification...");
-                    try {
-                      console.log("[FCM Test] Invoking send-fcm-notification function...");
-                      const { data, error } = await supabase.functions.invoke(
-                        "send-fcm-notification",
-                        {
-                          body: {
-                            title: "🧪 Prueba de Notificación",
-                            body: "Esta es una notificación de prueba para verificar que todo funciona correctamente.",
-                            type: "message",
-                            send_to_all: true,
-                          },
-                        }
-                      );
-
-                      console.log("[FCM Test] Response:", { data, error });
-
-                      // Check if response has error message
-                      if (data?.error) {
-                        console.error("[FCM Test] Server returned error:", data.error);
-                        throw new Error(data.error);
-                      }
-                      if (error) {
-                        console.error("[FCM Test] Supabase function error:", error);
-                        throw error;
-                      }
-
-                      if (data?.sent === 0) {
-                        setToastInfo({
-                          message:
-                            "No hay suscriptores activos. Los usuarios deben activar las notificaciones primero.",
-                          type: "warning",
-                        });
-                      } else {
-                        setToastInfo({
-                          message: `Notificación enviada a ${data?.sent || 0} suscriptor(es)${data?.failed > 0 ? ` (${data.failed} fallidos)` : ""}`,
-                          type: "success",
-                        });
-                      }
-                    } catch (error: any) {
-                      console.error("[FCM Test] Error:", error);
-                      setToastInfo({
-                        message: error.message || "Error al enviar notificación",
-                        type: "error",
-                      });
-                    } finally {
-                      setIsSendingCustomPush(false);
-                    }
-                  }}
-                  disabled={isSendingCustomPush}
-                  isLoading={isSendingCustomPush}
-                  icon="send"
-                  variant="primary"
-                >
-                  Enviar Prueba
-                </Button>
-              </div>
+              <button
+                className="aut-btn aut-btn-primary"
+                onClick={handleSendTestPush}
+                disabled={isSendingCustomPush}
+              >
+                {isSendingCustomPush ? (
+                  <span className="aut-spin" style={{ borderTopColor: "var(--paper)" }} />
+                ) : (
+                  <span className="material-icons">send</span>
+                )}
+                Enviar prueba
+              </button>
             </div>
           </div>
 
-          {/* Push Scenarios */}
+          {/* Escenarios push */}
+          <h3 className="aut-section-title">Notificaciones automáticas</h3>
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">
-              Notificaciones Automáticas
-            </h3>
-            <div className="grid grid-cols-1 gap-6">
-              {PUSH_SCENARIOS.map((scenario) => {
-                const isEditing = editingScenarioId === scenario.id;
-                const { isActive } = getTemplateData(scenario.id);
-
-                return (
-                  <div
-                    key={scenario.id}
-                    className={`bg-white dark:bg-slate-800 rounded-xl border shadow-sm transition-all ${isActive ? "border-emerald-200 dark:border-emerald-800" : "border-slate-200 dark:border-slate-700 opacity-90"}`}
-                  >
-                    <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`p-3 rounded-full ${isActive ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"}`}
-                        >
-                          <span className="material-icons !text-2xl">{scenario.icon}</span>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-                            {scenario.label}
-                          </h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
-                            {scenario.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 self-end sm:self-center">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-bold ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}
-                          >
-                            {isActive ? "ACTIVADO" : "DESACTIVADO"}
-                          </span>
-                          <button
-                            onClick={() => toggleActive(scenario)}
-                            disabled={toggleActiveMutation.isPending}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isActive ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-600"}`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isActive ? "translate-x-6" : "translate-x-1"}`}
-                            />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() =>
-                            isEditing ? setEditingScenarioId(null) : handleEditClick(scenario)
-                          }
-                          className={`p-2 rounded-lg border transition-colors ${isEditing ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-300"}`}
-                        >
-                          <span className="material-icons !text-xl">
-                            {isEditing ? "expand_less" : "edit"}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {isEditing && (
-                      <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50/50 dark:bg-slate-900/30 animate-fade-in">
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                              Título de la Notificación
-                            </label>
-                            <Input
-                              value={currentSubject}
-                              onChange={(e) => setCurrentSubject(e.target.value)}
-                              placeholder="Título..."
-                            />
-                          </div>
-                          <div>
-                            <div className="flex justify-between items-center mb-1.5">
-                              <label className="block text-xs font-bold text-slate-500 uppercase">
-                                Mensaje
-                              </label>
-                              <div className="flex gap-1">
-                                {scenario.variables.map((v) => (
-                                  <button
-                                    key={v}
-                                    onClick={() => insertVariable(v)}
-                                    className="text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 px-2 py-0.5 rounded cursor-pointer transition-colors"
-                                    title="Insertar variable"
-                                  >
-                                    {v}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            <textarea
-                              id="body-editor"
-                              value={currentBody}
-                              onChange={(e) => setCurrentBody(e.target.value)}
-                              rows={6}
-                              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono leading-relaxed"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => setEditingScenarioId(null)}
-                            >
-                              Cancelar
-                            </Button>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => handleSaveScenario(scenario)}
-                              isLoading={updateTemplateMutation.isPending}
-                              icon="save"
-                            >
-                              Guardar Cambios
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {PUSH_SCENARIOS.map((scenario) => (
+              <ScenarioCard key={scenario.id} scenario={scenario} channel="push" />
+            ))}
           </div>
         </>
       )}

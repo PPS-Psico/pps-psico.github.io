@@ -32,7 +32,7 @@ import {
   AnyReportData,
   ExecutiveReportData,
   PPSRequestSummary,
-  ReportType,
+  ReportSelection,
   TimelineMonthData,
 } from "../types";
 import { safeGetId, parseToUTCDate, formatDate, getGroupName } from "../utils/formatters";
@@ -298,19 +298,19 @@ const fetchAllDataForReport = async () => {
 };
 
 export const useExecutiveReportData = ({
-  reportType,
+  selection,
   enabled = false,
   isTestingMode = false,
 }: {
-  reportType: ReportType | null;
+  selection: ReportSelection | null;
   enabled?: boolean;
   isTestingMode?: boolean;
 }) => {
   return useQuery<AnyReportData, Error>({
-    queryKey: ["executiveReportData", reportType, isTestingMode],
+    queryKey: ["executiveReportData", selection, isTestingMode],
     queryFn: async () => {
       if (isTestingMode) return {} as any;
-      if (!reportType) throw new Error("A report type must be selected.");
+      if (!selection) throw new Error("A report selection must be provided.");
 
       const allData = await fetchAllDataForReport();
 
@@ -324,10 +324,15 @@ export const useExecutiveReportData = ({
         const previousYearEndDate = new Date(Date.UTC(year, 0, 1));
         previousYearEndDate.setUTCDate(previousYearEndDate.getUTCDate() - 1);
 
-        const newStudentsCount = allData.estudiantes.filter((s: any) => {
-          const d = new Date(s.created_at);
-          return d.getFullYear() === year;
-        }).length;
+        // Ingresantes reales = estudiantes cuya cohorte (año de su primera PPS
+        // real) cae en el año. NO usamos created_at: la migración de Airtable lo
+        // dejó casi todo en 2025, inflando ese año. Ver migración add_cohorte.
+        const newStudentsCount = allData.estudiantes.filter(
+          (s: any) => Number(s.cohorte) === year
+        ).length;
+        const prevNewStudentsCount = allData.estudiantes.filter(
+          (s: any) => Number(s.cohorte) === year - 1
+        ).length;
 
         return {
           reportType: "singleYear",
@@ -349,7 +354,7 @@ export const useExecutiveReportData = ({
               current: currentMetrics.alumnosSinNingunaPPS.value,
               previous: prevMetrics.alumnosSinNingunaPPS.value,
             },
-            newStudents: { current: newStudentsCount, previous: 0 },
+            newStudents: { current: newStudentsCount, previous: prevNewStudentsCount },
             finishedStudents: {
               current: currentMetrics.alumnosFinalizados.value,
               previous: prevMetrics.alumnosFinalizados.value,
@@ -373,61 +378,65 @@ export const useExecutiveReportData = ({
         };
       };
 
-      if (reportType === "2024" || reportType === "2025") {
-        return generateSingleYearReport(parseInt(reportType, 10));
+      if (selection.mode === "single") {
+        return generateSingleYearReport(selection.year);
       }
 
-      if (reportType === "comparative") {
-        const data2024 = generateSingleYearReport(2024);
-        const data2025 = generateSingleYearReport(2025);
-        return {
-          reportType: "comparative",
-          summary: `Comparación de métricas clave entre los ciclos 2024 y 2025.`,
-          kpis: {
-            activeStudents: {
-              year2024: data2024.kpis.activeStudents.current,
-              year2025: data2025.kpis.activeStudents.current,
-            },
-            studentsWithoutAnyPps: {
-              year2024: data2024.kpis.studentsWithoutAnyPps.current,
-              year2025: data2025.kpis.studentsWithoutAnyPps.current,
-            },
-            finishedStudents: {
-              year2024: data2024.kpis.finishedStudents.current,
-              year2025: data2025.kpis.finishedStudents.current,
-            },
-            newStudents: {
-              year2024: data2024.kpis.newStudents.current,
-              year2025: data2025.kpis.newStudents.current,
-            },
-            newPpsLaunches: {
-              year2024: data2024.kpis.newPpsLaunches.current,
-              year2025: data2025.kpis.newPpsLaunches.current,
-            },
-            totalOfferedSpots: {
-              year2024: data2024.kpis.totalOfferedSpots.current,
-              year2025: data2025.kpis.totalOfferedSpots.current,
-            },
-            newAgreements: {
-              year2024: data2024.kpis.newAgreements.current,
-              year2025: data2025.kpis.newAgreements.current,
-            },
+      // Comparativo entre dos años arbitrarios. Normalizamos para que yearA sea
+      // siempre el más antiguo y yearB el más reciente (lectura cronológica).
+      const compareYear = selection.compareYear ?? selection.year - 1;
+      const yearA = Math.min(selection.year, compareYear);
+      const yearB = Math.max(selection.year, compareYear);
+      const dataA = generateSingleYearReport(yearA);
+      const dataB = generateSingleYearReport(yearB);
+      return {
+        reportType: "comparative",
+        yearA,
+        yearB,
+        summary: `Comparación de métricas clave entre los ciclos ${yearA} y ${yearB}.`,
+        kpis: {
+          activeStudents: {
+            yearA: dataA.kpis.activeStudents.current,
+            yearB: dataB.kpis.activeStudents.current,
           },
-          launchesByMonth: {
-            year2024: data2024.launchesByMonth,
-            year2025: data2025.launchesByMonth,
+          studentsWithoutAnyPps: {
+            yearA: dataA.kpis.studentsWithoutAnyPps.current,
+            yearB: dataB.kpis.studentsWithoutAnyPps.current,
+          },
+          finishedStudents: {
+            yearA: dataA.kpis.finishedStudents.current,
+            yearB: dataB.kpis.finishedStudents.current,
+          },
+          newStudents: {
+            yearA: dataA.kpis.newStudents.current,
+            yearB: dataB.kpis.newStudents.current,
+          },
+          newPpsLaunches: {
+            yearA: dataA.kpis.newPpsLaunches.current,
+            yearB: dataB.kpis.newPpsLaunches.current,
+          },
+          totalOfferedSpots: {
+            yearA: dataA.kpis.totalOfferedSpots.current,
+            yearB: dataB.kpis.totalOfferedSpots.current,
           },
           newAgreements: {
-            year2024: data2024.newAgreementsList,
-            year2025: data2025.newAgreementsList,
+            yearA: dataA.kpis.newAgreements.current,
+            yearB: dataB.kpis.newAgreements.current,
           },
-          ppsRequests: {
-            year2024: data2024.ppsRequests,
-            year2025: data2025.ppsRequests,
-          },
-        };
-      }
-      throw new Error(`Invalid report type: ${reportType}`);
+        },
+        launchesByMonth: {
+          yearA: dataA.launchesByMonth,
+          yearB: dataB.launchesByMonth,
+        },
+        newAgreements: {
+          yearA: dataA.newAgreementsList,
+          yearB: dataB.newAgreementsList,
+        },
+        ppsRequests: {
+          yearA: dataA.ppsRequests,
+          yearB: dataB.ppsRequests,
+        },
+      };
     },
     enabled: enabled,
   });

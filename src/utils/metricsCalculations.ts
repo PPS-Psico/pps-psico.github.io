@@ -183,7 +183,9 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
       studentHoursMap.set(sId, currentTotal + horas);
 
       const status = normalizeStringForComparison(p[FIELD_ESTADO_PRACTICA]);
-      if (status === "en curso" || status === "pendiente" || status === "en proceso") {
+      // practicas.estado canónico (CHECK constraint normalize_states):
+      // En curso · Finalizada · Convenio Realizado · No se pudo concretar.
+      if (status === "en curso") {
         studentActivePracticesMap.set(sId, true);
       }
     }
@@ -254,7 +256,9 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     const estadoInscripcion = normalizeStringForComparison(
       c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]
     );
-    const estadosValidos = ["seleccionado", "en proceso", "espera", "inscripto"];
+    // estado_inscripcion canónico (CHECK constraint normalize_states):
+    // Inscripto · Seleccionado · No Seleccionado. Cuentan los que ocupan cupo.
+    const estadosValidos = ["seleccionado", "inscripto"];
     if (!estadosValidos.includes(estadoInscripcion)) return;
 
     const rawLanzId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];

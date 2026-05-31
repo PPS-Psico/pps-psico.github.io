@@ -39,39 +39,8 @@ import { mockDb } from "../services/mockDb";
 import type { AirtableRecord, ConvocatoriaFields, EnrichedStudent, LanzamientoPPS } from "../types";
 import { getPublicPanelUrl, sendSmartEmail } from "../utils/emailService";
 import { cleanDbValue, normalizeStringForComparison } from "../utils/formatters";
-
-const SCORE_WEIGHTS = {
-  TERMINO_CURSAR: 100,
-  CURSANDO_ELECTIVAS: 50,
-  BASE_FINALES: 30,
-  PER_HOUR: 0.5,
-  TRABAJA: 20,
-};
-
-const calculateScore = (
-  enrollment: AirtableRecord<ConvocatoriaFields>,
-  hours: number,
-  penalties: number,
-  works: boolean
-): number => {
-  let academicScore = 0;
-  const termino = enrollment[FIELD_TERMINO_CURSAR_CONVOCATORIAS] === "Sí";
-  const electivas = enrollment[FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS] === "Sí";
-
-  if (termino) {
-    academicScore = SCORE_WEIGHTS.TERMINO_CURSAR;
-  } else if (electivas) {
-    academicScore = SCORE_WEIGHTS.CURSANDO_ELECTIVAS;
-  } else {
-    academicScore = SCORE_WEIGHTS.BASE_FINALES;
-  }
-
-  const hoursScore = hours * SCORE_WEIGHTS.PER_HOUR;
-  const workScore = works ? SCORE_WEIGHTS.TRABAJA : 0;
-  const penaltyScore = penalties;
-
-  return Math.round(academicScore + hoursScore + workScore - penaltyScore);
-};
+import { calculateScore } from "../utils/seleccionadorScore";
+import { logger } from "../utils/logger";
 
 export const useSeleccionadorLogic = (
   isTestingMode = false,
@@ -144,7 +113,7 @@ export const useSeleccionadorLogic = (
         setSelectedLanzamiento(target);
         // Mantener en modo selection para ver todos los inscriptos
         setViewMode("selection");
-        console.log("[useSeleccionadorLogic] Auto-selected launch for full management:", target.id);
+        logger.info("[useSeleccionadorLogic] Auto-selected launch for full management:", target.id);
       }
     }
   }, [priorityLaunchId, openLaunches, selectedLanzamiento]);
@@ -492,8 +461,8 @@ export const useSeleccionadorLogic = (
 
             return sendSmartEmail("seleccion", {
               studentName: student.nombre,
-              studentEmail: student.correo,
-              ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
+              studentEmail: student.correo ?? undefined,
+              ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? undefined,
               schedule: horarioAsignado || undefined,
               encuentroInicial: encuentroText || undefined,
               panelUrl,
@@ -512,15 +481,21 @@ export const useSeleccionadorLogic = (
             if (pushTemplate?.is_active !== false) {
               const pushPromises = selectedCandidates.map(async (student) => {
                 const title = (pushTemplate?.subject || "¡Fuiste seleccionado! 🎉")
-                  .replace("{{nombre_alumno}}", student.nombre)
-                  .replace("{{nombre_pps}}", selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
+                  .replace("{{nombre_alumno}}", student.nombre ?? "")
+                  .replace(
+                    "{{nombre_pps}}",
+                    selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? ""
+                  );
 
                 const message = (
                   pushTemplate?.body ||
                   "Hola {{nombre_alumno}}, has sido seleccionado para la PPS: {{nombre_pps}}. Revisá tu correo para más detalles."
                 )
-                  .replace("{{nombre_alumno}}", student.nombre)
-                  .replace("{{nombre_pps}}", selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS]);
+                  .replace("{{nombre_alumno}}", student.nombre ?? "")
+                  .replace(
+                    "{{nombre_pps}}",
+                    selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? ""
+                  );
 
                 return supabase.functions.invoke("send-fcm-notification", {
                   body: {
@@ -532,10 +507,10 @@ export const useSeleccionadorLogic = (
                 });
               });
               await Promise.all(pushPromises);
-              console.log("[Seleccionador] Push notifications sent successfully");
+              logger.info("[Seleccionador] Push notifications sent successfully");
             }
           } catch (pushError) {
-            console.error("[Seleccionador] Error sending push notifications:", pushError);
+            logger.error("[Seleccionador] Error sending push notifications:", pushError);
             // Don't fail the whole operation if push fails
           }
 

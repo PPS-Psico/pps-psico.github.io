@@ -12,6 +12,7 @@ import Card from "../ui/Card";
 import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import ConfirmModal from "../ConfirmModal";
+import { logger } from "../../utils/logger";
 
 const YearEndResetTool: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +54,7 @@ const YearEndResetTool: React.FC = () => {
         type: "success",
       });
     } catch (error: any) {
-      console.error("Error reseteando ciclo:", error);
+      logger.error("Error reseteando ciclo:", error);
       setToastInfo({ message: error.message || "Error desconocido.", type: "error" });
     } finally {
       setIsLoading(false);

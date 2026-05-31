@@ -16,17 +16,16 @@ import { db } from "../../lib/db";
 import { schema } from "../../lib/dbSchema";
 import {
   cleanInstitutionName,
-  getEspecialidadClasses,
   normalizeStringForComparison,
   toTitleCase,
 } from "../../utils/formatters";
 import ConfirmModal from "../ConfirmModal";
 import Loader from "../Loader";
 import PaginationControls from "../PaginationControls";
-import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
+import { logger } from "../../utils/logger";
 
 const TABLE_CONFIG = {
   label: "Instituciones",
@@ -41,7 +40,7 @@ const TABLE_CONFIG = {
       key: FIELD_CONVENIO_NUEVO_INSTITUCIONES,
       label: "Año del Convenio",
       type: "select" as const,
-      options: ["2024", "2025", "2026", "Legacy", "No"],
+      options: ["", "2024", "2025", "2026"],
     },
     { key: FIELD_TUTOR_INSTITUCIONES, label: "Tutor", type: "text" as const },
     {
@@ -149,15 +148,19 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   });
 
   const handleError = (e: Error) => {
-    console.error(e);
+    logger.error(e);
     setToastInfo({ message: `Error: ${e.message}`, type: "error" });
   };
 
   const updateMutation = useMutation({
     mutationFn: (vars: any) => {
-      let val = vars.fields[FIELD_CONVENIO_NUEVO_INSTITUCIONES];
-      if (val === "No" || val === "false") val = null;
-      if (val === "Legacy" || val === "true") val = "Legacy";
+      // convenio_nuevo es smallint (año) o null. El select da "" o "2024"…
+      const raw = vars.fields[FIELD_CONVENIO_NUEVO_INSTITUCIONES];
+      let val: number | null = null;
+      if (raw !== "" && raw != null && raw !== "No" && raw !== "false") {
+        const n = Number(raw);
+        val = Number.isNaN(n) ? null : n;
+      }
 
       const cleanFields = {
         ...vars.fields,
@@ -262,7 +265,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       });
 
       const updates: any[] = [];
-      const processList = (list: string[], year: string) => {
+      const processList = (list: string[], year: number) => {
         for (const instNameFromList of list) {
           const targetNorm = normalizeStringForComparison(instNameFromList);
           const matches = allInstitutions.filter((i: any) => {
@@ -273,7 +276,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             return dbNameNorm.includes(targetNorm) || targetNorm.includes(dbNameNorm);
           });
           for (const match of matches) {
-            if (String(match[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) !== year) {
+            if (Number(match[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) !== year) {
               updates.push({
                 id: match.id,
                 fields: { [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: year },
@@ -282,8 +285,8 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           }
         }
       };
-      processList(LISTA_CONVENIOS_2024, "2024");
-      processList(LISTA_CONVENIOS_2025, "2025");
+      processList(LISTA_CONVENIOS_2024, 2024);
+      processList(LISTA_CONVENIOS_2025, 2025);
 
       const uniqueUpdates = Array.from(new Map(updates.map((item) => [item.id, item])).values());
       if (uniqueUpdates.length > 0) {
@@ -385,48 +388,36 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     setMenu({ x: e.clientX, y: e.clientY, record });
   };
 
-  const getYearBadgeStyle = (rawYear: any) => {
-    if (!rawYear) return "";
-    const y = String(rawYear).toLowerCase().trim();
-    if (y === "2026")
-      return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800";
-    if (y === "2025")
-      return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800";
-    if (y === "2024")
-      return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800";
-    if (y === "legacy" || y === "true")
-      return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
-    return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
+  const getYearTone = (rawYear: any): string => {
+    if (!rawYear) return "mute";
+    const y = String(rawYear).trim();
+    if (y === "2026") return "ok";
+    if (y === "2025") return "ai";
+    if (y === "2024") return "accent";
+    return "mute";
   };
 
   const renderConvenioValue = (val: any) => {
-    if (!val || val === "false") return <span className="text-slate-300 text-xs">-</span>;
-    let display = String(val);
-    if (display === "true") display = "Legacy";
+    // convenio_nuevo es el año (smallint) o null
+    if (val == null || val === "" || val === "false") return <span className="dbe-muted">—</span>;
     return (
-      <span
-        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black border shadow-sm ${getYearBadgeStyle(display)}`}
-      >
-        <span className="material-icons !text-xs">verified</span>
-        {display}
+      <span className="dbe-pill" data-tone={getYearTone(val)}>
+        <span className="material-icons">verified</span>
+        {String(val)}
       </span>
     );
   };
 
   const renderOrientaciones = (orientacionesStr: string) => {
-    if (!orientacionesStr)
-      return <span className="text-slate-300 text-xs italic">Sin especificar</span>;
+    if (!orientacionesStr) return <span className="dbe-muted">Sin especificar</span>;
     const lista = String(orientacionesStr)
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
     return (
-      <div className="flex flex-wrap gap-1 max-w-[200px]">
+      <div className="dbe-tags">
         {lista.map((o, idx) => (
-          <span
-            key={idx}
-            className={`${getEspecialidadClasses(o).tag} px-1.5 py-0.5 rounded text-[10px] font-semibold border shadow-none truncate max-w-full`}
-          >
+          <span key={idx} className="dbe-tag">
             {o}
           </span>
         ))}
@@ -435,7 +426,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   };
 
   return (
-    <div className="space-y-6">
+    <div className="dbe">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -446,113 +437,103 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
 
       <ConfirmModal
         isOpen={!!idToDelete}
-        title="¿Eliminar Institución?"
+        title="¿Eliminar institución?"
         message="Esta acción eliminará la institución. No se puede deshacer."
-        confirmText="Eliminar Definitivamente"
+        confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"
         onConfirm={() => idToDelete && deleteMutation.mutate(idToDelete)}
         onClose={() => setIdToDelete(null)}
       />
 
-      {/* --- BARRA DE FILTROS (INDIGO) --- */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-end gap-4 shadow-sm">
-        <div className="relative flex-1 w-full md:w-auto space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-            Buscador
-          </label>
-          <div className="relative group">
+      {/* BARRA DE FILTROS */}
+      <div className="dbe-bar">
+        <div className="dbe-bar-grow">
+          <label className="dbe-label">Buscador</label>
+          <div className="dbe-search">
+            <span className="material-icons">search</span>
             <input
               type="search"
-              placeholder="Buscar Institución..."
+              placeholder="Buscar institución…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-200"
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors">
-              search
-            </span>
           </div>
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto flex-wrap justify-end">
-          <button
-            onClick={handleSyncOrientations}
-            disabled={isSyncingOrientations}
-            className="h-11 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-xl font-bold text-xs border border-blue-100 dark:border-blue-800 flex items-center gap-2 hover:bg-blue-100 transition-colors"
-          >
-            {isSyncingOrientations ? (
-              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <span className="material-icons !text-base">sync</span>
-            )}
-            Sincronizar Orientaciones
-          </button>
-          <button
-            onClick={handleBatchFix}
-            disabled={isFixingData}
-            className="h-11 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-xl font-bold text-xs border border-blue-100 dark:border-blue-800 flex items-center gap-2 hover:bg-blue-100 transition-colors"
-          >
-            {isFixingData ? (
-              <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <span className="material-icons !text-base">auto_fix_high</span>
-            )}
-            Asignar Años
-          </button>
-          <Button
-            onClick={() => setEditingRecord({ isCreating: true })}
-            icon="add_business"
-            className="h-11 bg-blue-600 hover:bg-blue-700 shadow-md"
-          >
-            Nueva
-          </Button>
-        </div>
+        <button
+          className="dbe-btn"
+          onClick={handleSyncOrientations}
+          disabled={isSyncingOrientations}
+        >
+          {isSyncingOrientations ? (
+            <span className="dbe-spin" />
+          ) : (
+            <span className="material-icons">sync</span>
+          )}
+          Sincronizar orientaciones
+        </button>
+        <button className="dbe-btn" onClick={handleBatchFix} disabled={isFixingData}>
+          {isFixingData ? (
+            <span className="dbe-spin" />
+          ) : (
+            <span className="material-icons">auto_fix_high</span>
+          )}
+          Asignar años
+        </button>
+        <button
+          className="dbe-btn dbe-btn-primary"
+          onClick={() => setEditingRecord({ isCreating: true })}
+        >
+          <span className="material-icons">add_business</span>
+          Nueva
+        </button>
       </div>
 
-      {/* --- TABLA --- */}
+      {/* TABLA */}
       {isLoading ? (
-        <div className="py-12">
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
           <Loader />
         </div>
       ) : (
-        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
+        <div className="dbe-table-wrap">
+          <div className="dbe-scroll">
+            <table className="dbe-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4">Institución</th>
-                  <th className="px-6 py-4">Orientaciones</th>
-                  <th className="px-6 py-4 text-center">Año Convenio</th>
-                  <th className="px-6 py-4">Referente</th>
+                  <th>Institución</th>
+                  <th>Orientaciones</th>
+                  <th style={{ textAlign: "center" }}>Año convenio</th>
+                  <th>Referente</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {data?.records.map((i: any) => (
                   <tr
                     key={i.id}
                     onContextMenu={(e) => handleRowContextMenu(e, i)}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-context-menu group"
                     onDoubleClick={() => setEditingRecord(i)}
                   >
-                    <td className="px-6 py-4">
-                      <div className="font-extrabold text-slate-800 dark:text-slate-100 text-base mb-1">
+                    <td>
+                      <div className="dbe-cell-strong">
                         {cleanInstitutionName(i[FIELD_NOMBRE_INSTITUCIONES])}
                       </div>
-                      <div className="text-xs text-slate-500">
-                        {i[FIELD_DIRECCION_INSTITUCIONES]}
-                      </div>
+                      {i[FIELD_DIRECCION_INSTITUCIONES] && (
+                        <div className="dbe-cell-sub">{i[FIELD_DIRECCION_INSTITUCIONES]}</div>
+                      )}
                     </td>
-                    <td className="px-6 py-4">
-                      {renderOrientaciones(i[FIELD_ORIENTACIONES_INSTITUCIONES])}
-                    </td>
-                    <td className="px-6 py-4 text-center">
+                    <td>{renderOrientaciones(i[FIELD_ORIENTACIONES_INSTITUCIONES])}</td>
+                    <td style={{ textAlign: "center" }}>
                       {renderConvenioValue(i[FIELD_CONVENIO_NUEVO_INSTITUCIONES])}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                        {i[FIELD_TUTOR_INSTITUCIONES] || "No asignado"}
-                      </span>
+                    <td>
+                      {i[FIELD_TUTOR_INSTITUCIONES] ? (
+                        <span className="dbe-cell-strong" style={{ fontWeight: 500 }}>
+                          {i[FIELD_TUTOR_INSTITUCIONES]}
+                        </span>
+                      ) : (
+                        <span className="dbe-muted">No asignado</span>
+                      )}
                     </td>
                   </tr>
                 ))}

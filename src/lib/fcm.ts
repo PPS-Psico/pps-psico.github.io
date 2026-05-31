@@ -7,6 +7,7 @@ import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, deleteToken, onMessage } from "firebase/messaging";
 import { firebaseConfig, vapidKey } from "./firebaseConfig";
 import { supabase } from "./supabaseClient";
+import { logger } from "../utils/logger";
 
 // Initialize Firebase app
 let app: any = null;
@@ -30,17 +31,17 @@ const isPushSupported = (): boolean => {
 export const initializeFCM = async () => {
   try {
     if (!isPushSupported()) {
-      console.log("[FCM] Push not supported in this environment, skipping.");
+      logger.info("[FCM] Push not supported in this environment, skipping.");
       return { app: null, messaging: null };
     }
     if (!app) {
       app = initializeApp(firebaseConfig);
       messaging = getMessaging(app);
-      console.log("[FCM] Firebase initialized successfully");
+      logger.info("[FCM] Firebase initialized successfully");
     }
     return { app, messaging };
   } catch (error: any) {
-    console.warn("[FCM] Failed to initialize:", error.message);
+    logger.warn("[FCM] Failed to initialize:", error.message);
     return { app: null, messaging: null };
   }
 };
@@ -63,7 +64,7 @@ export const getFCMToken = async (): Promise<string | null> => {
   tokenPromise = (async () => {
     try {
       if (!isPushSupported()) {
-        console.log("[FCM] Push not supported, skipping token request.");
+        logger.info("[FCM] Push not supported, skipping token request.");
         return null;
       }
       const { messaging } = await initializeFCM();
@@ -71,7 +72,7 @@ export const getFCMToken = async (): Promise<string | null> => {
       // Request notification permission first
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        console.warn("[FCM] Notification permission not granted");
+        logger.warn("[FCM] Notification permission not granted");
         return null;
       }
 
@@ -79,15 +80,15 @@ export const getFCMToken = async (): Promise<string | null> => {
       const token = await getToken(messaging, { vapidKey });
 
       if (token) {
-        console.log("[FCM] Token obtained:", token.substring(0, 20) + "...");
+        logger.info("[FCM] Token obtained:", token.substring(0, 20) + "...");
         cachedToken = token;
         return token;
       } else {
-        console.warn("[FCM] No token available");
+        logger.warn("[FCM] No token available");
         return null;
       }
     } catch (error: any) {
-      console.error("[FCM] Error getting token:", error);
+      logger.error("[FCM] Error getting token:", error);
       return null;
     } finally {
       isGettingToken = false;
@@ -110,7 +111,7 @@ export const subscribeToFCM = async (
   error?: string;
 }> => {
   try {
-    console.log("[FCM] Subscribing user:", userId);
+    logger.info("[FCM] Subscribing user:", userId);
 
     // Check browser support
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
@@ -134,13 +135,13 @@ export const subscribeToFCM = async (
     // Check if already subscribed
     const isSubscribed = await isFCMSubscribed();
     if (isSubscribed) {
-      console.log("[FCM] Already subscribed, ensuring token is in database...");
+      logger.info("[FCM] Already subscribed, ensuring token is in database...");
     }
 
     // Save to database if userId provided
     let dbSaved = false;
     if (userId) {
-      console.log("[FCM] Saving token to database for user:", userId);
+      logger.info("[FCM] Saving token to database for user:", userId);
 
       try {
         // Use RPC function to save token (bypasses RLS and FK issues)
@@ -150,18 +151,18 @@ export const subscribeToFCM = async (
         });
 
         if (error) {
-          console.error("[FCM] Error saving token via RPC:", error);
+          logger.error("[FCM] Error saving token via RPC:", error);
         } else if (data === true) {
-          console.log("[FCM] Token saved to database via RPC");
+          logger.info("[FCM] Token saved to database via RPC");
           dbSaved = true;
         } else {
-          console.log("[FCM] Token NOT saved to database");
+          logger.info("[FCM] Token NOT saved to database");
         }
       } catch (e) {
-        console.error("[FCM] Exception saving token:", e);
+        logger.error("[FCM] Exception saving token:", e);
       }
     } else {
-      console.log("[FCM] No userId provided, skipping database save");
+      logger.info("[FCM] No userId provided, skipping database save");
     }
 
     // Setup foreground message handler
@@ -169,7 +170,7 @@ export const subscribeToFCM = async (
     // Foreground messages can be used for in-app UI updates if needed
     const { messaging } = await initializeFCM();
     onMessage(messaging, (payload) => {
-      console.log("[FCM] Message received in foreground:", payload);
+      logger.info("[FCM] Message received in foreground:", payload);
       // In foreground, FCM doesn't show notifications automatically
       // You can add custom in-app UI here if needed
       // The Service Worker will handle notifications when app is in background
@@ -177,7 +178,7 @@ export const subscribeToFCM = async (
 
     return { success: true, token, dbSaved };
   } catch (error: any) {
-    console.error("[FCM] Subscription error:", error);
+    logger.error("[FCM] Subscription error:", error);
     return {
       success: false,
       error: "Error al suscribirse: " + error.message,
@@ -197,14 +198,14 @@ export const unsubscribeFromFCM = async (): Promise<{
 
     // Delete token
     await deleteToken(messaging);
-    console.log("[FCM] Token deleted");
+    logger.info("[FCM] Token deleted");
 
     // Clear cache
     cachedToken = null;
 
     return { success: true };
   } catch (error: any) {
-    console.error("[FCM] Unsubscription error:", error);
+    logger.error("[FCM] Unsubscription error:", error);
     return {
       success: false,
       error: "Error al desuscribirse: " + error.message,
@@ -251,11 +252,11 @@ export const deleteFCMTokenFromDB = async (userId: string): Promise<void> => {
     });
 
     if (error) {
-      console.error("[FCM] Error deleting token from database:", error);
+      logger.error("[FCM] Error deleting token from database:", error);
     } else {
-      console.log("[FCM] Token deleted from database for user:", userId);
+      logger.info("[FCM] Token deleted from database for user:", userId);
     }
   } catch (error) {
-    console.error("[FCM] Error deleting token from database:", error);
+    logger.error("[FCM] Error deleting token from database:", error);
   }
 };

@@ -1,4 +1,16 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+/**
+ * PenalizationManager — Rediseño v1 (Paper & Ink editorial)
+ *
+ * Solo cambia la capa visual. La lógica de datos se preserva intacta:
+ *   · Query de PPS relevantes del alumno (convocatorias + prácticas en curso).
+ *   · applyPenaltyMutation con baja automática de inscripción/práctica según el
+ *     tipo de incumplimiento.
+ *   · Agregación por alumno con puntaje total y semáforo de severidad.
+ *   · Borrado con confirmación (ConfirmModal).
+ *
+ * Severidad (puntaje): ≥21 crítico · ≥11 medio · resto leve.
+ */
+import React, { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AdminSearch from "./AdminSearch";
 import {
@@ -8,15 +20,7 @@ import {
   updateRecord,
 } from "../../services/supabaseService";
 import { mockDb } from "../../services/mockDb";
-import type {
-  EstudianteFields,
-  Penalizacion,
-  PenalizacionFields,
-  ConvocatoriaFields,
-  PracticaFields,
-  LanzamientoPPSFields,
-  AirtableRecord,
-} from "../../types";
+import type { EstudianteFields, Penalizacion, AirtableRecord } from "../../types";
 import {
   TABLE_NAME_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
@@ -40,12 +44,14 @@ import {
   FIELD_LEGAJO_CONVOCATORIAS,
   FIELD_NOMBRE_BUSQUEDA_PRACTICAS,
 } from "../../constants";
-import Loader from "../Loader";
 import EmptyState from "../EmptyState";
+import Loader from "../Loader";
 import Toast from "../ui/Toast";
-import Card from "../ui/Card";
 import ConfirmModal from "../ConfirmModal";
 import { formatDate } from "../../utils/formatters";
+import { injectScopedStyles } from "../../utils/injectScopedStyles";
+import { injectPremiumMotion } from "./premiumMotion";
+import { logger } from "../../utils/logger";
 import {
   mapConvocatoria,
   mapLanzamiento,
@@ -54,12 +60,148 @@ import {
   mapEstudiante,
 } from "../../utils/mappers";
 
+// ─── CSS scoped (Paper & Ink editorial) ───────────────────────────────────────
+
+const CSS = `
+.pen {
+  --paper:#F7F5F0; --paper-2:#EFECE4; --paper-3:#E5E1D7;
+  --ink:#14130F; --ink-2:#2A2823; --ink-3:#6B6660; --ink-4:#A8A39C;
+  --rule-2:#1413101A; --rule-3:#1413102E;
+  --accent:#1F3A8A; --accent-s:#1F3A8A14;
+  --warn:#B4501E; --warn-s:#B4501E14;
+  --ok:#2F5F3A; --ok-s:#2F5F3A14;
+  --ai:#5A2D86; --ai-s:#5A2D8612;
+  color:var(--ink); font-family:'Hanken Grotesk', system-ui, sans-serif;
+}
+html.dark .pen {
+  --paper:#0E0E0C; --paper-2:#17171A; --paper-3:#1F1F23;
+  --ink:#F2EFE8; --ink-2:#DAD6CD; --ink-3:#97928A; --ink-4:#5C5852;
+  --rule-2:#F2EFE822; --rule-3:#F2EFE836;
+  --accent:#8FB1FF; --accent-s:#8FB1FF1A;
+  --warn:#E4965D; --warn-s:#E4965D1A;
+  --ok:#88BD96; --ok-s:#88BD961A;
+  --ai:#C9A4F2; --ai-s:#C9A4F21A;
+}
+.pen .serif{ font-family:'Instrument Serif', serif; letter-spacing:-0.025em; }
+.pen .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+.pen .eyebrow{ font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; font-weight:600; color:var(--ink-3); }
+
+/* Panel de búsqueda */
+.pen-search-panel{ border:1px solid var(--rule-2); border-radius:16px; background:var(--paper); padding:22px 24px; }
+.pen-search-panel h2{ font-family:'Instrument Serif', serif; font-size:26px; font-weight:700; letter-spacing:-0.025em; margin:6px 0 0; }
+.pen-search-panel p{ font-size:13.5px; color:var(--ink-3); margin:6px 0 0; max-width:520px; }
+.pen-search-box{ margin-top:18px; border:1px solid var(--rule-3); border-radius:10px; background:var(--paper-2); padding:4px 12px; }
+.pen-search-box:focus-within{ border-color:var(--accent); }
+
+/* Header de listado */
+.pen-list-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:30px 0 14px; flex-wrap:wrap; }
+.pen-legend{ display:flex; gap:14px; flex-wrap:wrap; }
+.pen-legend span{ display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-3); }
+.pen-legend .dot{ width:8px; height:8px; border-radius:999px; }
+
+/* Tarjeta de alumno */
+.pen-card{ border:1px solid var(--rule-2); border-radius:14px; background:var(--paper); overflow:hidden; transition:border-color .12s ease; }
+.pen-card:hover{ border-color:var(--rule-3); }
+.pen-card[data-sev="critico"]{ border-left:3px solid var(--warn); }
+.pen-card-head{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 18px; cursor:pointer; background:transparent; border:none; text-align:left; font-family:inherit; }
+.pen-card-head:hover{ background:var(--paper-2); }
+.pen-id{ display:flex; align-items:center; gap:13px; min-width:0; }
+.pen-sev-ico{ width:38px; height:38px; flex-shrink:0; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+.pen-sev-ico .material-icons{ font-size:20px; }
+.pen-sev-ico[data-sev="critico"]{ background:var(--warn-s); color:var(--warn); }
+.pen-sev-ico[data-sev="medio"]{ background:var(--warn-s); color:var(--warn); }
+.pen-sev-ico[data-sev="leve"]{ background:var(--paper-3); color:var(--ink-3); }
+.pen-name{ font-size:15px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pen-legajo{ font-size:12px; color:var(--ink-3); font-family:'JetBrains Mono', monospace; margin-top:1px; }
+.pen-score-wrap{ display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.pen-score{ text-align:right; }
+.pen-score .num{ font-family:'JetBrains Mono', monospace; font-size:30px; font-weight:300; letter-spacing:-0.04em; line-height:1; }
+.pen-score .num[data-sev="critico"]{ color:var(--warn); }
+.pen-score .num[data-sev="medio"]{ color:var(--warn); }
+.pen-score .num[data-sev="leve"]{ color:var(--ink-2); }
+.pen-score .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-4); margin-top:2px; }
+.pen-chev{ color:var(--ink-4); transition:transform .2s ease; }
+.pen-chev.open{ transform:rotate(180deg); }
+
+/* Detalle expandido */
+.pen-detail{ border-top:1px solid var(--rule-2); background:var(--paper-2); padding:16px 18px; }
+.pen-detail h4{ font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; font-weight:600; color:var(--ink-3); margin:0 0 12px; }
+.pen-item{ display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border:1px solid var(--rule-2); border-radius:10px; background:var(--paper); }
+.pen-item + .pen-item{ margin-top:8px; }
+.pen-item-ico{ color:var(--ink-4); margin-top:1px; }
+.pen-item-ico .material-icons{ font-size:18px; }
+.pen-item-body{ flex:1; min-width:0; }
+.pen-item-tipo{ font-size:13.5px; font-weight:600; color:var(--ink); }
+.pen-item-pps{ font-size:11.5px; color:var(--ink-3); margin-top:1px; }
+.pen-item-date{ font-size:11px; font-family:'JetBrains Mono', monospace; color:var(--ink-3); white-space:nowrap; }
+.pen-item-notes{ margin-top:8px; font-size:12.5px; color:var(--ink-2); line-height:1.5; padding-left:10px; border-left:2px solid var(--rule-3); font-style:italic; }
+.pen-del{ flex-shrink:0; width:30px; height:30px; border-radius:8px; border:none; background:transparent; color:var(--ink-4); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .12s, color .12s; }
+.pen-del:hover{ background:var(--warn-s); color:var(--warn); }
+.pen-del .material-icons{ font-size:17px; }
+.pen-del:disabled{ opacity:.5; cursor:not-allowed; }
+@keyframes pen-spin{ to{ transform:rotate(360deg); } }
+.pen-spin{ width:15px; height:15px; border:2px solid var(--rule-3); border-top-color:var(--warn); border-radius:999px; animation:pen-spin .8s linear infinite; }
+
+/* Modal */
+.pen-modal-bg{ position:fixed; inset:0; background:rgba(20,19,16,0.45); display:flex; align-items:center; justify-content:center; z-index:200; padding:24px; animation:pen-fade .15s ease; }
+@keyframes pen-fade{ from{ opacity:0; } to{ opacity:1; } }
+.pen-modal{ background:var(--paper); border:1px solid var(--rule-2); border-radius:16px; width:100%; max-width:480px; max-height:90vh; overflow:auto; box-shadow:0 24px 80px rgba(20,19,16,0.22); }
+.pen-modal-head{ padding:20px 24px; border-bottom:1px solid var(--rule-2); }
+.pen-modal-head .eyebrow{ color:var(--warn); }
+.pen-modal-head h3{ font-family:'Instrument Serif', serif; font-size:22px; font-weight:700; letter-spacing:-0.02em; margin:5px 0 0; }
+.pen-modal-body{ padding:20px 24px; display:flex; flex-direction:column; gap:16px; }
+.pen-modal-foot{ padding:16px 24px; border-top:1px solid var(--rule-2); display:flex; justify-content:flex-end; gap:10px; }
+.pen-label{ display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; font-weight:600; color:var(--ink-3); margin-bottom:6px; }
+.pen-field{ width:100%; padding:10px 12px; border:1px solid var(--rule-3); border-radius:9px; background:var(--paper-2); color:var(--ink); font-size:14px; font-family:inherit; outline:none; box-sizing:border-box; }
+.pen-field:focus{ border-color:var(--accent); }
+textarea.pen-field{ resize:vertical; min-height:64px; }
+.pen-btn{ display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; padding:9px 16px; border-radius:9px; border:1px solid var(--rule-3); background:transparent; color:var(--ink); cursor:pointer; font-family:inherit; transition:background .12s; }
+.pen-btn:hover{ background:var(--paper-2); }
+.pen-btn-primary{ background:var(--warn); color:#fff; border-color:var(--warn); }
+.pen-btn-primary:hover{ opacity:.88; background:var(--warn); }
+.pen-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.pen-hint{ display:flex; align-items:flex-start; gap:8px; font-size:11.5px; color:var(--ink-3); line-height:1.5; }
+.pen-hint .material-icons{ font-size:14px; color:var(--warn); flex-shrink:0; margin-top:1px; }
+`;
+
+injectScopedStyles("pen-styles", CSS);
+injectPremiumMotion();
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
+
 const PENALTY_TYPES = [
   "Baja Anticipada",
   "Baja sobre la Fecha / Ausencia en Inicio",
   "Abandono durante la PPS",
   "Falta sin Aviso",
 ];
+
+const TRIGGER_TYPES = [
+  "Baja Anticipada",
+  "Baja sobre la Fecha / Ausencia en Inicio",
+  "Abandono durante la PPS",
+];
+
+type Severity = "critico" | "medio" | "leve";
+
+const severityOf = (score: number): Severity =>
+  score >= 21 ? "critico" : score >= 11 ? "medio" : "leve";
+
+const severityMeta: Record<Severity, { label: string; icon: string }> = {
+  critico: { label: "Crítico", icon: "local_fire_department" },
+  medio: { label: "Medio", icon: "warning_amber" },
+  leve: { label: "Leve", icon: "priority_high" },
+};
+
+const getPenaltyIcon = (type: string | undefined) => {
+  if (!type) return "gavel";
+  const t = type.toLowerCase();
+  if (t.includes("baja anticipada")) return "event_busy";
+  if (t.includes("baja sobre la fecha") || t.includes("ausencia")) return "no_accounts";
+  if (t.includes("abandono")) return "directions_run";
+  if (t.includes("falta sin aviso")) return "person_off";
+  return "gavel";
+};
 
 interface SelectedStudent {
   id: string;
@@ -74,6 +216,8 @@ interface PenalizedStudent {
   totalScore: number;
   penalties: (Penalizacion & { id: string; ppsName?: string })[];
 }
+
+// ─── Modal: aplicar penalización ───────────────────────────────────────────────
 
 const AddPenaltyModal: React.FC<{
   isOpen: boolean;
@@ -91,7 +235,6 @@ const AddPenaltyModal: React.FC<{
     queryKey: ["relevantPPSForModal", student.id, isTestingMode],
     queryFn: async () => {
       if (isTestingMode) {
-        // Return dummy data or fetch from mock
         const mockRecs = await mockDb.getAll("lanzamientos_pps");
         return mockRecs.map((r: any) => ({
           id: r.id,
@@ -99,7 +242,6 @@ const AddPenaltyModal: React.FC<{
         }));
       }
 
-      // 1. Fetch Convocatorias for this student (Native Filter)
       const convocatoriasRes = await fetchAllData(
         TABLE_NAME_CONVOCATORIAS,
         [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS],
@@ -109,7 +251,6 @@ const AddPenaltyModal: React.FC<{
         }
       );
 
-      // 2. Fetch Practicas for this student (Native Filter)
       const practicasRes = await fetchAllData(
         TABLE_NAME_PRACTICAS,
         [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, FIELD_ESTADO_PRACTICA],
@@ -123,14 +264,12 @@ const AddPenaltyModal: React.FC<{
       const practicas = practicasRes.records.map(mapPractica);
 
       const lanzamientoIds = new Set<string>();
-
       convocatorias.forEach((c) => {
         const ids = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
         (Array.isArray(ids) ? ids : [ids])
           .filter(Boolean)
           .forEach((id) => lanzamientoIds.add(id as string));
       });
-
       practicas.forEach((p) => {
         const ids = p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
         (Array.isArray(ids) ? ids : [ids])
@@ -140,7 +279,6 @@ const AddPenaltyModal: React.FC<{
 
       if (lanzamientoIds.size === 0) return [];
 
-      // 3. Fetch Launches details (Native Filter)
       const lanzamientosRes = await fetchAllData(
         TABLE_NAME_LANZAMIENTOS_PPS,
         [FIELD_NOMBRE_PPS_LANZAMIENTOS, FIELD_FECHA_INICIO_LANZAMIENTOS],
@@ -158,7 +296,7 @@ const AddPenaltyModal: React.FC<{
   const applyPenaltyMutation = useMutation({
     mutationFn: async (penaltyData: any) => {
       if (isTestingMode) {
-        console.log("TEST MODE: Applying penalty:", penaltyData);
+        logger.info("TEST MODE: Applying penalty:", penaltyData);
         await mockDb.create("penalizaciones", penaltyData);
         return;
       }
@@ -171,13 +309,7 @@ const AddPenaltyModal: React.FC<{
         throw new Error(`Error al crear la penalización: ${errorMsg}`);
       }
 
-      const triggerTypes = [
-        "Baja Anticipada",
-        "Baja sobre la Fecha / Ausencia en Inicio",
-        "Abandono durante la PPS",
-      ];
-      if (selectedPpsId && triggerTypes.includes(penaltyType)) {
-        // Auto-unsubscribe logic
+      if (selectedPpsId && TRIGGER_TYPES.includes(penaltyType)) {
         const ppsId = selectedPpsId;
 
         const [convocatoriasRes, practicasRes] = await Promise.all([
@@ -191,17 +323,15 @@ const AddPenaltyModal: React.FC<{
 
         const targetConv = convocatoriasRes.records.map(mapConvocatoria).find((c) => {
           const ids = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-          const linked = (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
-          return linked;
+          return (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
         });
 
         const targetPractica = practicasRes.records.map(mapPractica).find((p) => {
           const ids = p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
-          const linked = (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
-          return linked;
+          return (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
         });
 
-        const sideEffectPromises = [];
+        const sideEffectPromises: Promise<unknown>[] = [];
         if (targetConv) {
           sideEffectPromises.push(
             updateRecord(TABLE_NAME_CONVOCATORIAS, targetConv.id, {
@@ -209,11 +339,9 @@ const AddPenaltyModal: React.FC<{
             })
           );
         }
-
         if (targetPractica) {
           sideEffectPromises.push(deleteRecord(TABLE_NAME_PRACTICAS, targetPractica.id));
         }
-
         if (sideEffectPromises.length > 0) {
           await Promise.all(sideEffectPromises);
         }
@@ -235,7 +363,7 @@ const AddPenaltyModal: React.FC<{
       [FIELD_PENALIZACION_TIPO]: penaltyType,
       [FIELD_PENALIZACION_FECHA]: new Date().toISOString().split("T")[0],
       [FIELD_PENALIZACION_NOTAS]: notes,
-      [FIELD_PENALIZACION_PUNTAJE]: 10, // Default penalty points, adjust logic as needed
+      [FIELD_PENALIZACION_PUNTAJE]: 10,
     };
     if (selectedPpsId) penaltyData[FIELD_PENALIZACION_CONVOCATORIA_LINK] = selectedPpsId;
     applyPenaltyMutation.mutate(penaltyData);
@@ -243,101 +371,103 @@ const AddPenaltyModal: React.FC<{
 
   if (!isOpen) return null;
 
+  const triggersUnsubscribe = TRIGGER_TYPES.includes(penaltyType) && !!selectedPpsId;
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-bold">
-            Aplicar Penalización a <span className="text-blue-600">{student.nombre}</span>
-          </h3>
-        </div>
-        <div className="p-6 space-y-4">
-          <div>
-            <label
-              htmlFor="pps-select-modal"
-              className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1 block"
-            >
-              PPS Afectada (Opcional)
-            </label>
-            {isLoadingPPS ? (
-              <p>Cargando PPS...</p>
-            ) : (
+    <div className="pen" onClick={onClose}>
+      <div className="pen-modal-bg">
+        <div className="pen-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="pen-modal-head">
+            <span className="eyebrow">Nueva penalización</span>
+            <h3>{student.nombre}</h3>
+          </div>
+
+          <div className="pen-modal-body">
+            <div>
+              <label htmlFor="pps-select-modal" className="pen-label">
+                PPS afectada (opcional)
+              </label>
+              {isLoadingPPS ? (
+                <p style={{ fontSize: 13, color: "var(--ink-3)" }}>Cargando PPS…</p>
+              ) : (
+                <select
+                  id="pps-select-modal"
+                  className="pen-field"
+                  value={selectedPpsId}
+                  onChange={(e) => setSelectedPpsId(e.target.value)}
+                >
+                  <option value="">Sin PPS específica…</option>
+                  {relevantPPS?.map((pps: { id: string; name: string }) => (
+                    <option key={pps.id} value={pps.id}>
+                      {pps.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="penalty-type-modal" className="pen-label">
+                Tipo de incumplimiento
+              </label>
               <select
-                id="pps-select-modal"
-                value={selectedPpsId}
-                onChange={(e) => setSelectedPpsId(e.target.value)}
-                className="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 p-2.5 bg-white dark:bg-slate-700"
+                id="penalty-type-modal"
+                className="pen-field"
+                value={penaltyType}
+                onChange={(e) => setPenaltyType(e.target.value)}
               >
-                <option value="">Seleccionar una PPS...</option>
-                {relevantPPS?.map((pps) => (
-                  <option key={pps.id} value={pps.id}>
-                    {pps.name}
+                {PENALTY_TYPES.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label htmlFor="penalty-notes-modal" className="pen-label">
+                Notas (opcional)
+              </label>
+              <textarea
+                id="penalty-notes-modal"
+                className="pen-field"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="Contexto del incumplimiento…"
+              />
+            </div>
+
+            {triggersUnsubscribe && (
+              <div className="pen-hint">
+                <span className="material-icons">info</span>
+                <span>
+                  Este tipo da de baja automáticamente la inscripción o práctica del alumno en la
+                  PPS seleccionada.
+                </span>
+              </div>
             )}
           </div>
-          <div>
-            <label
-              htmlFor="penalty-type-modal"
-              className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1 block"
+
+          <div className="pen-modal-foot">
+            <button onClick={onClose} className="pen-btn">
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={applyPenaltyMutation.isPending}
+              className="pen-btn pen-btn-primary"
             >
-              Tipo de Incumplimiento
-            </label>
-            <select
-              id="penalty-type-modal"
-              value={penaltyType}
-              onChange={(e) => setPenaltyType(e.target.value)}
-              className="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 p-2.5 bg-white dark:bg-slate-700"
-            >
-              {PENALTY_TYPES.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+              {applyPenaltyMutation.isPending ? "Guardando…" : "Aplicar penalización"}
+            </button>
           </div>
-          <div>
-            <label
-              htmlFor="penalty-notes-modal"
-              className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1 block"
-            >
-              Notas (Opcional)
-            </label>
-            <textarea
-              id="penalty-notes-modal"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 p-2 bg-white dark:bg-slate-700"
-            />
-          </div>
-        </div>
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={applyPenaltyMutation.isPending}
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-400"
-          >
-            {applyPenaltyMutation.isPending ? "Guardando..." : "Guardar"}
-          </button>
         </div>
       </div>
     </div>
   );
 };
+
+// ─── Tarjeta de alumno penalizado ──────────────────────────────────────────────
 
 const PenalizedStudentCard: React.FC<{
   student: PenalizedStudent;
@@ -345,141 +475,79 @@ const PenalizedStudentCard: React.FC<{
   deletingId: string | null;
 }> = ({ student, onDeleteRequest, deletingId }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const scoreVisuals = useMemo(() => {
-    if (student.totalScore >= 21) {
-      return {
-        bgColor: "bg-red-50 dark:bg-red-900/30",
-        borderColor: "border-red-200 dark:border-red-600",
-        textColor: "text-red-600 dark:text-red-400",
-        icon: "local_fire_department",
-        ringColor: "ring-red-500/20",
-      };
-    }
-    if (student.totalScore >= 11) {
-      return {
-        bgColor: "bg-amber-50 dark:bg-amber-900/30",
-        borderColor: "border-amber-200 dark:border-amber-600",
-        textColor: "text-amber-600 dark:text-amber-400",
-        icon: "warning_amber",
-        ringColor: "ring-amber-500/20",
-      };
-    }
-    return {
-      bgColor: "bg-yellow-50 dark:bg-yellow-900/30",
-      borderColor: "border-yellow-200 dark:border-yellow-600",
-      textColor: "text-yellow-700 dark:text-yellow-500",
-      icon: "priority_high",
-      ringColor: "ring-yellow-500/20",
-    };
-  }, [student.totalScore]);
-
-  const getPenaltyIcon = (type: string | undefined) => {
-    if (!type) return "gavel";
-    const normType = type.toLowerCase();
-    if (normType.includes("baja anticipada")) return "event_busy";
-    if (normType.includes("baja sobre la fecha") || normType.includes("ausencia"))
-      return "no_accounts";
-    if (normType.includes("abandono")) return "directions_run";
-    if (normType.includes("falta sin aviso")) return "person_off";
-    return "gavel";
-  };
+  const sev = useMemo(() => severityOf(student.totalScore), [student.totalScore]);
 
   return (
-    <div
-      className={`rounded-xl border transition-all duration-300 ${isExpanded ? `shadow-lg ring-4 ${scoreVisuals.ringColor}` : "shadow-sm"} ${scoreVisuals.borderColor}`}
-    >
+    <div className="pen-card" data-sev={sev}>
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full text-left p-4 flex justify-between items-center cursor-pointer"
+        className="pen-card-head"
+        onClick={() => setIsExpanded((v) => !v)}
         aria-expanded={isExpanded}
         aria-controls={`penalties-for-${student.legajo}`}
       >
-        <div className="flex items-center gap-4">
-          <div
-            className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full ${scoreVisuals.bgColor}`}
-          >
-            <span className={`material-icons ${scoreVisuals.textColor}`}>{scoreVisuals.icon}</span>
-          </div>
-          <div>
-            <p className="font-bold text-slate-800 dark:text-slate-100">{student.nombre}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">
-              Legajo: {student.legajo}
-            </p>
+        <div className="pen-id">
+          <span className="pen-sev-ico" data-sev={sev}>
+            <span className="material-icons">{severityMeta[sev].icon}</span>
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div className="pen-name">{student.nombre}</div>
+            <div className="pen-legajo">Legajo {student.legajo}</div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className={`text-3xl font-black ${scoreVisuals.textColor}`}>{student.totalScore}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-1">puntos</p>
+        <div className="pen-score-wrap">
+          <div className="pen-score">
+            <div className="num" data-sev={sev}>
+              {student.totalScore}
+            </div>
+            <div className="lbl">{severityMeta[sev].label}</div>
           </div>
-          <span
-            className={`material-icons text-slate-400 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
-          >
-            expand_more
-          </span>
+          <span className={`material-icons pen-chev ${isExpanded ? "open" : ""}`}>expand_more</span>
         </div>
       </button>
 
       {isExpanded && (
-        <div
-          id={`penalties-for-${student.legajo}`}
-          className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20"
-        >
-          <h4 className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-3">
-            Historial de Incumplimientos
-          </h4>
-          <div className="space-y-3">
-            {student.penalties.map((p) => (
-              <div
-                key={p.id}
-                className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-start gap-4"
-              >
-                <span className="material-icons text-slate-400 dark:text-slate-500 mt-1">
-                  {getPenaltyIcon(p[FIELD_PENALIZACION_TIPO])}
+        <div id={`penalties-for-${student.legajo}`} className="pen-detail">
+          <h4>Historial de incumplimientos</h4>
+          {student.penalties.map((p) => (
+            <div key={p.id} className="pen-item">
+              <span className="pen-item-ico">
+                <span className="material-icons">
+                  {getPenaltyIcon(p[FIELD_PENALIZACION_TIPO] ?? undefined)}
                 </span>
-                <div className="flex-grow">
-                  <div className="flex justify-between items-start gap-2">
-                    <div>
-                      <p className="font-semibold text-slate-800 dark:text-slate-100">
-                        {p[FIELD_PENALIZACION_TIPO]}
-                      </p>
-                      {p.ppsName && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          PPS: {p.ppsName}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {formatDate(p[FIELD_PENALIZACION_FECHA])}
-                    </p>
+              </span>
+              <div className="pen-item-body">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <div>
+                    <div className="pen-item-tipo">{p[FIELD_PENALIZACION_TIPO]}</div>
+                    {p.ppsName && <div className="pen-item-pps">PPS: {p.ppsName}</div>}
                   </div>
-                  {p[FIELD_PENALIZACION_NOTAS] && (
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 border-l-2 border-slate-200 dark:border-slate-600 pl-2 italic">
-                      {p[FIELD_PENALIZACION_NOTAS]}
-                    </p>
-                  )}
+                  <div className="pen-item-date">{formatDate(p[FIELD_PENALIZACION_FECHA])}</div>
                 </div>
-                <button
-                  onClick={() => onDeleteRequest(p.id)}
-                  disabled={deletingId === p.id}
-                  className="p-1.5 rounded-full text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/50 dark:hover:text-rose-400 disabled:opacity-50"
-                  aria-label="Eliminar penalización"
-                >
-                  {deletingId === p.id ? (
-                    <div className="w-4 h-4 border-2 border-rose-400/50 border-t-rose-500 rounded-full animate-spin" />
-                  ) : (
-                    <span className="material-icons !text-base">delete_outline</span>
-                  )}
-                </button>
+                {p[FIELD_PENALIZACION_NOTAS] && (
+                  <div className="pen-item-notes">{p[FIELD_PENALIZACION_NOTAS]}</div>
+                )}
               </div>
-            ))}
-          </div>
+              <button
+                className="pen-del"
+                onClick={() => onDeleteRequest(p.id)}
+                disabled={deletingId === p.id}
+                aria-label="Eliminar penalización"
+              >
+                {deletingId === p.id ? (
+                  <span className="pen-spin" />
+                ) : (
+                  <span className="material-icons">delete_outline</span>
+                )}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 };
+
+// ─── Vista principal ────────────────────────────────────────────────────────────
 
 interface PenalizationManagerProps {
   isTestingMode?: boolean;
@@ -492,7 +560,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
     null
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [penaltyToDelete, setPenaltyToDelete] = useState<string | null>(null); // State for modal
+  const [penaltyToDelete, setPenaltyToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: penalizedStudents, isLoading } = useQuery<PenalizedStudent[]>({
@@ -559,11 +627,10 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
         const rawPpsLink = p[FIELD_PENALIZACION_CONVOCATORIA_LINK];
         const ppsId = Array.isArray(rawPpsLink) ? rawPpsLink[0] : rawPpsLink;
 
-        const penaltyToAdd = {
+        studentData.penalties.push({
           ...p,
           ppsName: ppsId ? lanzamientosMap.get(ppsId) : undefined,
-        };
-        studentData.penalties.push(penaltyToAdd);
+        });
         studentData.totalScore += p[FIELD_PENALIZACION_PUNTAJE] || 0;
       });
       return Array.from(penaltiesByStudent.values()).sort((a, b) => b.totalScore - a.totalScore);
@@ -572,9 +639,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
 
   const deleteMutation = useMutation({
     mutationFn: (penaltyId: string) => {
-      if (isTestingMode) {
-        return mockDb.delete("penalizaciones", penaltyId);
-      }
+      if (isTestingMode) return mockDb.delete("penalizaciones", penaltyId);
       return deleteRecord(TABLE_NAME_PENALIZACIONES, penaltyId);
     },
     onSuccess: () => {
@@ -589,10 +654,6 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
       setPenaltyToDelete(null);
     },
   });
-
-  const handleDeleteRequest = (penaltyId: string) => {
-    setPenaltyToDelete(penaltyId);
-  };
 
   const confirmDelete = () => {
     if (penaltyToDelete) {
@@ -614,8 +675,13 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
     setIsModalOpen(true);
   }, []);
 
+  const totalPenalties = useMemo(
+    () => (penalizedStudents || []).reduce((sum, s) => sum + s.penalties.length, 0),
+    [penalizedStudents]
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="pen">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -623,6 +689,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
           onClose={() => setToastInfo(null)}
         />
       )}
+
       {selectedStudent && (
         <AddPenaltyModal
           isOpen={isModalOpen}
@@ -637,8 +704,8 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
 
       <ConfirmModal
         isOpen={!!penaltyToDelete}
-        title="Eliminar Penalización"
-        message="¿Estás seguro de que quieres eliminar este registro de penalización? Esta acción afectará el puntaje del alumno y no se puede deshacer."
+        title="Eliminar penalización"
+        message="¿Seguro que querés eliminar este registro? Afectará el puntaje del alumno y no se puede deshacer."
         onConfirm={confirmDelete}
         onClose={() => setPenaltyToDelete(null)}
         confirmText="Eliminar"
@@ -646,38 +713,66 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
         type="danger"
       />
 
-      <Card
-        title="Panel de Penalizaciones"
-        icon="gavel"
-        description="Aplica y gestiona las penalizaciones por incumplimientos de los estudiantes."
-      >
-        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+      {/* Panel de búsqueda / alta */}
+      <div className="pen-search-panel">
+        <span className="eyebrow">Aplicar sanción</span>
+        <h2 className="serif">Penalizaciones</h2>
+        <p>
+          Buscá un alumno para registrar un incumplimiento. Según el tipo, se da de baja
+          automáticamente su lugar en la PPS afectada.
+        </p>
+        <div className="pen-search-box">
           <AdminSearch onStudentSelect={handleStudentSelect} isTestingMode={isTestingMode} />
         </div>
-      </Card>
-
-      <div>
-        {isLoading ? (
-          <Loader />
-        ) : penalizedStudents && penalizedStudents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {penalizedStudents.map((student) => (
-              <PenalizedStudentCard
-                key={student.id}
-                student={student}
-                onDeleteRequest={handleDeleteRequest}
-                deletingId={deletingId}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon="verified_user"
-            title="Sin Penalizaciones"
-            message="No hay estudiantes con penalizaciones registradas."
-          />
-        )}
       </div>
+
+      {/* Listado */}
+      <div className="pen-list-head">
+        <span className="eyebrow">
+          Alumnos sancionados{penalizedStudents ? ` · ${penalizedStudents.length}` : ""}
+          {totalPenalties > 0 ? ` · ${totalPenalties} registros` : ""}
+        </span>
+        <div className="pen-legend">
+          <span>
+            <span className="dot" style={{ background: "var(--warn)" }} /> Crítico ≥ 21
+          </span>
+          <span>
+            <span className="dot" style={{ background: "var(--warn)", opacity: 0.5 }} /> Medio ≥ 11
+          </span>
+          <span>
+            <span className="dot" style={{ background: "var(--ink-4)" }} /> Leve
+          </span>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+          <Loader />
+        </div>
+      ) : penalizedStudents && penalizedStudents.length > 0 ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+            gap: 14,
+          }}
+        >
+          {penalizedStudents.map((student) => (
+            <PenalizedStudentCard
+              key={student.id}
+              student={student}
+              onDeleteRequest={setPenaltyToDelete}
+              deletingId={deletingId}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon="verified_user"
+          title="Sin penalizaciones"
+          message="No hay estudiantes con penalizaciones registradas."
+        />
+      )}
     </div>
   );
 };

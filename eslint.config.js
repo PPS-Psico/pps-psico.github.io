@@ -27,7 +27,9 @@ export default [
       '.storybook/**',
       '.agent/**',
       'temp_skills/**',
-      'testsprite_tests/**'
+      'testsprite_tests/**',
+      'scratch/**',
+      '*.cjs'
     ]
   },
   {

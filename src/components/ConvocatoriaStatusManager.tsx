@@ -14,6 +14,7 @@ import { formatDate, getEspecialidadClasses, getStatusVisuals } from "../utils/f
 import EmptyState from "./EmptyState";
 import Loader from "./Loader";
 import Toast from "./ui/Toast";
+import { logger } from "../utils/logger";
 
 const mockLanzamientosStatus: LanzamientoPPS[] = [
   {
@@ -213,7 +214,7 @@ const ConvocatoriaStatusManager: React.FC<ConvocatoriaStatusManagerProps> = ({
       setUpdatingId(id);
 
       if (isTestingMode) {
-        console.log("TEST MODE: Simulating status change for", id, newStatus);
+        logger.info("TEST MODE: Simulating status change for", id, newStatus);
         await new Promise((resolve) => setTimeout(resolve, 500));
         setLanzamientos((prev) =>
           prev.map((pps) =>

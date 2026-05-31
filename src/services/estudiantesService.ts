@@ -1,6 +1,7 @@
 import * as C from "../constants";
 import { supabase } from "../lib/supabaseClient";
 import type { Estudiante } from "../types";
+import { logger } from "../utils/logger";
 
 export const fetchStudentData = async (
   legajo: string
@@ -13,7 +14,7 @@ export const fetchStudentData = async (
 
   const studentData = data as Estudiante | null;
   if (error || !studentData) {
-    console.warn("Estudiante no encontrado por legajo:", legajo);
+    logger.warn("Estudiante no encontrado por legajo:", legajo);
     return { studentDetails: null, studentId: null };
   }
 

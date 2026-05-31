@@ -16,6 +16,7 @@ import Loader from "./Loader";
 import Toast from "./ui/Toast";
 import { safeGetId, parseToUTCDate } from "../utils/formatters";
 import { useQueryClient } from "@tanstack/react-query";
+import { logger } from "../utils/logger";
 
 const OrphanFixer: React.FC = () => {
   const [mismatchedCount, setMismatchedCount] = useState(0);
@@ -59,7 +60,7 @@ const OrphanFixer: React.FC = () => {
 
       const activeStudents = new Set<string>();
 
-      convRes.data?.forEach((c) => {
+      (convRes.data as any[])?.forEach((c: any) => {
         const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
         const lId = safeGetId(c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
         if (sId && lId && validLaunchIds.has(lId)) activeStudents.add(sId);
@@ -85,7 +86,7 @@ const OrphanFixer: React.FC = () => {
       setIdsToFix(toFix);
       setMismatchedCount(toFix.length);
     } catch (e: any) {
-      console.error(e);
+      logger.error(e);
     } finally {
       setIsScanning(false);
     }

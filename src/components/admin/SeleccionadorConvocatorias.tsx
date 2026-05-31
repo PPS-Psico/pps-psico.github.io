@@ -19,6 +19,7 @@ import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
+import { logger } from "../../utils/logger";
 
 const isCommitmentAccepted = (status?: string | null) =>
   normalizeStringForComparison(status) === "aceptado";
@@ -557,7 +558,7 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
     if (!student) return;
     setIsLoading(true);
     try {
-      console.log("Buscando prácticas para estudiante:", student.studentId);
+      logger.info("Buscando prácticas para estudiante:", student.studentId);
 
       // Consulta simplificada sin joins complejos
       const { data, error } = await supabase
@@ -567,14 +568,14 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error en consulta:", error);
+        logger.error("Error en consulta:", error);
         throw error;
       }
 
-      console.log("Prácticas encontradas:", data);
+      logger.info("Prácticas encontradas:", data);
       setPracticas(data || []);
     } catch (err) {
-      console.error("Error fetching practicas:", err);
+      logger.error("Error fetching practicas:", err);
     } finally {
       setIsLoading(false);
     }

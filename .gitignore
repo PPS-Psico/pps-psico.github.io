@@ -54,3 +54,10 @@ Pagina PPS/
 docs/_doc_extract/
 docs/trabajo_pps_panel_web_y_agente_ia.docx
 scripts/create_pps_work_ai_agent_doc.py
+
+# Scratch — scripts temporales (conexiones DB, análisis), nunca se commitean
+scratch/
+
+# Backups locales de Hermes y scripts temporales de deploy del VPS
+agent/hermes-pps/app/main.py.bak*
+agent/hermes-pps/_commit_main.sh

@@ -24,7 +24,6 @@ import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import PaginationControls from "../PaginationControls";
-import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
@@ -121,7 +120,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         // Filtro de estado
         if (filterEstado) {
           filteredRecords = filteredRecords.filter(
-            (s) => s[FIELD_ESTADO_ESTUDIANTES] === filterEstado
+            (s) => (s as any)[FIELD_ESTADO_ESTUDIANTES] === filterEstado
           );
         }
 
@@ -321,23 +320,21 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     setMenu({ x: e.clientX, y: e.clientY, record });
   };
 
-  const getStatusStyle = (estado: string) => {
+  const getStatusTone = (estado: string): string => {
     switch (estado) {
       case "Activo":
-        return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800";
+        return "ok";
       case "Finalizado":
-        return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800";
-      case "Inactivo":
-        return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
+        return "accent";
       case "Nuevo (Sin cuenta)":
-        return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
+        return "warn";
       default:
-        return "bg-slate-50 text-slate-500 border-slate-200";
+        return "mute";
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="dbe">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -348,7 +345,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
 
       <ConfirmModal
         isOpen={!!idToDelete}
-        title="¿Eliminar Estudiante?"
+        title="¿Eliminar estudiante?"
         message="Esta acción eliminará permanentemente al estudiante y sus registros. ¿Confirmar?"
         confirmText="Eliminar"
         type="danger"
@@ -357,129 +354,108 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       />
 
       {/* BARRA DE FILTROS */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 items-end shadow-sm">
-        <div className="flex-1 w-full space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-            Buscador Inteligente
-          </label>
-          <div className="relative group">
+      <div className="dbe-bar">
+        <div className="dbe-bar-grow">
+          <label className="dbe-label">Buscador</label>
+          <div className="dbe-search">
+            <span className="material-icons">search</span>
             <input
               type="search"
-              placeholder="Nombre o legajo..."
+              placeholder="Nombre o legajo…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 dark:text-slate-200"
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors">
-              search
-            </span>
           </div>
         </div>
 
-        <div className="w-full md:w-56 space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-            Filtrar Estado
-          </label>
-          <select
-            value={filterEstado}
-            onChange={(e) => setFilterEstado(e.target.value)}
-            className="w-full h-11 px-4 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-slate-700 dark:text-slate-200"
-          >
-            <option value="">Todos</option>
-            {ALL_ESTADOS_ESTUDIANTE.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
+        <div style={{ width: 200 }}>
+          <label className="dbe-label">Estado</label>
+          <div className="dbe-select-wrap">
+            <select
+              className="dbe-select"
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {ALL_ESTADOS_ESTUDIANTE.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+            <span className="material-icons">expand_more</span>
+          </div>
         </div>
 
-        <div className="flex gap-2 w-full md:w-auto">
-          <Button
-            onClick={() => setEditingRecord({ isCreating: true })}
-            icon="person_add"
-            className="h-11 shadow-md bg-blue-600 hover:bg-blue-700 w-full sm:w-auto px-6"
-          >
-            Nuevo
-          </Button>
-        </div>
+        <button
+          className="dbe-btn dbe-btn-primary"
+          onClick={() => setEditingRecord({ isCreating: true })}
+        >
+          <span className="material-icons">person_add</span>
+          Nuevo
+        </button>
       </div>
 
-      {/* ACCIONES RÁPIDAS */}
-      <div className="flex justify-end h-10">
+      {/* ACCIÓN SELECCIÓN */}
+      <div className="dbe-actionrow">
         {selectedRowId && (
-          <div className="flex gap-2 animate-fade-in">
-            <button
-              onClick={() => setIdToDelete(selectedRowId)}
-              className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-rose-100 border border-rose-200 transition-all"
-            >
-              <span className="material-icons !text-base">delete</span> Eliminar Selección
-            </button>
-          </div>
+          <button className="dbe-btn dbe-btn-danger" onClick={() => setIdToDelete(selectedRowId)}>
+            <span className="material-icons" style={{ fontSize: 15 }}>
+              delete
+            </span>{" "}
+            Eliminar selección
+          </button>
         )}
       </div>
 
       {/* TABLA */}
       {isLoading ? (
-        <div className="py-12">
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
           <Loader />
         </div>
       ) : (
-        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
+        <div className="dbe-table-wrap">
+          <div className="dbe-scroll">
+            <table className="dbe-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4">Estudiante</th>
-                  <th className="px-6 py-4">Legajo</th>
-                  <th className="px-6 py-4">Estado</th>
-                  <th className="px-6 py-4 text-center">Horas</th>
+                  <th>Estudiante</th>
+                  <th>Legajo</th>
+                  <th>Estado</th>
+                  <th style={{ textAlign: "center" }}>Horas</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {data?.records.map((s: any) => {
                   const isSelected = selectedRowId === s.id;
                   return (
                     <tr
                       key={s.id}
+                      data-sel={isSelected ? "1" : "0"}
                       onClick={() => handleRowClick(s.id)}
                       onDoubleClick={() => setEditingRecord(s)}
                       onContextMenu={(e) => handleRowContextMenu(e, s)}
-                      className={`transition-all cursor-pointer group ${isSelected ? "bg-blue-50 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-200 dark:ring-blue-800" : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40"}`}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shadow-sm border transition-transform group-hover:scale-110 ${isSelected ? "bg-blue-600 text-white border-blue-400" : "bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"}`}
-                          >
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span className="dbe-avatar">
                             {(s[FIELD_NOMBRE_ESTUDIANTES] || "?").charAt(0).toUpperCase()}
-                          </div>
-                          <span
-                            className={`font-bold transition-colors ${isSelected ? "text-blue-700 dark:text-blue-300" : "text-slate-700 dark:text-slate-200 group-hover:text-blue-600"}`}
-                          >
-                            {s[FIELD_NOMBRE_ESTUDIANTES]}
                           </span>
+                          <span className="dbe-cell-strong">{s[FIELD_NOMBRE_ESTUDIANTES]}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">
-                        {s[FIELD_LEGAJO_ESTUDIANTES]}
-                      </td>
-                      <td className="px-6 py-4">
+                      <td className="dbe-cell-mono">{s[FIELD_LEGAJO_ESTUDIANTES]}</td>
+                      <td>
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wide ${getStatusStyle(s[FIELD_ESTADO_ESTUDIANTES])}`}
+                          className="dbe-pill"
+                          data-tone={getStatusTone(s[FIELD_ESTADO_ESTUDIANTES])}
                         >
                           {s[FIELD_ESTADO_ESTUDIANTES] || "N/A"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`text-sm font-black ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-slate-700 dark:text-slate-300"}`}
-                        >
-                          {Math.round(s.__totalHours || 0)}
-                        </span>
-                        <span className="text-[10px] text-slate-400 ml-1 font-bold uppercase">
-                          hs
-                        </span>
+                      <td style={{ textAlign: "center" }}>
+                        <span className="dbe-num">{Math.round(s.__totalHours || 0)}</span>
+                        <span className="dbe-num-u">hs</span>
                       </td>
                     </tr>
                   );
@@ -488,7 +464,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
             </table>
           </div>
           {data?.records.length === 0 && (
-            <div className="py-20 bg-slate-50/30 dark:bg-black/10">
+            <div className="dbe-empty">
               <EmptyState
                 icon="search_off"
                 title="Sin coincidencias"
@@ -513,9 +489,9 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
           y={menu.y}
           onClose={() => setMenu(null)}
           options={[
-            { label: "Editar Perfil", icon: "edit", onClick: () => setEditingRecord(menu.record) },
+            { label: "Editar perfil", icon: "edit", onClick: () => setEditingRecord(menu.record) },
             {
-              label: "Eliminar Registro",
+              label: "Eliminar registro",
               icon: "delete",
               variant: "danger",
               onClick: () => setIdToDelete(menu.record.id),

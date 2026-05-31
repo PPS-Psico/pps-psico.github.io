@@ -1,0 +1,219 @@
+{
+  "id": "ppsGmailActions5",
+  "name": "PPS — 05 Gmail Actions (panel)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gmail-actions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook /gmail-actions",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "pps-gmail-actions"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza el body del webhook y rutea por acción.\nconst body = ($input.first().json.body) || $input.first().json || {};\nconst action = body.action || 'getThread';\nreturn [{ json: { action, thread_id: body.thread_id || '', to: body.to || '', subject: body.subject || '', text: body.body || body.text || '', gmail_action: body.gmail_action || body.action } }];"
+      },
+      "id": "prep",
+      "name": "Prep input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "getThread",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "getThread"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "send",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "send"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "modify",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "modify"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch",
+      "name": "Switch acción",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/threads/{{ $json.thread_id }}?format=full",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {}
+      },
+      "id": "http-get-thread",
+      "name": "Gmail API: get thread",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 180],
+      "credentials": {
+        "gmailOAuth2": { "id": "hkyG2g0VcR6ryzjN", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsea la respuesta de la Gmail API a {asunto, participantes, mensajes:[{from,to,subject,date,body,snippet}]}.\nconst me = 'blas.rivera@uflouniversidad.edu.ar';\nconst t = $input.first().json;\nfunction header(headers, name) {\n  const h = (headers || []).find(x => (x.name || '').toLowerCase() === name.toLowerCase());\n  return h ? h.value : '';\n}\nfunction decodeB64(data) {\n  if (!data) return '';\n  try { return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8'); } catch (e) { return ''; }\n}\nfunction extractBody(payload) {\n  if (!payload) return '';\n  if (payload.mimeType === 'text/plain' && payload.body && payload.body.data) return decodeB64(payload.body.data);\n  if (payload.parts) {\n    // preferir text/plain\n    const plain = payload.parts.find(p => p.mimeType === 'text/plain');\n    if (plain && plain.body && plain.body.data) return decodeB64(plain.body.data);\n    for (const p of payload.parts) { const b = extractBody(p); if (b) return b; }\n  }\n  if (payload.body && payload.body.data) return decodeB64(payload.body.data);\n  return '';\n}\nconst msgs = (t.messages || []).map(m => {\n  const h = (m.payload && m.payload.headers) || [];\n  const from = header(h, 'From');\n  return {\n    id: m.id,\n    from,\n    to: header(h, 'To'),\n    subject: header(h, 'Subject'),\n    date: header(h, 'Date'),\n    body: extractBody(m.payload),\n    snippet: m.snippet || '',\n    from_me: from.toLowerCase().includes(me)\n  };\n});\nconst asunto = msgs.length ? msgs[0].subject.replace(/^(Re:|Fwd:|RE:|FW:)\\s*/i, '') : '';\nconst participantes = Array.from(new Set(msgs.flatMap(m => [m.from, m.to]).join(',').split(',').map(s => { const mm = s.match(/<([^>]+)>/); return (mm ? mm[1] : s).trim(); }).filter(Boolean)));\nreturn [{ json: { thread_id: t.id, asunto, participantes, mensajes: msgs } }];"
+      },
+      "id": "parse-thread",
+      "name": "Parsear hilo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye el mensaje MIME (RFC822) y lo codifica en base64url para la Gmail API.\nconst d = $('Prep input').first().json;\nconst to = d.to;\nlet subject = d.subject || '';\nif (!/^re:/i.test(subject)) subject = 'Re: ' + subject;\nconst body = d.text || '';\nconst mime = [\n  `To: ${to}`,\n  `Subject: ${subject}`,\n  'Content-Type: text/plain; charset=\"UTF-8\"',\n  'MIME-Version: 1.0',\n  '',\n  body\n].join('\\r\\n');\nconst raw = Buffer.from(mime, 'utf-8').toString('base64').replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');\nreturn [{ json: { raw, threadId: d.thread_id } }];"
+      },
+      "id": "build-mime",
+      "name": "Construir MIME",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ raw: $json.raw, threadId: $json.threadId }) }}",
+        "options": {}
+      },
+      "id": "http-send",
+      "name": "Gmail API: send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 380],
+      "credentials": {
+        "gmailOAuth2": { "id": "hkyG2g0VcR6ryzjN", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mapea la acción de modificación a labels add/remove y arma la URL.\nconst d = $('Prep input').first().json;\nconst action = d.gmail_action || d.action;\nconst threadId = d.thread_id;\nlet addLabelIds = [];\nlet removeLabelIds = [];\nlet trash = false;\nif (action === 'archive') removeLabelIds = ['INBOX'];\nelse if (action === 'markRead') removeLabelIds = ['UNREAD'];\nelse if (action === 'markUnread') addLabelIds = ['UNREAD'];\nelse if (action === 'trash') trash = true;\nconst url = trash\n  ? `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}/trash`\n  : `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}/modify`;\nreturn [{ json: { url, trash, body: trash ? {} : { addLabelIds, removeLabelIds } } }];"
+      },
+      "id": "map-modify",
+      "name": "Mapear modify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "http-modify",
+      "name": "Gmail API: modify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 600],
+      "credentials": {
+        "gmailOAuth2": { "id": "hkyG2g0VcR6ryzjN", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Responder al panel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1400, 400]
+    }
+  ],
+  "connections": {
+    "Webhook /gmail-actions": {
+      "main": [[{ "node": "Prep input", "type": "main", "index": 0 }]]
+    },
+    "Prep input": {
+      "main": [[{ "node": "Switch acción", "type": "main", "index": 0 }]]
+    },
+    "Switch acción": {
+      "main": [
+        [{ "node": "Gmail API: get thread", "type": "main", "index": 0 }],
+        [{ "node": "Construir MIME", "type": "main", "index": 0 }],
+        [{ "node": "Mapear modify", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gmail API: get thread": {
+      "main": [[{ "node": "Parsear hilo", "type": "main", "index": 0 }]]
+    },
+    "Parsear hilo": {
+      "main": [[{ "node": "Responder al panel", "type": "main", "index": 0 }]]
+    },
+    "Construir MIME": {
+      "main": [[{ "node": "Gmail API: send", "type": "main", "index": 0 }]]
+    },
+    "Gmail API: send": {
+      "main": [[{ "node": "Responder al panel", "type": "main", "index": 0 }]]
+    },
+    "Mapear modify": {
+      "main": [[{ "node": "Gmail API: modify", "type": "main", "index": 0 }]]
+    },
+    "Gmail API: modify": {
+      "main": [[{ "node": "Responder al panel", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" }
+}

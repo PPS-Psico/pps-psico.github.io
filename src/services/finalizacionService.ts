@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { FinalizacionPPS } from "../types";
 import { Database } from "../types/supabase";
 import { fetchStudentData } from "./estudiantesService";
+import { logger } from "../utils/logger";
 
 export const fetchFinalizacionRequest = async (
   legajo: string,
@@ -26,7 +27,7 @@ export const fetchFinalizacionRequest = async (
     if (!records || records.length === 0) return null;
     return records[0];
   } catch (error) {
-    console.warn("Suppressing error in fetchFinalizacionRequest:", error);
+    logger.warn("Suppressing error in fetchFinalizacionRequest:", error);
     return null;
   }
 };

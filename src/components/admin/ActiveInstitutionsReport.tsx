@@ -14,6 +14,7 @@ import { normalizeStringForComparison, parseToUTCDate, getGroupName } from "../.
 import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
+import { logger } from "../../utils/logger";
 
 interface ReportData {
   institucion: string;
@@ -259,7 +260,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({
 
       setToastInfo({ message: "Reporte descargado exitosamente.", type: "success" });
     } catch (e: any) {
-      console.error("Failed to generate Excel file:", e);
+      logger.error("Failed to generate Excel file:", e);
       setToastInfo({ message: "Ocurrió un error al generar el archivo Excel.", type: "error" });
     } finally {
       setIsGenerating(false);

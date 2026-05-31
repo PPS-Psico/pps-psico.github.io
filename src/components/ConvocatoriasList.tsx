@@ -167,12 +167,12 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
               inicio: formatDate(lanzamiento.fecha_inicio),
               fin: formatDate(lanzamiento.fecha_finalizacion),
             }}
-            status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]}
+            status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] ?? undefined}
             estadoInscripcion={enrollmentStatus as any}
             isCompleted={isCompleted}
             completedOrientaciones={completedOrientacionesList}
             horariosFijos={lanzamiento.horarios_fijos || false}
-            fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
+            fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial ?? undefined}
             onInscribirse={() => onInscribir(lanzamiento, completedOrientacionesList)}
           />
         );

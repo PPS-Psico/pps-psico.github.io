@@ -182,7 +182,20 @@ export interface Attachment {
   filename?: string;
 }
 
-export type ReportType = "2024" | "2025" | "comparative";
+/**
+ * Selección del reporte ejecutivo clásico (estadísticas duras).
+ * Reemplaza al viejo `ReportType` hardcodeado a 2024/2025: ahora cualquier año
+ * es válido y el comparativo acepta dos años arbitrarios.
+ */
+export type ReportMode = "single" | "comparative";
+
+export interface ReportSelection {
+  mode: ReportMode;
+  /** Año principal del balance. */
+  year: number;
+  /** Año contra el cual comparar (solo en modo "comparative"). Por defecto year - 1. */
+  compareYear?: number;
+}
 
 export interface TimelineMonthData {
   monthName: string;
@@ -225,11 +238,17 @@ export interface ExecutiveReportData {
 }
 
 interface KPIComparison {
-  year2024: number;
-  year2025: number;
+  /** Valor del año base (yearA, el más antiguo de los dos). */
+  yearA: number;
+  /** Valor del año comparado (yearB, el más reciente). */
+  yearB: number;
 }
 export interface ComparativeExecutiveReportData {
   reportType: "comparative";
+  /** Año base de la comparación (el más antiguo). */
+  yearA: number;
+  /** Año comparado (el más reciente). */
+  yearB: number;
   summary: string;
   kpis: {
     activeStudents: KPIComparison;
@@ -240,9 +259,9 @@ export interface ComparativeExecutiveReportData {
     totalOfferedSpots: KPIComparison;
     newAgreements: KPIComparison;
   };
-  launchesByMonth: { year2024: TimelineMonthData[]; year2025: TimelineMonthData[] };
-  newAgreements: { year2024: string[]; year2025: string[] };
-  ppsRequests: { year2024: PPSRequestSummary[]; year2025: PPSRequestSummary[] };
+  launchesByMonth: { yearA: TimelineMonthData[]; yearB: TimelineMonthData[] };
+  newAgreements: { yearA: string[]; yearB: string[] };
+  ppsRequests: { yearA: PPSRequestSummary[]; yearB: PPSRequestSummary[] };
 }
 
 export type AnyReportData = ExecutiveReportData | ComparativeExecutiveReportData;

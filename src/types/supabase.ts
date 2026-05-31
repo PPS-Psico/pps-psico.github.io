@@ -513,6 +513,7 @@ export type Database = {
           airtable_id: string | null;
           apellido_separado: string | null;
           certificado_trabajo: string | null;
+          cohorte: number | null;
           correo: string | null;
           created_at: string | null;
           dni: number | null;
@@ -536,6 +537,7 @@ export type Database = {
           airtable_id?: string | null;
           apellido_separado?: string | null;
           certificado_trabajo?: string | null;
+          cohorte?: number | null;
           correo?: string | null;
           created_at?: string | null;
           dni?: number | null;
@@ -559,6 +561,7 @@ export type Database = {
           airtable_id?: string | null;
           apellido_separado?: string | null;
           certificado_trabajo?: string | null;
+          cohorte?: number | null;
           correo?: string | null;
           created_at?: string | null;
           dni?: number | null;
@@ -820,6 +823,8 @@ export type Database = {
           req_certificado_trabajo: boolean | null;
           req_cv: boolean | null;
           requisito_obligatorio: string | null;
+          seguro_gestionado_at: string | null;
+          seguro_gestionado_por: string | null;
           updated_at: string | null;
         };
         Insert: {
@@ -860,6 +865,8 @@ export type Database = {
           req_certificado_trabajo?: boolean | null;
           req_cv?: boolean | null;
           requisito_obligatorio?: string | null;
+          seguro_gestionado_at?: string | null;
+          seguro_gestionado_por?: string | null;
           updated_at?: string | null;
         };
         Update: {
@@ -900,6 +907,8 @@ export type Database = {
           req_certificado_trabajo?: boolean | null;
           req_cv?: boolean | null;
           requisito_obligatorio?: string | null;
+          seguro_gestionado_at?: string | null;
+          seguro_gestionado_por?: string | null;
           updated_at?: string | null;
         };
         Relationships: [];
@@ -1429,6 +1438,8 @@ export type Database = {
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
       get_activos_list: { Args: { p_year: number }; Returns: Json };
       get_admin_metrics_kpis: { Args: { p_year: number }; Returns: Json };
+      get_consent_counts_by_launch: { Args: { p_launch_ids: string[] }; Returns: Json };
+      get_convocatoria_counts_by_launch: { Args: { p_launch_ids: string[] }; Returns: Json };
       get_all_fcm_tokens: {
         Args: never;
         Returns: {
@@ -1460,6 +1471,10 @@ export type Database = {
           legajo: string;
           nombre: string;
         }[];
+      };
+      get_estudiantes_en_pps_list: {
+        Args: { p_year: number };
+        Returns: Json;
       };
       get_metrics_years: { Args: never; Returns: Json };
       get_my_role: { Args: never; Returns: string };

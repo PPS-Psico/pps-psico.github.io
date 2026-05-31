@@ -310,7 +310,7 @@ const ComparativeReport: React.FC<{ data: ComparativeExecutiveReportData }> = ({
           Reporte Comparativo de Prácticas Profesionales
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-400 mt-2 tracking-wide">
-          Análisis Comparativo Anual: 2024 vs. 2025
+          Análisis Comparativo Anual: {data.yearA} vs. {data.yearB}
         </p>
       </header>
       <section className="mb-10 printable-section">
@@ -330,10 +330,10 @@ const ComparativeReport: React.FC<{ data: ComparativeExecutiveReportData }> = ({
                 Indicador
               </th>
               <th className="p-3 text-center font-bold text-slate-600 dark:text-slate-300">
-                Balance 2024
+                Balance {data.yearA}
               </th>
               <th className="p-3 text-center font-bold text-slate-600 dark:text-slate-300">
-                Balance 2025
+                Balance {data.yearB}
               </th>
               <th className="p-3 text-center font-bold text-slate-600 dark:text-slate-300">
                 Evolución
@@ -343,13 +343,9 @@ const ComparativeReport: React.FC<{ data: ComparativeExecutiveReportData }> = ({
           <tbody>
             {kpiRows.map((row) => {
               const kpiData = data.kpis[row.key as keyof typeof data.kpis];
-              const evolution = kpiData.year2025 - kpiData.year2024;
+              const evolution = kpiData.yearB - kpiData.yearA;
               const percentageChange =
-                kpiData.year2024 > 0
-                  ? (evolution / kpiData.year2024) * 100
-                  : evolution > 0
-                    ? 100
-                    : 0;
+                kpiData.yearA > 0 ? (evolution / kpiData.yearA) * 100 : evolution > 0 ? 100 : 0;
 
               // Neutral check for 'activeStudents'
               const isNeutral = row.key === "activeStudents";
@@ -379,10 +375,10 @@ const ComparativeReport: React.FC<{ data: ComparativeExecutiveReportData }> = ({
                     {row.label}
                   </td>
                   <td className="p-3 text-center font-bold text-2xl text-slate-700 dark:text-slate-300">
-                    {kpiData.year2024}
+                    {kpiData.yearA}
                   </td>
                   <td className="p-3 text-center font-bold text-2xl text-slate-900 dark:text-slate-50">
-                    {kpiData.year2025}
+                    {kpiData.yearB}
                   </td>
                   <td className={`p-3 text-center font-semibold ${evolutionColor}`}>
                     {evolution !== 0 ? (
@@ -406,9 +402,9 @@ const ComparativeReport: React.FC<{ data: ComparativeExecutiveReportData }> = ({
 
       <section className="mb-10 printable-section">
         <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 border-b-2 border-slate-300 dark:border-slate-700 pb-3 mb-5 tracking-tight">
-          Gestión de Solicitudes de PPS (Ciclo 2025)
+          Gestión de Solicitudes de PPS (Ciclo {data.yearB})
         </h2>
-        <SolicitudesBreakdown requests={data.ppsRequests.year2025} />
+        <SolicitudesBreakdown requests={data.ppsRequests.yearB} />
       </section>
     </>
   );
@@ -439,23 +435,44 @@ const PrintableExecutiveReport: React.FC<PrintableExecutiveReportProps> = ({ dat
         <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 border-b-2 border-slate-300 dark:border-slate-700 pb-3 mb-5 tracking-tight">
           Nuevos Convenios
         </h2>
-        <div className="grid grid-cols-2 gap-x-8">
+        {data.reportType === "comparative" ? (
+          <div className="grid grid-cols-2 gap-x-8">
+            <div>
+              <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
+                {data.yearA} ({data.newAgreements.yearA.length})
+              </h3>
+              {data.newAgreements.yearA.length > 0 ? (
+                <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300">
+                  {data.newAgreements.yearA.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400 italic">No hay datos.</p>
+              )}
+            </div>
+            <div>
+              <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
+                {data.yearB} ({data.newAgreements.yearB.length})
+              </h3>
+              {data.newAgreements.yearB.length > 0 ? (
+                <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300">
+                  {data.newAgreements.yearB.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400 italic">No hay datos.</p>
+              )}
+            </div>
+          </div>
+        ) : (
           <div>
             <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
-              2024 (
-              {data.reportType === "comparative"
-                ? data.newAgreements.year2024.length
-                : data.newAgreementsList.length}
-              )
+              {data.year} ({data.newAgreementsList.length})
             </h3>
-            {data.reportType === "comparative" && data.newAgreements.year2024.length > 0 ? (
-              <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300">
-                {data.newAgreements.year2024.map((c, i) => (
-                  <li key={i}>{c}</li>
-                ))}
-              </ul>
-            ) : data.reportType !== "comparative" && data.newAgreementsList.length > 0 ? (
-              <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300">
+            {data.newAgreementsList.length > 0 ? (
+              <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300 columns-2">
                 {data.newAgreementsList.map((c, i) => (
                   <li key={i}>{c}</li>
                 ))}
@@ -464,56 +481,31 @@ const PrintableExecutiveReport: React.FC<PrintableExecutiveReportProps> = ({ dat
               <p className="text-sm text-slate-500 dark:text-slate-400 italic">No hay datos.</p>
             )}
           </div>
-          <div>
-            <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
-              2025 ({data.reportType === "comparative" ? data.newAgreements.year2025.length : "N/A"}
-              )
-            </h3>
-            {data.reportType === "comparative" && data.newAgreements.year2025.length > 0 ? (
-              <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300">
-                {data.newAgreements.year2025.map((c, i) => (
-                  <li key={i}>{c}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400 italic">No hay datos.</p>
-            )}
-          </div>
-        </div>
+        )}
       </section>
 
       <section className="mb-10 printable-section">
         <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 border-b-2 border-slate-300 dark:border-slate-700 pb-3 mb-5 tracking-tight">
           Línea de Tiempo de PPS Lanzadas
         </h2>
-        <div className="grid grid-cols-2 gap-x-8">
-          {/* 2024 */}
-          <div>
-            <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
-              2024
-            </h3>
-            <PrintableTimeline
-              year={2024}
-              launchesByMonth={
-                data.reportType === "comparative"
-                  ? data.launchesByMonth.year2024
-                  : data.launchesByMonth
-              }
-            />
+        {data.reportType === "comparative" ? (
+          <div className="grid grid-cols-2 gap-x-8">
+            <div>
+              <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
+                {data.yearA}
+              </h3>
+              <PrintableTimeline year={data.yearA} launchesByMonth={data.launchesByMonth.yearA} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
+                {data.yearB}
+              </h3>
+              <PrintableTimeline year={data.yearB} launchesByMonth={data.launchesByMonth.yearB} />
+            </div>
           </div>
-          {/* 2025 */}
-          <div>
-            <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-3 tracking-tight">
-              2025
-            </h3>
-            <PrintableTimeline
-              year={2025}
-              launchesByMonth={
-                data.reportType === "comparative" ? data.launchesByMonth.year2025 : []
-              }
-            />
-          </div>
-        </div>
+        ) : (
+          <PrintableTimeline year={data.year} launchesByMonth={data.launchesByMonth} />
+        )}
       </section>
 
       <footer className="mt-12 text-center text-xs text-gray-500 dark:text-slate-400">

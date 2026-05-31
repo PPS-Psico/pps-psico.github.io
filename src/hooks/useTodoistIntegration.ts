@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { logger } from "../utils/logger";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
@@ -53,7 +54,7 @@ export const useTodoistIntegration = ({ onToast }: UseTodoistIntegrationProps = 
         //   onToast?.("Tarea creada en Todoist ✅", "success");
         // }
 
-        console.log("[Todoist Integration] Tarea a crear:", {
+        logger.info("[Todoist Integration] Tarea a crear:", {
           content: task.content,
           due_string: task.due_string,
           labels: task.labels,
@@ -62,7 +63,7 @@ export const useTodoistIntegration = ({ onToast }: UseTodoistIntegrationProps = 
         // Por ahora, solo loguear (integración pendiente)
         // onToast?.("Lanzamiento confirmado (Todoist: pendiente de configuración)", "success");
       } catch (error) {
-        console.error("[Todoist Integration] Error al crear tarea:", error);
+        logger.error("[Todoist Integration] Error al crear tarea:", error);
         // onToast?.("Error al crear tarea en Todoist", "error");
       }
     },
@@ -79,12 +80,12 @@ export const useTodoistIntegration = ({ onToast }: UseTodoistIntegrationProps = 
           description
         );
 
-        console.log("[Todoist Integration] Creando tarea manual:", task);
+        logger.info("[Todoist Integration] Creando tarea manual:", task);
 
         // TODO: Implementar cuando Todoist MCP esté configurado
         onToast?.("Creando tarea en Todoist...", "success");
       } catch (error) {
-        console.error("[Todoist Integration] Error:", error);
+        logger.error("[Todoist Integration] Error:", error);
         onToast?.("Error al crear tarea", "error");
       }
     },

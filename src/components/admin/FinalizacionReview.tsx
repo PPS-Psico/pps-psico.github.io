@@ -9,6 +9,7 @@ import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
 import { supabase } from "../../lib/supabaseClient";
 import { Attachment, getNormalizationState, getStoragePath } from "../../utils/attachmentUtils";
 import { formatDate } from "../../utils/formatters";
+import { downloadBlob } from "../../utils/downloadFile";
 import CollapsibleSection from "../CollapsibleSection";
 import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
@@ -92,7 +93,6 @@ const RequestListItem: React.FC<{
     setIsDownloadingZip(true);
     try {
       const JSZip = (await import("jszip")).default,
-        FileSaver = (await import("file-saver")).default,
         zip = new JSZip();
       const folder = zip.folder(`Acreditacion_${request.studentName}_${request.studentLegajo}`);
       await Promise.all(
@@ -113,7 +113,7 @@ const RequestListItem: React.FC<{
         })
       );
       const content = await zip.generateAsync({ type: "blob" });
-      FileSaver.saveAs(content as Blob, `Acreditacion_${request.studentLegajo}.zip`);
+      downloadBlob(content as Blob, `Acreditacion_${request.studentLegajo}.zip`);
     } finally {
       setIsDownloadingZip(false);
     }

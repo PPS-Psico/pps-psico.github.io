@@ -5,6 +5,7 @@ import { db } from "../lib/db";
 import { mockDb } from "../services/mockDb";
 import type { Orientacion } from "../types";
 import { useModal } from "../contexts/ModalContext";
+import { logger } from "../utils/logger";
 import {
   FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
   FIELD_NOTAS_INTERNAS_ESTUDIANTES,
@@ -57,7 +58,7 @@ export const useStudentData = (legajo: string) => {
         hasData(studentDetails[FIELD_TELEFONO_ESTUDIANTES]);
 
       if (currentStatusInDb === "Nuevo (Sin cuenta)" && hasContactInfo) {
-        console.log(`Sanando estado para legajo ${legajo}...`);
+        logger.info(`Sanando estado para legajo ${legajo}...`);
         db.estudiantes.update(studentId, { [FIELD_ESTADO_ESTUDIANTES]: "Inactivo" }).then(() => {
           queryClient.invalidateQueries({ queryKey: ["metricsData"] });
         });

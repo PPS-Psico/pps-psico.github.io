@@ -12,6 +12,7 @@ import { normalizeStringForComparison } from "../../utils/formatters";
 import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
+import { logger } from "../../utils/logger";
 
 interface ReportData {
   institucion: string;
@@ -212,7 +213,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
 
       setToastInfo({ message: "Reporte descargado exitosamente.", type: "success" });
     } catch (e: any) {
-      console.error("Failed to generate Excel file:", e);
+      logger.error("Failed to generate Excel file:", e);
       setToastInfo({ message: "Ocurrió un error al generar el archivo Excel.", type: "error" });
     } finally {
       setIsGenerating(false);
@@ -275,7 +276,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
           });
           successCount++;
         } catch (err) {
-          console.error(`Error updating institution ${update.id}:`, err);
+          logger.error(`Error updating institution ${update.id}:`, err);
         }
       }
 
@@ -285,7 +286,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
       });
       refetch(); // Recargar datos
     } catch (e: any) {
-      console.error("Error importing:", e);
+      logger.error("Error importing:", e);
       setToastInfo({ message: `Error al importar: ${e.message}`, type: "error" });
     } finally {
       setIsImporting(false);

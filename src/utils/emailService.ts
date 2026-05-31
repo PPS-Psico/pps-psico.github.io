@@ -1,5 +1,6 @@
 import { KEY_EMAIL_COUNT, KEY_EMAIL_MONTH } from "../constants";
 import { supabase } from "../lib/supabaseClient";
+import { logger } from "./logger";
 
 type EmailScenario =
   | "seleccion"
@@ -276,11 +277,37 @@ export const generateHtmlTemplate = (
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"></head><body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: ${fontStack};"><table border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td align="center" style="padding: 40px 10px;"><table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px rgba(0,0,0,0.1);"><tr><td style="${headerStyle}"><div style="color: #ffffff; font-family: ${fontStack}; font-weight: 900; font-size: 28px;">UFLO</div><div style="color: #ffffff; font-family: ${fontStack}; font-size: 11px; text-transform: uppercase; letter-spacing: 3px; opacity: 0.9;">Universidad</div></td></tr><tr><td style="padding: 40px;"><h1 style="margin: 0 0 24px 0; color: #0f172a; font-size: 24px; font-weight: 800;">${title}</h1><div style="font-size: 15px; color: #334155;">${contentHtml}</div></td></tr><tr><td style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;"><p style="margin: 0; font-size: 11px; color: #94a3b8; font-family: ${fontStack};"><strong>Facultad de Psicología y Ciencias Sociales</strong><br>Prácticas Profesionales Supervisadas<br>&copy; ${year} Universidad de Flores</p></td></tr></table></td></tr></table></body></html>`;
 };
 
+/**
+ * Interruptor de seguridad para QA / sesiones de prueba.
+ *
+ * Cuando está activo (localStorage `PPS_DISABLE_EMAILS` === "1"), `sendSmartEmail`
+ * construye el borrador como siempre pero NUNCA invoca la Edge Function de envío.
+ * Es opt-in: en producción jamás se activa salvo que alguien setee el flag a mano,
+ * por lo que el comportamiento real queda intacto. Sirve para recorrer la app sin
+ * disparar correos reales.
+ */
+export const isEmailSendingDisabled = (): boolean => {
+  try {
+    return (
+      typeof localStorage !== "undefined" && localStorage.getItem("PPS_DISABLE_EMAILS") === "1"
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const sendSmartEmail = async (
   scenario: EmailScenario,
   data: EmailData
 ): Promise<{ success: boolean; message?: string }> => {
   try {
+    if (isEmailSendingDisabled()) {
+      const dest = data.institutionEmail || data.studentEmail || "(sin destino)";
+      logger.warn(
+        `[EmailService] 🛑 DRY-RUN activo (PPS_DISABLE_EMAILS=1): correo "${scenario}" NO enviado a ${dest}.`
+      );
+      return { success: true, message: "DRY-RUN: correo no enviado (modo seguro)" };
+    }
     const { data: template, error: dbError } = await supabase
       .from("email_templates")
       .select("*")
@@ -379,7 +406,7 @@ export const sendSmartEmail = async (
     incrementCounter();
     return { success: true };
   } catch (error: any) {
-    console.error(`[EmailService] Error enviando correo (${scenario}):`, error);
+    logger.error(`[EmailService] Error enviando correo (${scenario}):`, error);
     return { success: false, message: error.message || "Error de envío" };
   }
 };

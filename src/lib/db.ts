@@ -3,6 +3,7 @@ import type { Database } from "../types/supabase";
 // TODO: AppRecord is currently unused. Uncomment if needed:
 // import type { AppRecord } from '../types';
 import { supabase } from "./supabaseClient";
+import { logger } from "../utils/logger";
 import {
   mapEstudiante,
   mapPractica,
@@ -36,7 +37,7 @@ function createTableInterface<TName extends TableName, TAppRecord>(
         options?.sort
       );
       if (error) {
-        console.warn(`Fetch warning in ${tableName}:`, error);
+        logger.warn(`Fetch warning in ${tableName}:`, error);
         return [];
       }
       return records.map(mapper);
@@ -122,7 +123,7 @@ export const getStudentLoginInfo = async (legajo: string): Promise<{ email: stri
     });
 
     if (error) {
-      console.error("Error RPC get_student_email:", error);
+      logger.error("Error RPC get_student_email:", error);
       return null;
     }
 
@@ -132,7 +133,7 @@ export const getStudentLoginInfo = async (legajo: string): Promise<{ email: stri
 
     return { email: String((data as any).email) };
   } catch (error) {
-    console.error("Error fetching student login info:", error);
+    logger.error("Error fetching student login info:", error);
     return null;
   }
 };

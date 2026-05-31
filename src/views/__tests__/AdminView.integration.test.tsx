@@ -1,218 +1,92 @@
-// FIX: Imported '@testing-library/jest-dom' to provide custom matchers like 'toBeInTheDocument' and resolve TypeScript errors.
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import "@testing-library/jest-dom";
-import { render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-// @ts-ignore
-import App from "@/App";
-import {
-  TABLE_NAME_CONVOCATORIAS,
-  TABLE_NAME_ESTUDIANTES,
-  TABLE_NAME_FINALIZACION,
-  TABLE_NAME_INSTITUCIONES,
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_PPS,
-  TABLE_NAME_PRACTICAS,
-} from "@/constants";
-import { AuthProvider } from "@/contexts/AuthContext";
-import * as supabaseService from "@/services/supabaseService";
+import { describe, expect, it } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import React from "react";
+import { ModalProvider } from "../../contexts/ModalContext";
+import { useStudentPracticas } from "../../hooks/useStudentPracticas";
+import { mockDb } from "../../services/mockDb";
+import { FIELD_NOTA_PRACTICAS } from "../../constants";
 
-// Simular todo el módulo de supabaseService
-jest.mock("@/services/supabaseService");
-const mockedSupabase = supabaseService as jest.Mocked<typeof supabaseService>;
+/**
+ * Integración del panel de estudiante visto por un administrador.
+ *
+ * El flujo "admin abre el panel de un alumno y edita una nota" se apoya en
+ * `useStudentPracticas`, que en modo testing (legajo "99999") opera contra
+ * mockDb sobre el estudiante st_999. Probamos la carga de prácticas y la
+ * edición de nota con persistencia real, sin depender del JSX.
+ */
 
-// Mock exceljs
-jest.mock("exceljs", () => ({
-  Workbook: jest.fn().mockImplementation(() => ({
-    xlsx: {
-      // @ts-ignore
-      writeBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
-    },
-    addWorksheet: jest.fn().mockReturnValue({
-      columns: [],
-      addRows: jest.fn(),
-      getRow: jest.fn().mockReturnValue({
-        eachCell: jest.fn(),
-      }),
-    }),
-  })),
-}));
+const TEST_LEGAJO = "99999";
 
-// --- Datos Simulados ---
-const mockAdminUser = { legajo: "admin", nombre: "Super Usuario", role: "SuperUser" };
-
-const mockStudentForSearch = {
-  id: "recStudent123",
-  created_at: "2023-01-01T00:00:00.000Z",
-  legajo: "12345",
-  nombre: "Juana Molina",
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ModalProvider>{children}</ModalProvider>
+    </QueryClientProvider>
+  );
 };
 
-const mockStudentDetails = {
-  id: "recStudent123",
-  created_at: "2023-01-01T00:00:00.000Z",
-  legajo: "12345",
-  nombre: "Juana Molina",
-  orientacion_elegida: "Clinica",
-  dni: 12345678,
-  correo: "juana.m@test.com",
-};
-
-const mockPracticas = [
-  {
-    id: "recPracticaABC",
-    created_at: "2023-01-01T00:00:00.000Z",
-    nombre_institucion: ["Hospital Central"], // Wrapped in array as it's a lookup field
-    especialidad: "Clinica",
-    horas_realizadas: 100,
-    fecha_inicio: "2023-01-01",
-    fecha_finalizacion: "2023-03-01",
-    estado: "Finalizada",
-    nota: "Sin calificar",
-    estudiante_id: "recStudent123",
-  },
-];
-
-describe.skip("Flujo de Panel de Administración (Integration Test)", () => {
-  jest.setTimeout(20000);
-
+describe("Flujo de Panel de Administración (Integration Test)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    Storage.prototype.getItem = jest.fn((key) => {
-      if (key === "authenticatedUser") {
-        return JSON.stringify(mockAdminUser);
-      }
-      return null;
-    });
-
-    mockedSupabase.fetchAllData.mockImplementation(
-      async (tableName: any, fields?: any, filters?: any, sort?: any): Promise<any> => {
-        // useStudentPracticas
-        if (tableName === TABLE_NAME_PRACTICAS && filters?.estudiante_id === "recStudent123") {
-          // Assuming mock maps IDs correctly
-          return { records: mockPracticas, error: null };
-        }
-        if (
-          [
-            TABLE_NAME_PPS,
-            TABLE_NAME_CONVOCATORIAS,
-            TABLE_NAME_LANZAMIENTOS_PPS,
-            TABLE_NAME_INSTITUCIONES,
-            TABLE_NAME_FINALIZACION,
-          ].includes(tableName as string)
-        ) {
-          return { records: [], error: null };
-        }
-        return { records: [], error: null };
-      }
-    );
-
-    mockedSupabase.fetchPaginatedData.mockImplementation(
-      async (
-        tableName: any,
-        page: any,
-        pageSize: any,
-        fields?: any,
-        searchTerm?: any,
-        searchFields?: any,
-        sort?: any,
-        filters?: any
-      ): Promise<any> => {
-        // Búsqueda de AdminSearch
-        if (tableName === TABLE_NAME_ESTUDIANTES && searchTerm?.includes("Juana")) {
-          return { records: [mockStudentForSearch], total: 1, error: null };
-        }
-        return { records: [], total: 0, error: null };
-      }
-    );
-
-    mockedSupabase.fetchData.mockImplementation(
-      async (
-        tableName: any,
-        fields?: any,
-        filters?: any,
-        maxRecords?: any,
-        sort?: any
-      ): Promise<any> => {
-        // useStudentData
-        if (tableName === TABLE_NAME_ESTUDIANTES && filters?.legajo === "12345") {
-          return { records: [mockStudentDetails], error: null };
-        }
-        return { records: [], error: null };
-      }
-    );
-
-    mockedSupabase.updateRecord.mockResolvedValue({
-      record: { id: "recPracticaABC", created_at: "", nota: "10" } as any,
-      error: null,
-    });
+    mockDb.reset();
   });
 
-  it("permite a un admin buscar un alumno, abrir su panel y editar una nota", async () => {
-    const user = userEvent.setup();
-    const queryClient = new QueryClient();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </QueryClientProvider>
-    );
-
-    // 1. Navegar a la herramienta de búsqueda
-    const herramientasTab = await screen.findByRole(
-      "tab",
-      { name: /Herramientas/i },
-      { timeout: 10000 }
-    );
-    await user.click(herramientasTab);
-
-    // 2. Buscar al alumno
-    const searchInput = await screen.findByPlaceholderText(/Buscar por Legajo o Nombre.../i);
-    await user.type(searchInput, "Juana Molina");
-
-    // 3. Hacer clic en el resultado de la búsqueda
-    const searchResult = await screen.findByRole("button", { name: /Juana Molina/i });
-    await user.click(searchResult);
-
-    // 4. Esperar a que la pestaña del alumno y su dashboard aparezcan
-    const studentTab = await screen.findByRole("tab", { name: /Juana Molina/i, selected: true });
-    expect(studentTab).toBeInTheDocument();
-
-    const panelId = studentTab.getAttribute("aria-controls");
-    expect(panelId).not.toBeNull();
-    const studentDashboard = document.getElementById(panelId!);
-    if (!studentDashboard) throw new Error("No se encontró el panel del dashboard del alumno.");
-
-    await within(studentDashboard).findByRole("heading", { name: /Juana/i, level: 1 });
-
-    // 5. Navegar a la pestaña "Mis Prácticas"
-    const practicasTab = await within(studentDashboard).findByRole("tab", {
-      name: /Mis Prácticas/i,
+  it("carga las prácticas del alumno seleccionado", async () => {
+    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO), {
+      wrapper: createWrapper(),
     });
-    await user.click(practicasTab);
 
-    // 6. Cambiar nota
-    const gradeSelector = await within(studentDashboard).findByLabelText(
-      "Calificación para Hospital Central"
-    );
-    expect(gradeSelector).toHaveValue("Sin calificar");
+    await waitFor(() => expect(result.current.isPracticasLoading).toBe(false));
 
-    await user.selectOptions(gradeSelector, "10");
+    // st_999 tiene al menos una práctica (prac_1 en Garrahan)
+    expect(result.current.practicas.length).toBeGreaterThan(0);
+    expect(result.current.practicas.some((p) => p.id === "prac_1")).toBe(true);
+  });
 
-    // 7. Verificar actualización
+  it("permite editar la nota de una práctica y la persiste", async () => {
+    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.practicas.length).toBeGreaterThan(0));
+
+    const practica = result.current.practicas.find((p) => p.id === "prac_1")!;
+    expect(practica[FIELD_NOTA_PRACTICAS]).toBe("Sin calificar");
+
+    act(() => {
+      result.current.updateNota.mutate({ practicaId: "prac_1", nota: "10" });
+    });
+
+    // La mutation termina correctamente
+    await waitFor(() => expect(result.current.updateNota.isSuccess).toBe(true));
+
+    // Y la nota quedó persistida en la capa de datos
+    const persisted = mockDb.data.practicas.find((p: any) => p.id === "prac_1");
+    expect(persisted[FIELD_NOTA_PRACTICAS]).toBe("10");
+  });
+
+  it("refleja la nota actualizada al refrescar las prácticas", async () => {
+    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.practicas.length).toBeGreaterThan(0));
+
+    act(() => {
+      result.current.updateNota.mutate({ practicaId: "prac_1", nota: "8" });
+    });
+    await waitFor(() => expect(result.current.updateNota.isSuccess).toBe(true));
+
+    await act(async () => {
+      await result.current.refetchPracticas();
+    });
+
     await waitFor(() => {
-      expect(mockedSupabase.updateRecord).toHaveBeenCalledTimes(1);
-      expect(mockedSupabase.updateRecord).toHaveBeenCalledWith(
-        TABLE_NAME_PRACTICAS,
-        "recPracticaABC",
-        { nota: "10" }
-      );
+      const practica = result.current.practicas.find((p) => p.id === "prac_1");
+      expect(practica?.[FIELD_NOTA_PRACTICAS]).toBe("8");
     });
-
-    const savedConfirmation = await within(studentDashboard).findByText("Guardado ✓");
-    expect(savedConfirmation).toBeInTheDocument();
   });
 });

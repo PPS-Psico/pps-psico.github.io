@@ -39,8 +39,8 @@ jobs:
       - name: Run type checking
         run: npm run type-check
 
-      - name: Run tests (skipped temporarily)
-        run: echo "Tests skipped temporarily"
+      - name: Run tests
+        run: npm test -- --ci
 
       - name: Build application with env vars
         run: npm run build

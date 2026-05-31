@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import React, {
   createContext,
   useState,
@@ -56,7 +57,7 @@ export const PwaInstallProvider: React.FC<{ children: ReactNode }> = ({ children
       await deferredPrompt.prompt();
       // Espera a que el usuario responda al diálogo.
       const { outcome } = await deferredPrompt.userChoice;
-      console.log(`Respuesta del usuario al diálogo de instalación: ${outcome}`);
+      logger.info(`Respuesta del usuario al diálogo de instalación: ${outcome}`);
       // El prompt ya se usó y no se puede volver a usar.
       // El estado se limpiará cuando el evento 'appinstalled' se dispare.
     }

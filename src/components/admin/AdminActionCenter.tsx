@@ -171,7 +171,7 @@ const AdminActionCenter: React.FC<AdminActionCenterProps> = ({
         hint: "Hermes detectó contactos sin clasificar",
         icon: "chat",
         tone: "purple" as ActionTone,
-        route: "/admin/herramientas",
+        route: "/admin/gestion?view=contactos",
       },
     ].sort((a, b) => b.count - a.count);
 

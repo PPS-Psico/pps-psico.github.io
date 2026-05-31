@@ -5,6 +5,7 @@ import Input from "./ui/Input";
 import Button from "./ui/Button";
 import Select from "./ui/Select";
 import { cleanWhatsAppNumber } from "../utils/formatters";
+import { logger } from "../utils/logger";
 
 interface SolicitudPPSFormProps {
   isOpen: boolean;
@@ -132,7 +133,7 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
       await onSubmit(submissionData);
       onClose();
     } catch (error) {
-      console.error(error);
+      logger.error(error);
     } finally {
       setIsSubmitting(false);
     }

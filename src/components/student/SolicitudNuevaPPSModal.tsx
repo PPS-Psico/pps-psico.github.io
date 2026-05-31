@@ -244,8 +244,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      let planillaUrl = null;
-      let informeUrl = null;
+      let planillaUrl: string | null = null;
+      let informeUrl: string | null = null;
 
       // Subir planilla (si aplica)
       if (!esOnline && planillaFile) {
@@ -337,7 +337,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         }
         onChange={(e) => {
           const f = e.target.files?.[0];
-          handleFileChange(type, f);
+          handleFileChange(type, f ?? null);
         }}
         className="hidden"
       />

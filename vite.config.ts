@@ -17,6 +17,14 @@ export default defineConfig(({ mode }) => {
     // Esto soluciona los errores 404 de CSS/JS.
     base: './',
     plugins: [react()],
+    // En producción eliminamos los logs de depuración (log/info/debug) y los
+    // `debugger`, pero conservamos console.error y console.warn para soporte.
+    // Esto evita ruido y posible filtrado de datos en la consola del usuario
+    // final sin tener que tocar manualmente cada llamada en el código.
+    esbuild: {
+      pure: mode === "production" ? ["console.log", "console.info", "console.debug"] : [],
+      drop: mode === "production" ? ["debugger"] : [],
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

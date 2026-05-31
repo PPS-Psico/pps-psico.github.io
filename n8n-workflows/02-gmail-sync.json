@@ -68,6 +68,30 @@
       "credentials": {
         "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
       }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pps-hermes.n8n-blas.com.ar/tasks/draft_pending_emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ limit: 10, only_missing: true }) }}",
+        "options": {}
+      },
+      "id": "hermes-drafts",
+      "name": "Hermes: preparar borradores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "gFp9uRkrXVHk7EEs", "name": "Hermes-PPS Token" }
+      }
     }
   ],
   "connections": {
@@ -79,6 +103,9 @@
     },
     "Preparar payload Hermes": {
       "main": [[{ "node": "Hermes: sync gmail_hilos", "type": "main", "index": 0 }]]
+    },
+    "Hermes: sync gmail_hilos": {
+      "main": [[{ "node": "Hermes: preparar borradores", "type": "main", "index": 0 }]]
     }
   },
   "settings": { "executionOrder": "v1", "timezone": "America/Argentina/Buenos_Aires" }

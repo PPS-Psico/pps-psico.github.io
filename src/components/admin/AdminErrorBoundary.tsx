@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { ActionButton } from "../ui/admin";
+import { logger } from "../../utils/logger";
 
 interface Props {
   children: ReactNode;
@@ -24,7 +25,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("AdminErrorBoundary caught an error:", error, errorInfo);
+    logger.error("AdminErrorBoundary caught an error:", error, errorInfo);
     this.setState({ error, errorInfo });
 
     // Aquí podrías enviar el error a un servicio de monitoreo

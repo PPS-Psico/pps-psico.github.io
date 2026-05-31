@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "./ui/Toast";
+import { logger } from "../utils/logger";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
 
       // Si el RPC falla (a veces por permisos o caché), intentamos actualización directa
       if (rpcError) {
-        console.warn("RPC mark_password_changed falló, intentando update directo...", rpcError);
+        logger.warn("RPC mark_password_changed falló, intentando update directo...", rpcError);
 
         const { data: userData } = await (supabase.auth as any).getUser();
         if (userData.user) {
@@ -58,7 +59,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
             .eq("user_id", userData.user.id);
 
           if (directError) {
-            console.error("Fallo crítico al actualizar estado en DB:", directError);
+            logger.error("Fallo crítico al actualizar estado en DB:", directError);
             // No lanzamos error aquí para no bloquear al usuario, ya que el Auth sí se actualizó.
             // El estado local lo salvará por esta sesión.
           }

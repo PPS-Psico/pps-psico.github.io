@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { logger } from "../utils/logger";
 import {
   HORAS_OBJETIVO_TOTAL,
   HORAS_OBJETIVO_ORIENTACION,
@@ -44,7 +45,7 @@ export const ConfigProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       } catch (e) {
         // Fallback silencioso a defaults si la tabla no existe
-        console.warn("Using default app config");
+        logger.warn("Using default app config");
       }
     };
 

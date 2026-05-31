@@ -101,11 +101,12 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
   }, [onModalOpen]);
 
   const openListModal = useCallback(
-    async (key: string, title: string) => {
+    async (key: string, title: string, yearOverride?: number) => {
+      const year = yearOverride ?? targetYear;
       setLoadingModal(true);
       openModal({ title, students: [] });
       try {
-        const result = await fetchMetricList(key, targetYear);
+        const result = await fetchMetricList(key, year);
         setModalData({ title, ...result });
       } catch {
         setModalData({ title, students: [], description: "Error al cargar los datos." });
@@ -121,11 +122,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
       setLoadingModal(true);
       openModal({ title: `Alumnos en Area: ${orientation}`, students: [] });
       try {
-        const result = await fetchOrientationList(
-          targetYear,
-          orientation,
-          metrics?.orientation_distribution || {}
-        );
+        const result = await fetchOrientationList(targetYear, orientation);
         setModalData({ title: `Alumnos en Area: ${orientation}`, ...result });
       } catch {
         setModalData({
@@ -137,7 +134,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         setLoadingModal(false);
       }
     },
-    [openModal, targetYear, metrics?.orientation_distribution]
+    [openModal, targetYear]
   );
 
   const distributionData = useMemo(() => {
@@ -169,6 +166,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         students={modalData?.students || []}
         headers={modalData?.headers}
         description={modalData?.description}
+        isLoading={loadingModal}
         onStudentClick={(s) => {
           if (
             s.legajo &&
@@ -206,11 +204,11 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <HeroMetric
-          title="Matricula Generada"
+          title="Ingresantes"
           value={metrics.matricula_generada}
           icon="group_add"
-          description={`Total historico en ${targetYear}`}
-          onClick={() => openListModal("matricula_generada", `Matricula Generada ${targetYear}`)}
+          description={`Nuevos en PPS (cohorte ${targetYear})`}
+          onClick={() => openListModal("matricula_generada", `Ingresantes ${targetYear}`)}
           color="indigo"
           trend={
             metrics.trends
@@ -250,22 +248,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         />
       </div>
 
-      <Tabs
-        active={activeTab}
-        onChange={(t) => setActiveTab(t as any)}
-        counts={{
-          students:
-            metrics.matricula_generada +
-            metrics.sin_pps +
-            metrics.proximos_finalizar +
-            metrics.haciendo_pps,
-          institutions:
-            metrics.pps_lanzadas +
-            metrics.instituciones_activas +
-            metrics.cupos_ofrecidos +
-            metrics.nuevos_convenios,
-        }}
-      />
+      <Tabs active={activeTab} onChange={(t) => setActiveTab(t as any)} />
 
       <div className="mt-8 animate-fade-in-up">
         {activeTab === "overview" && (
@@ -276,7 +259,11 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                   <EnrollmentEvolutionChart
                     data={enrollmentChartData}
                     onBarClick={(item) =>
-                      openListModal("nuevosIngresantes", `Estudiantes ${item.year}`)
+                      openListModal(
+                        "nuevosIngresantes",
+                        `Nuevos Inscriptos ${item.year}`,
+                        Number(item.year)
+                      )
                     }
                   />
                 )}
@@ -289,11 +276,11 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                     <div className="flex items-center gap-2 mb-4">
                       <span className="material-icons text-blue-600 !text-lg">list</span>
                       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                        Cupos Ocupados por Area
+                        Inscripciones por Area
                       </h3>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                      Distribucion de vacantes segun el area de la PPS.
+                      Estudiantes inscriptos segun el area de la PPS.
                     </p>
                     <div className="space-y-2">
                       {distributionData.map((item) => (
@@ -312,7 +299,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-black text-slate-900 dark:text-white">
-                              {item.value} cupos
+                              {item.value} {item.value === 1 ? "inscripto" : "inscriptos"}
                             </span>
                             <span className="material-icons text-slate-300 group-hover:text-blue-500 transition-colors !text-base">
                               arrow_forward
@@ -334,8 +321,8 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
               title={`Ingresantes ${targetYear}`}
               value={metrics.matricula_generada}
               icon="person_add"
-              description={`Nuevos matriculados en ${targetYear}`}
-              onClick={() => openListModal("nuevosIngresantes", `Nuevos Ingresantes ${targetYear}`)}
+              description={`Nuevos en el sistema de PPS en ${targetYear}`}
+              onClick={() => openListModal("nuevosIngresantes", `Ingresantes ${targetYear}`)}
               isLoading={false}
               className="bg-blue-50/50 border-blue-200"
             />

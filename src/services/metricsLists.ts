@@ -30,11 +30,28 @@ export interface ListResult {
   description?: string;
 }
 
+/**
+ * Clasifica una orientación de texto libre en las categorías canónicas usadas
+ * por el dashboard. Réplica del CASE/regex de get_admin_metrics_kpis
+ * (orientation_distribution) para que las listas de los modales coincidan
+ * exactamente con los conteos de los gráficos.
+ */
+function classifyOrientation(value: string | null | undefined): string {
+  const v = (value || "").toLowerCase();
+  if (/cl[ií]nica/.test(v)) return "Clínica";
+  if (/educacional|educaci[oó]n/.test(v)) return "Educacional";
+  if (/laboral|trabajo/.test(v)) return "Laboral";
+  if (/comunitaria|comunidad/.test(v)) return "Comunitaria";
+  return "Sin definir";
+}
+
 export async function fetchMetricList(key: string, year: number): Promise<ListResult> {
   switch (key) {
     case "matricula_generada":
     case "nuevosIngresantes":
       return fetchIngresantesList(year);
+    case "estudiantes_en_pps":
+      return fetchEstudiantesEnPpsList(year);
     case "alumnos_finalizados":
       return fetchFinalizadosList(year);
     case "matricula_activa":
@@ -73,7 +90,24 @@ async function fetchIngresantesList(year: number): Promise<ListResult> {
       { key: "nombre", label: "Nombre" },
       { key: "legajo", label: "Legajo" },
     ],
-    description: `Estudiantes que se inscribieron por primera vez a una PPS en ${year}.`,
+    description: `Estudiantes cuya cohorte (año de ingreso al sistema de PPS) es ${year}.`,
+  };
+}
+
+async function fetchEstudiantesEnPpsList(year: number): Promise<ListResult> {
+  const { data } = await supabase.rpc("get_estudiantes_en_pps_list", { p_year: year });
+  const list = (data || []) as unknown as any[];
+
+  return {
+    students: list.map((s: any) => ({
+      nombre: s.nombre,
+      legajo: s.legajo,
+    })),
+    headers: [
+      { key: "nombre", label: "Nombre" },
+      { key: "legajo", label: "Legajo" },
+    ],
+    description: `Estudiantes con al menos una actividad de PPS en ${year}.`,
   };
 }
 
@@ -232,7 +266,9 @@ async function fetchConveniosList(year: number): Promise<ListResult> {
   const { data } = await supabase
     .from(TABLE_NAME_INSTITUCIONES)
     .select(FIELD_NOMBRE_INSTITUCIONES)
-    .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, String(year));
+    // convenio_nuevo migra a smallint (año). Comparamos con el número.
+    // El cast cubre el desajuste temporal hasta regenerar src/types/supabase.ts.
+    .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, year as unknown as string);
 
   const names = new Set<string>();
   (data || []).forEach((i: any) => {
@@ -245,11 +281,7 @@ async function fetchConveniosList(year: number): Promise<ListResult> {
   };
 }
 
-export async function fetchOrientationList(
-  year: number,
-  orientation: string,
-  distribution: Record<string, number>
-): Promise<ListResult> {
+export async function fetchOrientationList(year: number, orientation: string): Promise<ListResult> {
   const start = `${year}-01-01T00:00:00`;
   const end = `${year + 1}-01-01T00:00:00`;
 
@@ -258,7 +290,9 @@ export async function fetchOrientationList(
     .select(
       `${FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS}, ${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}, estudiantes!inner(${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_LEGAJO_ESTUDIANTES})`
     )
-    .in("estado_inscripcion", ["Seleccionado", "En proceso", "En espera", "Inscripto"])
+    // Estados canónicos (ver migración normalize_states). Debe coincidir con el
+    // filtro del KPI orientation_distribution en get_admin_metrics_kpis.
+    .in("estado_inscripcion", ["Seleccionado", "Inscripto"])
     .gte("created_at", start)
     .lt("created_at", end);
 
@@ -289,22 +323,10 @@ export async function fetchOrientationList(
     const launch = launchMap.get(lanzId);
     if (!launch) return;
 
-    const orient = (launch.orientacion || "").toLowerCase();
-    const matches =
-      (orientation === "Clínica" && (orient.includes("clinica") || orient.includes("clínica"))) ||
-      (orientation === "Educacional" &&
-        (orient.includes("educacional") || orient.includes("educacion"))) ||
-      (orientation === "Laboral" && orient.includes("laboral")) ||
-      (orientation === "Comunitaria" && orient.includes("comunitaria"));
-
-    if (!matches && orientation !== "Sin definir") return;
-    if (
-      (orientation === "Sin definir" && orient.includes("clinica")) ||
-      orient.includes("educacional") ||
-      orient.includes("laboral") ||
-      orient.includes("comunitaria")
-    )
-      return;
+    // Clasifica la orientación con el MISMO criterio que el RPC
+    // get_admin_metrics_kpis (orientation_distribution), para que la lista del
+    // modal coincida exactamente con el conteo del gráfico.
+    if (classifyOrientation(launch.orientacion) !== orientation) return;
 
     const s = Array.isArray(c.estudiantes) ? c.estudiantes[0] : c.estudiantes;
     if (s) {

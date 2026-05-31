@@ -2,9 +2,36 @@
 
 > Documenta las 3 formas posibles de conectar el panel React con
 > `/tasks/learn_from_feedback` de hermes-pps cuando el operador aprueba, edita
-> o descarta una suggestion. La decisión queda para la próxima sesión.
->
-> Estado actual: el endpoint backend está listo y testeado. Falta el camino UI → endpoint.
+> o descarta una suggestion.
+
+---
+
+## ✅ RESUELTO (2026-05-31) — se eligió la Opción C (cliente)
+
+El loop quedó **cableado y verificado en producción** por la vía del cliente
+(Opción C de este documento), reusando el patrón que ya existía en
+`gmailService.learnFromDraftEdit`. Resumen de lo implementado:
+
+- **Servicio** `src/services/hermesLearn.ts`: `learnFromFeedback(...)` hace el
+  POST a `/tasks/learn_from_feedback` con el token machine-to-machine (el mismo
+  que ya usa `gmailService`). Es best-effort: si Hermes no responde, NO rompe la
+  acción del usuario (la suggestion ya quedó resuelta en Supabase).
+- **Puntos cableados**:
+  - `useAgentSuggestions` → `approveDraft` / `discardDraft` (borradores de mail).
+  - `WhatsAppContactClassifier` → `approveMutation` / `discardMutation`
+    (clasificaciones; detecta edición comparando lo propuesto vs lo validado).
+  - `gmailService.learnFromDraftEdit` (envío de borradores) — ya existía.
+- **Persistencia para el panel SIN tabla nueva**: en vez de crear
+  `agent_aprendizajes` (que habría requerido una migración DDL, y no tenemos
+  acceso directo a Postgres de Supabase), el backend espeja la lección destilada
+  en `agent_audit_log` (`tool='learn.done'`, `output.aprendizaje/aplica_cuando/
+tag/tipo/accion`). El "Dashboard de Inteligencia Hermes" lee de ahí.
+- **Verificado E2E**: POST real → Hermes destila la lección → queda en el vault
+  (`agent/aprendizajes.md`) y en `agent_audit_log` → el dashboard la muestra.
+
+Las opciones A (trigger `pg_net`) y B (Edge Function) quedan documentadas abajo
+como alternativas si en el futuro se quiere desacoplar el disparo del cliente
+(p. ej. para que también dispare cuando se cambia el estado por SQL directo).
 
 ---
 

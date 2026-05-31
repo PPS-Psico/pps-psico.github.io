@@ -18,6 +18,7 @@ import {
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 import Toast from "../ui/Toast";
+import { logger } from "../../utils/logger";
 
 const isRealData = (val: any): boolean => {
   if (val === null || val === undefined) return false;
@@ -128,7 +129,7 @@ const DataIntegrityTool: React.FC = () => {
         const cleanName = cleanNameArtifacts(originalName);
         return cleanName !== String(originalName).trim();
       });
-      console.log(`Instituciones sucias: ${dirtyInstitutions.length}`);
+      logger.info(`Instituciones sucias: ${dirtyInstitutions.length}`);
 
       for (const inst of dirtyInstitutions) {
         const oldName = inst[FIELD_NOMBRE_INSTITUCIONES];
@@ -153,7 +154,7 @@ const DataIntegrityTool: React.FC = () => {
         const cleanName = cleanNameArtifacts(originalName);
         return cleanName !== String(originalName).trim();
       });
-      console.log(`Lanzamientos sucios: ${dirtyLaunches.length}`);
+      logger.info(`Lanzamientos sucios: ${dirtyLaunches.length}`);
 
       for (const lanz of dirtyLaunches) {
         const oldName = lanz[FIELD_NOMBRE_PPS_LANZAMIENTOS];
@@ -178,7 +179,7 @@ const DataIntegrityTool: React.FC = () => {
         const cleanName = cleanNameArtifacts(originalName);
         return cleanName !== String(originalName).trim();
       });
-      console.log(`Prácticas sucias (nombre_institucion): ${dirtyPracticas.length}`);
+      logger.info(`Prácticas sucias (nombre_institucion): ${dirtyPracticas.length}`);
 
       for (const p of dirtyPracticas) {
         const oldName = p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
@@ -209,7 +210,7 @@ const DataIntegrityTool: React.FC = () => {
         });
       }
     } catch (e: any) {
-      console.error(e);
+      logger.error(e);
       setToast({ m: `Error al sanitizar: ${e.message}`, t: "error" });
     } finally {
       setIsSanitizing(false);

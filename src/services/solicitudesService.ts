@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { Estudiante, SolicitudPPS } from "../types";
 import { Database } from "../types/supabase";
 import { fetchStudentData } from "./estudiantesService";
+import { logger } from "../utils/logger";
 
 export const fetchSolicitudes = async (
   legajo: string,
@@ -30,7 +31,7 @@ export const fetchSolicitudes = async (
     .order("created_at", { ascending: false });
 
   if (error || !data) {
-    console.error("Error fetching solicitudes:", error);
+    logger.error("Error fetching solicitudes:", error);
     return [];
   }
 
@@ -103,7 +104,7 @@ export const submitSolicitudNuevaPPS = async (
     fechaFinalizacion: string;
     horasEstimadas: number;
     planillaAsistenciaUrl: string | null;
-    informeFinalUrl: string;
+    informeFinalUrl: string | null;
     esOnline: boolean;
   }
 ) => {
@@ -116,7 +117,7 @@ export const submitSolicitudNuevaPPS = async (
     fecha_finalizacion: data.fechaFinalizacion,
     horas_estimadas: data.horasEstimadas,
     planilla_asistencia_url: data.planillaAsistenciaUrl,
-    informe_final_url: data.informeFinalUrl,
+    informe_final_url: data.informeFinalUrl ?? "",
     es_online: data.esOnline,
     estado: "pendiente",
     comentario_rechazo: null,

@@ -32,13 +32,13 @@ infraestructura**; le falta UI en el panel y producir feedback humano para empez
 
 ### 2.2 Endpoints HTTP
 
-| Endpoint                          | Auth             | Qué hace                                                                                                            | Estado                                  |
-| --------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| `GET /health`                     | público          | devuelve `{status, mode, model}`                                                                                    | ✅                                      |
-| `POST /tasks/daily_brief`         | `X-Hermes-Token` | recibe datos del panel, devuelve bullets priorizados, persiste en `agent_suggestions`                               | ✅ probado en producción                |
-| `POST /tasks/draft_reply`         | `X-Hermes-Token` | recibe un mensaje Gmail/WhatsApp + institucion_id, devuelve borrador o "requiere decisión humana"                   | ✅ probado                              |
-| `POST /tasks/explore`             | `X-Hermes-Token` | investiga Supabase directo, escribe hallazgos al vault (`agent/exploracion-YYYY-MM-DD.md`) y registra suggestion    | ✅ ejecutado 2026-05-27                 |
-| `POST /tasks/learn_from_feedback` | `X-Hermes-Token` | recibe `{accion, payload_original, payload_final, motivo}`, destila lección y la appendea a `agent/aprendizajes.md` | ✅ listo (sin usar — espera el loop UI) |
+| Endpoint                          | Auth             | Qué hace                                                                                                                                            | Estado                                      |
+| --------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `GET /health`                     | público          | devuelve `{status, mode, model}`                                                                                                                    | ✅                                          |
+| `POST /tasks/daily_brief`         | `X-Hermes-Token` | recibe datos del panel, devuelve bullets priorizados, persiste en `agent_suggestions`                                                               | ✅ probado en producción                    |
+| `POST /tasks/draft_reply`         | `X-Hermes-Token` | recibe un mensaje Gmail/WhatsApp + institucion_id, devuelve borrador o "requiere decisión humana"                                                   | ✅ probado                                  |
+| `POST /tasks/explore`             | `X-Hermes-Token` | investiga Supabase directo, escribe hallazgos al vault (`agent/exploracion-YYYY-MM-DD.md`) y registra suggestion                                    | ✅ ejecutado 2026-05-27                     |
+| `POST /tasks/learn_from_feedback` | `X-Hermes-Token` | recibe `{accion, payload_original, payload_final, motivo}`, destila lección, la appendea a `agent/aprendizajes.md` y la espeja en `agent_audit_log` | ✅ **cableado** desde el panel (2026-05-31) |
 
 ### 2.3 Tablas Supabase (migration `20260526120000_create_agent_tables.sql`)
 

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { logger } from "../utils/logger";
 
 export interface AppError extends Error {
   context?: string;
@@ -45,7 +46,7 @@ export const ErrorProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const errorObj = createError(err, context, details);
 
       // Log a consola con contexto y stack
-      console.error(`[Error${context ? ` in ${context}` : ""}]:`, {
+      logger.error(`[Error${context ? ` in ${context}` : ""}]:`, {
         message: errorObj.message,
         context,
         details,
@@ -71,7 +72,7 @@ export const ErrorProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const showSuccess = useCallback((message: string) => {
-    console.log(`[Success]: ${message}`);
+    logger.info(`[Success]: ${message}`);
 
     setToastInfo({
       message,

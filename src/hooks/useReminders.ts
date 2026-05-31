@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import ReminderService, { Reminder, CreateReminderInput } from "../services/reminderService";
 import { useNotifications } from "../contexts/NotificationContext";
+import { logger } from "../utils/logger";
 
 interface UseRemindersReturn {
   reminders: Reminder[];
@@ -80,7 +81,7 @@ export const useReminders = (userId?: string): UseRemindersReturn => {
       setCounts(countData);
     } catch (err) {
       setError("Error al cargar recordatorios");
-      console.error("[useReminders] Error fetching reminders:", err);
+      logger.error("[useReminders] Error fetching reminders:", err);
     } finally {
       setIsLoading(false);
     }

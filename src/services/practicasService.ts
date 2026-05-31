@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { Practica } from "../types";
 import { cleanDbValue } from "../utils/formatters";
 import { fetchStudentData } from "./estudiantesService";
+import { logger } from "../utils/logger";
 
 export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
   const { studentId } = await fetchStudentData(legajo);
@@ -25,7 +26,7 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
     .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId);
 
   if (error || !data) {
-    console.error("Error fetching practicas:", error);
+    logger.error("Error fetching practicas:", error);
     return [];
   }
 
@@ -113,7 +114,7 @@ export const updatePracticaFromSchedule = async (
     if (error) throw error;
     return { success: true };
   } catch (e) {
-    console.error(`[DATA SERVICE] Error updating practice orientation:`, e);
+    logger.error(`[DATA SERVICE] Error updating practice orientation:`, e);
     return { success: false, error: (e as Error).message };
   }
 };

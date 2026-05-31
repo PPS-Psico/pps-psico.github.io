@@ -4,6 +4,7 @@ import {
   FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
+  FIELD_HISTORIAL_GESTION_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
   TABLE_NAME_INSTITUCIONES,
@@ -15,9 +16,90 @@ import { fetchPaginatedData } from "../services/supabaseService";
 import type { LanzamientoPPS } from "../types";
 import { normalizeStringForComparison, parseToUTCDate, getGroupName } from "../utils/formatters";
 import { mapLanzamiento } from "../utils/mappers";
+import { logger } from "../utils/logger";
+import { POR_FINALIZAR_THRESHOLD_DAYS } from "../views/admin/gestion/gestionTypes";
 
 type LoadingState = "initial" | "loading" | "loaded" | "error";
 export type FilterType = "all" | "vencidas" | "enGestion" | "confirmadas" | "demoradas";
+
+const MS_PER_DAY = 1000 * 3600 * 24;
+
+// Lista de estados de gestión que el flujo reconoce explícitamente. Cualquier
+// otro valor en una PPS finalizada es un estado "no clasificado": lo seguimos
+// mostrando para no perderlo, pero marcado aparte para no inflar "Por contactar"
+// con casos que en realidad nadie revisó nunca.
+const KNOWN_FINISHED_STATUSES = new Set([
+  "pendiente de gestion",
+  "esperando respuesta",
+  "en conversacion",
+  "seguimiento exhaustivo",
+  "relanzamiento confirmado",
+  "relanzada",
+  "archivado",
+  "no se relanza",
+]);
+
+// Intenta leer la fecha de la última entrada del historial de gestión
+// (`historial_gestion`), que se guarda con la entrada más reciente arriba y un
+// prefijo "dd/mm:". Es una señal de "último contacto real" más fiable que
+// `updated_at`, que se mueve con cualquier edición o migración masiva.
+// Devuelve un timestamp (ms) o null si no se puede inferir.
+const lastHistoryContactTs = (raw: string | null | undefined, reference: Date): number | null => {
+  if (!raw) return null;
+  const firstLine = raw
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean)[0];
+  if (!firstLine) return null;
+  // Prefijo de fecha "dd/mm" o "dd/mm/aaaa" antes del primer ":".
+  const prefix = firstLine.split(":")[0].trim();
+  const parts = prefix.split("/");
+  if (parts.length < 2 || parts.length > 3) return null;
+  const day = parseInt(parts[0], 10);
+  const monthRaw = parseInt(parts[1], 10);
+  if (!Number.isInteger(day) || !Number.isInteger(monthRaw)) return null;
+  if (day < 1 || day > 31 || monthRaw < 1 || monthRaw > 12) return null;
+  const month = monthRaw - 1;
+  const hasYear = parts.length === 3 && parts[2] !== "";
+  let year: number;
+  if (hasYear) {
+    year = parseInt(parts[2], 10);
+    if (!Number.isInteger(year)) return null;
+    if (year < 100) year += 2000;
+  } else {
+    // Sin año explícito: asumimos el año de referencia y, si la fecha queda en
+    // el futuro (p. ej. entrada de diciembre vista en enero), restamos un año.
+    year = reference.getFullYear();
+  }
+  let ts = new Date(year, month, day).getTime();
+  if (Number.isNaN(ts)) return null;
+  if (!hasYear && ts > reference.getTime()) {
+    ts = new Date(year - 1, month, day).getTime();
+  }
+  return ts;
+};
+
+// Días de espera desde el último contacto registrado. Prioriza el historial de
+// gestión; si no hay, cae a updated_at / created_at.
+const daysWaitingSince = (pps: LanzamientoPPS, now: Date): number => {
+  const historyTs = lastHistoryContactTs(
+    pps[FIELD_HISTORIAL_GESTION_LANZAMIENTOS] as string | null,
+    now
+  );
+  const fallbackRaw = pps.updated_at || pps.created_at || now.toISOString();
+  const ts = historyTs ?? new Date(fallbackRaw).getTime();
+  return Math.max(0, Math.floor((now.getTime() - ts) / MS_PER_DAY));
+};
+
+export interface InstitutionInfo {
+  id: string;
+  nombre: string;
+  phone?: string;
+  referente?: string;
+  localidad?: string;
+  convenio?: string;
+  orientaciones?: string[];
+}
 
 interface UseGestionConvocatoriasProps {
   forcedOrientations?: string[];
@@ -30,9 +112,7 @@ export const useGestionConvocatorias = ({
   initialFilter = "all",
 }: UseGestionConvocatoriasProps) => {
   const [lanzamientos, setLanzamientos] = useState<LanzamientoPPS[]>([]);
-  const [institutionsMap, setInstitutionsMap] = useState<
-    Map<string, { id: string; phone?: string }>
-  >(new Map());
+  const [institutionsMap, setInstitutionsMap] = useState<Map<string, InstitutionInfo>>(new Map());
   const [loadingState, setLoadingState] = useState<LoadingState>("initial");
   const [error, setError] = useState<string | null>(null);
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
@@ -90,17 +170,34 @@ export const useGestionConvocatorias = ({
       const { records: instRecords } = await fetchPaginatedData(TABLE_NAME_INSTITUCIONES, 1, 1000, [
         "nombre",
         "telefono",
+        "direccion",
+        "convenio_nuevo",
+        "tutor",
+        "orientaciones",
       ]);
 
       if (lanzError) throw new Error(lanzError.error as string);
 
       // Process Institutions Map
-      const newInstitutionsMap = new Map<string, { id: string; phone?: string }>();
+      const newInstitutionsMap = new Map<string, InstitutionInfo>();
       instRecords.forEach((r) => {
         if (r.nombre) {
+          const orientaciones = Array.isArray(r.orientaciones)
+            ? (r.orientaciones as string[])
+            : typeof r.orientaciones === "string" && r.orientaciones
+              ? String(r.orientaciones)
+                  .split(/[,;]+/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
           newInstitutionsMap.set(normalizeStringForComparison(r.nombre), {
             id: String(r.id),
+            nombre: String(r.nombre),
             phone: r.telefono || undefined,
+            referente: r.tutor || undefined,
+            localidad: r.direccion || undefined,
+            convenio: r.convenio_nuevo || undefined,
+            orientaciones,
           });
         }
       });
@@ -121,7 +218,7 @@ export const useGestionConvocatorias = ({
       setLanzamientos(filteredRecords);
       setLoadingState("loaded");
     } catch (err: any) {
-      console.error("CRITICAL ERROR in useGestionConvocatorias:", err);
+      logger.error("CRITICAL ERROR in useGestionConvocatorias:", err);
       setToastInfo({ message: `Error crítico al cargar datos: ${err.message}`, type: "error" });
       setError(err.message || "Error al cargar datos");
       setLoadingState("error");
@@ -176,6 +273,30 @@ export const useGestionConvocatorias = ({
     [isTestingMode]
   );
 
+  const handleUpdateInstitution = useCallback(
+    async (
+      institutionId: string,
+      patch: Partial<{
+        telefono: string;
+        tutor: string;
+        direccion: string;
+        convenio_nuevo: string;
+      }>
+    ): Promise<boolean> => {
+      if (isTestingMode) return true;
+      try {
+        await db.instituciones.update(institutionId, patch);
+        setToastInfo({ message: "Institución actualizada.", type: "success" });
+        await fetchData();
+        return true;
+      } catch (e) {
+        setToastInfo({ message: "Error al actualizar la institución.", type: "error" });
+        return false;
+      }
+    },
+    [isTestingMode, fetchData]
+  );
+
   const filteredData = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -193,6 +314,7 @@ export const useGestionConvocatorias = ({
     const porContactar: (LanzamientoPPS & {
       daysSinceEnd: number;
       urgency?: "high" | "normal";
+      noClasificada?: boolean;
     })[] = [];
     const contactadasEsperandoRespuesta: (LanzamientoPPS & {
       daysSinceEnd: number;
@@ -247,17 +369,39 @@ export const useGestionConvocatorias = ({
       });
 
       if (futureLaunch) {
+        const startDate = parseToUTCDate(futureLaunch[FIELD_FECHA_INICIO_LANZAMIENTOS]);
         const endDate = parseToUTCDate(futureLaunch[FIELD_FECHA_FIN_LANZAMIENTOS]);
-        if (endDate) {
-          const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
-          relanzamientosConfirmados.push({
-            ...futureLaunch,
-            daysLeft,
-            urgency: daysLeft <= 15 ? "high" : "normal",
-          } as LanzamientoPPS);
-        } else {
-          relanzamientosConfirmados.push(futureLaunch);
+        const daysLeft = endDate
+          ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24))
+          : undefined;
+        const hasStarted = startDate ? startDate.getTime() <= now.getTime() : false;
+        const hasFinished = daysLeft != null && daysLeft < 0;
+
+        // Un relanzamiento confirmado que YA está en curso (empezó y no terminó)
+        // debe contarse como "Activa / Por finalizar", no quedar escondido en
+        // "Confirmadas". "Confirmadas" queda para lo que está confirmado pero
+        // todavía no arrancó (esperando fecha de inicio) o sin fechas cargadas.
+        if (hasStarted && !hasFinished && daysLeft != null) {
+          const urgency: "high" | "normal" = daysLeft <= 15 ? "high" : "normal";
+          const activeItem = { ...futureLaunch, daysLeft, urgency };
+          activasYPorFinalizar.push(activeItem);
+          if (daysLeft <= POR_FINALIZAR_THRESHOLD_DAYS) {
+            activasPorFinalizar.push(activeItem);
+          } else {
+            activasEnCurso.push(activeItem);
+          }
+          return;
         }
+
+        relanzamientosConfirmados.push(
+          daysLeft != null
+            ? ({
+                ...futureLaunch,
+                daysLeft,
+                urgency: daysLeft <= 15 ? "high" : "normal",
+              } as LanzamientoPPS)
+            : futureLaunch
+        );
         return; // Already managed this year
       }
 
@@ -294,7 +438,7 @@ export const useGestionConvocatorias = ({
           urgency,
         };
         activasYPorFinalizar.push(activeItem);
-        if (daysLeft <= 45) {
+        if (daysLeft <= POR_FINALIZAR_THRESHOLD_DAYS) {
           activasPorFinalizar.push(activeItem);
         } else {
           activasEnCurso.push(activeItem);
@@ -334,11 +478,7 @@ export const useGestionConvocatorias = ({
 
       // 2. Esperando Respuesta → Contactadas - Esperando Respuesta
       if (status === "esperando respuesta") {
-        const lastUpdate = relevantPPS.updated_at || relevantPPS.created_at || now.toISOString();
-        const daysWaiting = Math.max(
-          0,
-          Math.floor((now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24))
-        );
+        const daysWaiting = daysWaitingSince(relevantPPS, now);
 
         contactadasEsperandoRespuesta.push({
           ...relevantPPS,
@@ -350,11 +490,7 @@ export const useGestionConvocatorias = ({
 
       // 3. En Conversación / Seguimiento Exhaustivo → Respondidas - Pendiente de Decisión
       if (status === "en conversacion" || status === "seguimiento exhaustivo") {
-        const lastUpdate = relevantPPS.updated_at || relevantPPS.created_at || now.toISOString();
-        const daysWaiting = Math.max(
-          0,
-          Math.floor((now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24))
-        );
+        const daysWaiting = daysWaitingSince(relevantPPS, now);
 
         respondidasPendienteDecision.push({
           ...relevantPPS,
@@ -364,12 +500,16 @@ export const useGestionConvocatorias = ({
         return;
       }
 
-      // Any other status for finished PPS goes to "Por Contactar" for manual review (excluir si tiene recordatorio activo)
+      // Cualquier otro estado en una PPS finalizada cae acá para revisión manual
+      // (salvo que tenga recordatorio activo). Lo marcamos como `noClasificada`
+      // para distinguir el caso real "pendiente de gestión" de un estado que el
+      // flujo no reconoce y que conviene revisar / normalizar.
       if (!tieneRecordatorioActivo(relevantPPS)) {
         porContactar.push({
           ...relevantPPS,
           daysSinceEnd,
           urgency: "normal",
+          noClasificada: !KNOWN_FINISHED_STATUSES.has(status),
         });
       }
     });
@@ -403,6 +543,7 @@ export const useGestionConvocatorias = ({
   }, [lanzamientos, debouncedSearch]);
 
   return {
+    lanzamientos,
     institutionsMap,
     loadingState,
     error,
@@ -417,6 +558,7 @@ export const useGestionConvocatorias = ({
     setFilterType,
     handleSave,
     handleUpdateInstitutionPhone,
+    handleUpdateInstitution,
     handleSync: async () => {},
     handleLinkOrphans: async () => {},
     filteredData,

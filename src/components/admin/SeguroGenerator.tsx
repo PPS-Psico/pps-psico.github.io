@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
   FIELD_CORREO_ESTUDIANTES,
@@ -26,9 +27,16 @@ import {
   FIELD_TELEFONO_ESTUDIANTES,
   FIELD_TELEFONO_INSTITUCIONES,
   FIELD_INSTITUCION_LINK_PRACTICAS,
+  FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS,
 } from "../../constants";
 import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  marcarAseguramiento,
+  revertirAseguramiento,
+  buildClipboardText,
+} from "../../services/aseguramientoService";
 import {
   formatDate,
   formatPhoneNumber,
@@ -37,9 +45,132 @@ import {
 } from "../../utils/formatters";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
-import Card from "../ui/Card";
-import Checkbox from "../ui/Checkbox";
 import Toast from "../ui/Toast";
+import { injectScopedStyles } from "../../utils/injectScopedStyles";
+import { injectPremiumMotion } from "./premiumMotion";
+import { downloadBlob } from "../../utils/downloadFile";
+import { logger } from "../../utils/logger";
+
+// ─── CSS scoped (Paper & Ink editorial) ───────────────────────────────────────
+const SEG_CSS = `
+.seg {
+  --paper:#F7F5F0; --paper-2:#EFECE4; --paper-3:#E5E1D7;
+  --ink:#14130F; --ink-2:#2A2823; --ink-3:#6B6660; --ink-4:#A8A39C;
+  --rule-2:#1413101A; --rule-3:#1413102E;
+  --accent:#1F3A8A; --accent-s:#1F3A8A14;
+  --warn:#B4501E; --warn-s:#B4501E14;
+  --ok:#2F5F3A; --ok-s:#2F5F3A14;
+  --ai:#5A2D86; --ai-s:#5A2D8612;
+  --wa:#2F8F43;
+  color:var(--ink); font-family:'Hanken Grotesk', system-ui, sans-serif;
+}
+html.dark .seg {
+  --paper:#0E0E0C; --paper-2:#17171A; --paper-3:#1F1F23;
+  --ink:#F2EFE8; --ink-2:#DAD6CD; --ink-3:#97928A; --ink-4:#5C5852;
+  --rule-2:#F2EFE822; --rule-3:#F2EFE836;
+  --accent:#8FB1FF; --accent-s:#8FB1FF1A;
+  --warn:#E4965D; --warn-s:#E4965D1A;
+  --ok:#88BD96; --ok-s:#88BD961A;
+  --ai:#C9A4F2; --ai-s:#C9A4F21A;
+  --wa:#88BD96;
+}
+.seg .serif{ font-family:'Instrument Serif', serif; letter-spacing:-0.025em; }
+.seg .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
+.seg .eyebrow{ font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; font-weight:600; color:var(--ink-3); }
+
+.seg-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:22px; }
+.seg-head h2{ font-family:'Instrument Serif', serif; font-size:26px; font-weight:700; letter-spacing:-0.025em; margin:5px 0 0; }
+.seg-head p{ font-size:13.5px; color:var(--ink-3); margin:5px 0 0; max-width:520px; }
+.seg-chip-ai{ display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:600; padding:3px 9px; border-radius:999px; background:var(--ai-s); color:var(--ai); white-space:nowrap; }
+.seg-chip-ai .material-icons{ font-size:12px; }
+
+/* Pasos */
+.seg-steps{ display:flex; align-items:center; gap:8px; margin-bottom:22px; }
+.seg-step{ display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-4); }
+.seg-step b{ width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-family:'JetBrains Mono', monospace; background:var(--paper-3); color:var(--ink-3); }
+.seg-step[data-on="1"]{ color:var(--ink); }
+.seg-step[data-on="1"] b{ background:var(--ink); color:var(--paper); }
+.seg-step-line{ flex:1; height:1px; background:var(--rule-3); max-width:48px; }
+
+/* Tabla de convocatorias */
+.seg-panel{ border:1px solid var(--rule-2); border-radius:14px; background:var(--paper); overflow:hidden; }
+.seg-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.seg-table thead th{ text-align:left; padding:11px 16px; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; font-weight:600; color:var(--ink-3); border-bottom:1px solid var(--rule-2); background:var(--paper-2); }
+.seg-table tbody tr{ border-bottom:1px solid var(--rule-2); cursor:pointer; transition:background .1s; }
+.seg-table tbody tr:last-child{ border-bottom:none; }
+.seg-table tbody tr:hover{ background:var(--paper-2); }
+.seg-table tbody tr[data-sel="1"]{ background:var(--accent-s); }
+.seg-table td{ padding:13px 16px; color:var(--ink-2); }
+.seg-table td.name{ font-weight:600; color:var(--ink); }
+.seg-count{ display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:22px; padding:0 7px; font-size:11.5px; font-weight:700; font-family:'JetBrains Mono', monospace; border-radius:999px; background:var(--accent-s); color:var(--accent); }
+
+/* Checkbox simple */
+.seg-check{ width:18px; height:18px; border-radius:5px; border:1.5px solid var(--rule-3); display:inline-flex; align-items:center; justify-content:center; background:var(--paper); transition:all .12s; }
+.seg-check[data-on="1"]{ background:var(--ink); border-color:var(--ink); }
+.seg-check .material-icons{ font-size:14px; color:var(--paper); }
+
+/* Botones */
+.seg-btn{ display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; padding:9px 15px; border-radius:9px; border:1px solid var(--rule-3); background:transparent; color:var(--ink); cursor:pointer; font-family:inherit; transition:background .12s; white-space:nowrap; }
+.seg-btn:hover{ background:var(--paper-2); }
+.seg-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.seg-btn-primary{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.seg-btn-primary:hover{ opacity:.9; background:var(--ink); }
+.seg-btn-wa{ background:var(--wa); color:#fff; border-color:var(--wa); }
+.seg-btn-wa:hover{ opacity:.9; }
+.seg-btn .material-icons{ font-size:16px; }
+.seg-link{ background:none; border:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; color:var(--ink-3); display:inline-flex; align-items:center; gap:5px; }
+.seg-link:hover{ color:var(--accent); }
+.seg-link .material-icons{ font-size:15px; }
+
+/* Tarjeta de institución (review) */
+.seg-inst{ border:1px solid var(--rule-2); border-radius:14px; background:var(--paper); padding:18px 20px; }
+.seg-inst + .seg-inst{ margin-top:12px; }
+.seg-inst-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:14px; }
+.seg-inst-name{ font-family:'Instrument Serif', serif; font-size:18px; font-weight:700; letter-spacing:-0.02em; }
+.seg-inst-count{ font-size:12px; color:var(--ink-3); }
+/* Pasos numerados dentro de la tarjeta */
+.seg-actions{ display:flex; flex-wrap:wrap; gap:8px; padding:14px; border:1px solid var(--rule-2); border-radius:11px; background:var(--paper-2); }
+.seg-num{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; font-size:10px; font-family:'JetBrains Mono', monospace; background:var(--ink); color:var(--paper); margin-right:2px; }
+.seg-disclosure{ margin-top:12px; }
+.seg-disclosure summary{ cursor:pointer; font-size:12px; font-weight:600; color:var(--ink-3); list-style:none; display:flex; align-items:center; gap:6px; }
+.seg-disclosure summary .material-icons{ font-size:16px; transition:transform .15s; }
+.seg-disclosure[open] summary .material-icons{ transform:rotate(90deg); }
+.seg-stud-list{ margin-top:8px; padding-left:18px; border-left:2px solid var(--rule-3); }
+.seg-stud{ padding:7px 0; font-size:13px; border-bottom:1px solid var(--rule-2); }
+.seg-stud:last-child{ border-bottom:none; }
+.seg-stud b{ font-weight:600; color:var(--ink); }
+.seg-stud span{ color:var(--ink-3); margin-left:8px; font-family:'JetBrains Mono', monospace; font-size:11.5px; }
+.seg-foot{ display:flex; justify-content:flex-end; gap:10px; padding-top:16px; margin-top:18px; border-top:1px solid var(--rule-2); }
+
+/* ── Flujo de 4 pasos (contextual, Paper & Ink) ─────────────────────────────── */
+.seg-flowhead{ border:1px solid var(--rule-2); border-radius:14px; background:var(--paper); padding:16px 18px; margin-bottom:18px; }
+.seg-flowhead-name{ font-family:'Instrument Serif', serif; font-size:20px; font-weight:700; letter-spacing:-0.02em; margin:2px 0 0; }
+.seg-flowhead-meta{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+.seg-meta-chip{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px; background:var(--paper-2); color:var(--ink-2); }
+.seg-meta-chip .material-icons{ font-size:13px; color:var(--ink-3); }
+
+.seg-steplist{ display:flex; flex-direction:column; gap:10px; }
+.seg-steprow{ display:flex; align-items:center; gap:14px; border:1px solid var(--rule-2); border-radius:12px; background:var(--paper); padding:14px 16px; transition:border-color .12s, background .12s; }
+.seg-steprow[data-done="1"]{ background:var(--ok-s); border-color:var(--ok); }
+.seg-steprow[data-final="1"]{ border-color:var(--ink); border-width:1.5px; }
+.seg-steprow[data-final="1"][data-done="1"]{ border-color:var(--ok); }
+.seg-stepdot{ flex:none; width:30px; height:30px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; font-family:'JetBrains Mono', monospace; background:var(--paper-3); color:var(--ink-3); }
+.seg-steprow[data-done="1"] .seg-stepdot{ background:var(--ok); color:#fff; }
+.seg-stepdot .material-icons{ font-size:17px; }
+.seg-stepbody{ flex:1; min-width:0; }
+.seg-steptitle{ font-size:14px; font-weight:600; color:var(--ink); display:flex; align-items:center; gap:8px; }
+.seg-steptag{ font-size:9.5px; text-transform:uppercase; letter-spacing:.1em; font-weight:700; padding:2px 7px; border-radius:999px; background:var(--ink); color:var(--paper); }
+.seg-stepdesc{ font-size:12.5px; color:var(--ink-3); margin-top:2px; }
+
+/* Banner "seguro gestionado" */
+.seg-done{ border:1px solid var(--ok); border-radius:14px; background:var(--ok-s); padding:18px 20px; display:flex; align-items:flex-start; gap:14px; }
+.seg-done-icon{ flex:none; width:36px; height:36px; border-radius:50%; background:var(--ok); color:#fff; display:inline-flex; align-items:center; justify-content:center; }
+.seg-done-body{ flex:1; min-width:0; }
+.seg-done-title{ font-family:'Instrument Serif', serif; font-size:18px; font-weight:700; letter-spacing:-0.02em; }
+.seg-done-sub{ font-size:13px; color:var(--ink-2); margin-top:3px; }
+`;
+injectScopedStyles("seg-styles", SEG_CSS);
+injectPremiumMotion();
 
 interface SeguroGeneratorProps {
   showModal: (title: string, message: string) => void;
@@ -73,7 +204,15 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   isTestingMode = false,
   preSelectedLanzamientoId,
 }) => {
-  const [step, setStep] = useState<"selection" | "review">("selection");
+  // Cuando se entra desde una PPS (Lanzador), el flujo arranca contextual en los
+  // 4 pasos, sin paso previo de "Seleccionar convocatorias" (Req 9.1, 9.2).
+  const contextual = !!preSelectedLanzamientoId;
+
+  const { authenticatedUser } = useAuth();
+  const coordinadorId = authenticatedUser?.id ?? null;
+  const queryClient = useQueryClient();
+
+  const [step, setStep] = useState<"selection" | "review">(contextual ? "review" : "selection");
 
   const [convocatorias, setConvocatorias] = useState<any[]>([]); // Use any[] for aggregated objects
   const [selectedConvocatorias, setSelectedConvocatorias] = useState<Set<string>>(new Set());
@@ -85,14 +224,29 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
     null
   );
 
+  // ── Estado del flujo de aseguramiento (sólo modo contextual) ────────────────
+  // Progreso de pasos 1–3 en sesión (no persiste — Req 4.2). El paso 4 sí persiste.
+  const [doneSteps, setDoneSteps] = useState<Set<number>>(new Set());
+  // Marca persistida del lanzamiento (seguro_gestionado_at). null = pendiente.
+  const [seguroGestionadoAt, setSeguroGestionadoAt] = useState<string | null>(null);
+  const [isMarcando, setIsMarcando] = useState(false);
+
+  const markStepDone = useCallback((n: number) => {
+    setDoneSteps((prev) => {
+      const next = new Set(prev);
+      next.add(n);
+      return next;
+    });
+  }, []);
+
   // --- PASO 1: Cargar Convocatorias ---
-  const handleFetchConvocatorias = useCallback(async () => {
+  const handleFetchConvocatorias = useCallback(async (): Promise<any[]> => {
     setIsLoading(true);
     setLoadingMessage("Cargando convocatorias...");
     setConvocatorias([]);
 
     if (isTestingMode) {
-      setConvocatorias([
+      const mock = [
         {
           id: "mock_conv_1",
           createdTime: "",
@@ -102,9 +256,10 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
           [FIELD_FECHA_FIN_CONVOCATORIAS]: "2024-06-01",
           [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: "student_1",
         } as any,
-      ]);
+      ];
+      setConvocatorias(mock);
       setIsLoading(false);
-      return;
+      return mock;
     }
 
     try {
@@ -180,8 +335,10 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         .slice(0, 20);
 
       setConvocatorias(finalConvocatorias);
+      return finalConvocatorias;
     } catch (error: any) {
       showModal("Error de Carga", `No se pudieron cargar las convocatorias: ${error.message}`);
+      return [];
     } finally {
       setIsLoading(false);
       setLoadingMessage("");
@@ -189,21 +346,49 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   }, [isTestingMode, showModal]);
 
   useEffect(() => {
-    handleFetchConvocatorias().then(() => {
-      // Si venimos de cerrar una mesa, pre-seleccionar y avanzar
+    handleFetchConvocatorias().then((loaded) => {
+      // Si venimos de cerrar una mesa, pre-seleccionar y compilar directo.
       if (preSelectedLanzamientoId) {
-        // Buscar en los grupos cargados si alguno corresponde al ID
-        // Nota: En nuestra lógica de arriba, usamos lanzID como key
-        setSelectedConvocatorias(new Set([preSelectedLanzamientoId]));
-        // Pequeño delay para asegurar que el estado se asiente antes de procesar
-        setTimeout(() => handleProceedToReview(new Set([preSelectedLanzamientoId])), 500);
+        const sel = new Set([preSelectedLanzamientoId]);
+        setSelectedConvocatorias(sel);
+        // Pasamos la lista recién cargada para evitar leer estado obsoleto.
+        handleProceedToReview(sel, loaded);
       }
     });
   }, [handleFetchConvocatorias, preSelectedLanzamientoId]);
 
+  // Cargar la marca persistida (seguro_gestionado_at) del lanzamiento de contexto.
+  // Si ya está asegurado, el generador muestra el estado "asegurado" + reversión
+  // en lugar del flujo pendiente (Req 9.10).
+  useEffect(() => {
+    if (!preSelectedLanzamientoId || isTestingMode) return;
+    let cancel = false;
+    (async () => {
+      try {
+        const launches = await db.lanzamientos.get({
+          filters: { id: preSelectedLanzamientoId },
+          maxRecords: 1,
+        });
+        if (cancel) return;
+        const launch = launches[0];
+        const at = (launch?.[FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS] as string | null) ?? null;
+        setSeguroGestionadoAt(at);
+      } catch (e) {
+        logger.warn("No se pudo leer seguro_gestionado_at del lanzamiento", e);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [preSelectedLanzamientoId, isTestingMode]);
+
   // --- PASO 2: Procesar Datos ---
-  const handleProceedToReview = async (overrideSelection?: Set<string>) => {
+  const handleProceedToReview = async (
+    overrideSelection?: Set<string>,
+    overrideConvocatorias?: any[]
+  ) => {
     const selectionToUse = overrideSelection || selectedConvocatorias;
+    const convocatoriasToUse = overrideConvocatorias || convocatorias;
 
     setIsLoading(true);
     setLoadingMessage("Procesando estudiantes...");
@@ -236,7 +421,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
     }
 
     // Filter convocatorias based on selection ID
-    const selectedGroups = convocatorias.filter((c) => selectionToUse.has(c.id));
+    const selectedGroups = convocatoriasToUse.filter((c) => selectionToUse.has(c.id));
 
     const studentIds = new Set<string>();
 
@@ -377,7 +562,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       setStudentsForReview(compiledList);
       setStep("review");
     } catch (e: any) {
-      console.error(e);
+      logger.error(e);
       showModal("Error", "Ocurrió un error al procesar los datos.");
     } finally {
       setIsLoading(false);
@@ -386,8 +571,10 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   };
 
   // --- Generar Excel (Lista Institución) ---
-  const handleGenerateSelectionExcel = async () => {
-    if (studentsForReview.length === 0) return;
+  // Devuelve true si la descarga del listado se generó con éxito (Req 9.8: el
+  // cierre del aseguramiento sólo ocurre con descarga exitosa).
+  const handleGenerateSelectionExcel = async (): Promise<boolean> => {
+    if (studentsForReview.length === 0) return false;
 
     try {
       const ExcelJS = (await import("exceljs")).default;
@@ -456,7 +643,6 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
-      const fileSaver = await import("file-saver");
       const fechaHoy = new Date().toISOString().split("T")[0];
 
       // Generar nombre de archivo según la cantidad de instituciones
@@ -478,12 +664,14 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         nombreArchivo = `Listado_General_${fechaHoy}.xlsx`;
       }
 
-      fileSaver.saveAs(blob, nombreArchivo);
+      downloadBlob(blob, nombreArchivo);
 
       setToastInfo({ message: "Excel generado correctamente.", type: "success" });
+      return true;
     } catch (e: any) {
-      console.error("Error generating Excel:", e);
+      logger.error("Error generating Excel:", e);
       showModal("Error", "No se pudo generar el Excel: " + e.message);
+      return false;
     }
   };
 
@@ -500,7 +688,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       const fechaHoy = new Date().toISOString().split("T")[0];
 
       if (error) {
-        console.warn("Error downloading specific file, trying alternative...", error);
+        logger.warn("Error downloading specific file, trying alternative...", error);
         // Fallback attempt if name is slightly different
         const { data: altData, error: altError } = await supabase.storage
           .from("documentos_seguros")
@@ -509,19 +697,17 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         if (altError) throw altError;
         if (!altData) throw new Error("No se encontró la plantilla en el servidor.");
 
-        const fileSaver = await import("file-saver");
         const cleanName = institutionName.replace(/[\\/?*[\]]/g, "").substring(0, 50);
-        fileSaver.saveAs(altData, `Seguro - ${cleanName} - ${fechaHoy}.xlsx`);
+        downloadBlob(altData, `Seguro - ${cleanName} - ${fechaHoy}.xlsx`);
       } else {
         if (!data) throw new Error("El archivo descargado está vacío.");
-        const fileSaver = await import("file-saver");
         const cleanName = institutionName.replace(/[\\/?*[\]]/g, "").substring(0, 50);
-        fileSaver.saveAs(data, `Seguro - ${cleanName} - ${fechaHoy}.xlsx`);
+        downloadBlob(data, `Seguro - ${cleanName} - ${fechaHoy}.xlsx`);
       }
 
       setToastInfo({ message: "Plantilla descargada. Ahora copia los datos.", type: "success" });
     } catch (e: any) {
-      console.error("Error detallado descarga:", e);
+      logger.error("Error detallado descarga:", e);
       let errorMessage = "Error desconocido al descargar la plantilla.";
       if (e.message) errorMessage = e.message;
       else if (e.error_description) errorMessage = e.error_description;
@@ -540,13 +726,8 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
   // --- Copiar al Portapapeles ---
   const handleCopyToClipboard = (students: StudentForReview[]) => {
-    const rows = students.map((s) =>
-      [s.apellido, s.nombre, s.dni, s.legajo, s.cargo, s.lugarCompleto, s.duracionCompleta].join(
-        "\t"
-      )
-    );
-
-    const text = rows.join("\n");
+    // Formato TSV de 7 campos por estudiante (Req 9.6) — fuente única de verdad.
+    const text = buildClipboardText(students);
 
     navigator.clipboard
       .writeText(text)
@@ -557,7 +738,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         });
       })
       .catch((err) => {
-        console.error("Failed to copy", err);
+        logger.error("Failed to copy", err);
         setToastInfo({ message: "Error al copiar los datos.", type: "error" });
       });
   };
@@ -581,76 +762,301 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
     setSelectedConvocatorias(newSelection);
   };
 
-  const renderSelectionStep = () => (
-    <div className="space-y-6">
+  // ── Encabezado y datos del flujo contextual (Req 9.4) ───────────────────────
+  const primaryInstitution = studentsForReview[0]?.institucion ?? "Sin institución";
+  const headerFecha = studentsForReview[0]?.periodo ?? null;
+  const totalSeleccionados = studentsForReview.length;
+
+  // ── Handlers de los 4 pasos (modo contextual) ───────────────────────────────
+  const handleStepDescargarSeguro = async () => {
+    await handleDownloadTemplate(primaryInstitution);
+    markStepDone(1);
+  };
+
+  const handleStepCopiarDatos = () => {
+    handleCopyToClipboard(studentsForReview);
+    markStepDone(2);
+  };
+
+  const handleStepEnviarSergio = () => {
+    handleSendToAdmin(primaryInstitution);
+    markStepDone(3);
+  };
+
+  // Paso 4 (cierre): descarga el listado y, si tiene éxito, persiste la marca de
+  // aseguramiento. Si la persistencia falla, NO marca el paso ni invalida queries:
+  // el lanzamiento permanece en "A asegurar" (Req 1.5, 9.8).
+  const handleStepDescargarLista = async () => {
+    if (totalSeleccionados === 0 || !preSelectedLanzamientoId) return;
+    setIsMarcando(true);
+    try {
+      const ok = await handleGenerateSelectionExcel();
+      if (!ok) return; // la generación falló → no cerrar el aseguramiento
+
+      try {
+        await marcarAseguramiento(preSelectedLanzamientoId, coordinadorId);
+      } catch (e: any) {
+        logger.error("Error al persistir aseguramiento:", e);
+        showModal(
+          "No se pudo registrar el aseguramiento",
+          `El listado se descargó, pero no se pudo marcar el seguro como gestionado.\n\nDetalle: ${
+            e?.message ?? "error desconocido"
+          }\n\nLa PPS permanece en "A asegurar". Reintentá el paso 4.`
+        );
+        return;
+      }
+
+      // Éxito: reflejar el estado "asegurado" y refrescar el Lanzador.
+      markStepDone(4);
+      setSeguroGestionadoAt(new Date().toISOString());
+      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["convStatusByLaunch"] });
+      queryClient.invalidateQueries({ queryKey: ["inscCountByLaunch"] });
+      setToastInfo({ message: "Seguro gestionado. La PPS pasó a Activas.", type: "success" });
+    } finally {
+      setIsMarcando(false);
+    }
+  };
+
+  // ── Reversión del aseguramiento (Req 5.x, 9.10) ─────────────────────────────
+  const handleRevertir = async () => {
+    if (!preSelectedLanzamientoId) return;
+    const confirmed = window.confirm(
+      '¿Revertir el aseguramiento? La PPS volverá a aparecer en "A asegurar".'
+    );
+    if (!confirmed) return;
+
+    setIsMarcando(true);
+    try {
+      await revertirAseguramiento(preSelectedLanzamientoId, coordinadorId);
+      setSeguroGestionadoAt(null);
+      setDoneSteps(new Set());
+      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["convStatusByLaunch"] });
+      queryClient.invalidateQueries({ queryKey: ["inscCountByLaunch"] });
+      setToastInfo({ message: "Aseguramiento revertido.", type: "success" });
+    } catch (e: any) {
+      logger.error("Error al revertir aseguramiento:", e);
+      showModal(
+        "Error",
+        `No se pudo revertir el aseguramiento.\n\nDetalle: ${e?.message ?? "error desconocido"}`
+      );
+    } finally {
+      setIsMarcando(false);
+    }
+  };
+
+  // ── Definición declarativa de los 4 pasos (Req 9.3) ─────────────────────────
+  const flowSteps = [
+    {
+      n: 1,
+      title: "Descargar seguro",
+      desc: "Descargá la plantilla de seguro de la institución.",
+      icon: "download",
+      onRun: handleStepDescargarSeguro,
+      disabled: false,
+    },
+    {
+      n: 2,
+      title: "Copiar datos",
+      desc: "Copiá los datos de los seleccionados al portapapeles.",
+      icon: "content_copy",
+      onRun: handleStepCopiarDatos,
+      disabled: totalSeleccionados === 0,
+    },
+    {
+      n: 3,
+      title: "Enviar a Sergio",
+      desc: "Abrí el correo a administración para enviar el seguro.",
+      icon: "send",
+      onRun: handleStepEnviarSergio,
+      disabled: false,
+    },
+    {
+      n: 4,
+      title: "Descargar lista",
+      desc: "Descargá el listado para las instituciones. Cierra el aseguramiento.",
+      icon: "table_view",
+      onRun: handleStepDescargarLista,
+      // El paso final requiere al menos un seleccionado (Req 1.2, 1.3).
+      disabled: totalSeleccionados === 0 || isMarcando,
+      final: true,
+    },
+  ];
+
+  // ── Render del flujo contextual de 4 pasos (Paper & Ink) ────────────────────
+  const renderContextualFlow = () => {
+    if (isLoading && studentsForReview.length === 0) {
+      return (
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+          <Loader />
+        </div>
+      );
+    }
+
+    // Estado "ya asegurado": en vez del flujo pendiente, mostrar fecha + Revertir.
+    if (seguroGestionadoAt) {
+      return (
+        <div className="seg-done" role="status">
+          <span className="seg-done-icon">
+            <span className="material-icons">verified</span>
+          </span>
+          <div className="seg-done-body">
+            <div className="seg-done-title">Seguro gestionado</div>
+            <div className="seg-done-sub">
+              Gestionado el {formatDate(seguroGestionadoAt)}. La PPS figura en “Activas”.
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <button onClick={handleRevertir} disabled={isMarcando} className="seg-btn">
+                <span className="material-icons">undo</span>
+                Revertir aseguramiento
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (studentsForReview.length === 0) {
+      return (
+        <EmptyState
+          icon="group_off"
+          title="Sin seleccionados"
+          message="Esta PPS todavía no tiene estudiantes seleccionados para asegurar."
+        />
+      );
+    }
+
+    return (
       <div>
-        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-          Paso 1: Seleccionar Convocatorias
-        </h3>
-        <p className="text-slate-600 dark:text-slate-400">
-          Seleccione las convocatorias con alumnos seleccionados para procesar.
-        </p>
+        <div className="seg-flowhead">
+          <span className="eyebrow">Aseguramiento · PPS</span>
+          <div className="seg-flowhead-name">{primaryInstitution}</div>
+          <div className="seg-flowhead-meta">
+            {headerFecha && (
+              <span className="seg-meta-chip">
+                <span className="material-icons">event</span>
+                {headerFecha}
+              </span>
+            )}
+            <span className="seg-meta-chip">
+              <span className="material-icons">group</span>
+              {totalSeleccionados} seleccionado{totalSeleccionados !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+
+        <div className="seg-steplist">
+          {flowSteps.map((s) => {
+            const done = doneSteps.has(s.n);
+            return (
+              <div
+                key={s.n}
+                className="seg-steprow"
+                data-done={done ? "1" : "0"}
+                data-final={s.final ? "1" : "0"}
+              >
+                <span className="seg-stepdot">
+                  {done ? <span className="material-icons">check</span> : s.n}
+                </span>
+                <div className="seg-stepbody">
+                  <div className="seg-steptitle">
+                    {s.title}
+                    {s.final && <span className="seg-steptag">Cierra</span>}
+                  </div>
+                  <div className="seg-stepdesc">{s.desc}</div>
+                </div>
+                <button
+                  onClick={s.onRun}
+                  disabled={s.disabled}
+                  className={`seg-btn ${s.final ? "seg-btn-primary" : ""}`}
+                  aria-label={`${s.title}${done ? " (rehacer)" : ""}`}
+                >
+                  <span className="material-icons">{s.icon}</span>
+                  {done ? "Rehacer" : "Ejecutar"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSelectionStep = () => (
+    <div>
+      <div className="seg-steps">
+        <span className="seg-step" data-on="1">
+          <b>1</b> Seleccionar convocatorias
+        </span>
+        <span className="seg-step-line" />
+        <span className="seg-step" data-on="0">
+          <b>2</b> Generar documentación
+        </span>
       </div>
 
       {isLoading ? (
-        <Loader />
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+          <Loader />
+        </div>
       ) : convocatorias.length === 0 ? (
         <EmptyState
           icon="event_busy"
-          title="Sin Convocatorias"
+          title="Sin convocatorias"
           message="No se encontraron convocatorias recientes con alumnos seleccionados."
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-100 dark:bg-slate-700">
+        <div className="seg-panel" style={{ overflowX: "auto" }}>
+          <table className="seg-table" style={{ minWidth: 560 }}>
+            <thead>
               <tr>
-                <th className="p-3 w-10">
-                  <span className="sr-only">Select</span>
+                <th style={{ width: 44 }}>
+                  <span className="sr-only">Seleccionar</span>
                 </th>
-                <th className="p-3">Institución (Lanzamiento)</th>
-                <th className="p-3 text-center">Alumnos</th>
-                <th className="p-3">Fecha Inicio</th>
+                <th>Institución (lanzamiento)</th>
+                <th style={{ textAlign: "center" }}>Alumnos</th>
+                <th>Fecha inicio</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {convocatorias.map((conv) => (
-                <tr key={conv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                  <td className="p-3">
-                    <Checkbox
-                      id={`conv-${conv.id}`}
-                      name="conv"
-                      checked={selectedConvocatorias.has(conv.id)}
-                      onChange={() => toggleSelection(conv.id)}
-                      label=""
-                    />
-                  </td>
-                  <td className="p-3 font-medium text-slate-900 dark:text-white">
-                    {conv[FIELD_NOMBRE_PPS_CONVOCATORIAS]}
-                  </td>
-                  <td className="p-3 text-center">
-                    <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-blue-100 bg-blue-600 rounded-full">
-                      {(conv[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as any[])?.length || 0}
-                    </span>
-                  </td>
-                  <td className="p-3 text-slate-500 dark:text-slate-400">
-                    {formatDate(conv[FIELD_FECHA_INICIO_CONVOCATORIAS])}
-                  </td>
-                </tr>
-              ))}
+            <tbody>
+              {convocatorias.map((conv) => {
+                const sel = selectedConvocatorias.has(conv.id);
+                return (
+                  <tr
+                    key={conv.id}
+                    data-sel={sel ? "1" : "0"}
+                    onClick={() => toggleSelection(conv.id)}
+                  >
+                    <td>
+                      <span className="seg-check" data-on={sel ? "1" : "0"}>
+                        {sel && <span className="material-icons">check</span>}
+                      </span>
+                    </td>
+                    <td className="name">{conv[FIELD_NOMBRE_PPS_CONVOCATORIAS]}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <span className="seg-count">
+                        {(conv[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as any[])?.length || 0}
+                      </span>
+                    </td>
+                    <td style={{ color: "var(--ink-3)" }}>
+                      {formatDate(conv[FIELD_FECHA_INICIO_CONVOCATORIAS])}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      <div className="flex justify-end mt-4">
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
         <button
           onClick={() => handleProceedToReview()}
           disabled={selectedConvocatorias.size === 0 || isLoading}
-          className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+          className="seg-btn seg-btn-primary"
         >
-          <span>Continuar</span>
-          <span className="material-icons !text-base">arrow_forward</span>
+          Continuar
+          <span className="material-icons">arrow_forward</span>
         </button>
       </div>
     </div>
@@ -667,87 +1073,78 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
     );
 
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-              Paso 2: Generar Documentación
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400">
-              1. Descarga plantilla. 2. Copia datos. 3. Envía a Administración.
-            </p>
-          </div>
+      <div>
+        <div className="seg-steps">
+          <span className="seg-step" data-on="0">
+            <b>1</b> Seleccionar convocatorias
+          </span>
+          <span className="seg-step-line" />
+          <span className="seg-step" data-on="1">
+            <b>2</b> Generar documentación
+          </span>
           <button
             onClick={() => setStep("selection")}
-            className="text-slate-500 hover:text-slate-700 font-medium flex items-center gap-1"
+            className="seg-link"
+            style={{ marginLeft: "auto" }}
           >
-            <span className="material-icons !text-base">arrow_back</span> Volver
+            <span className="material-icons">arrow_back</span> Volver
           </button>
         </div>
 
         {Object.entries(grouped).map(
           ([institucion, students]: [string, StudentForReview[]], idx) => (
-            <Card
-              key={idx}
-              title={institucion}
-              description={`${students.length} alumnos asignados`}
-            >
-              <div className="mt-4 space-y-4">
-                <div className="flex flex-wrap gap-3 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <button
-                    onClick={() => handleDownloadTemplate(institucion)}
-                    disabled={isLoading}
-                    className="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors shadow-sm"
-                  >
-                    <span className="material-icons !text-lg">download</span>
-                    1. Descargar Plantilla
-                  </button>
-                  <button
-                    onClick={() => handleCopyToClipboard(students)}
-                    className="bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors shadow-sm"
-                  >
-                    <span className="material-icons !text-lg">content_copy</span>
-                    2. Copiar Datos
-                  </button>
-                  <button
-                    onClick={() => handleSendToAdmin(institucion)}
-                    className="bg-emerald-600 text-white hover:bg-emerald-700 px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors shadow-sm"
-                  >
-                    <span className="material-icons !text-lg">send</span>
-                    3. Enviar a Sergio
-                  </button>
-                </div>
-
-                <details className="group">
-                  <summary className="cursor-pointer text-sm font-medium text-slate-500 dark:text-slate-400 list-none flex items-center gap-2">
-                    <span className="material-icons transition-transform group-open:rotate-90">
-                      chevron_right
-                    </span>
-                    Ver lista de alumnos ({students.length})
-                  </summary>
-                  <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-sm mt-2 pl-6 border-l-2 border-slate-200 dark:border-slate-700">
-                    {students.map((s) => (
-                      <li key={s.studentId} className="py-2">
-                        <span className="font-semibold">
-                          {s.apellido}, {s.nombre}
-                        </span>
-                        <span className="text-slate-500 ml-2">DNI: {s.dni}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
+            <div key={idx} className="seg-inst">
+              <div className="seg-inst-head">
+                <span className="seg-inst-name">{institucion}</span>
+                <span className="seg-inst-count">{students.length} alumnos asignados</span>
               </div>
-            </Card>
+
+              <div className="seg-actions">
+                <button
+                  onClick={() => handleDownloadTemplate(institucion)}
+                  disabled={isLoading}
+                  className="seg-btn"
+                >
+                  <span className="seg-num">1</span>
+                  <span className="material-icons">download</span>
+                  Plantilla
+                </button>
+                <button onClick={() => handleCopyToClipboard(students)} className="seg-btn">
+                  <span className="seg-num">2</span>
+                  <span className="material-icons">content_copy</span>
+                  Copiar datos
+                </button>
+                <button onClick={() => handleSendToAdmin(institucion)} className="seg-btn">
+                  <span className="seg-num">3</span>
+                  <span className="material-icons">send</span>
+                  Enviar a Sergio
+                </button>
+              </div>
+
+              <details className="seg-disclosure">
+                <summary>
+                  <span className="material-icons">chevron_right</span>
+                  Ver lista de alumnos ({students.length})
+                </summary>
+                <div className="seg-stud-list">
+                  {students.map((s) => (
+                    <div key={s.studentId} className="seg-stud">
+                      <b>
+                        {s.apellido}, {s.nombre}
+                      </b>
+                      <span>DNI {s.dni}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
           )
         )}
 
-        <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-700 gap-3">
-          <button
-            onClick={handleGenerateSelectionExcel}
-            className="bg-slate-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md hover:bg-slate-700 flex items-center gap-2"
-          >
-            <span className="material-icons !text-base">table_view</span>
-            4. Descargar Excel
+        <div className="seg-foot">
+          <button onClick={handleGenerateSelectionExcel} className="seg-btn seg-btn-primary">
+            <span className="material-icons">table_view</span>
+            Descargar Excel
           </button>
           {Object.keys(grouped).length === 1 &&
             (() => {
@@ -761,9 +1158,9 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
                     href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-green-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md hover:bg-green-700 flex items-center gap-2"
+                    className="seg-btn seg-btn-wa"
                   >
-                    <span className="material-icons !text-base">chat</span>
+                    <span className="material-icons">chat</span>
                     Enviar por WhatsApp
                   </a>
                 );
@@ -776,7 +1173,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   };
 
   return (
-    <Card title="Generador de Seguros y Listas" icon="shield">
+    <div className="seg">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -784,10 +1181,29 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
           onClose={() => setToastInfo(null)}
         />
       )}
-      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-        {step === "selection" ? renderSelectionStep() : renderReviewStep()}
+
+      <div className="seg-head">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span className="eyebrow">Documentos · seguros</span>
+          <h2 className="serif">Generador de seguros</h2>
+          <p>
+            {contextual
+              ? "Seguí los 4 pasos para gestionar el seguro de esta PPS. El paso 4 cierra el aseguramiento."
+              : "Armá la planilla de seguro con los alumnos seleccionados de una o varias convocatorias, lista para enviar a administración."}
+          </p>
+        </div>
+        <span className="seg-chip-ai" style={{ marginTop: 6 }}>
+          <span className="material-icons">auto_awesome</span>
+          Hermes asiste
+        </span>
       </div>
-    </Card>
+
+      {contextual
+        ? renderContextualFlow()
+        : step === "selection"
+          ? renderSelectionStep()
+          : renderReviewStep()}
+    </div>
   );
 };
 

@@ -58,7 +58,7 @@ function formatToUTC(date: Date): string {
  * @returns An object with google and ical links, or null if parsing fails.
  */
 export function generateRecurringCalendarLinks(
-  event: CalendarEvent & { startDate?: string; endDate?: string },
+  event: CalendarEvent,
   _date: Date
 ): { google: string; ical: string } | null {
   const timeInfo = parseTimeFromSchedule(event.schedule);

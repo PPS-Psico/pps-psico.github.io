@@ -30,6 +30,7 @@ import { isFCMSubscribed, subscribeToFCM, unsubscribeFromFCM } from "../lib/fcm"
 import { supabase } from "../lib/supabaseClient";
 import ReminderService, { Reminder } from "../services/reminderService";
 import { useAuth } from "./AuthContext";
+import { logger } from "../utils/logger";
 
 export interface AppNotification {
   id: string;
@@ -93,7 +94,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
       }
     } catch (e) {
-      console.warn("Error cargando notificaciones leídas del storage", e);
+      logger.warn("Error cargando notificaciones leídas del storage", e);
     }
   }, [authenticatedUser, STORAGE_KEY]);
 
@@ -106,7 +107,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         const subscribed = await isFCMSubscribed();
         setPushEnabled(subscribed);
       } catch (e) {
-        console.warn("Error checking push status", e);
+        logger.warn("Error checking push status", e);
       }
     };
 
@@ -292,7 +293,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
 
         // --- D. Recordatorios de Hoy (para Administradores) ---
-        if (isAdmin && authenticatedUser) {
+        if (isAdmin && authenticatedUser?.id) {
           ReminderService.setUserId(authenticatedUser.id);
           const todayReminders = await ReminderService.getTodayReminders();
 
@@ -313,7 +314,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         loadedNotifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
         setNotifications(loadedNotifications);
       } catch (err) {
-        console.error("Error loading notification history:", err);
+        logger.error("Error loading notification history:", err);
       }
     };
 

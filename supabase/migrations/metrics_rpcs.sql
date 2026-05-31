@@ -66,6 +66,11 @@ END;
 $$;
 
 -- Main KPIs - uses estudiantes.created_at instead of auth.users (avoids slow join)
+-- NOTA: este archivo refleja la definición VIVA en producción (introspección
+-- vía pg_get_functiondef). Incluye la limpieza de estados legacy aplicada el
+-- 2026-05-30: `haciendo_pps` usa solo 'en curso' y `orientation_distribution`
+-- solo ('seleccionado','inscripto'), alineado con los CHECK constraints de la
+-- migración normalize_states. `convenio_nuevo` se compara como smallint (= p_year).
 DROP FUNCTION IF EXISTS public.get_admin_metrics_kpis(int);
 CREATE OR REPLACE FUNCTION public.get_admin_metrics_kpis(p_year int)
 RETURNS json
@@ -87,12 +92,40 @@ BEGIN
     ) sub
     GROUP BY estudiante_id
   ),
+  first_inscriptions AS (
+    SELECT estudiante_id, min(created_at) as first_insc
+    FROM convocatorias
+    WHERE estudiante_id IS NOT NULL
+    GROUP BY estudiante_id
+  ),
   grad_dates AS (
     SELECT id, safe_date_cast(fecha_finalizacion) as gd
     FROM estudiantes
     WHERE lower(estado) = 'finalizado' 
       AND fecha_finalizacion IS NOT NULL 
       AND fecha_finalizacion != ''
+  ),
+  active_year AS (
+    SELECT DISTINCT fa.estudiante_id
+    FROM first_activities fa
+    LEFT JOIN grad_dates g ON g.id = fa.estudiante_id
+    WHERE extract(year from fa.first_activity) <= p_year
+      AND (g.gd IS NULL OR extract(year from g.gd) >= p_year)
+      AND NOT EXISTS (
+        SELECT 1 FROM estudiantes e 
+        WHERE e.id = fa.estudiante_id AND lower(e.estado) = 'finalizado'
+      )
+  ),
+  active_prev AS (
+    SELECT DISTINCT fa.estudiante_id
+    FROM first_activities fa
+    LEFT JOIN grad_dates g ON g.id = fa.estudiante_id
+    WHERE extract(year from fa.first_activity) <= p_year - 1
+      AND (g.gd IS NULL OR extract(year from g.gd) >= p_year - 1)
+      AND NOT EXISTS (
+        SELECT 1 FROM estudiantes e 
+        WHERE e.id = fa.estudiante_id AND lower(e.estado) = 'finalizado'
+      )
   ),
   student_hours AS (
     SELECT estudiante_id, sum(COALESCE(horas_realizadas, 0)) as total
@@ -103,12 +136,12 @@ BEGIN
     WHERE extract(year from COALESCE(safe_date_cast(fecha_inicio), created_at)) = p_year
   ),
   c_mg AS (
-    SELECT count(*) as v FROM estudiantes 
-    WHERE user_id IS NOT NULL AND extract(year from created_at) = p_year
+    SELECT count(*) as v FROM first_inscriptions
+    WHERE extract(year from first_insc) = p_year
   ),
   p_mg AS (
-    SELECT count(*) as v FROM estudiantes 
-    WHERE user_id IS NOT NULL AND extract(year from created_at) = p_year - 1
+    SELECT count(*) as v FROM first_inscriptions
+    WHERE extract(year from first_insc) = p_year - 1
   ),
   c_fin AS (
     SELECT count(DISTINCT s) as v FROM (
@@ -131,18 +164,10 @@ BEGIN
     ) x
   ),
   c_act AS (
-    SELECT count(DISTINCT fa.estudiante_id) as v 
-    FROM first_activities fa
-    LEFT JOIN grad_dates g ON g.id = fa.estudiante_id
-    WHERE extract(year from fa.first_activity) <= p_year
-      AND (g.gd IS NULL OR extract(year from g.gd) >= p_year)
+    SELECT count(*) as v FROM active_year
   ),
   p_act AS (
-    SELECT count(DISTINCT fa.estudiante_id) as v 
-    FROM first_activities fa
-    LEFT JOIN grad_dates g ON g.id = fa.estudiante_id
-    WHERE extract(year from fa.first_activity) <= p_year - 1
-      AND (g.gd IS NULL OR extract(year from g.gd) >= p_year - 1)
+    SELECT count(*) as v FROM active_prev
   )
   SELECT json_build_object(
     'matricula_generada', (SELECT v FROM c_mg),
@@ -150,26 +175,33 @@ BEGIN
     'matricula_activa', (SELECT v FROM c_act),
     'sin_pps', (
       SELECT count(*) FROM estudiantes e
-      WHERE lower(e.estado) = 'activo'
+      WHERE lower(e.estado) != 'finalizado'
         AND e.correo IS NOT NULL AND e.correo != ''
-        AND NOT EXISTS (SELECT 1 FROM practicas p WHERE p.estudiante_id = e.id)
+        AND EXISTS (
+          SELECT 1 FROM convocatorias c 
+          WHERE c.estudiante_id = e.id 
+          AND extract(year from c.created_at) <= p_year
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM practicas p 
+          WHERE p.estudiante_id = e.id 
+          AND extract(year from p.created_at) <= p_year
+        )
     ),
     'proximos_finalizar', (
       SELECT count(*) FROM student_hours sh
       WHERE sh.total >= 230
+        AND EXISTS (SELECT 1 FROM active_year a WHERE a.estudiante_id = sh.estudiante_id)
         AND NOT EXISTS (
           SELECT 1 FROM finalizacion_pps f 
           WHERE f.estudiante_id = sh.estudiante_id 
             AND lower(f.estado) IN ('tramite','realizada','cargado')
         )
-        AND NOT EXISTS (
-          SELECT 1 FROM estudiantes e 
-          WHERE e.id = sh.estudiante_id AND lower(e.estado) = 'finalizado'
-        )
     ),
     'haciendo_pps', (
-      SELECT count(DISTINCT estudiante_id) FROM practicas
-      WHERE lower(estado) IN ('en curso','pendiente','en proceso')
+      SELECT count(DISTINCT p.estudiante_id) FROM practicas p
+      WHERE lower(p.estado) = 'en curso'
+        AND EXISTS (SELECT 1 FROM active_year a WHERE a.estudiante_id = p.estudiante_id)
     ),
     'pps_lanzadas', (SELECT count(*) FROM year_launches),
     'instituciones_activas', (
@@ -179,7 +211,7 @@ BEGIN
     'cupos_ofrecidos', (SELECT COALESCE(sum(cupos_disponibles), 0)::int FROM year_launches),
     'nuevos_convenios', (
       SELECT count(DISTINCT split_part(nombre, ' - ', 1))
-      FROM instituciones WHERE convenio_nuevo = p_year::text
+      FROM instituciones WHERE convenio_nuevo = p_year
     ),
     'orientation_distribution', (
       SELECT COALESCE(json_object_agg(orientation, cnt), '{}')
@@ -196,7 +228,7 @@ BEGIN
         FROM convocatorias c
         JOIN lanzamientos_pps l ON l.id = c.lanzamiento_id
         WHERE extract(year from c.created_at) = p_year
-          AND lower(c.estado_inscripcion) IN ('seleccionado','en proceso','espera','inscripto')
+          AND lower(c.estado_inscripcion) IN ('seleccionado','inscripto')
         GROUP BY 1
       ) sub
     ),
@@ -206,8 +238,8 @@ BEGIN
         '[]'::json
       )
       FROM (
-        SELECT extract(year from first_activity)::int as yr, count(*) as cnt
-        FROM first_activities GROUP BY 1
+        SELECT extract(year from first_insc)::int as yr, count(*) as cnt
+        FROM first_inscriptions GROUP BY 1
       ) sub
     ),
     'trend_data', (

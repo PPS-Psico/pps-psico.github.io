@@ -248,6 +248,100 @@ class DailyBriefInput(BaseModel):
     whatsapp_pendientes: list[dict[str, Any]] = []
 
 
+def _sanitize_brief_refs(result: dict[str, Any], payload: "DailyBriefInput") -> dict[str, Any]:
+    """Valida y corrige los `ref` que el LLM adjuntó a cada bullet.
+
+    El modelo puede alucinar ids o copiarlos mal. Acá garantizamos que cada
+    `ref.id` exista REALMENTE en los datos de entrada. Estrategia por bullet:
+      1. Si ref.id existe en la lista del tipo declarado -> se acepta.
+      2. Si no, intentamos resolver por texto (título/por qué del bullet) contra
+         los nombres de los datos -> reasignamos el id correcto.
+      3. Si no hay match confiable -> ref = {tipo:'ninguno', id:''}.
+
+    Así el front siempre recibe un id verificable o un 'ninguno' honesto, nunca
+    un deep-link roto.
+    """
+    import unicodedata
+
+    def norm(s: Any) -> str:
+        t = str(s or "").lower()
+        t = "".join(c for c in unicodedata.normalize("NFD", t) if unicodedata.category(c) != "Mn")
+        t = "".join(c if c.isalnum() else " " for c in t)
+        return " ".join(t.split())
+
+    # Índices id->registro y "texto buscable"->id por tipo de recurso.
+    indices: dict[str, dict[str, dict]] = {
+        "solicitud": {str(s.get("id")): s for s in payload.solicitudes_pendientes if s.get("id")},
+        "lanzamiento": {
+            str(l.get("id")): l for l in payload.lanzamientos_por_vencer if l.get("id")
+        },
+        "gmail": {str(g.get("thread_id")): g for g in payload.gmail_sin_responder if g.get("thread_id")},
+        "whatsapp": {
+            str(w.get("chat_jid")): w for w in payload.whatsapp_pendientes if w.get("chat_jid")
+        },
+        "institucion": {
+            str(i.get("id")): i for i in payload.instituciones_sin_contacto if i.get("id")
+        },
+    }
+
+    # Campos de nombre por tipo, para resolver por texto cuando el id falla.
+    name_fields = {
+        "solicitud": ["nombre_alumno", "nombre_institucion"],
+        "lanzamiento": ["nombre_pps"],
+        "gmail": ["asunto"],
+        "whatsapp": ["autor", "chat_jid"],
+        "institucion": ["nombre"],
+    }
+
+    def resolve_by_text(tipo: str, text: str) -> str | None:
+        idx = indices.get(tipo) or {}
+        hay = norm(text)
+        if not hay:
+            return None
+        best_id, best_score = None, 0
+        for rid, rec in idx.items():
+            score = 0
+            for f in name_fields.get(tipo, []):
+                val = norm(rec.get(f))
+                if len(val) > 4 and val in hay:
+                    score += 2
+            if score > best_score:
+                best_id, best_score = rid, score
+        return best_id if best_score >= 2 else None
+
+    bullets = result.get("bullets") if isinstance(result, dict) else None
+    if not isinstance(bullets, list):
+        return result
+
+    valid_tipos = {"solicitud", "lanzamiento", "gmail", "whatsapp", "institucion"}
+    for b in bullets:
+        if not isinstance(b, dict):
+            continue
+        ref = b.get("ref") if isinstance(b.get("ref"), dict) else {}
+        tipo = str(ref.get("tipo") or "").strip().lower()
+        rid = str(ref.get("id") or "").strip()
+        text = f"{b.get('titulo', '')} {b.get('por_que', '')}"
+
+        resolved_tipo, resolved_id = "ninguno", ""
+        if tipo in valid_tipos and rid and rid in (indices.get(tipo) or {}):
+            resolved_tipo, resolved_id = tipo, rid
+        elif tipo in valid_tipos:
+            maybe = resolve_by_text(tipo, text)
+            if maybe:
+                resolved_tipo, resolved_id = tipo, maybe
+        if resolved_tipo == "ninguno":
+            # Último intento: probar todos los tipos por texto (el LLM pudo errar el tipo).
+            for t in valid_tipos:
+                maybe = resolve_by_text(t, text)
+                if maybe:
+                    resolved_tipo, resolved_id = t, maybe
+                    break
+
+        b["ref"] = {"tipo": resolved_tipo, "id": resolved_id}
+
+    return result
+
+
 def _create_daily_brief(payload: DailyBriefInput, *, source: str) -> dict[str, Any]:
     t0 = time.time()
     invocation_id = str(uuid.uuid4())
@@ -256,15 +350,29 @@ def _create_daily_brief(payload: DailyBriefInput, *, source: str) -> dict[str, A
     schema = (
         '{"bullets":[{"prioridad":"alta|media|baja",'
         '"titulo":"string","por_que":"string",'
-        '"accion_sugerida":"string","recurso":"string"}],'
+        '"accion_sugerida":"string","recurso":"string",'
+        '"ref":{"tipo":"solicitud|lanzamiento|gmail|whatsapp|institucion|ninguno",'
+        '"id":"string (el identificador EXACTO del dato, copiado tal cual)"}}],'
         '"resumen":"string (1-2 frases)"}'
     )
     user = (
         "Armá el daily brief del coordinador. Máximo 7 bullets, priorizados. "
         "Mirá especialmente lo que se está cayendo entre las grietas.\n\n"
+        "MUY IMPORTANTE — trazabilidad: cada bullet DEBE incluir el objeto `ref` "
+        "que identifica el dato concreto del que hablás, para que el panel pueda "
+        "abrir esa ficha exacta (no una lista genérica). Reglas para `ref`:\n"
+        "  · solicitudes_pendientes  -> ref.tipo='solicitud',  ref.id = el campo `id` de esa solicitud.\n"
+        "  · lanzamientos_por_vencer -> ref.tipo='lanzamiento', ref.id = el campo `id` del lanzamiento.\n"
+        "  · gmail_sin_responder     -> ref.tipo='gmail',       ref.id = el `thread_id` del hilo.\n"
+        "  · whatsapp_pendientes     -> ref.tipo='whatsapp',    ref.id = el `chat_jid` del contacto.\n"
+        "  · instituciones_sin_contacto -> ref.tipo='institucion', ref.id = el `id` de la institución.\n"
+        "  · si el bullet es general y no mapea a un dato puntual -> ref.tipo='ninguno', ref.id=''.\n"
+        "Copiá el id EXACTO del dato (no lo inventes ni lo reformatees). Si un bullet "
+        "habla de varios datos, usá el más accionable.\n\n"
         f"DATOS:\n{json.dumps(payload.model_dump(), ensure_ascii=False, indent=2)}"
     )
     result = llm_json(user, schema_hint=schema)
+    result = _sanitize_brief_refs(result, payload)
 
     suggestion_id = str(uuid.uuid4())
     sb.table("agent_suggestions").insert({
@@ -1971,24 +2079,20 @@ def learn_from_feedback(payload: LearnInput) -> dict[str, Any]:
         )
         vault_path = vault_write("agent/aprendizajes.md", entry, append=True)
 
-        # Espejar la lección en Supabase para que el panel pueda mostrarla.
-        # (El vault sigue siendo la fuente narrativa; esto es solo para la UI.)
-        try:
-            sb.table("agent_aprendizajes").insert({
-                "suggestion_id": payload.suggestion_id,
-                "tipo": payload.tipo,
-                "accion": payload.accion,
-                "tag": result.get("tag"),
-                "aprendizaje": result["aprendizaje"],
-                "aplica_cuando": result.get("aplica_cuando"),
-                "model": HERMES_MODEL,
-            }).execute()
-        except Exception as exc:  # noqa: BLE001
-            print(f"[learn] no se pudo espejar aprendizaje en supabase: {exc}", flush=True)
-
     audit(
         "learn.done",
-        output={"vault_path": vault_path, "tag": result.get("tag"), "side_effect": side_effect},
+        output={
+            "vault_path": vault_path,
+            "tag": result.get("tag"),
+            "side_effect": side_effect,
+            # Espejamos la lección destilada en el propio audit log para que el
+            # panel pueda mostrarla sin necesitar una tabla nueva. Si no hubo
+            # aprendizaje (tag=sin_aprendizaje), estos campos quedan vacíos.
+            "aprendizaje": result.get("aprendizaje"),
+            "aplica_cuando": result.get("aplica_cuando"),
+            "tipo": payload.tipo,
+            "accion": payload.accion,
+        },
         invocation_id=invocation_id,
         suggestion_id=payload.suggestion_id,
         duration_ms=int((time.time() - t0) * 1000),

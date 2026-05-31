@@ -21,7 +21,6 @@ import Toast from "../ui/Toast";
 import PaginationControls from "../PaginationControls";
 import ContextMenu from "./ContextMenu";
 import AdminSearch from "./AdminSearch";
-import Button from "../ui/Button";
 import ConfirmModal from "../ConfirmModal";
 import { MOCK_CONVOCATORIAS, MOCK_ESTUDIANTES, MOCK_LANZAMIENTOS } from "../../data/mockData";
 
@@ -53,21 +52,13 @@ const TABLE_CONFIG = {
   ],
 };
 
-const getStatusStyle = (status: string) => {
+const getStatusTone = (status: string): string => {
   const s = (status || "").toLowerCase();
-  if (s.includes("seleccionado") && !s.includes("no")) {
-    return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800";
-  }
-  if (s.includes("inscripto")) {
-    return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800";
-  }
-  if (s.includes("no seleccionado")) {
-    return "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800";
-  }
-  if (s.includes("baja")) {
-    return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
-  }
-  return "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
+  if (s.includes("seleccionado") && !s.includes("no")) return "ok";
+  if (s.includes("inscripto")) return "accent";
+  if (s.includes("no seleccionado")) return "warn";
+  if (s.includes("baja")) return "warn";
+  return "mute";
 };
 
 const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode }) => {
@@ -141,8 +132,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             ...c,
             __studentName: s ? s[FIELD_NOMBRE_ESTUDIANTES] : "Desconocido",
             __ppsName: l
-              ? l[FIELD_NOMBRE_PPS_LANZAMIENTOS]
-              : c[FIELD_NOMBRE_PPS_CONVOCATORIAS] || "N/A",
+              ? (l as any)[FIELD_NOMBRE_PPS_LANZAMIENTOS]
+              : (c as any)[FIELD_NOMBRE_PPS_CONVOCATORIAS] || "N/A",
           };
         });
 
@@ -306,7 +297,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   };
 
   return (
-    <div className="space-y-6">
+    <div className="dbe">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -317,54 +308,48 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
 
       <ConfirmModal
         isOpen={!!idToDelete}
-        title="¿Eliminar Inscripción?"
+        title="¿Eliminar inscripción?"
         message="Esta acción eliminará el registro de inscripción. No se puede deshacer."
-        confirmText="Eliminar Definitivamente"
+        confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"
         onConfirm={() => idToDelete && deleteMutation.mutate(idToDelete)}
         onClose={() => setIdToDelete(null)}
       />
 
-      {/* --- FILTROS --- */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4 items-end shadow-sm">
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
-            Estudiante
-          </label>
+      {/* FILTROS */}
+      <div className="dbe-bar">
+        <div className="dbe-bar-grow">
+          <label className="dbe-label">Estudiante</label>
           {!filterStudentId ? (
-            <div className="h-11">
-              <AdminSearch
-                onStudentSelect={(s) => {
-                  setFilterStudentId(s.id);
-                  setStudentLabel(s[FIELD_NOMBRE_ESTUDIANTES] || "");
-                }}
-              />
+            <div className="dbe-search" style={{ height: 42 }}>
+              <span className="material-icons">search</span>
+              <div style={{ paddingLeft: 26 }}>
+                <AdminSearch
+                  onStudentSelect={(s) => {
+                    setFilterStudentId(s.id);
+                    setStudentLabel(s[FIELD_NOMBRE_ESTUDIANTES] || "");
+                  }}
+                />
+              </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 h-11 px-4 rounded-xl border border-blue-200 dark:border-blue-800">
-              <span className="text-xs font-bold truncate text-blue-800 dark:text-blue-300">
-                {studentLabel}
-              </span>
-              <button
-                onClick={() => setFilterStudentId("")}
-                className="material-icons !text-sm text-blue-500 hover:text-blue-700"
-              >
-                close
+            <div className="dbe-chip-active">
+              <span>{studentLabel}</span>
+              <button onClick={() => setFilterStudentId("")} aria-label="Quitar filtro">
+                <span className="material-icons">close</span>
               </button>
             </div>
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
-            Lanzamiento / PPS
-          </label>
-          <div className="relative">
+        <div className="dbe-bar-grow">
+          <label className="dbe-label">Lanzamiento / PPS</label>
+          <div className="dbe-select-wrap">
             <select
+              className="dbe-select"
               value={filterLanzamientoId}
               onChange={(e) => setFilterLanzamientoId(e.target.value)}
-              className="w-full h-11 pl-4 pr-10 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none transition-all text-slate-700 dark:text-slate-200"
             >
               <option value="">Todas las convocatorias</option>
               {launches.map((l) => (
@@ -374,102 +359,94 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 </option>
               ))}
             </select>
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 dark:text-slate-500 pointer-events-none !text-lg">
-              expand_more
-            </span>
+            <span className="material-icons">expand_more</span>
           </div>
         </div>
 
-        <div className="flex justify-end">
-          <Button
-            onClick={() => setEditingRecord({ isCreating: true })}
-            icon="add_card"
-            className="h-11 w-full md:w-auto bg-blue-600 hover:bg-blue-700 shadow-md"
-          >
-            Nueva Inscripción
-          </Button>
-        </div>
+        <button
+          className="dbe-btn dbe-btn-primary"
+          onClick={() => setEditingRecord({ isCreating: true })}
+        >
+          <span className="material-icons">add_card</span>
+          Nueva inscripción
+        </button>
       </div>
 
-      <div className="flex justify-end h-10">
+      <div className="dbe-actionrow">
         {selectedRowId && (
-          <button
-            onClick={() => setIdToDelete(selectedRowId)}
-            className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-rose-100 border border-rose-200 transition-all animate-fade-in"
-          >
-            <span className="material-icons !text-base">delete</span> Eliminar Selección
+          <button className="dbe-btn dbe-btn-danger" onClick={() => setIdToDelete(selectedRowId)}>
+            <span className="material-icons" style={{ fontSize: 15 }}>
+              delete
+            </span>{" "}
+            Eliminar selección
           </button>
         )}
       </div>
 
-      {/* --- TABLA --- */}
+      {/* TABLA */}
       {isLoading ? (
-        <div className="py-12">
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
           <Loader />
         </div>
       ) : (
-        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
+        <div className="dbe-table-wrap">
+          <div className="dbe-scroll">
+            <table className="dbe-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4">Estudiante</th>
-                  <th className="px-6 py-4">Convocatoria PPS</th>
-                  <th className="px-6 py-4">Horario</th>
-                  <th className="px-6 py-4">Estado</th>
+                  <th>Estudiante</th>
+                  <th>Convocatoria PPS</th>
+                  <th>Horario</th>
+                  <th>Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {data?.records.map((c: any) => {
-                  const badgeClass = getStatusStyle(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]);
                   const isSelected = selectedRowId === c.id;
-
                   return (
                     <tr
                       key={c.id}
-                      className={`transition-all cursor-pointer group ${
-                        isSelected
-                          ? "bg-blue-50 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-200 dark:ring-blue-800"
-                          : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40"
-                      }`}
+                      data-sel={isSelected ? "1" : "0"}
                       onClick={() => setSelectedRowId(isSelected ? null : c.id)}
                       onDoubleClick={() => setEditingRecord(c)}
                       onContextMenu={(e) => handleRowContextMenu(e, c)}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black shadow-sm border transition-transform group-hover:scale-110 ${isSelected ? "bg-blue-600 text-white border-blue-400" : "bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"}`}
-                          >
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span className="dbe-avatar">
                             {(c.__studentName || "?").charAt(0).toUpperCase()}
-                          </div>
-                          <span
-                            className={`font-bold transition-colors ${isSelected ? "text-blue-700 dark:text-blue-300" : "text-slate-700 dark:text-slate-200 group-hover:text-blue-600"}`}
-                          >
-                            {c.__studentName}
                           </span>
+                          <span className="dbe-cell-strong">{c.__studentName}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <div
-                          className="font-medium text-slate-700 dark:text-slate-300 text-sm truncate max-w-[280px]"
+                          className="dbe-cell-strong"
+                          style={{
+                            maxWidth: 280,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontWeight: 500,
+                          }}
                           title={c.__ppsName}
                         >
                           {c.__ppsName}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div
-                          className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700 inline-block max-w-[200px] truncate"
+                      <td>
+                        <span
+                          className="dbe-schedule"
                           title={c[FIELD_HORARIO_FORMULA_CONVOCATORIAS]}
                         >
-                          <span className="material-icons !text-xs opacity-60">schedule</span>
+                          <span className="material-icons">schedule</span>
                           {c[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || "Sin horario"}
-                        </div>
+                        </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wide ${badgeClass}`}
+                          className="dbe-pill"
+                          data-tone={getStatusTone(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS])}
                         >
                           {c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] || "Pendiente"}
                         </span>
@@ -498,7 +475,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           onClose={() => setMenu(null)}
           options={[
             {
-              label: "Editar Inscripción",
+              label: "Editar inscripción",
               icon: "edit",
               onClick: () => setEditingRecord(menu.record),
             },
@@ -512,7 +489,6 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         />
       )}
 
-      {/* --- MODAL DE EDICIÓN --- */}
       {editingRecord && (
         <RecordEditModal
           isOpen={!!editingRecord}

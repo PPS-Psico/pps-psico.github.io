@@ -20,20 +20,13 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
 } from "../../constants";
 import { ALL_ORIENTACIONES } from "../../types";
-import {
-  formatDate,
-  getStatusVisuals,
-  cleanInstitutionName,
-  safeGetId,
-  getEspecialidadClasses,
-} from "../../utils/formatters";
+import { formatDate, cleanInstitutionName, safeGetId } from "../../utils/formatters";
 import Loader from "../Loader";
 import RecordEditModal from "./RecordEditModal";
 import ContextMenu from "./ContextMenu";
 import DuplicateToStudentModal from "./DuplicateToStudentModal";
 import AdminSearch from "./AdminSearch";
 import Toast from "../ui/Toast";
-import Button from "../ui/Button";
 import PaginationControls from "../PaginationControls";
 import ConfirmModal from "../ConfirmModal";
 import SearchableSelect from "../SearchableSelect";
@@ -43,6 +36,14 @@ import {
   MOCK_LANZAMIENTOS,
   MOCK_INSTITUCIONES,
 } from "../../data/mockData";
+
+const getEstadoTone = (estado: string): string => {
+  const s = (estado || "").toLowerCase();
+  if (s.includes("en curso")) return "accent";
+  if (s.includes("finalizada") || s.includes("realizado")) return "ok";
+  if (s.includes("no se pudo")) return "warn";
+  return "mute";
+};
 
 const TABLE_CONFIG = {
   label: "Prácticas",
@@ -435,7 +436,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="dbe">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -446,7 +447,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
 
       <ConfirmModal
         isOpen={!!idToDelete}
-        title="¿Eliminar Práctica?"
+        title="¿Eliminar práctica?"
         message="Se borrará el registro. ¿Confirmar?"
         confirmText="Eliminar"
         type="danger"
@@ -455,14 +456,13 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       />
 
       {/* FILTROS */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12 gap-4 items-end shadow-sm">
-        <div className="md:col-span-3 space-y-1.5 h-full">
+      <div className="dbe-bar">
+        <div className="dbe-bar-grow" style={{ flexBasis: 200 }}>
+          <label className="dbe-label">Alumno</label>
           {!filterStudentId ? (
-            <div className="h-full">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 mb-1.5 block">
-                Alumno
-              </label>
-              <div className="h-11">
+            <div className="dbe-search" style={{ height: 42 }}>
+              <span className="material-icons">search</span>
+              <div style={{ paddingLeft: 26 }}>
                 <AdminSearch
                   onStudentSelect={(s) => {
                     setFilterStudentId(s.id);
@@ -472,26 +472,16 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
               </div>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">
-                Alumno
-              </label>
-              <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 h-11 px-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                <span className="text-xs font-bold truncate text-blue-800 dark:text-blue-300">
-                  {studentLabel}
-                </span>
-                <button
-                  onClick={() => setFilterStudentId("")}
-                  className="material-icons !text-sm text-blue-500 hover:text-blue-700"
-                >
-                  close
-                </button>
-              </div>
+            <div className="dbe-chip-active">
+              <span>{studentLabel}</span>
+              <button onClick={() => setFilterStudentId("")} aria-label="Quitar filtro">
+                <span className="material-icons">close</span>
+              </button>
             </div>
           )}
         </div>
 
-        <div className="md:col-span-4">
+        <div className="dbe-bar-grow" style={{ flexBasis: 240 }}>
           <SearchableSelect
             label="Institución"
             options={[{ value: "", label: "Todas" }, ...institutionOptions]}
@@ -505,7 +495,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
           />
         </div>
 
-        <div className="md:col-span-3">
+        <div className="dbe-bar-grow" style={{ flexBasis: 200 }}>
           <SearchableSelect
             label="Fecha / Convocatoria"
             options={[{ value: "", label: "Todas" }, ...launchOptions]}
@@ -517,83 +507,91 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
           />
         </div>
 
-        <div className="md:col-span-2">
-          <Button
-            onClick={() => setEditingRecord({ isCreating: true })}
-            icon="add_circle"
-            className="h-11 bg-blue-600 hover:bg-blue-700 w-full shadow-md"
-          >
-            Nueva
-          </Button>
-        </div>
+        <button
+          className="dbe-btn dbe-btn-primary"
+          onClick={() => setEditingRecord({ isCreating: true })}
+        >
+          <span className="material-icons">add_circle</span>
+          Nueva
+        </button>
       </div>
 
-      <div className="flex justify-end h-8">
+      <div className="dbe-actionrow">
         {selectedRowId && (
-          <button
-            onClick={() => setIdToDelete(selectedRowId)}
-            className="flex items-center gap-2 px-4 py-1.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-lg text-xs font-black uppercase border border-rose-200 dark:border-rose-800 animate-fade-in hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
-          >
-            <span className="material-icons !text-sm">delete</span> Eliminar
+          <button className="dbe-btn dbe-btn-danger" onClick={() => setIdToDelete(selectedRowId)}>
+            <span className="material-icons" style={{ fontSize: 15 }}>
+              delete
+            </span>{" "}
+            Eliminar
           </button>
         )}
       </div>
 
       {/* TABLA */}
       {isLoading ? (
-        <div className="py-12">
+        <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
           <Loader />
         </div>
       ) : (
-        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#020617] shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-widest">
+        <div className="dbe-table-wrap">
+          <div className="dbe-scroll">
+            <table className="dbe-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4">Institución</th>
-                  <th className="px-6 py-4">Estudiante</th>
-                  <th className="px-6 py-4">Inicio</th>
-                  <th className="px-6 py-4 text-center">Horas</th>
-                  <th className="px-6 py-4">Estado</th>
+                  <th>Institución</th>
+                  <th>Estudiante</th>
+                  <th>Inicio</th>
+                  <th style={{ textAlign: "center" }}>Horas</th>
+                  <th>Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {data?.records.map((p: any) => {
                   const isSelected = selectedRowId === p.id;
-                  const espVisuals = getEspecialidadClasses(p[FIELD_ESPECIALIDAD_PRACTICAS]);
-
                   return (
                     <tr
                       key={p.id}
+                      data-sel={isSelected ? "1" : "0"}
                       onClick={() => setSelectedRowId(isSelected ? null : p.id)}
                       onContextMenu={(e) => handleRowContextMenu(e, p)}
                       onDoubleClick={() => setEditingRecord(p)}
-                      className={`transition-all cursor-pointer group ${isSelected ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-slate-50/80 dark:hover:bg-slate-900/40"}`}
                     >
-                      <td className="px-6 py-4">
+                      <td>
                         <div
-                          className={`font-black truncate max-w-[250px] ${espVisuals.headerText}`}
+                          className="dbe-cell-strong"
+                          style={{
+                            maxWidth: 240,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                          title={cleanInstitutionName(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS])}
                         >
                           {cleanInstitutionName(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS])}
                         </div>
+                        {p[FIELD_ESPECIALIDAD_PRACTICAS] && (
+                          <div style={{ marginTop: 5 }}>
+                            <span className="dbe-tag">{p[FIELD_ESPECIALIDAD_PRACTICAS]}</span>
+                          </div>
+                        )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-slate-700 dark:text-slate-300">
+                      <td>
+                        <div className="dbe-cell-strong" style={{ fontWeight: 500 }}>
                           {p.__student.nombre}
                         </div>
-                        <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                          {p.__student.legajo}
-                        </div>
+                        <div className="dbe-cell-mono">{p.__student.legajo}</div>
                       </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">
+                      <td className="dbe-cell-mono">
                         {formatDate(p[FIELD_FECHA_INICIO_PRACTICAS])}
                       </td>
-                      <td className="px-6 py-4 text-center font-black text-blue-600 dark:text-blue-400">
-                        {p[FIELD_HORAS_PRACTICAS]} hs
+                      <td style={{ textAlign: "center" }}>
+                        <span className="dbe-num">{p[FIELD_HORAS_PRACTICAS]}</span>
+                        <span className="dbe-num-u">hs</span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <span
-                          className={`px-2 py-1 rounded-full text-[10px] font-black border uppercase ${getStatusVisuals(p[FIELD_ESTADO_PRACTICA]).labelClass}`}
+                          className="dbe-pill"
+                          data-tone={getEstadoTone(p[FIELD_ESTADO_PRACTICA])}
                         >
                           {p[FIELD_ESTADO_PRACTICA]}
                         </span>

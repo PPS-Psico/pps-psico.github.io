@@ -205,21 +205,47 @@ export function cleanWhatsAppNumber(phone?: string | null): {
 } {
   if (!phone) return { number: "", isValid: false, hint: "Teléfono vacío" };
 
+  // Remove all non-numeric characters except +
   let cleaned = String(phone).replace(/[^\d+]/g, "");
-
   cleaned = cleaned.replace(/^\+/, "");
+
+  // Remove leading international prefix 00
+  if (cleaned.startsWith("00")) {
+    cleaned = cleaned.substring(2);
+  }
+
+  // Remove leading 0 for national numbers (e.g. 011... -> 11...)
+  if (cleaned.startsWith("0") && cleaned.length > 8) {
+    cleaned = cleaned.substring(1);
+  }
+
+  // Standardize Argentine number without country code
+  // If it has 10 digits (e.g. 1143029988), it's [area_code][number]. We prepend '549' to make it a WhatsApp mobile JID.
+  if (cleaned.length === 10 && !cleaned.startsWith("54")) {
+    cleaned = "549" + cleaned;
+  }
+  // If it has 12 digits and starts with 1115... (e.g. 11 15 4302 9988), remove the 15:
+  else if (cleaned.startsWith("1115") && cleaned.length === 12) {
+    cleaned = "54911" + cleaned.substring(4);
+  }
+  // If it starts with 54 but has 12 digits (meaning it's 54 [10 digits] and missing the mobile '9'):
+  else if (cleaned.startsWith("54") && !cleaned.startsWith("549") && cleaned.length === 12) {
+    cleaned = "549" + cleaned.substring(2);
+  }
+  // If it has 13 digits starting with 54915... (e.g. 54 9 15 4302 9988), remove the 15:
+  else if (cleaned.startsWith("54915") && cleaned.length === 13) {
+    cleaned = "549" + cleaned.substring(5);
+  }
+  // If it has 14 digits starting with 5491115... (e.g. 54 9 11 15 4302 9988), remove the 15:
+  else if (cleaned.startsWith("5491115") && cleaned.length === 14) {
+    cleaned = "54911" + cleaned.substring(7);
+  }
 
   if (!/^\d{8,15}$/.test(cleaned)) {
     return { number: cleaned, isValid: false, hint: "El número debe tener entre 8 y 15 dígitos" };
   }
 
-  let finalNumber = cleaned;
-
-  if (cleaned.length === 10 && !cleaned.startsWith("54")) {
-    finalNumber = "54" + cleaned;
-  }
-
-  return { number: finalNumber, isValid: true };
+  return { number: cleaned, isValid: true };
 }
 
 export function getWhatsAppUrl(phone?: string | null, message?: string): string | null {

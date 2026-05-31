@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient";
+import { logger } from "../utils/logger";
 import {
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
@@ -60,7 +61,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Función de limpieza profunda
   const deepCleanup = useCallback(() => {
-    console.log("🧹 Ejecutando limpieza profunda de sesión...");
+    logger.info("🧹 Ejecutando limpieza profunda de sesión...");
     localStorage.removeItem("sb-qxnxtnhtbpsgzprqtrjl-auth-token");
     sessionStorage.clear();
     queryClient.clear();
@@ -69,7 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(async () => {
     try {
-      console.log("🚪 Cerrando sesión...");
+      logger.info("🚪 Cerrando sesión...");
 
       // 1. Cancel React Query fetching
       queryClient.cancelQueries();
@@ -79,12 +80,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 3. Sign out from Supabase (Safe catch if no session exists)
       const { error } = await (supabase.auth as any).signOut();
-      if (error) console.warn("Supabase signOut warning:", error.message);
+      if (error) logger.warn("Supabase signOut warning:", error.message);
 
       // 4. Force cleanup
       deepCleanup();
     } catch (error) {
-      console.error("Error during forced logout:", error);
+      logger.error("Error during forced logout:", error);
       deepCleanup();
     }
   }, [queryClient, deepCleanup]);
@@ -98,7 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Safety Timeout: If nothing happens in 8 seconds, stop loading.
     safetyTimeoutRef.current = setTimeout(() => {
       if (isMounted && isAuthLoading) {
-        console.warn("⚠️ Auth check timed out. Stopping spinner.");
+        logger.warn("⚠️ Auth check timed out. Stopping spinner.");
         setIsAuthLoading(false);
       }
     }, 8000);
@@ -115,7 +116,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       try {
         // Fetch profile from DB including DNI for validation
-        console.log("[Auth] Buscando estudiante con user_id:", session.user.id);
+        logger.info("[Auth] Buscando estudiante con user_id:", session.user.id);
         const { data: profile, error } = await supabase
           .from("estudiantes")
           .select(
@@ -124,7 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .eq(FIELD_USER_ID_ESTUDIANTES, session.user.id)
           .maybeSingle();
 
-        console.log("[Auth] Profile encontrado:", profile, "error:", error);
+        logger.info("[Auth] Profile encontrado:", profile, "error:", error);
 
         if (isMounted) {
           if (profile && !error) {
@@ -132,7 +133,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             // Verificar si le faltan datos esenciales (DNI)
             const dniValue = profile[FIELD_DNI_ESTUDIANTES];
-            console.log("[Auth] DNI value:", dniValue, "type:", typeof dniValue);
+            logger.info("[Auth] DNI value:", dniValue, "type:", typeof dniValue);
             const hasDni =
               dniValue !== null &&
               dniValue !== undefined &&
@@ -142,20 +143,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               dbRole || ""
             );
             const needsDataCompletion = !hasDni && !isAdminRole;
-            console.log("[Auth] hasDni:", hasDni, "needsDataCompletion:", needsDataCompletion);
+            logger.info("[Auth] hasDni:", hasDni, "needsDataCompletion:", needsDataCompletion);
 
             // Auto-activar si tiene DNI válido y está inactivo
             const currentEstado = profile.estado;
             const hasValidData =
               hasDni && profile[FIELD_CORREO_ESTUDIANTES] && profile[FIELD_TELEFONO_ESTUDIANTES];
             if (hasValidData && currentEstado !== "Activo" && currentEstado !== "Finalizado") {
-              console.log("[Auth] Auto-activando estudiante:", profile.id);
+              logger.info("[Auth] Auto-activando estudiante:", profile.id);
               supabase
                 .from("estudiantes")
                 .update({ estado: "Activo" })
                 .eq("id", profile.id)
                 .then(() => {
-                  console.log("[Auth] Estudiante activado");
+                  logger.info("[Auth] Estudiante activado");
                 });
             }
 
@@ -178,7 +179,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               setIsAuthLoading(false);
             }, 50); // Small delay to decouple from event loop
           } else {
-            console.warn(
+            logger.warn(
               "Profile not found for authenticated user. Posible Admin o Error de Integridad."
             );
             if (session.user.email !== "admin@uflo.edu.ar") {
@@ -188,7 +189,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
       } catch (err) {
-        console.error("Profile fetch error:", err);
+        logger.error("Profile fetch error:", err);
         if (isMounted) {
           setAuthenticatedUser(null);
           setIsAuthLoading(false);
@@ -201,7 +202,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("refresh token") || msg.includes("not found") || msg.includes("invalid")) {
-          console.error("🚨 Token corrupto detectado. Limpiando almacenamiento.");
+          logger.error("🚨 Token corrupto detectado. Limpiando almacenamiento.");
           deepCleanup();
         }
         if (isMounted) setIsAuthLoading(false);
@@ -214,14 +215,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const {
       data: { subscription },
     } = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
-      console.log(`AUTH EVENT: ${event}`);
+      logger.info(`AUTH EVENT: ${event}`);
 
       if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
 
       if (event === "TOKEN_REFRESHED") {
         refreshLoopCounter.current += 1;
         if (refreshLoopCounter.current > 3) {
-          console.error("🔄 Bucle de refresco detectado. Forzando salida.");
+          logger.error("🔄 Bucle de refresco detectado. Forzando salida.");
           refreshLoopCounter.current = 0;
           deepCleanup();
           if (isMounted) setIsAuthLoading(false);

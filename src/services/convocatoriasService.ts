@@ -9,6 +9,7 @@ import {
   safeGetId,
 } from "../utils/formatters";
 import { cleanSchedule, findMatchingGroupKey } from "../utils/scheduleUtils";
+import { logger } from "../utils/logger";
 
 function addToGrouped(
   grouped: GroupedSeleccionados,
@@ -202,7 +203,7 @@ export const fetchSeleccionados = async (
         .map((row) => [row.convocatoria_id, row])
     );
   } catch (error) {
-    console.warn("[fetchSeleccionados] Could not load commitments", error);
+    logger.warn("[fetchSeleccionados] Could not load commitments", error);
   }
 
   const studentIds = selectedEnrollments
@@ -230,7 +231,7 @@ export const fetchSeleccionados = async (
         return sortGrouped(grouped);
       }
     } catch (rpcErr) {
-      console.warn("[fetchSeleccionados] RPC fallback failed:", rpcErr);
+      logger.warn("[fetchSeleccionados] RPC fallback failed:", rpcErr);
     }
   }
 
@@ -301,12 +302,12 @@ export const toggleStudentSelection = async (
       const cleanOrientacion = cleanDbValue(finalOrientacion);
 
       if (rawName && rawName !== cleanName && cleanName.length > 2) {
-        console.log(
+        logger.info(
           `[DATA SERVICE] 🚨 DETECTED DIRTY ROOT: Lanzamiento ${lanzamiento.id} has dirty name. Cleaning source...`
         );
         db.lanzamientos
           .update(lanzamiento.id, { [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanName })
-          .catch((err) => console.warn("Failed to clean source launch", err));
+          .catch((err) => logger.warn("Failed to clean source launch", err));
       }
 
       const { data: existing } = await supabase
@@ -317,7 +318,7 @@ export const toggleStudentSelection = async (
         .maybeSingle();
 
       if (!existing) {
-        console.log(`[DATA SERVICE] Creating Practica. Name="${cleanName}"`);
+        logger.info(`[DATA SERVICE] Creating Practica. Name="${cleanName}"`);
 
         let finalName = cleanName;
         if (typeof finalName === "string") {
@@ -338,13 +339,13 @@ export const toggleStudentSelection = async (
 
         await db.practicas.create(payload as any);
       } else {
-        console.log(`[DATA SERVICE] Practica already exists. Checking data integrity...`);
+        logger.info(`[DATA SERVICE] Practica already exists. Checking data integrity...`);
         const existingPractica = existing as any;
         const currentName = existingPractica[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
         const currentNameStr = Array.isArray(currentName) ? currentName[0] : String(currentName);
 
         if (currentNameStr !== cleanName) {
-          console.log(`[DATA SERVICE] Fixing dirty name: ${currentNameStr} -> ${cleanName}`);
+          logger.info(`[DATA SERVICE] Fixing dirty name: ${currentNameStr} -> ${cleanName}`);
           await db.practicas.update(existingPractica.id, {
             [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: cleanName,
             [C.FIELD_ESPECIALIDAD_PRACTICAS]: cleanOrientacion,
@@ -368,7 +369,7 @@ export const toggleStudentSelection = async (
 
     return { success: true };
   } catch (e) {
-    console.error(`[DATA SERVICE] ERROR:`, e);
+    logger.error(`[DATA SERVICE] ERROR:`, e);
     return { success: false, error: (e as Error).message };
   }
 };

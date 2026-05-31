@@ -7,6 +7,7 @@ import Button from "../ui/Button";
 import EmptyState from "../EmptyState";
 import { supabase } from "../../lib/supabaseClient";
 import { useNotifications } from "../../contexts/NotificationContext";
+import { logger } from "../../utils/logger";
 
 interface FinalizacionFormProps {
   studentId: string | null;
@@ -165,7 +166,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentId, onClose,
       showToast("Solicitud enviada con éxito. Se procesará tu acreditación.", "success");
     },
     onError: (error) => {
-      console.error("Submission Error:", error);
+      logger.error("Submission Error:", error);
       const errorMsg = error.message || "Error desconocido";
       showToast(`Error al enviar: ${errorMsg}. Revisa tu conexión e intenta nuevamente.`, "error");
     },
@@ -192,7 +193,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({ studentId, onClose,
 
       showToast("Plantilla descargada.", "success");
     } catch (error: any) {
-      console.error("Error descargando plantilla", error);
+      logger.error("Error descargando plantilla", error);
       showToast("No se pudo descargar la plantilla.", "error");
     } finally {
       setIsDownloadingTemplate(false);

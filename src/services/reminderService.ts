@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { logger } from "../utils/logger";
 
 export type ReminderType =
   | "contactar"
@@ -52,7 +53,7 @@ class ReminderService {
    */
   async createReminder(input: CreateReminderInput): Promise<Reminder | null> {
     if (!this.userId) {
-      console.error("[ReminderService] No user ID set");
+      logger.error("[ReminderService] No user ID set");
       return null;
     }
 
@@ -76,13 +77,13 @@ class ReminderService {
         .single() as any);
 
       if (error) {
-        console.error("[ReminderService] Error creating reminder:", error);
+        logger.error("[ReminderService] Error creating reminder:", error);
         return null;
       }
 
       return data as Reminder;
     } catch (error) {
-      console.error("[ReminderService] Exception creating reminder:", error);
+      logger.error("[ReminderService] Exception creating reminder:", error);
       return null;
     }
   }
@@ -145,7 +146,7 @@ class ReminderService {
 
       return true;
     } catch (error) {
-      console.error("[ReminderService] Error creating lanzamiento reminders:", error);
+      logger.error("[ReminderService] Error creating lanzamiento reminders:", error);
       return false;
     }
   }
@@ -178,7 +179,7 @@ class ReminderService {
 
       return true;
     } catch (error) {
-      console.error("[ReminderService] Error creating seguimiento reminder:", error);
+      logger.error("[ReminderService] Error creating seguimiento reminder:", error);
       return false;
     }
   }
@@ -202,13 +203,13 @@ class ReminderService {
         .limit(limit) as any);
 
       if (error) {
-        console.error("[ReminderService] Error fetching reminders:", error);
+        logger.error("[ReminderService] Error fetching reminders:", error);
         return [];
       }
 
       return (data || []) as Reminder[];
     } catch (error) {
-      console.error("[ReminderService] Exception fetching reminders:", error);
+      logger.error("[ReminderService] Exception fetching reminders:", error);
       return [];
     }
   }
@@ -238,13 +239,13 @@ class ReminderService {
         .order("due_date", { ascending: true }) as any);
 
       if (error) {
-        console.error("[ReminderService] Error fetching today's reminders:", error);
+        logger.error("[ReminderService] Error fetching today's reminders:", error);
         return [];
       }
 
       return (data || []) as Reminder[];
     } catch (error) {
-      console.error("[ReminderService] Exception fetching today's reminders:", error);
+      logger.error("[ReminderService] Exception fetching today's reminders:", error);
       return [];
     }
   }
@@ -273,13 +274,13 @@ class ReminderService {
         .order("due_date", { ascending: true }) as any);
 
       if (error) {
-        console.error("[ReminderService] Error fetching week reminders:", error);
+        logger.error("[ReminderService] Error fetching week reminders:", error);
         return [];
       }
 
       return (data || []) as Reminder[];
     } catch (error) {
-      console.error("[ReminderService] Exception fetching week reminders:", error);
+      logger.error("[ReminderService] Exception fetching week reminders:", error);
       return [];
     }
   }
@@ -304,13 +305,13 @@ class ReminderService {
         .limit(20) as any);
 
       if (error) {
-        console.error("[ReminderService] Error fetching overdue reminders:", error);
+        logger.error("[ReminderService] Error fetching overdue reminders:", error);
         return [];
       }
 
       return (data || []) as Reminder[];
     } catch (error) {
-      console.error("[ReminderService] Exception fetching overdue reminders:", error);
+      logger.error("[ReminderService] Exception fetching overdue reminders:", error);
       return [];
     }
   }
@@ -332,13 +333,13 @@ class ReminderService {
         .eq("user_id", this.userId) as any);
 
       if (error) {
-        console.error("[ReminderService] Error completing reminder:", error);
+        logger.error("[ReminderService] Error completing reminder:", error);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error("[ReminderService] Exception completing reminder:", error);
+      logger.error("[ReminderService] Exception completing reminder:", error);
       return false;
     }
   }
@@ -372,13 +373,13 @@ class ReminderService {
         .eq("user_id", this.userId) as any);
 
       if (error) {
-        console.error("[ReminderService] Error snoozing reminder:", error);
+        logger.error("[ReminderService] Error snoozing reminder:", error);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error("[ReminderService] Exception snoozing reminder:", error);
+      logger.error("[ReminderService] Exception snoozing reminder:", error);
       return false;
     }
   }
@@ -397,13 +398,13 @@ class ReminderService {
         .eq("user_id", this.userId) as any);
 
       if (error) {
-        console.error("[ReminderService] Error deleting reminder:", error);
+        logger.error("[ReminderService] Error deleting reminder:", error);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error("[ReminderService] Exception deleting reminder:", error);
+      logger.error("[ReminderService] Exception deleting reminder:", error);
       return false;
     }
   }
@@ -436,7 +437,7 @@ class ReminderService {
         total: total.length,
       };
     } catch (error) {
-      console.error("[ReminderService] Error getting counts:", error);
+      logger.error("[ReminderService] Error getting counts:", error);
       return { today: 0, week: 0, overdue: 0, total: 0 };
     }
   }

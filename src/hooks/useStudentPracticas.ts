@@ -39,7 +39,7 @@ export const useStudentPracticas = (legajo: string) => {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
 
-      const updates = [];
+      const updates: Promise<unknown>[] = [];
 
       for (const p of data) {
         const status = normalizeStringForComparison(p[FIELD_ESTADO_PRACTICA]);
