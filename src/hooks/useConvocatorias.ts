@@ -51,6 +51,7 @@ import {
   FIELD_ESTADO_ESTUDIANTES,
 } from "../constants";
 import { normalizeStringForComparison, cleanInstitutionName, safeGetId } from "../utils/formatters";
+import { logger } from "../utils/logger";
 
 export const useConvocatorias = (
   legajo: string,
@@ -156,7 +157,7 @@ export const useConvocatorias = (
 
       if (!studentId) throw new Error("No student ID");
 
-      console.log("[Enrollment] Validando estudiante:", {
+      logger.info("[Enrollment] Validando estudiante:", {
         legajo,
         studentId,
         estado: studentDetails?.[FIELD_ESTADO_ESTUDIANTES],
@@ -167,7 +168,7 @@ export const useConvocatorias = (
       const estadoEstudiante = normalizeStringForComparison(
         studentDetails?.[FIELD_ESTADO_ESTUDIANTES]
       );
-      console.log("[Enrollment] Estado estudiante:", estadoEstudiante);
+      logger.info("[Enrollment] Estado estudiante:", estadoEstudiante);
       if (estadoEstudiante !== "activo") {
         throw new Error("Tu cuenta no está activa. Comunicate con coordinación de PPS.");
       }
@@ -256,7 +257,7 @@ export const useConvocatorias = (
       );
 
       if (canceledEnrollment) {
-        console.log(
+        logger.info(
           "[Enrollment] Re-enrolling: Found canceled enrollment, updating:",
           canceledEnrollment.id
         );
@@ -302,7 +303,7 @@ export const useConvocatorias = (
         await new Promise((resolve) => setTimeout(resolve, 500));
         return;
       }
-      console.log("[Enrollment] Attempting hard delete of convocatoria:", {
+      logger.info("[Enrollment] Attempting hard delete of convocatoria:", {
         convocatoriaId,
         studentId,
         legajo,
@@ -310,12 +311,12 @@ export const useConvocatorias = (
       await db.convocatorias.delete(convocatoriaId);
     },
     onSuccess: () => {
-      console.log("[Enrollment] Convocatoria deleted successfully");
+      logger.info("[Enrollment] Convocatoria deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
       showModal("Inscripción eliminada", "La inscripción se eliminó correctamente.");
     },
     onError: (err, variables) => {
-      console.error("[Enrollment] Error deleting convocatoria", {
+      logger.error("[Enrollment] Error deleting convocatoria", {
         convocatoriaId: variables.convocatoriaId,
         studentId,
         legajo,

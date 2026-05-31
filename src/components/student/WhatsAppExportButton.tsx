@@ -7,6 +7,7 @@ import {
   FIELD_LEGAJO_ESTUDIANTES,
 } from "../../constants";
 import type { Practica, CriteriosCalculados, Orientacion, EstudianteFields } from "../../types";
+import { logger } from "../../utils/logger";
 
 interface WhatsAppExportButtonProps {
   practicas: Practica[];
@@ -74,7 +75,7 @@ ${practicasText}
         showModal("Copiado", "El resumen del alumno ha sido copiado al portapapeles.");
       },
       (err) => {
-        console.error("Error al copiar: ", err);
+        logger.error("Error al copiar: ", err);
         showModal("Error", "No se pudo copiar el texto. Revisa los permisos del navegador.");
       }
     );

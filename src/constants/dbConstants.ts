@@ -97,6 +97,9 @@ export const FIELD_FECHA_PUBLICACION_LANZAMIENTOS = "fecha_publicacion";
 export const FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS = "mensaje_whatsapp";
 export const FIELD_HORARIOS_FIJOS_LANZAMIENTOS = "horarios_fijos";
 export const FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS = "fecha_encuentro_inicial";
+// Flujo de aseguramiento: marca persistente de "seguro gestionado" (ver spec flujo-aseguramiento-pps)
+export const FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS = "seguro_gestionado_at";
+export const FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS = "seguro_gestionado_por";
 export const FIELD_AIRTABLE_ID = "airtable_id";
 
 // Convocatorias

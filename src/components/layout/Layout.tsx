@@ -2,6 +2,7 @@ import React, { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import AppHeader from "./Header";
 import { useModal } from "../../contexts/ModalContext";
+import { logger } from "../../utils/logger";
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,6 +19,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const fullWidthRoutes = ["/admin", "/jefe", "/directivo", "/reportero", "/testing"];
   const isFullWidth = fullWidthRoutes.some((route) => location.pathname.startsWith(route));
 
+  // Rutas que traen su propia barra superior v3 (AdminTopBar) y por lo tanto
+  // no deben renderizar el AppHeader legacy (evita la pila de dos barras).
+  const ownTopBarRoutes = ["/admin", "/jefe", "/directivo", "/reportero", "/testing"];
+  const hasOwnTopBar = ownTopBarRoutes.some((route) => location.pathname.startsWith(route));
+
   // Global Error Listener: Catch "Silent Failures"
   useEffect(() => {
     const handleGlobalError = (event: ErrorEvent) => {
@@ -25,7 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       if (String(msg).includes("Incorrect locale") || String(msg).includes("RangeError")) {
         return;
       }
-      console.error("Global Error Caught:", event.error);
+      logger.error("Global Error Caught:", event.error);
       showModal(
         "Se produjo un error inesperado",
         `Detalle: ${msg || "Error desconocido en la aplicación."}\n\nPor favor, recarga la página.`
@@ -41,7 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         return;
       }
 
-      console.error("Unhandled Rejection Caught:", event.reason);
+      logger.error("Unhandled Rejection Caught:", event.reason);
       showModal("Error de Procesamiento", `Ocurrió un fallo en una operación: ${message}`);
     };
 
@@ -74,12 +80,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           Sin conexión a internet. Verificando red...
         </div>
       )}
-      <AppHeader />
-      {/* pt-16 for mobile (fixed header spacing), md:pt-0 for desktop (sticky header) */}
+      {!hasOwnTopBar && <AppHeader />}
+      {/* pt-16 for mobile (fixed header spacing), md:pt-0 for desktop (sticky header).
+          Las rutas con barra propia (admin) van full-bleed, sin padding ni cap de ancho. */}
       <main
-        className={`flex-grow w-full px-4 sm:px-6 lg:px-8 pb-8 pt-16 md:pt-0 ${
-          isFullWidth ? "" : "max-w-7xl mx-auto"
-        }`}
+        className={
+          hasOwnTopBar
+            ? "flex-grow w-full"
+            : `flex-grow w-full px-4 sm:px-6 lg:px-8 pb-8 pt-16 md:pt-0 ${
+                isFullWidth ? "" : "max-w-7xl mx-auto"
+              }`
+        }
       >
         {children}
       </main>

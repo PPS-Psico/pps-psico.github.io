@@ -1,8 +1,6 @@
-import React, { useState } from "react";
-import SubTabs from "../../components/SubTabs";
-import { MetricsDashboard } from "../../components/admin/MetricsDashboard";
-import TimelineView from "../../components/TimelineView";
+import React from "react";
 import ErrorBoundary from "../../components/ErrorBoundary";
+import MetricasV3View from "./MetricasV3View";
 
 interface MetricsViewProps {
   onStudentSelect: (student: { legajo: string; nombre: string }) => void;
@@ -10,50 +8,27 @@ interface MetricsViewProps {
   onModalOpen?: (isOpen: boolean) => void;
 }
 
+/**
+ * Sección Métricas (admin) · Rediseño v3 Paper & Ink.
+ *
+ * La vista ejecutiva ahora vive en `MetricasV3View`, que trae su propio
+ * masthead serif, selector de año y sub-pestañas (Dashboard · Línea de tiempo ·
+ * Reporte ejecutivo). El masthead reemplaza al SubTabs genérico anterior para
+ * mantener consistencia con Inicio / Lanzador / Gestión / Solicitudes.
+ */
 const MetricsView: React.FC<MetricsViewProps> = ({
   onStudentSelect,
   isTestingMode = false,
   onModalOpen,
 }) => {
-  const [activeMetricsTabId, setActiveMetricsTabId] = useState("dashboard");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleModalOpen = (open: boolean) => {
-    setIsModalOpen(open);
-    onModalOpen?.(open);
-  };
-
-  const metricsSubTabs = [
-    { id: "dashboard", label: "Dashboard", icon: "bar_chart" },
-    { id: "timeline", label: "Línea de Tiempo", icon: "timeline" },
-  ];
-
   return (
-    <>
-      <div className={isModalOpen ? "hidden" : ""}>
-        <SubTabs
-          tabs={metricsSubTabs}
-          activeTabId={activeMetricsTabId}
-          onTabChange={setActiveMetricsTabId}
-        />
-      </div>
-      <div className="mt-6">
-        {activeMetricsTabId === "dashboard" && (
-          <ErrorBoundary>
-            <MetricsDashboard
-              onStudentSelect={onStudentSelect}
-              isTestingMode={isTestingMode}
-              onModalOpen={handleModalOpen}
-            />
-          </ErrorBoundary>
-        )}
-        {activeMetricsTabId === "timeline" && (
-          <ErrorBoundary>
-            <TimelineView isTestingMode={isTestingMode} />
-          </ErrorBoundary>
-        )}
-      </div>
-    </>
+    <ErrorBoundary>
+      <MetricasV3View
+        onStudentSelect={onStudentSelect}
+        isTestingMode={isTestingMode}
+        onModalOpen={onModalOpen}
+      />
+    </ErrorBoundary>
   );
 };
 

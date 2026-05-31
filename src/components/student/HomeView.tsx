@@ -126,7 +126,7 @@ const HomeView: React.FC<HomeViewProps> = ({
 
         const studentIds = selected.map((e: any) => e[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
         const students = await mockDb.getAll("estudiantes", { id: studentIds });
-        const studentMap = new Map(students.map((s: any) => [s.id, s]));
+        const studentMap = new Map<string, any>(students.map((s: any) => [s.id, s]));
 
         const grouped: Record<string, { nombre: any; legajo: any }[]> = {};
         selected.forEach((e: any) => {
@@ -268,7 +268,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           inicio: formatDate(lanzamiento.fecha_inicio),
           fin: formatDate(lanzamiento.fecha_finalizacion),
         }}
-        status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]}
+        status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] ?? undefined}
         estadoInscripcion={enrollmentStatus as any}
         compromisoEstado={compromiso?.estado || null}
         enrollment={enrollment}
@@ -290,7 +290,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           }
         }}
         horariosFijos={!!lanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS]}
-        fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial}
+        fechaEncuentroInicial={lanzamiento.fecha_encuentro_inicial ?? undefined}
       />
     );
   };

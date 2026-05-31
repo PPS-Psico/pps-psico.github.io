@@ -21,6 +21,7 @@ import {
 import EmptyState from "../EmptyState";
 import NotaSelector from "../NotaSelector";
 import { TableSkeleton } from "../Skeletons";
+import { logger } from "../../utils/logger";
 
 interface PracticasTableProps {
   practicas: Practica[];
@@ -424,7 +425,7 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
   onRequestNuevaPPS,
 }) => {
   if (import.meta.env.DEV) {
-    console.log("[DEBUG] PracticasTable Props:", {
+    logger.info("[DEBUG] PracticasTable Props:", {
       practicasCount: practicas.length,
       hasDateHandler: !!handleFechaFinChange,
       hasModificacionHandler: !!onRequestModificacion,

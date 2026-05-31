@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { cleanDbValue } from "../utils/formatters";
+import { logger } from "../utils/logger";
 
 export const uploadInstitutionLogo = async (
   file: File,
@@ -19,7 +20,7 @@ export const uploadInstitutionLogo = async (
       .upload(fileName, file, { upsert: true });
 
     if (error) {
-      console.error("Upload Error (institution-logos):", error);
+      logger.error("Upload Error (institution-logos):", error);
       throw new Error(`Error subiendo logo: ${error.message}`);
     }
 

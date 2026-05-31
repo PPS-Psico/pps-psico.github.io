@@ -8,6 +8,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { CompromisoPPS } from "../types";
 import { Database } from "../types/supabase";
 import { stripGreeting } from "../utils/emailService";
+import { logger } from "../utils/logger";
 
 export const fetchStudentCompromisos = async (studentId: string): Promise<CompromisoPPS[]> => {
   const { data, error } = await supabase
@@ -16,7 +17,7 @@ export const fetchStudentCompromisos = async (studentId: string): Promise<Compro
     .eq(C.FIELD_COMPROMISO_ESTUDIANTE, studentId);
 
   if (error) {
-    console.warn("[fetchStudentCompromisos] Error fetching commitments:", error);
+    logger.warn("[fetchStudentCompromisos] Error fetching commitments:", error);
     return [];
   }
 

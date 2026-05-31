@@ -1,4 +1,5 @@
 import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { logger } from "../utils/logger";
 
 // Definición de qué módulos se pueden apagar/prender
 export interface AdminModuleConfig {
@@ -47,7 +48,7 @@ export const AdminPreferencesProvider: React.FC<{ children: ReactNode }> = ({ ch
         // Fusionar con defaults por si faltan claves nuevas
         setPreferences({ ...DEFAULT_PREFERENCES, ...parsed });
       } catch (e) {
-        console.warn("Error parsing admin preferences", e);
+        logger.warn("Error parsing admin preferences", e);
       }
     }
   }, []);

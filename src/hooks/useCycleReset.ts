@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { logger } from "../utils/logger";
 import {
   TABLE_NAME_PPS,
   FIELD_ESTADO_PPS,
@@ -51,7 +52,7 @@ export const useCycleReset = () => {
         })
         .neq(FIELD_ESTADO_GESTION_LANZAMIENTOS, "Pendiente de Gestión");
     } catch (error) {
-      console.error("Error resetting cycle:", error);
+      logger.error("Error resetting cycle:", error);
     } finally {
       setIsCheckingReset(false);
       setShowResetConfirm(false);

@@ -126,7 +126,7 @@ const CalendarPlanning: React.FC<CalendarPlanningProps> = ({ items }) => {
                     >
                       <div
                         className="font-semibold text-slate-700 dark:text-slate-200 truncate"
-                        title={launch[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
+                        title={launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? undefined}
                       >
                         {launch[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
                       </div>

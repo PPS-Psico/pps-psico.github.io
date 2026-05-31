@@ -3,6 +3,12 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import "@testing-library/jest-dom";
+import { configure } from "@testing-library/react";
+
+// Raise the default async timeout for findBy*/waitFor queries. The default of
+// 1000ms is too tight when the full suite runs in parallel and the heavier
+// integration tests compete for CPU, which caused intermittent CI failures.
+configure({ asyncUtilTimeout: 5000 });
 
 // Mock environment variables for tests
 process.env.VITE_SUPABASE_URL = "https://test.supabase.co";
@@ -12,21 +18,10 @@ process.env.VITE_GA4_MEASUREMENT_ID = "G-TEST123456";
 process.env.VITE_ENABLE_MONITORING_IN_DEV = "true";
 process.env.VITE_APP_VERSION = "test";
 
-// Polyfill import.meta.env for Jest
-// This must be done before any code that uses import.meta.env
-const mockImportMeta = {
-  env: {
-    VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || "https://test.supabase.co",
-    VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || "test-anon-key",
-    VITE_GA4_MEASUREMENT_ID: process.env.VITE_GA4_MEASUREMENT_ID || "G-TEST123456",
-    VITE_ENABLE_MONITORING_IN_DEV: process.env.VITE_ENABLE_MONITORING_IN_DEV || "true",
-    VITE_APP_VERSION: process.env.VITE_APP_VERSION || "test",
-    VITE_VAPID_PUBLIC_KEY: process.env.VITE_VAPID_PUBLIC_KEY || "test-vapid-key",
-  },
-};
-
-// Define import.meta globally for Jest
-(global as any).import = mockImportMeta;
+// NOTE: `import.meta.env.*` usages are handled at compile time by the
+// `ts-jest-mock-import-meta` AST transformer configured in jest.config.ts.
+// The process.env values above remain as a convenience for any code that
+// reads process.env directly.
 
 // Polyfills for JSDOM
 Object.defineProperty(window, "matchMedia", {

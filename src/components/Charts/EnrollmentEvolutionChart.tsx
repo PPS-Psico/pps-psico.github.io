@@ -60,6 +60,7 @@ const EnrollmentEvolutionChart: React.FC<EnrollmentEvolutionChartProps> = ({
   onBarClick,
 }) => {
   const total = data.reduce((acc, curr) => acc + curr.value, 0);
+  const hasProjection = data.some((d) => d.isProjection);
 
   if (!data.length || total === 0) {
     return (
@@ -168,12 +169,14 @@ const EnrollmentEvolutionChart: React.FC<EnrollmentEvolutionChartProps> = ({
             Dato Histórico
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-amber-500 border border-dashed border-amber-600"></span>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Proyección 2026
-          </span>
-        </div>
+        {hasProjection && (
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-amber-500 border border-dashed border-amber-600"></span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Proyección
+            </span>
+          </div>
+        )}
       </div>
     </motion.div>
   );

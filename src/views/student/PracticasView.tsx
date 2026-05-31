@@ -6,6 +6,7 @@ import SolicitudNuevaPPSModal from "../../components/student/SolicitudNuevaPPSMo
 import { useAuth } from "../../contexts/AuthContext";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import type { Practica } from "../../types";
+import { logger } from "../../utils/logger";
 
 const PracticasView: React.FC = () => {
   const {
@@ -23,7 +24,7 @@ const PracticasView: React.FC = () => {
   const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);
 
   const handleRequestModificacion = (practica: Practica) => {
-    console.log("[DEBUG] Solicitar modificación para:", practica);
+    logger.info("[DEBUG] Solicitar modificación para:", practica);
     setSelectedPractica(practica);
     setShowModificacionModal(true);
   };
@@ -33,13 +34,13 @@ const PracticasView: React.FC = () => {
   };
 
   const handleRequestNuevaPPS = () => {
-    console.log("[DEBUG] Abrir modal nueva PPS");
-    console.log("[DEBUG] Estado antes:", { modalVisible: showNuevaPPSModal });
+    logger.info("[DEBUG] Abrir modal nueva PPS");
+    logger.info("[DEBUG] Estado antes:", { modalVisible: showNuevaPPSModal });
     setShowNuevaPPSModal(true);
-    console.log("[DEBUG] Seteando modal a true");
+    logger.info("[DEBUG] Seteando modal a true");
   };
 
-  console.log("[DEBUG] PracticasView render - handlers definidos:", {
+  logger.info("[DEBUG] PracticasView render - handlers definidos:", {
     onRequestModificacion: !!handleRequestModificacion,
     onRequestNuevaPPS: !!handleRequestNuevaPPS,
     practicasCount: practicas.length,

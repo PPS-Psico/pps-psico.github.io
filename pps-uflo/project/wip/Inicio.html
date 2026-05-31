@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PPS UFLO · Admin · Inicio</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+<style>
+  :root {
+    --paper: #F7F5F0;
+    --paper-2: #EFECE4;
+    --ink: #14130F;
+    --ink-2: #2A2823;
+    --ink-3: #6B6660;
+    --ink-4: #A8A39C;
+    --rule: #1413100F;
+    --rule-2: #1413101A;
+    --accent: #1F3A8A;
+    --accent-soft: #1F3A8A12;
+    --warn: #B4501E;
+    --warn-soft: #B4501E14;
+    --ok: #2F5F3A;
+    --ok-soft: #2F5F3A14;
+  }
+  html.dark {
+    --paper: #0E0E0C;
+    --paper-2: #17171A;
+    --ink: #F2EFE8;
+    --ink-2: #DAD6CD;
+    --ink-3: #97928A;
+    --ink-4: #5C5852;
+    --rule: #F2EFE810;
+    --rule-2: #F2EFE822;
+    --accent: #8FB1FF;
+    --accent-soft: #8FB1FF1A;
+    --warn: #E4965D;
+    --warn-soft: #E4965D1A;
+    --ok: #88BD96;
+    --ok-soft: #88BD961A;
+  }
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: 'Hanken Grotesk', system-ui, sans-serif; font-feature-settings: 'ss01', 'cv11'; }
+  body { min-height: 100vh; }
+
+  .serif { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.01em; }
+  .mono  { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'zero', 'ss02'; }
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined', sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  }
+
+  /* Type scale */
+  .eyebrow { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: var(--ink-3); }
+  .label   { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--ink-3); }
+  .meta    { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .num     { font-feature-settings: 'tnum', 'lnum'; }
+
+  /* Rules */
+  .hairline { border-top: 1px solid var(--rule-2); }
+  .vline    { border-left: 1px solid var(--rule-2); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 500;
+    padding: 8px 14px; border-radius: 999px;
+    border: 1px solid var(--rule-2);
+    background: transparent; color: var(--ink);
+    transition: all .15s ease;
+    cursor: pointer; font-family: inherit;
+    line-height: 1;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .btn-primary:hover { background: var(--ink-2); border-color: var(--ink-2); }
+  .btn-ghost { border-color: transparent; padding-left: 8px; padding-right: 8px; }
+  .btn-ghost:hover { background: var(--rule-2); color: var(--ink); border-color: transparent; }
+  .btn-sm { font-size: 12px; padding: 6px 10px; }
+
+  /* Status dots */
+  .dot { width: 6px; height: 6px; border-radius: 999px; display: inline-block; }
+  .dot-warn { background: var(--warn); }
+  .dot-accent { background: var(--accent); }
+  .dot-ok { background: var(--ok); }
+  .dot-mute { background: var(--ink-4); }
+
+  /* Pulse animation */
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .6; transform: scale(1.4); }
+  }
+  .dot-live { position: relative; }
+  .dot-live::after { content: ''; position: absolute; inset: -3px; border-radius: 999px; border: 1px solid currentColor; opacity: .4; animation: pulse-soft 2s infinite; }
+
+  /* Tape reader scroll for activity */
+  .tape { background-image: linear-gradient(var(--rule-2) 1px, transparent 1px); background-size: 100% 28px; }
+
+  /* Hover row */
+  .row-hover { transition: background .15s ease; }
+  .row-hover:hover { background: var(--paper-2); }
+
+  /* Selection */
+  ::selection { background: var(--ink); color: var(--paper); }
+
+  /* Briefing typography */
+  .briefing-body { font-size: 22px; line-height: 1.32; letter-spacing: -0.012em; color: var(--ink-2); font-weight: 400; }
+  .briefing-body em { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.08em; color: var(--ink); font-weight: 400; letter-spacing: -0.015em; }
+  .briefing-body .mark { background: linear-gradient(180deg, transparent 60%, var(--accent-soft) 60%); padding: 0 2px; color: var(--ink); font-weight: 500; }
+  .briefing-body .mark-warn { background: linear-gradient(180deg, transparent 60%, var(--warn-soft) 60%); padding: 0 2px; color: var(--ink); font-weight: 500; }
+
+  /* Custom focus */
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  /* Tweak panel positioning override (so it doesn't fight our layout) */
+  .tweaks-overlay { z-index: 100; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-4); }
+
+  /* Number column */
+  .num-xl { font-size: 56px; line-height: 1; font-weight: 300; letter-spacing: -0.04em; font-feature-settings: 'tnum'; }
+  .num-lg { font-size: 38px; line-height: 1; font-weight: 300; letter-spacing: -0.03em; font-feature-settings: 'tnum'; }
+  .num-md { font-size: 22px; line-height: 1; font-weight: 400; letter-spacing: -0.02em; font-feature-settings: 'tnum'; }
+
+  /* Sparkline */
+  .spark { stroke: var(--ink); fill: none; stroke-width: 1.2; }
+  .spark-fill { fill: var(--ink); opacity: .06; }
+
+  /* Subtle press */
+  .press:active { transform: translateY(0.5px); }
+
+  /* Edit mode block (host parses this; keep as-is) */
+
+  /* Topbar responsive */
+  @media (max-width: 1180px) {
+    .wordmark-sub { display: none; }
+    .topbar-search-label { display: none; }
+  }
+  @media (max-width: 960px) {
+    .topbar-user { display: none !important; }
+    .topbar-kbd { display: none; }
+  }
+  @media (max-width: 820px) {
+    .topbar-tabs { display: none !important; }
+  }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="parts.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+
+</body>
+</html>

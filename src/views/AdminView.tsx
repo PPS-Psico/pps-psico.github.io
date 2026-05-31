@@ -2,15 +2,18 @@ import React, { lazy, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppModals from "../components/AppModals";
 import Loader from "../components/Loader";
-import UnifiedTabs, { TabItem } from "../components/UnifiedTabs";
+import { type TabItem } from "../components/UnifiedTabs";
+import AdminTopBar from "../components/layout/AdminTopBar";
 import { useAdminPreferences } from "../contexts/AdminPreferencesContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 // Components for Testing Mode
 const AdminDashboard = lazy(() => import("../components/admin/AdminDashboard"));
 const LanzadorView = lazy(() => import("./admin/LanzadorView"));
 const GestionView = lazy(() => import("./admin/GestionView"));
 const SolicitudesManager = lazy(() => import("../components/admin/SolicitudesManager"));
-const HerramientasView = lazy(() => import("./admin/HerramientasView"));
+const TallerView = lazy(() => import("./admin/TallerView"));
 const MetricsView = lazy(() => import("./admin/MetricsView"));
 
 interface AdminViewProps {
@@ -35,20 +38,15 @@ const MOBILE_TAB_IDS = new Set(["dashboard", "lanzador", "gestion"]);
 
 const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
   const { preferences } = useAdminPreferences();
+  const { logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
   const isMobile = useIsMobile();
 
   const [localTab, setLocalTab] = useState("dashboard");
-  const [scrolled, setScrolled] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   // Determine current active tab ID logic
   let currentTabId = isTestingMode ? localTab : "";
@@ -99,7 +97,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
         { id: "metrics", label: "Métricas", icon: "analytics", path: "/admin/metrics" },
         {
           id: "herramientas",
-          label: "Herramientas",
+          label: "Taller",
           icon: "construction",
           path: "/admin/herramientas",
         }
@@ -168,7 +166,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
         }
       >
         <div className="animate-fade-in-up">
-          {localTab === "dashboard" && <AdminDashboard isTestingMode={true} />}
+          {localTab === "dashboard" && <AdminDashboard />}
           {localTab === "lanzador" && <LanzadorView isTestingMode={true} />}
           {localTab === "gestion" &&
             (preferences.showManagementTab ? (
@@ -185,23 +183,73 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
             />
           )}
           {localTab === "herramientas" && (
-            <HerramientasView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />
+            <TallerView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />
           )}
         </div>
       </React.Suspense>
     );
   };
 
-  // Estilos dinámicos para el header
-  const headerClasses = scrolled
-    ? "bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-slate-200/50 dark:border-white/5 shadow-sm py-3"
-    : "bg-transparent border-transparent py-6";
-
   // ─── MOBILE LAYOUT ───
   if (isMobile) {
     return (
-      <div className="admin-mobile-shell min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 transition-colors duration-300 pb-[72px]">
-        {/* Mobile content area — full bleed, no header capsule */}
+      <div className="admin-mobile-shell min-h-screen bg-[var(--paper)] text-[var(--ink)] transition-colors duration-300 pb-[72px]">
+        {/* ── COMPACT TOP BAR (mobile) ── */}
+        <header
+          className="sticky top-0 z-40 flex items-center justify-between px-4 h-14 border-b no-print"
+          style={{
+            background: "color-mix(in oklab, var(--paper) 90%, transparent)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            borderColor: "var(--rule-2)",
+          }}
+        >
+          <div className="flex items-center gap-2.5">
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                background: "var(--ink)",
+                color: "var(--paper)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              ψ
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.02em" }}>
+              Mi Panel
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ color: "var(--ink-3)" }}
+              aria-label="Cambiar tema"
+            >
+              <span className="material-icons" style={{ fontSize: 19 }}>
+                {theme === "dark" ? "dark_mode" : "light_mode"}
+              </span>
+            </button>
+            <button
+              onClick={logout}
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ color: "var(--ink-3)" }}
+              aria-label="Cerrar sesión"
+            >
+              <span className="material-icons" style={{ fontSize: 19 }}>
+                logout
+              </span>
+            </button>
+          </div>
+        </header>
+
+        {/* Mobile content area — full bleed */}
         <main className="relative z-10">{renderContent()}</main>
 
         {/* ── BOTTOM NAV BAR (mobile only) ── */}
@@ -251,39 +299,20 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     );
   }
 
-  // ─── DESKTOP LAYOUT (unchanged) ───
+  // ─── DESKTOP LAYOUT ───
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
-      {/* Background Ambient Glows (Subtle) */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-400/5 dark:bg-blue-900/10 blur-[120px]"></div>
-        <div className="absolute top-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-indigo-400/5 dark:bg-indigo-900/10 blur-[120px]"></div>
+    <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)] relative transition-colors duration-300">
+      {/* --- BARRA SUPERIOR UNIFICADA v3 --- */}
+      <div className={isModalOpen ? "hidden" : ""}>
+        <AdminTopBar
+          navItems={navItems}
+          currentTabId={currentTabId}
+          onTabChange={handleTabChange}
+          onTabClose={currentTabId === "student-profile" ? handleCloseStudentTab : undefined}
+        />
       </div>
 
-      {/* --- UNIFIED STICKY HEADER --- */}
-      <header
-        className={`sticky top-0 z-40 transition-all duration-300 border-b ${headerClasses} ${isModalOpen ? "hidden" : ""}`}
-      >
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center relative">
-            {/* Centered Navigation Capsule */}
-            <div className="flex-1 flex justify-center w-full md:w-auto overflow-x-auto no-scrollbar">
-              <UnifiedTabs
-                tabs={navItems}
-                activeTabId={currentTabId}
-                onTabChange={handleTabChange}
-                onTabClose={currentTabId === "student-profile" ? handleCloseStudentTab : undefined}
-                layoutIdPrefix="admin-main-nav"
-                className="shadow-lg shadow-slate-200/30 dark:shadow-black/20"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="relative z-10 max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {renderContent()}
-      </main>
+      <main className="relative z-10 w-full">{renderContent()}</main>
 
       <AppModals />
     </div>

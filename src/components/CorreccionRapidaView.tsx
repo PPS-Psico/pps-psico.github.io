@@ -115,7 +115,7 @@ const CorreccionRapidaView: React.FC<CorreccionRapidaViewProps> = ({
           case "studentName":
             return item.studentName.toLowerCase();
           case "ppsName":
-            return item.ppsName.toLowerCase();
+            return (item.ppsName ?? "").toLowerCase();
           default:
             return 0;
         }
@@ -210,7 +210,7 @@ const CorreccionRapidaView: React.FC<CorreccionRapidaViewProps> = ({
                     <HighlightedText text={student.studentName} highlight={searchTerm} />
                   </td>
                   <td className="p-3 text-slate-600 dark:text-slate-300">
-                    <HighlightedText text={student.ppsName} highlight={searchTerm} />
+                    <HighlightedText text={student.ppsName ?? ""} highlight={searchTerm} />
                   </td>
                   <td className={`p-3 ${deadlineVisuals.className}`}>{deadlineVisuals.text}</td>
                   <td className="p-3">

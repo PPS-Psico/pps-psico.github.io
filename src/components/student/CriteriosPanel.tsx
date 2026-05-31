@@ -146,8 +146,8 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
   // Asegurar que no hay duplicados para la visualización en tarjetas
   const uniqueAreas = useMemo(() => {
     // Normalizamos y usamos un Set para unicidad real
-    const uniqueNormalized = new Set();
-    const uniqueDisplay = [];
+    const uniqueNormalized = new Set<string>();
+    const uniqueDisplay: string[] = [];
 
     for (const area of criterios.orientacionesUnicas) {
       const norm = normalizeStringForComparison(area);

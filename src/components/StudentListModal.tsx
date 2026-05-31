@@ -18,6 +18,7 @@ interface StudentListModalProps {
   headers?: { key: string; label: string }[];
   description?: React.ReactNode;
   onStudentClick?: (student: StudentInfo) => void;
+  isLoading?: boolean;
 }
 
 const StudentListModal: React.FC<StudentListModalProps> = ({
@@ -28,6 +29,7 @@ const StudentListModal: React.FC<StudentListModalProps> = ({
   headers,
   description,
   onStudentClick,
+  isLoading = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -199,7 +201,9 @@ const StudentListModal: React.FC<StudentListModalProps> = ({
                 {title}
               </h2>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                {filteredStudents.length} de {students.length} resultados
+                {isLoading
+                  ? "Cargando..."
+                  : `${filteredStudents.length} de ${students.length} resultados`}
               </p>
               {description && (
                 <div className="mt-2 text-xs p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 font-medium">
@@ -230,7 +234,14 @@ const StudentListModal: React.FC<StudentListModalProps> = ({
           </div>
         </div>
         <div className="overflow-y-auto flex-grow bg-slate-50/30 dark:bg-slate-900/30 custom-scrollbar">
-          {filteredStudents.length > 0 ? (
+          {isLoading ? (
+            <div className="text-center py-12 px-6">
+              <div className="inline-flex p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mb-3 animate-pulse">
+                <span className="material-icons !text-2xl animate-spin">progress_activity</span>
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">Cargando datos...</p>
+            </div>
+          ) : filteredStudents.length > 0 ? (
             <div className={headers ? "p-0" : "p-2 sm:p-4"}>
               {headers ? renderTable() : renderList()}
             </div>

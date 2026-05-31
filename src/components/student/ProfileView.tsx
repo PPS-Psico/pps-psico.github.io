@@ -22,6 +22,7 @@ import { SkeletonBox } from "../Skeletons";
 
 // Premium Profile Card Component
 import Select from "../ui/Select";
+import { logger } from "../../utils/logger";
 
 const ProfileCard: React.FC<{
   label: string;
@@ -184,20 +185,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             }
           } catch (e) {
             // Ignorar errores de permisos
-            console.log("[ProfileView] Could not check DB status");
+            logger.info("[ProfileView] Could not check DB status");
           }
         }
 
         // El botón solo está activo si AMBAS condiciones se cumplen
         const fullySubscribed = fcmSubscribed && dbHasToken;
-        console.log("[ProfileView] Subscription check:", {
+        logger.info("[ProfileView] Subscription check:", {
           fcmSubscribed,
           dbHasToken,
           fullySubscribed,
         });
         setIsPushEnabled(fullySubscribed);
       } catch (e) {
-        console.error("[ProfileView] Error checking status:", e);
+        logger.error("[ProfileView] Error checking status:", e);
       }
     };
     checkStatus();
@@ -239,12 +240,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             uid: authenticatedUser.id,
           });
           if (error) {
-            console.log("[ProfileView] Note: Token not in DB or already deleted");
+            logger.info("[ProfileView] Note: Token not in DB or already deleted");
           } else {
-            console.log("[ProfileView] Token deleted from database");
+            logger.info("[ProfileView] Token deleted from database");
           }
         } catch (e) {
-          console.log("[ProfileView] Note: Could not delete from DB");
+          logger.info("[ProfileView] Note: Could not delete from DB");
         }
       }
       showModal("Éxito", "Notificaciones desactivadas");

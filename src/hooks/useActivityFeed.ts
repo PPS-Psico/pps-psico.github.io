@@ -18,6 +18,7 @@ import {
 } from "../constants";
 import { supabase } from "../lib/supabaseClient";
 import { mockDb } from "../services/mockDb";
+import { logger } from "../utils/logger";
 
 export interface ActivityItem {
   id: string;
@@ -288,7 +289,7 @@ export const useActivityFeed = (isTestingMode = false) => {
 
         return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       } catch (error) {
-        console.error("Activity Feed Critical Error:", error);
+        logger.error("Activity Feed Critical Error:", error);
         return [];
       }
     },

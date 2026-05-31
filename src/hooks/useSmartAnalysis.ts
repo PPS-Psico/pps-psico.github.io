@@ -3,6 +3,7 @@ import { differenceInDays } from "date-fns";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../constants";
 import { parseToUTCDate } from "../utils/formatters";
 import { generateWithGemini } from "../services/geminiService";
+import { logger } from "../utils/logger";
 
 interface DashboardData {
   endingLaunches: any[];
@@ -178,7 +179,7 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
           setAiSummary(text.trim());
         }
       } catch (error: any) {
-        console.error("AI Generation Error", error);
+        logger.error("AI Generation Error", error);
         setAiSummary(`Error generando feedback: ${error.message}`);
       } finally {
         setIsAiLoading(false);

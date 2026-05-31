@@ -1,168 +1,127 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import "@testing-library/jest-dom";
-import { render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-// @ts-ignore
-import App from "@/App";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { db } from "@/lib/db";
+import { describe, expect, it } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-// import * as authUtils from '@/utils/auth'; // Removed as it does not exist in current codebase
+import { act, renderHook, waitFor } from "@testing-library/react";
+import React from "react";
+import { ModalProvider, useModal } from "../../contexts/ModalContext";
+import { useConvocatorias } from "../../hooks/useConvocatorias";
+import { mockDb } from "../../services/mockDb";
+import { normalizeStringForComparison } from "../../utils/formatters";
 import {
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
   FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FINALES_ADEUDA_CONVOCATORIAS,
-  FIELD_HORARIO_FORMULA_CONVOCATORIAS,
-  FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_OTRA_SITUACION_CONVOCATORIAS,
-  FIELD_TERMINO_CURSAR_CONVOCATORIAS,
-} from "@/constants";
+} from "../../constants";
+import type { LanzamientoPPS } from "../../types";
 
-// Mock the entire db module
-jest.mock("@/lib/db");
-const mockedDb = db as jest.Mocked<typeof db>;
+/**
+ * Integración del flujo de inscripción del estudiante.
+ *
+ * En modo testing (legajo "99999") `useConvocatorias` opera contra mockDb.
+ * Verificamos el ciclo real: cargar convocatorias disponibles -> abrir el
+ * formulario de inscripción (vía ModalContext) -> enviar -> persistir la
+ * nueva convocatoria. Esto prueba la integración hook + contexto + datos sin
+ * acoplarse al JSX, que cambia con los rediseños.
+ */
 
-// --- Mock Data ---
-const mockStudentDetails = {
-  id: "recStudentTest",
-  created_at: "",
-  legajo: "12345",
-  nombre: "Estudiante de Prueba",
+const TEST_LEGAJO = "99999";
+const TEST_STUDENT_ID = "st_999";
+
+// Hook combinado: expone la lógica de convocatorias y el modal a la vez.
+const useStudentEnrollmentHarness = () => {
+  const convocatorias = useConvocatorias(TEST_LEGAJO, TEST_STUDENT_ID, null, false);
+  const modal = useModal();
+  return { convocatorias, modal };
 };
 
-const mockLanzamiento = {
-  id: "lanz_test_enroll",
-  created_at: "",
-  [FIELD_NOMBRE_PPS_LANZAMIENTOS]: "PPS de Integración",
-  [FIELD_ORIENTACION_LANZAMIENTOS]: "Clínica",
-  [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Abierta",
-  [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: "Lunes 9 a 13hs; Martes 14 a 18hs",
-  [FIELD_FECHA_INICIO_LANZAMIENTOS]: "2024-09-01",
-} as any;
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ModalProvider>{children}</ModalProvider>
+    </QueryClientProvider>
+  );
+};
 
-describe.skip("Flujo de Inscripción de Estudiante (Integration Test)", () => {
-  jest.setTimeout(30000); // Increase timeout for this long-running test
-
+describe("Flujo de Inscripción de Estudiante (Integration Test)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    // Start as logged out
-    Storage.prototype.getItem = jest.fn(() => null);
-
-    // Mock the db methods used during login and dashboard loading
-    // Note: db.estudiantes is a table interface, using any casting for mocks
-    (mockedDb.estudiantes.get as any).mockResolvedValue([mockStudentDetails] as any);
-
-    // Mock password verification (direct boolean return if using a real utility, or ensure component logic follows this)
-    // Since we removed the auth module import attempt, we assume the component uses a method we can control or is mocked elsewhere.
-    // For this test, we'll ensure the db returns the student which is key for login success in the component logic.
-
-    mockedDb.estudiantes.get.mockResolvedValue([mockStudentDetails] as any);
-    (mockedDb.lanzamientos.getAll as any).mockResolvedValue([mockLanzamiento] as any);
-    (mockedDb.practicas.getAll as any).mockResolvedValue([]);
-    (mockedDb.solicitudes.getAll as any).mockResolvedValue([]);
-    (mockedDb.convocatorias.getAll as any).mockResolvedValue([]);
-    (mockedDb.instituciones.getAll as any).mockResolvedValue([]);
+    mockDb.reset();
   });
 
-  it("permite a un estudiante iniciar sesión, ver convocatorias e inscribirse", async () => {
-    const user = userEvent.setup();
-    const createRecordMock = (jest.fn() as any).mockResolvedValue({
-      id: "new_conv_id",
-      created_at: "",
-    });
-    (mockedDb.convocatorias.create as any).mockImplementation(createRecordMock);
-
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
+  it("carga las convocatorias disponibles para el estudiante", async () => {
+    const { result } = renderHook(() => useStudentEnrollmentHarness(), {
+      wrapper: createWrapper(),
     });
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </QueryClientProvider>
-    );
+    await waitFor(() => expect(result.current.convocatorias.isConvocatoriasLoading).toBe(false));
 
-    // --- 1. Login ---
-    const legajoInput = await screen.findByPlaceholderText(
-      /Número de Legajo/i,
-      {},
-      { timeout: 10000 }
-    );
-    const passwordInput = screen.getByPlaceholderText(/Contraseña/i);
-    const loginButton = screen.getByRole("button", { name: /Iniciar Sesión/i });
+    // mockData tiene varios lanzamientos no ocultos disponibles
+    expect(result.current.convocatorias.lanzamientos.length).toBeGreaterThan(0);
+  });
 
-    await user.type(legajoInput, "12345");
-    await user.type(passwordInput, "password123");
-    await user.click(loginButton);
-
-    // --- 2. Dashboard View ---
-    // Wait for the welcome message (any greeting)
-    await screen.findByText(/Buenos (días|tardes|noches)/i, {}, { timeout: 10000 });
-
-    // Check for the student's name or at least "Estudiante"
-    expect(screen.getByText(/Estudiante/i)).toBeInTheDocument();
-
-    const ppsCard = await screen.findByText(/PPS de Integración/i);
-    expect(ppsCard).toBeInTheDocument();
-
-    // --- 3. Enrollment Flow ---
-    const inscribirButton = await screen.findByRole("button", { name: /Postularme/i });
-    await user.click(inscribirButton);
-
-    const modal = await screen.findByRole("dialog", { name: /Formulario de Inscripción/i });
-    const modalContainer = screen.getByRole("dialog");
-    const getByLabelText = (text: any) => within(modalContainer).getByLabelText(text);
-    const getByRole = (role: any, options?: any) => within(modalContainer).getByRole(role, options);
-
-    const horarioCheckbox = getByLabelText("Lunes 9 a 13hs");
-    await user.click(horarioCheckbox);
-
-    const terminoCursarRadio = getByLabelText("Sí");
-    await user.click(terminoCursarRadio);
-
-    const finalesAdeudadosRadio = await screen.findByLabelText("1 Final");
-    await user.click(finalesAdeudadosRadio);
-
-    const otraSituacionTextarea = getByLabelText(/Aclaraciones Adicionales/i);
-    await user.type(otraSituacionTextarea, "Prueba de integración E2E.");
-
-    const submitButton = getByRole("button", { name: /Inscribirme/i });
-    await user.click(submitButton);
-
-    // --- 4. Assertions ---
-    await waitFor(() => {
-      expect(createRecordMock).toHaveBeenCalledTimes(1);
+  it("abre el formulario de inscripción al postularse a un lanzamiento", async () => {
+    const { result } = renderHook(() => useStudentEnrollmentHarness(), {
+      wrapper: createWrapper(),
     });
 
-    const [fields] = createRecordMock.mock.calls[0];
-
-    expect(fields).toEqual(
-      expect.objectContaining({
-        [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: mockLanzamiento.id,
-        [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: mockStudentDetails.id,
-        [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: "Lunes 9 a 13hs",
-        [FIELD_TERMINO_CURSAR_CONVOCATORIAS]: "Sí",
-        [FIELD_FINALES_ADEUDA_CONVOCATORIAS]: "1 Final",
-        [FIELD_OTRA_SITUACION_CONVOCATORIAS]: "Prueba de integración E2E.",
-      })
+    await waitFor(() =>
+      expect(result.current.convocatorias.lanzamientos.length).toBeGreaterThan(0)
     );
 
-    expect(
-      screen.queryByRole("dialog", { name: /Formulario de Inscripción/i })
-    ).not.toBeInTheDocument();
+    const lanzamiento = result.current.convocatorias.lanzamientos[0] as LanzamientoPPS;
+    act(() => result.current.convocatorias.enrollStudent.mutate(lanzamiento));
 
-    const successModal = await screen.findByRole("dialog", { name: /¡Inscripción Exitosa!/i });
-    expect(successModal).toBeInTheDocument();
+    await waitFor(() => expect(result.current.modal.isEnrollmentFormOpen).toBe(true));
+    expect(result.current.modal.selectedLanzamientoForEnrollment?.id).toBe(lanzamiento.id);
+    expect(typeof result.current.modal.onSubmitEnrollment).toBe("function");
+  });
+
+  it("crea una nueva convocatoria al enviar el formulario de inscripción", async () => {
+    const { result } = renderHook(() => useStudentEnrollmentHarness(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current.convocatorias.lanzamientos.length).toBeGreaterThan(0)
+    );
+
+    // Elegimos un lanzamiento al que el estudiante de prueba no esté inscripto
+    const lanzamiento = result.current.convocatorias.lanzamientos.find(
+      (l: any) => l.id === "lanz_3"
+    ) as LanzamientoPPS;
+    expect(lanzamiento).toBeDefined();
+
+    const convocatoriasAntes = mockDb.data.convocatorias.length;
+
+    act(() => result.current.convocatorias.enrollStudent.mutate(lanzamiento));
+    await waitFor(() => expect(result.current.modal.isEnrollmentFormOpen).toBe(true));
+
+    // Disparamos el submit del formulario tal como lo haría EnrollmentForm
+    const formData = {
+      horarios: ["Sábados 10 a 14hs"],
+      terminoDeCursar: true,
+      cursandoElectivas: false,
+      finalesAdeudados: "1 Final",
+      otraSituacionAcademica: "Prueba de integración.",
+      trabaja: false,
+    };
+
+    await act(async () => {
+      await result.current.modal.onSubmitEnrollment!(formData);
+    });
+
+    // Se persistió una nueva convocatoria en la capa de datos (mockDb)
+    await waitFor(() => expect(mockDb.data.convocatorias.length).toBe(convocatoriasAntes + 1));
+
+    const nueva = mockDb.data.convocatorias.find(
+      (c: any) =>
+        c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === "lanz_3" && c.id.startsWith("mock_")
+    );
+    expect(nueva).toBeDefined();
+    expect(nueva[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]).toBe(TEST_STUDENT_ID);
+    expect(normalizeStringForComparison(nueva[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS])).toBe(
+      "inscripto"
+    );
   });
 });

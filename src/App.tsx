@@ -25,6 +25,7 @@ import { StudentPanelProvider } from "./contexts/StudentPanelContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import PracticasView from "./views/student/PracticasView";
 import DataCompletionModal from "./components/student/DataCompletionModal";
+import { logger } from "./utils/logger";
 
 // Views
 const StudentView = lazy(() => import("./views/StudentView"));
@@ -39,7 +40,7 @@ const AdminView = lazy(() => import("./views/AdminView"));
 const AdminDashboard = lazy(() => import("./components/admin/AdminDashboard"));
 const LanzadorView = lazy(() => import("./views/admin/LanzadorView"));
 const GestionView = lazy(() => import("./views/admin/GestionView"));
-const HerramientasView = lazy(() => import("./views/admin/HerramientasView"));
+const TallerView = lazy(() => import("./views/admin/TallerView"));
 const MetricsView = lazy(() => import("./views/admin/MetricsView"));
 const SolicitudesManager = lazy(() => import("./components/admin/SolicitudesManager"));
 const JefeView = lazy(() => import("./views/JefeView"));
@@ -61,7 +62,7 @@ const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
   const { authenticatedUser } = useAuth();
   const [dataCompleted, setDataCompleted] = useState(false);
 
-  console.log(
+  logger.info(
     "[StudentWrapper] needsDataCompletion:",
     authenticatedUser?.needsDataCompletion,
     "role:",
@@ -155,7 +156,7 @@ const AppRoutes = () => {
         <Route
           path="herramientas"
           element={
-            <HerramientasView
+            <TallerView
               onStudentSelect={(s) => navigate(`/admin/estudiantes/${s[FIELD_LEGAJO_ESTUDIANTES]}`)}
             />
           }

@@ -7,6 +7,7 @@ import {
   submitCompromisoPPS,
 } from "../services";
 import { getHorarioEfectivo } from "../utils/scheduleUtils";
+import { logger } from "../utils/logger";
 
 export const useStudentCommitments = (
   studentId: string | null,
@@ -72,7 +73,7 @@ export const useStudentCommitments = (
           });
         }
       } catch (error) {
-        console.warn("[useStudentCommitments] Commitment saved but email failed", error);
+        logger.warn("[useStudentCommitments] Commitment saved but email failed", error);
       }
 
       return saved;

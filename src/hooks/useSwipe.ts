@@ -154,14 +154,14 @@ export function useSwipe(config: SwipeConfig = {}) {
 }
 
 // Hook specifically for tab navigation with swipe
-interface TabSwipeConfig {
-  tabs: string[];
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+interface TabSwipeConfig<T extends string = string> {
+  tabs: T[];
+  activeTab: T;
+  onTabChange: (tab: T) => void;
   enabled?: boolean;
 }
 
-export function useTabSwipe(config: TabSwipeConfig) {
+export function useTabSwipe<T extends string = string>(config: TabSwipeConfig<T>) {
   const { tabs, activeTab, onTabChange, enabled = true } = config;
 
   const currentIndex = tabs.indexOf(activeTab);

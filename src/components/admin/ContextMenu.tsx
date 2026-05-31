@@ -61,7 +61,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, options }) => 
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[9999] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl py-2 min-w-[210px] animate-scale-in"
+      className="dbe dbe-menu"
       style={{ top: adjustedY, left: adjustedX }}
       onContextMenu={(e) => e.preventDefault()} // Prevenir menú nativo del navegador sobre este menú
     >
@@ -73,16 +73,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, options }) => 
             opt.onClick();
             onClose();
           }}
-          className={`
-                        w-full flex items-center gap-3 px-4 py-2.5 text-xs font-black uppercase tracking-tight transition-all
-                        ${
-                          opt.variant === "danger"
-                            ? "text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                            : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400"
-                        }
-                    `}
+          className="dbe-menu-item"
+          data-variant={opt.variant === "danger" ? "danger" : "default"}
         >
-          <span className="material-icons !text-lg">{opt.icon}</span>
+          <span className="material-icons">{opt.icon}</span>
           {opt.label}
         </button>
       ))}

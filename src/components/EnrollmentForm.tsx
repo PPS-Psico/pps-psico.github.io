@@ -3,6 +3,7 @@ import { z } from "zod";
 import { FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES, FIELD_TRABAJA_ESTUDIANTES } from "../constants";
 import { supabase } from "../lib/supabaseClient";
 import { Estudiante } from "../types";
+import { logger } from "../utils/logger";
 
 // --- COMPONENTES UI INTERNOS ESTILIZADOS ---
 
@@ -339,7 +340,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
     const fileExt = file.name.split(".").pop()?.toLowerCase() || "bin";
     const fileName = `${studentProfile.id}/${folder}_${Date.now()}.${fileExt}`;
 
-    console.log(`[Upload] Iniciando subida de ${file.name} (${file.type}) a ${folder}...`);
+    logger.info(`[Upload] Iniciando subida de ${file.name} (${file.type}) a ${folder}...`);
 
     const { error: uploadError } = await supabase.storage
       .from("documentos_estudiantes")
@@ -349,7 +350,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       });
 
     if (uploadError) {
-      console.error("[Upload] Error en Supabase:", uploadError);
+      logger.error("[Upload] Error en Supabase:", uploadError);
       throw new Error(`Error de subida: ${uploadError.message}`);
     }
 
@@ -376,8 +377,10 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
     }
 
     try {
-      let certificadoUrl = formData.trabaja ? formData.existingCertificadoTrabajo : null;
-      let cvUrl = null;
+      let certificadoUrl: string | null = formData.trabaja
+        ? (formData.existingCertificadoTrabajo ?? null)
+        : null;
+      let cvUrl: string | null = null;
 
       if ((formData.trabaja && formData.certificadoTrabajoFile) || formData.cvFile) {
         setFileUploadProgress(10);

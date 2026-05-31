@@ -1,35 +1,44 @@
 /**
  * Centralized logger service.
- * Abstraction layer to handle console logging and potential future external error reporting services (e.g., Sentry).
+ *
+ * Abstraction layer over `console` to:
+ *  - Silenciar logs de desarrollo (`info`/`debug`) en producción.
+ *  - Mantener un único punto de salida para enganchar un APM externo
+ *    (Sentry, Datadog, etc.) sin tocar el resto del código.
+ *
+ * Acepta argumentos variádicos para ser un reemplazo directo de `console.*`
+ * sin perder información en los logs.
  */
+
+type LogArgs = unknown[];
 
 class Logger {
   private isDev: boolean;
 
   constructor() {
-    // Safe check for import.meta.env (Vite) or process.env (Node)
+    // Safe check for import.meta.env (Vite) or process.env (Node/Jest)
     this.isDev = import.meta.env?.DEV ?? false;
   }
 
-  info(message: string, data?: any) {
+  info(message?: unknown, ...args: LogArgs) {
     if (this.isDev) {
-      console.log(`ℹ️ [INFO] ${message}`, data || "");
+      console.log(message, ...args);
     }
   }
 
-  warn(message: string, data?: any) {
-    console.warn(`⚠️ [WARN] ${message}`, data || "");
+  warn(message?: unknown, ...args: LogArgs) {
+    console.warn(message, ...args);
   }
 
-  error(message: string, error?: any) {
-    console.error(`🚨 [ERROR] ${message}`, error || "");
-    // Hook for Sentry or other APM tools:
-    // if (!this.isDev) Sentry.captureException(error);
+  error(message?: unknown, ...args: LogArgs) {
+    console.error(message, ...args);
+    // Hook para Sentry u otra herramienta de APM en producción:
+    // if (!this.isDev) Sentry.captureException(args[0] ?? message);
   }
 
-  debug(message: string, data?: any) {
+  debug(message?: unknown, ...args: LogArgs) {
     if (this.isDev) {
-      console.debug(`🐛 [DEBUG] ${message}`, data || "");
+      console.debug(message, ...args);
     }
   }
 }

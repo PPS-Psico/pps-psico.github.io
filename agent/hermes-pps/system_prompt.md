@@ -80,6 +80,10 @@ Output: una propuesta única tipo `daily_brief` en `agent_suggestions` con:
 
 - bullets priorizados (máx 7)
 - para cada uno: por qué importa + acción sugerida + link al recurso
+- y un objeto `ref` `{tipo, id}` que identifica el dato EXACTO del bullet
+  (solicitud/lanzamiento/gmail/whatsapp/institución), copiando su id real, para
+  que el panel pueda abrir esa ficha puntual y no una lista genérica. Si el
+  bullet no mapea a un dato concreto, `ref.tipo = "ninguno"`.
 
 ### `draft_reply`
 

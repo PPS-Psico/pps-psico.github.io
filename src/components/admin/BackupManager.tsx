@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import Toast from "../ui/Toast";
-import { ActionButton, AdminCard, StatusBadge } from "../ui/admin";
 import { formatDate } from "../../utils/formatters";
+import { injectEditorStyles } from "./editorStyles";
+import { logger } from "../../utils/logger";
+
+injectEditorStyles();
 
 interface BackupConfig {
   id: string;
@@ -53,6 +56,15 @@ const BackupManager: React.FC = () => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<BackupFile | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  // Confirmación tipada de restauración (acción destructiva)
+  const [restoreTarget, setRestoreTarget] = useState<{
+    file: BackupFile;
+    info: any;
+    totalRecords: number;
+    tables: string[];
+  } | null>(null);
+  const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  const [isPreparingRestore, setIsPreparingRestore] = useState(false);
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
   );
@@ -100,7 +112,7 @@ const BackupManager: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error("Error fetching backups:", error);
+      logger.error("Error fetching backups:", error);
       setToastInfo({ message: "Error al cargar backups", type: "error" });
     } finally {
       setIsLoading(false);
@@ -128,7 +140,7 @@ const BackupManager: React.FC = () => {
       const responseData = await response.json();
       setHistory(responseData.history);
     } catch (error) {
-      console.error("Error fetching history:", error);
+      logger.error("Error fetching history:", error);
     }
   };
 
@@ -168,7 +180,7 @@ const BackupManager: React.FC = () => {
       fetchData();
       fetchHistory();
     } catch (error) {
-      console.error("Backup error:", error);
+      logger.error("Backup error:", error);
       setToastInfo({
         message: error instanceof Error ? error.message : "Error al crear backup",
         type: "error",
@@ -178,17 +190,15 @@ const BackupManager: React.FC = () => {
     }
   };
 
-  const handleRestore = async (backupFileName: string) => {
+  // Paso 1: dry-run para conocer el impacto y abrir la confirmación tipada.
+  const handlePrepareRestore = async (backup: BackupFile) => {
     try {
-      setIsRestoring(true);
+      setSelectedBackup(backup);
+      setIsPreparingRestore(true);
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+      if (!token) throw new Error("No authentication token available");
 
-      if (!token) {
-        throw new Error("No authentication token available");
-      }
-
-      // Primero verificar qué se va a restaurar
       const checkResponse = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/restore-backup`,
         {
@@ -197,35 +207,47 @@ const BackupManager: React.FC = () => {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            backup_file_name: backupFileName,
-            dry_run: true,
-          }),
+          body: JSON.stringify({ backup_file_name: backup.file_name, dry_run: true }),
         }
       );
 
       const checkData = await checkResponse.json();
+      if (!checkResponse.ok) throw new Error(checkData.message || "Failed to check backup");
 
-      if (!checkResponse.ok) {
-        throw new Error(checkData.message || "Failed to check backup");
-      }
+      const totalRecords = Object.values(checkData.records_per_table || {}).reduce(
+        (a: any, b: any) => a + b,
+        0
+      ) as number;
 
-      // Confirmar restauración
-      const confirmed = window.confirm(
-        `¿Estás seguro de que quieres restaurar el backup?\n\n` +
-          `Archivo: ${backupFileName}\n` +
-          `Fecha del backup: ${formatDate(checkData.backup_info?.created_at)}\n` +
-          `Tablas: ${checkData.tables_to_restore?.join(", ")}\n` +
-          `Total de registros: ${Object.values(checkData.records_per_table).reduce((a: any, b: any) => a + b, 0)}\n\n` +
-          `⚠️ ADVERTENCIA: Los datos actuales serán reemplazados.`
-      );
+      setRestoreConfirmText("");
+      setRestoreTarget({
+        file: backup,
+        info: checkData.backup_info,
+        totalRecords,
+        tables: checkData.tables_to_restore || [],
+      });
+    } catch (error) {
+      logger.error("Restore check error:", error);
+      setToastInfo({
+        message: error instanceof Error ? error.message : "Error al verificar backup",
+        type: "error",
+      });
+      setSelectedBackup(null);
+    } finally {
+      setIsPreparingRestore(false);
+    }
+  };
 
-      if (!confirmed) {
-        setIsRestoring(false);
-        return;
-      }
+  // Paso 2: ejecutar la restauración (sólo tras confirmación tipada).
+  const handleConfirmRestore = async () => {
+    if (!restoreTarget) return;
+    const backupFileName = restoreTarget.file.file_name;
+    try {
+      setIsRestoring(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("No authentication token available");
 
-      // Realizar restauración
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/restore-backup`,
         {
@@ -234,18 +256,12 @@ const BackupManager: React.FC = () => {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            backup_file_name: backupFileName,
-            dry_run: false,
-          }),
+          body: JSON.stringify({ backup_file_name: backupFileName, dry_run: false }),
         }
       );
 
       const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || "Restore failed");
-      }
+      if (!response.ok) throw new Error(responseData.message || "Restore failed");
 
       setToastInfo({
         message: `Restauración completada: ${responseData.summary?.total_records_restored} registros restaurados`,
@@ -253,13 +269,16 @@ const BackupManager: React.FC = () => {
       });
       fetchHistory();
     } catch (error) {
-      console.error("Restore error:", error);
+      logger.error("Restore error:", error);
       setToastInfo({
         message: error instanceof Error ? error.message : "Error al restaurar backup",
         type: "error",
       });
     } finally {
       setIsRestoring(false);
+      setRestoreTarget(null);
+      setRestoreConfirmText("");
+      setSelectedBackup(null);
     }
   };
 
@@ -295,7 +314,7 @@ const BackupManager: React.FC = () => {
       setShowConfigModal(false);
       fetchData();
     } catch (error) {
-      console.error("Config error:", error);
+      logger.error("Config error:", error);
       setToastInfo({ message: "Error al guardar configuración", type: "error" });
     }
   };
@@ -308,39 +327,28 @@ const BackupManager: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  // Función para determinar el tipo de backup (diario, semanal, mensual)
+  // Tipo de backup por posición/fecha → tono del sistema
   const getBackupType = (backup: BackupFile, index: number) => {
     const date = new Date(backup.created_at);
-
-    // El más reciente siempre es el diario
-    if (index === 0) {
-      return { label: "Diario", color: "bg-blue-100 text-blue-800" };
-    }
-
-    // Si es domingo (0), es semanal
-    if (date.getDay() === 0) {
-      return { label: "Semanal", color: "bg-emerald-100 text-emerald-800" };
-    }
-
-    // Si es día 1 del mes, es mensual
-    if (date.getDate() === 1) {
-      return { label: "Mensual", color: "bg-purple-100 text-purple-800" };
-    }
-
-    // Por defecto, es un backup adicional (no debería pasar con la nueva lógica)
-    return { label: "Extra", color: "bg-slate-100 text-slate-800" };
+    if (index === 0) return { label: "Diario", tone: "accent" };
+    if (date.getDay() === 0) return { label: "Semanal", tone: "ok" };
+    if (date.getDate() === 1) return { label: "Mensual", tone: "ai" };
+    return { label: "Extra", tone: "mute" };
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="dbe" style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+        <span
+          className="dbe-spin"
+          style={{ width: 28, height: 28, borderTopColor: "var(--accent)" }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="dbe">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -350,188 +358,222 @@ const BackupManager: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div
+        className="dbe-head"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-white">Gestión de Backups</h2>
-          <p className="text-slate-500 dark:text-slate-400">
-            Realiza y restaura backups de la base de datos
-          </p>
+          <span className="eyebrow">Avanzado · respaldos</span>
+          <h2 className="serif">Backups</h2>
+          <p>Respaldos manuales y automáticos de la base, y restauración a un punto previo.</p>
+          <span className="dbe-warnline">
+            <span className="material-icons">warning_amber</span>
+            Restaurar reemplaza los datos actuales y no se puede deshacer.
+          </span>
         </div>
-        <div className="flex gap-3">
-          <ActionButton
-            variant="secondary"
-            icon="settings"
-            onClick={() => setShowConfigModal(true)}
-          >
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="dbe-btn" onClick={() => setShowConfigModal(true)}>
+            <span className="material-icons">settings</span>
             Configuración
-          </ActionButton>
-          <ActionButton
-            variant="primary"
-            icon="backup"
+          </button>
+          <button
+            className="dbe-btn dbe-btn-primary"
             onClick={handleCreateBackup}
-            loading={isBackingUp}
+            disabled={isBackingUp}
           >
-            Crear Backup
-          </ActionButton>
+            {isBackingUp ? (
+              <span className="dbe-spin" style={{ borderTopColor: "var(--paper)" }} />
+            ) : (
+              <span className="material-icons">backup</span>
+            )}
+            Crear backup
+          </button>
         </div>
       </div>
 
       {/* Estado del sistema */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <AdminCard variant="default">
-          <div className="flex items-center gap-3">
-            <div
-              className={`p-3 rounded-xl ${config?.enabled ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-600"}`}
-            >
-              <span className="material-icons">autorenew</span>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Backup Automático</p>
-              <p className="font-bold text-slate-800">
-                {config?.enabled ? "Activado" : "Desactivado"}
-              </p>
-            </div>
-          </div>
-        </AdminCard>
-
-        <AdminCard variant="default">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
-              <span className="material-icons">schedule</span>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Frecuencia</p>
-              <div className="flex flex-wrap gap-1 mt-1">
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                  Diario
-                </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
-                  Semanal
-                </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                  Mensual
-                </span>
-              </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: 12,
+          marginBottom: 22,
+        }}
+      >
+        <div
+          className="dbe-table-wrap"
+          style={{
+            marginTop: 0,
+            padding: "16px 18px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span
+            className="dbe-pill"
+            data-tone={config?.enabled ? "ok" : "mute"}
+            style={{ width: 34, height: 34, padding: 0, justifyContent: "center", borderRadius: 9 }}
+          >
+            <span className="material-icons">autorenew</span>
+          </span>
+          <div>
+            <div className="eyebrow">Backup automático</div>
+            <div className="dbe-cell-strong" style={{ marginTop: 2 }}>
+              {config?.enabled ? "Activado" : "Desactivado"}
             </div>
           </div>
-        </AdminCard>
-
-        <AdminCard variant="default">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-purple-100 text-purple-600">
-              <span className="material-icons">history</span>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Último Backup</p>
-              <p className="font-bold text-slate-800">
-                {config?.last_backup_at ? formatDate(config.last_backup_at) : "Nunca"}
-              </p>
+        </div>
+        <div
+          className="dbe-table-wrap"
+          style={{
+            marginTop: 0,
+            padding: "16px 18px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span
+            className="dbe-pill"
+            data-tone="accent"
+            style={{ width: 34, height: 34, padding: 0, justifyContent: "center", borderRadius: 9 }}
+          >
+            <span className="material-icons">schedule</span>
+          </span>
+          <div>
+            <div className="eyebrow">Retención</div>
+            <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
+              <span className="dbe-pill" data-tone="accent">
+                Diario
+              </span>
+              <span className="dbe-pill" data-tone="ok">
+                Semanal
+              </span>
+              <span className="dbe-pill" data-tone="ai">
+                Mensual
+              </span>
             </div>
           </div>
-        </AdminCard>
+        </div>
+        <div
+          className="dbe-table-wrap"
+          style={{
+            marginTop: 0,
+            padding: "16px 18px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span
+            className="dbe-pill"
+            data-tone="ai"
+            style={{ width: 34, height: 34, padding: 0, justifyContent: "center", borderRadius: 9 }}
+          >
+            <span className="material-icons">history</span>
+          </span>
+          <div>
+            <div className="eyebrow">Último backup</div>
+            <div className="dbe-cell-strong" style={{ marginTop: 2 }}>
+              {config?.last_backup_at ? formatDate(config.last_backup_at) : "Nunca"}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Lista de Backups */}
-      <AdminCard
-        header={
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <span className="material-icons text-blue-600">storage</span>
-              Backups Disponibles ({backups.length})
-            </h3>
-          </div>
-        }
-      >
-        {backups.length === 0 ? (
-          <div className="text-center py-12">
-            <span className="material-icons text-6xl text-slate-300 mb-4">cloud_off</span>
-            <p className="text-slate-500">No hay backups disponibles</p>
-            <p className="text-sm text-slate-400 mt-2">
-              Crea tu primer backup usando el botón "Crear Backup"
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+      <div style={{ marginBottom: 8 }}>
+        <span className="eyebrow">Backups disponibles · {backups.length}</span>
+      </div>
+      {backups.length === 0 ? (
+        <div className="dbe-table-wrap" style={{ padding: 40, textAlign: "center" }}>
+          <span className="material-icons" style={{ fontSize: 40, color: "var(--ink-4)" }}>
+            cloud_off
+          </span>
+          <p style={{ color: "var(--ink-3)", marginTop: 8 }}>No hay backups disponibles.</p>
+          <p className="dbe-fdesc">Creá el primero con el botón "Crear backup".</p>
+        </div>
+      ) : (
+        <div className="dbe-table-wrap" style={{ marginTop: 0 }}>
+          <div className="dbe-scroll">
+            <table className="dbe-table">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                    Archivo
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                    Fecha
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                    Tamaño
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                    Registros
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                    Tipo
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                    Acciones
-                  </th>
+                <tr>
+                  <th>Archivo</th>
+                  <th>Fecha</th>
+                  <th>Tamaño</th>
+                  <th style={{ textAlign: "center" }}>Registros</th>
+                  <th>Tipo</th>
+                  <th style={{ textAlign: "right" }}>Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {backups.map((backup, index) => {
                   const backupType = getBackupType(backup, index);
+                  const busy = isRestoring && selectedBackup?.file_name === backup.file_name;
                   return (
-                    <tr
-                      key={backup.file_name}
-                      className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="material-icons text-slate-400">backup</span>
-                          <span className="font-medium text-slate-800 dark:text-slate-200 text-sm">
+                    <tr key={backup.file_name} style={{ cursor: "default" }}>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                          <span
+                            className="material-icons"
+                            style={{ fontSize: 17, color: "var(--ink-4)" }}
+                          >
+                            backup
+                          </span>
+                          <span className="dbe-cell-mono" style={{ color: "var(--ink-2)" }}>
                             {backup.file_name}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                        {formatDate(backup.created_at)}
+                      <td className="dbe-cell-mono">{formatDate(backup.created_at)}</td>
+                      <td className="dbe-cell-mono">{formatFileSize(backup.size_bytes)}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className="dbe-num">{backup.record_count}</span>
                       </td>
-                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                        {formatFileSize(backup.size_bytes)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {backup.record_count} registros
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col gap-1">
-                          <StatusBadge
-                            status={backup.backup_type === "automatic" ? "info" : "warning"}
-                            size="sm"
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 4,
+                            alignItems: "flex-start",
+                          }}
+                        >
+                          <span
+                            className="dbe-pill"
+                            data-tone={backup.backup_type === "automatic" ? "accent" : "warn"}
                           >
                             {backup.backup_type === "automatic" ? "Automático" : "Manual"}
-                          </StatusBadge>
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${backupType.color}`}
-                          >
+                          </span>
+                          <span className="dbe-pill" data-tone={backupType.tone}>
                             {backupType.label}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <ActionButton
-                            variant="ghost"
-                            size="sm"
-                            icon="restore"
-                            onClick={() => {
-                              setSelectedBackup(backup);
-                              handleRestore(backup.file_name);
-                            }}
-                            loading={isRestoring && selectedBackup?.file_name === backup.file_name}
-                          >
-                            Restaurar
-                          </ActionButton>
-                        </div>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          className="dbe-btn"
+                          style={{ height: "auto", padding: "7px 12px", fontSize: 12 }}
+                          onClick={() => handlePrepareRestore(backup)}
+                          disabled={busy || isPreparingRestore}
+                        >
+                          {busy ? (
+                            <span className="dbe-spin" />
+                          ) : (
+                            <span className="material-icons" style={{ fontSize: 15 }}>
+                              restore
+                            </span>
+                          )}
+                          Restaurar
+                        </button>
                       </td>
                     </tr>
                   );
@@ -539,222 +581,297 @@ const BackupManager: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </AdminCard>
+        </div>
+      )}
 
       {/* Historial */}
-      <AdminCard
-        header={
-          <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            <span className="material-icons text-purple-600">history</span>
-            Historial de Operaciones
-          </h3>
-        }
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div style={{ margin: "26px 0 8px" }}>
+        <span className="eyebrow">Historial de operaciones</span>
+      </div>
+      <div className="dbe-table-wrap" style={{ marginTop: 0 }}>
+        <div className="dbe-scroll">
+          <table className="dbe-table">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                  Operación
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                  Estado
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                  Fecha
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                  Detalles
-                </th>
+              <tr>
+                <th>Operación</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Detalles</th>
               </tr>
             </thead>
             <tbody>
-              {history.slice(0, 10).map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                >
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="material-icons text-slate-400">
-                        {item.metadata?.action === "restore" ? "restore" : "backup"}
+              {history.slice(0, 10).map((item) => {
+                const isRestore = item.metadata?.action === "restore";
+                const statusTone =
+                  item.status === "completed"
+                    ? "ok"
+                    : item.status === "failed"
+                      ? "warn"
+                      : item.status === "running"
+                        ? "accent"
+                        : "mute";
+                const statusLabel =
+                  item.status === "completed"
+                    ? "Completado"
+                    : item.status === "failed"
+                      ? "Fallido"
+                      : item.status === "running"
+                        ? "En progreso"
+                        : "Pendiente";
+                return (
+                  <tr key={item.id} style={{ cursor: "default" }}>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span
+                          className="material-icons"
+                          style={{ fontSize: 16, color: "var(--ink-4)" }}
+                        >
+                          {isRestore ? "restore" : "backup"}
+                        </span>
+                        <span className="dbe-cell-strong" style={{ fontWeight: 500 }}>
+                          {isRestore ? "Restauración" : "Backup"}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="dbe-pill" data-tone={statusTone}>
+                        {statusLabel}
                       </span>
-                      <span className="font-medium text-slate-800 dark:text-slate-200 text-sm capitalize">
-                        {item.metadata?.action === "restore" ? "Restauración" : "Backup"}
-                      </span>
-                      <StatusBadge
-                        status={item.backup_type === "automatic" ? "info" : "warning"}
-                        size="sm"
-                      >
-                        {item.backup_type === "automatic" ? "Auto" : "Manual"}
-                      </StatusBadge>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <StatusBadge
-                      status={
-                        item.status === "completed"
-                          ? "success"
-                          : item.status === "failed"
-                            ? "error"
-                            : item.status === "running"
-                              ? "info"
-                              : "neutral"
-                      }
-                      size="sm"
-                    >
-                      {item.status === "completed" && "Completado"}
-                      {item.status === "failed" && "Fallido"}
-                      {item.status === "running" && "En progreso"}
-                      {item.status === "pending" && "Pendiente"}
-                    </StatusBadge>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">
-                    {formatDate(item.started_at)}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                    </td>
+                    <td className="dbe-cell-mono">{formatDate(item.started_at)}</td>
+                    <td>
+                      <span style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
                         {item.record_count > 0 && `${item.record_count} registros`}
                         {item.tables_backed_up?.length > 0 &&
-                          ` • ${item.tables_backed_up.length} tablas`}
-                        {item.error_message && (
-                          <span className="text-rose-600 ml-2">Error: {item.error_message}</span>
-                        )}
+                          ` · ${item.tables_backed_up.length} tablas`}
                       </span>
-                      {(() => {
-                        const date = new Date(item.started_at);
-                        if (date.getDay() === 0) {
-                          return (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 w-fit">
-                              Semanal
-                            </span>
-                          );
-                        } else if (date.getDate() === 1) {
-                          return (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 w-fit">
-                              Mensual
-                            </span>
-                          );
-                        } else {
-                          return (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
-                              Diario
-                            </span>
-                          );
-                        }
-                      })()}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      {item.error_message && (
+                        <span style={{ color: "var(--warn)", marginLeft: 8, fontSize: 12 }}>
+                          Error: {item.error_message}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      </AdminCard>
+      </div>
+
+      {/* Modal de confirmación tipada de restauración */}
+      {restoreTarget && (
+        <div className="dbe dbe-modal-bg" onClick={() => !isRestoring && setRestoreTarget(null)}>
+          <div className="dbe-modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+            <div className="dbe-modal-head">
+              <div>
+                <span className="eyebrow" style={{ color: "var(--warn)" }}>
+                  Acción destructiva
+                </span>
+                <h3 className="serif">Restaurar backup</h3>
+              </div>
+            </div>
+            <div className="dbe-modal-body">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 9,
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  background: "var(--warn-s)",
+                  border: "1px solid var(--warn)",
+                  marginBottom: 16,
+                }}
+              >
+                <span
+                  className="material-icons"
+                  style={{ fontSize: 17, color: "var(--warn)", flexShrink: 0 }}
+                >
+                  warning_amber
+                </span>
+                <span style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>
+                  Los datos actuales serán <strong>reemplazados</strong> por el contenido de este
+                  backup. Esta operación no se puede deshacer.
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  fontSize: 13,
+                  color: "var(--ink-2)",
+                  marginBottom: 16,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--ink-3)" }}>Archivo</span>
+                  <span className="mono">{restoreTarget.file.file_name}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--ink-3)" }}>Fecha</span>
+                  <span className="mono">{formatDate(restoreTarget.info?.created_at)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--ink-3)" }}>Registros</span>
+                  <span className="mono">{restoreTarget.totalRecords}</span>
+                </div>
+                {restoreTarget.tables.length > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span style={{ color: "var(--ink-3)" }}>Tablas</span>
+                    <span style={{ textAlign: "right" }}>{restoreTarget.tables.join(", ")}</span>
+                  </div>
+                )}
+              </div>
+              <label className="dbe-flabel">
+                <span>Escribí RESTAURAR para confirmar</span>
+              </label>
+              <input
+                className="dbe-field"
+                value={restoreConfirmText}
+                onChange={(e) => setRestoreConfirmText(e.target.value)}
+                placeholder="RESTAURAR"
+                autoFocus
+              />
+            </div>
+            <div className="dbe-modal-foot">
+              <button
+                className="dbe-btn"
+                onClick={() => setRestoreTarget(null)}
+                disabled={isRestoring}
+              >
+                Cancelar
+              </button>
+              <button
+                className="dbe-btn"
+                style={{ background: "var(--warn)", color: "#fff", borderColor: "var(--warn)" }}
+                onClick={handleConfirmRestore}
+                disabled={isRestoring || restoreConfirmText.trim().toUpperCase() !== "RESTAURAR"}
+              >
+                {isRestoring ? (
+                  <span className="dbe-spin" style={{ borderTopColor: "#fff" }} />
+                ) : (
+                  <span className="material-icons" style={{ fontSize: 16 }}>
+                    restore
+                  </span>
+                )}
+                Restaurar ahora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Configuración */}
       {showConfigModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-slate-800 dark:text-white">
-                Configuración de Backups
-              </h3>
+        <div className="dbe dbe-modal-bg" onClick={() => setShowConfigModal(false)}>
+          <div className="dbe-modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+            <div className="dbe-modal-head">
+              <div>
+                <span className="eyebrow">Backups</span>
+                <h3 className="serif">Configuración</h3>
+              </div>
               <button
+                className="dbe-modal-x"
                 onClick={() => setShowConfigModal(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                aria-label="Cerrar"
               >
                 <span className="material-icons">close</span>
               </button>
             </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="font-medium text-slate-700 dark:text-slate-300">
-                  Backup Automático
+            <div
+              className="dbe-modal-body"
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+              >
+                <label className="dbe-cell-strong" style={{ fontWeight: 500 }}>
+                  Backup automático
                 </label>
                 <button
+                  className="dbe-btn"
+                  style={{ height: "auto", padding: "6px 12px" }}
                   onClick={() => setConfigForm((prev) => ({ ...prev, enabled: !prev.enabled }))}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    configForm.enabled ? "bg-blue-600" : "bg-slate-300"
-                  }`}
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      configForm.enabled ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
+                  <span className="dbe-pill" data-tone={configForm.enabled ? "ok" : "mute"}>
+                    {configForm.enabled ? "Activado" : "Desactivado"}
+                  </span>
                 </button>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Frecuencia
+                <label className="dbe-flabel">
+                  <span>Frecuencia</span>
                 </label>
-                <select
-                  value={configForm.frequency}
-                  onChange={(e) =>
-                    setConfigForm((prev) => ({
-                      ...prev,
-                      frequency: e.target.value as any,
-                    }))
-                  }
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
-                >
-                  <option value="hourly">Cada hora</option>
-                  <option value="daily">Diario</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="monthly">Mensual</option>
-                </select>
+                <div className="dbe-sel-icon">
+                  <select
+                    className="dbe-field sel"
+                    value={configForm.frequency}
+                    onChange={(e) =>
+                      setConfigForm((prev) => ({ ...prev, frequency: e.target.value as any }))
+                    }
+                  >
+                    <option value="hourly">Cada hora</option>
+                    <option value="daily">Diario</option>
+                    <option value="weekly">Semanal</option>
+                    <option value="monthly">Mensual</option>
+                  </select>
+                  <span className="material-icons">expand_more</span>
+                </div>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Hora del Backup
+                <label className="dbe-flabel">
+                  <span>Hora del backup</span>
                 </label>
                 <input
                   type="time"
+                  className="dbe-field"
                   value={configForm.backup_time}
                   onChange={(e) =>
                     setConfigForm((prev) => ({ ...prev, backup_time: e.target.value }))
                   }
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
                 />
               </div>
 
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Estrategia de Retención
-                </label>
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
-                    <strong>3 backups inteligentes:</strong>
-                  </p>
-                  <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                    <li>
-                      ✅ <strong>1 diario</strong> - El más reciente
-                    </li>
-                    <li>
-                      ✅ <strong>1 semanal</strong> - Último domingo
-                    </li>
-                    <li>
-                      ✅ <strong>1 mensual</strong> - Último 1ro del mes
-                    </li>
-                  </ul>
-                </div>
-                <p className="text-xs text-slate-500 mt-2">Espacio total: ~15MB (3 × 5MB)</p>
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  background: "var(--accent-s)",
+                  border: "1px solid var(--rule-2)",
+                }}
+              >
+                <p
+                  style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", margin: "0 0 6px" }}
+                >
+                  3 backups inteligentes
+                </p>
+                <ul
+                  style={{
+                    margin: 0,
+                    paddingLeft: 18,
+                    fontSize: 12,
+                    color: "var(--ink-3)",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <li>1 diario — el más reciente</li>
+                  <li>1 semanal — último domingo</li>
+                  <li>1 mensual — primer día del mes</li>
+                </ul>
               </div>
             </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <ActionButton variant="ghost" onClick={() => setShowConfigModal(false)}>
+            <div className="dbe-modal-foot">
+              <button className="dbe-btn" onClick={() => setShowConfigModal(false)}>
                 Cancelar
-              </ActionButton>
-              <ActionButton variant="primary" icon="save" onClick={handleSaveConfig}>
+              </button>
+              <button className="dbe-btn dbe-btn-primary" onClick={handleSaveConfig}>
+                <span className="material-icons">save</span>
                 Guardar
-              </ActionButton>
+              </button>
             </div>
           </div>
         </div>

@@ -103,7 +103,7 @@ const SolicitudesCorreccionManager: React.FC = () => {
     ];
     // Ordenar por fecha (creación) descendente
     return combined.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
     );
   }, [solicitudesModificacion, solicitudesNuevas]);
 

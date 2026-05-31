@@ -14,6 +14,7 @@ import TodoistService from "../../services/todoistDirectService";
 import type { LanzamientoPPS } from "../../types";
 import { getEspecialidadClasses, parseToUTCDate } from "../../utils/formatters";
 import ContactModal from "./ContactModal";
+import { logger } from "../../utils/logger";
 
 // Opciones Simplificadas
 const GESTION_STATUS_OPTIONS = [
@@ -192,7 +193,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
             setReminderSuccess(true);
             setTimeout(() => setReminderSuccess(false), 3000);
           } catch (error) {
-            console.error("Error creando recordatorios:", error);
+            logger.error("Error creando recordatorios:", error);
           }
         }
       }
@@ -213,16 +214,16 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
       e.stopPropagation();
       try {
         await TodoistService.createLanzamientoTask(
-          pps[FIELD_NOMBRE_PPS_LANZAMIENTOS],
+          pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? "",
           relaunchDate || "Pendiente",
           notes,
           2,
-          institution?.phone
+          institution?.phone ?? undefined
         );
         setTodoistSuccess(true);
         setTimeout(() => setTodoistSuccess(false), 3000);
       } catch (error) {
-        console.error("Error Todoist:", error);
+        logger.error("Error Todoist:", error);
       }
     };
 
@@ -416,7 +417,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                   className={`font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 leading-tight pr-2 ${
                     isExpanded ? "whitespace-normal" : "truncate"
                   }`}
-                  title={pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
+                  title={pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? undefined}
                 >
                   {pps[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
                 </h4>

@@ -1,5 +1,6 @@
 import { normalizeStringForComparison } from "./formatters";
 import { FIELD_ESTADO_FINALIZACION } from "../constants";
+import { logger } from "./logger";
 
 export interface Attachment {
   url: string;
@@ -28,7 +29,7 @@ export const getStoragePath = (fullUrl: string): string | null => {
     }
     return null;
   } catch (e) {
-    console.error("Error parsing storage path:", e);
+    logger.error("Error parsing storage path:", e);
     return null;
   }
 };

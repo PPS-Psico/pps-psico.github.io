@@ -3,6 +3,8 @@ import { supabase } from "../lib/supabaseClient";
 
 export interface MetricsKPIs {
   matricula_generada: number;
+  estudiantes_en_pps: number;
+  estudiantes_en_pps_prev: number;
   alumnos_finalizados: number;
   matricula_activa: number;
   sin_pps: number;
@@ -17,6 +19,7 @@ export interface MetricsKPIs {
   trend_data: { year: string; value: number }[];
   trends: {
     matricula_generada: number;
+    estudiantes_en_pps: number;
     acreditados: number;
     activos: number;
   };
@@ -25,6 +28,8 @@ export interface MetricsKPIs {
 
 const emptyKPIs = (year: number): MetricsKPIs => ({
   matricula_generada: 0,
+  estudiantes_en_pps: 0,
+  estudiantes_en_pps_prev: 0,
   alumnos_finalizados: 0,
   matricula_activa: 0,
   sin_pps: 0,
@@ -37,7 +42,7 @@ const emptyKPIs = (year: number): MetricsKPIs => ({
   orientation_distribution: {},
   enrollment_evolution: [],
   trend_data: [],
-  trends: { matricula_generada: 0, acreditados: 0, activos: 0 },
+  trends: { matricula_generada: 0, estudiantes_en_pps: 0, acreditados: 0, activos: 0 },
   target_year: year,
 });
 

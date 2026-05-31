@@ -3,30 +3,26 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { testSupabaseConnection } from "./constants";
 import { AuthProvider } from "./contexts/AuthContext";
+import { logger } from "./utils/logger";
 
-console.log(
-  "%c ANTIGRAVITY CONTROL: main.tsx loaded ",
-  "background: #222; color: #bada55; font-size: 20px"
-);
+// Diagnóstico de conexión a Supabase: solo en desarrollo.
+// En producción no tiene sentido hacer un fetch extra ni volcar datos a la consola.
+if (import.meta.env.DEV) {
+  logger.info("ANTIGRAVITY CONTROL: main.tsx loaded");
 
-// Run Supabase connection test on load
-testSupabaseConnection().then(async (result) => {
-  const message = result.success
-    ? `%c✅ Supabase Connection: OK (Status ${result.status}) - background: #1a7f37; color: white; padding: 10px;`
-    : `%c❌ Supabase Connection: FAILED (Status ${result.status}) - background: #d32f2f; color: white; padding: 10px;`;
+  testSupabaseConnection().then(async (result) => {
+    if (result.success) {
+      logger.info(`Supabase Connection: OK (Status ${result.status})`);
+    } else {
+      logger.error(`Supabase Connection: FAILED (Status ${result.status})`);
+    }
 
-  console.log(message);
-
-  // Detailed diagnostics - Only in development
-  if (import.meta.env.DEV) {
-    console.log("=== DETAILED SUPABASE DIAGNOSTICS ===");
-    console.log("1. Checking Supabase endpoint health...");
+    logger.debug("=== DETAILED SUPABASE DIAGNOSTICS ===");
 
     if (result.success) {
       try {
         const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import("./constants/configConstants");
-        console.log("2. Endpoint URL:", SUPABASE_URL);
-        console.log("3. API Key (first 30 chars):", SUPABASE_ANON_KEY.substring(0, 30));
+        logger.debug("Endpoint URL", SUPABASE_URL);
 
         // Test with edge function
         const rpcResponse = await fetch(`${SUPABASE_URL}/functions/v1/health-check`, {
@@ -36,8 +32,7 @@ testSupabaseConnection().then(async (result) => {
             "Content-Type": "application/json",
           },
         });
-
-        console.log("4. RPC Endpoint Health:", rpcResponse.status);
+        logger.debug("RPC Endpoint Health", rpcResponse.status);
 
         // Test with public table (should be accessible with anon key)
         const tableResponse = await fetch(`${SUPABASE_URL}/rest/v1/app_config?select=*`, {
@@ -47,17 +42,13 @@ testSupabaseConnection().then(async (result) => {
             "Content-Type": "application/json",
           },
         });
-
-        console.log("5. Public Table Access:", tableResponse.status);
-        console.log("6. If this is 401, it may be RLS policies blocking access");
+        logger.debug("Public Table Access", tableResponse.status);
       } catch (e: any) {
-        console.error("7. Diagnostic error:", e);
+        logger.error("Diagnostic error", e);
       }
     }
-
-    console.log("===========================================");
-  }
-});
+  });
+}
 
 // @ts-ignore
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -69,7 +60,7 @@ if (typeof Node === "function" && Node.prototype) {
   const originalRemoveChild = Node.prototype.removeChild;
   Node.prototype.removeChild = function <T extends Node>(child: T): T {
     if (child.parentNode !== this) {
-      if (console) console.warn("[React Resilience] Suppressing removeChild error.");
+      if (console) logger.warn("[React Resilience] Suppressing removeChild error.");
       return child;
     }
     return originalRemoveChild.call(this, child) as T;
@@ -81,7 +72,7 @@ if (typeof Node === "function" && Node.prototype) {
     referenceNode: Node | null
   ): T {
     if (referenceNode && referenceNode.parentNode !== this) {
-      if (console) console.warn("[React Resilience] Suppressing insertBefore error.");
+      if (console) logger.warn("[React Resilience] Suppressing insertBefore error.");
       return newNode;
     }
     return originalInsertBefore.call(this, newNode, referenceNode) as T;
@@ -137,16 +128,16 @@ if ("serviceWorker" in navigator) {
       for (const reg of registrations) {
         // If there's a registration that is NOT for firebase-messaging-sw.js, unregister it
         if (reg.active && !reg.active.scriptURL.includes("firebase-messaging-sw.js")) {
-          console.log("🧹 Unregistering legacy service worker:", reg.active.scriptURL);
+          logger.info("Unregistering legacy service worker", reg.active.scriptURL);
           await reg.unregister();
         }
       }
 
       // Register the unified service worker
       const registration = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
-      console.log("✅ Unified Service Worker registered:", registration.scope);
+      logger.info("Unified Service Worker registered", registration.scope);
     } catch (error) {
-      console.error("❌ Service Worker registration failed:", error);
+      logger.error("Service Worker registration failed", error);
     }
   });
 }

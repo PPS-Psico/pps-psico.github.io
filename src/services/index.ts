@@ -39,3 +39,19 @@ export {
 export { fetchCorrectionPanelData } from "./correccionService";
 
 export { uploadInstitutionLogo } from "./storageService";
+
+export {
+  deriveBucket,
+  isSeguroGestionado,
+  marcarAseguramiento,
+  revertirAseguramiento,
+  buildClipboardText,
+  buildHeader,
+} from "./aseguramientoService";
+export type {
+  UIState,
+  SidebarBucket,
+  BucketInput,
+  ClipboardStudent,
+  SeguroHeader,
+} from "./aseguramientoService";

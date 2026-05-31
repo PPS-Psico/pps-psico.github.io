@@ -1,132 +1,130 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-// @ts-ignore
-import {
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
-  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  TABLE_NAME_CONVOCATORIAS,
-  TABLE_NAME_ESTUDIANTES,
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_PENALIZACIONES,
-  TABLE_NAME_PRACTICAS,
-} from "@/constants";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ModalProvider } from "@/contexts/ModalContext";
-import * as supabaseService from "@/services/supabaseService";
+import { describe, expect, it } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import LanzadorView from "../LanzadorView";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import React from "react";
+import { useSeleccionadorLogic } from "../../../hooks/useSeleccionadorLogic";
+import { mockDb } from "../../../services/mockDb";
+import { normalizeStringForComparison } from "../../../utils/formatters";
 
-// Mock Supabase Service
-jest.mock("@/services/supabaseService");
-const mockedSupabase = supabaseService as jest.Mocked<typeof supabaseService>;
+/**
+ * Integración del Seleccionador de candidatos.
+ *
+ * Verifica la integración real hook + React Query + capa de datos en
+ * `isTestingMode` (usa mockDb). Probar el hook en vez del JSX hace el test
+ * resiliente a los rediseños visuales del Lanzador.
+ *
+ * Datos relevantes de mockData (en modo testing):
+ *   - lanz_1 (Hospital Garrahan, "Abierta") con inscriptos:
+ *       conv_1 (st_999 -> Seleccionado), conv_2 (st_1 -> Seleccionado),
+ *       conv_3 (st_2 -> Inscripto)
+ */
 
-// Mock Data
-const mockLanzamiento = {
-  id: "lanz123",
-  created_at: "",
-  [FIELD_NOMBRE_PPS_LANZAMIENTOS]: "Hospital Test",
-  [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Abierta",
-  cupos_disponibles: 5,
-  orientacion: "Clinica",
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
 };
 
-const mockStudent = {
-  id: "est123",
-  created_at: "",
-  [FIELD_NOMBRE_ESTUDIANTES]: "Estudiante Candidato",
-  [FIELD_LEGAJO_ESTUDIANTES]: "12345",
-  correo: "test@mail.com",
-};
-
-const mockEnrollment = {
-  id: "conv123",
-  created_at: "",
-  [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: ["est123"], // Legacy array format support
-  [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
-  lanzamiento_id: "lanz123",
-};
-
-describe.skip("Seleccionador de Candidatos (Integration Test)", () => {
+describe("Seleccionador de Candidatos (Integration Test)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    // Mock fetchAllData responses dynamically based on table name
-    mockedSupabase.fetchAllData.mockImplementation(
-      async (tableName: any, fields?: any, filters?: any): Promise<any> => {
-        if (tableName === TABLE_NAME_LANZAMIENTOS_PPS) {
-          return { records: [mockLanzamiento], error: null };
-        }
-        if (tableName === TABLE_NAME_CONVOCATORIAS) {
-          return { records: [mockEnrollment], error: null };
-        }
-        if (tableName === TABLE_NAME_ESTUDIANTES) {
-          return { records: [mockStudent], error: null };
-        }
-        if (tableName === TABLE_NAME_PRACTICAS || tableName === TABLE_NAME_PENALIZACIONES) {
-          return { records: [], error: null };
-        }
-        return { records: [], error: null };
-      }
-    );
-
-    // Mock updateRecord specifically for the toggle action
-    mockedSupabase.updateRecord.mockResolvedValue({ record: {} as any, error: null });
+    mockDb.reset();
   });
 
-  it("permite seleccionar un alumno postulante y actualiza su estado", async () => {
-    const user = userEvent.setup();
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
+  it("carga solo las convocatorias abiertas como lanzamientos disponibles", async () => {
+    const { result } = renderHook(() => useSeleccionadorLogic(true), {
+      wrapper: createWrapper(),
     });
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ModalProvider>
-            {/* Renderizamos directamente la vista del Lanzador en modo producción (isTestingMode=false para usar los mocks de servicio) */}
-            <LanzadorView isTestingMode={false} />
-          </ModalProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+    await waitFor(() => expect(result.current.openLaunches.length).toBeGreaterThan(0));
+
+    // Todas las cargadas deben estar abiertas (lanz_2 está "Cerrado" y no debe aparecer)
+    const allOpen = result.current.openLaunches.every(
+      (l) => normalizeStringForComparison(l.estado_convocatoria) === "abierta"
     );
+    expect(allOpen).toBe(true);
+    expect(result.current.openLaunches.some((l) => l.id === "lanz_2")).toBe(false);
+    expect(result.current.openLaunches.some((l) => l.id === "lanz_1")).toBe(true);
+  });
 
-    // 1. Cambiar a la pestaña "Seleccionador"
-    const tabSeleccionador = await screen.findByText("Seleccionador");
-    await user.click(tabSeleccionador);
+  it("enriquece y ordena los candidatos al seleccionar un lanzamiento", async () => {
+    const { result } = renderHook(() => useSeleccionadorLogic(true), {
+      wrapper: createWrapper(),
+    });
 
-    // 2. Ver la convocatoria abierta y hacer clic
-    const convocatoriaCard = await screen.findByText("Hospital Test");
-    expect(convocatoriaCard).toBeInTheDocument();
-    await user.click(convocatoriaCard);
+    await waitFor(() => expect(result.current.openLaunches.length).toBeGreaterThan(0));
 
-    // 3. Ver al candidato en la lista
-    const studentName = await screen.findByText("Estudiante Candidato");
-    expect(studentName).toBeInTheDocument();
+    const garrahan = result.current.openLaunches.find((l) => l.id === "lanz_1")!;
+    act(() => result.current.setSelectedLanzamiento(garrahan));
 
-    // 4. Encontrar el botón "Elegir" y hacer clic
-    // Buscamos el botón dentro de la fila del estudiante para ser precisos
-    const elegirButton = await screen.findByRole("button", { name: /Elegir/i });
-    await user.click(elegirButton);
+    await waitFor(() => expect(result.current.candidates.length).toBe(3));
 
-    // 5. Verificar Optimistic UI: El botón debe cambiar a "Listo" o "Seleccionado" instantáneamente
-    // Nota: El hook usa "Listo" cuando no está en modo revisión
-    await screen.findByText(/Listo/i);
+    // Ordenados por puntaje descendente
+    const scores = result.current.candidates.map((c) => c.puntajeTotal);
+    const sorted = [...scores].sort((a, b) => b - a);
+    expect(scores).toEqual(sorted);
 
-    // 6. Verificar que se llamó a la API para actualizar el estado a 'Seleccionado'
-    expect(mockedSupabase.updateRecord).toHaveBeenCalledWith(
-      TABLE_NAME_CONVOCATORIAS,
-      "conv123",
-      expect.objectContaining({
-        [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Seleccionado",
-      })
-    );
+    // Dos ya están seleccionados (conv_1, conv_2)
+    expect(result.current.selectedCandidates.length).toBe(2);
+  });
+
+  it("permite seleccionar un candidato inscripto y actualiza su estado a Seleccionado", async () => {
+    const { result } = renderHook(() => useSeleccionadorLogic(true), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.openLaunches.length).toBeGreaterThan(0));
+
+    const garrahan = result.current.openLaunches.find((l) => l.id === "lanz_1")!;
+    act(() => result.current.setSelectedLanzamiento(garrahan));
+
+    await waitFor(() => expect(result.current.candidates.length).toBe(3));
+
+    // El candidato inscripto (conv_3 / st_2) aún no está seleccionado
+    const inscripto = result.current.candidates.find((c) => c.enrollmentId === "conv_3")!;
+    expect(normalizeStringForComparison(inscripto.status)).toBe("inscripto");
+
+    // Lo seleccionamos
+    act(() => result.current.handleToggle(inscripto));
+
+    // Optimistic update inmediato
+    await waitFor(() => {
+      const updated = result.current.candidates.find((c) => c.enrollmentId === "conv_3");
+      expect(normalizeStringForComparison(updated!.status)).toBe("seleccionado");
+    });
+
+    // Y queda persistido en la capa de datos (mockDb)
+    await waitFor(() => {
+      const persisted = mockDb.data.convocatorias.find((c: any) => c.id === "conv_3");
+      expect(normalizeStringForComparison(persisted.estado_inscripcion)).toBe("seleccionado");
+    });
+
+    // Ahora hay 3 seleccionados
+    await waitFor(() => expect(result.current.selectedCandidates.length).toBe(3));
+  });
+
+  it("permite deseleccionar un candidato ya seleccionado (vuelve a Inscripto)", async () => {
+    const { result } = renderHook(() => useSeleccionadorLogic(true), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.openLaunches.length).toBeGreaterThan(0));
+
+    const garrahan = result.current.openLaunches.find((l) => l.id === "lanz_1")!;
+    act(() => result.current.setSelectedLanzamiento(garrahan));
+
+    await waitFor(() => expect(result.current.candidates.length).toBe(3));
+
+    const seleccionado = result.current.candidates.find((c) => c.enrollmentId === "conv_1")!;
+    expect(normalizeStringForComparison(seleccionado.status)).toBe("seleccionado");
+
+    act(() => result.current.handleToggle(seleccionado));
+
+    await waitFor(() => {
+      const persisted = mockDb.data.convocatorias.find((c: any) => c.id === "conv_1");
+      expect(normalizeStringForComparison(persisted.estado_inscripcion)).toBe("inscripto");
+    });
   });
 });

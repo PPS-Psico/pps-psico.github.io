@@ -56,6 +56,7 @@ import type { Orientacion, Practica, TabId } from "../types";
 import FinalizationStatusCard from "../components/student/FinalizationStatusCard";
 // import MobileSectionHeader from '../components/layout/MobileSectionHeader'; // Unused
 import ErrorBoundary from "../components/ErrorBoundary";
+import { logger } from "../utils/logger";
 
 // Export individual views for Router
 export { default as StudentPracticas } from "../components/student/PracticasTable";
@@ -261,13 +262,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   // Handlers para modales de corrección de prácticas
   const handleRequestModificacion = useCallback((practica: Practica) => {
-    console.log("[DEBUG] StudentDashboard - Solicitar modificación para:", practica);
+    logger.info("[DEBUG] StudentDashboard - Solicitar modificación para:", practica);
     setSelectedPractica(practica);
     setShowModificacionModal(true);
   }, []);
 
   const handleRequestNuevaPPS = useCallback(() => {
-    console.log("[DEBUG] StudentDashboard - Solicitar nueva PPS");
+    logger.info("[DEBUG] StudentDashboard - Solicitar nueva PPS");
     setShowNuevaPPSModal(true);
   }, []);
 

@@ -7,6 +7,7 @@ import {
 } from "../constants";
 import type { EstudianteFields, AirtableRecord } from "../types";
 import type { AuthUser } from "../contexts/AuthContext";
+import { logger } from "../utils/logger";
 
 interface UseAuthLogicProps {
   login: (user: AuthUser) => void;
@@ -42,7 +43,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${message}${data ? ` | Data: ${JSON.stringify(data)}` : ""}`;
     setDebugLogs((prev) => [...prev, logEntry]);
-    console.log(logEntry);
+    logger.info(logEntry);
   };
 
   const clearLogs = () => setDebugLogs([]);
@@ -242,7 +243,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         });
 
         if (signInError) {
-          console.warn("Login failed:", signInError.message);
+          logger.warn("Login failed:", signInError.message);
 
           if (signInError.message.includes("Invalid login credentials")) {
             // MODIFICADO: Ya no redirige a migración. Muestra error en pantalla.
@@ -258,7 +259,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         }
         // Si el login es exitoso, AuthContext detectará el cambio de sesión automáticamente
       } catch (err: any) {
-        console.error("Login error:", err);
+        logger.error("Login error:", err);
         setError(err.message || "Error al iniciar sesión.");
       } finally {
         setIsLoading(false);
@@ -308,13 +309,13 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               signUpError.status === 422 ||
               signUpError.status === 400
             ) {
-              console.log("Usuario ya existe en Auth, intentando forzar actualización de clave...");
+              logger.info("Usuario ya existe en Auth, intentando forzar actualización de clave...");
 
               // Si ya existe, usamos RPC para resetear la clave Y REPARAR EL VINCULO
               const { error: rpcResetError } = await resetPasswordWithVerifiedIdentity(false);
 
               if (rpcResetError) {
-                console.error("RPC Reset Error:", rpcResetError);
+                logger.error("RPC Reset Error:", rpcResetError);
                 if (
                   rpcResetError.message.includes("No existe usuario") ||
                   rpcResetError.message.includes("not found")
@@ -355,11 +356,11 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               telefono_input: foundStudent[FIELD_TELEFONO_ESTUDIANTES] || "",
             });
 
-            if (linkError) console.warn("Link RPC warning (non-critical):", linkError);
+            if (linkError) logger.warn("Link RPC warning (non-critical):", linkError);
           }
         }
       } catch (err: any) {
-        console.error("Migration error:", err);
+        logger.error("Migration error:", err);
         setError(err.message || "Error del servidor al procesar la solicitud.");
       } finally {
         setIsLoading(false);
@@ -403,7 +404,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           let userId = authData?.user?.id;
 
           if (signUpError || !userId) {
-            console.warn("SignUp failed:", signUpError);
+            logger.warn("SignUp failed:", signUpError);
             const errorMsg = signUpError?.message || "";
             const lowerMsg = errorMsg.toLowerCase();
 

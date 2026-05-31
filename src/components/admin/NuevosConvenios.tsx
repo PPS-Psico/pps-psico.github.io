@@ -1,19 +1,26 @@
-import React, { useState, useMemo, useCallback } from "react";
+/**
+ * NuevosConvenios — Rediseño v1 (Paper & Ink editorial)
+ *
+ * Solo cambia la capa visual. La lógica se preserva intacta:
+ *   · Query de instituciones + lanzamientos.
+ *   · Derivación de convenios confirmados vs. potenciales del año.
+ *   · confirmMutation que marca el año de convenio en la institución.
+ */
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "../../lib/db";
-import type { InstitucionFields, LanzamientoPPSFields, AirtableRecord } from "../../types";
 import {
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_TUTOR_INSTITUCIONES,
 } from "../../constants";
-import Card from "../ui/Card";
 import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
-import Button from "../ui/Button";
+import { injectScopedStyles } from "../../utils/injectScopedStyles";
+import { injectPremiumMotion } from "./premiumMotion";
+import { logger } from "../../utils/logger";
 import {
   normalizeStringForComparison,
   parseToUTCDate,
@@ -27,11 +34,65 @@ interface PotentialAgreement {
   launches: { id: string; name: string; date: string }[];
 }
 
+// ─── CSS scoped (Paper & Ink editorial) ───────────────────────────────────────
+const CSS = `
+.nco {
+  --paper:#F7F5F0; --paper-2:#EFECE4; --paper-3:#E5E1D7;
+  --ink:#14130F; --ink-2:#2A2823; --ink-3:#6B6660; --ink-4:#A8A39C;
+  --rule-2:#1413101A; --rule-3:#1413102E;
+  --accent:#1F3A8A; --accent-s:#1F3A8A14;
+  --warn:#B4501E; --warn-s:#B4501E14;
+  --ok:#2F5F3A; --ok-s:#2F5F3A14;
+  color:var(--ink); font-family:'Hanken Grotesk', system-ui, sans-serif;
+}
+html.dark .nco {
+  --paper:#0E0E0C; --paper-2:#17171A; --paper-3:#1F1F23;
+  --ink:#F2EFE8; --ink-2:#DAD6CD; --ink-3:#97928A; --ink-4:#5C5852;
+  --rule-2:#F2EFE822; --rule-3:#F2EFE836;
+  --accent:#8FB1FF; --accent-s:#8FB1FF1A;
+  --warn:#E4965D; --warn-s:#E4965D1A;
+  --ok:#88BD96; --ok-s:#88BD961A;
+}
+.nco .serif{ font-family:'Instrument Serif', serif; letter-spacing:-0.025em; }
+.nco .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
+.nco .eyebrow{ font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; font-weight:600; color:var(--ink-3); }
+
+.nco-section + .nco-section{ margin-top:30px; }
+.nco-section-head{ margin-bottom:14px; }
+.nco-section-head h3{ font-family:'Instrument Serif', serif; font-size:22px; font-weight:700; letter-spacing:-0.02em; margin:5px 0 0; }
+.nco-section-head p{ font-size:13px; color:var(--ink-3); margin:4px 0 0; max-width:560px; }
+
+/* Confirmados */
+.nco-confirmed{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:8px; }
+.nco-conf-item{ display:flex; align-items:center; gap:9px; padding:11px 14px; border:1px solid var(--rule-2); border-radius:10px; background:var(--paper); }
+.nco-conf-item .material-icons{ font-size:17px; color:var(--ok); }
+.nco-conf-name{ font-size:13.5px; color:var(--ink-2); font-weight:500; }
+
+/* Potenciales */
+.nco-pot{ border:1px solid var(--rule-2); border-left:3px solid var(--warn); border-radius:12px; background:var(--paper); padding:16px 18px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.nco-pot + .nco-pot{ margin-top:10px; }
+.nco-pot-name{ font-size:15px; font-weight:600; color:var(--ink); }
+.nco-pot-launches{ margin-top:8px; display:flex; flex-direction:column; gap:3px; }
+.nco-pot-launch{ font-size:12px; color:var(--ink-3); }
+.nco-pot-launch .mono{ color:var(--ink-4); }
+.nco-btn{ display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; padding:9px 15px; border-radius:9px; border:1px solid var(--ink); background:var(--ink); color:var(--paper); cursor:pointer; font-family:inherit; transition:opacity .12s; white-space:nowrap; flex-shrink:0; }
+.nco-btn:hover{ opacity:.9; }
+.nco-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.nco-btn .material-icons{ font-size:16px; }
+@keyframes nco-spin{ to{ transform:rotate(360deg); } }
+.nco-spin{ width:14px; height:14px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:999px; animation:nco-spin .8s linear infinite; }
+.nco-empty{ display:flex; align-items:center; gap:9px; padding:14px 16px; border:1px dashed var(--rule-3); border-radius:10px; color:var(--ink-3); font-size:13px; }
+.nco-empty .material-icons{ font-size:17px; color:var(--ok); }
+`;
+injectScopedStyles("nco-styles", CSS);
+injectPremiumMotion();
+
 const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode = false }) => {
   const queryClient = useQueryClient();
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
   );
+  const year = new Date().getFullYear();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["conveniosData", isTestingMode],
@@ -79,11 +140,10 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
     mutationFn: (institutionId: string) => {
       const currentYear = new Date().getFullYear();
       if (isTestingMode) {
-        console.log("TEST MODE: Confirming agreement for", institutionId);
+        logger.info("TEST MODE: Confirming agreement for", institutionId);
         return new Promise((resolve) => setTimeout(resolve, 500));
       }
-      // Actualizamos con el año actual en lugar de true
-      // Cast to any because the schema defines this field as boolean, but we store the year
+      // convenio_nuevo es el AÑO del convenio (smallint). null = sin convenio nuevo.
       return db.instituciones.update(institutionId, {
         [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: currentYear as any,
       });
@@ -99,7 +159,7 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
   });
 
   const { confirmed, potentials } = useMemo(() => {
-    if (!data) return { confirmed: [], potentials: [] };
+    if (!data) return { confirmed: [] as string[], potentials: [] as PotentialAgreement[] };
 
     const currentYear = new Date().getFullYear();
 
@@ -179,14 +239,14 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
 
   if (isLoading)
     return (
-      <div className="flex justify-center p-8">
+      <div className="nco" style={{ display: "flex", justifyContent: "center", padding: 32 }}>
         <Loader />
       </div>
     );
   if (error) return <EmptyState icon="error" title="Error" message={error.message} />;
 
   return (
-    <div className="space-y-8">
+    <div className="nco">
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -195,71 +255,80 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         />
       )}
 
-      <Card
-        icon="verified"
-        title={`Convenios Nuevos Confirmados (${new Date().getFullYear()})`}
-        description="Instituciones marcadas como 'Convenio Nuevo' que tuvieron lanzamientos este año."
-      >
+      {/* Confirmados */}
+      <section className="nco-section">
+        <div className="nco-section-head">
+          <span className="eyebrow">Confirmados · {year}</span>
+          <h3 className="serif">Convenios nuevos confirmados</h3>
+          <p>Instituciones marcadas como "convenio nuevo" que tuvieron lanzamientos este año.</p>
+        </div>
         {confirmed.length > 0 ? (
-          <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+          <div className="nco-confirmed">
             {confirmed.map((name) => (
-              <li key={name} className="flex items-center gap-2 text-sm">
-                <span className="material-icons text-emerald-500 !text-base">check_circle</span>
-                <span className="text-slate-700 dark:text-slate-200">{name}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-            No se han confirmado convenios nuevos este año.
-          </p>
-        )}
-      </Card>
-
-      <Card
-        icon="add_business"
-        title="Posibles Convenios Nuevos a Confirmar"
-        description="Instituciones con lanzamientos este año que no están marcadas con el año de convenio."
-      >
-        {potentials.length > 0 ? (
-          <div className="mt-4 space-y-4">
-            {potentials.map((item) => (
-              <div
-                key={item.institutionId}
-                className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              >
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100">
-                    {item.institutionName}
-                  </h4>
-                  <ul className="mt-2 space-y-1 text-xs text-slate-600 dark:text-slate-400">
-                    {item.launches.map((l) => (
-                      <li key={l.id}>
-                        - {l.name} ({formatDate(l.date)})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => confirmMutation.mutate(item.institutionId)}
-                  isLoading={
-                    confirmMutation.isPending && confirmMutation.variables === item.institutionId
-                  }
-                  icon="add_task"
-                >
-                  Confirmar {new Date().getFullYear()}
-                </Button>
+              <div key={name} className="nco-conf-item">
+                <span className="material-icons">check_circle</span>
+                <span className="nco-conf-name">{name}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-            ¡Excelente! Todas las instituciones con lanzamientos este año están correctamente
-            marcadas.
-          </p>
+          <div className="nco-empty">
+            <span className="material-icons" style={{ color: "var(--ink-4)" }}>
+              info
+            </span>
+            No se han confirmado convenios nuevos este año.
+          </div>
         )}
-      </Card>
+      </section>
+
+      {/* Potenciales */}
+      <section className="nco-section">
+        <div className="nco-section-head">
+          <span className="eyebrow">Por revisar</span>
+          <h3 className="serif">Posibles convenios a confirmar</h3>
+          <p>
+            Instituciones con lanzamientos este año que todavía no tienen el año de convenio
+            marcado.
+          </p>
+        </div>
+        {potentials.length > 0 ? (
+          <div>
+            {potentials.map((item) => (
+              <div key={item.institutionId} className="nco-pot">
+                <div style={{ minWidth: 0 }}>
+                  <div className="nco-pot-name">{item.institutionName}</div>
+                  <div className="nco-pot-launches">
+                    {item.launches.map((l) => (
+                      <div key={l.id} className="nco-pot-launch">
+                        {l.name} <span className="mono">· {formatDate(l.date)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  className="nco-btn"
+                  onClick={() => confirmMutation.mutate(item.institutionId)}
+                  disabled={
+                    confirmMutation.isPending && confirmMutation.variables === item.institutionId
+                  }
+                >
+                  {confirmMutation.isPending && confirmMutation.variables === item.institutionId ? (
+                    <span className="nco-spin" />
+                  ) : (
+                    <span className="material-icons">add_task</span>
+                  )}
+                  Confirmar {year}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="nco-empty">
+            <span className="material-icons">check_circle</span>
+            Todas las instituciones con lanzamientos este año están correctamente marcadas.
+          </div>
+        )}
+      </section>
     </div>
   );
 };

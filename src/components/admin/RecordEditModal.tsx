@@ -8,6 +8,7 @@ import {
 import type { AirtableRecord } from "../../types";
 import { cleanDbValue } from "../../utils/formatters";
 import { supabase } from "../../lib/supabaseClient";
+import { logger } from "../../utils/logger";
 
 interface FieldConfig {
   key: string;
@@ -153,6 +154,11 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
         } else {
           cleanedData[field.key] = Number(val);
         }
+      } else if (field.type === "date") {
+        // Una fecha vacía debe persistirse como null, no como "" (rompe columnas date).
+        if (val === "" || val === null || val === undefined) {
+          cleanedData[field.key] = null;
+        }
       } else if (field.type === "text" || field.type === "textarea" || field.type === "select") {
         cleanedData[field.key] = cleanDbValue(val);
       }
@@ -168,17 +174,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     const isCheckbox = field.type === "checkbox";
     const isTextarea = field.type === "textarea";
 
-    const inputClasses = `
-            w-full rounded-xl border-2
-            ${validationErrors[field.key] ? "border-red-400 dark:border-red-500" : "border-slate-300 dark:border-slate-500"}
-            p-2.5 text-sm font-medium
-            bg-white dark:bg-slate-950
-            text-slate-900 dark:text-slate-100
-            focus:border-blue-600 dark:focus:border-blue-400
-            focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/40
-            outline-none transition-all
-            ${isCheckbox ? "h-5 w-5 text-blue-600 rounded cursor-pointer" : ""}
-        `;
+    const inputClasses = `dbe-field${validationErrors[field.key] ? " err" : ""}`;
 
     const errorMsg = validationErrors[field.key];
 
@@ -202,21 +198,15 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
       if (displayValue) {
         return (
-          <div className="col-span-1">
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              {field.label}
-            </label>
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-              <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-600 shadow-sm">
-                <span className="material-icons !text-sm">{icon}</span>
+          <div className="dbe-col-full">
+            <label className="dbe-flabel">{field.label}</label>
+            <div className="dbe-linked">
+              <div className="dbe-linked-ico">
+                <span className="material-icons">{icon}</span>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                  {displayValue}
-                </p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
-                  ID: {value}
-                </p>
+              <div style={{ minWidth: 0 }}>
+                <b>{displayValue}</b>
+                <small>ID: {value}</small>
               </div>
             </div>
             <input type="hidden" name={field.key} value={value} />
@@ -227,32 +217,25 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
     if (field.type === "section") {
       return (
-        <div className="col-span-1 sm:col-span-2 mt-4 first:mt-0">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-px flex-grow bg-slate-200 dark:bg-slate-800"></div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 whitespace-nowrap">
-              {field.label}
-            </span>
-            <div className="h-px flex-grow bg-slate-200 dark:bg-slate-800"></div>
-          </div>
+        <div className="dbe-section-div">
+          <div className="ln" />
+          <span>{field.label}</span>
+          <div className="ln" />
         </div>
       );
     }
 
-    const wrapperClasses =
-      field.isFullWidth || isTextarea ? "col-span-1 sm:col-span-2" : "col-span-1";
+    const wrapperClasses = field.isFullWidth || isTextarea ? "dbe-col-full" : "";
 
     if (isTextarea) {
       return (
         <div className={wrapperClasses}>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-            {field.label}
-            {field.required && <span className="text-red-400 text-[10px]">●</span>}
-            {field.description && (
-              <span className="normal-case font-normal text-[10px] text-slate-400">
-                {field.description}
-              </span>
-            )}
+          <label className="dbe-flabel">
+            <span>
+              {field.label}
+              {field.required && <span className="req"> ●</span>}
+            </span>
+            {field.description && <span className="hint">{field.description}</span>}
           </label>
           <textarea
             name={field.key}
@@ -261,7 +244,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
             rows={3}
             className={inputClasses}
           />
-          {errorMsg && <p className="mt-1 text-[10px] text-red-500 font-semibold">{errorMsg}</p>}
+          {errorMsg && <p className="dbe-errmsg">{errorMsg}</p>}
         </div>
       );
     }
@@ -269,16 +252,18 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     if (field.type === "select") {
       return (
         <div className={wrapperClasses}>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            {field.label}
-            {field.required && <span className="text-red-400 text-[10px]">●</span>}
+          <label className="dbe-flabel">
+            <span>
+              {field.label}
+              {field.required && <span className="req"> ●</span>}
+            </span>
           </label>
-          <div className="relative">
+          <div className="dbe-sel-icon">
             <select
               name={field.key}
               value={value}
               onChange={handleChange}
-              className={`${inputClasses} appearance-none pr-10`}
+              className={`${inputClasses} sel`}
             >
               <option value="">Seleccionar...</option>
               {field.options?.map((opt) => {
@@ -296,36 +281,35 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
                 );
               })}
             </select>
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 dark:text-slate-500 pointer-events-none !text-lg">
-              expand_more
-            </span>
+            <span className="material-icons">expand_more</span>
           </div>
-          {errorMsg && <p className="mt-1 text-[10px] text-red-500 font-semibold">{errorMsg}</p>}
+          {errorMsg && <p className="dbe-errmsg">{errorMsg}</p>}
         </div>
       );
     }
 
     if (isCheckbox) {
       return (
-        <div className={`${wrapperClasses} flex items-center gap-3 mt-6 p-1`}>
+        <div
+          className={wrapperClasses}
+          style={{ display: "flex", alignItems: "center", gap: 11, marginTop: 8 }}
+        >
           <input
             type="checkbox"
             id={field.key}
             name={field.key}
             checked={!!value}
             onChange={handleChange}
-            className="w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-500 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            style={{ width: 18, height: 18, cursor: "pointer", accentColor: "var(--accent)" }}
           />
-          <div className="flex flex-col">
+          <div style={{ display: "flex", flexDirection: "column" }}>
             <label
               htmlFor={field.key}
-              className="text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none"
+              style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", cursor: "pointer" }}
             >
               {field.label}
             </label>
-            {field.description && (
-              <span className="text-[10px] text-slate-400 leading-none">{field.description}</span>
-            )}
+            {field.description && <span className="dbe-fdesc">{field.description}</span>}
           </div>
         </div>
       );
@@ -343,43 +327,28 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
       return (
         <div className={wrapperClasses}>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-            {field.label}
-          </label>
+          <label className="dbe-flabel">{field.label}</label>
           {value ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <span className="material-icons text-green-500 !text-sm">check_circle</span>
-                <span className="text-sm text-green-700 dark:text-green-300 flex-1 truncate">
-                  Archivo cargado
-                </span>
-                <a
-                  href={value}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  <span className="material-icons !text-sm">open_in_new</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev: any) => ({ ...prev, [field.key]: "" }))}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <span className="material-icons !text-sm">close</span>
-                </button>
-              </div>
+            <div className="dbe-file-ok">
+              <span className="material-icons">check_circle</span>
+              <span>Archivo cargado</span>
+              <a href={value} target="_blank" rel="noopener noreferrer" title="Abrir">
+                <span className="material-icons">open_in_new</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setFormData((prev: any) => ({ ...prev, [field.key]: "" }))}
+                title="Quitar"
+              >
+                <span className="material-icons">close</span>
+              </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-violet-300 dark:border-violet-700 border-dashed rounded-lg cursor-pointer bg-violet-50/50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <span className="material-icons text-violet-400 !text-2xl mb-1">
-                  {isUploading ? "hourglass_top" : "cloud_upload"}
-                </span>
-                <p className="text-xs text-violet-600 dark:text-violet-400">
-                  {isUploading ? "Subiendo..." : "Arrastrá o elegí un archivo"}
-                </p>
-              </div>
+            <label className="dbe-file">
+              <span className="material-icons">
+                {isUploading ? "hourglass_top" : "cloud_upload"}
+              </span>
+              <p>{isUploading ? "Subiendo…" : "Arrastrá o elegí un archivo"}</p>
               <input
                 type="file"
                 className="hidden"
@@ -398,7 +367,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
                     const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
                     setFormData((prev: any) => ({ ...prev, [field.key]: urlData.publicUrl }));
                   } catch (err: any) {
-                    console.error("Error uploading file:", err);
+                    logger.error("Error uploading file:", err);
                     alert("Error al subir archivo: " + err.message);
                   } finally {
                     setUploadingField(null);
@@ -407,18 +376,18 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
               />
             </label>
           )}
-          {field.description && (
-            <p className="mt-1.5 text-[10px] text-slate-400 leading-none">{field.description}</p>
-          )}
+          {field.description && <p className="dbe-fdesc">{field.description}</p>}
         </div>
       );
     }
 
     return (
       <div className={wrapperClasses}>
-        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-          {field.label}
-          {field.required && <span className="text-red-400 text-[10px]">●</span>}
+        <label className="dbe-flabel">
+          <span>
+            {field.label}
+            {field.required && <span className="req"> ●</span>}
+          </span>
         </label>
         <input
           type={field.type}
@@ -427,17 +396,15 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
           onChange={handleChange}
           className={inputClasses}
         />
-        {errorMsg && <p className="mt-1 text-[10px] text-red-500 font-semibold">{errorMsg}</p>}
-        {field.description && !errorMsg && (
-          <p className="mt-1.5 text-[10px] text-slate-400 leading-none">{field.description}</p>
-        )}
+        {errorMsg && <p className="dbe-errmsg">{errorMsg}</p>}
+        {field.description && !errorMsg && <p className="dbe-fdesc">{field.description}</p>}
       </div>
     );
   };
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in"
+      className="dbe dbe-modal-bg"
       onMouseDown={(e) => {
         mouseDownTarget.current = e.target;
       }}
@@ -449,69 +416,50 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
       }}
     >
       <div
-        className="relative w-[95vw] max-h-[90dvh] sm:w-full sm:max-w-2xl sm:max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 transition-transform duration-300 animate-scale-in"
+        className="dbe-modal"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <header className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm">
-          <div className="flex items-center gap-4">
-            <div
-              className={`p-3 rounded-xl shadow-sm ${isCreateMode ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"}`}
-            >
-              <span className="material-icons !text-2xl">
-                {isCreateMode ? (initialData ? "content_copy" : "add_circle") : "edit_note"}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight leading-none">
-                {isCreateMode
-                  ? initialData
-                    ? "Duplicar Registro"
-                    : "Nuevo Registro"
-                  : "Editar Registro"}
-              </h3>
-              <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-1 block">
-                {tableConfig.label}
-              </span>
-            </div>
+        <header className="dbe-modal-head">
+          <div>
+            <span className="eyebrow">
+              {isCreateMode ? (initialData ? "Duplicar" : "Nuevo") : "Editar"} · {tableConfig.label}
+            </span>
+            <h3 className="serif">
+              {isCreateMode
+                ? initialData
+                  ? "Duplicar registro"
+                  : "Nuevo registro"
+                : "Editar registro"}
+            </h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-          >
+          <button onClick={onClose} className="dbe-modal-x" aria-label="Cerrar">
             <span className="material-icons">close</span>
           </button>
         </header>
 
-        <main className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/30 dark:bg-slate-900/30 flex-grow">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
+        <main className="dbe-modal-body">
+          <div className="dbe-grid">
             {tableConfig.fieldConfig.map((field) => (
               <React.Fragment key={field.key}>{renderField(field)}</React.Fragment>
             ))}
           </div>
         </main>
 
-        <footer className="p-5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 safe-area-bottom">
-          <button
-            onClick={onClose}
-            className="px-6 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
-          >
+        <footer className="dbe-modal-foot">
+          <button onClick={onClose} className="dbe-btn">
             Cancelar
           </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 rounded-xl shadow-lg hover:shadow-blue-500/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95 transform"
-          >
+          <button onClick={handleSave} disabled={isSaving} className="dbe-btn dbe-btn-primary">
             {isSaving ? (
               <>
-                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                <span>Guardando...</span>
+                <span className="dbe-spin" style={{ borderTopColor: "var(--paper)" }} />
+                Guardando…
               </>
             ) : (
               <>
-                <span className="material-icons !text-lg">save</span>
-                <span>{isCreateMode ? "Crear" : "Guardar"}</span>
+                <span className="material-icons">save</span>
+                {isCreateMode ? "Crear" : "Guardar"}
               </>
             )}
           </button>
