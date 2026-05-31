@@ -53,6 +53,12 @@ HERMES_MODE = os.environ.get("HERMES_MODE", "shadow")
 HERMES_INTERNAL_TOKEN = os.environ["HERMES_INTERNAL_TOKEN"]
 VAULT_PATH = pathlib.Path(os.environ.get("VAULT_PATH", "/vault"))
 
+# Verificación de doble pasada en verify_finalizacion: una segunda llamada al LLM
+# audita la primera antes de persistir (idea tomada del verifier node de Hermes
+# Agent de Nous Research). Pensado para acreditaciones, donde equivocarse es caro.
+#   "1" (default) | "0" para apagarlo.
+HERMES_DOUBLE_CHECK_VERIFY = os.environ.get("HERMES_DOUBLE_CHECK_VERIFY", "1") == "1"
+
 # Webhook de n8n para acciones SALIENTES de Gmail (responder / archivar / leer).
 # n8n posee la credencial Gmail OAuth2; Hermes solo orquesta y audita.
 #   GMAIL_ACTION_WEBHOOK_URL  → URL del webhook n8n (POST)
@@ -151,6 +157,66 @@ def llm_json(user_prompt: str, *, schema_hint: str) -> dict[str, Any]:
         except Exception as exc:  # noqa: BLE001
             print(f"[llm] modelo {model} falló: {exc}", flush=True)
     raise HTTPException(status_code=502, detail="todos los modelos LLM fallaron")
+
+
+def llm_verify(original_prompt: str, candidate: dict[str, Any], *, schema_hint: str,
+               foco: str) -> dict[str, Any]:
+    """Segunda pasada: un verificador independiente audita la salida de la primera.
+
+    Idea tomada del verifier node del modo Swarm de Hermes Agent (Nous Research):
+    en vez de confiar en una sola inferencia, una segunda llamada revisa el
+    resultado contra el contexto original y puede corregirlo. Útil donde
+    equivocarse es caro (acreditaciones). No inventa datos nuevos: solo valida
+    los que ya están en el contexto y ajusta el veredicto si la primera pasada
+    fue demasiado laxa o demasiado dura.
+
+    Devuelve un dict con el MISMO shape que `candidate`, más:
+      "_verificador": {"coincide": bool, "ajustes": "string", "modelo": "..."}
+    Si la verificación falla por cualquier motivo, devuelve el candidate intacto
+    (degradación elegante: nunca peor que sin doble pasada).
+    """
+    audit_prompt = (
+        "Sos un VERIFICADOR independiente. Otra instancia de Hermes ya produjo el "
+        "JSON candidato de abajo a partir del contexto original. Tu único trabajo es "
+        "auditarlo, NO rehacerlo desde cero.\n\n"
+        f"Foco de la auditoría: {foco}\n\n"
+        "Revisá específicamente:\n"
+        "  - ¿El veredicto/estado es coherente con la evidencia del contexto? "
+        "(¿marcó verified algo que tiene una inconsistencia real? ¿marcó critical "
+        "algo que es solo un warning menor?)\n"
+        "  - ¿Hay datos inventados que NO están en el contexto? Si los hay, eliminalos.\n"
+        "  - ¿Falta señalar algo que el contexto deja en evidencia?\n\n"
+        "Si el candidato está bien, devolvelo igual. Si hay que corregirlo, devolvé "
+        "la versión corregida con EL MISMO shape. En ambos casos agregá la clave "
+        '`_verificador` con {"coincide": true/false, "ajustes": "qué cambiaste o '
+        '\'nada\'"}.\n\n'
+        f"--- contexto original (resumido) ---\n{original_prompt[:6000]}\n\n"
+        f"--- JSON candidato a auditar ---\n{json.dumps(candidate, ensure_ascii=False)[:6000]}\n\n"
+        f"--- shape esperado ---\n{schema_hint}"
+    )
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": audit_prompt},
+    ]
+    for model in (HERMES_MODEL, HERMES_MODEL_FALLBACK):
+        try:
+            resp = llm.chat.completions.create(
+                model=model,
+                messages=messages,
+                response_format={"type": "json_object"},
+                temperature=0.0,  # verificación = determinista
+            )
+            checked = json.loads(resp.choices[0].message.content or "{}")
+            if not isinstance(checked, dict) or not checked:
+                return candidate
+            checked.setdefault("_verificador", {})
+            if isinstance(checked["_verificador"], dict):
+                checked["_verificador"]["modelo"] = model
+            return checked
+        except Exception as exc:  # noqa: BLE001
+            print(f"[llm_verify] modelo {model} falló: {exc}", flush=True)
+    # Si la verificación entera falla, no degradamos la respuesta original.
+    return candidate
 
 
 # ---------- app ----------
@@ -1905,6 +1971,21 @@ def learn_from_feedback(payload: LearnInput) -> dict[str, Any]:
         )
         vault_path = vault_write("agent/aprendizajes.md", entry, append=True)
 
+        # Espejar la lección en Supabase para que el panel pueda mostrarla.
+        # (El vault sigue siendo la fuente narrativa; esto es solo para la UI.)
+        try:
+            sb.table("agent_aprendizajes").insert({
+                "suggestion_id": payload.suggestion_id,
+                "tipo": payload.tipo,
+                "accion": payload.accion,
+                "tag": result.get("tag"),
+                "aprendizaje": result["aprendizaje"],
+                "aplica_cuando": result.get("aplica_cuando"),
+                "model": HERMES_MODEL,
+            }).execute()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[learn] no se pudo espejar aprendizaje en supabase: {exc}", flush=True)
+
     audit(
         "learn.done",
         output={"vault_path": vault_path, "tag": result.get("tag"), "side_effect": side_effect},
@@ -2647,8 +2728,20 @@ def verify_finalizacion(payload: VerifyFinalizacionInput) -> dict[str, Any]:
     )
     result = llm_json(user_prompt, schema_hint=schema)
 
+    # 4.b. Verificación de doble pasada (opcional, default ON). Una segunda
+    # instancia audita el veredicto antes de persistir: clave en acreditaciones,
+    # donde un falso "verified" es el error más caro. Degrada con elegancia: si
+    # la verificación falla, se queda con el resultado de la primera pasada.
+    if HERMES_DOUBLE_CHECK_VERIFY:
+        result = llm_verify(
+            user_prompt, result, schema_hint=schema,
+            foco=("verificación de finalización de PPS para acreditación — "
+                  "prioridad: no dejar pasar inconsistencias de horas, fechas u overlap"),
+        )
+
     # 5. Persistir como suggestion (usamos tipo='update_estado' del CHECK constraint, etiqueta real va en contexto.kind)
     suggestion_id = str(uuid.uuid4())
+    verif_meta = result.get("_verificador") if isinstance(result, dict) else None
     try:
         sb.table("agent_suggestions").insert({
             "id": suggestion_id,
@@ -2664,6 +2757,8 @@ def verify_finalizacion(payload: VerifyFinalizacionInput) -> dict[str, Any]:
             "contexto": {
                 "model": HERMES_MODEL,
                 "kind": "verificacion_finalizacion",
+                "doble_pasada": HERMES_DOUBLE_CHECK_VERIFY,
+                "verificador": verif_meta,
                 "lanzamiento_id": payload.lanzamiento_id,
                 "estudiante_id": payload.estudiante_id,
             },
@@ -2677,6 +2772,8 @@ def verify_finalizacion(payload: VerifyFinalizacionInput) -> dict[str, Any]:
             "estado": result.get("estado"),
             "issues_count": len(result.get("issues", [])),
             "checks_count": len(result.get("checks", [])),
+            "doble_pasada": HERMES_DOUBLE_CHECK_VERIFY,
+            "verificador_coincide": (verif_meta or {}).get("coincide") if isinstance(verif_meta, dict) else None,
         },
         invocation_id=invocation_id,
         suggestion_id=suggestion_id,

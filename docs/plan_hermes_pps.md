@@ -103,16 +103,25 @@ El panel actual es **sistema de registro y operación**. Hermes es **capa de int
 
 ## 4. Stack tecnológico
 
-| Componente        | Tecnología                                                        | Notas                                                         |
-| ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| Frontend          | React + Vite (existente)                                          | Componentes nuevos en `src/components/admin/agent/`           |
-| Base de datos     | Supabase Postgres (existente)                                     | Nuevas migrations en `supabase/migrations/`                   |
-| Orquestación      | n8n (existente en VPS)                                            | Workflows nuevos con tag/folder `pps`                         |
-| Agente            | Hermes Agent (Nous Research)                                      | Contenedor `hermes-pps`, configuración propia                 |
-| LLM               | **A decidir**                                                     | Claude API Sonnet 4.6 / OpenAI GPT-4.x / local                |
-| Memoria narrativa | Obsidian vault en disco del VPS                                   | Sync con tu compu vía Syncthing                               |
-| WhatsApp ingest   | `whatsapp-backup-downloader-decryptor` + `WhatsApp-Chat-Exporter` | Open source, sin riesgo de ban                                |
-| Gmail ingest      | Gmail API vía nodo n8n                                            | OAuth con scope `gmail.modify` (no `gmail.send` hasta Fase 6) |
+| Componente        | Tecnología                                                        | Notas                                                                                                |
+| ----------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Frontend          | React + Vite (existente)                                          | Componentes nuevos en `src/components/admin/agent/`                                                  |
+| Base de datos     | Supabase Postgres (existente)                                     | Nuevas migrations en `supabase/migrations/`                                                          |
+| Orquestación      | n8n (existente en VPS)                                            | Workflows nuevos con tag/folder `pps`                                                                |
+| Agente            | Servicio propio FastAPI (`hermes-pps`)                            | Implementación propia, **no** el framework Hermes Agent de Nous Research (comparte nombre); ver nota |
+| LLM               | DeepSeek V4 Flash vía OpenRouter (fallback Claude Haiku 4.5)      | Subkey dedicada `pps-hermes`                                                                         |
+| Memoria narrativa | Obsidian vault en disco del VPS                                   | Sync con tu compu vía Syncthing                                                                      |
+| WhatsApp ingest   | `whatsapp-backup-downloader-decryptor` + `WhatsApp-Chat-Exporter` | Open source, sin riesgo de ban                                                                       |
+| Gmail ingest      | Gmail API vía nodo n8n                                            | OAuth con scope `gmail.modify` (no `gmail.send` hasta Fase 6)                                        |
+
+> **Nota sobre el nombre "Hermes".** El plan original contemplaba usar el
+> framework open-source [Hermes Agent](https://hermes-agent.nousresearch.com/)
+> de Nous Research. En la implementación se descartó: `hermes-pps` es un servicio
+> propio en FastAPI + OpenRouter, con control fino del modo sombra y del loop de
+> aprobación, que ese framework no daba listo. Comparten nombre pero no código.
+> De las releases de Hermes Agent (v0.15.0, may-2026) solo portamos ideas
+> puntuales cuando aplican — p. ej. la verificación de doble pasada en
+> `verify_finalizacion` (ver `agent/hermes-pps/README.md`).
 
 ---
 
