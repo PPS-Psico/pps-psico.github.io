@@ -1476,6 +1476,14 @@ export type Database = {
         Args: { p_year: number };
         Returns: Json;
       };
+      get_heredados_count: {
+        Args: { p_year: number };
+        Returns: number;
+      };
+      get_heredados_list: {
+        Args: { p_year: number };
+        Returns: Json;
+      };
       get_metrics_years: { Args: never; Returns: Json };
       get_my_role: { Args: never; Returns: string };
       get_postulantes_seleccionados: {

@@ -52,6 +52,8 @@ export async function fetchMetricList(key: string, year: number): Promise<ListRe
       return fetchIngresantesList(year);
     case "estudiantes_en_pps":
       return fetchEstudiantesEnPpsList(year);
+    case "heredados":
+      return fetchHeredadosList(year);
     case "alumnos_finalizados":
       return fetchFinalizadosList(year);
     case "matricula_activa":
@@ -108,6 +110,23 @@ async function fetchEstudiantesEnPpsList(year: number): Promise<ListResult> {
       { key: "legajo", label: "Legajo" },
     ],
     description: `Estudiantes con al menos una actividad de PPS en ${year}.`,
+  };
+}
+
+async function fetchHeredadosList(year: number): Promise<ListResult> {
+  const { data } = await supabase.rpc("get_heredados_list", { p_year: year });
+  const list = (data || []) as unknown as any[];
+
+  return {
+    students: list.map((s: any) => ({
+      nombre: s.nombre,
+      legajo: s.legajo,
+    })),
+    headers: [
+      { key: "nombre", label: "Nombre" },
+      { key: "legajo", label: "Legajo" },
+    ],
+    description: `Venían de 2024-2025 sin finalizar al iniciar ${year}.`,
   };
 }
 

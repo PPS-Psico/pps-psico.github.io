@@ -13,6 +13,7 @@ import {
   useMetricsTopInstituciones,
   useFinalizadosSeries,
   useHermesActivity,
+  useMetricsHeredados,
 } from "../../../hooks/useMetricsExtras";
 import type { TopInstitucion } from "../../../hooks/useMetricsExtras";
 import { fetchMetricList, fetchOrientationList } from "../../../services/metricsLists";
@@ -59,6 +60,7 @@ export function MetricasDashboardV3({
   const { data: topInst = [] } = useMetricsTopInstituciones({ year, isTestingMode });
   const { data: finalizadosSeries = [] } = useFinalizadosSeries(isTestingMode);
   const { data: hermes } = useHermesActivity({ year, isTestingMode });
+  const { data: heredados = 0 } = useMetricsHeredados({ year, isTestingMode });
 
   const sparkYears = useMemo(() => {
     const ys = new Set<number>();
@@ -261,8 +263,8 @@ export function MetricasDashboardV3({
         />
       </Band>
 
-      {/* — Banda seguimiento (4) — */}
-      <Band title="Seguimiento de estudiantes" cols={4} top>
+      {/* — Banda seguimiento (3) — */}
+      <Band title="Seguimiento de estudiantes" cols={3} top>
         <KpiCard
           value={metrics.sin_pps}
           label="Sin ninguna PPS"
@@ -298,16 +300,46 @@ export function MetricasDashboardV3({
             drillKpi("haciendo_pps", "Haciendo PPS", `${metrics.haciendo_pps} en curso`)
           }
         />
+      </Band>
+
+      {/* — Composición del ciclo: heredados + ingresantes nuevos — */}
+      <Band title="Composición del ciclo" cols={3} top>
+        <KpiCard
+          value={heredados}
+          label="Heredados"
+          context="Venían de 2024-2025 sin finalizar — con los que arrancaste"
+          tone="ink"
+          onClick={() =>
+            drillKpi(
+              "heredados",
+              "Estudiantes heredados",
+              `${heredados} venían de ciclos anteriores al iniciar ${year}`
+            )
+          }
+        />
         <KpiCard
           value={metrics.matricula_generada}
-          label="Ingresantes (cohorte)"
-          context="Nuevos en PPS este año"
-          tone="ink"
+          label="Ingresantes nuevos"
+          context="Iniciaron su primera PPS este año"
+          tone="ok"
           onClick={() =>
             drillKpi(
               "matricula_generada",
               "Ingresantes del año",
               `${metrics.matricula_generada} ingresaron al sistema de PPS en ${year}`
+            )
+          }
+        />
+        <KpiCard
+          value={heredados + metrics.matricula_generada}
+          label="Población del ciclo"
+          context="Heredados + ingresantes nuevos"
+          tone="accent"
+          onClick={() =>
+            drillKpi(
+              "matricula_activa",
+              "Población del ciclo",
+              `${heredados} heredados + ${metrics.matricula_generada} nuevos en ${year}`
             )
           }
         />
