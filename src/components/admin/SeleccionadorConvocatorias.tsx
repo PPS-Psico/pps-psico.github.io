@@ -12,9 +12,11 @@ import type { EnrichedStudent } from "../../types";
 import {
   formatDate,
   getEspecialidadClasses,
+  getWhatsAppUrl,
+  isValidWhatsAppFormat,
   normalizeStringForComparison,
 } from "../../utils/formatters";
-import { parseSchedules, cleanSchedule } from "../../utils/scheduleUtils";
+import { parseSchedules } from "../../utils/scheduleUtils";
 import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
@@ -49,11 +51,7 @@ const CommitmentStatusChip: React.FC<{
   if (compact) {
     return (
       <span
-        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border whitespace-nowrap ${
-          accepted
-            ? "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-800"
-            : "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800"
-        }`}
+        className={`lv4-badge ${accepted ? "lv4-badge-ok" : "lv4-badge-warn"}`}
         title={
           accepted && acceptedAt
             ? `Confirmado el ${formatCommitmentDate(acceptedAt)}`
@@ -67,20 +65,19 @@ const CommitmentStatusChip: React.FC<{
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border ${
-        accepted
-          ? "bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/20 dark:border-sky-800 dark:text-sky-300"
-          : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300"
-      }`}
+      className={`lv4-commit-block ${accepted ? "confirmed" : "pending"}`}
+      title={
+        accepted && acceptedAt
+          ? `Aceptado el ${formatCommitmentDate(acceptedAt)}`
+          : "Aún no confirmó desde Mi Panel"
+      }
     >
-      <span className="material-icons !text-[16px]">
-        {accepted ? "verified" : "pending_actions"}
-      </span>
-      <div className="flex flex-col leading-tight">
-        <span className="text-[10px] font-black uppercase tracking-wider">
+      <span className="material-icons">{accepted ? "verified" : "pending_actions"}</span>
+      <div>
+        <span className="lv4-commit-block-title">
           {accepted ? "Compromiso confirmado" : "Compromiso pendiente"}
         </span>
-        <span className="text-[11px] font-medium opacity-80">
+        <span className="lv4-commit-block-sub">
           {accepted && acceptedAt
             ? `Aceptado el ${formatCommitmentDate(acceptedAt)}`
             : "Aún no confirmó desde Mi Panel"}
@@ -172,38 +169,27 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         : allSolicitados[0]
       : horarioAsignado || horariosSolicitados;
     return (
-      <div className="flex-grow lg:w-auto min-w-[200px] px-3 py-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-        {displaySchedule || "Horario predefinido"}
-      </div>
+      <div className="lv4-schedule-empty muted">{displaySchedule || "Horario predefinido"}</div>
     );
   }
 
   if (displaySchedules.length === 0) {
     if (horariosDisponibles.length > 0) {
       return (
-        <div className="flex-grow lg:w-auto min-w-[200px] max-w-[320px]" ref={dropdownRef}>
+        <div className="lv4-schedule-list" ref={dropdownRef}>
           {!showDropdown ? (
-            <button
-              onClick={() => setShowDropdown(true)}
-              className="w-full px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border-2 border-dashed border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all flex items-center justify-center gap-1.5"
-            >
-              <span className="material-icons text-[14px]">add_circle</span>
+            <button className="lv4-schedule-add" onClick={() => setShowDropdown(true)}>
+              <span className="material-icons">add_circle</span>
               Asignar horario
             </button>
           ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-lg overflow-hidden">
-              <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-700 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                Seleccionar horario:
-              </div>
-              <div className="max-h-48 overflow-y-auto">
+            <div className="lv4-schedule-dropdown">
+              <div className="lv4-schedule-dropdown-head">Seleccionar horario</div>
+              <div className="lv4-schedule-dropdown-list">
                 {horariosDisponibles.map((horario, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleAddSchedule(horario)}
-                    className="w-full px-3 py-2.5 text-xs text-left text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors border-b border-slate-100 dark:border-slate-700 last:border-b-0 flex items-center gap-2"
-                  >
-                    <span className="material-icons text-[14px] text-emerald-500">schedule</span>
-                    <span className="truncate">{horario}</span>
+                  <button key={idx} onClick={() => handleAddSchedule(horario)}>
+                    <span className="material-icons">schedule</span>
+                    <span className="lv4-schedule-chip-text">{horario}</span>
                   </button>
                 ))}
               </div>
@@ -213,102 +199,54 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       );
     }
 
-    return (
-      <div className="flex-grow lg:w-auto min-w-[200px] max-w-[320px] px-3 py-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-        Sin horarios asignados
-      </div>
-    );
+    return <div className="lv4-schedule-empty muted">Sin horarios asignados</div>;
   }
 
   return (
-    <div className="flex-grow lg:w-auto min-w-[200px] max-w-[320px]">
-      <div className="flex flex-col gap-2">
-        {displaySchedules.map((schedule, index) => {
-          const isAsignado = isEditMode && horarioAsignado === schedule;
+    <div className="lv4-schedule-list">
+      {displaySchedules.map((schedule, index) => {
+        const isAsignado = isEditMode && horarioAsignado === schedule;
 
-          return (
-            <div
-              key={index}
-              ref={activeTooltip === index ? tooltipRef : null}
-              onClick={(e) => handleScheduleClick(index, e)}
-              className={`group relative flex items-center gap-2 pl-3 pr-2 py-2.5 rounded-lg border shadow-sm transition-all duration-200 cursor-pointer ${
-                isAsignado
-                  ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
-                  : "bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-700/50 hover:shadow-md hover:from-blue-100 hover:to-blue-200 dark:hover:from-blue-800/40 dark:hover:to-blue-700/40"
-              }`}
-            >
-              {/* Icono */}
-              <span
-                className={`material-icons text-[13px] flex-shrink-0 ${
-                  isAsignado
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-blue-600 dark:text-blue-400"
-                }`}
+        return (
+          <div
+            key={index}
+            ref={activeTooltip === index ? tooltipRef : null}
+            className={`lv4-schedule-chip ${isAsignado ? "assigned" : ""}`}
+            onClick={(e) => handleScheduleClick(index, e)}
+          >
+            <span className="material-icons">{isAsignado ? "check_circle" : "schedule"}</span>
+            <span className="lv4-schedule-chip-text" title="Clic para ver completo">
+              {schedule}
+            </span>
+
+            {(isEditMode || displaySchedules.length > 1) && (
+              <button
+                className="lv4-schedule-remove"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveSchedule(schedule);
+                }}
+                title="Eliminar horario"
               >
-                {isAsignado ? "check_circle" : "schedule"}
-              </span>
+                <span className="material-icons">close</span>
+              </button>
+            )}
 
-              {/* Texto truncado */}
-              <span className="flex-1 truncate max-w-[200px]" title="Clic para ver completo">
-                {schedule}
-              </span>
-
-              {/* Botón eliminar (siempre visible en modo edición, oculto en modo normal) */}
-              {isEditMode && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveSchedule(schedule);
-                  }}
-                  className="flex-shrink-0 ml-1 p-1 text-red-500 dark:text-red-400 hover:text-white hover:bg-red-500 dark:hover:bg-red-600 rounded-md transition-all duration-150"
-                  title="Eliminar horario"
-                >
-                  <span className="material-icons text-[13px]">close</span>
-                </button>
-              )}
-
-              {!isEditMode && displaySchedules.length > 1 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveSchedule(schedule);
-                  }}
-                  className="flex-shrink-0 ml-1 p-1 text-red-500 dark:text-red-400 hover:text-white hover:bg-red-500 dark:hover:bg-red-600 rounded-md transition-all duration-150"
-                  title="Eliminar horario"
-                >
-                  <span className="material-icons text-[13px]">close</span>
-                </button>
-              )}
-
-              {/* Tooltip */}
-              {activeTooltip === index && (
-                <div
-                  className="absolute bottom-full mb-2 z-50"
-                  style={{ left: "50%", transform: "translateX(-50%)" }}
-                >
-                  <div
-                    className="px-4 py-3 bg-slate-800 dark:bg-slate-700 text-white dark:text-slate-100 text-xs rounded-lg shadow-2xl border border-slate-700 dark:border-slate-600"
-                    style={{ maxWidth: "350px", minWidth: "200px" }}
-                  >
-                    <div
-                      className={`font-semibold mb-1 flex items-center gap-1 ${
-                        isAsignado
-                          ? "text-emerald-300 dark:text-emerald-300"
-                          : "text-blue-300 dark:text-blue-300"
-                      }`}
-                    >
-                      <span className="material-icons text-[12px]">info</span>
-                      {isAsignado ? "Horario asignado:" : "Horario completo:"}
-                    </div>
-                    <div className="leading-relaxed break-words whitespace-normal">{schedule}</div>
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800 dark:border-t-slate-700"></div>
-                  </div>
+            {activeTooltip === index && (
+              <div className="lv4-tooltip" style={{ pointerEvents: "auto" }}>
+                <div className="lv4-tooltip-title">
+                  <span className="material-icons" style={{ fontSize: 12 }}>
+                    info
+                  </span>
+                  {isAsignado ? "Horario asignado" : "Horario completo"}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                <div style={{ wordBreak: "break-word", whiteSpace: "normal" }}>{schedule}</div>
+                <span className="lv4-tooltip-arrow" />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -338,206 +276,175 @@ const StudentRow: React.FC<{
   const isCommitmentConfirmed = isSelected && isCommitmentAccepted(student.compromisoEstado);
   const showCommitmentStatus = isSelected && (isReviewMode || isEditMode);
 
+  const cardClass = isCommitmentConfirmed
+    ? "lv4-card confirmed"
+    : isSelected
+      ? "lv4-card selected"
+      : "lv4-card";
+
   return (
-    <div
-      className={`rounded-xl border transition-all duration-200 ${
-        isCommitmentConfirmed
-          ? "bg-sky-50/70 border-sky-200 dark:bg-[#0F172A] dark:border-sky-800/70 shadow-sm"
-          : isSelected
-            ? "bg-emerald-50/60 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800 shadow-sm"
-            : "bg-white dark:bg-[#0B1120] border-slate-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800"
-      }`}
-    >
-      <div className="p-3 sm:p-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-        <div className="flex items-center gap-3 min-w-[200px]">
-          <div
-            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-base font-black border shadow-sm cursor-pointer hover:scale-110 transition-transform ${student.puntajeTotal >= 100 ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800" : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"}`}
-            title="Ver prácticas del estudiante"
-            onClick={() => onShowPracticas?.(student)}
-          >
-            {student.puntajeTotal}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4
-              className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate leading-tight"
-              title={student.nombre}
-            >
-              {student.nombre}
-            </h4>
-            <div className="mt-1">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
-                <span className="material-icons !text-[11px]">schedule</span> {student.totalHoras}{" "}
-                hs acumuladas
-              </span>
-            </div>
+    <div className={cardClass}>
+      <div className="lv4-card-id">
+        <div
+          className={`lv4-avatar-score ${student.puntajeTotal >= 100 ? "high" : ""}`}
+          title="Ver prácticas del estudiante"
+          onClick={() => onShowPracticas?.(student)}
+        >
+          {student.puntajeTotal}
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h4 className="lv4-card-name" title={student.nombre}>
+            {student.nombre}
+          </h4>
+          <div className="lv4-card-hours">
+            <span className="material-icons">schedule</span>
+            {student.totalHoras} hs acumuladas
           </div>
         </div>
+      </div>
 
-        <div className="flex-1 w-full lg:w-auto flex flex-wrap items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 pt-3 lg:pt-0 lg:pl-4 min-h-[32px]">
-          {/* ESTADO ACADÉMICO (Excluyente) */}
-          {student.terminoCursar ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 whitespace-nowrap">
-              Terminó Cursada
-            </span>
-          ) : student.cursandoElectivas ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800 whitespace-nowrap">
-              Cursando Electivas
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 whitespace-nowrap">
-              Cursando
-            </span>
-          )}
+      <div className="lv4-card-badges">
+        {/* ESTADO ACADÉMICO (Excluyente) */}
+        {student.terminoCursar ? (
+          <span className="lv4-badge lv4-badge-ok">Terminó Cursada</span>
+        ) : student.cursandoElectivas ? (
+          <span className="lv4-badge lv4-badge-accent">Cursando Electivas</span>
+        ) : (
+          <span className="lv4-badge lv4-badge-muted">Cursando</span>
+        )}
 
-          {/* ALERTA: SIN PRÁCTICAS PREVIAS (Para mezclar avanzados con nuevos) */}
-          {student.cantPracticas === 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 dark:bg-fuchsia-900/20 dark:text-fuchsia-300 dark:border-fuchsia-800 whitespace-nowrap shadow-sm">
-              <span className="material-icons !text-[10px] mr-1">new_releases</span>
-              Sin Prácticas
-            </span>
-          )}
+        {student.cantPracticas === 0 && (
+          <span className="lv4-badge lv4-badge-ai">
+            <span className="material-icons">new_releases</span>
+            Sin Prácticas
+          </span>
+        )}
 
-          {/* Solo mostrar "Adeuda finales" si terminó de cursar, para no ensuciar la vista de los que cursan */}
-          {student.terminoCursar && (
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border whitespace-nowrap ${student.finalesAdeuda ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800" : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700"}`}
-            >
-              {student.finalesAdeuda ? `Adeuda: ${student.finalesAdeuda}` : "Sin Finales"}
-            </span>
-          )}
+        {student.terminoCursar && (
+          <span
+            className={`lv4-badge ${student.finalesAdeuda ? "lv4-badge-warn" : "lv4-badge-muted"}`}
+          >
+            {student.finalesAdeuda ? `Adeuda: ${student.finalesAdeuda}` : "Sin Finales"}
+          </span>
+        )}
 
-          {student.trabaja && (
-            <a
-              href={student.certificadoTrabajo || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap hover:bg-blue-100 transition-colors"
-              title="Ver certificado de trabajo"
-              onClick={(e) => !student.certificadoTrabajo && e.preventDefault()}
-            >
-              <span className="material-icons !text-[10px] mr-1">work</span>
-              Trabaja
-            </a>
-          )}
+        {student.trabaja && (
+          <a
+            href={student.certificadoTrabajo || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="lv4-badge lv4-badge-accent"
+            title="Ver certificado de trabajo"
+            onClick={(e) => !student.certificadoTrabajo && e.preventDefault()}
+          >
+            <span className="material-icons">work</span>
+            Trabaja
+          </a>
+        )}
 
-          {student.cvUrl && (
-            <a
-              href={student.cvUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800 whitespace-nowrap hover:bg-cyan-100 transition-colors"
-              title="Ver Curriculum Vitae"
-            >
-              <span className="material-icons !text-[10px] mr-1">description</span>
-              CV
-            </a>
-          )}
+        {student.cvUrl && (
+          <a
+            href={student.cvUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="lv4-badge lv4-badge-accent"
+            title="Ver Curriculum Vitae"
+          >
+            <span className="material-icons">description</span>
+            CV
+          </a>
+        )}
 
-          {/* BOTÓN WHATSAPP - Contacto de emergencia */}
-          {(() => {
-            const telefono = student.telefono || "";
-            const numeroLimpio = telefono.replace(/\D/g, "");
-            const esValido = numeroLimpio.length >= 10;
+        {/* BOTÓN WHATSAPP - Validado contra formato */}
+        {(() => {
+          if (!student.telefono) return null;
 
-            if (!telefono) return null;
-
-            if (!esValido) {
-              return (
-                <span
-                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800 whitespace-nowrap cursor-help"
-                  title={`Número inválido: ${telefono}`}
-                >
-                  <span className="material-icons !text-[10px] mr-0.5">error</span>
-                  N° mal
-                </span>
-              );
-            }
-
+          if (!isValidWhatsAppFormat(student.telefono)) {
             return (
-              <a
-                href={`https://wa.me/${numeroLimpio}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800 whitespace-nowrap hover:bg-green-100 transition-colors"
-                title={`WhatsApp: ${telefono}`}
+              <span
+                className="lv4-badge lv4-badge-danger-strong"
+                title={`Número inválido: ${student.telefono}`}
               >
-                <svg className="w-3 h-3 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                </svg>
-                WhatsApp
-              </a>
+                <span className="material-icons">error</span>
+                N° mal
+              </span>
             );
-          })()}
+          }
 
-          {student.penalizacionAcumulada > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800 whitespace-nowrap">
-              Penalización Activa
-            </span>
-          )}
+          const url = getWhatsAppUrl(student.telefono);
+          if (!url) return null;
 
-          {showCommitmentStatus && (
-            <CommitmentStatusChip
-              status={student.compromisoEstado}
-              acceptedAt={student.compromisoFecha}
-              compact
-            />
-          )}
+          return (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="lv4-badge lv4-badge-ok"
+              title={`WhatsApp: ${student.telefono}`}
+            >
+              <svg
+                className="lv4-wa-icon"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                style={{ width: 12, height: 12 }}
+              >
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              WhatsApp
+            </a>
+          );
+        })()}
 
-          {student.notasEstudiante && (
-            <div className="inline-flex items-start gap-1.5 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-800/30 rounded px-2 py-1 text-xs text-slate-700 dark:text-slate-300 w-full break-words mt-1">
-              <span className="font-bold text-[10px] uppercase text-yellow-700 dark:text-yellow-500 shrink-0 mt-[1px]">
-                Nota:
-              </span>
-              <span className="italic leading-tight whitespace-pre-wrap">
-                "{student.notasEstudiante}"
-              </span>
-            </div>
-          )}
-        </div>
+        {student.penalizacionAcumulada > 0 && (
+          <span className="lv4-badge lv4-badge-danger">Penalización Activa</span>
+        )}
 
-        <div className="flex items-center gap-2 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-          {showCommitmentStatus && (
-            <div className="hidden 2xl:flex mr-1">
-              <CommitmentStatusChip
-                status={student.compromisoEstado}
-                acceptedAt={student.compromisoFecha}
-              />
-            </div>
-          )}
-          <ScheduleSelector
-            horariosSolicitados={student.horarioSeleccionado || ""}
-            horarioAsignado={student.horarioAsignado}
-            isEditMode={isEditMode}
-            onScheduleChange={(newSchedule) => onUpdateSchedule(student, newSchedule)}
-            disabled={!showScheduleSelector}
-            horariosDisponibles={horariosDisponibles}
+        {showCommitmentStatus && (
+          <CommitmentStatusChip
+            status={student.compromisoEstado}
+            acceptedAt={student.compromisoFecha}
+            compact
           />
+        )}
 
-          <button
-            onClick={() => onToggleSelection(student)}
-            disabled={isUpdating}
-            className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all active:scale-95 shadow-sm ${
-              isSelected
-                ? isCommitmentConfirmed
-                  ? "bg-sky-600 text-white hover:bg-rose-600 hover:ring-rose-100 ring-2 ring-sky-100 dark:ring-sky-900"
-                  : "bg-emerald-600 text-white hover:bg-rose-600 hover:ring-rose-100 ring-2 ring-emerald-100 dark:ring-emerald-900"
-                : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-400 hover:text-blue-600 hover:border-blue-300 dark:hover:border-blue-500 dark:hover:text-blue-400"
-            }`}
-            title={isSelected ? "Dar de Baja (con penalización)" : "Seleccionar Alumno"}
-          >
-            {isUpdating ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <span className="material-icons !text-xl">{isSelected ? "check" : "add"}</span>
-            )}
-          </button>
-        </div>
+        {student.notasEstudiante && (
+          <div className="lv4-card-note" style={{ width: "100%" }}>
+            <span className="lv4-card-note-label">Nota:</span>
+            <span style={{ fontStyle: "italic", lineHeight: 1.4, whiteSpace: "pre-wrap" }}>
+              "{student.notasEstudiante}"
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="lv4-card-actions">
+        <ScheduleSelector
+          horariosSolicitados={student.horarioSeleccionado || ""}
+          horarioAsignado={student.horarioAsignado}
+          isEditMode={isEditMode}
+          onScheduleChange={(newSchedule) => onUpdateSchedule(student, newSchedule)}
+          disabled={!showScheduleSelector}
+          horariosDisponibles={horariosDisponibles}
+        />
+
+        <button
+          className={`lv4-fab ${isCommitmentConfirmed ? "confirmed" : isSelected ? "selected" : ""}`}
+          onClick={() => onToggleSelection(student)}
+          disabled={isUpdating}
+          title={isSelected ? "Dar de Baja (con penalización)" : "Seleccionar Alumno"}
+        >
+          {isUpdating ? (
+            <span className="lv4-spinner" />
+          ) : (
+            <span className="material-icons">{isSelected ? "check" : "add"}</span>
+          )}
+        </button>
       </div>
     </div>
   );
 };
 
-// Componente Modal para mostrar prácticas del estudiante
+// Modal para mostrar prácticas del estudiante
 interface PracticasModalProps {
   student: EnrichedStudent | null;
   isOpen: boolean;
@@ -560,7 +467,6 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
     try {
       logger.info("Buscando prácticas para estudiante:", student.studentId);
 
-      // Consulta simplificada sin joins complejos
       const { data, error } = await supabase
         .from("practicas")
         .select("*")
@@ -586,161 +492,115 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
   const totalHoras = practicas.reduce((sum, p) => sum + (p.horas_realizadas || 0), 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col animate-fade-in-up border border-slate-200 dark:border-slate-700">
+    <div className="lv4-modal-overlay" onClick={onClose}>
+      <div className="lv4-modal-shell wide" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="relative px-8 py-6 bg-gradient-to-br from-indigo-600 via-blue-600 to-blue-700 dark:from-indigo-700 dark:via-blue-700 dark:to-slate-800 text-white overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-lg">
-                <span className="material-icons text-3xl">school</span>
+        <div className="lv4-modal-head">
+          <span className="lv4-modal-head-glow-a" />
+          <span className="lv4-modal-head-glow-b" />
+          <div className="lv4-modal-head-row">
+            <div className="lv4-modal-head-info">
+              <div className="lv4-modal-head-icon">
+                <span className="material-icons">school</span>
               </div>
               <div>
-                <h3 className="font-bold text-xl tracking-tight">{student.nombre}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-sm rounded-full text-xs font-medium border border-white/20">
-                    Legajo: {student.legajo}
-                  </span>
+                <h3 className="lv4-modal-head-title">{student.nombre}</h3>
+                <div className="lv4-modal-head-meta">
+                  <span className="lv4-pill">Legajo: {student.legajo}</span>
                 </div>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2.5 hover:bg-white/20 rounded-xl transition-all duration-200 hover:scale-110 border border-transparent hover:border-white/20"
-            >
-              <span className="material-icons text-2xl">close</span>
+            <button className="lv4-modal-close" onClick={onClose} aria-label="Cerrar">
+              <span className="material-icons">close</span>
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="lv4-modal-body">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="lv4-modal-loader">
+              <span className="lv4-spinner" />
             </div>
           ) : practicas.length === 0 ? (
-            <div className="text-center py-12">
-              <span className="material-icons text-6xl text-slate-300 dark:text-slate-600 mb-4">
-                work_off
-              </span>
-              <p className="text-slate-500 dark:text-slate-400">No hay prácticas registradas</p>
+            <div className="lv4-modal-empty">
+              <span className="material-icons">work_off</span>
+              <p>No hay prácticas registradas</p>
             </div>
           ) : (
             <>
-              {/* Resumen */}
-              <div className="grid grid-cols-3 gap-4 mb-8">
-                <div className="group relative bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-700/30 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300">
-                  <div className="relative flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                      <span className="material-icons text-blue-600 dark:text-blue-400">work</span>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-black text-blue-600 dark:text-blue-400 leading-none">
-                        {practicas.length}
-                      </div>
-                      <div className="text-xs font-semibold text-blue-700/70 dark:text-blue-300/70 uppercase tracking-wider mt-1">
-                        Prácticas
-                      </div>
-                    </div>
+              <div className="lv4-modal-stats">
+                <div className="lv4-modal-stat accent">
+                  <div className="lv4-modal-stat-icon">
+                    <span className="material-icons">work</span>
+                  </div>
+                  <div>
+                    <div className="lv4-modal-stat-val">{practicas.length}</div>
+                    <div className="lv4-modal-stat-label">Prácticas</div>
                   </div>
                 </div>
 
-                <div className="group relative bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-700/30 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-300">
-                  <div className="relative flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                      <span className="material-icons text-emerald-600 dark:text-emerald-400">
-                        schedule
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-none">
-                        {totalHoras}
-                      </div>
-                      <div className="text-xs font-semibold text-emerald-700/70 dark:text-emerald-300/70 uppercase tracking-wider mt-1">
-                        Horas Totales
-                      </div>
-                    </div>
+                <div className="lv4-modal-stat success">
+                  <div className="lv4-modal-stat-icon">
+                    <span className="material-icons">schedule</span>
+                  </div>
+                  <div>
+                    <div className="lv4-modal-stat-val">{totalHoras}</div>
+                    <div className="lv4-modal-stat-label">Horas Totales</div>
                   </div>
                 </div>
 
-                <div className="group relative bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-700/30 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
-                  <div className="relative flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                      <span className="material-icons text-amber-600 dark:text-amber-400">
-                        star
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-black text-amber-600 dark:text-amber-400 leading-none">
-                        {student.puntajeTotal}
-                      </div>
-                      <div className="text-xs font-semibold text-amber-700/70 dark:text-amber-300/70 uppercase tracking-wider mt-1">
-                        Puntaje
-                      </div>
-                    </div>
+                <div className="lv4-modal-stat warn">
+                  <div className="lv4-modal-stat-icon">
+                    <span className="material-icons">star</span>
+                  </div>
+                  <div>
+                    <div className="lv4-modal-stat-val">{student.puntajeTotal}</div>
+                    <div className="lv4-modal-stat-label">Puntaje</div>
                   </div>
                 </div>
               </div>
 
-              {/* Tabla de prácticas */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-slate-100 dark:bg-slate-800">
+              <div className="lv4-table-wrap">
+                <table className="lv4-table">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                        Institución
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                        Estado
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                        Horas
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                        Nota
-                      </th>
+                      <th>Institución</th>
+                      <th className="center">Estado</th>
+                      <th className="center">Horas</th>
+                      <th className="center">Nota</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {practicas.map((practica, index) => (
-                      <tr
-                        key={practica.id}
-                        className="hover:bg-white dark:hover:bg-slate-800/50 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">
+                  <tbody>
+                    {practicas.map((practica) => (
+                      <tr key={practica.id}>
+                        <td>
+                          <div className="lv4-table-name">
                             {practica.nombre_institucion || "N/A"}
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                          <div className="lv4-table-sub">
                             {practica.fecha_inicio &&
                               new Date(practica.fecha_inicio).toLocaleDateString("es-AR")}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="center">
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            className={`lv4-badge ${
                               practica.estado === "Finalizada"
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                ? "lv4-badge-ok"
                                 : practica.estado === "En curso"
-                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                  : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                  ? "lv4-badge-accent"
+                                  : "lv4-badge-muted"
                             }`}
                           >
                             {practica.estado || "N/A"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
-                            {practica.horas_realizadas || 0}
-                          </span>
+                        <td className="center">
+                          <span style={{ fontWeight: 600 }}>{practica.horas_realizadas || 0}</span>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
-                            {practica.nota || "-"}
-                          </span>
+                        <td className="center">
+                          <span style={{ fontWeight: 600 }}>{practica.nota || "-"}</span>
                         </td>
                       </tr>
                     ))}
@@ -752,11 +612,8 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-          >
+        <div className="lv4-modal-foot">
+          <button className="lv4-btn lv4-btn-ghost" onClick={onClose}>
             Cerrar
           </button>
         </div>
@@ -805,7 +662,6 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   const [penaltyType, setPenaltyType] = useState("Baja Anticipada");
   const [penaltyNotes, setPenaltyNotes] = useState("");
 
-  // Estado para modal de prácticas del estudiante
   const [showPracticasModal, setShowPracticasModal] = useState(false);
   const [selectedStudentForPracticas, setSelectedStudentForPracticas] =
     useState<EnrichedStudent | null>(null);
@@ -821,16 +677,13 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     };
   }, [selectedCandidates]);
 
-  // Handler mejorado para toggle con penalización
   const handleToggleWithPenalty = (student: EnrichedStudent) => {
     const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
 
     if (isCurrentlySelected) {
-      // Si está seleccionado, guardamos el estudiante y abrimos modal de penalización
       setStudentToBaja(student);
       setShowPenalizacionModal(true);
     } else {
-      // Si no está seleccionado, hacemos toggle normal
       handleToggle(student);
     }
   };
@@ -839,10 +692,8 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     if (!studentToBaja || !selectedLanzamiento) return;
 
     try {
-      // 1. Dar de baja (cambiar estado)
       await handleToggle(studentToBaja);
 
-      // 2. Aplicar penalización
       const penaltyData = {
         estudiante_id: studentToBaja.studentId,
         tipo_incumplimiento: penaltyType,
@@ -877,7 +728,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
 
   if (!selectedLanzamiento) {
     return (
-      <div className="animate-fade-in-up">
+      <div className="lv4-anim-fade-up">
         {toastInfo && (
           <Toast
             message={toastInfo.message}
@@ -885,10 +736,9 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
             onClose={() => setToastInfo(null)}
           />
         )}
-        <h3 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-100">
-          Seleccionar Convocatoria Abierta
-        </h3>
-        <p className="text-slate-600 dark:text-slate-400 mb-6">
+        <div className="lv4-eyebrow">Mesa de selección</div>
+        <h3 className="lv4-section-title">Seleccionar Convocatoria Abierta</h3>
+        <p style={{ color: "var(--ink-3)", marginBottom: 24, fontSize: 13 }}>
           Elige una convocatoria para gestionar sus postulantes.
         </p>
 
@@ -899,33 +749,27 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
             message="No hay lanzamientos activos en este momento."
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="lv4-launch-grid">
             {openLaunches.map((lanz) => {
               const visuals = getEspecialidadClasses(lanz[FIELD_ORIENTACION_LANZAMIENTOS]);
               return (
                 <button
                   key={lanz.id}
+                  className="lv4-launch-card"
                   onClick={() => setSelectedLanzamiento(lanz)}
-                  className="text-left p-5 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#0F172A] shadow-sm hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-600 dark:hover:shadow-blue-900/10 transition-all group relative overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-transparent to-slate-50 dark:to-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-3">
-                      <span className={visuals.tag}>{lanz[FIELD_ORIENTACION_LANZAMIENTOS]}</span>
-                      <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-full">
-                        {lanz[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]} Cupos
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-lg text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[3.5rem]">
-                      {lanz[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
-                    </h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 flex items-center gap-1.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                      <span className="material-icons !text-base opacity-70">calendar_today</span>
-                      Inicio:{" "}
-                      <span className="font-medium text-slate-700 dark:text-slate-300">
-                        {formatDate(lanz[FIELD_FECHA_INICIO_LANZAMIENTOS])}
-                      </span>
-                    </p>
+                  <div className="lv4-launch-card-top">
+                    <span className="lv4-orient-chip" style={{ maxWidth: "60%" }}>
+                      {lanz[FIELD_ORIENTACION_LANZAMIENTOS]}
+                    </span>
+                    <span className="lv4-launch-card-cupos">
+                      {lanz[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]} Cupos
+                    </span>
+                  </div>
+                  <h4 className="lv4-launch-card-title">{lanz[FIELD_NOMBRE_PPS_LANZAMIENTOS]}</h4>
+                  <div className="lv4-launch-card-date">
+                    <span className="material-icons">calendar_today</span>
+                    Inicio: <strong>{formatDate(lanz[FIELD_FECHA_INICIO_LANZAMIENTOS])}</strong>
                   </div>
                 </button>
               );
@@ -936,8 +780,12 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     );
   }
 
+  const isCerrado =
+    normalizeStringForComparison(selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]) ===
+    "cerrado";
+
   return (
-    <div className="animate-fade-in-up space-y-6">
+    <div className="lv4-anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {toastInfo && (
         <Toast
           message={toastInfo.message}
@@ -949,17 +797,9 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
       {selectedLanzamiento && (
         <ConfirmModal
           isOpen={isConfirmOpen}
-          title={
-            normalizeStringForComparison(
-              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
-            ) === "cerrado"
-              ? "¿Guardar Cambios?"
-              : "¿Cerrar Mesa de Inscripción?"
-          }
+          title={isCerrado ? "¿Guardar Cambios?" : "¿Cerrar Mesa de Inscripción?"}
           message={
-            normalizeStringForComparison(
-              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
-            ) === "cerrado"
+            isCerrado
               ? `Se guardarán los cambios realizados (${selectedCandidates.length} estudiantes seleccionados). No se enviarán correos automáticos porque la convocatoria ya está cerrada. ¿Deseas continuar?`
               : `Se enviarán correos automáticos de confirmación a los ${selectedCandidates.length} alumnos seleccionados. ¿Deseas proceder con el cierre definitivo de esta convocatoria?`
           }
@@ -968,150 +808,131 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
             setIsConfirmOpen(false);
           }}
           onClose={() => setIsConfirmOpen(false)}
-          confirmText={
-            normalizeStringForComparison(
-              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
-            ) === "cerrado"
-              ? "Guardar Cambios"
-              : "Confirmar Cierre"
-          }
-          type={
-            normalizeStringForComparison(
-              selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
-            ) === "cerrado"
-              ? "warning"
-              : "info"
-          }
+          confirmText={isCerrado ? "Guardar Cambios" : "Confirmar Cierre"}
+          type={isCerrado ? "warning" : "info"}
         />
       )}
 
-      <div className="bg-white dark:bg-[#0F172A] p-4 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSelectedLanzamiento(null)}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 dark:text-slate-400"
-            >
-              <span className="material-icons">arrow_back</span>
-            </button>
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                {selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS]}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Cupos: {selectedLanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]} | Postulantes:{" "}
-                {candidates.length} | Seleccionados: {selectedCandidates.length}
-              </p>
-              {selectedCandidates.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900">
-                    <span className="material-icons !text-sm">verified</span>
-                    {commitmentStats.confirmed} confirmados
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900">
-                    <span className="material-icons !text-sm">pending_actions</span>
-                    {commitmentStats.pending} pendientes
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold border ${
-                      commitmentStats.pending === 0
-                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900"
-                        : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700"
-                    }`}
-                  >
-                    <span className="material-icons !text-sm">
-                      {commitmentStats.pending === 0 ? "task_alt" : "hourglass_top"}
-                    </span>
-                    {commitmentStats.pending === 0
-                      ? "Lista para iniciar"
-                      : `Faltan ${commitmentStats.pending}`}
-                  </span>
-                </div>
-              )}
+      <div>
+        <div className="lv4-page-head">
+          <button className="lv4-back-btn" onClick={() => setSelectedLanzamiento(null)}>
+            <span className="material-icons">arrow_back</span>
+          </button>
+          <div>
+            <h3>{selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS]}</h3>
+            <div className="lv4-meta">
+              Cupos: {selectedLanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]} | Postulantes:{" "}
+              {candidates.length} | Seleccionados: {selectedCandidates.length}
             </div>
-          </div>
-          <div className="flex gap-2">
-            {/* Botón para alternar entre ver todos y ver solo seleccionados */}
-            <button
-              onClick={() => setViewMode(viewMode === "selection" ? "review" : "selection")}
-              className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors border ${
-                viewMode === "review"
-                  ? "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700"
-                  : "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
-              title={
-                viewMode === "selection" ? "Ver solo seleccionados" : "Ver todos los inscriptos"
-              }
-            >
-              <span className="material-icons !text-base">
-                {viewMode === "selection" ? "visibility" : "visibility_off"}
-              </span>
-              {viewMode === "selection"
-                ? `Ver Seleccionados (${selectedCandidates.length})`
-                : "Ver Todos"}
-            </button>
-
-            <button
-              onClick={() => setIsConfirmOpen(true)}
-              disabled={isClosingTable || selectedCandidates.length === 0}
-              className="bg-emerald-600 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-emerald-700 transition-colors disabled:opacity-70 dark:bg-emerald-700 dark:hover:bg-emerald-600"
-            >
-              {isClosingTable ? (
-                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-              ) : (
-                <span className="material-icons !text-base">lock</span>
-              )}
-              {isClosingTable ? "Guardando..." : "Guardar Cambios"}
-            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-          {viewMode === "review" && (
-            <div className="text-xs px-3 py-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
-              <span className="material-icons !text-sm">fact_check</span>
-              <span className="font-bold">Modo Revisión:</span> Mostrando solo los{" "}
-              {selectedCandidates.length} estudiantes seleccionados
-            </div>
-          )}
-          {viewMode === "selection" && (
-            <div className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2 group relative cursor-help">
-              <span className="font-bold">Criterio:</span> Puntaje descendente
-              <span className="material-icons !text-sm opacity-70">help</span>
-              <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <p className="font-bold mb-1 border-b border-slate-600 pb-1">Fórmula de Puntaje:</p>
-                <ul className="space-y-1 list-disc pl-3">
+        {selectedCandidates.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              marginBottom: 16,
+              alignItems: "center",
+            }}
+          >
+            <span className="lv4-stat-pill ok">
+              <span className="material-icons">verified</span>
+              {commitmentStats.confirmed} confirmados
+            </span>
+            <span className="lv4-stat-pill pending">
+              <span className="material-icons">pending_actions</span>
+              {commitmentStats.pending} pendientes
+            </span>
+            <span
+              className={`lv4-stat-pill ${commitmentStats.pending === 0 ? "complete" : "idle"}`}
+            >
+              <span className="material-icons">
+                {commitmentStats.pending === 0 ? "task_alt" : "hourglass_top"}
+              </span>
+              {commitmentStats.pending === 0
+                ? "Todos los compromisos aceptados"
+                : "Faltan aceptar compromisos"}
+            </span>
+          </div>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <div className="lv4-tabs">
+            <button
+              className={`lv4-tab ${viewMode === "selection" ? "active" : ""}`}
+              onClick={() => setViewMode("selection")}
+            >
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                how_to_reg
+              </span>
+              Mesa
+              <span className="lv4-tab-count">{candidates.length}</span>
+            </button>
+            <button
+              className={`lv4-tab ${viewMode === "review" ? "active" : ""}`}
+              onClick={() => setViewMode("review")}
+            >
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                task_alt
+              </span>
+              Seleccionados
+              <span className="lv4-tab-count">{selectedCandidates.length}</span>
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <span className="lv4-tip-trigger">
+              <span className="material-icons">help</span>
+              <div className="lv4-tooltip">
+                <div className="lv4-tooltip-title">Fórmula de Puntaje</div>
+                <ul>
                   <li>
-                    Terminó de cursar: <strong>+100 pts</strong>
+                    <span>Terminó de cursar</span>
+                    <strong>+100 pts</strong>
                   </li>
                   <li>
-                    Cursando electivas: <strong>+50 pts</strong>
+                    <span>Cursando electivas</span>
+                    <strong>+50 pts</strong>
                   </li>
                   <li>
-                    Trabaja (c/certificado): <strong>+20 pts</strong>
+                    <span>Trabaja (c/cert)</span>
+                    <strong>+20 pts</strong>
                   </li>
                   <li>
-                    Adeuda finales: <strong>+30 pts</strong>
+                    <span>Adeuda finales</span>
+                    <strong>+30 pts</strong>
                   </li>
                   <li>
-                    Horas acumuladas: <strong>+0.5 pts/hora</strong>
+                    <span>Horas acumuladas</span>
+                    <strong>+0.5 pts/h</strong>
                   </li>
                   <li>
-                    Penalizaciones: <strong>- Puntos</strong>
+                    <span>Penalizaciones</span>
+                    <strong>- Puntos</strong>
                   </li>
                 </ul>
-                <div className="absolute -top-1 left-4 w-2 h-2 bg-slate-800 rotate-45"></div>
+                <span className="lv4-tooltip-arrow" />
               </div>
-            </div>
-          )}
+            </span>
+          </div>
         </div>
       </div>
 
       {isLoadingCandidates ? (
         <Loader />
       ) : (
-        <div className="space-y-3">
-          {/* Mostrar candidatos según el modo de vista */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {displayedCandidates.map((student) => (
             <StudentRow
               key={student.enrollmentId}
@@ -1130,35 +951,58 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
             />
           ))}
           {displayedCandidates.length === 0 && (
-            <EmptyState
-              icon="group_off"
-              title="Sin Inscriptos"
-              message="No hay estudiantes inscriptos en esta convocatoria."
-            />
+            <div className="lv4-empty">
+              <span className="material-icons">group_off</span>
+              <p>No hay estudiantes inscriptos en esta convocatoria.</p>
+            </div>
           )}
         </div>
       )}
 
       {/* Modal de Penalización */}
       {showPenalizacionModal && studentToBaja && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">
-              Dar de Baja - {studentToBaja.nombre}
-            </h3>
-            <p className="text-sm text-slate-500 mb-4">
-              Selecciona el tipo de baja y agrega notas si es necesario.
-            </p>
+        <div className="lv4-modal-overlay">
+          <div className="lv4-modal-shell">
+            <div className="lv4-modal-head">
+              <span className="lv4-modal-head-glow-a" />
+              <span className="lv4-modal-head-glow-b" />
+              <div className="lv4-modal-head-row">
+                <div className="lv4-modal-head-info">
+                  <div className="lv4-modal-head-icon">
+                    <span className="material-icons">remove_circle</span>
+                  </div>
+                  <div>
+                    <h3 className="lv4-modal-head-title">Dar de Baja · {studentToBaja.nombre}</h3>
+                    <div className="lv4-modal-head-meta">
+                      <span className="lv4-pill">Aplicar penalización</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="lv4-modal-close"
+                  onClick={() => {
+                    setShowPenalizacionModal(false);
+                    setStudentToBaja(null);
+                    setPenaltyNotes("");
+                  }}
+                  aria-label="Cerrar"
+                >
+                  <span className="material-icons">close</span>
+                </button>
+              </div>
+            </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Tipo de Baja
-                </label>
+            <div className="lv4-modal-body">
+              <p style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 16 }}>
+                Selecciona el tipo de baja y agrega notas si es necesario.
+              </p>
+
+              <div className="lv4-form-row">
+                <label className="lv4-form-label">Tipo de Baja</label>
                 <select
+                  className="lv4-select"
                   value={penaltyType}
                   onChange={(e) => setPenaltyType(e.target.value)}
-                  className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 text-sm"
                 >
                   <option value="Baja Anticipada">Baja Anticipada (30 pts)</option>
                   <option value="Baja sobre la Fecha / Ausencia en Inicio">
@@ -1169,35 +1013,30 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Notas
-                </label>
+              <div className="lv4-form-row">
+                <label className="lv4-form-label">Notas</label>
                 <textarea
+                  className="lv4-textarea"
                   value={penaltyNotes}
                   onChange={(e) => setPenaltyNotes(e.target.value)}
                   placeholder="Describe el motivo de la baja..."
                   rows={3}
-                  className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 text-sm resize-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="lv4-modal-foot">
               <button
+                className="lv4-btn lv4-btn-ghost"
                 onClick={() => {
                   setShowPenalizacionModal(false);
                   setStudentToBaja(null);
                   setPenaltyNotes("");
                 }}
-                className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
               >
                 Cancelar
               </button>
-              <button
-                onClick={handleConfirmBajaWithPenalty}
-                className="px-6 py-2.5 rounded-xl font-bold text-sm bg-rose-600 text-white hover:bg-rose-700 transition-colors"
-              >
+              <button className="lv4-btn lv4-btn-danger" onClick={handleConfirmBajaWithPenalty}>
                 Confirmar Baja
               </button>
             </div>

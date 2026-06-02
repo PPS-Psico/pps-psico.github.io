@@ -961,7 +961,9 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
 
   // ── Salud por franja horaria ──────────────────────────────────────────────
   // Parseamos las franjas declaradas en el lanzamiento y contamos inscriptos por
-  // franja (matcheando su horario_asignado). Las franjas sin gente se marcan.
+  // franja (matcheando su horario_asignado). Se muestra en la grilla visual
+  // más abajo; ya no disparamos un banner de "Falta gente" porque confundía al
+  // coordinador cuando los cupos totales ya estaban cubiertos.
   const horarioStr = launch[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] as string | null;
   const horarioHealth = useMemo(() => {
     const slots = parseSchedules(horarioStr);
@@ -979,8 +981,6 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
       return { label: slot, count, cuposLocal: cuposPorSlot, pct, status };
     });
   }, [horarioStr, inscriptos, cupos]);
-
-  const lowSlots = horarioHealth.filter((h) => h.status === "low");
 
   // ── Tendencia de inscripción (acumulada en buckets temporales) ────────────
   const inscripcionTrend = useMemo(() => {
@@ -1053,43 +1053,6 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
         secondaryActions={[{ label: "Editar", icon: "edit", onClick: () => {} }]}
       />
       <div className="lv4-canvas-body">
-        {/* Alerta IA: franjas con poca inscripción */}
-        {lowSlots.length > 0 && (
-          <div
-            className="lv4-banner"
-            style={{ borderColor: "var(--warn)", background: "var(--warn-s)" }}
-          >
-            <span
-              className="material-icons"
-              style={{ fontSize: 20, color: "var(--warn)", marginTop: 2 }}
-            >
-              warning
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink)", marginBottom: 3 }}>
-                {lowSlots.length === 1
-                  ? `Falta gente en "${lowSlots[0].label}"`
-                  : `${lowSlots.length} franjas con poca inscripción`}
-              </div>
-              <div style={{ fontSize: 13, color: "var(--ink-3)" }}>
-                Reanunciá la convocatoria mencionando{" "}
-                {lowSlots.length === 1 ? "ese horario" : "esas franjas"} en particular para
-                equilibrar los cupos.
-              </div>
-            </div>
-            <button
-              className="lv4-btn"
-              onClick={() => copyText(waMessage, "wa")}
-              style={{ flexShrink: 0 }}
-            >
-              <span className="material-icons" style={{ fontSize: 14 }}>
-                {waCopied ? "check" : "campaign"}
-              </span>
-              {waCopied ? "Copiado" : "Copiar reanuncio"}
-            </button>
-          </div>
-        )}
-
         {/* Stats */}
         <div className="lv4-stats" style={{ marginBottom: 20 }}>
           <div className="lv4-stat">
@@ -1147,7 +1110,9 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
           </div>
         )}
 
-        {/* Acción principal */}
+        {/* Acción principal — el orden recomendado es revisar la mesa primero
+           y cerrar al final. El banner avisa cuántos cupos quedan por cubrir
+           y ofrece un atajo para bajar a la mesa. */}
         <div
           className="lv4-banner"
           style={{ borderColor: "var(--rule-2)", background: "var(--paper-2)" }}
@@ -1160,18 +1125,34 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
           </span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
-              Próximo paso: cerrar inscripción y abrir mesa de selección
+              {total} candidato{total !== 1 ? "s" : ""} para {cupos ?? "?"} cupos
             </div>
             <div style={{ fontSize: 13, color: "var(--ink-3)" }}>
-              Habrá {total} candidato{total !== 1 ? "s" : ""} para {cupos ?? "?"} cupos.
+              RevIsá la mesa de selección abajo y, cuando termines de elegir, cerrá la inscripción
+              para enviar los consentimientos.
             </div>
           </div>
-          <button className="lv4-btn lv4-btn-primary" onClick={onCerrarInscripcion}>
-            <span className="material-icons" style={{ fontSize: 14 }}>
-              lock
-            </span>
-            Cerrar inscripción
-          </button>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button
+              className="lv4-btn"
+              onClick={() => {
+                document
+                  .getElementById("mesa-seleccion")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                arrow_downward
+              </span>
+              Ir a la mesa
+            </button>
+            <button className="lv4-btn lv4-btn-primary" onClick={onCerrarInscripcion}>
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                lock
+              </span>
+              Cerrar inscripción
+            </button>
+          </div>
         </div>
 
         {/* Salud por franja horaria */}
@@ -1366,10 +1347,28 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
           </div>
         )}
 
-        {/* Lista completa via SeleccionadorConvocatorias */}
-        <div style={{ marginTop: 32 }}>
-          <div className="lv4-eyebrow">Lista completa</div>
-          <div className="lv4-section-title">Todos los inscriptos</div>
+        {/* Mesa de selección (SeleccionadorConvocatorias)
+           Ya no hace falta cerrar la inscripción para ver / marcar estudiantes:
+           el admin puede elegir acá mismo y, cuando termine, recién cerrar
+           la inscripción desde el botón del header. La PPS sigue en `Abierta`
+           en la DB hasta ese cierre formal (los `seleccionado` crean la
+           práctica vía trigger pero NO disparan emails hasta el cierre). */}
+        <div id="mesa-seleccion" style={{ marginTop: 32, scrollMarginTop: 80 }}>
+          <div className="lv4-eyebrow">Mesa de selección</div>
+          <div className="lv4-section-title">Elegí los estudiantes</div>
+          <div
+            style={{
+              fontSize: 12.5,
+              color: "var(--ink-3)",
+              margin: "0 0 14px",
+              maxWidth: 640,
+              lineHeight: 1.5,
+            }}
+          >
+            Marcá los estudiantes que van a cursar la PPS. Podés hacerlo ahora y revisar antes de
+            cerrar la inscripción. Cuando termines, usá <b>Cerrar inscripción</b> arriba para
+            confirmar y enviar los consentimientos.
+          </div>
           <Suspense fallback={<Loader />}>
             <SeleccionadorConvocatorias isTestingMode={false} preSelectedLaunchId={launch.id} />
           </Suspense>

@@ -97,6 +97,7 @@ supabase/
 - **RLS**: Las tablas tienen Row Level Security. El estudiante solo ve sus propios datos. Para cross-user queries usar RPCs con `SECURITY DEFINER`.
 - **Emails**: Templates en `src/utils/emailService.ts` con sistema de bloques `[[button|text|url]]` y variables `{{nombre}}`.
 - **Commits**: Se usa commitlint con formato convencional (`feat:`, `fix:`, `chore:`). Husky + lint-staged corre ESLint y Prettier en pre-commit.
+- **Estilos `lv4` (Lanzador)**: Los componentes que viven dentro de `LanzadorView` (`src/views/admin/lanzador/`) y los que se montan dentro de el (ej: `src/components/admin/SeleccionadorConvocatorias.tsx`) deben usar **exclusivamente** las clases `.lv4-*` definidas en `lanzadorStyles.ts` para estilos visuales (colores, bordes, tipografia, estados). Se permite Tailwind solo para **layout primitivo** (flex, grid, gap, padding numerico para spacing). Agregar nuevas clases al final de `LANZADOR_CSS` cuando se necesite una variante visual nueva. Tokens disponibles: `--paper`, `--paper-2`, `--paper-3`, `--ink`, `--ink-2/3/4`, `--rule-2/3`, `--accent`, `--warn`, `--ok`, `--ai` (light + dark).
 
 ### Roles y vistas
 
