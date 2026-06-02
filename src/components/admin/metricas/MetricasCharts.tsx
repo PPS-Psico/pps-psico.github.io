@@ -477,96 +477,79 @@ export function TopInstituciones({
       <div className="card">
         <span className="eyebrow">Top instituciones por cupos</span>
         <p className="meta" style={{ marginTop: 14 }}>
-          Sin cupos cargados este año.
+          Sin datos de instituciones este año.
         </p>
       </div>
     );
   }
-  const max = Math.max(...rows.map((r) => r.ofrecidos), 1);
+  const max = Math.max(...rows.map((r) => r.ocupados), 1);
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span className="eyebrow">Top instituciones por cupos</span>
+        <span className="eyebrow">Top instituciones · estudiantes</span>
         <span className="meta" style={{ fontSize: 11 }}>
-          ocupados / ofrecidos
+          alumnos en PPS
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 14 }}>
-        {rows.slice(0, 6).map((r) => {
-          const rate = r.ofrecidos ? Math.round((r.ocupados / r.ofrecidos) * 100) : 0;
-          return (
-            <button
-              key={r.nombre}
-              onClick={() => onInst(r)}
-              className="row-btn press"
-              type="button"
+        {rows.slice(0, 6).map((r) => (
+          <button
+            key={r.nombre}
+            onClick={() => onInst(r)}
+            className="row-btn press"
+            type="button"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 86px auto",
+              gap: 12,
+              alignItems: "center",
+              padding: "9px 6px",
+              borderBottom: "1px solid var(--rule)",
+            }}
+          >
+            <span
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 86px auto",
-                gap: 12,
+                display: "inline-flex",
                 alignItems: "center",
-                padding: "9px 6px",
-                borderBottom: "1px solid var(--rule)",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--ink)",
+                minWidth: 0,
               }}
             >
               <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 13,
-                  color: "var(--ink)",
-                  minWidth: 0,
-                }}
-              >
-                <span
-                  className="dot"
-                  style={{ background: ORIENT_VAR[r.orient], width: 7, height: 7, flexShrink: 0 }}
-                />
-                <span
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                >
-                  {r.nombre}
-                </span>
+                className="dot"
+                style={{ background: ORIENT_VAR[r.orient], width: 7, height: 7, flexShrink: 0 }}
+              />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {r.nombre}
               </span>
+            </span>
+            <div
+              style={{
+                height: 7,
+                background: "var(--paper-3)",
+                borderRadius: 999,
+                overflow: "hidden",
+              }}
+            >
               <div
                 style={{
-                  height: 7,
-                  background: "var(--paper-3)",
+                  height: "100%",
+                  width: `${(r.ocupados / max) * 100}%`,
+                  background: ORIENT_VAR[r.orient],
                   borderRadius: 999,
-                  overflow: "hidden",
                 }}
-              >
-                <div
-                  style={{
-                    height: "100%",
-                    width: `${(r.ofrecidos / max) * 100}%`,
-                    position: "relative",
-                  }}
-                >
-                  <div style={{ position: "absolute", inset: 0, background: "var(--paper-3)" }} />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      width: `${rate}%`,
-                      background: ORIENT_VAR[r.orient],
-                    }}
-                  />
-                </div>
-              </div>
-              <span
-                className="mono"
-                style={{ fontSize: 12.5, color: "var(--ink-2)", whiteSpace: "nowrap" }}
-              >
-                {r.ocupados}
-                <span style={{ color: "var(--ink-4)" }}>/{r.ofrecidos}</span>
-              </span>
-            </button>
-          );
-        })}
+              />
+            </div>
+            <span
+              className="mono"
+              style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-2)", whiteSpace: "nowrap" }}
+            >
+              {r.ocupados}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );

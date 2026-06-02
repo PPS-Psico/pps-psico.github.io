@@ -35,3 +35,11 @@ export const ALERT_INFORMES_TEXT =
 // --- Misc ---
 export const EMAIL_SEGUROS = "mesadeayuda.patagonia@uflouniversidad.edu.ar";
 export const TEMPLATE_PPS_NAME = "Colegio Virgen de Lujan";
+
+// --- LocalStorage keys (Gestión / Paper & Ink workspace) ---
+// Persistencia de UI de Gestión. Centralizadas acá para evitar strings sueltos.
+export const LS_GV3_RAIL_COLLAPSED = "gv3-rail-collapsed";
+export const LS_GV3_MAILS_SEEN = "gv3-mails-seen";
+// Tamaño del panel derecho de Gestión, por modo (Record<ViewMode, FichaSize>).
+// Default: lógica de auto-ajuste en useFichaSize.
+export const LS_GV3_FICHA_SIZE = "gv3-ficha-size";

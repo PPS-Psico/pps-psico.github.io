@@ -23,6 +23,7 @@ import {
   type AccionTipo,
 } from "../../../services/hermesPlan";
 import type { GmailHilo } from "../../../hooks/useGmailHilos";
+import { isValidWhatsAppFormat } from "../../../utils/formatters";
 
 const META: Record<AccionTipo, { icon: string; label: string; cta: string }> = {
   responder_mail: { icon: "mail", label: "Responder correo", cta: "Responder" },
@@ -126,15 +127,32 @@ export const HermesFlow: React.FC<Props> = ({
       const meta = META[a.tipo] || META.responder_mail;
       const badges: CardBadge[] = [];
       if (a.tieneBorrador) {
-        const wa = a.solicitud?.canal === "whatsapp";
+        // El canal que propone Hermes puede mentir: el backend usa una
+        // heurística débil (regex de formato) y muchas veces marca
+        // números como WhatsApp que no lo son. Re-validamos acá con
+        // cleanWhatsAppNumber para que el badge NO prometa algo que el
+        // panel no pueda abrir. Si el WhatsApp no es válido pero hay
+        // email, se ofrece "Correo listo" (el panel hace fallback
+        // automático a mail al abrirse).
+        const tel = a.solicitud?.telefono || a.solicitud?.destino || "";
+        const canalPropuesto = a.solicitud?.canal;
+        const waReal = canalPropuesto === "whatsapp" && isValidWhatsAppFormat(tel);
+        const hayMail = !!(a.solicitud?.email || a.solicitud?.destino);
+        const badgeCanal: "whatsapp" | "email" | "borrador" = waReal
+          ? "whatsapp"
+          : canalPropuesto === "email" || (canalPropuesto === "whatsapp" && hayMail)
+            ? "email"
+            : "borrador";
         badges.push({
-          text: wa
-            ? "WhatsApp listo"
-            : a.solicitud?.canal === "email"
-              ? "Correo listo"
-              : "Borrador listo",
-          color: wa ? "var(--ok)" : "var(--ai)",
-          icon: wa ? "chat" : a.solicitud?.canal === "email" ? "mail" : "auto_awesome",
+          text:
+            badgeCanal === "whatsapp"
+              ? "WhatsApp listo"
+              : badgeCanal === "email"
+                ? "Correo listo"
+                : "Borrador listo",
+          color: badgeCanal === "whatsapp" ? "var(--ok)" : "var(--ai)",
+          icon:
+            badgeCanal === "whatsapp" ? "chat" : badgeCanal === "email" ? "mail" : "auto_awesome",
         });
       }
       if (a.tipo === "mover_solicitud" && a.solicitud && a.solicitud.canal !== "ninguno") {

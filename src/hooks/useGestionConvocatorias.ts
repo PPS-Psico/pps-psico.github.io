@@ -285,7 +285,14 @@ export const useGestionConvocatorias = ({
     ): Promise<boolean> => {
       if (isTestingMode) return true;
       try {
-        await db.instituciones.update(institutionId, patch);
+        // convenio_nuevo es smallint en DB: convertir antes de enviar.
+        const cleanPatch: Record<string, unknown> = { ...patch };
+        if ("convenio_nuevo" in cleanPatch) {
+          const raw = cleanPatch.convenio_nuevo;
+          const n = raw !== "" && raw != null ? Number(raw) : NaN;
+          cleanPatch.convenio_nuevo = Number.isNaN(n) ? null : n;
+        }
+        await db.instituciones.update(institutionId, cleanPatch as never);
         setToastInfo({ message: "Institución actualizada.", type: "success" });
         await fetchData();
         return true;

@@ -175,7 +175,7 @@ export function MetricasDashboardV3({
     (r: TopInstitucion) => {
       openDrill({
         title: r.nombre,
-        subtitle: `${r.ocupados} de ${r.ofrecidos} cupos ocupados en ${year}`,
+        subtitle: `${r.ocupados} estudiantes en PPS en ${year}`,
         rows: r.list as DrillRow[],
         kind: "student",
         loading: false,

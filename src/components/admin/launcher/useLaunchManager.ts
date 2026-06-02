@@ -32,6 +32,7 @@ import {
   FIELD_LOGO_INVERT_DARK_INSTITUCIONES,
   FIELD_LOGO_URL_INSTITUCIONES,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
+  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -235,6 +236,8 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
         [FIELD_TUTOR_INSTITUCIONES]: data.tutor,
         [FIELD_LOGO_URL_INSTITUCIONES]: logoUrl || undefined,
         [FIELD_LOGO_INVERT_DARK_INSTITUCIONES]: data.invertLogo,
+        // Nueva institución → convenio registrado en el año actual.
+        [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: new Date().getFullYear(),
       } as never);
     },
     onSuccess: (newInst: AirtableRecord<InstitucionFields>, variables: NewInstitutionData) => {

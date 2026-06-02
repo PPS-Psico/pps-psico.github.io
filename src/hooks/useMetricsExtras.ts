@@ -404,14 +404,16 @@ export const useMetricsTopInstituciones = ({
       });
 
       // 2. Convocatorias del año → ocupados + alumnos para el drill-down.
+      // Filtramos por lanzamiento_id (no por created_at) porque los alumnos pueden
+      // inscribirse en un año distinto al que arranca la PPS.
       try {
+        const launchIds = Array.from(launchById.keys());
         const { data: convsRaw } = await supabase
           .from(TABLE_NAME_CONVOCATORIAS)
           .select(
-            `${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}, ${FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS}, estudiantes(${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_LEGAJO_ESTUDIANTES})`
+            `${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}, ${FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS}, estudiantes!convocatorias_estudiante_id_fkey(${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_LEGAJO_ESTUDIANTES})`
           )
-          .gte("created_at", start)
-          .lt("created_at", end);
+          .in(FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, launchIds);
         const convs = (convsRaw || []) as Array<Record<string, unknown>>;
         convs.forEach((c) => {
           const estado = normalizeStringForComparison(

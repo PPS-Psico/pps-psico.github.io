@@ -21,6 +21,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
 import { useGmailHilos, matchesGmailFilter } from "../../hooks/useGmailHilos";
 import type { GmailHilo, GmailFilter } from "../../hooks/useGmailHilos";
+import { useFichaSize } from "../../hooks/useFichaSize";
 import {
   getThreadsWithDraft,
   generatePendingDrafts,
@@ -43,7 +44,12 @@ import {
   FIELD_NOTAS_GESTION_LANZAMIENTOS,
   FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
 } from "../../constants";
-import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
+import {
+  formatDate,
+  getWhatsAppUrl,
+  normalizeStringForComparison,
+  parseToUTCDate,
+} from "../../utils/formatters";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { supabase } from "../../lib/supabaseClient";
 import { mockDb } from "../../services/mockDb";
@@ -70,6 +76,8 @@ import { orientSlug, buildItems, buildInstitutions } from "./gestion/gestionHelp
 import { CalendarView } from "./gestion/CalendarView";
 import { Rail, ViewModeTabs } from "./gestion/nav";
 import { Bandeja } from "./gestion/Bandeja";
+import { FichaSizeToggle } from "./gestion/FichaSizeToggle";
+import { LS_GV3_RAIL_COLLAPSED, LS_GV3_MAILS_SEEN } from "../../constants/uiConstants";
 import {
   ContactModal,
   EditInstitucionModal,
@@ -125,10 +133,18 @@ const CSS = `
   --rail-w:240px; --ficha-w:380px;
   background:var(--paper); color:var(--ink);
   font-family:'Hanken Grotesk', system-ui, sans-serif;
-  display:grid; grid-template-columns:var(--rail-w) 1fr var(--ficha-w);
+  display:grid; grid-template-columns:auto 1fr auto;
   height:calc(100vh - 60px);
+  transition:grid-template-columns .18s ease;
 }
 .gestion-v3.rail-collapsed{ --rail-w:58px; }
+/* Tamaño del panel derecho (Ficha) — controlado por useFichaSize.
+   Las 3 clases se aplican al wrapper .gestion-v3 según la decisión del hook.
+   El ancho real lo manda el style inline del <aside> (width: fichaSize.width),
+   que es la fuente de verdad. Las variables quedan solo como fallback. */
+.gestion-v3.ficha-collapsed{ --ficha-w:48px; }
+.gestion-v3.ficha-normal{ --ficha-w:380px; }
+.gestion-v3.ficha-expanded{ --ficha-w:560px; }
 html.dark .gestion-v3 {
   --paper:#0E0E0C; --paper-2:#17171A; --paper-3:#1F1F23;
   --ink:#F2EFE8; --ink-2:#DAD6CD; --ink-3:#97928A; --ink-4:#5C5852;
@@ -136,27 +152,37 @@ html.dark .gestion-v3 {
   --accent:#8FB1FF; --accent-soft:#8FB1FF1A;
   --warn:#E4965D; --warn-soft:#E4965D1A;
   --ok:#88BD96; --ok-soft:#88BD961A;
-  --ai:#C9A4F2; --ai-soft:#C9A4F21A;
+  --ai:#C9A4F2; --ai-soft:#C9A4F212;
   --state-indefinida-soft:#F2EFE810; --state-archivada-soft:#F2EFE810;
-  --orient-clinica:#88BD96; --orient-clinica-soft:#88BD961A;
+  --orient-clinica:#88BD96; --orient-clinica-soft:#88BD9614;
   --orient-educacional:#8FB1FF; --orient-educacional-soft:#8FB1FF1A;
-  --orient-laboral:#E4965D; --orient-laboral-soft:#E4965D1A;
-  --orient-comunitaria:#C9A4F2; --orient-comunitaria-soft:#C9A4F21A;
+  --orient-laboral:#E4965D; --orient-laboral-soft:#E4965D14;
+  --orient-comunitaria:#C9A4F2; --orient-comunitaria-soft:#C9A4F214;
 }
-@media (max-width:1280px){ .gestion-v3{ --ficha-w:340px; --rail-w:220px; } .gestion-v3.rail-collapsed{ --rail-w:58px; } }
-@media (max-width:1100px){ .gestion-v3{ grid-template-columns:var(--rail-w) 1fr; } .gestion-v3 .gv3-ficha{ display:none; } }
-.gestion-v3.contactos-mode{ grid-template-columns:var(--rail-w) 1fr; }
+@media (max-width:1280px){ .gestion-v3{ --rail-w:220px; } .gestion-v3.rail-collapsed{ --rail-w:58px; } }
+@media (max-width:1100px){ .gestion-v3{ grid-template-columns:auto 1fr; } .gestion-v3 .gv3-ficha{ display:none; } }
+.gestion-v3.contactos-mode{ grid-template-columns:auto 1fr; }
 .gestion-v3.contactos-mode .gv3-ficha{ display:none; }
 .gestion-v3.contactos-mode .gv3-center{ overflow:hidden; }
 /* Rail contextual: solo Bandeja e Instituciones lo usan. En el resto se oculta
    y el workspace pasa a 2 columnas (centro + ficha). */
-.gestion-v3.rail-hidden{ grid-template-columns:1fr var(--ficha-w); }
+.gestion-v3.rail-hidden{ grid-template-columns:1fr auto; transition:grid-template-columns .18s ease; }
 .gestion-v3.rail-hidden.contactos-mode{ grid-template-columns:1fr; }
 @media (max-width:1100px){ .gestion-v3.rail-hidden{ grid-template-columns:1fr; } }
 
-.gestion-v3 .gv3-rail{ border-right:1px solid var(--rule-2); overflow-y:auto; overflow-x:hidden; background:var(--paper); display:flex; flex-direction:column; }
-.gestion-v3 .gv3-center{ overflow-y:auto; display:flex; flex-direction:column; min-width:0; }
-.gestion-v3 .gv3-ficha{ border-left:1px solid var(--rule-2); overflow-y:auto; background:var(--paper); }
+.gestion-v3 .gv3-rail{ width:var(--rail-w); border-right:1px solid var(--rule-2); overflow-y:auto; overflow-x:hidden; background:var(--paper); display:flex; flex-direction:column; flex-shrink:0; transition:width .18s ease; }
+.gestion-v3 .gv3-center{ overflow-y:auto; display:flex; flex-direction:column; min-width:0; position:relative; }
+.gestion-v3 .gv3-ficha{ border-left:1px solid var(--rule-2); overflow-y:auto; overflow-x:hidden; background:var(--paper); position:relative; display:flex; flex-direction:column; flex-shrink:0; transition:width .2s ease, background .12s ease; }
+.gestion-v3 .gv3-ficha-chrome{ position:sticky; top:0; z-index:5; display:flex; justify-content:flex-end; align-items:center; padding:8px 12px; border-bottom:1px solid var(--rule-2); background:var(--paper); }
+.gestion-v3 .gv3-ficha-body{ flex:1 1 auto; min-height:0; }
+.gestion-v3.ficha-collapsed .gv3-ficha-body{ display:none; }
+.gestion-v3.ficha-collapsed .gv3-ficha{ background:transparent; border-left-color:transparent; }
+.gestion-v3.ficha-collapsed .gv3-ficha-chrome{ padding:8px 0; justify-content:center; border-bottom-color:transparent; }
+.gestion-v3.ficha-collapsed .ficha-size-toggle{ flex-direction:column; padding:4px; gap:0; border-radius:10px; }
+.gestion-v3.ficha-collapsed .ficha-size-toggle .ficha-size-btn{ width:32px; height:32px; border-radius:0; }
+.gestion-v3.ficha-collapsed .ficha-size-toggle .ficha-size-btn:first-child{ border-radius:7px 7px 0 0; }
+.gestion-v3.ficha-collapsed .ficha-size-toggle .ficha-size-btn:last-of-type{ border-radius:0 0 7px 0; }
+.gestion-v3.ficha-collapsed .ficha-size-toggle .ficha-size-reset{ border-top:1px solid var(--rule-2); border-radius:0 0 7px 7px; padding:6px 0; width:32px; margin-left:0; }
 
 .gestion-v3 .serif{ font-weight:700; letter-spacing:-0.025em; }
 .gestion-v3 .serif em{ font-style:normal; font-weight:700; color:var(--accent); }
@@ -339,6 +365,30 @@ html.dark .gestion-v3 .hermes-card{ border-color:#C9A4F226; }
 .gestion-v3 .chat-in{ background:var(--paper-2); border:1px solid var(--rule); border-bottom-left-radius:3px; align-self:flex-start; }
 .gestion-v3 .chat-out{ background:var(--accent-soft); border:1px solid #1F3A8A22; border-bottom-right-radius:3px; align-self:flex-end; }
 .gestion-v3 .chat-marker{ align-self:center; display:inline-flex; align-items:center; gap:6px; font-size:10.5px; color:var(--ink-3); padding:3px 10px; border-radius:999px; background:var(--paper-2); border:1px solid var(--rule-2); }
+
+/* ── FichaSizeToggle ──────────────────────────────────────────────────────
+   Segmentado horizontal compacto (3 botones) que en modo "collapsed" rota a
+   vertical (los iconos se apilan en una sola columna al borde del workspace). */
+.gestion-v3 .ficha-size-toggle{ display:inline-flex; align-items:center; gap:1px; padding:2px; border-radius:8px; background:var(--paper-2); border:1px solid var(--rule-2); }
+.gestion-v3 .ficha-size-btn{ display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; padding:0; border-radius:6px; border:none; background:transparent; color:var(--ink-3); cursor:pointer; transition:background .12s ease, color .12s ease; }
+.gestion-v3 .ficha-size-btn:hover{ background:var(--rule-2); color:var(--ink-2); }
+.gestion-v3 .ficha-size-btn.active{ background:var(--ink); color:var(--paper); }
+.gestion-v3 .ficha-size-reset{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:24px; padding:0; margin-left:2px; border:none; border-radius:6px; background:transparent; color:var(--ink-3); cursor:pointer; transition:background .12s ease, color .12s ease; }
+.gestion-v3 .ficha-size-reset:hover{ background:var(--rule-2); color:var(--ink-2); }
+/* Header de la ficha — el toggle vive en la esquina superior derecha */
+.gestion-v3 .gv3-ficha-header{ position:sticky; top:0; z-index:2; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding:14px 16px 10px; background:var(--paper); border-bottom:1px solid var(--rule-2); }
+.gestion-v3 .gv3-ficha-body{ padding:16px; flex:1 1 auto; }
+
+/* ── Empty state de "Hoy" en la barra derecha ─────────────────────────────
+   Cuando en la pestaña Hoy/Mails NO hay tarjeta seleccionada, el panel
+   derecho queda en normal (380px) y muestra este empty state. Al tocar
+   una tarjeta (mail / solicitud / institución) el panel se expande a
+   expanded (560px) y el empty state es reemplazado por el panel de
+   acción correspondiente. Al deseleccionar, vuelve a normal y reaparece. */
+.gestion-v3 .gv3-ficha-empty{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px; padding:60px 28px; color:var(--ink-3); min-height:240px; }
+.gestion-v3 .gv3-ficha-empty .material-icons{ font-size:40px; color:var(--ink-4); }
+.gestion-v3 .gv3-ficha-empty h3{ margin:12px 0 0; font-size:17px; font-weight:700; letter-spacing:-0.02em; color:var(--ink-2); }
+.gestion-v3 .gv3-ficha-empty p{ margin:6px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-3); }
 `;
 
 injectScopedStyles("gv3-styles", CSS);
@@ -367,8 +417,6 @@ injectScopedStyles("gv3-styles", CSS);
 interface GestionViewProps {
   isTestingMode?: boolean;
 }
-
-const RAIL_LS_KEY = "gv3-rail-collapsed";
 
 const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   const [searchParams] = useSearchParams();
@@ -400,7 +448,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   );
   const [railCollapsed, setRailCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(RAIL_LS_KEY) === "1";
+      return localStorage.getItem(LS_GV3_RAIL_COLLAPSED) === "1";
     } catch {
       return false;
     }
@@ -494,18 +542,25 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   >([]);
   const undoTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   // Hilos ya vistos por el operador (indicador de no leído). Persistido localmente.
-  const SEEN_LS_KEY = "gv3-mails-seen";
   const [seenThreads, setSeenThreads] = useState<Set<string>>(() => {
     try {
-      const raw = localStorage.getItem(SEEN_LS_KEY);
+      const raw = localStorage.getItem(LS_GV3_MAILS_SEEN);
       return new Set(raw ? (JSON.parse(raw) as string[]) : []);
     } catch {
       return new Set();
     }
   });
+  // Tamaño del panel derecho: 3 niveles (collapsed / normal / expanded) con
+  // auto-ajuste por modo + override manual persistente por modo.
+  // En `mails` con un panel denso (MailPanel) → auto=expanded; en calendario
+  // → auto=collapsed; resto → normal.
+  const hasRichContent =
+    viewMode === "mails" &&
+    (Boolean(openMailHilo) || Boolean(openInstVm) || Boolean(openSolicitud));
+  const fichaSize = useFichaSize({ mode: viewMode, hasRichContent });
   const persistSeen = useCallback((next: Set<string>) => {
     try {
-      localStorage.setItem(SEEN_LS_KEY, JSON.stringify([...next].slice(-500)));
+      localStorage.setItem(LS_GV3_MAILS_SEEN, JSON.stringify([...next].slice(-500)));
     } catch {
       /* noop */
     }
@@ -632,7 +687,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     setRailCollapsed((prev) => {
       const next = !prev;
       try {
-        localStorage.setItem(RAIL_LS_KEY, next ? "1" : "0");
+        localStorage.setItem(LS_GV3_RAIL_COLLAPSED, next ? "1" : "0");
       } catch {
         /* noop */
       }
@@ -778,6 +833,28 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     };
   }, []);
 
+  // Atajos de teclado: [ colapsa, ] normal, Shift+] expande la ficha derecha.
+  // No intercepta si el foco está en un input/textarea/contenteditable.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) {
+        return;
+      }
+      if (e.key === "[") {
+        e.preventDefault();
+        fichaSize.setSize("collapsed");
+      } else if (e.key === "]") {
+        e.preventDefault();
+        if (e.shiftKey) fichaSize.setSize("expanded");
+        else fichaSize.setSize("normal");
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [fichaSize]);
+
   const handlePlanToday = useCallback(async () => {
     setPlanningToday(true);
     const res = await planToday(20);
@@ -875,12 +952,15 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
 
   const sendWhatsApp = useCallback(
     (vm: InstitutionVM, text: string) => {
-      if (!vm.phone) {
-        showToast("Sin teléfono cargado", "info");
+      // Validamos el teléfono con cleanWhatsAppNumber antes de abrir wa.me
+      // para evitar el "contacto inexistente" que aparece cuando el número
+      // no es un WhatsApp real (fijos mal cargados, números incompletos, etc).
+      const url = getWhatsAppUrl(vm.phone, text);
+      if (!url) {
+        showToast("Este teléfono no es un WhatsApp válido", "info");
         return;
       }
-      const digits = vm.phone.replace(/[^\d]/g, "");
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+      window.open(url, "_blank", "noopener");
       setContactVm(null);
       showToast("WhatsApp abierto · revisá y enviá manualmente", "chat");
     },
@@ -985,7 +1065,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
 
   return (
     <div
-      className={`gestion-v3 ${railCollapsed ? "rail-collapsed" : ""} ${viewMode === "contactos" ? "contactos-mode" : ""} ${railApplies ? "" : "rail-hidden"}`}
+      className={`gestion-v3 ${railCollapsed ? "rail-collapsed" : ""} ficha-${fichaSize.size} ${viewMode === "contactos" ? "contactos-mode" : ""} ${railApplies ? "" : "rail-hidden"}`}
     >
       {railApplies && (
         <Rail
@@ -1002,7 +1082,27 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
         />
       )}
 
-      <section className="gv3-center">
+      <section
+        className="gv3-center"
+        onClick={(e) => {
+          // Dismiss-on-empty: si hay una selección abierta en "Hoy" y el
+          // usuario clickeó en el área vacía del centro (no en una tarjeta,
+          // filtro, tab o control interactivo), cerramos la selección para
+          // que la barra vuelva a "normal" automáticamente.
+          if (!openMailHilo && !openSolicitud && !openInstVm) return;
+          const t = e.target as HTMLElement | null;
+          if (
+            t?.closest(
+              ".mail-row, .mail-head, .hermes-card, .gv3-no-close, button, a, input, select, textarea, [role=button], [data-keep-selection]"
+            )
+          ) {
+            return;
+          }
+          setOpenMailHilo(null);
+          setOpenSolicitud(null);
+          setOpenInstVm(null);
+        }}
+      >
         <ViewModeTabs
           mode={viewMode}
           onChange={(m) => {
@@ -1198,92 +1298,110 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
         )}
       </section>
 
-      {viewMode === "mails" && openInstVm ? (
-        <Suspense
-          fallback={
-            <aside className="gv3-ficha">
-              <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-                <Loader />
-              </div>
-            </aside>
-          }
-        >
-          <InstitucionActionPanel
-            vm={openInstVm}
-            isTestingMode={isTestingMode}
-            onClose={() => setOpenInstVm(null)}
-            onSend={(vm, text) => {
-              sendWhatsApp(vm, text);
-              setOpenInstVm(null);
-            }}
-            onMarkWaiting={(vm) => {
-              markWaiting(vm);
-              setOpenInstVm(null);
-            }}
-          />
-        </Suspense>
-      ) : viewMode === "mails" && openSolicitud ? (
-        <Suspense
-          fallback={
-            <aside className="gv3-ficha">
-              <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-                <Loader />
-              </div>
-            </aside>
-          }
-        >
-          <SolicitudActionPanel
-            data={openSolicitud}
-            onClose={() => setOpenSolicitud(null)}
-            onSent={(msg) => showToast(msg, "chat")}
-            onOpenSolicitud={(id) => navigate(`/admin/solicitudes?tab=ingreso&focus=${id}`)}
-          />
-        </Suspense>
-      ) : viewMode === "mails" && openMailHilo ? (
-        <Suspense
-          fallback={
-            <aside className="gv3-ficha">
-              <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-                <Loader />
-              </div>
-            </aside>
-          }
-        >
-          <MailPanel
-            hilo={openMailHilo}
-            isTestingMode={isTestingMode}
-            onClose={() => setOpenMailHilo(null)}
-            onActionDone={(msg) => showToast(msg, "mail")}
-            onRefetch={() => refetchGmail()}
-          />
-        </Suspense>
-      ) : viewMode === "mails" ? (
-        <aside className="gv3-ficha">
-          <div style={{ padding: "120px 28px", textAlign: "center", color: "var(--ink-3)" }}>
-            <span className="material-icons" style={{ fontSize: 40, color: "var(--ink-4)" }}>
-              auto_awesome
-            </span>
-            <div
-              className="serif"
-              style={{ marginTop: 12, fontSize: 17, fontWeight: 700, color: "var(--ink-2)" }}
-            >
-              Elegí una acción
-            </div>
-            <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
-              Tocá un correo, una solicitud o una institución del plan de Hermes para verla acá y
-              accionar sin salir del panel.
-            </div>
+      {viewMode === "mails" ? (
+        <aside className="gv3-ficha" style={{ width: fichaSize.width }}>
+          <div className="gv3-ficha-chrome">
+            <FichaSizeToggle
+              size={fichaSize.size}
+              onChange={fichaSize.setSize}
+              autoActive={!fichaSize.isUserOverride}
+              onReset={fichaSize.resetForMode}
+            />
           </div>
+          {openInstVm ? (
+            <Suspense
+              fallback={
+                <div
+                  className="gv3-ficha-body"
+                  style={{ display: "flex", justifyContent: "center", padding: 48 }}
+                >
+                  <Loader />
+                </div>
+              }
+            >
+              <InstitucionActionPanel
+                vm={openInstVm}
+                isTestingMode={isTestingMode}
+                onClose={() => setOpenInstVm(null)}
+                onSend={(vm, text) => {
+                  sendWhatsApp(vm, text);
+                  setOpenInstVm(null);
+                }}
+                onMarkWaiting={(vm) => {
+                  markWaiting(vm);
+                  setOpenInstVm(null);
+                }}
+              />
+            </Suspense>
+          ) : openSolicitud ? (
+            <Suspense
+              fallback={
+                <div
+                  className="gv3-ficha-body"
+                  style={{ display: "flex", justifyContent: "center", padding: 48 }}
+                >
+                  <Loader />
+                </div>
+              }
+            >
+              <SolicitudActionPanel
+                data={openSolicitud}
+                onClose={() => setOpenSolicitud(null)}
+                onSent={(msg) => showToast(msg, "chat")}
+                onOpenSolicitud={(id) => navigate(`/admin/solicitudes?tab=ingreso&focus=${id}`)}
+              />
+            </Suspense>
+          ) : openMailHilo ? (
+            <Suspense
+              fallback={
+                <div
+                  className="gv3-ficha-body"
+                  style={{ display: "flex", justifyContent: "center", padding: 48 }}
+                >
+                  <Loader />
+                </div>
+              }
+            >
+              <MailPanel
+                hilo={openMailHilo}
+                isTestingMode={isTestingMode}
+                onClose={() => setOpenMailHilo(null)}
+                onActionDone={(msg) => showToast(msg, "mail")}
+                onRefetch={() => refetchGmail()}
+              />
+            </Suspense>
+          ) : (
+            <div className="gv3-ficha-body gv3-ficha-empty">
+              <span className="material-icons">auto_awesome</span>
+              <h3 className="serif">Elegí una acción</h3>
+              <p>
+                Tocá un correo, una solicitud o una institución del plan de Hermes para verla acá y
+                accionar sin salir del panel.
+              </p>
+            </div>
+          )}
         </aside>
       ) : (
-        <Ficha
-          vm={selectedVm}
-          isTestingMode={isTestingMode}
-          onChangeState={(vm, newState) => setPendingChange({ vm, newState })}
-          onContact={(vm) => setContactVm(vm)}
-          onReminder={(vm) => setReminderVm(vm)}
-          onEdit={(vm) => setEditVm(vm)}
-        />
+        <aside className="gv3-ficha" style={{ width: fichaSize.width }}>
+          <div className="gv3-ficha-chrome">
+            <FichaSizeToggle
+              size={fichaSize.size}
+              onChange={fichaSize.setSize}
+              autoActive={!fichaSize.isUserOverride}
+              onReset={fichaSize.resetForMode}
+            />
+          </div>
+          <div className="gv3-ficha-body">
+            <Ficha
+              vm={selectedVm}
+              isTestingMode={isTestingMode}
+              onChangeState={(vm, newState) => setPendingChange({ vm, newState })}
+              onContact={(vm) => setContactVm(vm)}
+              onReminder={(vm) => setReminderVm(vm)}
+              onEdit={(vm) => setEditVm(vm)}
+            />
+          </div>
+        </aside>
       )}
 
       {contactVm && (

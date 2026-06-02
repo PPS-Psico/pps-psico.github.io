@@ -10,8 +10,9 @@
 // Si Hermes no encontró datos de contacto, lo dice y ofrece abrir la solicitud
 // en la vista de Solicitudes.
 // ──────────────────────────────────────────────────────────────────────────
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { SolicitudOutreach } from "../../../services/hermesPlan";
+import { getWhatsAppUrl, isValidWhatsAppFormat } from "../../../utils/formatters";
 
 interface Props {
   data: SolicitudOutreach;
@@ -57,25 +58,83 @@ export const SolicitudActionPanel: React.FC<Props> = ({
     setMensaje(data.mensaje || "");
   }, [data]);
 
-  const meta = canalMeta[data.canal];
+  // Resolución del canal efectivo con fallback automático:
+  // - Si Hermes propuso WhatsApp pero el número no pasa la validación de
+  //   formato (cleanWhatsAppNumber) → NO abrimos wa.me con un número
+  //   inválido (eso es lo que dispara "contacto inexistente" en wa.me).
+  //   Si hay email cargado, caemos a email; si no, queda en "ninguno".
+  // - Si Hermes propuso email pero el email está vacío → "ninguno".
+  // - "ninguno" se respeta tal cual.
+  //
+  // Adicionalmente, `canalFallback` indica si hubo fallback (para avisarle
+  // al usuario con un pequeño banner).
+  const { canalEfectivo, canalFallback, telInvalido, mailInvalido } = useMemo(() => {
+    const tel = data.telefono || data.destino;
+    const mail = data.email || data.destino;
+    if (data.canal === "whatsapp") {
+      if (isValidWhatsAppFormat(tel)) {
+        return {
+          canalEfectivo: "whatsapp" as const,
+          canalFallback: false,
+          telInvalido: false,
+          mailInvalido: false,
+        };
+      }
+      // WhatsApp no válido: caer a email si existe, si no a ninguno
+      if (mail) {
+        return {
+          canalEfectivo: "email" as const,
+          canalFallback: true,
+          telInvalido: true,
+          mailInvalido: false,
+        };
+      }
+      return {
+        canalEfectivo: "ninguno" as const,
+        canalFallback: true,
+        telInvalido: true,
+        mailInvalido: true,
+      };
+    }
+    if (data.canal === "email") {
+      if (mail) {
+        return {
+          canalEfectivo: "email" as const,
+          canalFallback: false,
+          telInvalido: false,
+          mailInvalido: false,
+        };
+      }
+      return {
+        canalEfectivo: "ninguno" as const,
+        canalFallback: true,
+        telInvalido: false,
+        mailInvalido: true,
+      };
+    }
+    return {
+      canalEfectivo: "ninguno" as const,
+      canalFallback: false,
+      telInvalido: false,
+      mailInvalido: false,
+    };
+  }, [data]);
+
+  const meta = canalMeta[canalEfectivo];
   const tieneMensaje = !!mensaje.trim();
 
   const enviarWhatsApp = () => {
-    const digits = (data.destino || data.telefono || "").replace(/[^\d]/g, "");
-    if (!digits) {
+    const url = getWhatsAppUrl(data.telefono || data.destino, mensaje);
+    if (!url) {
       onSent?.("No hay un número válido para WhatsApp.");
       return;
     }
-    window.open(
-      `https://wa.me/${digits}?text=${encodeURIComponent(mensaje)}`,
-      "_blank",
-      "noopener"
-    );
+    window.open(url, "_blank", "noopener");
     onSent?.("WhatsApp abierto · revisá y enviá manualmente.");
   };
 
   const enviarEmail = () => {
-    const to = data.destino || data.email || "";
+    const to = data.email || data.destino || "";
     if (!to) {
       onSent?.("No hay una casilla de correo cargada.");
       return;
@@ -180,7 +239,42 @@ export const SolicitudActionPanel: React.FC<Props> = ({
 
       {/* ── Cuerpo ── */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 22px" }}>
-        {data.canal === "ninguno" ? (
+        {/* Banner de fallback: si Hermes propuso WhatsApp pero el número no es
+            válido, le avisamos al usuario que el envío se hace por email (o que
+            no hay forma de contactar). Evita la sorpresa del "contacto
+            inexistente" en wa.me. */}
+        {canalFallback && canalEfectivo !== "ninguno" && (
+          <div
+            role="status"
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              padding: "9px 11px",
+              borderRadius: 10,
+              border: "1px solid color-mix(in oklab, var(--warn) 26%, var(--rule-2))",
+              background: "color-mix(in oklab, var(--warn) 6%, var(--paper))",
+              marginBottom: 12,
+              fontSize: 12,
+              color: "var(--ink-2)",
+              lineHeight: 1.45,
+            }}
+          >
+            <span
+              className="material-icons"
+              style={{ fontSize: 16, color: "var(--warn)", flexShrink: 0, marginTop: 1 }}
+            >
+              swap_horiz
+            </span>
+            <span>
+              <b>Cambio de canal.</b> El número de WhatsApp cargado para esta institución no pasó la
+              validación de formato, así que el envío se va a hacer por{" "}
+              <b>{canalEfectivo === "email" ? "correo" : "otro medio"}</b>. Si querés un WhatsApp
+              real, actualizá el teléfono en la ficha de la institución.
+            </span>
+          </div>
+        )}
+        {canalEfectivo === "ninguno" ? (
           <div style={{ textAlign: "center", padding: "40px 8px", color: "var(--ink-3)" }}>
             <span className="material-icons" style={{ fontSize: 38, color: "var(--warn)" }}>
               contact_phone
@@ -192,8 +286,9 @@ export const SolicitudActionPanel: React.FC<Props> = ({
               Sin datos de contacto
             </div>
             <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
-              La solicitud no tiene teléfono ni correo de la institución cargados. Abrí la solicitud
-              para completar los datos o gestionarla a mano.
+              {data.canal === "whatsapp" && telInvalido
+                ? "La solicitud tiene un teléfono cargado pero no es un WhatsApp válido. No hay email de la institución para hacer fallback. Abrí la solicitud para corregir el número o agregar un correo."
+                : "La solicitud no tiene teléfono ni correo de la institución cargados. Abrí la solicitud para completar los datos o gestionarla a mano."}
             </div>
             {onOpenSolicitud && (
               <button
@@ -245,7 +340,7 @@ export const SolicitudActionPanel: React.FC<Props> = ({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {data.canal === "whatsapp"
+                  {canalEfectivo === "whatsapp"
                     ? data.telefono || data.destino
                     : data.email || data.destino}
                   {data.referente ? ` · ${data.referente}` : ""}
@@ -351,7 +446,7 @@ export const SolicitudActionPanel: React.FC<Props> = ({
             )}
 
             {/* Asunto (solo email) */}
-            {data.canal === "email" && (
+            {canalEfectivo === "email" && (
               <div style={{ marginBottom: 12 }}>
                 <label
                   style={{
@@ -400,7 +495,7 @@ export const SolicitudActionPanel: React.FC<Props> = ({
             <textarea
               value={mensaje}
               onChange={(e) => setMensaje(e.target.value)}
-              rows={data.canal === "whatsapp" ? 7 : 10}
+              rows={canalEfectivo === "whatsapp" ? 7 : 10}
               placeholder="Hermes no pudo redactar el mensaje. Escribilo a mano."
               style={{
                 width: "100%",
@@ -421,7 +516,7 @@ export const SolicitudActionPanel: React.FC<Props> = ({
       </div>
 
       {/* ── Footer: enviar ── */}
-      {data.canal !== "ninguno" && (
+      {canalEfectivo !== "ninguno" && (
         <div
           style={{
             flexShrink: 0,
@@ -434,7 +529,7 @@ export const SolicitudActionPanel: React.FC<Props> = ({
         >
           <button
             disabled={!tieneMensaje}
-            onClick={data.canal === "whatsapp" ? enviarWhatsApp : enviarEmail}
+            onClick={canalEfectivo === "whatsapp" ? enviarWhatsApp : enviarEmail}
             className="press"
             style={{
               flex: 1,
@@ -445,7 +540,7 @@ export const SolicitudActionPanel: React.FC<Props> = ({
               padding: "10px 16px",
               borderRadius: 10,
               border: "none",
-              background: data.canal === "whatsapp" ? "var(--ok)" : "var(--ink)",
+              background: canalEfectivo === "whatsapp" ? "var(--ok)" : "var(--ink)",
               color: "var(--paper)",
               fontFamily: "inherit",
               fontSize: 13,
@@ -455,9 +550,9 @@ export const SolicitudActionPanel: React.FC<Props> = ({
             }}
           >
             <span className="material-icons" style={{ fontSize: 16 }}>
-              {data.canal === "whatsapp" ? "send" : "mail"}
+              {canalEfectivo === "whatsapp" ? "send" : "mail"}
             </span>
-            {data.canal === "whatsapp" ? "Abrir WhatsApp" : "Abrir correo"}
+            {canalEfectivo === "whatsapp" ? "Abrir WhatsApp" : "Abrir correo"}
           </button>
           {onOpenSolicitud && (
             <button
