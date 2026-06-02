@@ -116,6 +116,49 @@ supabase/
 4. Selecciona estudiantes → se crea registro en `practicas` + se envia email
 5. Cierra la mesa → se envian emails masivos a seleccionados y no seleccionados
 
+### Lanzador (pipeline de 5 pasos)
+
+Pipeline visible en el sidebar/pipeline del Lanzador (definido en `src/services/aseguramientoService.ts`):
+
+| Step | UIState        | DB `estado_convocatoria`           | Marca seguro | Sidebar bucket | Vista              | Accion principal                      |
+| ---- | -------------- | ---------------------------------- | ------------ | -------------- | ------------------ | ------------------------------------- |
+| 1    | `borrador`     | `Oculto`                           | -            | `borrador`     | `BorradorView`     | Publicar (`Abierta`)                  |
+| 2    | `seleccion`    | `Abierta`                          | -            | `abierta`      | `SeleccionView`    | Cerrar mesa (`Cerrado`)               |
+| 3    | `seguro`       | `Cerrado`                          | `NULL`       | `asegurar`     | `SeguroView`       | Marcar aseguramiento (`Confirmacion`) |
+| 4    | `confirmacion` | `Confirmacion` (o `Cerrado`+marca) | `set`        | `confirmacion` | `ConfirmacionView` | Activar PPS (`Activa`)                |
+| 5    | `activa`       | `Activa`                           | `set`        | `activa`       | `ActivaView`       | Archivar (`Archivado`)                |
+| -    | `archivada`    | `Archivado`                        | -            | `archivada`    | `ArchivadaView`    | Duplicar / Reabrir                    |
+
+**Mapeo DB→UI** (funcion pura `mapDbToUiState` en `lanzadorState.ts`):
+
+- `'Oculto'` → `borrador`
+- `'Abierta'` → `seleccion`
+- `'Cerrado'` + `seguro_gestionado_at IS NULL` → `seguro`
+- `'Cerrado'` + `seguro_gestionado_at IS NOT NULL` (legacy) → `confirmacion`
+- `'Confirmacion'` (DB) → `confirmacion`
+- `'Activa'` → `activa`
+- `'Archivado'` → `archivada`
+
+**Reglas de bucket** (funcion pura `deriveBucket` en `aseguramientoService.ts`):
+
+1. `borrador` → bucket `borrador`
+2. `archivada` → bucket `archivada` (precede a la marca de seguro)
+3. `confirmacion` → bucket `confirmacion`
+4. `activa` → bucket `activa`
+5. marca de seguro seteada (sin importar dbState) → bucket `confirmacion`
+6. hay seleccionados → bucket `asegurar`
+7. cerrada/vencida con inscriptos → bucket `seleccionar`
+8. cerrada/vencida sin inscriptos → bucket `archivada` (no prospero)
+9. resto → bucket `abierta`
+
+**Decisiones de diseno**:
+
+- `marcarAseguramiento` (en `aseguramientoService.ts`) setea AMBOS: `seguro_gestionado_at = NOW()` y `estado_convocatoria = 'Confirmacion'`. Esto desacopla "seguro listo" de "PPS activa" — el admin puede activar la PPS con consentimientos parciales (los pendientes pasan a la lista de reemplazos).
+- `revertirAseguramiento` borra la marca y regresa `estado_convocatoria` a `Cerrado` (= state `seguro`).
+- La transicion `confirmacion → activa` es **explicita del admin** (boton "Activar PPS" en `ConfirmacionView`). El seguro ya NO clasifica automaticamente como `activa` (antes era asi y se saltaba la sala de consentimientos).
+- Auto-transicion `confirmacion → activa` cuando todos los compromisos fueron aceptados queda como follow-up (TBD con cron + manual advance con guardrail).
+- `CerradaView` ya no existe. `seguro` y `confirmacion` cubren sus casos.
+
 ### Consentimiento digital (flujo automatico)
 
 1. Estudiante seleccionado → `selected_at` se registra en `convocatorias`

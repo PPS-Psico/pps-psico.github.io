@@ -880,16 +880,12 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
   );
 };
 
-// ─── AbiertaView ──────────────────────────────────────────────────────────────
+// ─── SeleccionView ──────────────────────────────────────────────────────────────
+// State "seleccion" = DB 'Abierta' (mesa abierta). Muestra estadísticas de
+// inscripción, tendencia y botón "Cerrar inscripción". Cuando el admin cierra la
+// mesa, el lanzamiento pasa al state "seguro" (SeguroView).
 
-interface InscriptoPreview {
-  id: string;
-  nombre: string | null;
-  horario: string | null;
-  when: string;
-}
-
-const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () => void }> = ({
+const SeleccionView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () => void }> = ({
   launch,
   onCerrarInscripcion,
 }) => {
@@ -1048,7 +1044,7 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
     <div>
       <CanvasHeader
         launch={launch}
-        uiState="abierta"
+        uiState="seleccion"
         primaryAction={{ label: "Cerrar inscripción", icon: "lock", onClick: onCerrarInscripcion }}
         secondaryActions={[{ label: "Editar", icon: "edit", onClick: () => {} }]}
       />
@@ -1378,16 +1374,20 @@ const AbiertaView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () =>
   );
 };
 
-// ─── CerradaView ──────────────────────────────────────────────────────────────
+// ─── SeguroView ────────────────────────────────────────────────────────────────
+// State "seguro" = DB 'Cerrado' (mesa cerrada) + sin marca de seguro. Es la
+// etapa donde se eligen los candidatos y se gestiona el seguro antes de pasar
+// a la sala de consentimientos.
 
-const CerradaView: React.FC<{
+const SeguroView: React.FC<{
   launch: LanzamientoPPS;
   onNavigateToInsurance: (id: string) => void;
-}> = ({ launch, onNavigateToInsurance }) => {
+  showModal: ReturnType<typeof useModal>["showModal"];
+}> = ({ launch, onNavigateToInsurance, showModal }) => {
   const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
 
   const { data: inscriptos = [] } = useQuery({
-    queryKey: ["inscriptos-cerrada", launch.id],
+    queryKey: ["inscriptos-seguro", launch.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("convocatorias")
@@ -1404,7 +1404,7 @@ const CerradaView: React.FC<{
 
   return (
     <div>
-      <CanvasHeader launch={launch} uiState="cerrada" />
+      <CanvasHeader launch={launch} uiState="seguro" />
       <div className="lv4-canvas-body">
         {/* Stats */}
         <div className="lv4-stats" style={{ marginBottom: 24 }}>
@@ -1461,14 +1461,34 @@ const CerradaView: React.FC<{
             onNavigateToInsurance={onNavigateToInsurance}
           />
         </Suspense>
+
+        {seleccionados > 0 && (
+          <>
+            <div className="lv4-eyebrow" style={{ marginBottom: 8 }}>
+              Seguros y actas
+            </div>
+            <Suspense fallback={<Loader />}>
+              <SeguroGenerator
+                showModal={showModal}
+                isTestingMode={false}
+                preSelectedLanzamientoId={launch.id}
+              />
+            </Suspense>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
-// ─── SeleccionadaView ─────────────────────────────────────────────────────────
+// ─── ConfirmacionView ─────────────────────────────────────────────────────────
+// State "confirmacion" = DB 'Confirmacion' (o 'Cerrado' + marca de seguro).
+// Sala de consentimientos: muestra avance de compromisos por estudiante, banner
+// de pendientes, y al final un botón "Activar PPS" para transicionar a 'Activa'.
+// Reemplaza al viejo SeleccionadaView (que renderizaba también el
+// SeguroGenerator — eso ahora vive en SeguroView).
 
-const SeleccionadaView: React.FC<{
+const ConfirmacionView: React.FC<{
   launch: LanzamientoPPS;
   showModal: ReturnType<typeof useModal>["showModal"];
 }> = ({ launch, showModal }) => {
@@ -1582,7 +1602,7 @@ const SeleccionadaView: React.FC<{
 
   return (
     <div>
-      <CanvasHeader launch={launch} uiState="seleccionada" />
+      <CanvasHeader launch={launch} uiState="confirmacion" />
       <div className="lv4-canvas-body">
         {/* Stats compromisos */}
         <div className="lv4-stats" style={{ marginBottom: 24 }}>
@@ -1773,15 +1793,54 @@ const SeleccionadaView: React.FC<{
         )}
 
         <div className="lv4-eyebrow" style={{ marginBottom: 8 }}>
-          Seguros y actas
+          Activar la PPS
         </div>
-        <Suspense fallback={<Loader />}>
-          <SeguroGenerator
-            showModal={showModal}
-            isTestingMode={false}
-            preSelectedLanzamientoId={launch.id}
-          />
-        </Suspense>
+        <div
+          className="lv4-banner"
+          style={{
+            borderColor: "var(--ok)",
+            background: "var(--ok-s)",
+            marginBottom: 16,
+          }}
+        >
+          <span
+            className="material-icons"
+            style={{ fontSize: 20, color: "var(--ok)", marginTop: 2 }}
+          >
+            play_circle
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ok)", marginBottom: 3 }}>
+              {pendientes > 0
+                ? `${pendientes} compromiso${pendientes !== 1 ? "s" : ""} aún pendiente${
+                    pendientes !== 1 ? "s" : ""
+                  }`
+                : "Todos los compromisos aceptados"}
+            </div>
+            <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
+              {pendientes > 0
+                ? "Podés avanzar igual: la PPS arranca con los confirmados y los pendientes pasan a la lista de reemplazos."
+                : "Activá la PPS para marcar el lanzamiento como en curso. Los estudiantes ya están listos."}
+            </div>
+          </div>
+        </div>
+        {pendientes > 0 && (
+          <button
+            className="lv4-btn lv4-btn-ghost"
+            style={{ marginBottom: 24 }}
+            onClick={() =>
+              showModal(
+                "Avanzar con pendientes",
+                "Esta acción mueve el lanzamiento a Activa aunque haya compromisos sin firmar. Los pendientes podrán ser reemplazados desde la sala de Confirmación."
+              )
+            }
+          >
+            <span className="material-icons" style={{ fontSize: 16 }}>
+              warning
+            </span>
+            ¿Por qué hay pendientes?
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2100,7 +2159,14 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   // ── Build sidebar entries ─────────────────────────────────────────────────
   const entries: SidebarEntry[] = useMemo(() => {
     return launches.map((l) => {
-      const dbState = mapDbToUiState((l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || "");
+      const dbStatus = (l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || "";
+      const seguroGestionadoAtSidebar =
+        (l[FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS] as string | null) ?? null;
+      // El uiState de la pipeline ahora se computa de una sola vez, en una
+      // sola fuente de verdad (mapDbToUiState), considerando el estado crudo
+      // de la DB + la marca de seguro. Ya no hay hacks "cerrada → seleccionada"
+      // ni "seguroAt → activa" en este archivo.
+      const dbState = mapDbToUiState(dbStatus, seguroGestionadoAtSidebar);
       const nombre = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | null;
       const orientacion = l[FIELD_ORIENTACION_LANZAMIENTOS] as string | null;
       const cupos = l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
@@ -2110,25 +2176,22 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       const totalSel = countsByLaunch[l.id]?.seleccionados || 0;
       const consent = consentByLaunch[l.id] || { aceptados: 0, total: 0 };
       const vencida = inscripcionVencida(fechaFinInsc);
-      const seguroGestionadoAt =
-        (l[FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS] as string | null) ?? null;
 
       // ── uiState (para el canvas/pipeline) ──
-      let uiState: UIState = dbState;
-      if (uiState === "cerrada" && totalSel > 0) uiState = "seleccionada";
+      const uiState: UIState = dbState;
 
       // ── bucket (categoría operativa del sidebar) ──
       // Fuente de verdad única: deriveBucket (servicio de aseguramiento).
       const bucket: SidebarBucket = deriveBucket({
         dbState,
-        seguroGestionadoAt,
+        seguroGestionadoAt: seguroGestionadoAtSidebar,
         totalSel,
         totalInsc,
         vencida,
       });
 
       // El seguro ya gestionado se refleja como marca, salvo en archivadas.
-      const seguroGestionado = bucket !== "archivada" && seguroGestionadoAt != null;
+      const seguroGestionado = bucket !== "archivada" && seguroGestionadoAtSidebar != null;
 
       // ── meta line por bucket ──
       let metaLine: string;
@@ -2148,9 +2211,15 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
               ? `${consent.aceptados}/${consent.total} consintieron`
               : `${totalSel} seleccionado${totalSel !== 1 ? "s" : ""} · sin consentir`;
           break;
+        case "confirmacion":
+          metaLine =
+            consent.total > 0
+              ? `${consent.aceptados}/${consent.total} consintieron`
+              : `${totalSel} seleccionado${totalSel !== 1 ? "s" : ""} · sala de consentimientos`;
+          break;
         case "activa":
           metaLine = seguroGestionado
-            ? `Seguro gestionado · ${formatDate(seguroGestionadoAt)}`
+            ? `Seguro gestionado · ${formatDate(seguroGestionadoAtSidebar)}`
             : fechaInicio
               ? `Desde ${formatDate(fechaInicio)}`
               : "Prácticas en curso";
@@ -2163,7 +2232,8 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       const needsAction =
         bucket === "seleccionar" ||
         (bucket === "asegurar" && consent.aceptados < consent.total) ||
-        (bucket === "asegurar" && consent.total === 0);
+        (bucket === "asegurar" && consent.total === 0) ||
+        bucket === "confirmacion";
 
       return {
         id: l.id,
@@ -2185,21 +2255,15 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
 
   const selectedUiState = useMemo<UIState | null>(() => {
     if (!selectedLaunch) return null;
-    let uiState = mapDbToUiState(
-      (selectedLaunch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || ""
-    );
-    if (uiState === "cerrada" && (countsByLaunch[selectedLaunch.id]?.seleccionados || 0) > 0) {
-      uiState = "seleccionada";
-    }
-    // Si el seguro ya se gestionó, la PPS está operativamente "Activa":
-    // el canvas muestra ActivaView (coherente con el bucket del sidebar).
+    // El estado del canvas se computa de una sola vez, considerando el estado
+    // crudo de la DB + la marca de seguro (mapDbToUiState). Esto reemplaza
+    // los hacks "cerrada → seleccionada" y "seguroAt → activa" que vivían acá
+    // y se saltaban la sala de consentimientos (state "confirmacion").
+    const dbStatus = (selectedLaunch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || "";
     const seguroAt =
       (selectedLaunch[FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS] as string | null) ?? null;
-    if (seguroAt != null && uiState !== "borrador" && uiState !== "archivada") {
-      uiState = "activa";
-    }
-    return uiState;
-  }, [selectedLaunch, countsByLaunch]);
+    return mapDbToUiState(dbStatus, seguroAt);
+  }, [selectedLaunch]);
 
   const handleNew = useCallback(() => {
     setSelectedId(null);
@@ -2321,10 +2385,10 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             />
           </div>
         );
-      case "abierta":
+      case "seleccion":
         return (
           <div className="lv4-canvas">
-            <AbiertaView
+            <SeleccionView
               launch={selectedLaunch}
               onCerrarInscripcion={() =>
                 handleChangeEstado(
@@ -2336,19 +2400,20 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             />
           </div>
         );
-      case "cerrada":
+      case "seguro":
         return (
           <div className="lv4-canvas">
-            <CerradaView
+            <SeguroView
               launch={selectedLaunch}
               onNavigateToInsurance={handleNavigateToInsurance}
+              showModal={showModal}
             />
           </div>
         );
-      case "seleccionada":
+      case "confirmacion":
         return (
           <div className="lv4-canvas">
-            <SeleccionadaView launch={selectedLaunch} showModal={showModal} />
+            <ConfirmacionView launch={selectedLaunch} showModal={showModal} />
           </div>
         );
       case "activa":

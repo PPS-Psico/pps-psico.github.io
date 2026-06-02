@@ -188,9 +188,9 @@ html.dark .lv4 {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
 }
 .lv4-dot-borrador    { background: var(--ink-4); }
-.lv4-dot-abierta     { background: var(--accent); }
-.lv4-dot-cerrada     { background: var(--warn); }
-.lv4-dot-seleccionada { background: var(--ok); box-shadow: 0 0 0 2px var(--ok-s); }
+.lv4-dot-seleccion   { background: var(--accent); }
+.lv4-dot-seguro      { background: var(--warn); }
+.lv4-dot-confirmacion { background: var(--ok); box-shadow: 0 0 0 2px var(--ok-s); }
 .lv4-dot-activa      { background: var(--ok); }
 .lv4-dot-archivada   { background: var(--ink-4); }
 
@@ -201,9 +201,9 @@ html.dark .lv4 {
   padding: 3px 10px; border-radius: 20px; border: 1px solid transparent;
 }
 .lv4-chip-borrador    { background: var(--paper-2); color: var(--ink-3); border-color: var(--rule-3); }
-.lv4-chip-abierta     { background: var(--accent-s); color: var(--accent); }
-.lv4-chip-cerrada     { background: var(--warn-s); color: var(--warn); }
-.lv4-chip-seleccionada { background: var(--ok-s); color: var(--ok); border-color: var(--ok); }
+.lv4-chip-seleccion   { background: var(--accent-s); color: var(--accent); }
+.lv4-chip-seguro      { background: var(--warn-s); color: var(--warn); }
+.lv4-chip-confirmacion { background: var(--ok-s); color: var(--ok); border-color: var(--ok); }
 .lv4-chip-activa      { background: var(--ok-s); color: var(--ok); border-color: var(--ok); }
 .lv4-chip-archivada   { background: var(--paper-2); color: var(--ink-3); border-color: var(--rule-3); }
 

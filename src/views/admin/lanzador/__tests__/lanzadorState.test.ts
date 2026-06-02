@@ -14,18 +14,26 @@ describe("lanzadorState", () => {
       expect(mapDbToUiState("Oculto")).toBe("borrador");
     });
 
-    it("mapea variantes de abierta (mayúsculas, género)", () => {
-      expect(mapDbToUiState("Abierta")).toBe("abierta");
-      expect(mapDbToUiState("ABIERTO")).toBe("abierta");
-      expect(mapDbToUiState("abierto")).toBe("abierta");
+    it("mapea variantes de abierta a seleccion (case/acento-insensible)", () => {
+      expect(mapDbToUiState("Abierta")).toBe("seleccion");
+      expect(mapDbToUiState("ABIERTO")).toBe("seleccion");
+      expect(mapDbToUiState("abierto")).toBe("seleccion");
     });
 
-    it("mapea 'Cerrado' y 'Cerrada' a cerrada (case/acento-insensible)", () => {
-      // Este fue el origen del bug del Lanzador: la DB guardaba "Cerrado"
-      // con mayúscula y la comparación cruda no lo reconocía.
-      expect(mapDbToUiState("Cerrado")).toBe("cerrada");
-      expect(mapDbToUiState("cerrada")).toBe("cerrada");
-      expect(mapDbToUiState("CERRADO")).toBe("cerrada");
+    it("mapea 'Cerrado' a 'seguro' por defecto (sin marca de seguro)", () => {
+      expect(mapDbToUiState("Cerrado")).toBe("seguro");
+      expect(mapDbToUiState("cerrada")).toBe("seguro");
+      expect(mapDbToUiState("CERRADO")).toBe("seguro");
+    });
+
+    it("mapea 'Cerrado' a 'confirmacion' si seguro_gestionado_at está seteado", () => {
+      expect(mapDbToUiState("Cerrado", "2025-06-15T12:00:00Z")).toBe("confirmacion");
+      expect(mapDbToUiState("Cerrado", null)).toBe("seguro");
+    });
+
+    it("mapea 'Confirmacion' (nuevo) a confirmacion", () => {
+      expect(mapDbToUiState("Confirmacion")).toBe("confirmacion");
+      expect(mapDbToUiState("confirmacion")).toBe("confirmacion");
     });
 
     it("mapea variantes de activa", () => {
@@ -47,7 +55,6 @@ describe("lanzadorState", () => {
   describe("inscripcionVencida", () => {
     let fixedNow: number;
     beforeAll(() => {
-      // Congelar "hoy" en 2025-06-15 para tests deterministas.
       fixedNow = Date.parse("2025-06-15T12:00:00Z");
       jest.useFakeTimers();
       jest.setSystemTime(fixedNow);
@@ -79,8 +86,15 @@ describe("lanzadorState", () => {
       expect(steps).toEqual([1, 2, 3, 4, 5, 6]);
     });
 
-    it("el pipeline tiene 5 pasos visibles", () => {
+    it("STATE_META incluye seleccion, seguro y confirmacion", () => {
+      expect(STATE_META.seleccion.step).toBe(2);
+      expect(STATE_META.seguro.step).toBe(3);
+      expect(STATE_META.confirmacion.step).toBe(4);
+    });
+
+    it("el pipeline tiene 5 pasos visibles en el orden correcto", () => {
       expect(PIPELINE_STEPS).toHaveLength(5);
+      expect(PIPELINE_STEPS).toEqual(["Borrador", "Selección", "Seguro", "Confirmación", "Activa"]);
     });
 
     it("BUCKET_ORDER referencia solo buckets definidos en BUCKET_META", () => {
