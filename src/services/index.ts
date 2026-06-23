@@ -55,3 +55,11 @@ export type {
   ClipboardStudent,
   SeguroHeader,
 } from "./aseguramientoService";
+
+export {
+  notifySelectedStudents,
+  sendSelectionEmails,
+  sendSelectionPushNotifications,
+  fetchSelectedCandidatesForLaunch,
+} from "./selectionNotificationService";
+export type { SelectionCandidate } from "./selectionNotificationService";

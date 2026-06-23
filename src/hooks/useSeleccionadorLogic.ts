@@ -10,7 +10,6 @@ import {
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
   FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
   FIELD_FINALES_ADEUDA_CONVOCATORIAS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
   FIELD_HORARIO_ASIGNADO_CONVOCATORIAS,
@@ -34,10 +33,9 @@ import {
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import { toggleStudentSelection, updatePracticaFromSchedule } from "../services";
+import { toggleStudentSelection, updatePracticaFromSchedule, notifySelectedStudents } from "../services";
 import { mockDb } from "../services/mockDb";
 import type { AirtableRecord, ConvocatoriaFields, EnrichedStudent, LanzamientoPPS } from "../types";
-import { getPublicPanelUrl, sendSmartEmail } from "../utils/emailService";
 import { cleanDbValue, normalizeStringForComparison } from "../utils/formatters";
 import { calculateScore } from "../utils/seleccionadorScore";
 import { logger } from "../utils/logger";
@@ -80,9 +78,14 @@ export const useSeleccionadorLogic = (
         })
         .filter((l) => {
           const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-          // Si hay un initialLaunchId (viene del historial), mostrar todas las convocatorias
-          // Si no, solo mostrar las abiertas
+          // Si hay un initialLaunchId (viene del historial o de una etapa del
+          // lanzador), mostrar todas las convocatorias.
           if (initialLaunchId) {
+            // El lanzamiento pedido explícitamente SIEMPRE se incluye, sin importar
+            // su estado (p. ej. "Confirmacion" o "Activa"); de lo contrario el
+            // selector de gestión no lo encontraría y no se podría seleccionar
+            // ni dar de baja desde la sala de confirmación.
+            if (l.id === initialLaunchId) return true;
             return (
               status === "abierta" ||
               status === "abierto" ||
@@ -424,95 +427,8 @@ export const useSeleccionadorLogic = (
       if (!isTestingMode) {
         // Solo enviar correos si la convocatoria NO estaba cerrada previamente
         if (!isAlreadyClosed) {
-          // Obtener información de horarios del lanzamiento
-          const horariosFijos = !!selectedLanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS];
-          const horarioSeleccionadoLanzamiento =
-            selectedLanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS];
-          const horariosDisponibles = horarioSeleccionadoLanzamiento
-            ? String(horarioSeleccionadoLanzamiento)
-                .split(";")
-                .filter((h) => h.trim())
-            : [];
-          const tieneUnSoloHorario = horariosDisponibles.length <= 1;
-
-          // Email notification loop
-          const emailPromises = selectedCandidates.map(async (student) => {
-            const encuentroInicial =
-              selectedLanzamiento[FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS];
-            let encuentroText = "";
-            if (encuentroInicial) {
-              const dateObj = new Date(encuentroInicial as string);
-              const fechaStr = dateObj.toLocaleDateString("es-AR", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              });
-              const hora = dateObj.getHours().toString().padStart(2, "0");
-              const minutos = dateObj.getMinutes().toString().padStart(2, "0");
-              encuentroText = `${fechaStr} a las ${hora}:${minutos} hs`;
-            }
-
-            // Determinar el horario a mostrar
-            // Si no hay horario seleccionado pero hay un solo horario disponible, usar ese
-            const horarioAsignado =
-              student.horarioSeleccionado || (tieneUnSoloHorario ? horariosDisponibles[0] : "");
-            const panelUrl = getPublicPanelUrl();
-
-            return sendSmartEmail("seleccion", {
-              studentName: student.nombre,
-              studentEmail: student.correo ?? undefined,
-              ppsName: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? undefined,
-              schedule: horarioAsignado || undefined,
-              encuentroInicial: encuentroText || undefined,
-              panelUrl,
-            });
-          });
-          await Promise.all(emailPromises);
-
-          // Push notification for each selected student
-          try {
-            const { data: pushTemplate } = await supabase
-              .from("email_templates")
-              .select("subject, body, is_active")
-              .eq("id", "seleccion_push")
-              .single();
-
-            if (pushTemplate?.is_active !== false) {
-              const pushPromises = selectedCandidates.map(async (student) => {
-                const title = (pushTemplate?.subject || "¡Fuiste seleccionado! 🎉")
-                  .replace("{{nombre_alumno}}", student.nombre ?? "")
-                  .replace(
-                    "{{nombre_pps}}",
-                    selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? ""
-                  );
-
-                const message = (
-                  pushTemplate?.body ||
-                  "Hola {{nombre_alumno}}, has sido seleccionado para la PPS: {{nombre_pps}}. Revisá tu correo para más detalles."
-                )
-                  .replace("{{nombre_alumno}}", student.nombre ?? "")
-                  .replace(
-                    "{{nombre_pps}}",
-                    selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? ""
-                  );
-
-                return supabase.functions.invoke("send-fcm-notification", {
-                  body: {
-                    title,
-                    body: message,
-                    type: "selection", // Icon type
-                    user_ids: [student.userId || student.studentId],
-                  },
-                });
-              });
-              await Promise.all(pushPromises);
-              logger.info("[Seleccionador] Push notifications sent successfully");
-            }
-          } catch (pushError) {
-            logger.error("[Seleccionador] Error sending push notifications:", pushError);
-            // Don't fail the whole operation if push fails
-          }
+          // Notificar a los seleccionados (email + push)
+          await notifySelectedStudents(selectedLanzamiento, selectedCandidates);
 
           // Close Launch solo si no estaba cerrada
           await db.lanzamientos.update(selectedLanzamiento.id, {
