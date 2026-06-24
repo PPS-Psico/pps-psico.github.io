@@ -102,7 +102,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
     }
 
     const estadoLower = estadoInscripcion?.toLowerCase();
-    const statusLower = status?.toLowerCase();
+    const statusLower = normalizeStringForComparison(status);
 
     if (estadoLower === "seleccionado") {
       if (!onConfirmCompromiso || hideCompromisoStatus) {
@@ -140,7 +140,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
     }
 
     // If the convocatoria is already closed, non-selected students can only view results.
-    if (statusLower === "cerrada" || statusLower === "cerrado") {
+    if (statusLower === "cerrada" || statusLower === "cerrado" || statusLower === "confirmacion") {
       return {
         text: "Ver Seleccionados",
         icon: "groups",

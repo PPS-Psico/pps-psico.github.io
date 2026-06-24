@@ -69,7 +69,6 @@ export const fetchConvocatoriasData = async (
         "Cerrada",
         "Confirmacion",
         "Confirmación",
-        "Activa",
       ],
     },
     sort: [{ field: C.FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "desc" }],
@@ -136,8 +135,7 @@ export const fetchConvocatoriasData = async (
     const isClosed =
       normalizeStringForComparison(estadoConv) === "cerrada" ||
       normalizeStringForComparison(estadoConv) === "cerrado" ||
-      normalizeStringForComparison(estadoConv) === "confirmacion" ||
-      normalizeStringForComparison(estadoConv) === "activa";
+      normalizeStringForComparison(estadoConv) === "confirmacion";
 
     // Una convocatoria cerrada debe seguir visible para el estudiante hasta el
     // dia en que comienza, aunque ya este archivada. Solo ocultamos archivadas
@@ -151,9 +149,8 @@ export const fetchConvocatoriasData = async (
     return (
       estadoConv !== "oculto" &&
       notArchivedOrUpcoming &&
-      ["abierta", "abierto", "cerrado", "cerrada", "confirmacion", "activa"].includes(
-        estadoConv
-      ) &&
+      ["abierta", "abierto", "cerrado", "cerrada", "confirmacion"].includes(estadoConv) &&
+      (!isClosed || startNotPast) &&
       (isClosed || !isScheduledForFuture)
     );
   });

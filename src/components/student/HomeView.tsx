@@ -179,15 +179,12 @@ const HomeView: React.FC<HomeViewProps> = ({
   const closedLanzamientos = lanzamientos.filter((l) => {
     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
     const isStarted = startedLanzamientoIds.has(l.id);
-    // Mostrar en cerradas si ya comenzo o si esta en una etapa posterior
-    // a la mesa de seleccion. En "Confirmacion" el estudiante seleccionado
+    // Mostrar en cerradas solo las que todavia no comenzaron y ya cerraron
+    // o estan en confirmacion. En "Confirmacion" el estudiante seleccionado
     // todavia debe poder ver el boton para firmar el consentimiento.
     return (
-      isStarted ||
-      status === "cerrada" ||
-      status === "cerrado" ||
-      status === "confirmacion" ||
-      status === "activa"
+      !isStarted &&
+      (status === "cerrada" || status === "cerrado" || status === "confirmacion")
     );
   });
 
