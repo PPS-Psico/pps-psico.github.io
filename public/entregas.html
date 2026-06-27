@@ -228,7 +228,7 @@ window.ENTREGAS = [
   var active = 0;
 
   function reportH(){
-    var h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    var h = Math.ceil(document.body.scrollHeight);
     try { parent.postMessage({ ppsAula:true, height:h }, '*'); } catch(e){}
   }
 
@@ -262,7 +262,7 @@ window.ENTREGAS = [
 
   window.addEventListener('load', reportH);
   window.addEventListener('resize', reportH);
-  if (window.ResizeObserver) new ResizeObserver(reportH).observe(document.documentElement);
+  if (window.ResizeObserver) new ResizeObserver(reportH).observe(document.body);
   var n=0, iv=setInterval(function(){ reportH(); if(++n>12) clearInterval(iv); }, 400);
 })();
 </script>
