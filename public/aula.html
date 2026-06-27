@@ -15,6 +15,9 @@
 /* ----- Fuentes (si el campus bloquea Google Fonts, cae a system-ui) ------- */
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
 
+/* reset para iframe standalone (sin margen del navegador) */
+html,body{ margin:0; padding:0; background:#FAFAF7; }
+
 /* ====== TOKENS (light · acento teal UFLO) — scopeados al root ============= */
 #pps-aula-2026{
   --bg:#FAFAF7; --bg-elevated:#FFFFFF; --bg-sunken:#F1F0EA;
@@ -29,9 +32,8 @@
   --font-mono:"Geist Mono",ui-monospace,monospace;
   --t-fast:140ms cubic-bezier(.2,.7,.2,1);
 
-  /* rompe el padding del contenedor de Moodle y pinta de lado a lado */
   position:relative;
-  margin:-1rem;
+  margin:0;
   padding:0;
   background:var(--bg);
   color:var(--ink);
