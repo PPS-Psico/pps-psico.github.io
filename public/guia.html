@@ -240,7 +240,7 @@ html,body{ margin:0; background:#FAFAF7; }
 <script>
 (function(){
   var wrap=document.getElementById('pps-aula-2026');
-  function reportH(){ var h=(wrap?Math.ceil(wrap.getBoundingClientRect().height):document.body.scrollHeight)+24; try{ parent.postMessage({ppsAula:true,height:h},'*'); }catch(e){} }
+  function reportH(){ var h=(wrap?Math.ceil(wrap.getBoundingClientRect().height):document.body.scrollHeight)+2; try{ parent.postMessage({ppsAula:true,height:h},'*'); }catch(e){} }
   window.addEventListener('load', reportH); window.addEventListener('resize', reportH);
   if(window.ResizeObserver&&wrap) new ResizeObserver(reportH).observe(wrap);
   var n=0, iv=setInterval(function(){ reportH(); if(++n>12) clearInterval(iv); }, 400);

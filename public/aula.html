@@ -54,7 +54,7 @@ html,body{ margin:0; padding:0; background:#FAFAF7; }
 
 /* ====== Inner centrado =================================================== */
 #pps-aula-2026 .pa-wrap{ max-width:1280px; margin:0 auto; }
-#pps-aula-2026 .pa-pad{ padding:0 56px; }
+#pps-aula-2026 .pa-pad{ padding:0 56px 48px; }
 
 /* ====== Header / nav (estático, no pelea con el chrome de Moodle) ======== */
 #pps-aula-2026 .pa-nav{
@@ -169,7 +169,7 @@ html,body{ margin:0; padding:0; background:#FAFAF7; }
 /* ---- Footer band ---- */
 #pps-aula-2026 .pa-foot{
   padding:32px; background:var(--bg-sunken); border-radius:24px;
-  display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap; margin-bottom:64px;
+  display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;
 }
 #pps-aula-2026 .pa-foot__ic{ width:44px; height:44px; border-radius:14px; background:var(--ink); color:var(--bg); display:grid; place-items:center; }
 
@@ -404,7 +404,7 @@ html,body{ margin:0; padding:0; background:#FAFAF7; }
   // El wrapper mide sólo el contenido y es estable.
   var wrap = document.getElementById('pps-aula-2026');
   function reportH(){
-    var h = (wrap ? Math.ceil(wrap.getBoundingClientRect().height) : document.body.scrollHeight) + 24;
+    var h = (wrap ? Math.ceil(wrap.getBoundingClientRect().height) : document.body.scrollHeight) + 2;
     try { parent.postMessage({ ppsAula: true, height: h }, '*'); } catch(e){}
   }
   window.addEventListener('load', reportH);

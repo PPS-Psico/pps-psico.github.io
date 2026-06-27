@@ -229,7 +229,7 @@ window.ENTREGAS = [
 
   var rootEl = document.getElementById('pps-aula-2026');
   function reportH(){
-    var h = (rootEl ? Math.ceil(rootEl.getBoundingClientRect().height) : document.body.scrollHeight) + 24;
+    var h = (rootEl ? Math.ceil(rootEl.getBoundingClientRect().height) : document.body.scrollHeight) + 2;
     try { parent.postMessage({ ppsAula:true, height:h }, '*'); } catch(e){}
   }
 
