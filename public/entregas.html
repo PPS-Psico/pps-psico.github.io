@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Entregas de informes · PPS 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+/* ============================================================================
+   DATOS EDITABLES → ver el bloque <script id="entregas-data"> al final.
+   Acá NO se edita nada de datos; sólo estilo y estructura.
+   ============================================================================ */
+
+#pps-aula-2026{
+  --bg:#FAFAF7; --bg-elevated:#FFFFFF; --bg-sunken:#F1F0EA;
+  --ink:#0B0F19; --ink-soft:#2B3245; --ink-muted:#6A7081; --ink-subtle:#A0A4B0;
+  --line:#ECEAE2; --line-strong:#D9D6CB; --hairline:#E5E3DA;
+  --accent:#3CB88D; --accent-deep:#25785A;
+  --uflo-purple:#46253D; --uflo-navy:#203B73; --uflo-teal:#3CB88D; --uflo-deep:#0F1B62; --uflo-aqua:#20C4A8;
+  --teal-700:#25785A;
+  --font-display:"Bricolage Grotesque","Geist",system-ui,sans-serif;
+  --font-sans:"Geist","Inter",system-ui,sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,monospace;
+  --t-fast:140ms cubic-bezier(.2,.7,.2,1);
+  background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  min-height:100vh;
+}
+html,body{ margin:0; background:#FAFAF7; }
+#pps-aula-2026 *,#pps-aula-2026 *::before,#pps-aula-2026 *::after{ box-sizing:border-box; }
+#pps-aula-2026 a{ color:inherit; }
+
+/* utilidades */
+#pps-aula-2026 .pa-display{ font-family:var(--font-display); font-weight:700; letter-spacing:-.04em; line-height:.92; }
+#pps-aula-2026 .pa-mono{ font-family:var(--font-mono); }
+#pps-aula-2026 .pa-muted{ color:var(--ink-muted); }
+
+/* nav (igual que Inicio) */
+#pps-aula-2026 .pa-nav{
+  display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap;
+  padding:16px 40px; border-bottom:1px solid var(--hairline);
+  background:rgba(250,250,247,.86); backdrop-filter:blur(14px) saturate(140%); -webkit-backdrop-filter:blur(14px) saturate(140%);
+}
+#pps-aula-2026 .pa-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; }
+#pps-aula-2026 .pa-brand__mark{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-.06em; }
+#pps-aula-2026 .pa-brand__sep{ width:1px; height:22px; background:var(--line); display:inline-block; }
+#pps-aula-2026 .pa-navlinks{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+#pps-aula-2026 .pa-navlinks a{ padding:8px 14px; border-radius:999px; text-decoration:none; color:var(--ink-muted); font-size:14px; font-weight:500; white-space:nowrap; transition:var(--t-fast); }
+#pps-aula-2026 .pa-navlinks a:hover{ color:var(--ink); background:var(--bg-sunken); }
+#pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
+
+/* masthead editorial */
+#pps-aula-2026 .pa-mast{ position:relative; padding:64px 72px 0; max-width:1180px; margin:0 auto; }
+#pps-aula-2026 .pa-mast__rule{ height:3px; border-radius:3px; width:88px; margin-bottom:30px; background:linear-gradient(90deg,#46253D 0%,#203B73 48%,#3CB88D 100%); }
+#pps-aula-2026 .pa-mast__eyebrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-muted); }
+#pps-aula-2026 .pa-mast__eyebrow b{ color:var(--accent-deep); font-weight:600; }
+#pps-aula-2026 .pa-mast__eyebrow .sep{ width:4px; height:4px; border-radius:50%; background:var(--line-strong); }
+#pps-aula-2026 .pa-mast__title{ font-family:var(--font-display); font-weight:700; font-size:clamp(40px,5.4vw,68px); line-height:.96; letter-spacing:-.045em; color:var(--uflo-deep); margin:22px 0 0; max-width:760px; }
+#pps-aula-2026 .pa-mast__sub{ margin:22px 0 0; max-width:540px; font-size:18px; line-height:1.55; color:var(--ink-muted); }
+
+/* wrap */
+#pps-aula-2026 .pa-ent-wrap{ max-width:1180px; margin:0 auto; padding:40px 72px 80px; }
+
+/* tabs de orientación */
+#pps-aula-2026 .pa-ent-tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:26px; }
+#pps-aula-2026 .pa-ent-tab{
+  position:relative; text-align:left; cursor:pointer; display:flex; align-items:center; gap:14px;
+  padding:16px 18px; border-radius:18px; background:var(--bg-elevated); border:1px solid var(--line);
+  font:inherit; color:var(--ink); transition:border-color var(--t-fast),background var(--t-fast),transform var(--t-fast);
+}
+#pps-aula-2026 .pa-ent-tab:hover{ transform:translateY(-1px); border-color:var(--line-strong); }
+#pps-aula-2026 .pa-ent-tab.is-on{
+  border-color:color-mix(in oklab,var(--o) 42%,transparent);
+  background:color-mix(in oklab,var(--o) 7%,var(--bg-elevated));
+  box-shadow:0 8px 22px -14px color-mix(in oklab,var(--o) 60%,transparent);
+}
+#pps-aula-2026 .pa-ent-tab__ic{ width:44px; height:44px; border-radius:13px; flex-shrink:0; display:grid; place-items:center; background:color-mix(in oklab,var(--o) 13%,var(--bg)); color:var(--o); }
+#pps-aula-2026 .pa-ent-tab.is-on .pa-ent-tab__ic{ background:var(--o); color:#fff; }
+#pps-aula-2026 .pa-ent-tab__t{ display:block; font-family:var(--font-display); font-weight:600; font-size:16.5px; letter-spacing:-.02em; line-height:1.1; }
+#pps-aula-2026 .pa-ent-tab__s{ display:block; font-size:12.5px; color:var(--ink-muted); margin-top:2px; }
+
+/* tarjetas por institución */
+#pps-aula-2026 .pa-ent-cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+#pps-aula-2026 .pa-ent-card{
+  position:relative; text-decoration:none; color:var(--ink); display:flex; flex-direction:column;
+  padding:22px; border-radius:18px; background:var(--bg-elevated); border:1px solid var(--line);
+  transition:transform var(--t-fast),border-color var(--t-fast),box-shadow var(--t-fast);
+}
+#pps-aula-2026 .pa-ent-card:hover{ transform:translateY(-2px); border-color:color-mix(in oklab,var(--o) 40%,transparent); box-shadow:0 14px 30px -18px color-mix(in oklab,var(--o) 70%,transparent); }
+#pps-aula-2026 .pa-ent-card__top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+#pps-aula-2026 .pa-ent-card__ic{ width:44px; height:44px; border-radius:13px; display:grid; place-items:center; background:color-mix(in oklab,var(--o) 13%,var(--bg)); color:var(--o); }
+#pps-aula-2026 .pa-ent-tag{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:999px; }
+#pps-aula-2026 .pa-ent-tag.is-done{ color:#128B72; background:color-mix(in oklab,var(--uflo-teal) 14%,var(--bg)); }
+#pps-aula-2026 .pa-ent-tag.is-review{ color:#0E8E94; background:color-mix(in oklab,var(--uflo-aqua) 16%,var(--bg)); }
+#pps-aula-2026 .pa-ent-tag.is-open{ color:var(--ink-muted); background:var(--bg-sunken); }
+#pps-aula-2026 .pa-ent-card__name{ font-family:var(--font-display); font-weight:600; font-size:19px; letter-spacing:-.025em; color:var(--ink); line-height:1.1; }
+#pps-aula-2026 .pa-ent-card__meta{ display:flex; align-items:center; gap:7px; margin-top:8px; font-size:12.5px; color:var(--ink-muted); }
+#pps-aula-2026 .pa-ent-card__foot{ margin-top:18px; padding-top:14px; border-top:1px solid var(--hairline); display:flex; align-items:center; justify-content:space-between; }
+#pps-aula-2026 .pa-ent-card__go{ display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600; color:var(--o); letter-spacing:-.01em; }
+#pps-aula-2026 .pa-ent-card__mod{ font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-subtle); }
+
+#pps-aula-2026 .pa-ent-note{ font-size:13.5px; color:var(--ink-muted); margin-top:18px; max-width:620px; line-height:1.55; }
+#pps-aula-2026 .pa-ent-note b{ color:var(--ink); font-weight:600; }
+
+@media (max-width:920px){ #pps-aula-2026 .pa-ent-cards{ grid-template-columns:1fr 1fr; } #pps-aula-2026 .pa-ent-tabs{ grid-template-columns:1fr; } }
+@media (max-width:680px){
+  #pps-aula-2026 .pa-ent-cards{ grid-template-columns:1fr; }
+  #pps-aula-2026 .pa-nav{ padding:14px 20px; }
+  #pps-aula-2026 .pa-mast{ padding:48px 20px 0; }
+  #pps-aula-2026 .pa-ent-wrap{ padding:32px 20px 64px; }
+}
+</style>
+</head>
+<body>
+<div id="pps-aula-2026">
+
+  <!-- NAV -->
+  <header class="pa-nav">
+    <a class="pa-brand" href="aula.html">
+      <span class="pa-brand__mark">UFLO</span>
+      <span class="pa-brand__sep"></span>
+      <span class="pa-display" style="font-size:18px;">PPS 2026</span>
+    </a>
+    <nav class="pa-navlinks">
+      <a href="aula.html">Inicio</a>
+      <a href="guia.html">Guía 2026</a>
+      <a href="descargas.html">Descargas</a>
+      <a href="entregas.html" class="is-on">Entregas</a>
+      <a href="https://pps-psico.github.io/" target="_blank" rel="noopener">Mi panel</a>
+    </nav>
+  </header>
+
+  <!-- MASTHEAD -->
+  <div class="pa-mast">
+    <div class="pa-mast__rule"></div>
+    <div class="pa-mast__eyebrow">
+      <b>Entrega de informes</b><span class="sep"></span>Ciclo 2026<span class="sep"></span>Buzón por institución
+    </div>
+    <h1 class="pa-mast__title">Subí tu informe donde corresponde.</h1>
+    <p class="pa-mast__sub">Elegí tu orientación y la institución donde cursaste la práctica. Ahí cargás la planilla firmada y el informe final — y seguís su estado.</p>
+  </div>
+
+  <div class="pa-ent-wrap" style="--o:#3CB88D;">
+    <div class="pa-ent-tabs" id="entTabs"></div>
+    <div class="pa-ent-cards" id="entCards"></div>
+    <p class="pa-ent-note">Cada tarjeta abre la <b>Tarea</b> de esa institución en el campus, donde subís los archivos.</p>
+  </div>
+
+</div>
+
+<!-- ============================================================================
+     DATOS — EDITÁ ACÁ (y volvé a desplegar). No hace falta tocar Moodle.
+     · color: color de marca de la orientación (tiñe tabs y tarjetas)
+     · icon:  chat | users | school
+     · inst[].st:  "done" (Entregado) | "review" (En corrección) | "open"/"" (Buzón abierto)
+     · inst[].url: enlace a la Tarea de Moodle (mod_assign) de esa institución
+     ============================================================================ -->
+<script id="entregas-data">
+window.ENTREGAS = [
+  {
+    key:"clinica", label:"Área clínica", icon:"chat", color:"#3CB88D",
+    desc:"Salud mental y dispositivos de atención",
+    inst:[
+      { n:"Centro DAT",            st:"done",   fecha:"3 jun 2026", url:"#" },
+      { n:"Fundación Austral",     st:"review", fecha:"3 jun 2026", url:"#" },
+      { n:"Liens",                 st:"open",   fecha:"3 jun 2026", url:"#" },
+      { n:"Sensus",                st:"open",   fecha:"3 jun 2026", url:"#" },
+      { n:"Cita Salud",            st:"open",   fecha:"3 jun 2026", url:"#" },
+      { n:"Fundación Tiempo",      st:"open",   fecha:"3 jun 2026", url:"#" },
+      { n:"DIGE",                  st:"open",   fecha:"3 jun 2026", url:"#" },
+      { n:"Ateneos Ulloa",         st:"open",   fecha:"3 jun 2026", url:"#" },
+      { n:"Programa ASER",         st:"open",   fecha:"3 jun 2026", url:"#" }
+    ]
+  },
+  {
+    key:"laboral", label:"Laboral y comunitaria", icon:"users", color:"#7A3F9E",
+    desc:"Organizaciones e intervenciones sociales",
+    inst:[
+      { n:"RR.HH. Corporativo",        st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Cooperativa La Juanita",    st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Programa Envión",           st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Selección & Talento",       st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Centro Comunitario Sur",    st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Fundación Pescar",          st:"open", fecha:"3 jun 2026", url:"#" }
+    ]
+  },
+  {
+    key:"educacional", label:"Área educacional", icon:"school", color:"#203B73",
+    desc:"Instituciones educativas y orientación vocacional",
+    inst:[
+      { n:"Escuela Normal N.º 4",         st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Gabinete Psicopedagógico",     st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Orientación Vocacional UFLO",  st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Instituto Sarmiento",          st:"open", fecha:"3 jun 2026", url:"#" },
+      { n:"Jardín Integral Arcoíris",     st:"open", fecha:"3 jun 2026", url:"#" }
+    ]
+  }
+];
+</script>
+
+<script>
+(function(){
+  var DATA = window.ENTREGAS || [];
+  var ICONS = {
+    chat:'<path d="M21 11.5a8 8 0 0 1-11.7 7L4 20l1.5-4.7A8 8 0 1 1 21 11.5z"/>',
+    users:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><circle cx="17" cy="9" r="3"/><path d="M16 14a6 6 0 0 1 6 6"/>',
+    school:'<path d="M3 9l9-5 9 5-9 5-9-5z"/><path d="M5 11v6c0 1 3 3 7 3s7-2 7-3v-6"/>',
+    folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    check:'<path d="M5 12.5l4.5 4.5L20 7"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+    arrow:'<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>'
+  };
+  function svg(name, size, sw){
+    return '<svg width="'+(size||20)+'" height="'+(size||20)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+(sw||1.6)+'" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[name]||'')+'</svg>';
+  }
+  var TAG = {
+    done:   { c:"is-done",   t:"Entregado",     ic:"check"  },
+    review: { c:"is-review", t:"En corrección", ic:"clock"  },
+    open:   { c:"is-open",   t:"Buzón abierto", ic:"folder" }
+  };
+
+  var tabsEl = document.getElementById('entTabs');
+  var cardsEl = document.getElementById('entCards');
+  var wrap = cardsEl.closest('.pa-ent-wrap');
+  var active = 0;
+
+  function reportH(){
+    var h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    try { parent.postMessage({ ppsAula:true, height:h }, '*'); } catch(e){}
+  }
+
+  function renderTabs(){
+    tabsEl.innerHTML = DATA.map(function(o,i){
+      return '<button class="pa-ent-tab'+(i===active?' is-on':'')+'" data-i="'+i+'" style="--o:'+o.color+'">'
+        + '<span class="pa-ent-tab__ic">'+svg(o.icon,21)+'</span>'
+        + '<span><span class="pa-ent-tab__t">'+o.label+'</span>'
+        + '<span class="pa-ent-tab__s">'+o.inst.length+' instituciones</span></span></button>';
+    }).join('');
+    tabsEl.querySelectorAll('.pa-ent-tab').forEach(function(b){
+      b.addEventListener('click', function(){ active = +b.dataset.i; render(); });
+    });
+  }
+  function renderCards(){
+    var o = DATA[active]; if(!o) return;
+    wrap.style.setProperty('--o', o.color);
+    cardsEl.innerHTML = o.inst.map(function(m){
+      var tag = TAG[m.st] || TAG.open;
+      return '<a class="pa-ent-card" href="'+(m.url||'#')+'" target="_blank" rel="noopener">'
+        + '<div class="pa-ent-card__top"><span class="pa-ent-card__ic">'+svg("folder",20)+'</span>'
+        + '<span class="pa-ent-tag '+tag.c+'">'+svg(tag.ic,12,2)+' '+tag.t+'</span></div>'
+        + '<div class="pa-ent-card__name">'+m.n+'</div>'
+        + '<div class="pa-ent-card__meta">'+svg("cal",14)+' Entrega: '+(m.fecha||'—')+'</div>'
+        + '<div class="pa-ent-card__foot"><span class="pa-ent-card__go">Abrir entrega '+svg("arrow",14)+'</span>'
+        + '<span class="pa-ent-card__mod">Tarea</span></div></a>';
+    }).join('');
+  }
+  function render(){ renderTabs(); renderCards(); reportH(); }
+  render();
+
+  window.addEventListener('load', reportH);
+  window.addEventListener('resize', reportH);
+  if (window.ResizeObserver) new ResizeObserver(reportH).observe(document.documentElement);
+  var n=0, iv=setInterval(function(){ reportH(); if(++n>12) clearInterval(iv); }, 400);
+})();
+</script>
+</body>
+</html>

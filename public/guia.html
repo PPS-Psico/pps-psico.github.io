@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guía de cursada 2026 · PPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+#pps-aula-2026{
+  --bg:#FAFAF7; --bg-elevated:#FFFFFF; --bg-sunken:#F1F0EA;
+  --ink:#0B0F19; --ink-soft:#2B3245; --ink-muted:#6A7081; --ink-subtle:#A0A4B0;
+  --line:#ECEAE2; --line-strong:#D9D6CB; --hairline:#E5E3DA;
+  --accent:#3CB88D; --accent-deep:#25785A; --tint:#EEF6F1;
+  --uflo-purple:#46253D; --uflo-navy:#203B73; --uflo-teal:#3CB88D; --uflo-deep:#0F1B62;
+  --font-display:"Bricolage Grotesque","Geist",system-ui,sans-serif;
+  --font-sans:"Geist","Inter",system-ui,sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,monospace;
+  --t-fast:140ms cubic-bezier(.2,.7,.2,1);
+  background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; min-height:100vh;
+}
+html,body{ margin:0; background:#FAFAF7; }
+#pps-aula-2026 *,#pps-aula-2026 *::before,#pps-aula-2026 *::after{ box-sizing:border-box; }
+#pps-aula-2026 a{ color:inherit; }
+
+#pps-aula-2026 .pa-display{ font-family:var(--font-display); font-weight:700; letter-spacing:-.04em; line-height:.92; }
+
+/* nav */
+#pps-aula-2026 .pa-nav{ display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap; padding:16px 40px; border-bottom:1px solid var(--hairline); background:rgba(250,250,247,.86); backdrop-filter:blur(14px) saturate(140%); -webkit-backdrop-filter:blur(14px) saturate(140%); }
+#pps-aula-2026 .pa-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; }
+#pps-aula-2026 .pa-brand__mark{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-.06em; }
+#pps-aula-2026 .pa-brand__sep{ width:1px; height:22px; background:var(--line); display:inline-block; }
+#pps-aula-2026 .pa-navlinks{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+#pps-aula-2026 .pa-navlinks a{ padding:8px 14px; border-radius:999px; text-decoration:none; color:var(--ink-muted); font-size:14px; font-weight:500; white-space:nowrap; transition:var(--t-fast); }
+#pps-aula-2026 .pa-navlinks a:hover{ color:var(--ink); background:var(--bg-sunken); }
+#pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
+
+/* masthead */
+#pps-aula-2026 .pa-mast{ position:relative; padding:64px 72px 0; max-width:1180px; margin:0 auto; }
+#pps-aula-2026 .pa-mast__rule{ height:3px; border-radius:3px; width:88px; margin-bottom:30px; background:linear-gradient(90deg,#46253D 0%,#203B73 48%,#3CB88D 100%); }
+#pps-aula-2026 .pa-mast__eyebrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-muted); }
+#pps-aula-2026 .pa-mast__eyebrow b{ color:var(--accent-deep); font-weight:600; }
+#pps-aula-2026 .pa-mast__eyebrow .sep{ width:4px; height:4px; border-radius:50%; background:var(--line-strong); }
+#pps-aula-2026 .pa-mast__title{ font-family:var(--font-display); font-weight:700; font-size:clamp(40px,5.4vw,68px); line-height:.96; letter-spacing:-.045em; color:var(--uflo-deep); margin:22px 0 0; max-width:760px; }
+#pps-aula-2026 .pa-mast__sub{ margin:22px 0 0; max-width:560px; font-size:18px; line-height:1.55; color:var(--ink-muted); }
+
+/* índice */
+#pps-aula-2026 .pa-index{ max-width:1180px; margin:44px auto 0; padding:0 72px; display:grid; grid-template-columns:repeat(5,1fr); border-top:1px solid var(--line); }
+#pps-aula-2026 .pa-index__item{ display:flex; flex-direction:column; gap:6px; padding:22px 20px 22px 0; text-decoration:none; border-bottom:2px solid transparent; transition:border-color var(--t-fast); }
+#pps-aula-2026 .pa-index__item + .pa-index__item{ padding-left:20px; border-left:1px solid var(--line); }
+#pps-aula-2026 .pa-index__item:hover{ border-bottom-color:var(--accent); }
+#pps-aula-2026 .pa-index__num{ font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--accent-deep); letter-spacing:.04em; }
+#pps-aula-2026 .pa-index__lbl{ font-family:var(--font-display); font-weight:600; font-size:15px; letter-spacing:-.02em; color:var(--ink); line-height:1.15; }
+#pps-aula-2026 .pa-index__kick{ font-size:11.5px; color:var(--ink-subtle); }
+
+/* cuerpo */
+#pps-aula-2026 .pa-body{ max-width:1180px; margin:0 auto; padding:8px 72px 76px; }
+#pps-aula-2026 .pa-step{ display:grid; grid-template-columns:220px 1fr; gap:56px; padding:52px 0; border-top:1px solid var(--line); }
+#pps-aula-2026 .pa-step:first-of-type{ border-top:0; }
+#pps-aula-2026 .pa-step__num{ font-family:var(--font-display); font-weight:700; font-size:84px; line-height:.78; letter-spacing:-.05em; color:var(--uflo-deep); }
+#pps-aula-2026 .pa-step__num sub{ display:block; margin-top:4px; font-family:var(--font-mono); font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-deep); vertical-align:baseline; }
+#pps-aula-2026 .pa-step__kick{ margin-top:16px; max-width:160px; font-size:13px; line-height:1.45; color:var(--ink-muted); }
+#pps-aula-2026 .pa-step__main{ min-width:0; }
+#pps-aula-2026 .pa-step__title{ margin:6px 0 22px; font-family:var(--font-display); font-weight:700; font-size:30px; letter-spacing:-.035em; color:var(--ink); line-height:1.05; }
+
+#pps-aula-2026 .pa-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+#pps-aula-2026 .pa-gcard{ background:var(--bg-elevated); border:1px solid var(--line); border-radius:16px; padding:20px 22px; }
+#pps-aula-2026 .pa-gcard__lbl{ display:flex; align-items:center; gap:9px; font-weight:600; font-size:15.5px; color:var(--ink); letter-spacing:-.01em; }
+#pps-aula-2026 .pa-mk{ width:7px; height:7px; border-radius:2px; flex-shrink:0; background:var(--accent); }
+#pps-aula-2026 .pa-gcard__txt{ margin:9px 0 0; font-size:14px; color:var(--ink-muted); line-height:1.55; }
+
+#pps-aula-2026 .pa-band{ margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 22px; border-radius:16px; background:var(--tint); border:1px solid color-mix(in oklab,var(--accent) 26%,transparent); }
+#pps-aula-2026 .pa-band__t{ font-weight:600; font-size:15px; color:var(--ink); letter-spacing:-.01em; }
+#pps-aula-2026 .pa-band__s{ font-size:13.5px; color:var(--ink-muted); margin-top:3px; line-height:1.45; }
+#pps-aula-2026 .pa-band__btn{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; padding:11px 18px; border:0; border-radius:999px; background:var(--accent-deep); color:#fff; font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; transition:var(--t-fast); }
+#pps-aula-2026 .pa-band__btn:hover{ filter:brightness(1.08); }
+
+#pps-aula-2026 .pa-stat{ display:flex; align-items:center; gap:28px; padding:26px 28px; border-radius:16px; background:var(--bg-elevated); border:1px solid var(--line); }
+#pps-aula-2026 .pa-stat__big{ font-family:var(--font-display); font-weight:700; font-size:76px; line-height:.8; letter-spacing:-.05em; color:var(--accent-deep); flex-shrink:0; }
+#pps-aula-2026 .pa-stat__big span{ font-size:34px; }
+#pps-aula-2026 .pa-stat__txt{ font-size:15.5px; color:var(--ink-soft); line-height:1.55; }
+#pps-aula-2026 .pa-stat__txt strong{ color:var(--ink); font-weight:600; }
+
+#pps-aula-2026 .pa-tool{ background:var(--bg-elevated); border:1px solid var(--line); border-radius:16px; padding:20px 22px; }
+#pps-aula-2026 .pa-tool__row{ display:flex; align-items:center; justify-content:space-between; }
+#pps-aula-2026 .pa-tool__tag{ font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-subtle); }
+#pps-aula-2026 .pa-tool__name{ font-family:var(--font-display); font-weight:600; font-size:20px; letter-spacing:-.025em; margin:14px 0 6px; color:var(--ink); }
+#pps-aula-2026 .pa-tool__d{ margin:0; font-size:13.5px; color:var(--ink-muted); line-height:1.5; }
+
+#pps-aula-2026 .pa-timeline{ border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+#pps-aula-2026 .pa-tl{ display:grid; grid-template-columns:132px 1fr; gap:22px; align-items:baseline; padding:18px 24px; background:var(--bg-elevated); border-bottom:1px solid var(--line); }
+#pps-aula-2026 .pa-tl:last-child{ border-bottom:0; }
+#pps-aula-2026 .pa-tl__d{ font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--accent-deep); letter-spacing:-.02em; }
+#pps-aula-2026 .pa-tl__t{ font-weight:600; font-size:15.5px; color:var(--ink); letter-spacing:-.01em; }
+#pps-aula-2026 .pa-tl__s{ font-size:14px; color:var(--ink-muted); margin-top:3px; line-height:1.5; }
+
+#pps-aula-2026 .pa-channel{ display:flex; gap:16px; align-items:center; padding:20px 22px; border-radius:16px; background:var(--bg-elevated); border:1px solid var(--line); margin-bottom:16px; }
+#pps-aula-2026 .pa-channel__ic{ width:48px; height:48px; border-radius:14px; flex-shrink:0; display:grid; place-items:center; background:var(--tint); border:1px solid color-mix(in oklab,var(--accent) 22%,transparent); }
+#pps-aula-2026 .pa-channel__t{ font-weight:600; font-size:16px; color:var(--ink); letter-spacing:-.01em; }
+#pps-aula-2026 .pa-channel__s{ font-size:14px; color:var(--ink-muted); margin-top:3px; line-height:1.5; }
+
+#pps-aula-2026 .pa-note{ display:flex; gap:13px; align-items:flex-start; padding:16px 18px 16px 20px; border-radius:14px; font-size:14px; line-height:1.55; color:var(--ink-soft); margin-top:16px; background:var(--bg-sunken); border:1px solid var(--line); border-left:3px solid var(--uflo-navy); }
+#pps-aula-2026 .pa-note > svg{ flex-shrink:0; margin-top:1px; }
+#pps-aula-2026 .pa-note strong{ color:var(--ink); font-weight:600; }
+#pps-aula-2026 .pa-note__tag{ display:block; margin-bottom:4px; font-family:var(--font-mono); font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--uflo-navy); }
+#pps-aula-2026 .pa-note.is-key{ border-left-color:var(--accent-deep); }
+#pps-aula-2026 .pa-note.is-key .pa-note__tag{ color:var(--accent-deep); }
+
+@media (max-width:920px){
+  #pps-aula-2026 .pa-index{ grid-template-columns:1fr 1fr; }
+  #pps-aula-2026 .pa-step{ grid-template-columns:1fr; gap:20px; }
+  #pps-aula-2026 .pa-grid2{ grid-template-columns:1fr; }
+  #pps-aula-2026 .pa-stat{ flex-direction:column; align-items:flex-start; gap:14px; }
+}
+@media (max-width:680px){
+  #pps-aula-2026 .pa-nav{ padding:14px 20px; }
+  #pps-aula-2026 .pa-mast{ padding:48px 20px 0; }
+  #pps-aula-2026 .pa-index{ padding:0 20px; grid-template-columns:1fr; }
+  #pps-aula-2026 .pa-index__item + .pa-index__item{ padding-left:0; border-left:0; }
+  #pps-aula-2026 .pa-body{ padding:8px 20px 64px; }
+}
+</style>
+</head>
+<body>
+<div id="pps-aula-2026">
+
+  <!-- NAV -->
+  <header class="pa-nav">
+    <a class="pa-brand" href="aula.html">
+      <span class="pa-brand__mark">UFLO</span><span class="pa-brand__sep"></span>
+      <span class="pa-display" style="font-size:18px;">PPS 2026</span>
+    </a>
+    <nav class="pa-navlinks">
+      <a href="aula.html">Inicio</a>
+      <a href="guia.html" class="is-on">Guía 2026</a>
+      <a href="descargas.html">Descargas</a>
+      <a href="entregas.html">Entregas</a>
+      <a href="https://pps-psico.github.io/" target="_blank" rel="noopener">Mi panel</a>
+    </nav>
+  </header>
+
+  <!-- MASTHEAD -->
+  <div class="pa-mast">
+    <div class="pa-mast__rule"></div>
+    <div class="pa-mast__eyebrow"><b>Guía de cursada</b><span class="sep"></span>Ciclo 2026<span class="sep"></span>Facultad de Psicología</div>
+    <h1 class="pa-mast__title">Tu PPS, de principio a fin.</h1>
+    <p class="pa-mast__sub">El recorrido completo de la práctica en cinco etapas — de la inscripción a la acreditación, con lo que tenés que cumplir en cada una.</p>
+  </div>
+
+  <!-- ÍNDICE -->
+  <nav class="pa-index">
+    <a class="pa-index__item" href="#paso-01"><span class="pa-index__num">01</span><span class="pa-index__lbl">Dónde empezar</span><span class="pa-index__kick">Inscripción</span></a>
+    <a class="pa-index__item" href="#paso-02"><span class="pa-index__num">02</span><span class="pa-index__lbl">Asistencia</span><span class="pa-index__kick">Compromiso</span></a>
+    <a class="pa-index__item" href="#paso-03"><span class="pa-index__num">03</span><span class="pa-index__lbl">Documentación</span><span class="pa-index__kick">Seguimiento</span></a>
+    <a class="pa-index__item" href="#paso-04"><span class="pa-index__num">04</span><span class="pa-index__lbl">Entregas y plazos</span><span class="pa-index__kick">Cierre</span></a>
+    <a class="pa-index__item" href="#paso-05"><span class="pa-index__num">05</span><span class="pa-index__lbl">Comunicación</span><span class="pa-index__kick">Contacto</span></a>
+  </nav>
+
+  <!-- CAPÍTULOS -->
+  <div class="pa-body">
+
+    <article class="pa-step" id="paso-01">
+      <div><div class="pa-step__num">01<sub>Inscripción</sub></div><p class="pa-step__kick">Dónde se crea la cuenta y desde dónde se inscribe.</p></div>
+      <div class="pa-step__main">
+        <h2 class="pa-step__title">Dónde empezar</h2>
+        <div class="pa-grid2">
+          <div class="pa-gcard"><div class="pa-gcard__lbl"><span class="pa-mk"></span>Creá tu cuenta</div><p class="pa-gcard__txt">Generá tu usuario en Mi Panel con tu número de legajo. Es la llave a todo lo demás.</p></div>
+          <div class="pa-gcard"><div class="pa-gcard__lbl"><span class="pa-mk"></span>Punto de partida</div><p class="pa-gcard__txt">Toda inscripción se hace desde Mi Panel, en la sección de convocatorias abiertas.</p></div>
+        </div>
+        <div class="pa-band">
+          <div><div class="pa-band__t">Mantenete al día</div><div class="pa-band__s">Sumate al grupo de difusión y recibí cada convocatoria al instante.</div></div>
+          <button class="pa-band__btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 3h16z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg> Grupo de novedades</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="pa-step" id="paso-02">
+      <div><div class="pa-step__num">02<sub>Compromiso</sub></div><p class="pa-step__kick">El umbral que define si la práctica se acredita.</p></div>
+      <div class="pa-step__main">
+        <h2 class="pa-step__title">Asistencia</h2>
+        <div class="pa-stat">
+          <div class="pa-stat__big">80<span>%</span></div>
+          <div class="pa-stat__txt"><strong>Asistencia mínima</strong> para aprobar la práctica. Por debajo de ese umbral, la PPS no se acredita.</div>
+        </div>
+        <div class="pa-note is-key">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#25785A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><circle cx="12" cy="8" r=".8" fill="#25785A"/></svg>
+          <span><span class="pa-note__tag">Atención</span>Es obligatorio <strong>justificar la ausencia y avisar a la institución con antelación</strong>. La falta de aviso es el motivo más frecuente de suspensión de una PPS.</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="pa-step" id="paso-03">
+      <div><div class="pa-step__num">03<sub>Seguimiento</sub></div><p class="pa-step__kick">Con qué llevás el registro y qué documento vale.</p></div>
+      <div class="pa-step__main">
+        <h2 class="pa-step__title">Documentación</h2>
+        <div class="pa-grid2">
+          <div class="pa-tool"><div class="pa-tool__row"><span class="pa-tool__tag">Oficial</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A0A4B0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div><div class="pa-tool__name">Mi Panel</div><p class="pa-tool__d">Inscripción y gestión de tu cursada. Tu fuente de verdad.</p></div>
+          <div class="pa-tool"><div class="pa-tool__row"><span class="pa-tool__tag">Personal</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A0A4B0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 10l6 6 6-6"/><path d="M5 20h14"/></svg></div><div class="pa-tool__name">Excel de horas</div><p class="pa-tool__d">Tu control exacto, clase a clase, de las horas realizadas.</p></div>
+        </div>
+        <div class="pa-note">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#203B73" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
+          <span><span class="pa-note__tag">Documento válido</span>La <strong>planilla de asistencia firmada</strong> o el <strong>informe final aprobado</strong> (en casos virtuales) son los únicos documentos válidos para la acreditación.</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="pa-step" id="paso-04">
+      <div><div class="pa-step__num">04<sub>Cierre</sub></div><p class="pa-step__kick">Los plazos que corren al terminar la práctica.</p></div>
+      <div class="pa-step__main">
+        <h2 class="pa-step__title">Entregas y plazos</h2>
+        <div class="pa-timeline">
+          <div class="pa-tl"><span class="pa-tl__d">10 días</span><div><div class="pa-tl__t">Entregá el informe</div><div class="pa-tl__s">Desde que finaliza la PPS, para subirlo al campus.</div></div></div>
+          <div class="pa-tl"><span class="pa-tl__d">30 días</span><div><div class="pa-tl__t">Corrección docente</div><div class="pa-tl__s">Plazo hábil del docente para devolver tu informe.</div></div></div>
+          <div class="pa-tl"><span class="pa-tl__d">Listo</span><div><div class="pa-tl__t">Pedí la acreditación</div><div class="pa-tl__s">Con todo cumplido, solicitala desde Mi Panel.</div></div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="pa-step" id="paso-05">
+      <div><div class="pa-step__num">05<sub>Contacto</sub></div><p class="pa-step__kick">Por dónde se responden las consultas individuales.</p></div>
+      <div class="pa-step__main">
+        <h2 class="pa-step__title">Comunicación</h2>
+        <div class="pa-channel">
+          <div class="pa-channel__ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#25785A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+          <div><div class="pa-channel__t">Canal único: correo electrónico</div><div class="pa-channel__s">Todas las consultas individuales se resuelven exclusivamente por mail.</div></div>
+        </div>
+        <div class="pa-note">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#203B73" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+          <span><span class="pa-note__tag">No habilitados</span>El <strong>WhatsApp</strong> y el <strong>chat del campus</strong> no son canales de respuesta para consultas individuales.</span>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  function reportH(){ var h=Math.max(document.documentElement.scrollHeight, document.body.scrollHeight); try{ parent.postMessage({ppsAula:true,height:h},'*'); }catch(e){} }
+  window.addEventListener('load', reportH); window.addEventListener('resize', reportH);
+  if(window.ResizeObserver) new ResizeObserver(reportH).observe(document.documentElement);
+  var n=0, iv=setInterval(function(){ reportH(); if(++n>12) clearInterval(iv); }, 400);
+})();
+</script>
+</body>
+</html>
