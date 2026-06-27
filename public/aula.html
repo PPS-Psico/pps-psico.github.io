@@ -399,15 +399,17 @@ html,body{ margin:0; padding:0; background:#FAFAF7; }
 /* Auto-alto del iframe: reporta su altura al Moodle que lo embebe (postMessage).
    Si se abre suelto (no embebido), no hace nada. Ver snippet "iframe" para Moodle. */
 (function(){
-  // medimos el CONTENIDO (body), NO documentElement: en un iframe documentElement
-  // incluye la altura del propio iframe -> bucle que infla el alto sin parar.
+  // medimos el WRAPPER (#pps-aula-2026), NO body/documentElement: dentro de un
+  // iframe el body se estira al alto del iframe -> realimenta y crece sin parar.
+  // El wrapper mide sólo el contenido y es estable.
+  var wrap = document.getElementById('pps-aula-2026');
   function reportH(){
-    var h = Math.ceil(document.body.scrollHeight);
+    var h = (wrap ? Math.ceil(wrap.getBoundingClientRect().height) : document.body.scrollHeight) + 24;
     try { parent.postMessage({ ppsAula: true, height: h }, '*'); } catch(e){}
   }
   window.addEventListener('load', reportH);
   window.addEventListener('resize', reportH);
-  if (window.ResizeObserver) new ResizeObserver(reportH).observe(document.body);
+  if (window.ResizeObserver && wrap) new ResizeObserver(reportH).observe(wrap);
   // primeros segundos: re-mide por si las fuentes/imagenes cambian el alto
   var n = 0, iv = setInterval(function(){ reportH(); if(++n > 12) clearInterval(iv); }, 400);
 })();

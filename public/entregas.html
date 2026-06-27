@@ -227,8 +227,9 @@ window.ENTREGAS = [
   var wrap = cardsEl.closest('.pa-ent-wrap');
   var active = 0;
 
+  var rootEl = document.getElementById('pps-aula-2026');
   function reportH(){
-    var h = Math.ceil(document.body.scrollHeight);
+    var h = (rootEl ? Math.ceil(rootEl.getBoundingClientRect().height) : document.body.scrollHeight) + 24;
     try { parent.postMessage({ ppsAula:true, height:h }, '*'); } catch(e){}
   }
 
@@ -262,7 +263,7 @@ window.ENTREGAS = [
 
   window.addEventListener('load', reportH);
   window.addEventListener('resize', reportH);
-  if (window.ResizeObserver) new ResizeObserver(reportH).observe(document.body);
+  if (window.ResizeObserver && rootEl) new ResizeObserver(reportH).observe(rootEl);
   var n=0, iv=setInterval(function(){ reportH(); if(++n>12) clearInterval(iv); }, 400);
 })();
 </script>

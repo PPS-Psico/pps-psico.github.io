@@ -166,9 +166,10 @@ window.DESCARGAS = [
       + '<div class="pa-dl-list">'+rows+'</div></section>';
   }).join('');
 
-  function reportH(){ var h=Math.ceil(document.body.scrollHeight); try{ parent.postMessage({ppsAula:true,height:h},'*'); }catch(e){} }
+  var wrap=document.getElementById('pps-aula-2026');
+  function reportH(){ var h=(wrap?Math.ceil(wrap.getBoundingClientRect().height):document.body.scrollHeight)+24; try{ parent.postMessage({ppsAula:true,height:h},'*'); }catch(e){} }
   window.addEventListener('load', reportH); window.addEventListener('resize', reportH);
-  if(window.ResizeObserver) new ResizeObserver(reportH).observe(document.body);
+  if(window.ResizeObserver&&wrap) new ResizeObserver(reportH).observe(wrap);
   var n=0, iv=setInterval(function(){ reportH(); if(++n>12) clearInterval(iv); }, 400);
 })();
 </script>
