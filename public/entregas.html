@@ -202,6 +202,7 @@ window.ENTREGAS = [
 
 <script>
 (function(){
+  if (window.self !== window.top){ document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden'; }
   var DATA = window.ENTREGAS || [];
   var ICONS = {
     chat:'<path d="M21 11.5a8 8 0 0 1-11.7 7L4 20l1.5-4.7A8 8 0 1 1 21 11.5z"/>',

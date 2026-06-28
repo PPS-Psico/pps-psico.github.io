@@ -166,6 +166,7 @@ window.DESCARGAS = [
       + '<div class="pa-dl-list">'+rows+'</div></section>';
   }).join('');
 
+  if (window.self !== window.top){ document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden'; }
   var wrap=document.getElementById('pps-aula-2026');
   function reportH(){ var h=(wrap?Math.ceil(wrap.getBoundingClientRect().height):document.body.scrollHeight)+2; try{ parent.postMessage({ppsAula:true,height:h},'*'); }catch(e){} }
   window.addEventListener('load', reportH); window.addEventListener('resize', reportH);
