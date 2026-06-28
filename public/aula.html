@@ -1,0 +1,473 @@
+<!-- ============================================================================
+     AULA MOODLE · PPS 2026 — PORTADA "INICIO"
+     Pegar este bloque completo en una Etiqueta / resumen de sección de Moodle
+     (editor Atto/TinyMCE → vista código fuente "<>").
+
+     · Auto-contenido: HTML + <style> + <script>, sin React ni archivos externos.
+     · Todas las clases van prefijadas con .pa- y scopeadas bajo #pps-aula-2026
+       para NO chocar con el Bootstrap de Moodle (.card, .btn, .chip, etc.).
+     · Al final hay un bloque CSS OPCIONAL que OCULTA LA BARRA DERECHA del
+       curso (block drawer). Está comentado cómo activarlo / quitarlo.
+     ============================================================================ -->
+
+<div id="pps-aula-2026" class="pa-root">
+<style>
+/* ----- Fuentes (si el campus bloquea Google Fonts, cae a system-ui) ------- */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+/* reset para iframe standalone (sin margen del navegador) */
+html,body{ margin:0; padding:0; background:#FAFAF7; overflow-x:hidden; }
+
+/* ====== TOKENS (light · acento teal UFLO) — scopeados al root ============= */
+#pps-aula-2026{
+  --bg:#FAFAF7; --bg-elevated:#FFFFFF; --bg-sunken:#F1F0EA;
+  --ink:#0B0F19; --ink-soft:#2B3245; --ink-muted:#6A7081; --ink-subtle:#A0A4B0;
+  --line:#ECEAE2; --line-strong:#D9D6CB; --hairline:#E5E3DA;
+  --accent:#3CB88D; --accent-deep:#25785A; --on-accent:#04221A;
+  --tint:#EEF6F1; --tint-strong:#DCEFE6;
+  --uflo-purple:#46253D; --uflo-navy:#203B73; --uflo-teal:#3CB88D; --uflo-deep:#0F1B62;
+  --teal-100:#C8EDDD; --teal-700:#25785A; --navy-100:#D3D7E7; --navy-700:#14254A;
+  --font-display:"Bricolage Grotesque","Geist",system-ui,sans-serif;
+  --font-sans:"Geist","Inter",system-ui,sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,monospace;
+  --t-fast:140ms cubic-bezier(.2,.7,.2,1);
+
+  position:relative;
+  margin:0;
+  padding:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+#pps-aula-2026 *,#pps-aula-2026 *::before,#pps-aula-2026 *::after{ box-sizing:border-box; }
+#pps-aula-2026 a{ color:inherit; }
+#pps-aula-2026 ::selection{ background:var(--accent); color:var(--on-accent); }
+
+/* ====== Utilidades ======================================================= */
+#pps-aula-2026 .pa-display{ font-family:var(--font-display); font-weight:700; letter-spacing:-.04em; line-height:.92; }
+#pps-aula-2026 .pa-mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+#pps-aula-2026 .pa-eyebrow{ font-family:var(--font-mono); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); font-weight:500; }
+#pps-aula-2026 .pa-muted{ color:var(--ink-muted); }
+#pps-aula-2026 .pa-accent{ color:var(--accent); }
+
+/* ====== Inner centrado =================================================== */
+#pps-aula-2026 .pa-wrap{ max-width:1280px; margin:0 auto; }
+#pps-aula-2026 .pa-pad{ padding:0 56px 48px; }
+
+/* ====== Header / nav (estático, no pelea con el chrome de Moodle) ======== */
+#pps-aula-2026 .pa-nav{
+  display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap;
+  padding:16px 40px; border-bottom:1px solid var(--hairline);
+  background:rgba(250,250,247,.86); backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+}
+#pps-aula-2026 .pa-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; }
+#pps-aula-2026 .pa-brand__mark{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-.06em; }
+#pps-aula-2026 .pa-brand__sep{ width:1px; height:22px; background:var(--line); display:inline-block; }
+#pps-aula-2026 .pa-navlinks{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+#pps-aula-2026 .pa-navlinks a{
+  padding:8px 14px; border-radius:999px; text-decoration:none;
+  color:var(--ink-muted); font-size:14px; font-weight:500; white-space:nowrap; transition:var(--t-fast);
+}
+#pps-aula-2026 .pa-navlinks a:hover{ color:var(--ink); background:var(--bg-sunken); }
+#pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
+
+/* ====== Botones ========================================================== */
+#pps-aula-2026 .pa-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:13px 18px; border-radius:14px; border:0; font:inherit; font-weight:500; font-size:15px;
+  cursor:pointer; transition:var(--t-fast); white-space:nowrap; text-decoration:none;
+}
+#pps-aula-2026 .pa-btn--lg{ padding:16px 22px; font-size:16px; }
+#pps-aula-2026 .pa-btn--ink{ background:var(--ink); color:var(--bg); }
+#pps-aula-2026 .pa-btn--ink:hover{ transform:translateY(-1px); }
+#pps-aula-2026 .pa-btn--ghost{ background:transparent; color:var(--ink); border:1px solid var(--line-strong); }
+#pps-aula-2026 .pa-btn--ghost:hover{ background:var(--bg-sunken); }
+
+/* ====== Avatares y chips ================================================= */
+#pps-aula-2026 .pa-avatar{ display:grid; place-items:center; border-radius:50%; font-weight:600; flex-shrink:0; }
+#pps-aula-2026 .pa-avatar[data-tone="teal"]{ background:var(--teal-100); color:var(--teal-700); }
+#pps-aula-2026 .pa-avatar[data-tone="navy"]{ background:var(--navy-100); color:var(--navy-700); }
+#pps-aula-2026 .pa-avatar[data-tone="purple"]{ background:#E8DBE3; color:#58294C; }
+#pps-aula-2026 .pa-avatar[data-tone="amber"]{ background:#FCEFD3; color:#6E4B0F; }
+#pps-aula-2026 .pa-chip{
+  display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px;
+  font-size:12px; font-weight:500; background:var(--tint); color:var(--accent-deep); white-space:nowrap;
+}
+
+/* ====== Hero ============================================================= */
+#pps-aula-2026 .pa-hero{ position:relative; padding:80px 56px 96px; isolation:isolate; overflow:hidden; }
+#pps-aula-2026 .pa-hero__orb{
+  position:absolute; top:-80px; right:-160px; width:600px; height:600px; border-radius:50%;
+  background:
+    radial-gradient(circle at 30% 30%, #46253D 0%, transparent 45%),
+    radial-gradient(circle at 70% 50%, #203B73 0%, transparent 55%),
+    radial-gradient(circle at 50% 80%, #3CB88D 0%, transparent 60%);
+  filter:blur(30px); opacity:.45; z-index:-1; pointer-events:none;
+}
+#pps-aula-2026 .pa-hero h1{
+  font-family:var(--font-display); font-weight:700; letter-spacing:-.04em;
+  font-size:clamp(48px,8vw,112px); line-height:.95; margin:20px 0 28px; max-width:920px;
+}
+#pps-aula-2026 .pa-grad{
+  background:linear-gradient(110deg,#46253D 0%,#203B73 50%,#3CB88D 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+#pps-aula-2026 .pa-hero__lede{ font-size:18px; color:var(--ink-muted); max-width:540px; margin:0 0 36px; line-height:1.5; }
+#pps-aula-2026 .pa-hero__cta{ display:flex; gap:12px; flex-wrap:wrap; }
+
+/* ====== Secciones ======================================================= */
+#pps-aula-2026 .pa-section{ margin-bottom:80px; }
+#pps-aula-2026 .pa-section h2{ font-family:var(--font-display); font-weight:700; letter-spacing:-.04em; font-size:44px; line-height:1; margin:10px 0 0; }
+#pps-aula-2026 .pa-sec-head{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:32px; flex-wrap:wrap; gap:16px; }
+#pps-aula-2026 .pa-sec-link{ font-size:14px; color:var(--ink); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+
+/* ---- Equipo ---- */
+#pps-aula-2026 .pa-team{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+#pps-aula-2026 .pa-card{ background:var(--bg-elevated); border:1px solid var(--line); border-radius:20px; padding:22px; transition:var(--t-fast); }
+#pps-aula-2026 .pa-card:hover{ border-color:var(--line-strong); }
+#pps-aula-2026 .pa-card.is-pri{ background:linear-gradient(180deg,var(--tint) 0%,var(--bg-elevated) 60%); border-color:#B8DECC; }
+#pps-aula-2026 .pa-card__name{ margin-top:18px; font-size:17px; font-weight:500; letter-spacing:-.01em; }
+#pps-aula-2026 .pa-card__role{ color:var(--ink-muted); font-size:13px; margin-top:2px; }
+
+/* ---- Grid / bento "Empezá por acá" ---- */
+#pps-aula-2026 .pa-bento{ display:grid; grid-template-columns:1.4fr 1fr 1fr; grid-template-rows:auto auto; gap:14px; }
+#pps-aula-2026 .pa-feat{
+  grid-row:span 2; border-radius:24px; padding:36px; color:#fff; text-decoration:none;
+  display:flex; flex-direction:column; justify-content:space-between; min-height:360px; position:relative; overflow:hidden;
+  background:linear-gradient(155deg,#46253D 0%,#203B73 50%,#3CB88D 100%);
+}
+#pps-aula-2026 .pa-feat__glow{ position:absolute; inset:0; background:radial-gradient(circle at 110% 110%, rgba(255,255,255,.18), transparent 60%); }
+#pps-aula-2026 .pa-feat h3{ font-family:var(--font-display); font-weight:700; font-size:48px; line-height:1; letter-spacing:-.04em; margin:16px 0 14px; }
+#pps-aula-2026 .pa-feat p{ font-size:15px; opacity:.85; max-width:360px; margin:0; line-height:1.5; }
+#pps-aula-2026 .pa-feat__foot{ position:relative; display:flex; justify-content:space-between; align-items:center; }
+#pps-aula-2026 .pa-feat__go{ width:42px; height:42px; border-radius:999px; background:#fff; color:#0F1B62; display:grid; place-items:center; }
+#pps-aula-2026 .pa-tile{
+  background:var(--bg-elevated); border:1px solid var(--line); border-radius:18px; padding:22px;
+  text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:10px; transition:var(--t-fast);
+}
+#pps-aula-2026 .pa-tile:hover{ border-color:var(--line-strong); transform:translateY(-3px); }
+#pps-aula-2026 .pa-tile__ic{ width:38px; height:38px; border-radius:12px; background:var(--tint); color:var(--accent); display:grid; place-items:center; }
+#pps-aula-2026 .pa-tile__title{ font-family:var(--font-display); font-weight:700; letter-spacing:-.03em; font-size:22px; margin-bottom:4px; }
+#pps-aula-2026 .pa-tile__desc{ color:var(--ink-muted); font-size:13px; margin:0 0 10px; line-height:1.5; }
+#pps-aula-2026 .pa-tile__n{ font-family:var(--font-mono); font-size:11px; color:var(--ink-subtle); letter-spacing:.04em; }
+
+/* ---- FAQ ---- */
+#pps-aula-2026 .pa-faq-item{ border-bottom:1px solid var(--hairline); padding:0; }
+#pps-aula-2026 .pa-faq-q{
+  display:flex; justify-content:space-between; align-items:center; gap:16px; width:100%;
+  cursor:pointer; font-size:17px; font-weight:500; letter-spacing:-.01em; text-align:left;
+  background:transparent; border:0; color:inherit; font-family:inherit; padding:20px 0;
+}
+#pps-aula-2026 .pa-faq-q svg{ transition:transform var(--t-fast); flex-shrink:0; }
+#pps-aula-2026 .pa-faq-item.is-open .pa-faq-q svg{ transform:rotate(180deg); }
+#pps-aula-2026 .pa-faq-a{ max-height:0; overflow:hidden; transition:max-height .28s ease; }
+#pps-aula-2026 .pa-faq-a > p{ margin:0 0 20px; color:var(--ink-muted); font-size:15px; line-height:1.55; max-width:680px; }
+
+/* ---- Footer band ---- */
+#pps-aula-2026 .pa-foot{
+  padding:32px; background:var(--bg-sunken); border-radius:24px;
+  display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;
+}
+#pps-aula-2026 .pa-foot__ic{ width:44px; height:44px; border-radius:14px; background:var(--ink); color:var(--bg); display:grid; place-items:center; }
+
+/* ====== Responsive ====================================================== */
+@media (max-width:1024px){
+  #pps-aula-2026 .pa-team{ grid-template-columns:repeat(2,1fr); }
+  #pps-aula-2026 .pa-bento{ grid-template-columns:1fr 1fr; }
+  #pps-aula-2026 .pa-feat{ grid-row:auto; grid-column:1 / -1; min-height:280px; }
+}
+@media (max-width:720px){
+  #pps-aula-2026 .pa-nav{ padding:14px 20px; gap:14px; }
+  #pps-aula-2026 .pa-hero{ padding:48px 20px 64px; }
+  #pps-aula-2026 .pa-pad{ padding:0 20px; }
+  #pps-aula-2026 .pa-section h2{ font-size:32px; }
+  #pps-aula-2026 .pa-team,#pps-aula-2026 .pa-bento{ grid-template-columns:1fr; }
+  #pps-aula-2026 .pa-feat h3{ font-size:38px; }
+  #pps-aula-2026 .pa-navtools{ display:none; }
+}
+</style>
+
+<!-- ===== NAV / BRAND ===== -->
+<header class="pa-nav">
+  <a class="pa-brand" href="#pps-aula-2026">
+    <span class="pa-brand__mark">UFLO</span>
+    <span class="pa-brand__sep"></span>
+    <span class="pa-display" style="font-size:18px;">PPS 2026</span>
+  </a>
+  <nav class="pa-navlinks">
+    <a href="aula.html" class="is-on">Inicio</a>
+    <a href="guia.html">Guía 2026</a>
+    <a href="descargas.html">Descargas</a>
+    <a href="entregas.html">Entregas</a>
+    <a href="https://pps-psico.github.io/">Mi panel</a>
+  </nav>
+</header>
+
+<!-- ===== HERO ===== -->
+<section class="pa-hero pa-wrap">
+  <div class="pa-hero__orb"></div>
+  <span class="pa-eyebrow">Facultad de Psicología · cohorte 2026</span>
+  <h1 class="pa-display">Bienvenida<br>a <span class="pa-grad">tu aula</span> de PPS.</h1>
+  <p class="pa-hero__lede">Materiales, entregas, consultas y el seguimiento de tu práctica — todo en un mismo lugar. Sin saltar entre cinco pestañas.</p>
+  <div class="pa-hero__cta">
+    <a class="pa-btn pa-btn--lg pa-btn--ink" href="https://pps-psico.github.io/">
+      Entrar a mi panel
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+    </a>
+    <a class="pa-btn pa-btn--lg pa-btn--ghost" href="#pa-recorrido">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7a4 4 0 0 1 4 4v12"/><path d="M20 4h-7a4 4 0 0 0-4 4v12"/></svg>
+      Ver guía 2026
+    </a>
+  </div>
+</section>
+
+<div class="pa-wrap pa-pad">
+
+  <!-- ===== EQUIPO ===== -->
+  <section id="pa-equipo" class="pa-section">
+    <div class="pa-sec-head">
+      <div>
+        <span class="pa-eyebrow">Equipo</span>
+        <h2 class="pa-display">Quiénes te <span class="pa-accent">acompañan</span>.</h2>
+      </div>
+      <a class="pa-sec-link" href="#pa-faq">Cómo nos escribís
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+    <div class="pa-team">
+      <div class="pa-card is-pri">
+        <span class="pa-avatar" data-tone="navy" style="width:56px;height:56px;font-size:20px;">BR</span>
+        <div class="pa-card__name">Blas Rivera</div>
+        <div class="pa-card__role">Coord. general</div>
+        <div style="margin-top:12px;"><span class="pa-chip">Coordinación</span></div>
+      </div>
+      <div class="pa-card">
+        <span class="pa-avatar" data-tone="teal" style="width:56px;height:56px;font-size:20px;">SE</span>
+        <div class="pa-card__name">Selva Estrella</div>
+        <div class="pa-card__role">Clínica</div>
+      </div>
+      <div class="pa-card">
+        <span class="pa-avatar" data-tone="purple" style="width:56px;height:56px;font-size:20px;">FP</span>
+        <div class="pa-card__name">Franco Pedraza</div>
+        <div class="pa-card__role">Educacional</div>
+      </div>
+      <div class="pa-card">
+        <span class="pa-avatar" data-tone="amber" style="width:56px;height:56px;font-size:20px;">CR</span>
+        <div class="pa-card__name">Cynthia Rossi</div>
+        <div class="pa-card__role">Laboral / social</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== RECORRIDO / BENTO ===== -->
+  <section id="pa-recorrido" class="pa-section">
+    <span class="pa-eyebrow">Tu recorrido</span>
+    <h2 class="pa-display" style="margin-bottom:32px;">Empezá <span class="pa-accent">por acá</span>.</h2>
+    <div class="pa-bento">
+      <!-- Featured -->
+      <a class="pa-feat" href="guia.html">
+        <div class="pa-feat__glow"></div>
+        <div style="position:relative;">
+          <div class="pa-eyebrow" style="color:rgba(255,255,255,.7);">Empezá por acá</div>
+          <h3 class="pa-display">Guía de<br>cursada 2026</h3>
+          <p>Todo lo que necesitás saber antes del primer encuentro: fechas clave, requisitos por área y los entregables del año.</p>
+        </div>
+        <div class="pa-feat__foot">
+          <span class="pa-mono" style="font-size:12px;letter-spacing:.04em;opacity:.7;">PDF · 2.4 MB · 18 PÁG</span>
+          <span class="pa-feat__go">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+          </span>
+        </div>
+      </a>
+      <!-- 4 tiles -->
+      <a class="pa-tile" href="descargas.html">
+        <span class="pa-tile__ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 10l6 6 6-6"/><path d="M5 20h14"/></svg></span>
+        <div style="margin-top:6px;">
+          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Recursos</div>
+          <div class="pa-tile__title">Descargas</div>
+          <p class="pa-tile__desc">Guías, plantillas y documentos oficiales para la cursada.</p>
+          <span class="pa-tile__n">12 archivos</span>
+        </div>
+      </a>
+      <a class="pa-tile" href="#pa-faq">
+        <span class="pa-tile__ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 1-1 1.7v.5"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg></span>
+        <div style="margin-top:6px;">
+          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Ayuda</div>
+          <div class="pa-tile__title">Preguntas frecuentes</div>
+          <p class="pa-tile__desc">Casi todo se resuelve acá. Lo actualizamos durante la cursada.</p>
+          <span class="pa-tile__n">27 respuestas</span>
+        </div>
+      </a>
+      <a class="pa-tile" href="entregas.html">
+        <span class="pa-tile__ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8"/><path d="M6 14l6-6 6 6"/><path d="M5 4h14"/></svg></span>
+        <div style="margin-top:6px;">
+          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Evaluación</div>
+          <div class="pa-tile__title">Entregas de informes</div>
+          <p class="pa-tile__desc">Subí parciales y final. Vas a ver fechas y feedback acá.</p>
+          <span class="pa-tile__n">4 fechas</span>
+        </div>
+      </a>
+      <a class="pa-tile" href="https://pps-psico.github.io/">
+        <span class="pa-tile__ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+        <div style="margin-top:6px;">
+          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Gestión</div>
+          <div class="pa-tile__title">Tu panel</div>
+          <p class="pa-tile__desc">Inscripción, horas, solicitudes y seguimiento personal.</p>
+          <span class="pa-tile__n">Personalizado</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== FAQ ===== -->
+  <section id="pa-faq" class="pa-section">
+    <span class="pa-eyebrow">Antes que nos escribas</span>
+    <h2 class="pa-display" style="margin-bottom:24px;">Lo que <span class="pa-accent">más se pregunta</span>.</h2>
+    <div class="pa-faq">
+      <div class="pa-faq-item">
+        <button class="pa-faq-q" type="button"><span>¿Cuándo abren las inscripciones a las convocatorias?</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="pa-faq-a"><p>Las inscripciones se abren en dos olas: abril (cohorte principal) y agosto (cohorte de cierre).</p></div>
+      </div>
+      <div class="pa-faq-item is-open">
+        <button class="pa-faq-q" type="button"><span>¿Puedo cambiar de orientación una vez inscripta?</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="pa-faq-a"><p>Hasta la confirmación de la convocatoria, sí. Después, en casos puntuales con coordinación.</p></div>
+      </div>
+      <div class="pa-faq-item">
+        <button class="pa-faq-q" type="button"><span>¿Cuántas horas necesito para acreditar?</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="pa-faq-a"><p>200 horas reloj, distribuidas según el plan acordado con tu referente institucional.</p></div>
+      </div>
+      <div class="pa-faq-item">
+        <button class="pa-faq-q" type="button"><span>¿Cómo subo el informe firmado?</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="pa-faq-a"><p>Desde Mi panel → Informes. Aceptamos PDF firmado digitalmente o escaneado con firma del supervisor.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="pa-foot">
+    <div style="display:flex; gap:14px; align-items:center;">
+      <div class="pa-foot__ic">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+      </div>
+      <div>
+        <div style="font-size:16px; font-weight:500;">¿Necesitás soporte personalizado?</div>
+        <div class="pa-muted" style="font-size:13.5px;">Coordinación responde de lunes a viernes, 10–18h.</div>
+      </div>
+    </div>
+    <a class="pa-btn pa-btn--ink" href="mailto:pps@uflo.edu.ar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+      Escribir a coord.
+    </a>
+  </footer>
+
+</div><!-- /pa-wrap -->
+</div><!-- /#pps-aula-2026 -->
+
+<script>
+/* FAQ acordeón — scopeado al root para no tocar nada de Moodle */
+(function(){
+  var root = document.getElementById('pps-aula-2026');
+  if(!root || root.dataset.bound) return;
+  root.dataset.bound = '1';
+  function setOpen(item, open){
+    var a = item.querySelector('.pa-faq-a');
+    item.classList.toggle('is-open', open);
+    a.style.maxHeight = open ? (a.scrollHeight + 'px') : '0px';
+  }
+  root.querySelectorAll('.pa-faq-item').forEach(function(item){
+    setOpen(item, item.classList.contains('is-open'));
+    item.querySelector('.pa-faq-q').addEventListener('click', function(){
+      setOpen(item, !item.classList.contains('is-open'));
+    });
+  });
+  window.addEventListener('resize', function(){
+    root.querySelectorAll('.pa-faq-item.is-open .pa-faq-a').forEach(function(a){
+      a.style.maxHeight = a.scrollHeight + 'px';
+    });
+  });
+})();
+</script>
+
+<script>
+/* Auto-alto del iframe: reporta su altura al Moodle que lo embebe (postMessage).
+   Si se abre suelto (no embebido), no hace nada. Ver snippet "iframe" para Moodle. */
+(function(){
+  // si estamos embebidos en un iframe, ocultamos el scrollbar propio (el alto
+  // lo maneja el parent). Suelto (URL directa) se mantiene scrolleable.
+  if (window.self !== window.top){
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+  }
+  // medimos el WRAPPER (#pps-aula-2026), NO body/documentElement: dentro de un
+  // iframe el body se estira al alto del iframe -> realimenta y crece sin parar.
+  // El wrapper mide sólo el contenido y es estable.
+  var wrap = document.getElementById('pps-aula-2026');
+  function reportH(){
+    var h = (wrap ? Math.ceil(wrap.getBoundingClientRect().height) : document.body.scrollHeight) + 2;
+    try { parent.postMessage({ ppsAula: true, height: h }, '*'); } catch(e){}
+  }
+  window.addEventListener('load', reportH);
+  window.addEventListener('resize', reportH);
+  if (window.ResizeObserver && wrap) new ResizeObserver(reportH).observe(wrap);
+  // primeros segundos: re-mide por si las fuentes/imagenes cambian el alto
+  var n = 0, iv = setInterval(function(){ reportH(); if(++n > 12) clearInterval(iv); }, 400);
+})();
+</script>
+
+<script>
+/* Propaga el email del estudiante (que inyecta Moodle vía FilterCodes en la URL
+   de este iframe: aula.html?email={email}) hacia los enlaces de "Mi panel".
+   Así el panel puede auto-loguear al alumno. Si no hay email, los links quedan
+   igual y el panel pide login normal. */
+(function(){
+  function getParam(name){
+    try {
+      var v = new URLSearchParams(window.location.search).get(name);
+      return v ? v.trim() : '';
+    } catch(e){ return ''; }
+  }
+  var email = getParam('email');
+  if (!email) return;
+  var PANEL_ORIGIN = 'https://pps-psico.github.io/';
+  document.querySelectorAll('a[href^="' + PANEL_ORIGIN + '"]').forEach(function(a){
+    try {
+      var url = new URL(a.getAttribute('href'), window.location.href);
+      // Solo a la raíz del panel (no a aula/guia/descargas/entregas).
+      var path = url.pathname.replace(/\/+$/, '');
+      if (path === '' || path === '/') {
+        url.searchParams.set('email', email);
+        a.setAttribute('href', url.toString());
+      }
+    } catch(e){}
+  });
+})();
+</script>
+
+<!-- ============================================================================
+     OPCIONAL · OCULTAR LA BARRA DERECHA DEL CURSO (block drawer de Moodle)
+     ----------------------------------------------------------------------------
+     Descomentá el <style> de abajo para esconder la columna de bloques de la
+     derecha en ESTA página del curso (sirve también dentro de un iframe, porque
+     el CSS corre en el DOM propio de Moodle). Cubre Moodle 4.x (Boost drawers)
+     y 3.x. Para volver atrás, simplemente borrá este bloque.
+     ============================================================================ -->
+<!--
+<style id="pps-hide-blocks">
+  #theme_boost-drawers-blocks,
+  .drawer.drawer-right,
+  [data-region="blocks-column"],
+  .block-region-side-post,
+  #block-region-side-post { display:none !important; }
+  .drawer-toggler[data-target*="theme_boost-drawers-blocks"],
+  [data-toggler="drawers"][aria-controls="theme_boost-drawers-blocks"] { display:none !important; }
+  #page.drawers .main-inner,
+  #page-content .row { margin-right:0 !important; }
+</style>
+-->
