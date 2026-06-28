@@ -34,7 +34,29 @@ import {
 // Este valor se suma a los nuevos inscriptos reales para la proyección
 const PROYECCION_USUARIOS_HABILITADOS_2026 = 150;
 
-export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
+/**
+ * Fila genérica de una tabla de negocio tal como llega del dashboard. El acceso
+ * por columna (vía constantes FIELD_*) es dinámico, por eso el index signature;
+ * `id` se garantiza siempre presente.
+ */
+interface MetricRow {
+  id: string;
+  [key: string]: any;
+}
+export type { MetricRow };
+
+/** Contrato de datos que consume el cálculo de métricas del dashboard. */
+export interface DashboardData {
+  convocatorias: MetricRow[];
+  practicas: MetricRow[];
+  estudiantes: MetricRow[];
+  finalizaciones: MetricRow[];
+  lanzamientos: MetricRow[];
+  instituciones: MetricRow[];
+  solicitudes: MetricRow[];
+}
+
+export const calculateDashboardMetrics = (allData: DashboardData, targetYear: number) => {
   const isCurrentYear = targetYear === new Date().getFullYear();
   const now = new Date();
 
@@ -59,7 +81,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   };
 
   // 1. Barrer Convocatorias (Inscripciones)
-  allData.convocatorias.forEach((c: any) => {
+  allData.convocatorias.forEach((c) => {
     const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
     // Preferimos created_at para la inscripción, o fecha_inicio como fallback
     const dateStr: string | null = c.created_at || c.fecha_inicio || null;
@@ -67,14 +89,14 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   });
 
   // 2. Barrer Prácticas (Por si hay históricas sin convocatoria)
-  allData.practicas.forEach((p: any) => {
+  allData.practicas.forEach((p) => {
     const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
     const dateStr: string | null = p[FIELD_FECHA_INICIO_PRACTICAS] || p.created_at || null;
     if (sId && dateStr) updateFirstActivity(sId, dateStr);
   });
 
   // 3. Cargar Fechas de Graduación y limpiar mapa
-  allData.estudiantes.forEach((s: any) => {
+  allData.estudiantes.forEach((s) => {
     if (!studentTimelineMap.has(s.id)) return; // Si no tiene actividad, no cuenta para métricas de flujo
 
     const current = studentTimelineMap.get(s.id)!;
@@ -89,7 +111,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   // --- 1. CÁLCULO DE INGRESANTES (Año Objetivo) ---
   // Son estudiantes que crearon cuenta (user_id) en el año objetivo
   // Usa user_created_at que viene de auth.users
-  const ingresantesList = allData.estudiantes.filter((s: any) => {
+  const ingresantesList = allData.estudiantes.filter((s) => {
     if (!s[FIELD_USER_ID_ESTUDIANTES]) return false;
     const createdAt = s.user_created_at ? new Date(s.user_created_at) : null;
     return createdAt && createdAt.getUTCFullYear() === targetYear;
@@ -127,14 +149,14 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   // 1. Los que tienen fecha_finalizacion en tabla estudiantes
   // 2. Los que tienen solicitud en tabla finalizaciones (por fecha_solicitud)
   const finalizacionMap = new Map<string, any>();
-  allData.finalizaciones.forEach((f: any) => {
+  allData.finalizaciones.forEach((f) => {
     const sId = safeGetId(f[FIELD_ESTUDIANTE_FINALIZACION]);
     if (sId) {
       finalizacionMap.set(sId, f);
     }
   });
 
-  const acreditadosFinalizados = allData.estudiantes.filter((s: any) => {
+  const acreditadosFinalizados = allData.estudiantes.filter((s) => {
     // Opción 1: tiene registro en tabla finalizaciones
     const finalizacion = finalizacionMap.get(s.id);
     if (finalizacion) {
@@ -157,7 +179,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
   // Alumnos Activos HOY (Snapshot) o al final del año objetivo
   // Incluye a quienes se fueron durante el año (para matrícula generada del año)
-  const activosList = allData.estudiantes.filter((s: any) => {
+  const activosList = allData.estudiantes.filter((s) => {
     const timeline = studentTimelineMap.get(s.id);
     if (!timeline) return false;
 
@@ -175,7 +197,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   const studentHoursMap = new Map<string, number>();
   const studentActivePracticesMap = new Map<string, boolean>();
 
-  allData.practicas.forEach((p: any) => {
+  allData.practicas.forEach((p) => {
     const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
     if (sId) {
       const horas = p[FIELD_HORAS_PRACTICAS] || 0;
@@ -193,14 +215,14 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
   // Mapa de estudiantes que tienen AL MENOS una práctica (sin importar horas)
   const studentHasAnyPractice = new Set<string>();
-  allData.practicas.forEach((p: any) => {
+  allData.practicas.forEach((p) => {
     const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
     if (sId) {
       studentHasAnyPractice.add(sId);
     }
   });
 
-  const sinNingunaPpsList = allData.estudiantes.filter((s: any) => {
+  const sinNingunaPpsList = allData.estudiantes.filter((s) => {
     // Solo estudiantes activos que NO tienen ninguna práctica Y tienen correo (cuenta creada)
     const estado = normalizeStringForComparison(s[FIELD_ESTADO_ESTUDIANTES]);
     if (estado !== "activo") return false;
@@ -214,7 +236,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     return studentId ? !studentHasAnyPractice.has(studentId) : true;
   });
 
-  const proximosAFinalizarList = activosList.filter((s: any) => {
+  const proximosAFinalizarList = activosList.filter((s) => {
     const totalHours = studentHoursMap.get(s.id) || 0;
     if (totalHours < 230) return false;
 
@@ -230,7 +252,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     return true;
   });
 
-  const enPpsEnCursoList = activosList.filter((s: any) => studentActivePracticesMap.get(s.id));
+  const enPpsEnCursoList = activosList.filter((s) => studentActivePracticesMap.get(s.id));
 
   // --- 4. DISTRIBUCIÓN POR ÁREA ---
   interface OccupancyEntry {
@@ -247,9 +269,9 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     "Sin definir": [],
   };
 
-  const launchesMap = new Map(allData.lanzamientos.map((l: any) => [l.id, l]));
+  const launchesMap = new Map(allData.lanzamientos.map((l) => [l.id, l]));
 
-  allData.convocatorias.forEach((c: any) => {
+  allData.convocatorias.forEach((c) => {
     const date = parseToUTCDate(c.created_at || c.fecha_inicio);
     if (!date || date.getUTCFullYear() !== targetYear) return;
 
@@ -265,18 +287,16 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     const lanzId = Array.isArray(rawLanzId) ? rawLanzId[0] : rawLanzId;
     const launch = launchesMap.get(lanzId);
     const studentId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
-    const student = allData.estudiantes.find((s: any) => s.id === studentId);
+    const student = allData.estudiantes.find((s) => s.id === studentId);
 
     const studentEntry: OccupancyEntry = {
       nombre: student?.nombre || "Estudiante",
       legajo: student?.legajo || "---",
-      institucion: (launch as any)?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "N/A",
-      raw_value: (launch as any)?.[FIELD_ORIENTACION_LANZAMIENTOS] || "(Vacio)",
+      institucion: launch?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "N/A",
+      raw_value: launch?.[FIELD_ORIENTACION_LANZAMIENTOS] || "(Vacio)",
     };
 
-    const normalized = normalizeStringForComparison(
-      (launch as any)?.[FIELD_ORIENTACION_LANZAMIENTOS]
-    );
+    const normalized = normalizeStringForComparison(launch?.[FIELD_ORIENTACION_LANZAMIENTOS]);
     if (normalized.includes("clinica")) occupancyByOrientation["Clínica"].push(studentEntry);
     else if (normalized.includes("educacional") || normalized.includes("educacion"))
       occupancyByOrientation["Educacional"].push(studentEntry);
@@ -292,12 +312,12 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     (l: any) => parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS])?.getUTCFullYear() === targetYear
   );
   const totalCupos = yearLaunches.reduce(
-    (sum: number, l: any) => sum + (l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0),
+    (sum: number, l) => sum + (l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0),
     0
   );
 
   const uniqueActiveNames = new Set<string>();
-  yearLaunches.forEach((l: any) => {
+  yearLaunches.forEach((l) => {
     if (l[FIELD_NOMBRE_PPS_LANZAMIENTOS]) {
       uniqueActiveNames.add(getGroupName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS]));
     }
@@ -308,7 +328,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
   }));
 
   const uniqueNewAgreementNames = new Set<string>();
-  allData.instituciones.forEach((i: any) => {
+  allData.instituciones.forEach((i) => {
     const convenioVal = i[FIELD_CONVENIO_NUEVO_INSTITUCIONES];
     if (String(convenioVal) === String(targetYear) && i[FIELD_NOMBRE_INSTITUCIONES]) {
       uniqueNewAgreementNames.add(getGroupName(i[FIELD_NOMBRE_INSTITUCIONES]));
@@ -329,12 +349,12 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
     "no se pudo concretar",
   ];
 
-  const solicitudesEnCursoList = allData.solicitudes.filter((r: any) => {
+  const solicitudesEnCursoList = allData.solicitudes.filter((r) => {
     const status = normalizeStringForComparison(r[FIELD_ESTADO_PPS]);
     return !terminalStatuses.includes(status);
   });
 
-  const demoradosList = allData.solicitudes.filter((r: any) => {
+  const demoradosList = allData.solicitudes.filter((r) => {
     const status = normalizeStringForComparison(r[FIELD_ESTADO_PPS]);
     if (terminalStatuses.includes(status)) return false;
     const updateDate = new Date(r[FIELD_ULTIMA_ACTUALIZACION_PPS] || r.created_at);
@@ -393,7 +413,7 @@ export const calculateDashboardMetrics = (allData: any, targetYear: number) => {
 
     // Pestaña Instituciones
     // Crear lista con nombre y cupos para mostrar en modal
-    ppsLanzadasList: yearLaunches.map((l: any) => ({
+    ppsLanzadasList: yearLaunches.map((l) => ({
       nombre: l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre",
       legajo: l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0,
       institucion: l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "",

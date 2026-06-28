@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient";
+import type { Session } from "@supabase/supabase-js";
 import { logger } from "../utils/logger";
 import {
   FIELD_LEGAJO_ESTUDIANTES,
@@ -79,7 +80,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAuthenticatedUser(null);
 
       // 3. Sign out from Supabase (Safe catch if no session exists)
-      const { error } = await (supabase.auth as any).signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) logger.warn("Supabase signOut warning:", error.message);
 
       // 4. Force cleanup
@@ -104,7 +105,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }, 8000);
 
-    const processSession = async (session: any) => {
+    const processSession = async (session: Session | null) => {
       // If no session, clear user and stop loading
       if (!session?.user) {
         if (isMounted) {
@@ -198,7 +199,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     // Initialize: Get current session
-    (supabase.auth as any).getSession().then(({ data, error }: any) => {
+    supabase.auth.getSession().then(({ data, error }) => {
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("refresh token") || msg.includes("not found") || msg.includes("invalid")) {
@@ -214,7 +215,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Listen for changes
     const {
       data: { subscription },
-    } = (supabase.auth as any).onAuthStateChange(async (event: string, session: any) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       logger.info(`AUTH EVENT: ${event}`);
 
       if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);

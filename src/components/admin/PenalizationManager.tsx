@@ -235,10 +235,10 @@ const AddPenaltyModal: React.FC<{
     queryKey: ["relevantPPSForModal", student.id, isTestingMode],
     queryFn: async () => {
       if (isTestingMode) {
-        const mockRecs = await mockDb.getAll("lanzamientos_pps");
-        return mockRecs.map((r: any) => ({
-          id: r.id,
-          name: `${r[FIELD_NOMBRE_PPS_LANZAMIENTOS]} (${formatDate(r[FIELD_FECHA_INICIO_LANZAMIENTOS])})`,
+        const mockRecs = (await mockDb.getAll("lanzamientos_pps")) as Record<string, unknown>[];
+        return mockRecs.map((r) => ({
+          id: r.id as string,
+          name: `${r[FIELD_NOMBRE_PPS_LANZAMIENTOS]} (${formatDate(r[FIELD_FECHA_INICIO_LANZAMIENTOS] as string)})`,
         }));
       }
 
@@ -294,7 +294,7 @@ const AddPenaltyModal: React.FC<{
   });
 
   const applyPenaltyMutation = useMutation({
-    mutationFn: async (penaltyData: any) => {
+    mutationFn: async (penaltyData: Record<string, unknown>) => {
       if (isTestingMode) {
         logger.info("TEST MODE: Applying penalty:", penaltyData);
         await mockDb.create("penalizaciones", penaltyData);
@@ -358,7 +358,7 @@ const AddPenaltyModal: React.FC<{
   });
 
   const handleSave = () => {
-    const penaltyData: any = {
+    const penaltyData: Record<string, unknown> = {
       [FIELD_PENALIZACION_ESTUDIANTE_LINK]: student.id,
       [FIELD_PENALIZACION_TIPO]: penaltyType,
       [FIELD_PENALIZACION_FECHA]: new Date().toISOString().split("T")[0],
@@ -566,9 +566,9 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
   const { data: penalizedStudents, isLoading } = useQuery<PenalizedStudent[]>({
     queryKey: ["allPenalizedStudents", isTestingMode],
     queryFn: async () => {
-      let penaltiesRes: any[] = [],
-        studentsRes: any[] = [],
-        lanzamientosRes: any[] = [];
+      let penaltiesRes: Record<string, unknown>[] = [],
+        studentsRes: Record<string, unknown>[] = [],
+        lanzamientosRes: Record<string, unknown>[] = [];
 
       if (isTestingMode) {
         [penaltiesRes, studentsRes, lanzamientosRes] = await Promise.all([
@@ -591,9 +591,9 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
       }
 
       const studentsMap = new Map<string, { legajo: string; nombre: string }>();
-      studentsRes.forEach((r: any) => {
+      studentsRes.forEach((r) => {
         if (r[FIELD_LEGAJO_ESTUDIANTES] && r[FIELD_NOMBRE_ESTUDIANTES]) {
-          studentsMap.set(r.id, {
+          studentsMap.set(r.id as string, {
             legajo: String(r[FIELD_LEGAJO_ESTUDIANTES]),
             nombre: String(r[FIELD_NOMBRE_ESTUDIANTES]),
           });
@@ -601,16 +601,18 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
       });
 
       const lanzamientosMap = new Map<string, string>();
-      lanzamientosRes.forEach((r: any) => {
+      lanzamientosRes.forEach((r) => {
         if (r[FIELD_NOMBRE_PPS_LANZAMIENTOS]) {
-          lanzamientosMap.set(r.id, String(r[FIELD_NOMBRE_PPS_LANZAMIENTOS]));
+          lanzamientosMap.set(r.id as string, String(r[FIELD_NOMBRE_PPS_LANZAMIENTOS]));
         }
       });
 
       const penaltiesByStudent = new Map<string, PenalizedStudent>();
-      penaltiesRes.forEach((p: any) => {
+      penaltiesRes.forEach((p) => {
         const rawStudentLink = p[FIELD_PENALIZACION_ESTUDIANTE_LINK];
-        const studentId = Array.isArray(rawStudentLink) ? rawStudentLink[0] : rawStudentLink;
+        const studentId = (
+          Array.isArray(rawStudentLink) ? rawStudentLink[0] : rawStudentLink
+        ) as string;
         const studentInfo = studentId ? studentsMap.get(studentId) : null;
         if (!studentInfo) return;
 
@@ -625,13 +627,15 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
         }
         const studentData = penaltiesByStudent.get(studentId)!;
         const rawPpsLink = p[FIELD_PENALIZACION_CONVOCATORIA_LINK];
-        const ppsId = Array.isArray(rawPpsLink) ? rawPpsLink[0] : rawPpsLink;
+        const ppsId = (Array.isArray(rawPpsLink) ? rawPpsLink[0] : rawPpsLink) as
+          | string
+          | undefined;
 
         studentData.penalties.push({
-          ...p,
+          ...(p as Penalizacion & { id: string }),
           ppsName: ppsId ? lanzamientosMap.get(ppsId) : undefined,
         });
-        studentData.totalScore += p[FIELD_PENALIZACION_PUNTAJE] || 0;
+        studentData.totalScore += (p[FIELD_PENALIZACION_PUNTAJE] as number) || 0;
       });
       return Array.from(penaltiesByStudent.values()).sort((a, b) => b.totalScore - a.totalScore);
     },

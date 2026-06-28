@@ -23,6 +23,7 @@ import { ALL_ORIENTACIONES } from "../../types";
 import { formatDate, cleanInstitutionName, safeGetId } from "../../utils/formatters";
 import Loader from "../Loader";
 import RecordEditModal from "./RecordEditModal";
+import BulkEditModal, { type BulkFieldConfig } from "./BulkEditModal";
 import ContextMenu from "./ContextMenu";
 import DuplicateToStudentModal from "./DuplicateToStudentModal";
 import AdminSearch from "./AdminSearch";
@@ -36,8 +37,23 @@ import {
   MOCK_LANZAMIENTOS,
   MOCK_INSTITUCIONES,
 } from "../../data/mockData";
+import type { Practica, Institucion, LanzamientoPPS } from "../../types";
 
-const getEstadoTone = (estado: string): string => {
+type ToastState = { message: string; type: "success" | "error" | "info" } | null;
+
+/** Práctica enriquecida con datos del estudiante para la tabla del editor. */
+type PracticaRow = Practica & {
+  __student: { nombre: string | null; legajo: string | number | null };
+};
+
+interface PracticaPage {
+  records: PracticaRow[];
+  total: number;
+}
+
+type EditingState = (Record<string, unknown> & { id?: string }) | { isCreating: true } | null;
+
+const getEstadoTone = (estado: string | null | undefined): string => {
   const s = (estado || "").toLowerCase();
   if (s.includes("en curso")) return "accent";
   if (s.includes("finalizada") || s.includes("realizado")) return "ok";
@@ -87,6 +103,32 @@ const TABLE_CONFIG = {
   ],
 };
 
+// Campos que tienen sentido editar a nivel de toda una PPS/convocatoria.
+// Se excluyen los IDs de vínculo (estudiante / lanzamiento) y la Nota, que son
+// propios de cada alumno.
+const BULK_FIELDS: BulkFieldConfig[] = [
+  {
+    key: FIELD_ESPECIALIDAD_PRACTICAS,
+    label: "Especialidad",
+    type: "select",
+    options: ALL_ORIENTACIONES,
+  },
+  {
+    key: FIELD_ESTADO_PRACTICA,
+    label: "Estado",
+    type: "select",
+    options: ["En curso", "Finalizada", "Convenio Realizado", "No se pudo concretar"],
+  },
+  { key: FIELD_HORAS_PRACTICAS, label: "Horas", type: "number" },
+  { key: FIELD_FECHA_INICIO_PRACTICAS, label: "Inicio", type: "date" },
+  { key: FIELD_FECHA_FIN_PRACTICAS, label: "Fin", type: "date" },
+  {
+    key: FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+    label: "Nombre Institución",
+    type: "text",
+  },
+];
+
 const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode }) => {
   const [filterStudentId, setFilterStudentId] = useState("");
   const [studentLabel, setStudentLabel] = useState("");
@@ -96,18 +138,19 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
-  const [menu, setMenu] = useState<{ x: number; y: number; record: any } | null>(null);
-  const [editingRecord, setEditingRecord] = useState<any>(null);
-  const [duplicatingRecord, setDuplicatingRecord] = useState<any>(null);
-  const [toastInfo, setToastInfo] = useState<any>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; record: PracticaRow } | null>(null);
+  const [editingRecord, setEditingRecord] = useState<EditingState>(null);
+  const [bulkEditing, setBulkEditing] = useState(false);
+  const [duplicatingRecord, setDuplicatingRecord] = useState<PracticaRow | null>(null);
+  const [toastInfo, setToastInfo] = useState<ToastState>(null);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
-  const { data: institutions = [] as any[] } = useQuery({
+  const { data: institutions = [] } = useQuery<Institucion[]>({
     queryKey: ["institutions-filter", isTestingMode],
     queryFn: async () => {
-      if (isTestingMode) return [...MOCK_INSTITUCIONES];
+      if (isTestingMode) return [...MOCK_INSTITUCIONES] as unknown as Institucion[];
       const allInstituciones = await db.instituciones.getAll({
         fields: [FIELD_NOMBRE_INSTITUCIONES],
       });
@@ -119,7 +162,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
     },
   });
 
-  const { data: launches = [] as any[] } = useQuery({
+  const { data: launches = [] } = useQuery<LanzamientoPPS[]>({
     queryKey: ["launches-filter", selectedInstId, isTestingMode],
     queryFn: async () => {
       if (isTestingMode) {
@@ -132,7 +175,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
           .trim();
         return MOCK_LANZAMIENTOS.filter((l) =>
           l[FIELD_NOMBRE_PPS_LANZAMIENTOS]?.includes(searchName)
-        ) as any[];
+        ) as unknown as LanzamientoPPS[];
       }
       const inst = institutions.find((i) => i.id === selectedInstId);
       if (!inst) return [];
@@ -148,12 +191,44 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       return lanzamientosData.map((l) => ({
         ...l,
         institucion_id: selectedInstId,
-      })) as any[];
+      }));
     },
     enabled: !!selectedInstId,
   });
 
-  const { data, isLoading } = useQuery({
+  // Construye los filtros del modo real. Reutilizado por la query paginada y por
+  // la edición masiva (que necesita todos los registros que matchean, no solo la
+  // página visible).
+  const buildRealFilters = () => {
+    const filters: Record<string, unknown> = {};
+
+    // Filtro por Estudiante (Exacto UUID)
+    if (filterStudentId) filters[FIELD_ESTUDIANTE_LINK_PRACTICAS] = filterStudentId;
+
+    // --- ESTRATEGIA HÍBRIDA DE FILTRADO ---
+    if (selectedInstId) {
+      const inst = institutions.find((i) => i.id === selectedInstId);
+      if (inst) {
+        const searchName = cleanInstitutionName(inst[FIELD_NOMBRE_INSTITUCIONES])
+          .split(" - ")[0]
+          .trim();
+        filters[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = `%${searchName}%`;
+      }
+    }
+
+    if (selectedLaunchId) {
+      const launch = launches.find((l) => l.id === selectedLaunchId);
+      if (launch && launch[FIELD_FECHA_INICIO_LANZAMIENTOS]) {
+        filters[FIELD_FECHA_INICIO_PRACTICAS] = launch[FIELD_FECHA_INICIO_LANZAMIENTOS];
+      } else {
+        filters[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = selectedLaunchId;
+      }
+    }
+
+    return filters;
+  };
+
+  const { data, isLoading } = useQuery<PracticaPage>({
     queryKey: [
       "editor-practicas",
       currentPage,
@@ -214,36 +289,13 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         const from = (currentPage - 1) * itemsPerPage;
         const to = from + itemsPerPage;
         return {
-          records: enriched.slice(from, to),
+          records: enriched.slice(from, to) as unknown as PracticaRow[],
           total: enriched.length,
         };
       }
 
       // MODO REAL: Consultar base de datos
-      const filters: any = {};
-
-      // Filtro por Estudiante (Exacto UUID)
-      if (filterStudentId) filters[FIELD_ESTUDIANTE_LINK_PRACTICAS] = filterStudentId;
-
-      // --- ESTRATEGIA HÍBRIDA DE FILTRADO ---
-      if (selectedInstId) {
-        const inst = institutions.find((i) => i.id === selectedInstId);
-        if (inst) {
-          const searchName = cleanInstitutionName(inst[FIELD_NOMBRE_INSTITUCIONES])
-            .split(" - ")[0]
-            .trim();
-          filters[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = `%${searchName}%`;
-        }
-      }
-
-      if (selectedLaunchId) {
-        const launch = launches.find((l) => l.id === selectedLaunchId);
-        if (launch && launch[FIELD_FECHA_INICIO_LANZAMIENTOS]) {
-          filters[FIELD_FECHA_INICIO_PRACTICAS] = launch[FIELD_FECHA_INICIO_LANZAMIENTOS];
-        } else {
-          filters[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] = selectedLaunchId;
-        }
-      }
+      const filters = buildRealFilters();
 
       const { records, total, error } = await db.practicas.getPage(currentPage, itemsPerPage, {
         filters,
@@ -278,12 +330,12 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         },
       }));
 
-      return { records: enriched, total };
+      return { records: enriched as unknown as PracticaRow[], total };
     },
   });
 
-  const sanitizeFields = (fields: any) => {
-    const clean: any = { ...fields };
+  const sanitizeFields = (fields: Record<string, unknown>) => {
+    const clean: Record<string, unknown> = { ...fields };
     if (clean[FIELD_ESTUDIANTE_LINK_PRACTICAS])
       clean[FIELD_ESTUDIANTE_LINK_PRACTICAS] = safeGetId(clean[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
     if (clean[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS])
@@ -298,23 +350,26 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
   };
 
   const updateMutation = useMutation({
-    mutationFn: (vars: any) => {
+    mutationFn: (vars: { id: string; fields: Record<string, unknown> }) => {
       if (isTestingMode) {
         return Promise.resolve({
           ...MOCK_PRACTICAS.find((p) => p.id === vars.id),
           ...vars.fields,
-        } as any);
+        } as unknown as Practica);
       }
-      return db.practicas.update(vars.id, sanitizeFields(vars.fields));
+      return db.practicas.update(
+        vars.id,
+        sanitizeFields(vars.fields) as Parameters<typeof db.practicas.update>[1]
+      );
     },
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: ["editor-practicas"] });
       const prev = queryClient.getQueryData(["editor-practicas"]);
-      queryClient.setQueryData(["editor-practicas"], (old: any) => {
+      queryClient.setQueryData(["editor-practicas"], (old: PracticaPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+          records: old.records.map((r) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
         };
       });
       return { prev };
@@ -336,11 +391,13 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
   });
 
   const createMutation = useMutation({
-    mutationFn: (fields: any) => {
+    mutationFn: (fields: Record<string, unknown>) => {
       if (isTestingMode) {
-        return Promise.resolve({ id: `prac_${Date.now()}`, ...fields } as any);
+        return Promise.resolve({ id: `prac_${Date.now()}`, ...fields } as unknown as Practica);
       }
-      return db.practicas.create(sanitizeFields(fields));
+      return db.practicas.create(
+        sanitizeFields(fields) as Parameters<typeof db.practicas.create>[0]
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["editor-practicas"] });
@@ -353,20 +410,29 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
   });
 
   const duplicateMutation = useMutation({
-    mutationFn: async ({ record, targetStudentId }: { record: any; targetStudentId: string }) => {
+    mutationFn: async ({
+      record,
+      targetStudentId,
+    }: {
+      record: PracticaRow;
+      targetStudentId: string;
+    }) => {
       if (isTestingMode) {
         return Promise.resolve({
-          id: `prac_${Date.now()}`,
           ...record,
+          id: `prac_${Date.now()}`,
           [FIELD_ESTUDIANTE_LINK_PRACTICAS]: targetStudentId,
-        } as any);
+        } as unknown as Practica);
       }
-      const { id, created_at, createdTime, ...fields } = record;
+      const { id, created_at, createdTime, ...fields } = record as Record<string, unknown>;
+      void id;
+      void created_at;
+      void createdTime;
       const cleanFields = sanitizeFields(fields);
       cleanFields[FIELD_ESTUDIANTE_LINK_PRACTICAS] = targetStudentId;
       delete cleanFields.__student;
       delete cleanFields.__studentName;
-      return db.practicas.create(cleanFields);
+      return db.practicas.create(cleanFields as Parameters<typeof db.practicas.create>[0]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["editor-practicas"] });
@@ -388,11 +454,11 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["editor-practicas"] });
       const prev = queryClient.getQueryData(["editor-practicas"]);
-      queryClient.setQueryData(["editor-practicas"], (old: any) => {
+      queryClient.setQueryData(["editor-practicas"], (old: PracticaPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.filter((r: any) => r.id !== id),
+          records: old.records.filter((r) => r.id !== id),
           total: Math.max(0, (old.total || 0) - 1),
         };
       });
@@ -415,7 +481,37 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
     },
   });
 
-  const handleRowContextMenu = (e: React.MouseEvent, record: any) => {
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async (changes: Record<string, unknown>) => {
+      if (isTestingMode) {
+        return { count: data?.total || 0 };
+      }
+      // Trae TODOS los registros que matchean el filtro activo (no solo la página
+      // visible) y les aplica los mismos cambios.
+      const filters = buildRealFilters();
+      const allRecords = await db.practicas.getAll({ filters });
+      if (allRecords.length === 0) return { count: 0 };
+      const cleanChanges = sanitizeFields(changes) as Parameters<typeof db.practicas.update>[1];
+      const payload = allRecords.map((r) => ({ id: r.id, fields: cleanChanges }));
+      await db.practicas.updateMany(payload);
+      return { count: allRecords.length };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["editor-practicas"] });
+      setToastInfo({
+        message: isTestingMode
+          ? `Simulación: ${res.count} registros actualizados`
+          : `${res.count} registros actualizados`,
+        type: "success",
+      });
+      setBulkEditing(false);
+    },
+    onError: () => {
+      setToastInfo({ message: "Error en la edición masiva", type: "error" });
+    },
+  });
+
+  const handleRowContextMenu = (e: React.MouseEvent, record: PracticaRow) => {
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY, record });
     setSelectedRowId(record.id);
@@ -434,6 +530,17 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       formatDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]) +
       (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] ? ` - ${l[FIELD_NOMBRE_PPS_LANZAMIENTOS]}` : ""),
   }));
+
+  // La edición masiva solo se habilita con un filtro de PPS activo (institución
+  // y/o convocatoria) para evitar reescribir toda la tabla por accidente.
+  const canBulkEdit = !!(selectedInstId || selectedLaunchId) && (data?.total || 0) > 0;
+  const bulkScopeLabel =
+    [
+      institutionOptions.find((o) => o.value === selectedInstId)?.label,
+      launchOptions.find((o) => o.value === selectedLaunchId)?.label,
+    ]
+      .filter(Boolean)
+      .join(" · ") || "el filtro actual";
 
   return (
     <div className="dbe">
@@ -517,6 +624,18 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       </div>
 
       <div className="dbe-actionrow">
+        {canBulkEdit && (
+          <button
+            className="dbe-btn"
+            onClick={() => setBulkEditing(true)}
+            title="Editar todos los registros del filtro actual"
+          >
+            <span className="material-icons" style={{ fontSize: 15 }}>
+              done_all
+            </span>{" "}
+            Editar todos ({data?.total || 0})
+          </button>
+        )}
         {selectedRowId && (
           <button className="dbe-btn dbe-btn-danger" onClick={() => setIdToDelete(selectedRowId)}>
             <span className="material-icons" style={{ fontSize: 15 }}>
@@ -546,7 +665,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
                 </tr>
               </thead>
               <tbody>
-                {data?.records.map((p: any) => {
+                {data?.records.map((p) => {
                   const isSelected = selectedRowId === p.id;
                   return (
                     <tr
@@ -644,6 +763,17 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
             id ? updateMutation.mutate({ id, fields }) : createMutation.mutate(fields)
           }
           isSaving={updateMutation.isPending || createMutation.isPending}
+        />
+      )}
+      {bulkEditing && (
+        <BulkEditModal
+          isOpen={bulkEditing}
+          onClose={() => setBulkEditing(false)}
+          count={data?.total || 0}
+          scopeLabel={bulkScopeLabel}
+          fields={BULK_FIELDS}
+          onConfirm={(changes) => bulkUpdateMutation.mutate(changes)}
+          isSaving={bulkUpdateMutation.isPending}
         />
       )}
       {duplicatingRecord && (

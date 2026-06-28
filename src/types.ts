@@ -25,6 +25,7 @@ export type Penalizacion = Tables["penalizaciones"]["Row"];
 export type SolicitudModificacionPPS = Tables["solicitudes_modificacion_pps"]["Row"];
 export type SolicitudNuevaPPS = Tables["solicitudes_nueva_pps"]["Row"];
 export type CompromisoPPS = Tables["compromisos_pps"]["Row"];
+export type Convenio = Tables["convenios"]["Row"];
 
 // Helper aliases for components that expect "Fields" suffix
 export type EstudianteFields = Estudiante;
@@ -38,6 +39,7 @@ export type PenalizacionFields = Penalizacion;
 export type SolicitudModificacionPPSFields = SolicitudModificacionPPS;
 export type SolicitudNuevaPPSFields = SolicitudNuevaPPS;
 export type CompromisoPPSFields = CompromisoPPS;
+export type ConvenioFields = Convenio;
 
 // --- Strict Joined Types for Services ---
 export type PracticaWithLanzamiento = Practica & {
@@ -69,6 +71,7 @@ export type Orientacion = (typeof ALL_ORIENTACIONES)[number];
 
 export type TabId =
   | "inicio"
+  | "convocatorias"
   | "solicitudes"
   | "practicas"
   | "profile"
@@ -218,6 +221,25 @@ export interface PPSRequestSummary {
   status: string;
 }
 
+/**
+ * Ficha de un convenio nuevo del año para el reporte ejecutivo: institución,
+ * orientación, y la rotación histórica (cuántas PPS y cuántos cupos por año).
+ */
+export interface NewAgreementYearStat {
+  year: number;
+  rotaciones: number; // cantidad de lanzamientos ese año
+  cupos: number; // cupos ofertados ese año
+}
+export interface NewAgreementDetail {
+  institucion: string;
+  anioConvenio: number | null;
+  orientaciones: string[];
+  totalRotaciones: number;
+  totalCupos: number;
+  totalEstudiantes: number;
+  porAnio: NewAgreementYearStat[];
+}
+
 export interface ExecutiveReportData {
   reportType: "singleYear";
   year: number;
@@ -234,6 +256,7 @@ export interface ExecutiveReportData {
   };
   launchesByMonth: TimelineMonthData[];
   newAgreementsList: string[];
+  newAgreementsDetail: NewAgreementDetail[];
   ppsRequests: PPSRequestSummary[];
 }
 
@@ -272,5 +295,24 @@ export interface StudentInfo {
   institucion?: string;
   fechaFin?: string;
   ppsId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+/**
+ * Datos que el formulario de inscripción (`EnrollmentForm`) entrega al
+ * handler de inscripción. Es el resultado del schema zod del formulario más
+ * las URLs ya subidas del certificado laboral y el CV.
+ */
+export interface EnrollmentFormData {
+  terminoDeCursar: boolean | null;
+  cursandoElectivas: boolean | null;
+  finalesAdeudados: string;
+  otraSituacionAcademica: string;
+  horarios: string[];
+  trabaja: boolean;
+  certificadoLink?: string;
+  certificadoTrabajoUrl?: string;
+  cvUrl?: string;
+  /** Campos auxiliares del formulario que el handler ignora. */
+  [key: string]: unknown;
 }

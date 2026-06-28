@@ -1,8 +1,13 @@
 import { supabase } from "../lib/supabaseClient";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 const TODOIST_API_BASE = "https://api.todoist.com/api/v1";
-const TODOIST_TOKEN = "7b9437532f7ed754fd70ee3c6e2c1b47e4732e40";
+// El token NO debe vivir en el código. Se lee de una variable de entorno.
+// IMPORTANTE: rotar el token anterior (estuvo hardcodeado en el repo) y setear
+// VITE_TODOIST_TOKEN en el entorno. Idealmente, proxyear vía Edge Function para
+// no exponer el token en el bundle del cliente.
+const TODOIST_TOKEN = import.meta.env.VITE_TODOIST_TOKEN || "";
 
 interface TaskData {
   todoist_task_id?: number;
@@ -18,7 +23,16 @@ interface SyncCommand {
   type: string;
   temp_id?: string;
   uuid: string;
-  args: any;
+  args: Record<string, unknown>;
+}
+
+/** Respuesta (parcial) del endpoint Sync v1 de Todoist que consumimos. */
+interface SyncResponse {
+  projects?: { id: string; name: string }[];
+  labels?: { id: string; name: string }[];
+  sync_status?: Record<string, unknown>;
+  temp_id_mapping?: Record<string, string>;
+  user?: { full_name?: string };
 }
 
 /**
@@ -28,7 +42,7 @@ interface SyncCommand {
  * La API v1 usa el endpoint /sync con comandos en formato x-www-form-urlencoded
  */
 class TodoistService {
-  private async sync(commands: SyncCommand[]): Promise<any> {
+  private async sync(commands: SyncCommand[]): Promise<SyncResponse> {
     const formData = new URLSearchParams();
     formData.append("sync_token", "*");
     formData.append("resource_types", '["all"]');
@@ -64,7 +78,7 @@ class TodoistService {
     const syncData = await this.sync([]);
 
     const existingProject = syncData.projects?.find(
-      (p: any) => p.name.toLowerCase() === name.toLowerCase()
+      (p) => p.name.toLowerCase() === name.toLowerCase()
     );
 
     if (existingProject) {
@@ -87,7 +101,7 @@ class TodoistService {
 
     const response = await this.sync(commands);
 
-    if (response.sync_status && Object.values(response.sync_status).some((s: any) => s !== "ok")) {
+    if (response.sync_status && Object.values(response.sync_status).some((s) => s !== "ok")) {
       logger.error("[TodoistService] Error al crear proyecto:", response.sync_status);
       throw new Error("Error al crear proyecto en Todoist");
     }
@@ -96,7 +110,7 @@ class TodoistService {
     const projectId = response.temp_id_mapping?.[commands[0].temp_id!];
     logger.info(`[TodoistService] Proyecto "${name}" creado con ID: ${projectId}`);
 
-    return projectId;
+    return projectId ?? "";
   }
 
   /**
@@ -105,9 +119,7 @@ class TodoistService {
   private async getOrCreateLabel(name: string): Promise<string> {
     const syncData = await this.sync([]);
 
-    const existingLabel = syncData.labels?.find(
-      (l: any) => l.name.toLowerCase() === name.toLowerCase()
-    );
+    const existingLabel = syncData.labels?.find((l) => l.name.toLowerCase() === name.toLowerCase());
 
     if (existingLabel) {
       logger.info(`[TodoistService] Etiqueta "${name}" ya existe con ID: ${existingLabel.id}`);
@@ -129,7 +141,7 @@ class TodoistService {
 
     const response = await this.sync(commands);
 
-    if (response.sync_status && Object.values(response.sync_status).some((s: any) => s !== "ok")) {
+    if (response.sync_status && Object.values(response.sync_status).some((s) => s !== "ok")) {
       logger.error("[TodoistService] Error al crear etiqueta:", response.sync_status);
       throw new Error("Error al crear etiqueta en Todoist");
     }
@@ -137,7 +149,7 @@ class TodoistService {
     const labelId = response.temp_id_mapping?.[commands[0].temp_id!];
     logger.info(`[TodoistService] Etiqueta "${name}" creada con ID: ${labelId}`);
 
-    return labelId;
+    return labelId ?? "";
   }
 
   /**
@@ -222,7 +234,7 @@ class TodoistService {
 
       // Guardar en Supabase para seguimiento
       await this.saveTaskToSupabase({
-        todoist_task_id: parseInt(itemId),
+        todoist_task_id: parseInt(itemId ?? "", 10),
         ppsName,
         content: `Lanzar ${ppsName}`,
         due_date: launchDate,
@@ -232,9 +244,9 @@ class TodoistService {
       });
 
       return { success: true, item_id: itemId };
-    } catch (error: any) {
+    } catch (error) {
       logger.error("[TodoistService] Error en createLanzamientoTask:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: getErrorMessage(error) };
     }
   }
 

@@ -46,6 +46,9 @@ const DatabaseEditor = lazy(() => import("../../components/admin/DatabaseEditor"
 const PenalizationManager = lazy(() => import("../../components/admin/PenalizationManager"));
 const EmailAutomationManager = lazy(() => import("../../components/admin/EmailAutomationManager"));
 const NuevosConvenios = lazy(() => import("../../components/admin/NuevosConvenios"));
+const ConveniosPorVencerPanel = lazy(
+  () => import("../../components/admin/ConveniosPorVencerPanel")
+);
 const BackupManager = lazy(() => import("../../components/admin/BackupManager"));
 const ConvenioGenerator = lazy(() => import("../../components/admin/ConvenioGenerator"));
 const SeguroGenerator = lazy(() => import("../../components/admin/SeguroGenerator"));
@@ -191,6 +194,7 @@ type ToolId =
   | "convenios-gen"
   | "seguros"
   | "convenios-nuevos"
+  | "convenios-vencer"
   | "penalizaciones"
   | "automation"
   | "backups"
@@ -258,6 +262,12 @@ const FAMILIES: FamilyDef[] = [
         desc: "Confirmá las instituciones que se incorporan este ciclo.",
         icon: "handshake",
         prefKey: "showNewAgreements",
+      },
+      {
+        id: "convenios-vencer",
+        name: "Vencimientos de convenios",
+        desc: "Registrá convenios/renovaciones y revisá los próximos a vencer.",
+        icon: "event_busy",
       },
     ],
   },
@@ -342,6 +352,11 @@ const TOOL_META: Record<ToolId, { title: string; sub: string; crumb: string }> =
     sub: "Confirmá las instituciones que firman convenio este ciclo.",
     crumb: "Convenios nuevos",
   },
+  "convenios-vencer": {
+    title: "Vencimientos de convenios",
+    sub: "Registrá convenios y renovaciones, y revisá los que están próximos a vencer.",
+    crumb: "Vencimientos",
+  },
   penalizaciones: {
     title: "Penalizaciones",
     sub: "Aplicá sanciones y revisá el historial y el puntaje acumulado de cada alumno.",
@@ -397,7 +412,7 @@ function useTallerBadges(isTestingMode: boolean) {
 
       // Convenios nuevos: instituciones marcadas con el año actual
       try {
-        const year = String(new Date().getFullYear());
+        const year = new Date().getFullYear();
         const { count } = await supabase
           .from(TABLE_NAME_INSTITUCIONES)
           .select("id", { count: "exact", head: true })
@@ -754,6 +769,12 @@ const TallerView: React.FC<TallerViewProps> = ({ onStudentSelect, isTestingMode 
           {activeTool === "convenios-nuevos" && preferences.showNewAgreements && (
             <ErrorBoundary>
               <NuevosConvenios isTestingMode={isTestingMode} />
+            </ErrorBoundary>
+          )}
+
+          {activeTool === "convenios-vencer" && (
+            <ErrorBoundary>
+              <ConveniosPorVencerPanel isTestingMode={isTestingMode} />
             </ErrorBoundary>
           )}
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 
 interface ToastProps {
   message: string;
-  type: "success" | "error" | "warning";
+  type: "success" | "error" | "warning" | "info";
   onClose: () => void;
   duration?: number;
 }
@@ -40,6 +40,11 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
       stateClasses = "bg-amber-50 border-amber-200 text-amber-800";
       icon = "warning";
       iconColor = "text-amber-500";
+      break;
+    case "info":
+      stateClasses = "bg-sky-50 border-sky-200 text-sky-800";
+      icon = "info";
+      iconColor = "text-sky-500";
       break;
     case "error":
     default:

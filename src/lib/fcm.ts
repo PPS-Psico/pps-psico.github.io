@@ -3,15 +3,16 @@
  * Handles subscription, unsubscription, and token management
  */
 
-import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, deleteToken, onMessage } from "firebase/messaging";
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import { getMessaging, getToken, deleteToken, onMessage, type Messaging } from "firebase/messaging";
 import { firebaseConfig, vapidKey } from "./firebaseConfig";
 import { supabase } from "./supabaseClient";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 // Initialize Firebase app
-let app: any = null;
-let messaging: any = null;
+let app: FirebaseApp | null = null;
+let messaging: Messaging | null = null;
 let cachedToken: string | null = null;
 let isGettingToken = false;
 let tokenPromise: Promise<string | null> | null = null;
@@ -40,8 +41,8 @@ export const initializeFCM = async () => {
       logger.info("[FCM] Firebase initialized successfully");
     }
     return { app, messaging };
-  } catch (error: any) {
-    logger.warn("[FCM] Failed to initialize:", error.message);
+  } catch (error) {
+    logger.warn("[FCM] Failed to initialize:", getErrorMessage(error));
     return { app: null, messaging: null };
   }
 };
@@ -68,6 +69,10 @@ export const getFCMToken = async (): Promise<string | null> => {
         return null;
       }
       const { messaging } = await initializeFCM();
+      if (!messaging) {
+        logger.warn("[FCM] Messaging no inicializado");
+        return null;
+      }
 
       // Request notification permission first
       const permission = await Notification.requestPermission();
@@ -87,7 +92,7 @@ export const getFCMToken = async (): Promise<string | null> => {
         logger.warn("[FCM] No token available");
         return null;
       }
-    } catch (error: any) {
+    } catch (error) {
       logger.error("[FCM] Error getting token:", error);
       return null;
     } finally {
@@ -145,7 +150,7 @@ export const subscribeToFCM = async (
 
       try {
         // Use RPC function to save token (bypasses RLS and FK issues)
-        const { data, error } = await (supabase as any).rpc("save_fcm_token", {
+        const { data, error } = await supabase.rpc("save_fcm_token", {
           uid: userId,
           tok: token,
         });
@@ -169,19 +174,21 @@ export const subscribeToFCM = async (
     // Note: Service Worker handles background notifications automatically
     // Foreground messages can be used for in-app UI updates if needed
     const { messaging } = await initializeFCM();
-    onMessage(messaging, (payload) => {
-      logger.info("[FCM] Message received in foreground:", payload);
-      // In foreground, FCM doesn't show notifications automatically
-      // You can add custom in-app UI here if needed
-      // The Service Worker will handle notifications when app is in background
-    });
+    if (messaging) {
+      onMessage(messaging, (payload) => {
+        logger.info("[FCM] Message received in foreground:", payload);
+        // In foreground, FCM doesn't show notifications automatically
+        // You can add custom in-app UI here if needed
+        // The Service Worker will handle notifications when app is in background
+      });
+    }
 
     return { success: true, token, dbSaved };
-  } catch (error: any) {
+  } catch (error) {
     logger.error("[FCM] Subscription error:", error);
     return {
       success: false,
-      error: "Error al suscribirse: " + error.message,
+      error: "Error al suscribirse: " + getErrorMessage(error),
     };
   }
 };
@@ -195,6 +202,10 @@ export const unsubscribeFromFCM = async (): Promise<{
 }> => {
   try {
     const { messaging } = await initializeFCM();
+    if (!messaging) {
+      cachedToken = null;
+      return { success: true };
+    }
 
     // Delete token
     await deleteToken(messaging);
@@ -204,11 +215,11 @@ export const unsubscribeFromFCM = async (): Promise<{
     cachedToken = null;
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     logger.error("[FCM] Unsubscription error:", error);
     return {
       success: false,
-      error: "Error al desuscribirse: " + error.message,
+      error: "Error al desuscribirse: " + getErrorMessage(error),
     };
   }
 };
@@ -247,7 +258,7 @@ export const getCurrentFCMToken = async (): Promise<string | null> => {
 export const deleteFCMTokenFromDB = async (userId: string): Promise<void> => {
   try {
     // Use rpc to bypass RLS for deletion
-    const { error } = await (supabase as any).rpc("delete_fcm_token_user", {
+    const { error } = await supabase.rpc("delete_fcm_token_user", {
       uid: userId,
     });
 

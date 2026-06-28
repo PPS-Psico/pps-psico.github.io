@@ -4,11 +4,13 @@ import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../constants";
 import { parseToUTCDate } from "../utils/formatters";
 import { generateWithGemini } from "../services/geminiService";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
+import type { MetricRow } from "../utils/metricsCalculations";
 
 interface DashboardData {
-  endingLaunches: any[];
-  pendingFinalizations: any[];
-  pendingRequests: any[];
+  endingLaunches: MetricRow[];
+  pendingFinalizations: MetricRow[];
+  pendingRequests: MetricRow[];
 }
 
 export type PriorityLevel = "critical" | "warning" | "stable" | "optimal";
@@ -38,8 +40,8 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
 
     const getBaseName = (name: string) => name.split(" - ")[0].trim();
 
-    const endingSoonByInst = new Map<string, any>();
-    const overdueByInst = new Map<string, any>();
+    const endingSoonByInst = new Map<string, MetricRow>();
+    const overdueByInst = new Map<string, MetricRow>();
 
     data.endingLaunches.forEach((l) => {
       const status = l.estado_gestion;
@@ -103,7 +105,7 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
       });
     }
 
-    const stagnant = data.pendingRequests.filter((r: any) => {
+    const stagnant = data.pendingRequests.filter((r) => {
       const lastUpdate = new Date(r.updated || r.created_at);
       return differenceInDays(now, lastUpdate) > 7;
     });
@@ -178,9 +180,9 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
         if (text) {
           setAiSummary(text.trim());
         }
-      } catch (error: any) {
+      } catch (error) {
         logger.error("AI Generation Error", error);
-        setAiSummary(`Error generando feedback: ${error.message}`);
+        setAiSummary(`Error generando feedback: ${getErrorMessage(error)}`);
       } finally {
         setIsAiLoading(false);
       }

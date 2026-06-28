@@ -1,89 +1,94 @@
+/**
+ * Tests de `fetchSeleccionados` (agrupado de estudiantes seleccionados por horario).
+ *
+ * Reescrito: la versión anterior mockeaba `supabaseService` (capa que esta
+ * función ya no usa) y no tenía assertions, dando falsa cobertura. Ahora se
+ * mockea la capa `db` real y el cliente `supabase` para la query de compromisos.
+ */
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
-import * as supabaseService from "../supabaseService";
-import { fetchSeleccionados } from "..";
-import {
-  TABLE_NAME_ESTUDIANTES,
-  TABLE_NAME_CONVOCATORIAS,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
-  FIELD_HORARIO_FORMULA_CONVOCATORIAS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
-} from "../../constants";
+import * as C from "../../constants";
 import type { LanzamientoPPS } from "../../types";
 
-// Mock the entire supabaseService
-jest.mock("../supabaseService");
-const mockedSupabase = supabaseService as jest.Mocked<typeof supabaseService>;
+const mockConvocatoriasGetAll = jest.fn<(opts?: unknown) => Promise<unknown[]>>();
+const mockEstudiantesGetAll = jest.fn<(opts?: unknown) => Promise<unknown[]>>();
+
+jest.mock("../../lib/db", () => ({
+  db: {
+    convocatorias: { getAll: (opts?: unknown) => mockConvocatoriasGetAll(opts) },
+    estudiantes: { getAll: (opts?: unknown) => mockEstudiantesGetAll(opts) },
+  },
+}));
+
+jest.mock("../../lib/supabaseClient", () => ({
+  supabase: {
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => Promise.resolve({ data: [], error: null })),
+      })),
+    })),
+    rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
+  },
+}));
+
+import { fetchSeleccionados } from "../convocatoriasService";
+
+const lanzamiento = { id: "lanz-1" } as unknown as LanzamientoPPS;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockEstudiantesGetAll.mockResolvedValue([]);
+});
 
 describe("fetchSeleccionados", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  it("agrupa los estudiantes seleccionados con nombre y legajo resueltos", async () => {
+    mockConvocatoriasGetAll.mockResolvedValue([
+      {
+        id: "conv-1",
+        [C.FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Seleccionado",
+        [C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: "est-1",
+        [C.FIELD_HORARIO_ASIGNADO_CONVOCATORIAS]: "Lunes 9 a 12",
+      },
+    ]);
+    mockEstudiantesGetAll.mockResolvedValue([
+      {
+        id: "est-1",
+        [C.FIELD_NOMBRE_ESTUDIANTES]: "Ana Lopez",
+        [C.FIELD_LEGAJO_ESTUDIANTES]: "555",
+      },
+    ]);
+
+    const result = await fetchSeleccionados(lanzamiento);
+
+    expect(result).not.toBeNull();
+    const students = Object.values(result!).flat();
+    expect(students).toHaveLength(1);
+    expect(students[0]).toMatchObject({ nombre: "Ana Lopez", legajo: "555" });
   });
 
-  // Casting to LanzamientoPPS to satisfy type requirements for the test
-  const mockLanzamiento = {
-    id: "recLanzamiento1",
-    [FIELD_NOMBRE_PPS_LANZAMIENTOS]: "Hospital Central",
-    [FIELD_FECHA_INICIO_LANZAMIENTOS]: "2024-08-05",
-  } as unknown as LanzamientoPPS;
+  it("ignora inscripciones que no están en estado seleccionado/asignado", async () => {
+    mockConvocatoriasGetAll.mockResolvedValue([
+      {
+        id: "conv-2",
+        [C.FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
+        [C.FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: "est-2",
+      },
+    ]);
 
-  it("should return grouped selected students correctly", async () => {
-    mockedSupabase.fetchAllData.mockImplementation(
-      async (tableName: any, fields?: any, filters?: any): Promise<any> => {
-        if (tableName === TABLE_NAME_CONVOCATORIAS) {
-          // Simulate filtering by lanzamiento and status 'Seleccionado'
-          if (
-            filters?.[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === "recLanzamiento1" &&
-            filters?.[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] === "%seleccionado%"
-          ) {
-            return {
-              records: [
-                {
-                  id: "recConv1",
-                  createdTime: "",
-                  [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: ["recStudent1"],
-                  [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: "Turno Mañana",
-                },
-                {
-                  id: "recConv2",
-                  createdTime: "",
-                  [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: ["recStudent2"],
-                  [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: "Turno Tarde",
-                },
-                {
-                  id: "recConv3",
-                  createdTime: "",
-                  [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: ["recStudent3"],
-                  [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: "Turno Mañana",
-                },
-              ],
-              error: null,
-            };
-          }
-          return { records: [], error: null };
-        }
-        // No tableName check needed for supabase join simulation in unit test context if mocking correctly
-        return { records: [], error: null };
-      }
-    );
+    const result = await fetchSeleccionados(lanzamiento);
+    expect(result).toBeNull();
+  });
 
-    // Note: fetchSeleccionados in dataService calls supabase directly in some implementations.
-    // If we are testing dataService which uses supabase-js client directly for joins, we should mock supabase client.
-    // BUT the current implementation of fetchSeleccionados uses supabase.from(...).select(...) directly.
-    // SO we need to mock that, OR refactor fetchSeleccionados to use supabaseService.
-    // For this test fix, we assume dataService MIGHT use supabaseService OR we adjust the test to mock the supabase client return.
+  it("devuelve null cuando no hay inscripciones para el lanzamiento", async () => {
+    mockConvocatoriasGetAll.mockResolvedValue([]);
+    const result = await fetchSeleccionados(lanzamiento);
+    expect(result).toBeNull();
+  });
 
-    // However, looking at the file provided for dataService.ts, `fetchSeleccionados` uses `supabase` client directly.
-    // So mocking `supabaseService` won't work unless we refactored dataService to use it.
-    // Since I cannot see the updated dataService.ts in THIS change block (I'm not updating it),
-    // I will skip deep fixing this test file if it relies on direct Supabase calls which are hard to mock without a complex setup.
-    // Instead, I'll provide a basic fix assuming the user will refactor dataService or ignoring this specific test if structure changed.
-
-    // Actually, let's just fix the syntax to match the new signature in case it WAS using the service.
-    // If it uses direct supabase client, this test file needs a complete rewrite to mock @supabase/supabase-js.
+  it("filtra las convocatorias por el lanzamiento recibido", async () => {
+    mockConvocatoriasGetAll.mockResolvedValue([]);
+    await fetchSeleccionados(lanzamiento);
+    expect(mockConvocatoriasGetAll).toHaveBeenCalledWith({
+      filters: { [C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: "lanz-1" },
+    });
   });
 });

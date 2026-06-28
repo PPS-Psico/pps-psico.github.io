@@ -10,9 +10,7 @@ import {
   COMPROMISO_PPS_TITLE,
 } from "../../constants/commitmentConstants";
 import type { Convocatoria, Estudiante, LanzamientoPPS } from "../../types";
-import Button from "../ui/Button";
-import Checkbox from "../ui/Checkbox";
-import Input from "../ui/Input";
+import "./home/atlas/atlasHome.css";
 
 interface CompromisoPPSModalProps {
   isOpen: boolean;
@@ -158,212 +156,211 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   };
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[1200] bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        className="mx-auto my-8 w-full max-w-4xl rounded-[28px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="px-6 py-5 md:px-8 md:py-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">
-                Confirmación obligatoria previa al inicio
-              </p>
-              <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-tight">
-                {COMPROMISO_PPS_TITLE}
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {COMPROMISO_PPS_SUBTITLE}
-              </p>
+    <div className="ah-root">
+      <div className="ah-cmodal-overlay" onClick={onClose}>
+        <div className="ah-cmodal" onClick={(event) => event.stopPropagation()}>
+          <div className="ah-cmodal__head">
+            <div>
+              <span className="eyebrow">Confirmación obligatoria previa al inicio</span>
+              <h2 className="ah-cmodal__title">{COMPROMISO_PPS_TITLE}</h2>
+              <p className="ah-cmodal__sub">{COMPROMISO_PPS_SUBTITLE}</p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-2 text-slate-400 hover:text-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-colors"
-            >
-              <span className="material-icons !text-2xl">close</span>
+            <button type="button" onClick={onClose} className="ah-iconbtn" aria-label="Cerrar">
+              <span className="material-icons" style={{ fontSize: 22 }}>
+                close
+              </span>
             </button>
           </div>
-        </div>
 
-        <form onSubmit={handleSubmit} className="p-6 md:p-8">
-          <div className="rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
-            <div className="px-5 py-4 md:px-6 md:py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">
-                    {activeStep.eyebrow}
-                  </p>
-                  <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">
-                    {activeStep.title}
-                  </h3>
-                  <p className="text-sm leading-6 text-slate-600 dark:text-slate-300 max-w-2xl">
-                    {currentStep === 0 ? COMPROMISO_PPS_INTRO : activeStep.description}
-                  </p>
-                </div>
-                <div className="hidden md:flex items-center justify-center rounded-full w-14 h-14 bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-black text-lg">
-                  {currentStep + 1}
-                </div>
+          <form onSubmit={handleSubmit} className="ah-cmodal__body">
+            <div className="ah-cmodal__steptop">
+              <div>
+                <span className="eyebrow">{activeStep.eyebrow}</span>
+                <h3 className="ah-cmodal__stitle">{activeStep.title}</h3>
+                <p className="ah-cmodal__sdesc">
+                  {currentStep === 0 ? COMPROMISO_PPS_INTRO : activeStep.description}
+                </p>
               </div>
-
-              <div className="mt-4 flex gap-2">
-                {steps.map((step, index) => (
-                  <div
-                    key={step.id}
-                    className={`h-2 flex-1 rounded-full transition-all ${
-                      index <= currentStep
-                        ? "bg-gradient-to-r from-blue-600 to-indigo-600"
-                        : "bg-slate-200 dark:bg-slate-800"
-                    }`}
-                  />
-                ))}
-              </div>
+              <div className="ah-stepnum">{currentStep + 1}</div>
+            </div>
+            <div className="ah-stepbar">
+              {steps.map((step, index) => (
+                <span key={step.id} className={index <= currentStep ? "on" : ""} />
+              ))}
             </div>
 
-            <div className="p-5 md:p-6 min-h-[460px] flex flex-col">
+            <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}>
               {!isLastStep ? (
-                <div className="space-y-4 flex-1">
+                <>
                   {activeStep.intro ? (
-                    <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-5">
-                      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">
-                        Marco general
-                      </p>
-                      <p className="mt-3 text-[15px] leading-8 text-slate-700 dark:text-slate-200 font-medium">
+                    <section className="ah-clause ah-clause--soft">
+                      <span className="eyebrow">Marco general</span>
+                      <p className="ah-clause__txt" style={{ marginTop: 8, color: "var(--fg)" }}>
                         {activeStep.intro}
                       </p>
                     </section>
                   ) : null}
-
                   {renderClauseSections(activeStep.clauses)}
-                </div>
+                </>
               ) : (
-                <div className="space-y-5 flex-1">
-                  <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-5">
-                    <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">
+                <>
+                  <section className="ah-clause ah-clause--soft">
+                    <h4
+                      style={{
+                        margin: "0 0 8px",
+                        font: "600 16px/1.3 var(--font-sans)",
+                        color: "var(--fg)",
+                      }}
+                    >
                       Declaración final
                     </h4>
-                    <p className="text-sm leading-7 text-slate-700 dark:text-slate-200">
+                    <p className="ah-clause__txt" style={{ marginTop: 0 }}>
                       {COMPROMISO_PPS_DECLARACION}
                     </p>
-                    <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-blue-600 text-white px-4 py-2 text-xs font-black uppercase tracking-[0.18em]">
-                      <span className="material-icons !text-base">gavel</span>
+                    <span
+                      style={{
+                        marginTop: 14,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                        borderRadius: 999,
+                        background: "var(--primary-500)",
+                        color: "var(--fg-on-brand)",
+                        padding: "7px 14px",
+                        font: "600 11px/1 var(--font-mono)",
+                        letterSpacing: ".1em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: 15 }}>
+                        gavel
+                      </span>
                       Aceptación digital registrada
-                    </div>
+                    </span>
                   </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      id="compromiso-fullname"
-                      value={fullName}
-                      onChange={(event) => setFullName(event.target.value)}
-                      placeholder="Nombre y apellido"
-                      icon="badge"
-                    />
-
-                    <Input
-                      id="compromiso-dni"
-                      value={dni}
-                      onChange={(event) => setDni(event.target.value.replace(/\D/g, ""))}
-                      placeholder="DNI"
-                      icon="fingerprint"
-                    />
-
-                    <Input
-                      id="compromiso-legajo"
-                      value={legajo}
-                      onChange={(event) => setLegajo(event.target.value)}
-                      placeholder="Legajo"
-                      icon="school"
-                    />
-
-                    <Input
-                      id="compromiso-firma"
-                      value={signature}
-                      onChange={(event) => setSignature(event.target.value)}
-                      placeholder="Escribí tu nombre completo como firma"
-                      icon="draw"
-                    />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <label className="ah-input">
+                      <span className="material-icons">badge</span>
+                      <input
+                        value={fullName}
+                        onChange={(event) => setFullName(event.target.value)}
+                        placeholder="Nombre y apellido"
+                      />
+                    </label>
+                    <label className="ah-input">
+                      <span className="material-icons">fingerprint</span>
+                      <input
+                        value={dni}
+                        onChange={(event) => setDni(event.target.value.replace(/\D/g, ""))}
+                        placeholder="DNI"
+                        inputMode="numeric"
+                      />
+                    </label>
+                    <label className="ah-input">
+                      <span className="material-icons">school</span>
+                      <input
+                        value={legajo}
+                        onChange={(event) => setLegajo(event.target.value)}
+                        placeholder="Legajo"
+                      />
+                    </label>
+                    <label className="ah-input">
+                      <span className="material-icons">draw</span>
+                      <input
+                        value={signature}
+                        onChange={(event) => setSignature(event.target.value)}
+                        placeholder="Escribí tu nombre como firma"
+                      />
+                    </label>
                   </div>
 
-                  <div className="space-y-3 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50/80 dark:bg-slate-900/60">
-                    <Checkbox
-                      id="compromiso-lectura"
-                      checked={acceptedRead}
-                      onChange={(event) => setAcceptedRead(event.target.checked)}
-                      label={COMPROMISO_PPS_CHECK_LECTURA}
-                    />
-                    <Checkbox
-                      id="compromiso-compromiso"
-                      checked={acceptedCommitment}
-                      onChange={(event) => setAcceptedCommitment(event.target.checked)}
-                      label={COMPROMISO_PPS_CHECK_COMPROMISO}
-                    />
+                  <div
+                    className="ah-clause ah-clause--soft"
+                    style={{ display: "flex", flexDirection: "column", gap: 12 }}
+                  >
+                    <label className="ah-check">
+                      <input
+                        type="checkbox"
+                        checked={acceptedRead}
+                        onChange={(event) => setAcceptedRead(event.target.checked)}
+                      />
+                      {COMPROMISO_PPS_CHECK_LECTURA}
+                    </label>
+                    <label className="ah-check">
+                      <input
+                        type="checkbox"
+                        checked={acceptedCommitment}
+                        onChange={(event) => setAcceptedCommitment(event.target.checked)}
+                      />
+                      {COMPROMISO_PPS_CHECK_COMPROMISO}
+                    </label>
                   </div>
 
-                  {error && (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
-                      {error}
-                    </div>
-                  )}
+                  {error && <div className="ah-err">{error}</div>}
 
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                  <div className="ah-note">
                     La confirmación digital de este documento dejará constancia formal de tu
                     lectura, aceptación y conformidad, con fecha y hora de registro en Mi Panel.
                   </div>
-                </div>
+                </>
               )}
-
-              <div className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-5 space-y-4">
-                <p className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  {isLastStep
-                    ? "Antes de firmar, revisá tus datos y confirmá las dos declaraciones."
-                    : "Leé esta ventana y continuá para revisar la siguiente parte del compromiso."}
-                </p>
-
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}
-                      disabled={currentStep === 0}
-                    >
-                      Anterior
-                    </Button>
-                    {!isLastStep ? (
-                      <Button
-                        type="button"
-                        icon="arrow_forward"
-                        onClick={() =>
-                          setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))
-                        }
-                      >
-                        Continuar
-                      </Button>
-                    ) : (
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <Button type="submit" icon="verified_user" isLoading={isSubmitting}>
-                          Confirmar participación y firmar
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-        </form>
+
+            <div className="ah-cmodal__foot">
+              <button
+                type="button"
+                className="ah-btn ah-btn--secondary"
+                onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}
+                disabled={currentStep === 0}
+              >
+                Anterior
+              </button>
+              {!isLastStep ? (
+                <button
+                  type="button"
+                  className="ah-btn ah-btn--primary"
+                  onClick={() => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))}
+                >
+                  Continuar
+                  <span className="material-icons" style={{ fontSize: 17 }}>
+                    arrow_forward
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="ah-btn ah-btn--primary"
+                  disabled={isSubmitting}
+                  style={isSubmitting ? { opacity: 0.75 } : undefined}
+                >
+                  <span className="material-icons" style={{ fontSize: 17 }}>
+                    verified_user
+                  </span>
+                  {isSubmitting ? "Registrando…" : "Confirmar participación y firmar"}
+                </button>
+              )}
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 12,
+                  color: "var(--fg-subtle)",
+                  maxWidth: "42ch",
+                  textAlign: "right",
+                }}
+              >
+                {isLastStep
+                  ? "Revisá tus datos y confirmá las dos declaraciones."
+                  : "Leé esta ventana y continuá."}
+              </span>
+            </div>
+          </form>
+        </div>
       </div>
     </div>,
     document.body
   );
 };
-
-const getClauseTone = (_label: string) =>
-  "border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60";
 
 const renderClauseSections = (clauses: readonly { label: string; text: string }[]) => {
   const sections: React.ReactNode[] = [];
@@ -380,37 +377,37 @@ const renderClauseSections = (clauses: readonly { label: string; text: string }[
 
     if (isDoubleEvaluationBlock) {
       sections.push(
-        <section
-          key={clause.label}
-          className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-5"
-        >
-          <div className="flex items-start gap-4">
-            <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
-              {index + 1}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm md:text-base font-black text-slate-900 dark:text-slate-100">
-                {clause.label}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-200">
+        <section key={clause.label} className="ah-clause">
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <span className="ah-clause__n">{index + 1}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="ah-clause__lbl">{clause.label}</div>
+              <p className="ah-clause__txt">
                 {renderHighlightedClauseText(clause.label, clause.text)}
               </p>
 
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                style={{
+                  marginTop: 14,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
                 {[nextClause, nextNextClause].map((nestedClause, nestedIndex) => (
-                  <div
-                    key={nestedClause.label}
-                    className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4 shadow-sm"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950/40 text-xs font-black text-blue-700 dark:text-blue-300">
+                  <div key={nestedClause.label} className="ah-clause ah-clause--soft">
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <span
+                        className="ah-clause__n"
+                        style={{ width: 26, height: 26, fontSize: 12 }}
+                      >
                         {nestedIndex + 1}
-                      </div>
+                      </span>
                       <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-slate-100">
+                        <div className="ah-clause__lbl" style={{ fontSize: 14 }}>
                           {nestedClause.label}
-                        </p>
-                        <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                        </div>
+                        <p className="ah-clause__txt">
                           {renderHighlightedClauseText(nestedClause.label, nestedClause.text)}
                         </p>
                       </div>
@@ -427,23 +424,12 @@ const renderClauseSections = (clauses: readonly { label: string; text: string }[
     }
 
     sections.push(
-      <section
-        key={clause.label}
-        className={`rounded-2xl border p-5 ${getClauseTone(clause.label)}`}
-      >
-        <div className="flex items-start gap-4">
-          <div
-            className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${getClauseIndexTone(
-              clause.label
-            )}`}
-          >
-            {index + 1}
-          </div>
+      <section key={clause.label} className="ah-clause">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <span className="ah-clause__n">{index + 1}</span>
           <div>
-            <p className="text-sm md:text-base font-black text-slate-900 dark:text-slate-100">
-              {clause.label}
-            </p>
-            <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
+            <div className="ah-clause__lbl">{clause.label}</div>
+            <p className="ah-clause__txt">
               {renderHighlightedClauseText(clause.label, clause.text)}
             </p>
           </div>
@@ -454,9 +440,6 @@ const renderClauseSections = (clauses: readonly { label: string; text: string }[
 
   return sections;
 };
-
-const getClauseIndexTone = (_label: string) =>
-  "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300";
 
 const renderHighlightedClauseText = (label: string, text: string) => {
   const highlights = getHighlightPhrases(label);
@@ -482,7 +465,7 @@ const renderHighlightedClauseText = (label: string, text: string) => {
     }
 
     segments.push(
-      <span key={`highlight-${key++}`} className="font-bold text-blue-700 dark:text-blue-300">
+      <span key={`highlight-${key++}`} className="ah-hl">
         {match.phrase}
       </span>
     );

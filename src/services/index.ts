@@ -55,3 +55,19 @@ export type {
   ClipboardStudent,
   SeguroHeader,
 } from "./aseguramientoService";
+
+export {
+  fetchConveniosKpis,
+  fetchConveniosPorVencer,
+  fetchConveniosDeInstitucion,
+  crearConvenio,
+} from "./conveniosService";
+export type { ConvenioPorVencer, ConveniosKpis } from "./conveniosService";
+
+export {
+  notifySelectedStudents,
+  sendSelectionEmails,
+  sendSelectionPushNotifications,
+  fetchSelectedCandidatesForLaunch,
+} from "./selectionNotificationService";
+export type { SelectionCandidate } from "./selectionNotificationService";

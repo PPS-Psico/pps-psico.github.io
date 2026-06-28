@@ -111,7 +111,10 @@ function buildReminderHtml(estNombre: string, ppsNombre: string, hoursLeft: numb
 function buildBajaEstudianteHtml(estNombre: string, ppsNombre: string) {
   const detailRows = buildDetailRows([
     { label: "Institución / PPS", value: ppsNombre },
-    { label: "Motivo", value: "Falta de confirmación digital dentro de las 24 horas" },
+    {
+      label: "Motivo",
+      value: "Falta de confirmación digital antes del cierre (24 h antes del inicio)",
+    },
   ]);
 
   const bodyContent = `
@@ -189,161 +192,86 @@ Deno.serve(async (req) => {
   try {
     const now = new Date();
     const isoNow = now.toISOString();
-    const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const MS_HOUR = 60 * 60 * 1000;
 
     console.log("[Consentimiento] Ejecutando verificacion en " + isoNow + "...");
     const results = { reminders_sent: 0, bajas_processed: 0, errors: [] as string[] };
 
-    // PASO 1: Recordatorio a las 12hs
-    const { data: pending12h, error: err12 } = await supabase
+    // Cierre del consentimiento = inicio de la PPS - 24h. Si la selección fue
+    // tardía (menos de 24h antes del inicio), el cierre pasa a ser el inicio.
+    // Recordatorio: 48h antes del cierre. Baja: al llegar al cierre.
+    const parseStart = (raw: unknown): Date | null => {
+      if (!raw) return null;
+      const s = String(raw);
+      const m = /^\d{4}-\d{2}-\d{2}/.exec(s);
+      const d = new Date(m ? s.slice(0, 10) + "T00:00:00Z" : s);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    // Traer todos los seleccionados que aún no fueron dados de baja.
+    const { data: candidates, error: candErr } = await supabase
       .from("convocatorias")
       .select(
-        "id, estudiante_id, lanzamiento_id, nombre_pps, correo, selected_at, reminder_sent_at"
+        "id, estudiante_id, lanzamiento_id, nombre_pps, correo, fecha_inicio, selected_at, reminder_sent_at"
       )
       .eq("estado_inscripcion", "Seleccionado")
       .not("selected_at", "is", null)
-      .lt("selected_at", twelveHoursAgo)
-      .gt("selected_at", twentyFourHoursAgo)
-      .is("reminder_sent_at", null)
       .is("baja_automatica_at", null);
 
-    if (err12) {
-      console.error("[Consentimiento] Error 12h:", err12);
-      results.errors.push("Error 12h: " + err12.message);
+    if (candErr) {
+      console.error("[Consentimiento] Error consultando candidatos:", candErr);
+      results.errors.push("Error candidatos: " + candErr.message);
+    }
+
+    // Fechas de inicio autoritativas desde el lanzamiento (fallback al snapshot).
+    const launchIds = [
+      ...new Set((candidates || []).map((c) => c.lanzamiento_id).filter(Boolean)),
+    ] as string[];
+    const startByLaunch = new Map<string, string | null>();
+    if (launchIds.length > 0) {
+      const { data: launches } = await supabase
+        .from("lanzamientos_pps")
+        .select("id, fecha_inicio")
+        .in("id", launchIds);
+      (launches || []).forEach((l) => startByLaunch.set(l.id, l.fecha_inicio));
     }
 
     console.log(
-      "[Consentimiento] 12h: " + (pending12h ? pending12h.length : 0) + " convocatorias candidatas"
+      "[Consentimiento] " + (candidates ? candidates.length : 0) + " seleccionados pendientes"
     );
 
-    if (pending12h && pending12h.length > 0) {
-      for (const conv of pending12h) {
-        const { data: compromiso, error: compErr } = await supabase
-          .from("compromisos_pps")
-          .select("id")
-          .eq("convocatoria_id", conv.id)
-          .eq("estado", "aceptado")
-          .maybeSingle();
+    for (const conv of candidates || []) {
+      const start = parseStart(startByLaunch.get(conv.lanzamiento_id) ?? conv.fecha_inicio);
+      // Sin fecha de inicio no podemos calcular el plazo → no damos de baja.
+      if (!start) continue;
 
-        if (compErr) {
-          console.error(
-            "[Consentimiento] Error verificando compromiso conv " + conv.id + ":",
-            compErr
-          );
-        }
+      const selectedAt = conv.selected_at ? new Date(conv.selected_at) : null;
+      // Cierre = inicio - 24h, salvo selección tardía → cierre = inicio.
+      const deadline =
+        selectedAt && selectedAt.getTime() <= start.getTime() - 24 * MS_HOUR
+          ? new Date(start.getTime() - 24 * MS_HOUR)
+          : start;
 
-        if (compromiso) {
-          console.log("[Consentimiento] 12h SKIP conv " + conv.id + ": compromiso ya aceptado");
-          await supabase
-            .from("convocatorias")
-            .update({ reminder_sent_at: new Date().toISOString() })
-            .eq("id", conv.id);
-          continue;
-        }
+      // ¿Ya firmó? Si aceptó, no corresponde recordatorio ni baja.
+      const { data: compromiso } = await supabase
+        .from("compromisos_pps")
+        .select("id")
+        .eq("convocatoria_id", conv.id)
+        .eq("estado", "aceptado")
+        .maybeSingle();
+      if (compromiso) continue;
 
-        if (compErr) {
-          console.error(
-            "[Consentimiento] Error verificando compromiso conv " + conv.id + ", saltando:",
-            compErr
-          );
-          continue;
-        }
+      const { data: est } = await supabase
+        .from("estudiantes")
+        .select("nombre, correo")
+        .eq("id", conv.estudiante_id)
+        .maybeSingle();
+      const estNombre = est && est.nombre ? est.nombre : "Estudiante";
+      const estCorreo = conv.correo || (est && est.correo) || "";
+      const ppsNombre = conv.nombre_pps || "PPS";
 
-        const { data: est12 } = await supabase
-          .from("estudiantes")
-          .select("nombre, correo")
-          .eq("id", conv.estudiante_id)
-          .maybeSingle();
-
-        const estNombre = est12 && est12.nombre ? est12.nombre : "Estudiante";
-        const estCorreo = conv.correo || (est12 && est12.correo) || "";
-
-        if (!estCorreo) {
-          results.errors.push("Sin correo: conv " + conv.id);
-          continue;
-        }
-
-        const ppsNombre = conv.nombre_pps || "PPS";
-        const subject = "Recordatorio urgente: Tenes 12 horas para confirmar tu PPS";
-        const textBody =
-          "Hola " +
-          estNombre +
-          ", te recordamos que fuiste seleccionado/a para la PPS en " +
-          ppsNombre +
-          ". Pasaron 12 horas y aun no confirmaste. Tenes 12 horas restantes para ingresar a Mi Panel y confirmar tu participacion.";
-        const htmlBody = buildReminderHtml(estNombre, ppsNombre, 12);
-
-        const sent = await sendEmail(supabase, estCorreo, subject, textBody, htmlBody, estNombre);
-
-        if (sent) {
-          await supabase
-            .from("convocatorias")
-            .update({ reminder_sent_at: new Date().toISOString() })
-            .eq("id", conv.id);
-          results.reminders_sent++;
-          console.log("[Consentimiento] Reminder enviado a " + estCorreo);
-        }
-      }
-    }
-
-    // PASO 2: Baja automatica a las 24hs
-    const { data: pending24h, error: err24 } = await supabase
-      .from("convocatorias")
-      .select(
-        "id, estudiante_id, lanzamiento_id, nombre_pps, correo, selected_at, reminder_sent_at"
-      )
-      .eq("estado_inscripcion", "Seleccionado")
-      .not("selected_at", "is", null)
-      .lt("selected_at", twentyFourHoursAgo)
-      .is("baja_automatica_at", null);
-
-    if (err24) {
-      console.error("[Consentimiento] Error 24h:", err24);
-      results.errors.push("Error 24h: " + err24.message);
-    }
-
-    console.log(
-      "[Consentimiento] 24h: " + (pending24h ? pending24h.length : 0) + " convocatorias candidatas"
-    );
-
-    if (pending24h && pending24h.length > 0) {
-      for (const conv of pending24h) {
-        const { data: compromiso, error: compErr24 } = await supabase
-          .from("compromisos_pps")
-          .select("id")
-          .eq("convocatoria_id", conv.id)
-          .eq("estado", "aceptado")
-          .maybeSingle();
-
-        if (compromiso) {
-          console.log("[Consentimiento] 24h SKIP conv " + conv.id + ": compromiso ya aceptado");
-          await supabase
-            .from("convocatorias")
-            .update({ baja_automatica_at: new Date().toISOString() })
-            .eq("id", conv.id);
-          continue;
-        }
-
-        if (compErr24) {
-          console.error(
-            "[Consentimiento] Error verificando compromiso 24h conv " + conv.id + ", saltando:",
-            compErr24
-          );
-          continue;
-        }
-
-        const { data: est24 } = await supabase
-          .from("estudiantes")
-          .select("nombre, correo")
-          .eq("id", conv.estudiante_id)
-          .maybeSingle();
-
-        const estNombre = est24 && est24.nombre ? est24.nombre : "Estudiante";
-        const estCorreo = conv.correo || (est24 && est24.correo) || "";
-        const ppsNombre = conv.nombre_pps || "PPS";
-
-        // Revertir estado
+      // BAJA: ya se llegó al cierre sin confirmar.
+      if (now.getTime() >= deadline.getTime()) {
         const { error: updErr } = await supabase
           .from("convocatorias")
           .update({
@@ -358,14 +286,12 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Eliminar practica asociada
         await supabase
           .from("practicas")
           .delete()
           .eq("estudiante_id", conv.estudiante_id)
           .eq("lanzamiento_id", conv.lanzamiento_id);
 
-        // Email al estudiante
         if (estCorreo) {
           const subjectEst = "Baja automatica por falta de confirmacion - PPS: " + ppsNombre;
           const textEst =
@@ -373,19 +299,18 @@ Deno.serve(async (req) => {
             estNombre +
             ", se dio de baja automaticamente tu asignacion a la PPS en " +
             ppsNombre +
-            " porque no confirmaste el compromiso digital dentro de las 24 horas.";
+            " porque no confirmaste el compromiso digital antes del cierre (24 horas antes del inicio).";
           const htmlEst = buildBajaEstudianteHtml(estNombre, ppsNombre);
           await sendEmail(supabase, estCorreo, subjectEst, textEst, htmlEst, estNombre);
         }
 
-        // Email al coordinador
         const subjectCoord = "Baja automatica de estudiante - PPS: " + ppsNombre;
         const textCoord =
           "Se dio de baja automaticamente a " +
           estNombre +
           " de " +
           ppsNombre +
-          " por no confirmar el compromiso en 24 horas.";
+          " por no confirmar el compromiso antes del cierre (24 horas antes del inicio).";
         const htmlCoord = buildBajaCoordinadorHtml(
           estNombre,
           estCorreo || "",
@@ -405,6 +330,34 @@ Deno.serve(async (req) => {
 
         results.bajas_processed++;
         console.log("[Consentimiento] Baja automatica: " + estNombre + " de " + ppsNombre);
+        continue;
+      }
+
+      // RECORDATORIO: faltan <=48h para el cierre y aún no se envió.
+      if (!conv.reminder_sent_at && now.getTime() >= deadline.getTime() - 48 * MS_HOUR) {
+        if (!estCorreo) {
+          results.errors.push("Sin correo: conv " + conv.id);
+          continue;
+        }
+        const hoursLeft = Math.max(0, Math.round((deadline.getTime() - now.getTime()) / MS_HOUR));
+        const subject = "Recordatorio: confirma tu PPS antes del cierre";
+        const textBody =
+          "Hola " +
+          estNombre +
+          ", te recordamos que fuiste seleccionado/a para la PPS en " +
+          ppsNombre +
+          ". Aun no registraste tu aceptacion digital. El consentimiento queda abierto hasta 24 horas antes del inicio de la practica. Ingresa a Mi Panel y confirma tu participacion.";
+        const htmlBody = buildReminderHtml(estNombre, ppsNombre, hoursLeft);
+
+        const sent = await sendEmail(supabase, estCorreo, subject, textBody, htmlBody, estNombre);
+        if (sent) {
+          await supabase
+            .from("convocatorias")
+            .update({ reminder_sent_at: new Date().toISOString() })
+            .eq("id", conv.id);
+          results.reminders_sent++;
+          console.log("[Consentimiento] Reminder enviado a " + estCorreo);
+        }
       }
     }
 

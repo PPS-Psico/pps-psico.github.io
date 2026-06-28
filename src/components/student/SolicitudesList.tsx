@@ -10,7 +10,6 @@ import {
 } from "../../constants";
 import type { CriteriosCalculados, FinalizacionPPS, InformeTask, SolicitudPPS } from "../../types";
 import { formatDate, getStatusVisuals, normalizeStringForComparison } from "../../utils/formatters";
-import AcreditacionPreflightModal from "../AcreditacionPreflightModal";
 import EmptyState from "../EmptyState";
 import FinalizationStatusCard from "./FinalizationStatusCard";
 
@@ -336,8 +335,6 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
   finalizacionRequest,
   informeTasks = [],
 }) => {
-  const [showPreflightModal, setShowPreflightModal] = useState(false);
-
   const hasPendingCorrections = useMemo(
     () =>
       informeTasks.some(
@@ -383,7 +380,7 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
 
   const handleAccreditationClick = () => {
     if (!onRequestFinalization) return;
-    setShowPreflightModal(true);
+    onRequestFinalization();
   };
 
   return (
@@ -429,20 +426,6 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
             </div>
           )}
         </div>
-      )}
-
-      {/* Modal */}
-      {criterios && (
-        <AcreditacionPreflightModal
-          isOpen={showPreflightModal}
-          onClose={() => setShowPreflightModal(false)}
-          onConfirm={() => {
-            if (onRequestFinalization) onRequestFinalization();
-            setShowPreflightModal(false);
-          }}
-          criterios={criterios}
-          informeTask={informeTasks[0]}
-        />
       )}
 
       {/* Active List */}

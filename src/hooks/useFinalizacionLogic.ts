@@ -14,6 +14,7 @@ import {
   FIELD_PLANILLA_HORAS_FINALIZACION,
   FIELD_PLANILLA_ASISTENCIA_FINALIZACION,
   FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
+  FIELD_DETALLE_PRACTICAS_FINALIZACION,
   TABLE_NAME_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
@@ -23,6 +24,17 @@ import {
 } from "../constants";
 import { mapFinalizacion, mapEstudiante } from "../utils/mappers";
 import { normalizeStringForComparison, safeGetId } from "../utils/formatters";
+import { getErrorMessage } from "../utils/getErrorMessage";
+
+/** Solicitud de finalización enriquecida con datos del estudiante para la UI. */
+export interface FinalizacionRequest {
+  id: string;
+  studentName: string;
+  studentLegajo: string | number;
+  studentEmail: string;
+  createdTime: string;
+  [key: string]: unknown;
+}
 
 export const useFinalizacionLogic = (isTestingMode = false) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,30 +48,30 @@ export const useFinalizacionLogic = (isTestingMode = false) => {
     data: requests = [],
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<FinalizacionRequest[]>({
     queryKey: ["finalizacionRequests", isTestingMode],
     queryFn: async () => {
       if (isTestingMode) {
-        const mockRequests = await mockDb.getAll("finalizacion_pps");
-        const students = await mockDb.getAll("estudiantes");
-        const studentMap = new Map<string, any>(students.map((s: any) => [s.id, s]));
+        const mockRequests = (await mockDb.getAll("finalizacion_pps")) as Record<string, unknown>[];
+        const students = (await mockDb.getAll("estudiantes")) as Record<string, unknown>[];
+        const studentMap = new Map<string, Record<string, unknown>>(
+          students.map((s) => [s.id as string, s])
+        );
 
         return mockRequests
-          .map((req: any) => {
-            const sId = req[FIELD_ESTUDIANTE_FINALIZACION];
+          .map((req) => {
+            const sId = req[FIELD_ESTUDIANTE_FINALIZACION] as string;
             const student = studentMap.get(sId);
             return {
               ...req,
-              studentName: student?.[FIELD_NOMBRE_ESTUDIANTES] || "Desconocido",
-              studentLegajo: student?.[FIELD_LEGAJO_ESTUDIANTES] || "---",
-              studentEmail: student?.[FIELD_CORREO_ESTUDIANTES] || "",
-              createdTime: req.created_at,
+              id: req.id as string,
+              studentName: (student?.[FIELD_NOMBRE_ESTUDIANTES] as string) || "Desconocido",
+              studentLegajo: (student?.[FIELD_LEGAJO_ESTUDIANTES] as string | number) || "---",
+              studentEmail: (student?.[FIELD_CORREO_ESTUDIANTES] as string) || "",
+              createdTime: (req.created_at as string) || new Date().toISOString(),
             };
           })
-          .sort(
-            (a: any, b: any) =>
-              new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime()
-          );
+          .sort((a, b) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
       }
 
       const { records: finalizationsRaw, error: finError } = await fetchAllData(
@@ -72,6 +84,7 @@ export const useFinalizacionLogic = (isTestingMode = false) => {
           FIELD_PLANILLA_HORAS_FINALIZACION,
           FIELD_PLANILLA_ASISTENCIA_FINALIZACION,
           FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
+          FIELD_DETALLE_PRACTICAS_FINALIZACION,
         ]
       );
 
@@ -108,15 +121,13 @@ export const useFinalizacionLogic = (isTestingMode = false) => {
             createdTime: req.createdTime || req.created_at || new Date().toISOString(),
           };
         })
-        .sort(
-          (a: any, b: any) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime()
-        );
+        .sort((a, b) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
     },
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const request = requests.find((r: any) => r.id === id);
+      const request = requests.find((r) => r.id === id);
       if (!request) throw new Error("Solicitud no encontrada");
 
       if (isTestingMode) {
@@ -165,13 +176,13 @@ export const useFinalizacionLogic = (isTestingMode = false) => {
         setToastInfo({ message: "Estado actualizado correctamente.", type: "success" });
       }
     },
-    onError: (err: any) => {
-      setToastInfo({ message: `Error al actualizar: ${err.message}`, type: "error" });
+    onError: (err) => {
+      setToastInfo({ message: `Error al actualizar: ${getErrorMessage(err)}`, type: "error" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (record: any) => {
+    mutationFn: async (record: { id: string; [key: string]: unknown }) => {
       const sId = safeGetId(record[FIELD_ESTUDIANTE_FINALIZACION]);
       if (sId) {
         const updateFields = {
@@ -195,10 +206,10 @@ export const useFinalizacionLogic = (isTestingMode = false) => {
   });
 
   const { activeList, historyList } = useMemo(() => {
-    const active: any[] = [],
-      history: any[] = [];
+    const active: typeof requests = [],
+      history: typeof requests = [];
     const searchLower = searchTerm.toLowerCase();
-    requests.forEach((req: any) => {
+    requests.forEach((req) => {
       if (
         searchTerm &&
         !req.studentName.toLowerCase().includes(searchLower) &&

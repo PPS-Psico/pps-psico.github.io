@@ -9,6 +9,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "../../lib/db";
+import { crearConvenio } from "../../services/conveniosService";
 import {
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
@@ -143,15 +144,21 @@ const NuevosConvenios: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
         logger.info("TEST MODE: Confirming agreement for", institutionId);
         return new Promise((resolve) => setTimeout(resolve, 500));
       }
-      // convenio_nuevo es el AÑO del convenio (smallint). null = sin convenio nuevo.
-      return db.instituciones.update(institutionId, {
-        [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: currentYear as any,
+      // Registramos un convenio (primer convenio = no renovación). El trigger de
+      // la DB sincroniza instituciones.convenio_nuevo = año del primer convenio.
+      return crearConvenio({
+        institucionId: institutionId,
+        fechaFirma: `${currentYear}-01-01`,
+        tipo: "marco",
+        esRenovacion: false,
       });
     },
     onSuccess: () => {
       setToastInfo({ message: "Convenio confirmado con éxito.", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["conveniosData", isTestingMode] });
       queryClient.invalidateQueries({ queryKey: ["metricsData"] });
+      queryClient.invalidateQueries({ queryKey: ["metricsKPIs"] });
+      queryClient.invalidateQueries({ queryKey: ["conveniosKpis"] });
     },
     onError: (e: Error) => {
       setToastInfo({ message: `Error al confirmar: ${e.message}`, type: "error" });

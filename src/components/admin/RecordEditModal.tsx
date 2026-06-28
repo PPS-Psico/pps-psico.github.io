@@ -5,10 +5,15 @@ import {
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
 } from "../../constants";
-import type { AirtableRecord } from "../../types";
 import { cleanDbValue } from "../../utils/formatters";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 import { supabase } from "../../lib/supabaseClient";
 import { logger } from "../../utils/logger";
+import { injectEditorStyles } from "./editorStyles";
+
+// Garantiza que los estilos .dbe estén presentes aunque el modal se monte
+// fuera del Editor de Base de Datos (p. ej. desde el Lanzador).
+injectEditorStyles();
 
 interface FieldConfig {
   key: string;
@@ -35,19 +40,22 @@ interface FieldConfig {
 
 interface TableConfig {
   label: string;
-  schema: any;
+  schema: unknown;
   fieldConfig: FieldConfig[];
 }
 
 interface RecordEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  record: AirtableRecord<any> | null; // Null for creation mode
-  initialData?: any; // Data to pre-fill when in creation mode (e.g. duplicating)
+  record: Record<string, unknown> | null; // Null for creation mode
+  initialData?: Record<string, unknown>; // Data to pre-fill when in creation mode (e.g. duplicating)
   tableConfig: TableConfig;
-  onSave: (recordId: string | null, fields: any) => void;
+  onSave: (recordId: string | null, fields: Record<string, unknown>) => void;
   isSaving: boolean;
 }
+
+/** Coacciona un valor arbitrario del formulario a un valor renderable por un input. */
+const toInputValue = (v: unknown): string => (v == null ? "" : String(v));
 
 const RecordEditModal: React.FC<RecordEditModalProps> = ({
   isOpen,
@@ -58,7 +66,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
   onSave,
   isSaving,
 }) => {
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const isCreateMode = !record;
@@ -66,7 +74,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
   const mouseDownTarget = useRef<EventTarget | null>(null);
 
   useEffect(() => {
-    const data: { [key: string]: any } = {};
+    const data: Record<string, unknown> = {};
 
     tableConfig.fieldConfig.forEach((field) => {
       let rawVal;
@@ -100,7 +108,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     const { name, value, type } = e.target;
     const isCheckbox = type === "checkbox";
     const checkedValue = (e.target as HTMLInputElement).checked;
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: isCheckbox ? checkedValue : value,
     }));
@@ -164,7 +172,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
       }
     });
 
-    onSave(record ? record.id : null, cleanedData);
+    onSave(record ? (record.id as string) : null, cleanedData);
   };
 
   if (!isOpen) return null;
@@ -179,20 +187,20 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     const errorMsg = validationErrors[field.key];
 
     if (!isCreateMode && record) {
-      let displayValue = null;
+      let displayValue: string | null | undefined = null;
       let icon = "link";
 
       if (
         field.key === FIELD_ESTUDIANTE_LINK_PRACTICAS ||
         field.key === FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS
       ) {
-        displayValue = (record as any).__studentName;
+        displayValue = record.__studentName as string | undefined;
         icon = "person";
       } else if (
         field.key === FIELD_LANZAMIENTO_VINCULADO_PRACTICAS ||
         field.key === FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS
       ) {
-        displayValue = (record as any).__lanzamientoName;
+        displayValue = record.__lanzamientoName as string | undefined;
         icon = "rocket_launch";
       }
 
@@ -206,10 +214,10 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
               </div>
               <div style={{ minWidth: 0 }}>
                 <b>{displayValue}</b>
-                <small>ID: {value}</small>
+                <small>ID: {toInputValue(value)}</small>
               </div>
             </div>
-            <input type="hidden" name={field.key} value={value} />
+            <input type="hidden" name={field.key} value={toInputValue(value)} />
           </div>
         );
       }
@@ -239,7 +247,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
           </label>
           <textarea
             name={field.key}
-            value={value}
+            value={toInputValue(value)}
             onChange={handleChange}
             rows={3}
             className={inputClasses}
@@ -261,7 +269,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
           <div className="dbe-sel-icon">
             <select
               name={field.key}
-              value={value}
+              value={toInputValue(value)}
               onChange={handleChange}
               className={`${inputClasses} sel`}
             >
@@ -332,12 +340,12 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
             <div className="dbe-file-ok">
               <span className="material-icons">check_circle</span>
               <span>Archivo cargado</span>
-              <a href={value} target="_blank" rel="noopener noreferrer" title="Abrir">
+              <a href={toInputValue(value)} target="_blank" rel="noopener noreferrer" title="Abrir">
                 <span className="material-icons">open_in_new</span>
               </a>
               <button
                 type="button"
-                onClick={() => setFormData((prev: any) => ({ ...prev, [field.key]: "" }))}
+                onClick={() => setFormData((prev) => ({ ...prev, [field.key]: "" }))}
                 title="Quitar"
               >
                 <span className="material-icons">close</span>
@@ -365,10 +373,10 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
                       .upload(fileName, file, { upsert: true });
                     if (uploadError) throw uploadError;
                     const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
-                    setFormData((prev: any) => ({ ...prev, [field.key]: urlData.publicUrl }));
-                  } catch (err: any) {
+                    setFormData((prev) => ({ ...prev, [field.key]: urlData.publicUrl }));
+                  } catch (err) {
                     logger.error("Error uploading file:", err);
-                    alert("Error al subir archivo: " + err.message);
+                    alert("Error al subir archivo: " + getErrorMessage(err));
                   } finally {
                     setUploadingField(null);
                   }
@@ -392,7 +400,7 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
         <input
           type={field.type}
           name={field.key}
-          value={inputValue}
+          value={toInputValue(inputValue)}
           onChange={handleChange}
           className={inputClasses}
         />

@@ -26,6 +26,13 @@ import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
 import { logger } from "../../utils/logger";
+import type { Institucion } from "../../types";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+
+type ToastState = { message: string; type: "success" | "error" | "info" } | null;
+type InstPage = { records: Institucion[]; total: number };
+type InstEditingState = (Record<string, unknown> & { id?: string }) | { isCreating: true } | null;
+type BatchUpdate = { id: string; fields: Record<string, unknown> };
 
 const TABLE_CONFIG = {
   label: "Instituciones",
@@ -90,16 +97,16 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const [editingRecord, setEditingRecord] = useState<any>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; record: any } | null>(null);
-  const [toastInfo, setToastInfo] = useState<any>(null);
+  const [editingRecord, setEditingRecord] = useState<InstEditingState>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; record: Institucion } | null>(null);
+  const [toastInfo, setToastInfo] = useState<ToastState>(null);
   const [isFixingData, setIsFixingData] = useState(false);
   const [isSyncingOrientations, setIsSyncingOrientations] = useState(false);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<InstPage>({
     queryKey: ["editor-instituciones", currentPage, itemsPerPage, debouncedSearch, isTestingMode],
     queryFn: async () => {
       // TESTING MODE: Usar datos mock
@@ -120,7 +127,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         const from = (currentPage - 1) * itemsPerPage;
         const to = from + itemsPerPage;
         return {
-          records: filteredRecords.slice(from, to),
+          records: filteredRecords.slice(from, to) as unknown as Institucion[],
           total: filteredRecords.length,
         };
       }
@@ -134,7 +141,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       if (result.records) {
         const before = result.records.length;
         result.records = result.records.filter(
-          (r: any) =>
+          (r) =>
             !String(r[FIELD_NOMBRE_INSTITUCIONES] || "")
               .toUpperCase()
               .startsWith("UFLO -")
@@ -143,7 +150,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           result.total -= before - result.records.length;
         }
       }
-      return result;
+      return { records: result.records, total: result.total };
     },
   });
 
@@ -153,7 +160,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   };
 
   const updateMutation = useMutation({
-    mutationFn: (vars: any) => {
+    mutationFn: (vars: { id: string; fields: Record<string, unknown> }) => {
       // convenio_nuevo es smallint (año) o null. El select da "" o "2024"…
       const raw = vars.fields[FIELD_CONVENIO_NUEVO_INSTITUCIONES];
       let val: number | null = null;
@@ -170,18 +177,21 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         return Promise.resolve({
           ...MOCK_INSTITUCIONES.find((i) => i.id === vars.id),
           ...cleanFields,
-        } as any);
+        } as unknown as Institucion);
       }
-      return db.instituciones.update(vars.id, cleanFields);
+      return db.instituciones.update(
+        vars.id,
+        cleanFields as Parameters<typeof db.instituciones.update>[1]
+      );
     },
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: ["editor-instituciones"] });
       const prev = queryClient.getQueryData(["editor-instituciones"]);
-      queryClient.setQueryData(["editor-instituciones"], (old: any) => {
+      queryClient.setQueryData(["editor-instituciones"], (old: InstPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+          records: old.records.map((r) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
         };
       });
       return { prev };
@@ -203,12 +213,12 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   });
 
   const createMutation = useMutation({
-    mutationFn: (fields: any) => {
+    mutationFn: (fields: Record<string, unknown>) => {
       if (isTestingMode) {
         // MODO TESTING: Simular creación (no afecta DB real)
-        return Promise.resolve({ id: `inst_${Date.now()}`, ...fields } as any);
+        return Promise.resolve({ id: `inst_${Date.now()}`, ...fields } as unknown as Institucion);
       }
-      return db.instituciones.create(fields);
+      return db.instituciones.create(fields as Parameters<typeof db.instituciones.create>[0]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["editor-instituciones"] });
@@ -231,11 +241,11 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["editor-instituciones"] });
       const prev = queryClient.getQueryData(["editor-instituciones"]);
-      queryClient.setQueryData(["editor-instituciones"], (old: any) => {
+      queryClient.setQueryData(["editor-instituciones"], (old: InstPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.filter((r: any) => r.id !== id),
+          records: old.records.filter((r) => r.id !== id),
           total: Math.max(0, (old.total || 0) - 1),
         };
       });
@@ -264,11 +274,11 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         fields: [FIELD_NOMBRE_INSTITUCIONES, FIELD_CONVENIO_NUEVO_INSTITUCIONES],
       });
 
-      const updates: any[] = [];
+      const updates: BatchUpdate[] = [];
       const processList = (list: string[], year: number) => {
         for (const instNameFromList of list) {
           const targetNorm = normalizeStringForComparison(instNameFromList);
-          const matches = allInstitutions.filter((i: any) => {
+          const matches = allInstitutions.filter((i) => {
             const name = String(i[FIELD_NOMBRE_INSTITUCIONES] || "");
             if (name.toUpperCase().startsWith("UFLO -")) return false;
 
@@ -290,7 +300,9 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
 
       const uniqueUpdates = Array.from(new Map(updates.map((item) => [item.id, item])).values());
       if (uniqueUpdates.length > 0) {
-        await db.instituciones.updateMany(uniqueUpdates as any);
+        await db.instituciones.updateMany(
+          uniqueUpdates as Parameters<typeof db.instituciones.updateMany>[0]
+        );
         queryClient.invalidateQueries({ queryKey: ["editor-instituciones"] });
         setToastInfo({
           message: `Se actualizaron ${uniqueUpdates.length} convenios.`,
@@ -299,8 +311,8 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       } else {
         setToastInfo({ message: `No hay nuevas instituciones para actualizar.`, type: "info" });
       }
-    } catch (e: any) {
-      handleError(e);
+    } catch (e) {
+      handleError(e instanceof Error ? e : new Error(getErrorMessage(e)));
     } finally {
       setIsFixingData(false);
     }
@@ -320,7 +332,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
 
       const orientationsMap = new Map<string, Set<string>>();
 
-      allPracticas.forEach((p: any) => {
+      allPracticas.forEach((p) => {
         const name = cleanInstitutionName(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]);
         const especialidad = p[FIELD_ESPECIALIDAD_PRACTICAS];
         if (name && especialidad) {
@@ -332,7 +344,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         }
       });
 
-      const updates: any[] = [];
+      const updates: BatchUpdate[] = [];
       for (const inst of allInstitutions) {
         const name = inst[FIELD_NOMBRE_INSTITUCIONES];
         if (!name) continue;
@@ -369,26 +381,28 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       if (updates.length > 0) {
         const CHUNK = 50;
         for (let i = 0; i < updates.length; i += CHUNK) {
-          await db.instituciones.updateMany(updates.slice(i, i + CHUNK) as any);
+          await db.instituciones.updateMany(
+            updates.slice(i, i + CHUNK) as Parameters<typeof db.instituciones.updateMany>[0]
+          );
         }
         queryClient.invalidateQueries({ queryKey: ["editor-instituciones"] });
         setToastInfo({ message: `Orientaciones actualizadas y limpias.`, type: "success" });
       } else {
         setToastInfo({ message: "Todo sincronizado.", type: "success" });
       }
-    } catch (e: any) {
-      handleError(e);
+    } catch (e) {
+      handleError(e instanceof Error ? e : new Error(getErrorMessage(e)));
     } finally {
       setIsSyncingOrientations(false);
     }
   };
 
-  const handleRowContextMenu = (e: React.MouseEvent, record: any) => {
+  const handleRowContextMenu = (e: React.MouseEvent, record: Institucion) => {
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY, record });
   };
 
-  const getYearTone = (rawYear: any): string => {
+  const getYearTone = (rawYear: unknown): string => {
     if (!rawYear) return "mute";
     const y = String(rawYear).trim();
     if (y === "2026") return "ok";
@@ -397,7 +411,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     return "mute";
   };
 
-  const renderConvenioValue = (val: any) => {
+  const renderConvenioValue = (val: unknown) => {
     // convenio_nuevo es el año (smallint) o null
     if (val == null || val === "" || val === "false") return <span className="dbe-muted">—</span>;
     return (
@@ -408,7 +422,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     );
   };
 
-  const renderOrientaciones = (orientacionesStr: string) => {
+  const renderOrientaciones = (orientacionesStr: string | null | undefined) => {
     if (!orientacionesStr) return <span className="dbe-muted">Sin especificar</span>;
     const lista = String(orientacionesStr)
       .split(",")
@@ -508,7 +522,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 </tr>
               </thead>
               <tbody>
-                {data?.records.map((i: any) => (
+                {data?.records.map((i) => (
                   <tr
                     key={i.id}
                     onContextMenu={(e) => handleRowContextMenu(e, i)}

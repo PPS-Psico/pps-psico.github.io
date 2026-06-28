@@ -32,7 +32,6 @@ import {
   FIELD_LOGO_INVERT_DARK_INSTITUCIONES,
   FIELD_LOGO_URL_INSTITUCIONES,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -46,6 +45,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../../constants/configConsta
 import { db } from "../../../lib/db";
 import { supabase } from "../../../lib/supabaseClient";
 import { uploadInstitutionLogo } from "../../../services";
+import { crearConvenio } from "../../../services/conveniosService";
 import { generateWithGemini } from "../../../services/geminiService";
 import type {
   AirtableRecord,
@@ -229,16 +229,27 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
           throw error;
         }
       }
-      return db.instituciones.create({
+      const newInst = await db.instituciones.create({
         [FIELD_NOMBRE_INSTITUCIONES]: data.nombre,
         [FIELD_DIRECCION_INSTITUCIONES]: data.direccion,
         [FIELD_TELEFONO_INSTITUCIONES]: data.telefono,
         [FIELD_TUTOR_INSTITUCIONES]: data.tutor,
         [FIELD_LOGO_URL_INSTITUCIONES]: logoUrl || undefined,
         [FIELD_LOGO_INVERT_DARK_INSTITUCIONES]: data.invertLogo,
-        // Nueva institución → convenio registrado en el año actual.
-        [FIELD_CONVENIO_NUEVO_INSTITUCIONES]: new Date().getFullYear(),
       } as never);
+      // Nueva institución → primer convenio (no renovación). El trigger de la DB
+      // sincroniza instituciones.convenio_nuevo = año del primer convenio.
+      try {
+        await crearConvenio({
+          institucionId: String((newInst as any).id),
+          fechaFirma: new Date().toISOString().slice(0, 10),
+          tipo: "marco",
+          esRenovacion: false,
+        });
+      } catch (e) {
+        logger.error("No se pudo registrar el convenio inicial de la institución:", e);
+      }
+      return newInst;
     },
     onSuccess: (newInst: AirtableRecord<InstitucionFields>, variables: NewInstitutionData) => {
       setToastInfo({ message: "Institución registrada con éxito.", type: "success" });
@@ -269,6 +280,23 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     },
     onSuccess: (_data: unknown, variables: Record<string, unknown>) => {
       setToastInfo({ message: "Convocatoria procesada con éxito.", type: "success" });
+
+      // Renovación de convenio: si el usuario tildó la opción, registramos un
+      // convenio es_renovacion=true (reinicia el reloj de vencimiento a +2 años).
+      if (!isTestingMode && formData.convenioRenovado && selectedInstitution?.id) {
+        crearConvenio({
+          institucionId: String(selectedInstitution.id),
+          fechaFirma: (formData.fechaInicio as string) || new Date().toISOString().slice(0, 10),
+          tipo: "especifico",
+          esRenovacion: true,
+        })
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["conveniosPorVencer"] });
+            queryClient.invalidateQueries({ queryKey: ["conveniosKpis"] });
+            queryClient.invalidateQueries({ queryKey: ["metricsKPIs"] });
+          })
+          .catch((e) => logger.error("[Lanzador] No se pudo registrar la renovación:", e));
+      }
 
       if (variables[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === "Abierta") {
         supabase.functions

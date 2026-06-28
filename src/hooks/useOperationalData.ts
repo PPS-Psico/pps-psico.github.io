@@ -16,11 +16,12 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import { mockDb } from "../services/mockDb";
 import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
+import type { MetricRow } from "../utils/metricsCalculations";
 
 export interface OperationalData {
-  endingLaunches: any[];
-  pendingRequests: any[];
-  pendingFinalizations: any[];
+  endingLaunches: MetricRow[];
+  pendingRequests: MetricRow[];
+  pendingFinalizations: MetricRow[];
   pendingCorrectionsCount: number;
   closingAlerts: {
     id: string;
@@ -39,9 +40,9 @@ export const useOperationalData = (isTestingMode = false) => {
       const currentYear = now.getFullYear();
       now.setHours(0, 0, 0, 0);
 
-      let launches: any[] = [];
-      let requests: any[] = [];
-      let finals: any[] = [];
+      let launches: MetricRow[] = [];
+      let requests: MetricRow[] = [];
+      let finals: MetricRow[] = [];
       let correctionsCount = 0;
 
       if (isTestingMode) {
@@ -75,7 +76,7 @@ export const useOperationalData = (isTestingMode = false) => {
 
       // 1. Process Launches
       const endingLaunches = launches
-        .map((l: any) => {
+        .map((l) => {
           const endDate = parseToUTCDate(l[FIELD_FECHA_FIN_LANZAMIENTOS]);
 
           const daysLeft = endDate
@@ -89,7 +90,7 @@ export const useOperationalData = (isTestingMode = false) => {
             notas_gestion: l[FIELD_NOTAS_GESTION_LANZAMIENTOS],
           };
         })
-        .filter((l: any) => {
+        .filter((l: MetricRow) => {
           // Filter by year: only current year launches
           const startDate = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
           if (!startDate || startDate.getUTCFullYear() < currentYear) {
@@ -120,12 +121,12 @@ export const useOperationalData = (isTestingMode = false) => {
       ];
 
       const pendingRequests = requests
-        .map((r: any) => ({
+        .map((r) => ({
           ...r,
           updated: r[FIELD_ULTIMA_ACTUALIZACION_PPS] || r.created_at,
           estado_seguimiento: r[FIELD_ESTADO_PPS],
         }))
-        .filter((r: any) => {
+        .filter((r) => {
           const status = normalizeStringForComparison(r.estado_seguimiento);
           if (terminalStatuses.includes(status)) return false;
           return true;
@@ -133,12 +134,12 @@ export const useOperationalData = (isTestingMode = false) => {
 
       // 3. Process Finalizations (Already filtered in SQL, filter again for mock)
       const pendingFinalizations = finals.filter(
-        (f: any) => f[FIELD_ESTADO_FINALIZACION] === "Pendiente"
+        (f) => f[FIELD_ESTADO_FINALIZACION] === "Pendiente"
       );
 
       // 4. Alerts for Closing Convocatorias (Using Inscription Date or Start Date fallback)
       const closingAlerts = launches
-        .filter((l: any) => {
+        .filter((l) => {
           const status = normalizeStringForComparison(l.estado_convocatoria);
           if (status !== "abierta" && status !== "abierto") return false;
 
@@ -160,7 +161,7 @@ export const useOperationalData = (isTestingMode = false) => {
           // Alert condition: Today (0), Past (<0), or very soon (<= 2)
           return daysLeft <= 2;
         })
-        .map((l: any) => {
+        .map((l) => {
           const closingDate =
             parseToUTCDate(l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]) ||
             parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);

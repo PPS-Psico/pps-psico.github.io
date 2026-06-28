@@ -4,13 +4,13 @@ import { logger } from "../utils/logger";
 export interface AppError extends Error {
   context?: string;
   code?: string;
-  details?: any;
+  details?: unknown;
   timestamp: Date;
 }
 
 interface ErrorContextType {
   error: AppError | null;
-  showError: (error: Error | string, context?: string, details?: any) => void;
+  showError: (error: Error | string, context?: string, details?: unknown) => void;
   showSuccess: (message: string) => void;
   clearError: () => void;
 }
@@ -24,7 +24,7 @@ export const ErrorProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const createError = useCallback(
-    (err: Error | string, context?: string, details?: any): AppError => {
+    (err: Error | string, context?: string, details?: unknown): AppError => {
       const timestamp = new Date();
 
       if (typeof err === "string") {
@@ -42,7 +42,7 @@ export const ErrorProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const showError = useCallback(
-    (err: Error | string, context = "", details?: any) => {
+    (err: Error | string, context = "", details?: unknown) => {
       const errorObj = createError(err, context, details);
 
       // Log a consola con contexto y stack

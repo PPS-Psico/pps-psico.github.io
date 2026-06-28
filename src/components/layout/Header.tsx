@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import MiPanelLogo from "../MiPanelLogo";
-import UfloLogo from "../UfloLogo";
 import { useAuth } from "../../contexts/AuthContext";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -131,7 +130,7 @@ const NotificationDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
 const AppHeader: React.FC = () => {
   const { authenticatedUser, logout, isSuperUserMode, isJefeMode, isDirectivoMode } = useAuth();
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { canInstall, triggerInstall } = usePwaInstall();
   const isLoggedIn = !!authenticatedUser;
   const [hasScrolled, setHasScrolled] = useState(false);
@@ -186,6 +185,68 @@ const AppHeader: React.FC = () => {
     };
   }, []);
 
+  // Header editorial (dirección Gamma) para la vista estudiante.
+  const isStudent = location.pathname.startsWith("/student");
+  if (isStudent && isLoggedIn) {
+    return (
+      <motion.header
+        initial={{ y: 0 }}
+        animate={{ y: isHeaderVisible ? 0 : -80 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="ed no-print fixed md:sticky top-0 left-0 right-0 z-50 transition-all duration-300"
+        data-mode={resolvedTheme}
+        data-accent="teal"
+        style={{
+          background: "color-mix(in oklab, var(--bg) 88%, transparent)",
+          backdropFilter: "blur(16px) saturate(140%)",
+          WebkitBackdropFilter: "blur(16px) saturate(140%)",
+          borderBottom: hasScrolled ? "1px solid var(--hairline)" : "1px solid transparent",
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16 md:h-20">
+            <div className="mp-mark">
+              <div className="mp-logo">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+                  <rect x="3" y="10" width="4" height="11" rx="1.5" fill="currentColor" />
+                  <rect x="10" y="4" width="4" height="17" rx="1.5" fill="currentColor" />
+                  <rect x="17" y="14" width="4" height="7" rx="1.5" fill="currentColor" />
+                </svg>
+              </div>
+              <span className="mp-brand">
+                Mi&nbsp;<b>Panel</b>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="mp-iconbtn"
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                aria-label="Cambiar tema"
+                title="Cambiar tema"
+              >
+                <span className="material-icons" style={{ fontSize: 19 }} aria-hidden="true">
+                  {resolvedTheme === "dark" ? "light_mode" : "dark_mode"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="mp-iconbtn"
+                onClick={logout}
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+              >
+                <span className="material-icons" style={{ fontSize: 19 }} aria-hidden="true">
+                  logout
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+    );
+  }
+
   return (
     <motion.header
       initial={{ y: 0 }}
@@ -210,13 +271,6 @@ const AppHeader: React.FC = () => {
                 Modo Administrador
               </span>
             )}
-            <div className="hidden sm:block">
-              <UfloLogo
-                className="h-10 md:h-14 w-auto transition-all duration-300"
-                variant={resolvedTheme}
-              />
-            </div>
-
             {/* Notifications Bell */}
             {showNotifications && (
               <div className="relative">

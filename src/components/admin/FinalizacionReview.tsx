@@ -1,11 +1,18 @@
 import React, { useState } from "react";
 import {
+  FIELD_DETALLE_PRACTICAS_FINALIZACION,
   FIELD_INFORME_FINAL_FINALIZACION,
   FIELD_PLANILLA_ASISTENCIA_FINALIZACION,
   FIELD_PLANILLA_HORAS_FINALIZACION,
   FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
 } from "../../constants";
+import {
+  computeNotaPromedio,
+  computeTotalHoras,
+  type DetallePracticas,
+} from "../../utils/acreditacion";
 import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
+import type { FinalizacionRequest } from "../../hooks/useFinalizacionLogic";
 import { supabase } from "../../lib/supabaseClient";
 import { Attachment, getNormalizationState, getStoragePath } from "../../utils/attachmentUtils";
 import { formatDate } from "../../utils/formatters";
@@ -17,33 +24,160 @@ import Loader from "../Loader";
 import Toast from "../ui/Toast";
 import { FilePreview } from "./preview";
 
-const normalizeAttachments = (attachment: any): Attachment[] => {
+const normalizeAttachments = (attachment: unknown): Attachment[] => {
   if (!attachment) return [];
   let data = attachment;
   if (typeof data === "string") {
+    const str = data;
     try {
-      data = JSON.parse(data);
+      data = JSON.parse(str);
     } catch (e) {
-      return [{ url: data, filename: "Archivo Adjunto", type: "unknown" }];
+      return [{ url: str, filename: "Archivo Adjunto", type: "unknown" }];
     }
   }
   const arr = Array.isArray(data) ? data : [data];
   return arr
-    .map((a: any) => {
+    .map((a: unknown): Attachment => {
       if (typeof a === "string") return { url: a, filename: "Archivo Adjunto", type: "unknown" };
+      const o = (a ?? {}) as {
+        url?: string;
+        signedUrl?: string;
+        filename?: string;
+        name?: string;
+        type?: string;
+      };
       return {
-        url: a.url || a.signedUrl || "",
-        filename: a.filename || a.name || "Archivo",
-        type: a.type,
+        url: o.url || o.signedUrl || "",
+        filename: o.filename || o.name || "Archivo",
+        type: o.type,
       };
     })
     .filter((a: Attachment) => !!a.url);
 };
 
+// Parsea el snapshot por-PPS (registros nuevos). Devuelve null para registros viejos.
+const parseDetalle = (raw: unknown): DetallePracticas | null => {
+  if (!raw) return null;
+  let data = raw;
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  if (!data || typeof data !== "object") return null;
+  const obj = data as { items?: unknown };
+  if (!Array.isArray(obj.items) || obj.items.length === 0) return null;
+  return data as DetallePracticas;
+};
+
+// Vista por-PPS para registros nuevos: listado con horas + nota por práctica,
+// botones de informe/asistencia y resumen (horas totales + nota promedio).
+const DetallePorPps: React.FC<{
+  detalle: DetallePracticas;
+  totalHoras: number | null;
+  notaPromedio: number | null;
+  onPreview: (files: Attachment[], initialIndex: number) => void;
+}> = ({ detalle, totalHoras, notaPromedio, onPreview }) => {
+  // Lista plana de archivos (en orden de aparición) para navegar el preview.
+  const files: Attachment[] = [];
+  const indexOf = new Map<string, number>();
+  detalle.items.forEach((item, i) => {
+    if (item.informe) {
+      indexOf.set(`informe-${i}`, files.length);
+      files.push({ url: item.informe.url, filename: item.informe.filename, type: "informe" });
+    }
+    if (item.asistencia) {
+      indexOf.set(`asistencia-${i}`, files.length);
+      files.push({
+        url: item.asistencia.url,
+        filename: item.asistencia.filename,
+        type: "asistencia",
+      });
+    }
+  });
+
+  const FileBtn: React.FC<{ label: string; icon: string; idx?: number }> = ({
+    label,
+    icon,
+    idx,
+  }) =>
+    idx != null ? (
+      <button
+        onClick={() => onPreview(files, idx)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-colors text-xs font-medium text-slate-600 dark:text-slate-300"
+      >
+        <span className="material-icons !text-sm text-slate-400">{icon}</span>
+        {label}
+      </button>
+    ) : (
+      <span className="px-2.5 py-1.5 text-xs italic text-slate-400">{label}</span>
+    );
+
+  return (
+    <div className="space-y-4">
+      {/* Resumen para cargar al SAC */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+          <span className="material-icons !text-base text-blue-500">schedule</span>
+          <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+            {totalHoras ?? 0} hs totales
+          </span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+          <span className="material-icons !text-base text-emerald-500">grade</span>
+          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+            Nota promedio: {notaPromedio != null ? notaPromedio : "—"}
+          </span>
+        </div>
+        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+          {detalle.items.length} PPS · detalle para cargar al SAC
+        </span>
+      </div>
+
+      {/* Listado por PPS */}
+      <div className="space-y-2">
+        {detalle.items.map((item, i) => (
+          <div
+            key={item.practicaId || i}
+            className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                {item.nombre}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {item.especialidad || "—"} · {item.horas || 0} hs
+                {item.esOnline && " · Online"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                Nota: {item.nota || "—"}
+              </span>
+              <FileBtn label="Informe" icon="description" idx={indexOf.get(`informe-${i}`)} />
+              {item.esOnline ? (
+                <span className="px-2.5 py-1.5 text-xs italic text-slate-400">Sin asistencia</span>
+              ) : (
+                <FileBtn
+                  label="Asistencia"
+                  icon="verified_user"
+                  idx={indexOf.get(`asistencia-${i}`)}
+                />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const RequestListItem: React.FC<{
-  request: any;
+  request: FinalizacionRequest;
   onUpdateStatus: (id: string, status: string) => void;
-  onDeleteRequest: (record: any) => void;
+  onDeleteRequest: (record: FinalizacionRequest) => void;
   onCopy: (text: string) => void;
   isUpdating: boolean;
   searchTerm: string;
@@ -78,6 +212,7 @@ const RequestListItem: React.FC<{
     : isEnProceso
       ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800"
       : "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
+  const detalle = parseDetalle(request[FIELD_DETALLE_PRACTICAS_FINALIZACION]);
   const planillaHoras: Attachment[] = normalizeAttachments(
     request[FIELD_PLANILLA_HORAS_FINALIZACION]
   );
@@ -86,6 +221,14 @@ const RequestListItem: React.FC<{
     request[FIELD_PLANILLA_ASISTENCIA_FINALIZACION]
   );
   const allFiles: Attachment[] = [...planillaHoras, ...informes, ...asistencias];
+
+  // Totales para registros nuevos (recalculados desde el snapshot por las dudas).
+  const totalHoras = detalle
+    ? (detalle.totalHoras ?? computeTotalHoras(detalle.items.map((i) => i.horas)))
+    : null;
+  const notaPromedio = detalle
+    ? (detalle.notaPromedio ?? computeNotaPromedio(detalle.items.map((i) => i.nota)))
+    : null;
 
   const handleDownloadZip = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -129,7 +272,10 @@ const RequestListItem: React.FC<{
     });
     const legajo = request.studentLegajo || "";
     const nombre = request.studentName || "";
-    const textToCopy = `${dateStr}\t${legajo}\t${nombre}`;
+    // Dos columnas extra para registros nuevos: horas totales + nota promedio redondeada.
+    const horasCol = totalHoras != null ? String(totalHoras) : "";
+    const notaCol = notaPromedio != null ? String(notaPromedio) : "";
+    const textToCopy = `${dateStr}\t${legajo}\t${nombre}\t${horasCol}\t${notaCol}`;
     onCopy(textToCopy);
   };
 
@@ -194,42 +340,51 @@ const RequestListItem: React.FC<{
         className={`grid transition-all duration-500 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-800" : "grid-rows-[0fr] opacity-0 h-0 overflow-hidden"}`}
       >
         <div className="overflow-hidden p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { l: "Planilla Horas", f: planillaHoras, i: "table_view" },
-              { l: "Informe Final", f: informes, i: "description" },
-              { l: "Asistencias", f: asistencias, i: "verified_user" },
-            ].map((sec, idx) => (
-              <div key={idx} className="space-y-2">
-                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  {sec.l}
-                </h5>
-                {sec.f.length > 0 ? (
-                  sec.f.map((file, fidx) => (
-                    <button
-                      key={fidx}
-                      onClick={() => onPreview(allFiles, allFiles.indexOf(file))}
-                      className="w-full flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-colors text-left"
-                    >
-                      <span className="material-icons !text-lg text-slate-400">{sec.i}</span>
-                      <span className="text-xs font-medium truncate flex-1 text-slate-600 dark:text-slate-300">
-                        {file.filename}
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-400 italic">No adjunto</p>
-                )}
-              </div>
-            ))}
-          </div>
-          {request[FIELD_SUGERENCIAS_MEJORAS_FINALIZACION] && (
+          {detalle ? (
+            <DetallePorPps
+              detalle={detalle}
+              totalHoras={totalHoras}
+              notaPromedio={notaPromedio}
+              onPreview={onPreview}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { l: "Planilla Horas", f: planillaHoras, i: "table_view" },
+                { l: "Informe Final", f: informes, i: "description" },
+                { l: "Asistencias", f: asistencias, i: "verified_user" },
+              ].map((sec, idx) => (
+                <div key={idx} className="space-y-2">
+                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    {sec.l}
+                  </h5>
+                  {sec.f.length > 0 ? (
+                    sec.f.map((file, fidx) => (
+                      <button
+                        key={fidx}
+                        onClick={() => onPreview(allFiles, allFiles.indexOf(file))}
+                        className="w-full flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-colors text-left"
+                      >
+                        <span className="material-icons !text-lg text-slate-400">{sec.i}</span>
+                        <span className="text-xs font-medium truncate flex-1 text-slate-600 dark:text-slate-300">
+                          {file.filename}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No adjunto</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {(request[FIELD_SUGERENCIAS_MEJORAS_FINALIZACION] as string) && (
             <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 rounded-lg">
               <h6 className="text-xs font-bold text-amber-700 dark:text-amber-500 mb-1">
                 Sugerencias del alumno
               </h6>
               <p className="text-xs text-slate-600 dark:text-slate-400 italic">
-                "{request[FIELD_SUGERENCIAS_MEJORAS_FINALIZACION]}"
+                "{request[FIELD_SUGERENCIAS_MEJORAS_FINALIZACION] as string}"
               </p>
             </div>
           )}
@@ -288,7 +443,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
   const [previewFiles, setPreviewFiles] = useState<Attachment[]>([]);
   const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [recordToDelete, setRecordToDelete] = useState<any>(null);
+  const [recordToDelete, setRecordToDelete] = useState<FinalizacionRequest | null>(null);
 
   const handleCopyData = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -371,7 +526,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
             {activeList.length})
           </h3>
           <div className="grid grid-cols-1 gap-4">
-            {activeList.map((req: any) => (
+            {activeList.map((req) => (
               <RequestListItem
                 key={req.id}
                 request={req}
@@ -402,7 +557,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
           defaultOpen={false}
         >
           <div className="grid grid-cols-1 gap-4 mt-4">
-            {historyList.map((req: any) => (
+            {historyList.map((req) => (
               <RequestListItem
                 key={req.id}
                 request={req}

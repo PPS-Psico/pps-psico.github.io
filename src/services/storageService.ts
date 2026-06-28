@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabaseClient";
 import { cleanDbValue } from "../utils/formatters";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 export const uploadInstitutionLogo = async (
   file: File,
@@ -26,7 +27,7 @@ export const uploadInstitutionLogo = async (
 
     const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileName);
     return data.publicUrl;
-  } catch (error: any) {
-    throw new Error(error.message || "Error desconocido al subir logo");
+  } catch (error) {
+    throw new Error(getErrorMessage(error, "Error desconocido al subir logo"));
   }
 };

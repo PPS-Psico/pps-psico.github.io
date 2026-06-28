@@ -22,7 +22,7 @@ const messaging = firebase.messaging();
 
 // --- PWA CACHING ---
 
-const CACHE_NAME = "mi-panel-academico-cache-v30";
+const CACHE_NAME = "mi-panel-academico-cache-v31";
 const FILES_TO_CACHE = ["./index.html", "./manifest.json"];
 
 // Install and precache the minimal shell
@@ -126,6 +126,7 @@ messaging.onBackgroundMessage((payload) => {
   // Otherwise fall back to generic app icon, but user requested specific icons.
   if (type === "selection") icon = "/icons/icon-celebration.png";
   else if (type === "announcement") icon = "/icons/icon-megaphone.png";
+  else if (type === "compromiso") icon = "/icons/icon-bell-outline.png";
   else if (type === "message" || type === "test") icon = "/icons/icon-email.png";
 
   const options = {
@@ -133,7 +134,9 @@ messaging.onBackgroundMessage((payload) => {
     icon: icon, // Dynamic context icon
     badge: "/icons/icon-badge-v4.png", // V4: Larger bars for better visibility
     data: { url: data.url || "https://pps-psico.github.io/" },
-    tag: "pps-notification",
+    // Tag por notificación: permite que distintos tipos (p. ej. selección y
+    // consentimiento) coexistan en vez de reemplazarse entre sí.
+    tag: data.tag || "pps-notification",
     renotify: true,
     requireInteraction: true,
   };

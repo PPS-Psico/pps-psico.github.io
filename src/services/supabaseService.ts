@@ -2,6 +2,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { AppErrorResponse } from "../types";
 import type { Database } from "../types/supabase";
 import { FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS } from "../constants";
+import { getErrorMessage as toErrorMessage } from "../utils/getErrorMessage";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
@@ -9,6 +10,25 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Helper type for Table Names
 type TableName = keyof Database["public"]["Tables"];
+
+/** Columna + dirección para ordenar una consulta. */
+export type SortSpec = { field: string; direction: "asc" | "desc" };
+
+/** Mapa columna -> valor usado para construir cláusulas `.eq/.in/.ilike/.gte/.lte`. */
+export type QueryFilters = Record<string, unknown>;
+
+/**
+ * Vista estructural mínima de un PostgrestFilterBuilder: solo los métodos que
+ * encadenamos en `applyFilters`. Evita arrastrar los genéricos pesados de
+ * supabase-js sin recurrir a `any`.
+ */
+interface GenericFilterBuilder {
+  gte(column: string, value: unknown): GenericFilterBuilder;
+  lte(column: string, value: unknown): GenericFilterBuilder;
+  ilike(column: string, value: string): GenericFilterBuilder;
+  in(column: string, values: readonly unknown[]): GenericFilterBuilder;
+  eq(column: string, value: unknown): GenericFilterBuilder;
+}
 
 const buildSearchFilter = (searchTerm: string, searchFields: string[]) => {
   if (!searchTerm || searchFields.length === 0) return null;
@@ -19,29 +39,33 @@ const buildSearchFilter = (searchTerm: string, searchFields: string[]) => {
   return searchFields.map((field) => `${field}.ilike.*${term}*`).join(",");
 };
 
-const applyFilters = (query: any, filters?: Record<string, unknown>) => {
+/**
+ * Aplica un mapa de filtros a una consulta PostgREST. Es genérico sobre el tipo
+ * del builder (`Q`) para preservar el tipado del resto de la cadena
+ * (`.or/.order/.range`) en el llamador.
+ */
+const applyFilters = <Q>(query: Q, filters?: QueryFilters): Q => {
   if (!filters) return query;
+  let q = query as unknown as GenericFilterBuilder;
   Object.entries(filters).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
 
-    if (key === "startDate") query = query.gte("fecha_inicio", value);
-    else if (key === "endDate") query = query.lte("fecha_inicio", value);
-    else if (key === "finishDateGte") query = query.gte("fecha_finalizacion", value);
-    else if (key === "finishDateLte") query = query.lte("fecha_finalizacion", value);
-    else if (key === "institucion") query = query.ilike("nombre_institucion", `%${value}%`);
+    if (key === "startDate") q = q.gte("fecha_inicio", value);
+    else if (key === "endDate") q = q.lte("fecha_inicio", value);
+    else if (key === "finishDateGte") q = q.gte("fecha_finalizacion", value);
+    else if (key === "finishDateLte") q = q.lte("fecha_finalizacion", value);
+    else if (key === "institucion") q = q.ilike("nombre_institucion", `%${String(value)}%`);
     else if (key === FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS) {
-      query = query.ilike(key, `%${value}%`);
+      q = q.ilike(key, `%${String(value)}%`);
+    } else if (Array.isArray(value)) {
+      if (value.length > 0) q = q.in(key, value);
+    } else if (typeof value === "string" && value.includes("%")) {
+      q = q.ilike(key, value);
     } else {
-      if (Array.isArray(value)) {
-        if (value.length > 0) query = query.in(key, value);
-      } else if (typeof value === "string" && value.includes("%")) {
-        query = query.ilike(key, value);
-      } else {
-        query = query.eq(key, value);
-      }
+      q = q.eq(key, value);
     }
   });
-  return query;
+  return q as unknown as Q;
 };
 
 // Generic Fetch Paginated Data
@@ -52,8 +76,8 @@ export const fetchPaginatedData = async <T extends TableName>(
   fields?: string[],
   searchTerm?: string,
   searchFields?: string[],
-  sort?: { field: string; direction: "asc" | "desc" },
-  filters?: Record<string, unknown>
+  sort?: SortSpec,
+  filters?: QueryFilters
 ): Promise<{
   records: Database["public"]["Tables"][T]["Row"][];
   total: number;
@@ -91,11 +115,11 @@ export const fetchPaginatedData = async <T extends TableName>(
       total: count || 0,
       error: null,
     };
-  } catch (e: any) {
+  } catch (e) {
     return {
       records: [],
       total: 0,
-      error: { error: { type: "UNKNOWN_ERROR", message: e.message } },
+      error: { error: { type: "UNKNOWN_ERROR", message: toErrorMessage(e) } },
     };
   }
 };
@@ -104,14 +128,15 @@ export const fetchPaginatedData = async <T extends TableName>(
 export const fetchAllData = async <T extends TableName>(
   tableName: T,
   fields?: string[],
-  filters?: Record<string, unknown>,
-  sort?: { field: string; direction: "asc" | "desc" }[]
+  filters?: QueryFilters,
+  sort?: SortSpec[]
 ): Promise<{
   records: Database["public"]["Tables"][T]["Row"][];
   error: AppErrorResponse | null;
 }> => {
   try {
-    let allRows: any[] = [];
+    type Row = Database["public"]["Tables"][T]["Row"];
+    let allRows: Row[] = [];
     let from = 0;
     const PAGE_SIZE = 1000;
     let hasMore = true;
@@ -121,7 +146,7 @@ export const fetchAllData = async <T extends TableName>(
     while (hasMore) {
       let attempt = 0;
       let success = false;
-      let lastError: any = null;
+      let lastError: unknown = null;
       while (attempt < MAX_RETRIES && !success) {
         try {
           let query = supabase.from(tableName).select(selectQuery);
@@ -138,14 +163,14 @@ export const fetchAllData = async <T extends TableName>(
           const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
           if (error) throw error;
           if (data) {
-            allRows = [...allRows, ...data];
+            allRows = [...allRows, ...(data as unknown as Row[])];
             if (data.length < PAGE_SIZE) hasMore = false;
             else from += PAGE_SIZE;
           } else {
             hasMore = false;
           }
           success = true;
-        } catch (err: any) {
+        } catch (err) {
           lastError = err;
           attempt++;
           if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS * attempt);
@@ -155,14 +180,17 @@ export const fetchAllData = async <T extends TableName>(
         return {
           records: [],
           error: {
-            error: { type: "SUPABASE_ERROR", message: lastError?.message || "Network error" },
+            error: {
+              type: "SUPABASE_ERROR",
+              message: lastError ? toErrorMessage(lastError) : "Network error",
+            },
           },
         };
     }
 
-    return { records: allRows as Database["public"]["Tables"][T]["Row"][], error: null };
-  } catch (e: any) {
-    return { records: [], error: { error: { type: "UNKNOWN_ERROR", message: e.message } } };
+    return { records: allRows, error: null };
+  } catch (e) {
+    return { records: [], error: { error: { type: "UNKNOWN_ERROR", message: toErrorMessage(e) } } };
   }
 };
 
@@ -170,9 +198,9 @@ export const fetchAllData = async <T extends TableName>(
 export const fetchData = async <T extends TableName>(
   tableName: T,
   fields?: string[],
-  filters?: Record<string, unknown>,
+  filters?: QueryFilters,
   maxRecords?: number,
-  sort?: { field: string; direction: "asc" | "desc" }[]
+  sort?: SortSpec[]
 ): Promise<{
   records: Database["public"]["Tables"][T]["Row"][];
   error: AppErrorResponse | null;
@@ -192,8 +220,11 @@ export const fetchData = async <T extends TableName>(
       if (error) throw error;
 
       return { records: data as unknown as Database["public"]["Tables"][T]["Row"][], error: null };
-    } catch (e: any) {
-      return { records: [], error: { error: { type: "SUPABASE_ERROR", message: e.message } } };
+    } catch (e) {
+      return {
+        records: [],
+        error: { error: { type: "SUPABASE_ERROR", message: toErrorMessage(e) } },
+      };
     }
   }
   return await fetchAllData(tableName, fields, filters, sort);
@@ -210,6 +241,9 @@ export const createRecord = async <T extends TableName>(
   try {
     const { data, error } = await supabase
       .from(tableName)
+      // supabase-js no resuelve el tipo Insert con un nombre de tabla genérico (T).
+      // `fields` ya viene tipado como Insert<T>; el cast solo desbloquea el overload.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .insert(fields as any)
       .select()
       .single();
@@ -217,8 +251,11 @@ export const createRecord = async <T extends TableName>(
       return { record: null, error: { error: { type: "CREATE_ERROR", message: error.message } } };
 
     return { record: data as unknown as Database["public"]["Tables"][T]["Row"], error: null };
-  } catch (e: any) {
-    return { record: null, error: { error: { type: "UNKNOWN_ERROR", message: e.message } } };
+  } catch (e) {
+    return {
+      record: null,
+      error: { error: { type: "UNKNOWN_ERROR", message: toErrorMessage(e) } },
+    };
   }
 };
 
@@ -234,7 +271,11 @@ export const updateRecord = async <T extends TableName>(
   try {
     const { data, error } = await supabase
       .from(tableName)
+      // T genérico: supabase-js no infiere Update<T>. `fields` ya está tipado.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .update(fields as any)
+      // T genérico: la columna "id" no se resuelve a string bajo el overload genérico.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .eq("id", recordId as any)
       .select()
       .maybeSingle();
@@ -244,8 +285,11 @@ export const updateRecord = async <T extends TableName>(
     }
 
     return { record: data as unknown as Database["public"]["Tables"][T]["Row"], error: null };
-  } catch (e: any) {
-    return { record: null, error: { error: { type: "UNKNOWN_ERROR", message: e.message } } };
+  } catch (e) {
+    return {
+      record: null,
+      error: { error: { type: "UNKNOWN_ERROR", message: toErrorMessage(e) } },
+    };
   }
 };
 
@@ -275,8 +319,11 @@ export const updateRecords = async <T extends TableName>(
 
     const successes = results.map((r) => r.record!).filter(Boolean);
     return { records: successes, error: null };
-  } catch (e: any) {
-    return { records: null, error: { error: { type: "UNKNOWN_ERROR", message: e.message } } };
+  } catch (e) {
+    return {
+      records: null,
+      error: { error: { type: "UNKNOWN_ERROR", message: toErrorMessage(e) } },
+    };
   }
 };
 
@@ -289,6 +336,8 @@ export const deleteRecord = async <T extends TableName>(
     const { error, count } = await supabase
       .from(tableName)
       .delete({ count: "exact" })
+      // T genérico: la columna "id" no se resuelve a string bajo el overload genérico.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .eq("id", recordId as any);
 
     if (error)
@@ -307,7 +356,10 @@ export const deleteRecord = async <T extends TableName>(
     }
 
     return { success: true, error: null };
-  } catch (e: any) {
-    return { success: false, error: { error: { type: "UNKNOWN_ERROR", message: e.message } } };
+  } catch (e) {
+    return {
+      success: false,
+      error: { error: { type: "UNKNOWN_ERROR", message: toErrorMessage(e) } },
+    };
   }
 };

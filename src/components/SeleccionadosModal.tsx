@@ -1,421 +1,412 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import type { GroupedSeleccionados, SelectedStudent } from "../types";
-import EmptyState from "./EmptyState";
+
+/* ============================================================
+   SeleccionadosModal — rediseño mobile de la "lista de convocados".
+   Resultados oficiales de una convocatoria cerrada, vista del
+   estudiante: tu resultado destacado, stats en hairline, filtros
+   y la lista agrupada por horario con estado Confirmado/Pendiente.
+   Lenguaje editorial-data del prototipo PPS (scope .ed):
+   tipografía protagonista, datos en línea, una sola pieza fuerte.
+
+   Mantiene el contrato existente (isOpen / onClose / seleccionados:
+   GroupedSeleccionados / convocatoriaName / simpleMode) y adapta esa
+   data al diseño por dentro, sin tocar ModalContext ni AppModals.
+   ============================================================ */
+
+/* ── Íconos de trazo (lucide-style) ── */
+type SelIconName = "close" | "download";
+const SEL_PATHS: Record<SelIconName, React.ReactNode> = {
+  close: (
+    <>
+      <path d="M6 6l12 12" />
+      <path d="M18 6L6 18" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 4v12" />
+      <path d="M6 10l6 6 6-6" />
+      <path d="M5 20h14" />
+    </>
+  ),
+};
+const SelIcon: React.FC<{ name: SelIconName; size?: number; strokeWidth?: number }> = ({
+  name,
+  size = 17,
+  strokeWidth = 1.8,
+}) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    {SEL_PATHS[name]}
+  </svg>
+);
+
+/* ── Tipos internos del diseño ── */
+type EstadoConvocado = "confirmado" | "pendiente";
+type AvatarTone = "teal" | "navy" | "purple" | "amber";
+
+interface Convocado {
+  nombre: string;
+  legajo: string;
+  estado: EstadoConvocado;
+  horario: string;
+  esVos?: boolean;
+}
 
 interface SeleccionadosModalProps {
   isOpen: boolean;
   onClose: () => void;
   seleccionados: GroupedSeleccionados | null;
+  /** Nombre de la convocatoria — se muestra como titular. */
   convocatoriaName: string;
+  /** Orientación (área) — define el color del kicker. Opcional. */
+  orientacion?: string;
+  /** Cupos publicados, para el subtítulo de la stat. Opcional. */
+  cupos?: number;
+  /** Callback del botón descargar; si no se pasa, el botón se oculta. */
+  onDescargar?: () => void;
+  /** Reservado para compatibilidad con el contrato previo. */
   simpleMode?: boolean;
 }
 
-type StatusFilter = "all" | "confirmed" | "pending";
-
-const isConfirmed = (student: SelectedStudent) =>
-  (student.compromisoEstado || "").toLowerCase() === "aceptado";
-
-const formatAcceptedAt = (acceptedAt?: string | null) => {
-  if (!acceptedAt) return "";
-
-  const date = new Date(acceptedAt);
-  if (Number.isNaN(date.getTime())) return "";
-
-  return date.toLocaleString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+/* ── Helpers ── */
+const AREA_COLOR: Record<string, string> = {
+  Clínica: "var(--area-clinica)",
+  Educacional: "var(--area-educacional)",
+  Laboral: "var(--area-laboral)",
+  Comunitaria: "var(--area-comunitaria)",
 };
 
-const CommitmentBadge: React.FC<{ status?: string | null }> = ({ status }) => {
-  if ((status || "").toLowerCase() === "aceptado") {
-    return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
-        Confirmado
-      </span>
-    );
-  }
+const TONES: AvatarTone[] = ["teal", "navy", "purple", "amber"];
+function toneFor(nombre: string): AvatarTone {
+  let h = 0;
+  for (let i = 0; i < nombre.length; i++) h = (h * 31 + nombre.charCodeAt(i)) >>> 0;
+  return TONES[h % TONES.length];
+}
+function initials(name: string): string {
+  return name
+    .replace(/^LU\s*/i, "")
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
-  return (
-    <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
-      Pendiente
-    </span>
-  );
-};
+const isConfirmed = (s: SelectedStudent) => (s.compromisoEstado || "").toLowerCase() === "aceptado";
 
-const FilterChip: React.FC<{
-  active: boolean;
-  label: string;
-  count: number;
-  onClick: () => void;
-}> = ({ active, label, count, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold border transition-all ${
-      active
-        ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
-        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
-    }`}
-  >
-    <span>{label}</span>
-    <span
-      className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
-        active
-          ? "bg-white/20 text-white dark:bg-slate-200 dark:text-slate-900"
-          : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-      }`}
-    >
-      {count}
-    </span>
-  </button>
-);
-
-const StudentListItem: React.FC<{ student: SelectedStudent; simpleMode?: boolean }> = ({
-  student,
-  simpleMode,
-}) => (
-  <motion.li
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, scale: 0.95 }}
-    className="flex items-center justify-between p-3.5 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group"
-  >
-    <div className="flex items-center gap-4 min-w-0">
-      <div
-        className={`
-            w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shadow-sm transform transition-transform group-hover:scale-110
-            ${
-              student.nombre === "Nombre Desconocido"
-                ? "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
-                : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/30"
-            }
-        `}
-      >
-        {student.nombre.charAt(0).toUpperCase()}
-      </div>
-      <div className="flex flex-col min-w-0">
-        <span
-          className={`font-bold text-sm truncate ${student.nombre === "Nombre Desconocido" ? "text-slate-400 italic" : "text-slate-800 dark:text-slate-100"}`}
-        >
-          {student.nombre}
-        </span>
-        {!simpleMode && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 sm:hidden">
-              {student.legajo}
-            </span>
-            <CommitmentBadge status={student.compromisoEstado} />
-            {isConfirmed(student) && student.compromisoFecha && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                <span className="material-icons !text-[12px]">schedule</span>
-                {formatAcceptedAt(student.compromisoFecha)}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-
-    {!simpleMode ? (
-      <div className="hidden sm:flex items-center gap-3">
-        {isConfirmed(student) && student.compromisoFecha && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-            <span className="material-icons !text-[12px]">schedule</span>
-            {formatAcceptedAt(student.compromisoFecha)}
-          </span>
-        )}
-        <CommitmentBadge status={student.compromisoEstado} />
-        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700">
-          {student.legajo}
-        </span>
-      </div>
-    ) : (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700">
-        {student.legajo}
-      </span>
-    )}
-  </motion.li>
-);
+type Filtro = "all" | "confirmed" | "pending";
 
 const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
   isOpen,
   onClose,
   seleccionados,
   convocatoriaName,
-  simpleMode = false,
+  orientacion,
+  cupos,
+  onDescargar,
 }) => {
+  const { resolvedTheme } = useTheme();
+  const { authenticatedUser } = useAuth();
+  const currentLegajo = authenticatedUser?.legajo;
+
   const [mounted, setMounted] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [filtro, setFiltro] = useState<Filtro>("all");
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
+  // Reset de filtro + lock de scroll + cierre con Escape mientras está abierto.
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      setSearchTerm("");
-      setStatusFilter("all");
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    if (!isOpen) return;
+    setFiltro("all");
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "unset";
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
-  const totalCount: number = seleccionados
-    ? (Object.values(seleccionados) as SelectedStudent[][]).reduce(
-        (acc, curr) => acc + curr.length,
-        0
-      )
-    : 0;
-
-  const confirmationStats = useMemo(() => {
-    const allStudents = seleccionados
-      ? (Object.values(seleccionados) as SelectedStudent[][]).flat()
-      : [];
-
-    const confirmed = allStudents.filter(isConfirmed).length;
-
-    return {
-      confirmed,
-      pending: Math.max(totalCount - confirmed, 0),
-    };
-  }, [seleccionados, totalCount]);
-
-  const filteredData = useMemo(() => {
-    if (!seleccionados) return null;
-
-    const lowerTerm = searchTerm.toLowerCase();
-    const filtered: GroupedSeleccionados = {};
-    let hasResults = false;
-
+  // Adaptar GroupedSeleccionados → lista plana de convocados (preserva orden).
+  const convocados: Convocado[] = useMemo(() => {
+    if (!seleccionados) return [];
+    const out: Convocado[] = [];
     Object.entries(seleccionados).forEach(([horario, students]) => {
-      const matchingStudents = (students as SelectedStudent[]).filter((student) => {
-        const matchesSearch =
-          !searchTerm ||
-          student.nombre.toLowerCase().includes(lowerTerm) ||
-          student.legajo.toLowerCase().includes(lowerTerm);
-
-        const matchesStatus =
-          statusFilter === "all" ||
-          (statusFilter === "confirmed" && isConfirmed(student)) ||
-          (statusFilter === "pending" && !isConfirmed(student));
-
-        return matchesSearch && matchesStatus;
+      (students as SelectedStudent[]).forEach((s) => {
+        out.push({
+          nombre: s.nombre,
+          legajo: s.legajo,
+          estado: isConfirmed(s) ? "confirmado" : "pendiente",
+          horario,
+          esVos: !!currentLegajo && s.legajo === currentLegajo,
+        });
       });
-
-      if (matchingStudents.length > 0) {
-        filtered[horario] = matchingStudents;
-        hasResults = true;
-      }
     });
+    return out;
+  }, [seleccionados, currentLegajo]);
 
-    return hasResults ? filtered : null;
-  }, [seleccionados, searchTerm, statusFilter]);
+  const { total, confirmados, pendientes, me, grupos } = useMemo(() => {
+    const total = convocados.length;
+    const confirmados = convocados.filter((p) => p.estado === "confirmado").length;
+    const me = convocados.find((p) => p.esVos);
+    const orden: string[] = [];
+    const map = new Map<string, Convocado[]>();
+    for (const p of convocados) {
+      if (!map.has(p.horario)) {
+        map.set(p.horario, []);
+        orden.push(p.horario);
+      }
+      map.get(p.horario)!.push(p);
+    }
+    const grupos = orden.map((h) => ({ horario: h, people: map.get(h)! }));
+    return { total, confirmados, pendientes: total - confirmados, me, grupos };
+  }, [convocados]);
 
-  const visibleCount = filteredData
-    ? (Object.values(filteredData) as SelectedStudent[][]).reduce(
-        (acc, curr) => acc + curr.length,
-        0
-      )
-    : 0;
+  if (!mounted || !isOpen) return null;
 
-  if (!mounted) return null;
+  const orientacionLabel = orientacion ? String(orientacion).toUpperCase() : "CONVOCATORIA";
+  const areaColor = (orientacion && AREA_COLOR[orientacion]) || "var(--accent)";
+  const isEmpty = total === 0;
+
+  const pasa = (p: Convocado) =>
+    filtro === "all" ||
+    (filtro === "confirmed" && p.estado === "confirmado") ||
+    (filtro === "pending" && p.estado === "pendiente");
+
+  const chips: { k: Filtro; label: string; n: number }[] = [
+    { k: "all", label: "Todos", n: total },
+    { k: "confirmed", label: "Confirmados", n: confirmados },
+    { k: "pending", label: "Pendientes", n: pendientes },
+  ];
+
+  const visibles = grupos.reduce((acc, g) => acc + g.people.filter(pasa).length, 0);
 
   return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-[95vw] max-h-[85dvh] sm:w-full sm:max-w-2xl sm:max-h-[90vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800"
-          >
-            <div className="flex-shrink-0 px-6 py-5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 z-10">
-              <div className="flex justify-between items-start gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-                      Resultados Oficiales
-                    </p>
-                    {totalCount > 0 && (
-                      <span className="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full leading-none">
-                        {totalCount}
-                      </span>
-                    )}
-                  </div>
-                  <h2
-                    className="text-xl font-black text-slate-900 dark:text-white leading-tight truncate"
-                    title={convocatoriaName}
-                  >
-                    {convocatoriaName}
-                  </h2>
-                  {totalCount > 0 && !simpleMode && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900">
-                        <span className="material-icons !text-sm">verified</span>
-                        {confirmationStats.confirmed} confirmados
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900">
-                        <span className="material-icons !text-sm">pending_actions</span>
-                        {confirmationStats.pending} pendientes
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold border ${
-                          confirmationStats.pending === 0
-                            ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900"
-                            : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700"
-                        }`}
-                      >
-                        <span className="material-icons !text-sm">
-                          {confirmationStats.pending === 0 ? "task_alt" : "hourglass_top"}
-                        </span>
-                        {confirmationStats.pending === 0
-                          ? "Lista para iniciar"
-                          : `Faltan ${confirmationStats.pending}`}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-                >
-                  <span className="material-icons !text-xl">close</span>
-                </button>
-              </div>
+    <div
+      className="ed sel-overlay"
+      data-mode={resolvedTheme}
+      data-accent="teal"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Convocados · ${convocatoriaName}`}
+      onClick={onClose}
+    >
+      <div className="sel-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sel-grab" aria-hidden="true" />
 
-              <div className="mt-4 flex flex-col gap-3">
-                {!simpleMode && (
-                  <div className="flex flex-wrap gap-2">
-                    <FilterChip
-                      active={statusFilter === "all"}
-                      label="Todos"
-                      count={totalCount}
-                      onClick={() => setStatusFilter("all")}
-                    />
-                    <FilterChip
-                      active={statusFilter === "confirmed"}
-                      label="Confirmados"
-                      count={confirmationStats.confirmed}
-                      onClick={() => setStatusFilter("confirmed")}
-                    />
-                    <FilterChip
-                      active={statusFilter === "pending"}
-                      label="Pendientes"
-                      count={confirmationStats.pending}
-                      onClick={() => setStatusFilter("pending")}
-                    />
-                  </div>
-                )}
+        {/* Header */}
+        <header className="sel-header">
+          <button type="button" className="sel-iconbtn" onClick={onClose} aria-label="Cerrar">
+            <SelIcon name="close" size={18} />
+          </button>
+          <span className="sel-header__label">Convocados</span>
+          {onDescargar ? (
+            <button
+              type="button"
+              className="sel-iconbtn"
+              onClick={onDescargar}
+              aria-label="Descargar listado"
+            >
+              <SelIcon name="download" size={17} />
+            </button>
+          ) : (
+            <span style={{ width: 36, height: 36, flexShrink: 0 }} aria-hidden="true" />
+          )}
+        </header>
 
-                {!simpleMode && (totalCount >= 20 || statusFilter !== "all") && (
-                  <div className="relative animate-fade-in">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 !text-lg">
-                      search
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Buscar por alumno o legajo..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white text-sm rounded-xl py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
-                    />
-                  </div>
-                )}
+        {/* Body scrollable */}
+        <div className="sel-body">
+          {/* Title block — editorial */}
+          <span className="sel-kicker" style={{ color: areaColor }}>
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 999,
+                background: areaColor,
+                display: "inline-block",
+              }}
+            />
+            {orientacionLabel} · CERRADA
+          </span>
+          <div style={{ marginTop: 8 }}>
+            <span className="ed-eyebrow" style={{ fontSize: 10.5 }}>
+              Resultados oficiales
+            </span>
+          </div>
+          <h2 className="sel-title">{convocatoriaName}</h2>
 
-                {!simpleMode && statusFilter !== "all" && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Mostrando {visibleCount} alumno{visibleCount === 1 ? "" : "s"} con filtro{" "}
-                    {statusFilter === "confirmed" ? "confirmados" : "pendientes"}.
-                  </p>
-                )}
-              </div>
+          {isEmpty ? (
+            <div className="sel-empty">
+              <p className="sel-empty__title">Lista no disponible</p>
+              <p className="sel-empty__msg">Aún no se publicó la lista de seleccionados.</p>
             </div>
-
-            <div className="p-6 overflow-y-auto flex-grow custom-scrollbar bg-slate-50/30 dark:bg-black/20">
-              {!filteredData ? (
-                <div className="py-12 flex flex-col items-center justify-center text-center opacity-60">
-                  <span className="material-icons !text-4xl text-slate-300 mb-2">
-                    person_search
-                  </span>
-                  <p className="text-sm font-medium text-slate-500">
-                    No se encontraron resultados para tu búsqueda.
-                  </p>
+          ) : (
+            <>
+              {/* Stats — hairline, sin cajas */}
+              <div className="sel-stats">
+                <div className="sel-stat">
+                  <div className="sel-stat__lbl">Convocados</div>
+                  <div className="sel-stat__val">{total}</div>
+                  <div className="sel-stat__sub">{cupos ? `de ${cupos} cupos+` : "en total"}</div>
                 </div>
-              ) : !seleccionados || Object.keys(seleccionados).length === 0 ? (
-                <EmptyState
-                  icon="person_off"
-                  title="Lista no disponible"
-                  message="Aún no se ha publicado la lista de seleccionados."
-                  className="bg-transparent border-none shadow-none mt-4"
-                />
-              ) : (
-                <div className="space-y-8">
-                  {Object.entries(filteredData).map(([horario, students]) => (
-                    <div key={horario} className="relative">
-                      {horario !== "No especificado" && (
-                        <div className="flex items-center gap-2 mb-3 py-1 z-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                          <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-                            {horario}
-                          </h3>
-                          <div className="flex-grow border-b border-slate-200 dark:border-slate-800 ml-2"></div>
-                          <span className="text-[10px] font-bold text-slate-400">
-                            {(students as SelectedStudent[]).length}
-                          </span>
-                        </div>
-                      )}
-                      <ul className="space-y-3">
-                        <AnimatePresence>
-                          {(students as SelectedStudent[]).map((student) => (
-                            <StudentListItem
-                              key={`${student.legajo}-${horario}`}
-                              student={student}
-                              simpleMode={simpleMode}
-                            />
-                          ))}
-                        </AnimatePresence>
-                      </ul>
+                <div className="sel-stat">
+                  <div className="sel-stat__lbl">Confirmados</div>
+                  <div className="sel-stat__val" style={{ color: "var(--area-clinica)" }}>
+                    {confirmados}
+                  </div>
+                  <div className="sel-stat__sub">firmaron</div>
+                </div>
+                <div className="sel-stat">
+                  <div className="sel-stat__lbl">Pendientes</div>
+                  <div className="sel-stat__val" style={{ color: "var(--area-laboral)" }}>
+                    {pendientes}
+                  </div>
+                  <div className="sel-stat__sub">sin firmar</div>
+                </div>
+              </div>
+
+              {/* Tu resultado — ancla emocional, destacada */}
+              {me && (
+                <>
+                  <span className="ed-eyebrow" style={{ fontSize: 10.5 }}>
+                    Tu resultado
+                  </span>
+                  <div className="sel-you">
+                    <div className="sel-you__av">{initials(me.nombre)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <span className="sel-you__name">{me.nombre}</span>
+                        <span className="sel-badge-vos">Vos</span>
+                      </div>
+                      <div className="sel-you__msg">
+                        {me.estado === "confirmado" ? (
+                          <>
+                            Quedaste <b style={{ fontWeight: 600 }}>seleccionado</b>. Tu cupo está
+                            confirmado.
+                          </>
+                        ) : (
+                          <>
+                            Quedaste <b style={{ fontWeight: 600 }}>seleccionado</b>. Firmá el
+                            compromiso desde Inicio.
+                          </>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                  </div>
+                </>
+              )}
+
+              {/* Lista + filtros */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  marginBottom: 11,
+                }}
+              >
+                <span className="ed-eyebrow" style={{ fontSize: 10.5 }}>
+                  La lista
+                </span>
+                <span
+                  className="sel-group__n"
+                  style={{ fontSize: 10.5, color: "var(--ink-subtle)" }}
+                >
+                  {total} {total === 1 ? "persona" : "personas"}
+                </span>
+              </div>
+
+              <div className="sel-filters">
+                {chips.map((c) => (
+                  <button
+                    key={c.k}
+                    type="button"
+                    className="sel-chip"
+                    data-on={filtro === c.k}
+                    onClick={() => setFiltro(c.k)}
+                  >
+                    {c.label}
+                    <span className="sel-chip__n">{c.n}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Grupos por horario */}
+              {visibles === 0 ? (
+                <p className="sel-empty__msg" style={{ textAlign: "center", padding: "8px 0" }}>
+                  No hay convocados con este filtro.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  {grupos.map((g) => {
+                    const people = g.people.filter(pasa);
+                    if (!people.length) return null;
+                    const showHead = g.horario && g.horario !== "No especificado";
+                    return (
+                      <div key={g.horario} className="sel-group">
+                        {showHead && (
+                          <div className="sel-group__head">
+                            <span className="sel-group__h">{g.horario}</span>
+                            <span className="sel-group__rule" />
+                            <span className="sel-group__n">{people.length}</span>
+                          </div>
+                        )}
+                        {people.map((p) => (
+                          <ConvRow key={`${p.legajo}-${g.horario}`} convocado={p} />
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-            </div>
-
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <button
-                onClick={onClose}
-                className="w-full px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 font-bold rounded-xl text-sm transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2"
-              >
-                Entendido
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
+            </>
+          )}
+        </div>
+      </div>
+    </div>,
     document.body
+  );
+};
+
+const ConvRow: React.FC<{ convocado: Convocado }> = ({ convocado }) => {
+  const ok = convocado.estado === "confirmado";
+  return (
+    <div className="sel-row">
+      <div className="sel-av" data-tone={toneFor(convocado.nombre)}>
+        {initials(convocado.nombre)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span className="sel-row__name">{convocado.nombre}</span>
+          {convocado.esVos && <span className="sel-badge-vos">Vos</span>}
+        </div>
+        <div className="sel-row__legajo">{convocado.legajo}</div>
+      </div>
+      <span className="sel-status" data-ok={ok}>
+        {ok ? "Confirmado" : "Pendiente"}
+      </span>
+    </div>
   );
 };
 

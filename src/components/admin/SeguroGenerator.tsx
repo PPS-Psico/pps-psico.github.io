@@ -50,6 +50,17 @@ import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { injectPremiumMotion } from "./premiumMotion";
 import { downloadBlob } from "../../utils/downloadFile";
 import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+import type { Convocatoria } from "../../types";
+
+/**
+ * Convocatoria agregada por lanzamiento para la tabla de selección del seguro:
+ * agrupa los inscriptos seleccionados en `estudiante_id` (array de IDs).
+ */
+type ConvAgg = Omit<Convocatoria, "estudiante_id"> & {
+  id: string;
+  estudiante_id: string[];
+};
 
 // ─── CSS scoped (Paper & Ink editorial) ───────────────────────────────────────
 const SEG_CSS = `
@@ -214,7 +225,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
   const [step, setStep] = useState<"selection" | "review">(contextual ? "review" : "selection");
 
-  const [convocatorias, setConvocatorias] = useState<any[]>([]); // Use any[] for aggregated objects
+  const [convocatorias, setConvocatorias] = useState<ConvAgg[]>([]); // Convocatorias agrupadas
   const [selectedConvocatorias, setSelectedConvocatorias] = useState<Set<string>>(new Set());
   const [studentsForReview, setStudentsForReview] = useState<StudentForReview[]>([]);
 
@@ -240,7 +251,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   }, []);
 
   // --- PASO 1: Cargar Convocatorias ---
-  const handleFetchConvocatorias = useCallback(async (): Promise<any[]> => {
+  const handleFetchConvocatorias = useCallback(async (): Promise<ConvAgg[]> => {
     setIsLoading(true);
     setLoadingMessage("Cargando convocatorias...");
     setConvocatorias([]);
@@ -255,7 +266,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
           [FIELD_FECHA_INICIO_CONVOCATORIAS]: "2024-01-01",
           [FIELD_FECHA_FIN_CONVOCATORIAS]: "2024-06-01",
           [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: "student_1",
-        } as any,
+        } as unknown as ConvAgg,
       ];
       setConvocatorias(mock);
       setIsLoading(false);
@@ -274,16 +285,16 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
       // Fetch instituciones separately to get telefono
       const institucionRes = await db.instituciones.getAll();
-      const institucionDataMap = new Map(institucionRes.map((i: any) => [i.id, i]));
+      const institucionDataMap = new Map(institucionRes.map((i) => [i.id, i]));
 
       // Build a quick lookup for telefonos
       const institucionTelefonos: Record<string, string> = {};
-      institucionRes.forEach((i: any) => {
+      institucionRes.forEach((i) => {
         institucionTelefonos[i.id] = i[FIELD_TELEFONO_INSTITUCIONES] || "";
       });
 
-      const lanzamientoMap = new Map(lanzamientoRes.map((l: any) => [l.id, l]));
-      const groupedConvocatorias = new Map<string, any>();
+      const lanzamientoMap = new Map(lanzamientoRes.map((l) => [l.id, l]));
+      const groupedConvocatorias = new Map<string, ConvAgg>();
 
       records.forEach((record) => {
         const lanzId = record[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
@@ -336,8 +347,11 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
       setConvocatorias(finalConvocatorias);
       return finalConvocatorias;
-    } catch (error: any) {
-      showModal("Error de Carga", `No se pudieron cargar las convocatorias: ${error.message}`);
+    } catch (error) {
+      showModal(
+        "Error de Carga",
+        `No se pudieron cargar las convocatorias: ${getErrorMessage(error)}`
+      );
       return [];
     } finally {
       setIsLoading(false);
@@ -385,7 +399,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   // --- PASO 2: Procesar Datos ---
   const handleProceedToReview = async (
     overrideSelection?: Set<string>,
-    overrideConvocatorias?: any[]
+    overrideConvocatorias?: ConvAgg[]
   ) => {
     const selectionToUse = overrideSelection || selectedConvocatorias;
     const convocatoriasToUse = overrideConvocatorias || convocatorias;
@@ -561,7 +575,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
       setStudentsForReview(compiledList);
       setStep("review");
-    } catch (e: any) {
+    } catch (e) {
       logger.error(e);
       showModal("Error", "Ocurrió un error al procesar los datos.");
     } finally {
@@ -668,9 +682,9 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
       setToastInfo({ message: "Excel generado correctamente.", type: "success" });
       return true;
-    } catch (e: any) {
+    } catch (e) {
       logger.error("Error generating Excel:", e);
-      showModal("Error", "No se pudo generar el Excel: " + e.message);
+      showModal("Error", "No se pudo generar el Excel: " + getErrorMessage(e));
       return false;
     }
   };
@@ -706,13 +720,14 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       }
 
       setToastInfo({ message: "Plantilla descargada. Ahora copia los datos.", type: "success" });
-    } catch (e: any) {
+    } catch (e) {
       logger.error("Error detallado descarga:", e);
       let errorMessage = "Error desconocido al descargar la plantilla.";
-      if (e.message) errorMessage = e.message;
-      else if (e.error_description) errorMessage = e.error_description;
-      else if (e.error)
-        errorMessage = typeof e.error === "string" ? e.error : JSON.stringify(e.error);
+      const o = e as { message?: string; error_description?: string; error?: unknown };
+      if (o?.message) errorMessage = o.message;
+      else if (o?.error_description) errorMessage = o.error_description;
+      else if (o?.error)
+        errorMessage = typeof o.error === "string" ? o.error : JSON.stringify(o.error);
 
       showModal(
         "Error de Descarga",
@@ -795,13 +810,13 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
       try {
         await marcarAseguramiento(preSelectedLanzamientoId, coordinadorId);
-      } catch (e: any) {
+      } catch (e) {
         logger.error("Error al persistir aseguramiento:", e);
         showModal(
           "No se pudo registrar el aseguramiento",
-          `El listado se descargó, pero no se pudo marcar el seguro como gestionado.\n\nDetalle: ${
-            e?.message ?? "error desconocido"
-          }\n\nLa PPS permanece en "A asegurar". Reintentá el paso 4.`
+          `El listado se descargó, pero no se pudo marcar el seguro como gestionado.\n\nDetalle: ${getErrorMessage(
+            e
+          )}\n\nLa PPS permanece en "A asegurar". Reintentá el paso 4.`
         );
         return;
       }
@@ -835,12 +850,9 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       queryClient.invalidateQueries({ queryKey: ["convStatusByLaunch"] });
       queryClient.invalidateQueries({ queryKey: ["inscCountByLaunch"] });
       setToastInfo({ message: "Aseguramiento revertido.", type: "success" });
-    } catch (e: any) {
+    } catch (e) {
       logger.error("Error al revertir aseguramiento:", e);
-      showModal(
-        "Error",
-        `No se pudo revertir el aseguramiento.\n\nDetalle: ${e?.message ?? "error desconocido"}`
-      );
+      showModal("Error", `No se pudo revertir el aseguramiento.\n\nDetalle: ${getErrorMessage(e)}`);
     } finally {
       setIsMarcando(false);
     }
@@ -1035,7 +1047,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
                     <td className="name">{conv[FIELD_NOMBRE_PPS_CONVOCATORIAS]}</td>
                     <td style={{ textAlign: "center" }}>
                       <span className="seg-count">
-                        {(conv[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as any[])?.length || 0}
+                        {conv[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]?.length || 0}
                       </span>
                     </td>
                     <td style={{ color: "var(--ink-3)" }}>

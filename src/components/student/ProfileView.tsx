@@ -23,6 +23,7 @@ import { SkeletonBox } from "../Skeletons";
 // Premium Profile Card Component
 import Select from "../ui/Select";
 import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 
 const ProfileCard: React.FC<{
   label: string;
@@ -129,7 +130,7 @@ const PremiumButton: React.FC<{
 interface ProfileViewProps {
   studentDetails: EstudianteFields | null;
   isLoading: boolean;
-  updateInternalNotes: any;
+  updateInternalNotes: { mutate: (notes: string) => void; isPending: boolean };
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({
@@ -176,8 +177,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         let dbHasToken = false;
         if (fcmSubscribed) {
           try {
-            const { data, error } = await (supabase as any).rpc("check_fcm_token_exists", {
-              uid: authenticatedUser.id,
+            const { data, error } = await supabase.rpc("check_fcm_token_exists", {
+              uid: authenticatedUser?.id ?? "",
             });
 
             if (!error && data) {
@@ -236,7 +237,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       // Also delete from database via RPC
       if (authenticatedUser?.id) {
         try {
-          const { error } = await (supabase as any).rpc("delete_fcm_token_user", {
+          const { error } = await supabase.rpc("delete_fcm_token_user", {
             uid: authenticatedUser.id,
           });
           if (error) {
@@ -286,12 +287,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       dni: string;
       orientacion: string;
     }) => {
-      if (!(studentDetails as any).id) throw new Error("ID no encontrado");
+      if (!studentDetails?.id) throw new Error("ID no encontrado");
 
       const dniValue = data.dni ? parseInt(data.dni, 10) : null;
       const tieneDatosCompletos = dniValue && dniValue > 0 && data.correo && data.telefono;
 
-      return db.estudiantes.update((studentDetails as any).id, {
+      return db.estudiantes.update(studentDetails.id, {
         [FIELD_CORREO_ESTUDIANTES]: data.correo,
         [FIELD_TELEFONO_ESTUDIANTES]: data.telefono,
         [FIELD_DNI_ESTUDIANTES]: dniValue,
@@ -305,8 +306,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       queryClient.invalidateQueries({ queryKey: ["student"] });
       refreshAuth();
     },
-    onError: (error: any) => {
-      showModal("Error", `No se pudo actualizar: ${error.message}`);
+    onError: (error) => {
+      showModal("Error", `No se pudo actualizar: ${getErrorMessage(error)}`);
     },
   });
 

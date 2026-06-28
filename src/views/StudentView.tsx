@@ -4,22 +4,27 @@ import Footer from "../components/layout/Footer";
 import AppModals from "../components/AppModals";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { StudentPanelProvider, useStudentPanel } from "../contexts/StudentPanelContext";
 import type { TabId } from "../types";
 import StudentDashboard from "./StudentDashboard";
 import { PullToRefresh, TabTransitionWrapper } from "../components/layout/MobileTransitions";
 import { useTabSwipe } from "../hooks/useSwipe";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 // Inner component to consume Context
 const StudentLayout: React.FC = () => {
   const { authenticatedUser } = useAuth();
   const { finalizacionRequest } = useStudentPanel(); // Consume finalizationRequest
+  const { resolvedTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Determine active tab from URL
   let activeTab: TabId = "inicio";
-  if (location.pathname.includes("/practicas")) activeTab = "practicas";
+  if (location.pathname.includes("/convocatorias")) activeTab = "convocatorias";
+  else if (location.pathname.includes("/practicas")) activeTab = "practicas";
   else if (location.pathname.includes("/solicitudes")) activeTab = "solicitudes";
   else if (location.pathname.includes("/perfil")) activeTab = "profile";
 
@@ -57,41 +62,47 @@ const StudentLayout: React.FC = () => {
     tabs: tabIds,
     activeTab: activeTab,
     onTabChange: handleTabChange,
-    enabled: typeof window !== "undefined" && window.innerWidth < 768,
+    enabled: isMobile,
   });
 
   return (
-    <div className="pb-28 md:pb-8 min-h-screen flex flex-col">
+    <div
+      className="pb-28 md:pb-8 min-h-screen flex flex-col"
+      style={{ background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }}
+    >
       <main className="flex-grow md:block">
-        {/* Desktop: sin transiciones */}
-        <div className="hidden md:block">
+        {/* Montamos SOLO la rama del viewport actual (no las dos ocultas por CSS)
+            para no duplicar el dashboard del estudiante en el DOM. */}
+        {isMobile ? (
+          // Mobile: pull-to-refresh y swipe, sin transiciones de página
+          <div className="touch-pan-y animate-fade-in" {...swipeHandlers} style={style}>
+            <PullToRefresh
+              onRefresh={async () => {
+                // Aquí puedes agregar lógica de refresh
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                window.location.reload();
+              }}
+            >
+              <StudentDashboard
+                user={authenticatedUser as any}
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+              />
+            </PullToRefresh>
+          </div>
+        ) : (
+          // Desktop: sin transiciones
           <StudentDashboard
             user={authenticatedUser as any}
             activeTab={activeTab}
             onTabChange={handleTabChange}
           />
-        </div>
-
-        {/* Mobile: solo pull-to-refresh y swipe, sin transiciones de página */}
-        <div className="md:hidden touch-pan-y animate-fade-in" {...swipeHandlers} style={style}>
-          <PullToRefresh
-            onRefresh={async () => {
-              // Aquí puedes agregar lógica de refresh
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-              window.location.reload();
-            }}
-          >
-            <StudentDashboard
-              user={authenticatedUser as any}
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
-            />
-          </PullToRefresh>
-        </div>
+        )}
       </main>
 
-      {/* Hide Footer if Finalization Request is active, as tabs/info are irrelevant */}
-      {!finalizacionRequest && <Footer activeTab={activeTab} />}
+      {/* Nota al pie por sección: solo escritorio. En mobile no se muestra, y se
+          oculta también si hay una finalización en curso (tabs/info irrelevantes). */}
+      {!finalizacionRequest && !isMobile && <Footer activeTab={activeTab} />}
 
       <AppModals />
 

@@ -19,6 +19,7 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import { mockDb } from "../services/mockDb";
 import { logger } from "../utils/logger";
+import type { MetricRow } from "../utils/metricsCalculations";
 
 export interface ActivityItem {
   id: string;
@@ -53,11 +54,11 @@ export const useActivityFeed = (isTestingMode = false) => {
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
       try {
-        let requests: any[] = [];
-        let finalizations: any[] = [];
-        let launches: any[] = [];
-        let correctionMods: any[] = [];
-        let correctionNews: any[] = [];
+        let requests: MetricRow[] = [];
+        let finalizations: MetricRow[] = [];
+        let launches: MetricRow[] = [];
+        let correctionMods: MetricRow[] = [];
+        let correctionNews: MetricRow[] = [];
         const enrollmentCounts: Record<string, number> = {};
 
         if (isTestingMode) {
@@ -66,7 +67,7 @@ export const useActivityFeed = (isTestingMode = false) => {
           launches = await mockDb.getAll("lanzamientos_pps");
 
           // Simple mock counts
-          launches.forEach((l: any) => {
+          launches.forEach((l) => {
             enrollmentCounts[l.id] = Math.floor(Math.random() * 5);
           });
         } else {
@@ -119,7 +120,7 @@ export const useActivityFeed = (isTestingMode = false) => {
               .in(FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, launchIds);
 
             if (enrollments) {
-              enrollments.forEach((e: any) => {
+              enrollments.forEach((e) => {
                 let lId = e[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
                 if (Array.isArray(lId)) lId = lId[0];
                 if (lId) enrollmentCounts[lId] = (enrollmentCounts[lId] || 0) + 1;
@@ -156,7 +157,7 @@ export const useActivityFeed = (isTestingMode = false) => {
         }
 
         // Mapper: Solicitudes (Ingreso)
-        requests.forEach((r: any) => {
+        requests.forEach((r) => {
           let status = r[FIELD_ESTADO_PPS] || "Pendiente";
           status = normalizeStatus(status);
           if (status === "Archivado") return;
@@ -190,7 +191,7 @@ export const useActivityFeed = (isTestingMode = false) => {
         });
 
         // Mapper: Modificaciones
-        correctionMods.forEach((m: any) => {
+        correctionMods.forEach((m) => {
           const status = normalizeStatus(m.estado);
           const student = Array.isArray(m.estudiante) ? m.estudiante[0] : m.estudiante;
           const name = student?.nombre || "Estudiante";
@@ -211,7 +212,7 @@ export const useActivityFeed = (isTestingMode = false) => {
         });
 
         // Mapper: Nuevas PPS
-        correctionNews.forEach((n: any) => {
+        correctionNews.forEach((n) => {
           const status = normalizeStatus(n.estado);
           const student = Array.isArray(n.estudiante) ? n.estudiante[0] : n.estudiante;
           const name = student?.nombre || "Estudiante";
@@ -236,7 +237,7 @@ export const useActivityFeed = (isTestingMode = false) => {
         });
 
         // Mapper: Acreditaciones (Egreso)
-        finalizations.forEach((f: any) => {
+        finalizations.forEach((f) => {
           const studentData = Array.isArray(f.estudiante) ? f.estudiante[0] : f.estudiante;
           const name = studentData?.[FIELD_NOMBRE_ESTUDIANTES] || "Estudiante";
 
@@ -264,7 +265,7 @@ export const useActivityFeed = (isTestingMode = false) => {
         });
 
         // Mapper: Lanzamientos (Oferta)
-        launches.forEach((l: any) => {
+        launches.forEach((l) => {
           const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Nueva Convocatoria";
 
           let date = new Date(l.created_at || Date.now());

@@ -25,7 +25,7 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
     estudiante_id?: unknown;
     lanzamiento_id?: unknown;
     id: string;
-    [key: string]: any;
+    [key: string]: unknown;
     estudiante:
       | { id: string; nombre: string | null; legajo: string | null }
       | { id: string; nombre: string | null; legajo: string | null }[]
@@ -62,7 +62,7 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
     if (lId) lanzamientoIds.add(lId);
   });
 
-  let practicasData: any[] = [];
+  let practicasData: Record<string, unknown>[] = [];
   if (studentIds.size > 0 && lanzamientoIds.size > 0) {
     const { data: pData } = await supabase
       .from(C.TABLE_NAME_PRACTICAS)
@@ -72,8 +72,8 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
     if (pData) practicasData = pData;
   }
 
-  const practicasMap = new Map<string, any>();
-  practicasData.forEach((p: any) => {
+  const practicasMap = new Map<string, Record<string, unknown>>();
+  practicasData.forEach((p: Record<string, unknown>) => {
     const sId = safeGetId(p[C.FIELD_ESTUDIANTE_LINK_PRACTICAS]);
     const lId = safeGetId(p[C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]);
     if (sId && lId) practicasMap.set(`${sId}-${lId}`, p);
@@ -103,13 +103,13 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
       studentId: student.id,
       studentName: student.nombre || "Desconocido",
       convocatoriaId: conv.id,
-      practicaId: practicaRecord?.id || null,
-      informeSubido: conv[C.FIELD_INFORME_SUBIDO_CONVOCATORIAS] || false,
-      nota: practicaRecord?.[C.FIELD_NOTA_PRACTICAS] || "Sin calificar",
+      practicaId: (practicaRecord?.id as string) || null,
+      informeSubido: Boolean(conv[C.FIELD_INFORME_SUBIDO_CONVOCATORIAS]),
+      nota: (practicaRecord?.[C.FIELD_NOTA_PRACTICAS] as string) || "Sin calificar",
       lanzamientoId: lId,
       orientacion: lanzamiento.orientacion,
       fechaFinalizacionPPS: lanzamiento.fecha_finalizacion,
-      fechaEntregaInforme: conv[C.FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS],
+      fechaEntregaInforme: conv[C.FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS] as string | null,
     });
   });
 

@@ -42,7 +42,29 @@ export default defineConfig(({ mode }) => {
         output: {
           entryFileNames: 'assets/[name]-[hash].js',
           chunkFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash].[ext]'
+          assetFileNames: 'assets/[name]-[hash].[ext]',
+          // Code-splitting por familia de librería: chunks vendor independientes
+          // y cacheables, en vez de un único bundle monolítico. Mejora la carga
+          // inicial (lazy de las vistas que usan pdf/xlsx/charts) y el cache-hit
+          // entre deploys (un cambio en la app no invalida el vendor de React).
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('pdfjs-dist') || id.includes('react-pdf')) return 'pdf';
+            if (id.includes('xlsx') || id.includes('exceljs')) return 'spreadsheet';
+            if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory'))
+              return 'charts';
+            if (id.includes('framer-motion') || id.includes('/motion-')) return 'motion';
+            if (id.includes('firebase')) return 'firebase';
+            if (id.includes('@supabase')) return 'supabase';
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('/scheduler/') ||
+              id.includes('react-router')
+            )
+              return 'react-vendor';
+            return 'vendor';
+          },
         }
       },
       // Asegurar que archivos en public/ se copien al dist/

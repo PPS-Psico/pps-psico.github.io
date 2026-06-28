@@ -29,18 +29,14 @@ export const ConfigProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       try {
         // Intentamos buscar una tabla 'app_config' si existe en el futuro
         // Por ahora, simulamos o usamos los defaults.
-        const { data, error } = await supabase
-          .from("app_config" as any) // Cast as any until table exists in types
-          .select("*")
-          .single();
+        const { data, error } = await supabase.from("app_config").select("*").single();
 
         if (!error && data) {
           setConfig({
-            horasObjetivoTotal:
-              (data as any).horas_objetivo_total ?? defaultConfig.horasObjetivoTotal,
+            horasObjetivoTotal: data.horas_objetivo_total ?? defaultConfig.horasObjetivoTotal,
             horasObjetivoOrientacion:
-              (data as any).horas_objetivo_orientacion ?? defaultConfig.horasObjetivoOrientacion,
-            rotacionObjetivo: (data as any).rotacion_objetivo ?? defaultConfig.rotacionObjetivo,
+              data.horas_objetivo_orientacion ?? defaultConfig.horasObjetivoOrientacion,
+            rotacionObjetivo: data.rotacion_objetivo ?? defaultConfig.rotacionObjetivo,
           });
         }
       } catch (e) {

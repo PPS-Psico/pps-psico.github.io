@@ -626,12 +626,20 @@ interface SeleccionadorProps {
   isTestingMode?: boolean;
   onNavigateToInsurance?: (lanzamientoId: string) => void;
   preSelectedLaunchId?: string | null;
+  /**
+   * Oculta a los estudiantes que ya confirmaron el compromiso (seleccionados +
+   * compromiso aceptado). Útil en la sala de Confirmación: el coordinador solo
+   * quiere ver a quiénes le faltan / a quiénes puede seleccionar para cubrir
+   * las vacantes, no a los que ya están listos.
+   */
+  hideConfirmed?: boolean;
 }
 
 const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   isTestingMode = false,
   onNavigateToInsurance,
   preSelectedLaunchId,
+  hideConfirmed = false,
 }) => {
   const {
     selectedLanzamiento,
@@ -665,6 +673,20 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   const [showPracticasModal, setShowPracticasModal] = useState(false);
   const [selectedStudentForPracticas, setSelectedStudentForPracticas] =
     useState<EnrichedStudent | null>(null);
+
+  // Lista efectivamente visible. En la sala de Confirmación (hideConfirmed)
+  // ocultamos a los que ya firmaron el compromiso: quedan los inscriptos sin
+  // seleccionar + los seleccionados que todavía no confirmaron.
+  const visibleCandidates = React.useMemo(() => {
+    if (!hideConfirmed) return displayedCandidates;
+    return displayedCandidates.filter(
+      (s) =>
+        !(
+          normalizeStringForComparison(s.status) === "seleccionado" &&
+          isCommitmentAccepted(s.compromisoEstado)
+        )
+    );
+  }, [displayedCandidates, hideConfirmed]);
 
   const commitmentStats = React.useMemo(() => {
     const confirmed = selectedCandidates.filter((student) =>
@@ -933,7 +955,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
         <Loader />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {displayedCandidates.map((student) => (
+          {visibleCandidates.map((student) => (
             <StudentRow
               key={student.enrollmentId}
               student={student}
@@ -950,10 +972,14 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               }}
             />
           ))}
-          {displayedCandidates.length === 0 && (
+          {visibleCandidates.length === 0 && (
             <div className="lv4-empty">
               <span className="material-icons">group_off</span>
-              <p>No hay estudiantes inscriptos en esta convocatoria.</p>
+              <p>
+                {hideConfirmed
+                  ? "No hay estudiantes pendientes ni inscriptos disponibles para cubrir vacantes."
+                  : "No hay estudiantes inscriptos en esta convocatoria."}
+              </p>
             </div>
           )}
         </div>

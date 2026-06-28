@@ -8,28 +8,60 @@ import {
 import type { EstudianteFields, AirtableRecord } from "../types";
 import type { AuthUser } from "../contexts/AuthContext";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 interface UseAuthLogicProps {
   login: (user: AuthUser) => void;
   showModal: (title: string, message: string) => void;
 }
 
-const normalizePhone = (phone: any) => {
+type AuthMode = "login" | "register" | "forgot" | "reset" | "migration" | "recover";
+
+const normalizePhone = (phone: unknown) => {
   if (!phone) return "";
   return String(phone).replace(/\D/g, "");
 };
 
 const getFirstRow = (data: unknown) => (Array.isArray(data) && data.length > 0 ? data[0] : null);
 
+/**
+ * Lee un parámetro de la URL tanto del query string normal (?legajo=123)
+ * como del query embebido en el hash de HashRouter (#/login?legajo=123).
+ * Se usa para integrar "Mi Panel" dentro del campus Moodle: el plugin
+ * FilterCodes inyecta el dato del alumno en la URL del iframe (ej. {idnumber}),
+ * y acá lo leemos para prellenar el legajo. NOTA: el dato es solo una
+ * conveniencia de UX; nunca se usa para autenticar (eso lo hace la contraseña).
+ */
+const getInitialLegajoFromUrl = (): string => {
+  if (typeof window === "undefined") return "";
+  try {
+    const candidates: string[] = [];
+
+    const search = new URLSearchParams(window.location.search);
+    candidates.push(search.get("legajo") || "");
+
+    const hash = window.location.hash || "";
+    const queryIndex = hash.indexOf("?");
+    if (queryIndex !== -1) {
+      const hashParams = new URLSearchParams(hash.slice(queryIndex + 1));
+      candidates.push(hashParams.get("legajo") || "");
+    }
+
+    const raw = candidates.find((value) => value.trim() !== "") || "";
+    // Solo dígitos: el legajo siempre es numérico, evita inyección de basura.
+    return raw.replace(/\D/g, "").slice(0, 20);
+  } catch {
+    return "";
+  }
+};
+
 export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps) => {
-  const [mode, setMode] = useState<
-    "login" | "register" | "forgot" | "reset" | "migration" | "recover"
-  >("login");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [resetStep, setResetStep] = useState<"verify" | "reset_password" | "success">("verify");
   const [migrationStep, setMigrationStep] = useState<1 | 2>(1);
   const [registerStep, setRegisterStep] = useState<1 | 2>(1);
 
-  const [legajo, setLegajo] = useState("");
+  const [legajo, setLegajo] = useState(getInitialLegajoFromUrl);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -39,7 +71,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  const addLog = (type: "error" | "info" | "success", message: string, data?: any) => {
+  const addLog = (type: "error" | "info" | "success", message: string, data?: unknown) => {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] [${type.toUpperCase()}] ${message}${data ? ` | Data: ${JSON.stringify(data)}` : ""}`;
     setDebugLogs((prev) => [...prev, logEntry]);
@@ -63,10 +95,10 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     setFoundStudent(null);
   };
 
-  const handleModeChange = (newMode: any) => {
+  const handleModeChange = (newMode: AuthMode) => {
     setMode(newMode);
     // Clean session when switching modes to avoid lingering zombie states
-    (supabase.auth as any).signOut().catch(() => {});
+    supabase.auth.signOut().catch(() => {});
 
     if (!((newMode === "migration" || newMode === "recover") && mode === "login")) {
       resetFormState();
@@ -102,11 +134,11 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     legajo_input: legajo.trim(),
     dni_input: parseVerificationDni(verificationData.dni),
     correo_input: verificationData.correo.trim().toLowerCase(),
-    telefono_input: includePhone ? verificationData.telefono.trim() : null,
+    telefono_input: includePhone ? verificationData.telefono.trim() : undefined,
   });
 
   const verifyStudentIdentity = async (includePhone: boolean) => {
-    const { data, error } = await (supabase.rpc as any)(
+    const { data, error } = await supabase.rpc(
       "verify_student_identity",
       buildIdentityVerificationArgs(includePhone)
     );
@@ -115,20 +147,20 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
       throw new Error("No pudimos validar tu identidad en este momento. Intenta nuevamente.");
     }
 
-    return data && (data as any[]).length > 0 ? (data as any[])[0] : null;
+    return data && (data as unknown[]).length > 0 ? (data as unknown[])[0] : null;
   };
 
   const resetPasswordWithVerifiedIdentity = async (includePhone: boolean) => {
-    return (supabase.rpc as any)("reset_student_password_verified", {
+    return supabase.rpc("reset_student_password_verified", {
       ...buildIdentityVerificationArgs(includePhone),
       new_password: password,
     });
   };
 
   const getSignupStatus = async (email?: string) => {
-    const { data, error } = await (supabase.rpc as any)("get_student_signup_status", {
+    const { data, error } = await supabase.rpc("get_student_signup_status", {
       legajo_input: legajo.trim(),
-      correo_input: email?.trim().toLowerCase() || null,
+      correo_input: email?.trim().toLowerCase() || undefined,
     });
 
     if (error) {
@@ -137,14 +169,14 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         String(error.message || "").includes("get_student_signup_status");
 
       if (missingRpc) {
-        const { data: fallbackData, error: fallbackError } = await (supabase.rpc as any)(
+        const { data: fallbackData, error: fallbackError } = await supabase.rpc(
           "get_student_for_signup",
           { legajo_input: legajo.trim() }
         );
         if (fallbackError)
           throw new Error("No pudimos validar el legajo en este momento. Intenta nuevamente.");
 
-        const fallbackStudent = getFirstRow(fallbackData) as Record<string, any> | null;
+        const fallbackStudent = getFirstRow(fallbackData) as Record<string, unknown> | null;
         return fallbackStudent
           ? {
               ...fallbackStudent,
@@ -158,7 +190,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     return getFirstRow(data);
   };
 
-  const hydrateRegistrationForm = (student: Record<string, any>) => {
+  const hydrateRegistrationForm = (student: Record<string, unknown>) => {
     setFoundStudent(student as unknown as AirtableRecord<EstudianteFields>);
     setVerificationData({
       dni: student.dni ? String(student.dni).replace(/\D/g, "") : "",
@@ -167,7 +199,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     });
   };
 
-  const assertSignupStatusAllowsCreation = (student: Record<string, any> | null) => {
+  const assertSignupStatusAllowsCreation = (student: Record<string, unknown> | null) => {
     const status = student?.signup_status || (student?.user_id ? "linked" : "available");
 
     if (!student || status === "not_found") {
@@ -212,12 +244,12 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     if (mode === "login") {
       try {
         // LIMPIEZA PREVENTIVA
-        await (supabase.auth as any).signOut();
+        await supabase.auth.signOut();
 
         if (!legajoTrimmed || !passwordTrimmed)
           throw new Error("Por favor, completa todos los campos.");
 
-        const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
           "get_student_email_by_legajo",
           { legajo_input: legajoTrimmed }
         );
@@ -237,7 +269,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           );
 
         // 2. Intentar Login
-        const { error: signInError } = await (supabase.auth as any).signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email: email,
           password: passwordTrimmed,
         });
@@ -258,9 +290,9 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           return;
         }
         // Si el login es exitoso, AuthContext detectará el cambio de sesión automáticamente
-      } catch (err: any) {
+      } catch (err) {
         logger.error("Login error:", err);
-        setError(err.message || "Error al iniciar sesión.");
+        setError(getErrorMessage(err, "Error al iniciar sesión."));
       } finally {
         setIsLoading(false);
       }
@@ -296,7 +328,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           const email = String(foundStudent[FIELD_CORREO_ESTUDIANTES]).trim().toLowerCase();
 
           // 1. Intentamos CREAR el usuario
-          const { data: _authData, error: signUpError } = await (supabase.auth as any).signUp({
+          const { data: _authData, error: signUpError } = await supabase.auth.signUp({
             email: email,
             password: password,
             options: { data: { legajo: legajoTrimmed } },
@@ -334,9 +366,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           }
 
           // 3. Intento de Login final para confirmar y obtener sesión
-          const { data: loginData, error: loginError } = await (
-            supabase.auth as any
-          ).signInWithPassword({
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
             email: email,
             password: password,
           });
@@ -348,10 +378,10 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
             );
           } else if (loginData.user) {
             // 4. Asegurar vínculo en DB (Self-healing por si acaso)
-            const { error: linkError } = await (supabase.rpc as any)("register_new_student", {
+            const { error: linkError } = await supabase.rpc("register_new_student", {
               legajo_input: legajoTrimmed,
               userid_input: loginData.user.id,
-              dni_input: parseInt((foundStudent[FIELD_DNI_ESTUDIANTES] as any) || "0", 10),
+              dni_input: parseInt(String(foundStudent[FIELD_DNI_ESTUDIANTES] ?? "0"), 10),
               correo_input: email,
               telefono_input: foundStudent[FIELD_TELEFONO_ESTUDIANTES] || "",
             });
@@ -359,9 +389,9 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
             if (linkError) logger.warn("Link RPC warning (non-critical):", linkError);
           }
         }
-      } catch (err: any) {
+      } catch (err) {
         logger.error("Migration error:", err);
-        setError(err.message || "Error del servidor al procesar la solicitud.");
+        setError(getErrorMessage(err, "Error del servidor al procesar la solicitud."));
       } finally {
         setIsLoading(false);
       }
@@ -371,7 +401,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           if (!legajoTrimmed) throw new Error("Por favor ingresa tu legajo.");
 
           const student = assertSignupStatusAllowsCreation(
-            (await getSignupStatus()) as Record<string, any> | null
+            (await getSignupStatus()) as Record<string, unknown> | null
           );
 
           hydrateRegistrationForm(student);
@@ -391,11 +421,11 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           const inputEmail = correo.trim().toLowerCase();
           const cleanDniInt = parseVerificationDni(dni);
           assertSignupStatusAllowsCreation(
-            (await getSignupStatus(inputEmail)) as Record<string, any> | null
+            (await getSignupStatus(inputEmail)) as Record<string, unknown> | null
           );
 
           // Intentar crear usuario
-          const { data: authData, error: signUpError } = await (supabase.auth as any).signUp({
+          const { data: authData, error: signUpError } = await supabase.auth.signUp({
             email: inputEmail,
             password: password,
             options: { data: { legajo: legajoTrimmed } },
@@ -429,7 +459,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
           if (userId) {
             // Garantizar datos actualizados con DNI limpio y cambiar estado a Activo
-            const { error: linkError } = await (supabase.rpc as any)("register_new_student", {
+            const { error: linkError } = await supabase.rpc("register_new_student", {
               legajo_input: legajoTrimmed,
               userid_input: userId,
               dni_input: cleanDniInt,
@@ -455,8 +485,8 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               .eq("legajo", legajoTrimmed);
           }
         }
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(getErrorMessage(err));
       } finally {
         setIsLoading(false);
       }
@@ -505,7 +535,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               code: rpcResetError.code,
               details: rpcResetError.details,
               hint: rpcResetError.hint,
-              status: rpcResetError.status,
+              status: (rpcResetError as { status?: number }).status,
             });
 
             if (
@@ -519,7 +549,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
               addLog("info", "Creando usuario en auth con email:", { email: studentEmail });
 
-              const { error: signUpError } = await (supabase.auth as any).signUp({
+              const { error: signUpError } = await supabase.auth.signUp({
                 email: studentEmail,
                 password: password,
                 options: { data: { legajo: legajoTrimmed } },
@@ -535,7 +565,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
                 "Usuario creado o ya existía, intentando resetear contraseña nuevamente..."
               );
 
-              const { error: retryResetError } = await (supabase.rpc as any)(
+              const { error: retryResetError } = await supabase.rpc(
                 "reset_student_password_verified",
                 {
                   ...buildIdentityVerificationArgs(true),
@@ -562,7 +592,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
               throw new Error(
                 "Error de restricción única en la base de datos. Es posible que ya haya una solicitud pendiente."
               );
-            } else if (rpcResetError.status >= 500) {
+            } else if (((rpcResetError as { status?: number }).status ?? 0) >= 500) {
               throw new Error(
                 "El servidor no está respondiendo correctamente (Error 500). Este es un error temporal. Por favor, intenta en unos minutos."
               );
@@ -579,9 +609,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
           addLog("info", "Intentando login automático", { email: studentEmail });
 
-          const { data: loginData, error: loginError } = await (
-            supabase.auth as any
-          ).signInWithPassword({
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
             email: studentEmail,
             password: password,
           });
@@ -600,16 +628,16 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           setResetStep("success");
           setIsLoading(false);
         }
-      } catch (err: any) {
+      } catch (err) {
         addLog("error", "Error durante recuperación", {
-          error: err.message,
-          stack: err.stack,
+          error: getErrorMessage(err),
+          stack: err instanceof Error ? err.stack : undefined,
           mode,
           resetStep,
           legajo: legajoTrimmed,
         });
 
-        const errorMessage = err.message || "Error desconocido al recuperar contraseña.";
+        const errorMessage = getErrorMessage(err, "Error desconocido al recuperar contraseña.");
         const additionalInfo =
           mode === "recover" && resetStep === "reset_password"
             ? "\n\n🔧 Detalles técnicos para soporte:\nEste error indica un problema al actualizar la contraseña en el servidor. Por favor, contacta a blas.rivera@uflouniversidad.edu.ar con tu legajo y menciona 'Error al recuperar contraseña'."
@@ -648,6 +676,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     clearLogs,
     handleVerificationDataChange,
     handleFormSubmit,
-    handleForgotLegajoSubmit: (e: any) => e.preventDefault(),
+    handleForgotLegajoSubmit: (e: FormEvent) => e.preventDefault(),
   };
 };

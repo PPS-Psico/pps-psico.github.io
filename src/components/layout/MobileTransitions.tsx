@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { isInteractiveTouchTarget } from "../../hooks/useSwipe";
+import { haptics } from "../../utils/haptics";
 
 type SlideDirection = "left" | "right" | "up" | "down";
 
@@ -113,6 +114,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const currentYRef = useRef(0);
+  const reachedRef = useRef(false);
   const threshold = 80;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -135,6 +137,13 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
       // Add resistance to the pull
       const resistedDistance = Math.min(diff * 0.5, threshold * 1.5);
       setPullDistance(resistedDistance);
+      // Tick háptico al cruzar el umbral (una sola vez por gesto).
+      if (resistedDistance >= threshold && !reachedRef.current) {
+        reachedRef.current = true;
+        haptics.tap();
+      } else if (resistedDistance < threshold && reachedRef.current) {
+        reachedRef.current = false;
+      }
     }
   };
 
@@ -143,6 +152,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
 
     if (pullDistance >= threshold && !isRefreshing) {
       setIsRefreshing(true);
+      haptics.success();
       try {
         await onRefresh();
       } finally {
@@ -152,11 +162,13 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
 
     setIsPulling(false);
     setPullDistance(0);
+    reachedRef.current = false;
   };
 
   const handleTouchCancel = () => {
     setIsPulling(false);
     setPullDistance(0);
+    reachedRef.current = false;
   };
 
   const progress = Math.min(pullDistance / threshold, 1);

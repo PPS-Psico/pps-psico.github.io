@@ -277,6 +277,20 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
             </button>
           </div>
         )}
+
+        {selectedInstitution && lastLanzamiento ? (
+          <div
+            className="lf-info-box"
+            style={{ marginTop: 12, borderLeft: "3px solid var(--warn)" }}
+          >
+            <CheckRow
+              label="Marcar como renovación de convenio"
+              sublabel="Tildalo solo en la primera PPS después de renovar el convenio (≈ cada 2 años). El resto van sin tildar."
+              checked={!!formData.convenioRenovado}
+              onChange={(v) => setFormData((prev) => ({ ...prev, convenioRenovado: v }))}
+            />
+          </div>
+        ) : null}
       </FormSection>
 
       {/* ── 02 · DATOS BÁSICOS ── */}

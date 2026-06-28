@@ -1,7 +1,7 @@
 import * as supabaseService from "../services/supabaseService";
+import type { SortSpec, QueryFilters } from "../services/supabaseService";
+import type { AppErrorResponse } from "../types";
 import type { Database } from "../types/supabase";
-// TODO: AppRecord is currently unused. Uncomment if needed:
-// import type { AppRecord } from '../types';
 import { supabase } from "./supabaseClient";
 import { logger } from "../utils/logger";
 import {
@@ -14,6 +14,7 @@ import {
   mapSolicitud,
   mapFinalizacion,
   mapCompromiso,
+  mapConvenio,
 } from "../utils/mappers";
 
 type Tables = Database["public"]["Tables"];
@@ -26,8 +27,8 @@ function createTableInterface<TName extends TableName, TAppRecord>(
 ) {
   return {
     getAll: async (options?: {
-      filters?: Record<string, any>;
-      sort?: any[];
+      filters?: QueryFilters;
+      sort?: SortSpec[];
       fields?: string[];
     }): Promise<TAppRecord[]> => {
       const { records, error } = await supabaseService.fetchAllData(
@@ -44,9 +45,9 @@ function createTableInterface<TName extends TableName, TAppRecord>(
     },
 
     get: async (options?: {
-      filters?: Record<string, any>;
+      filters?: QueryFilters;
       maxRecords?: number;
-      sort?: any[];
+      sort?: SortSpec[];
     }): Promise<TAppRecord[]> => {
       const { records, error } = await supabaseService.fetchData(
         tableName,
@@ -66,10 +67,10 @@ function createTableInterface<TName extends TableName, TAppRecord>(
       options?: {
         searchTerm?: string;
         searchFields?: string[];
-        sort?: { field: string; direction: "asc" | "desc" };
-        filters?: Record<string, any>;
+        sort?: SortSpec;
+        filters?: QueryFilters;
       }
-    ): Promise<{ records: TAppRecord[]; total: number; error: any }> => {
+    ): Promise<{ records: TAppRecord[]; total: number; error: AppErrorResponse | null }> => {
       const { records, total, error } = await supabaseService.fetchPaginatedData(
         tableName,
         page,
@@ -118,7 +119,7 @@ function createTableInterface<TName extends TableName, TAppRecord>(
 
 export const getStudentLoginInfo = async (legajo: string): Promise<{ email: string } | null> => {
   try {
-    const { data, error } = await (supabase.rpc as any)("get_student_email_by_legajo", {
+    const { data, error } = await supabase.rpc("get_student_email_by_legajo", {
       legajo_input: legajo,
     });
 
@@ -131,7 +132,7 @@ export const getStudentLoginInfo = async (legajo: string): Promise<{ email: stri
       return null;
     }
 
-    return { email: String((data as any).email) };
+    return { email: String((data as { email: unknown }).email) };
   } catch (error) {
     logger.error("Error fetching student login info:", error);
     return null;
@@ -149,4 +150,5 @@ export const db = {
   solicitudes: createTableInterface("solicitudes_pps", mapSolicitud),
   finalizacion: createTableInterface("finalizacion_pps", mapFinalizacion),
   compromisos: createTableInterface("compromisos_pps", mapCompromiso),
+  convenios: createTableInterface("convenios", mapConvenio),
 };

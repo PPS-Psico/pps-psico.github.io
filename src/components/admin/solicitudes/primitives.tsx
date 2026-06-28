@@ -261,3 +261,65 @@ export const EmptyState: React.FC<{
     </div>
   );
 };
+
+// ─── Collapsible History Group ──────────────────────────────────────
+export const CollapsibleHistory: React.FC<{ count: number; children: React.ReactNode }> = ({
+  count,
+  children,
+}) => {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div style={{ marginTop: 24 }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="press"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 9,
+          width: "100%",
+          padding: "12px 14px",
+          borderRadius: 10,
+          border: "1px solid var(--rule-2)",
+          background: "var(--paper)",
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        <span className="material-icons" style={{ fontSize: 17, color: "var(--ink-4)" }}>
+          history
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-2)" }}>Historial</span>
+        <span
+          className="mono"
+          style={{
+            fontSize: 11,
+            padding: "1px 7px",
+            borderRadius: 999,
+            background: "var(--paper-2)",
+            color: "var(--ink-3)",
+          }}
+        >
+          {count}
+        </span>
+        <span
+          className="material-icons"
+          style={{
+            fontSize: 18,
+            color: "var(--ink-4)",
+            marginLeft: "auto",
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform .2s ease",
+          }}
+        >
+          expand_more
+        </span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};

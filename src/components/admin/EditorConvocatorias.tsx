@@ -23,6 +23,15 @@ import ContextMenu from "./ContextMenu";
 import AdminSearch from "./AdminSearch";
 import ConfirmModal from "../ConfirmModal";
 import { MOCK_CONVOCATORIAS, MOCK_ESTUDIANTES, MOCK_LANZAMIENTOS } from "../../data/mockData";
+import type { Convocatoria } from "../../types";
+
+type ToastState = { message: string; type: "success" | "error" | "warning" | "info" } | null;
+type ConvEditingState = (Record<string, unknown> & { id?: string }) | { isCreating: true } | null;
+type ConvRow = Convocatoria & { __studentName: string | null; __ppsName: string | null };
+interface ConvPage {
+  records: ConvRow[];
+  total: number;
+}
 
 const TABLE_CONFIG = {
   label: "Inscripciones",
@@ -52,7 +61,7 @@ const TABLE_CONFIG = {
   ],
 };
 
-const getStatusTone = (status: string): string => {
+const getStatusTone = (status: string | null | undefined): string => {
   const s = (status || "").toLowerCase();
   if (s.includes("seleccionado") && !s.includes("no")) return "ok";
   if (s.includes("inscripto")) return "accent";
@@ -72,9 +81,9 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // --- ACCIONES ---
-  const [editingRecord, setEditingRecord] = useState<any>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; record: any } | null>(null);
-  const [toastInfo, setToastInfo] = useState<any>(null);
+  const [editingRecord, setEditingRecord] = useState<ConvEditingState>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; record: ConvRow } | null>(null);
+  const [toastInfo, setToastInfo] = useState<ToastState>(null);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
@@ -91,7 +100,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   });
 
   // 2. Cargar Convocatorias
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<ConvPage>({
     queryKey: [
       "editor-convocatorias",
       currentPage,
@@ -132,8 +141,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
             ...c,
             __studentName: s ? s[FIELD_NOMBRE_ESTUDIANTES] : "Desconocido",
             __ppsName: l
-              ? (l as any)[FIELD_NOMBRE_PPS_LANZAMIENTOS]
-              : (c as any)[FIELD_NOMBRE_PPS_CONVOCATORIAS] || "N/A",
+              ? (l as Record<string, unknown>)[FIELD_NOMBRE_PPS_LANZAMIENTOS]
+              : (c as Record<string, unknown>)[FIELD_NOMBRE_PPS_CONVOCATORIAS] || "N/A",
           };
         });
 
@@ -141,13 +150,13 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         const from = (currentPage - 1) * itemsPerPage;
         const to = from + itemsPerPage;
         return {
-          records: enriched.slice(from, to),
+          records: enriched.slice(from, to) as unknown as ConvRow[],
           total: enriched.length,
         };
       }
 
       // MODO REAL: Consultar base de datos
-      const filters: any = {};
+      const filters: Record<string, unknown> = {};
       if (filterStudentId) filters[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] = filterStudentId;
       if (filterLanzamientoId)
         filters[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] = filterLanzamientoId;
@@ -193,29 +202,32 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
         };
       });
 
-      return { records: enriched, total };
+      return { records: enriched as unknown as ConvRow[], total };
     },
   });
 
   // --- MUTACIONES ---
   const updateMutation = useMutation({
-    mutationFn: (vars: any) => {
+    mutationFn: (vars: { id: string; fields: Record<string, unknown> }) => {
       if (isTestingMode) {
         return Promise.resolve({
           ...MOCK_CONVOCATORIAS.find((c) => c.id === vars.id),
           ...vars.fields,
-        } as any);
+        } as unknown as Convocatoria);
       }
-      return db.convocatorias.update(vars.id, vars.fields);
+      return db.convocatorias.update(
+        vars.id,
+        vars.fields as Parameters<typeof db.convocatorias.update>[1]
+      );
     },
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: ["editor-convocatorias"] });
       const prev = queryClient.getQueryData(["editor-convocatorias"]);
-      queryClient.setQueryData(["editor-convocatorias"], (old: any) => {
+      queryClient.setQueryData(["editor-convocatorias"], (old: ConvPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+          records: old.records.map((r) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
         };
       });
       return { prev };
@@ -237,11 +249,11 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
   });
 
   const createMutation = useMutation({
-    mutationFn: (fields: any) => {
+    mutationFn: (fields: Record<string, unknown>) => {
       if (isTestingMode) {
-        return Promise.resolve({ id: `conv_${Date.now()}`, ...fields } as any);
+        return Promise.resolve({ id: `conv_${Date.now()}`, ...fields } as unknown as Convocatoria);
       }
-      return db.convocatorias.create(fields);
+      return db.convocatorias.create(fields as Parameters<typeof db.convocatorias.create>[0]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["editor-convocatorias"] });
@@ -263,11 +275,11 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["editor-convocatorias"] });
       const prev = queryClient.getQueryData(["editor-convocatorias"]);
-      queryClient.setQueryData(["editor-convocatorias"], (old: any) => {
+      queryClient.setQueryData(["editor-convocatorias"], (old: ConvPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.filter((r: any) => r.id !== id),
+          records: old.records.filter((r) => r.id !== id),
           total: Math.max(0, (old.total || 0) - 1),
         };
       });
@@ -290,7 +302,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
     },
   });
 
-  const handleRowContextMenu = (e: React.MouseEvent, record: any) => {
+  const handleRowContextMenu = (e: React.MouseEvent, record: ConvRow) => {
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY, record });
     setSelectedRowId(record.id);
@@ -401,7 +413,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                 </tr>
               </thead>
               <tbody>
-                {data?.records.map((c: any) => {
+                {data?.records.map((c) => {
                   const isSelected = selectedRowId === c.id;
                   return (
                     <tr
@@ -429,7 +441,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                             whiteSpace: "nowrap",
                             fontWeight: 500,
                           }}
-                          title={c.__ppsName}
+                          title={c.__ppsName ?? undefined}
                         >
                           {c.__ppsName}
                         </div>
@@ -437,7 +449,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
                       <td>
                         <span
                           className="dbe-schedule"
-                          title={c[FIELD_HORARIO_FORMULA_CONVOCATORIAS]}
+                          title={c[FIELD_HORARIO_FORMULA_CONVOCATORIAS] ?? undefined}
                         >
                           <span className="material-icons">schedule</span>
                           {c[FIELD_HORARIO_FORMULA_CONVOCATORIAS] || "Sin horario"}

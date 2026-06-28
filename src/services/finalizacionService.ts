@@ -5,6 +5,7 @@ import type { FinalizacionPPS } from "../types";
 import { Database } from "../types/supabase";
 import { fetchStudentData } from "./estudiantesService";
 import { logger } from "../utils/logger";
+import type { DetallePracticas } from "../utils/acreditacion";
 
 export const fetchFinalizacionRequest = async (
   legajo: string,
@@ -35,11 +36,13 @@ export const fetchFinalizacionRequest = async (
 export const uploadFinalizationFile = async (
   file: File,
   studentId: string,
-  type: "informe" | "horas" | "asistencia"
+  type: "informe" | "horas" | "asistencia",
+  practicaId?: string
 ): Promise<string> => {
   if (!studentId) throw new Error("No student ID");
   const fileExt = file.name.split(".").pop();
-  const fileName = `${studentId}/${type}_${Date.now()}.${fileExt}`;
+  const scope = practicaId ? `${studentId}/${practicaId}` : studentId;
+  const fileName = `${scope}/${type}_${Date.now()}.${fileExt}`;
   const { error } = await supabase.storage
     .from("documentos_finalizacion")
     .upload(fileName, file, { upsert: true });
@@ -48,17 +51,56 @@ export const uploadFinalizationFile = async (
   return data.publicUrl;
 };
 
-export const submitFinalizationRequest = async (studentId: string, data: any) => {
+/**
+ * Trámite de acreditación por PPS (flujo guiado nuevo).
+ * Guarda el snapshot `detalle_practicas`, agrega los informes/asistencias a las
+ * columnas legacy (para el ZIP y retrocompat), y hace write-through de nota +
+ * fecha de finalización a cada práctica.
+ */
+export const submitFinalizationRequest = async (
+  studentId: string,
+  data: {
+    detalle: DetallePracticas;
+    sugerencias?: string | null;
+  }
+) => {
+  const { detalle } = data;
+
+  // Agregados legacy: todos los informes / asistencias en un solo array.
+  const informesAgg = detalle.items
+    .filter((i) => i.informe)
+    .map((i) => ({ url: i.informe!.url, filename: i.informe!.filename }));
+  const asistenciasAgg = detalle.items
+    .filter((i) => i.asistencia)
+    .map((i) => ({ url: i.asistencia!.url, filename: i.asistencia!.filename }));
+
   const record: Database["public"]["Tables"]["finalizacion_pps"]["Insert"] = {
     [C.FIELD_ESTUDIANTE_FINALIZACION]: studentId,
     [C.FIELD_FECHA_SOLICITUD_FINALIZACION]: new Date().toISOString(),
     [C.FIELD_ESTADO_FINALIZACION]: "Pendiente",
-    [C.FIELD_INFORME_FINAL_FINALIZACION]: JSON.stringify(data.informes),
-    [C.FIELD_PLANILLA_HORAS_FINALIZACION]: JSON.stringify(data.horas),
-    [C.FIELD_PLANILLA_ASISTENCIA_FINALIZACION]: JSON.stringify(data.asistencias),
-    [C.FIELD_SUGERENCIAS_MEJORAS_FINALIZACION]: data.sugerencias,
+    [C.FIELD_DETALLE_PRACTICAS_FINALIZACION]:
+      detalle as unknown as Database["public"]["Tables"]["finalizacion_pps"]["Insert"]["detalle_practicas"],
+    [C.FIELD_INFORME_FINAL_FINALIZACION]: JSON.stringify(informesAgg),
+    [C.FIELD_PLANILLA_ASISTENCIA_FINALIZACION]: JSON.stringify(asistenciasAgg),
+    [C.FIELD_PLANILLA_HORAS_FINALIZACION]: JSON.stringify([]),
+    [C.FIELD_SUGERENCIAS_MEJORAS_FINALIZACION]: data.sugerencias ?? null,
   };
+
   await db.finalizacion.create(record);
+
+  // Write-through: nota + fecha de finalización a cada práctica.
+  await Promise.all(
+    detalle.items.map((item) =>
+      db.practicas
+        .update(item.practicaId, {
+          [C.FIELD_NOTA_PRACTICAS]: item.nota || null,
+          ...(item.fechaFinalizacion
+            ? { [C.FIELD_FECHA_FIN_PRACTICAS]: item.fechaFinalizacion }
+            : {}),
+        })
+        .catch((e) => logger.warn(`No se pudo actualizar la práctica ${item.practicaId}:`, e))
+    )
+  );
 };
 
 export const deleteFinalizationRequest = async (

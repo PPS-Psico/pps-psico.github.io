@@ -16,7 +16,9 @@ import {
   useMetricsHeredados,
 } from "../../../hooks/useMetricsExtras";
 import type { TopInstitucion } from "../../../hooks/useMetricsExtras";
+import { useQuery } from "@tanstack/react-query";
 import { fetchMetricList, fetchOrientationList } from "../../../services/metricsLists";
+import { fetchConveniosKpis } from "../../../services/conveniosService";
 import { HeroMetric, KpiCard, Band, fmt } from "./MetricasPrimitives";
 import {
   DinamicaCicloBand,
@@ -61,6 +63,14 @@ export function MetricasDashboardV3({
   const { data: finalizadosSeries = [] } = useFinalizadosSeries(isTestingMode);
   const { data: hermes } = useHermesActivity({ year, isTestingMode });
   const { data: heredados = 0 } = useMetricsHeredados({ year, isTestingMode });
+  const { data: conveniosKpis } = useQuery({
+    queryKey: ["conveniosKpis", year, isTestingMode],
+    queryFn: () => fetchConveniosKpis(year),
+    enabled: !isTestingMode,
+    staleTime: 1000 * 60 * 2,
+  });
+  const renovaciones = conveniosKpis?.renovaciones ?? 0;
+  const conveniosPorVencer = conveniosKpis?.convenios_por_vencer ?? 0;
 
   const sparkYears = useMemo(() => {
     const ys = new Set<number>();
@@ -362,8 +372,8 @@ export function MetricasDashboardV3({
         </div>
       </section>
 
-      {/* — Banda instituciones (4) — */}
-      <Band title="Red de instituciones" cols={4} top>
+      {/* — Banda instituciones (3) — */}
+      <Band title="Red de instituciones" cols={3} top>
         <KpiCard
           value={metrics.pps_lanzadas}
           label="PPS lanzadas"
@@ -406,16 +416,48 @@ export function MetricasDashboardV3({
             )
           }
         />
+      </Band>
+
+      {/* — Banda convenios (nuevos · renovaciones · por vencer) — */}
+      <Band title="Convenios del ciclo" cols={3} top>
         <KpiCard
           value={metrics.nuevos_convenios}
           label="Nuevos convenios"
-          context="Firmados en el ciclo"
+          context="Instituciones sin vínculo previo, firmadas este año"
           tone="ok"
           onClick={() =>
             drillKpi(
               "nuevos_convenios",
               "Nuevos convenios",
-              `${metrics.nuevos_convenios} firmados en ${year}`,
+              `${metrics.nuevos_convenios} instituciones nuevas en ${year}`,
+              "inst"
+            )
+          }
+        />
+        <KpiCard
+          value={renovaciones}
+          label="Renovaciones"
+          context="Re-firmas de convenios existentes este año"
+          tone="ink"
+          onClick={() =>
+            drillKpi(
+              "renovaciones",
+              "Renovaciones del año",
+              `${renovaciones} convenios renovados en ${year}`,
+              "inst"
+            )
+          }
+        />
+        <KpiCard
+          value={conveniosPorVencer}
+          label="Próximos a vencer"
+          context="Vencen en los próximos 90 días sin renovar"
+          tone={conveniosPorVencer > 0 ? "warn" : "ink"}
+          onClick={() =>
+            drillKpi(
+              "convenios_por_vencer",
+              "Convenios próximos a vencer",
+              `${conveniosPorVencer} vencen dentro de 90 días`,
               "inst"
             )
           }

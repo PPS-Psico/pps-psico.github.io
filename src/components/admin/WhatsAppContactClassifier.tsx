@@ -18,6 +18,8 @@ import { mockDb } from "../../services/mockDb";
 import { learnFromFeedback } from "../../services/hermesLearn";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import Toast from "../ui/Toast";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+import type { Institucion } from "../../types";
 
 interface SuggestionPayload {
   chat_jid: string;
@@ -41,7 +43,7 @@ interface PendingSuggestion {
   tipo: string;
   estado: string;
   payload: SuggestionPayload;
-  contexto?: any;
+  contexto?: unknown;
   institucion_id?: string | null;
   created_at: string;
 }
@@ -457,10 +459,10 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
   });
 
   // 2. Fetch institutions
-  const { data: institutions = [] } = useQuery({
+  const { data: institutions = [] } = useQuery<Institucion[]>({
     queryKey: ["instituciones-all-classifier", isTestingMode],
     queryFn: async () => {
-      if (isTestingMode) return (await mockDb.getAll("instituciones")) as any[];
+      if (isTestingMode) return (await mockDb.getAll("instituciones")) as unknown as Institucion[];
       return db.instituciones.getAll();
     },
   });
@@ -500,7 +502,9 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
     enabled: tabMode === "archivados",
     queryFn: async () => {
       if (isTestingMode) {
-        const rows = (await mockDb.getAll("whatsapp_contactos", { tipo: "ignorado" })) as any[];
+        const rows = (await mockDb.getAll("whatsapp_contactos", {
+          tipo: "ignorado",
+        })) as unknown as ArchivedContact[];
         return rows.sort(
           (a, b) =>
             new Date(b.updated_at || b.validado_at || 0).getTime() -
@@ -544,7 +548,7 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
     if (!instSearchQuery) return institutions;
     const query = instSearchQuery.toLowerCase();
     return institutions.filter(
-      (inst: any) =>
+      (inst) =>
         String(inst.nombre || "")
           .toLowerCase()
           .includes(query) ||
@@ -623,7 +627,7 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
           notas: payload.notas,
           updated_at: validadoAt,
         };
-        const list = (mockDb.data.whatsapp_contactos || []) as any[];
+        const list = mockDb.data.whatsapp_contactos || [];
         const idx = list.findIndex((r) => r.chat_jid === payload.chat_jid);
         if (idx >= 0) list[idx] = { ...list[idx], ...row };
         else list.unshift({ id: `mock_wc_${Date.now()}`, created_at: validadoAt, ...row });
@@ -703,8 +707,8 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
       }
       setSelectedSuggestion(null);
     },
-    onError: (err: any) => {
-      setToast({ message: `Error al validar: ${err.message}`, type: "error" });
+    onError: (err) => {
+      setToast({ message: `Error al validar: ${getErrorMessage(err)}`, type: "error" });
     },
   });
 
@@ -732,7 +736,7 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
           validado_at: resolvedAt,
           updated_at: resolvedAt,
         };
-        const list = (mockDb.data.whatsapp_contactos || []) as any[];
+        const list = mockDb.data.whatsapp_contactos || [];
         const idx = list.findIndex((r) => r.chat_jid === p.chat_jid);
         if (idx >= 0) list[idx] = { ...list[idx], ...row };
         else list.unshift({ id: `mock_wc_${Date.now()}`, created_at: resolvedAt, ...row });
@@ -791,8 +795,8 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
       queryClient.invalidateQueries({ queryKey: ["whatsapp_contactos"] });
       setSelectedSuggestion(null);
     },
-    onError: (err: any) => {
-      setToast({ message: `Error al archivar: ${err.message}`, type: "error" });
+    onError: (err) => {
+      setToast({ message: `Error al archivar: ${getErrorMessage(err)}`, type: "error" });
     },
   });
 
@@ -805,7 +809,7 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
         // En mock, los registros se identifican por chat_jid (la PK real de la
         // tabla); filtramos el array en memoria.
         mockDb.data.whatsapp_contactos = (mockDb.data.whatsapp_contactos || []).filter(
-          (r: any) => r.chat_jid !== contact.chat_jid
+          (r) => r.chat_jid !== contact.chat_jid
         );
         return;
       }
@@ -823,8 +827,8 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
       });
       queryClient.invalidateQueries({ queryKey: ["whatsapp_contactos"] });
     },
-    onError: (err: any) => {
-      setToast({ message: `Error al restaurar: ${err.message}`, type: "error" });
+    onError: (err) => {
+      setToast({ message: `Error al restaurar: ${getErrorMessage(err)}`, type: "error" });
     },
   });
 
@@ -886,7 +890,7 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
 
   const activeInstitutionName = useMemo(() => {
     if (!selectedInstId) return "";
-    const inst = institutions.find((i: any) => i.id === selectedInstId);
+    const inst = institutions.find((i) => i.id === selectedInstId);
     return inst ? inst.nombre : "";
   }, [selectedInstId, institutions]);
 
@@ -1414,7 +1418,7 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
                                   if (pick) {
                                     e.preventDefault();
                                     setSelectedInstId(pick.id);
-                                    setInstSearchQuery(pick.nombre);
+                                    setInstSearchQuery(pick.nombre || "");
                                     setInstFocused(false);
                                   }
                                 } else if (e.key === "Escape") {
@@ -1434,34 +1438,30 @@ export const WhatsAppContactClassifier: React.FC<WhatsAppContactClassifierProps>
                                     No se encontraron instituciones.
                                   </div>
                                 ) : (
-                                  filteredInstitutions
-                                    .slice(0, 30)
-                                    .map((inst: any, idx: number) => (
-                                      <button
-                                        key={inst.id}
-                                        type="button"
-                                        role="option"
-                                        aria-selected={inst.id === selectedInstId}
-                                        className={`wcc-inst-opt${
-                                          inst.id === selectedInstId || idx === instHighlight
-                                            ? " on"
-                                            : ""
-                                        }`}
-                                        onMouseEnter={() => setInstHighlight(idx)}
-                                        onClick={() => {
-                                          setSelectedInstId(inst.id);
-                                          setInstSearchQuery(inst.nombre);
-                                          setInstFocused(false);
-                                        }}
-                                      >
-                                        <span className="wcc-inst-name">{inst.nombre}</span>
-                                        {inst.tutor && (
-                                          <span className="wcc-inst-tutor">
-                                            Tutor: {inst.tutor}
-                                          </span>
-                                        )}
-                                      </button>
-                                    ))
+                                  filteredInstitutions.slice(0, 30).map((inst, idx) => (
+                                    <button
+                                      key={inst.id}
+                                      type="button"
+                                      role="option"
+                                      aria-selected={inst.id === selectedInstId}
+                                      className={`wcc-inst-opt${
+                                        inst.id === selectedInstId || idx === instHighlight
+                                          ? " on"
+                                          : ""
+                                      }`}
+                                      onMouseEnter={() => setInstHighlight(idx)}
+                                      onClick={() => {
+                                        setSelectedInstId(inst.id);
+                                        setInstSearchQuery(inst.nombre || "");
+                                        setInstFocused(false);
+                                      }}
+                                    >
+                                      <span className="wcc-inst-name">{inst.nombre}</span>
+                                      {inst.tutor && (
+                                        <span className="wcc-inst-tutor">Tutor: {inst.tutor}</span>
+                                      )}
+                                    </button>
+                                  ))
                                 )}
                               </div>
                             )}

@@ -17,6 +17,7 @@ import type { LanzamientoPPS } from "../types";
 import { normalizeStringForComparison, parseToUTCDate, getGroupName } from "../utils/formatters";
 import { mapLanzamiento } from "../utils/mappers";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 import { POR_FINALIZAR_THRESHOLD_DAYS } from "../views/admin/gestion/gestionTypes";
 
 type LoadingState = "initial" | "loading" | "loaded" | "error";
@@ -196,7 +197,7 @@ export const useGestionConvocatorias = ({
             phone: r.telefono || undefined,
             referente: r.tutor || undefined,
             localidad: r.direccion || undefined,
-            convenio: r.convenio_nuevo || undefined,
+            convenio: r.convenio_nuevo != null ? String(r.convenio_nuevo) : undefined,
             orientaciones,
           });
         }
@@ -217,10 +218,11 @@ export const useGestionConvocatorias = ({
 
       setLanzamientos(filteredRecords);
       setLoadingState("loaded");
-    } catch (err: any) {
+    } catch (err) {
       logger.error("CRITICAL ERROR in useGestionConvocatorias:", err);
-      setToastInfo({ message: `Error crítico al cargar datos: ${err.message}`, type: "error" });
-      setError(err.message || "Error al cargar datos");
+      const msg = getErrorMessage(err, "Error al cargar datos");
+      setToastInfo({ message: `Error crítico al cargar datos: ${msg}`, type: "error" });
+      setError(msg);
       setLoadingState("error");
     }
   }, [isTestingMode]); // Remove filterType dependency since we fetch all now

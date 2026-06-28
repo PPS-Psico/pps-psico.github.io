@@ -58,8 +58,8 @@ class ReminderService {
     }
 
     try {
-      const { data, error } = await (supabase
-        .from("reminders" as any)
+      const { data, error } = await supabase
+        .from("reminders")
         .insert({
           user_id: this.userId,
           title: input.title,
@@ -72,9 +72,9 @@ class ReminderService {
           priority: input.priority || "medium",
           completed: false,
           snooze_count: 0,
-        } as any)
+        })
         .select()
-        .single() as any);
+        .single();
 
       if (error) {
         logger.error("[ReminderService] Error creating reminder:", error);
@@ -193,14 +193,14 @@ class ReminderService {
     const now = new Date().toISOString();
 
     try {
-      const { data, error } = await (supabase
-        .from("reminders" as any)
+      const { data, error } = await supabase
+        .from("reminders")
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
         .or(`snoozed_until.is.null,snoozed_until.lte.${now}`)
         .order("due_date", { ascending: true })
-        .limit(limit) as any);
+        .limit(limit);
 
       if (error) {
         logger.error("[ReminderService] Error fetching reminders:", error);
@@ -227,8 +227,8 @@ class ReminderService {
     const now = new Date().toISOString();
 
     try {
-      const { data, error } = await (supabase
-        .from("reminders" as any)
+      const { data, error } = await supabase
+        .from("reminders")
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
@@ -236,7 +236,7 @@ class ReminderService {
         .gte("due_date", today.toISOString())
         .lt("due_date", tomorrow.toISOString())
         .order("priority", { ascending: false })
-        .order("due_date", { ascending: true }) as any);
+        .order("due_date", { ascending: true });
 
       if (error) {
         logger.error("[ReminderService] Error fetching today's reminders:", error);
@@ -263,15 +263,15 @@ class ReminderService {
     const now = new Date().toISOString();
 
     try {
-      const { data, error } = await (supabase
-        .from("reminders" as any)
+      const { data, error } = await supabase
+        .from("reminders")
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
         .or(`snoozed_until.is.null,snoozed_until.lte.${now}`)
         .gte("due_date", today.toISOString())
         .lt("due_date", nextWeek.toISOString())
-        .order("due_date", { ascending: true }) as any);
+        .order("due_date", { ascending: true });
 
       if (error) {
         logger.error("[ReminderService] Error fetching week reminders:", error);
@@ -294,15 +294,15 @@ class ReminderService {
     const now = new Date().toISOString();
 
     try {
-      const { data, error } = await (supabase
-        .from("reminders" as any)
+      const { data, error } = await supabase
+        .from("reminders")
         .select("*")
         .eq("user_id", this.userId)
         .eq("completed", false)
         .or(`snoozed_until.is.null,snoozed_until.lte.${now}`)
         .lt("due_date", now)
         .order("due_date", { ascending: true })
-        .limit(20) as any);
+        .limit(20);
 
       if (error) {
         logger.error("[ReminderService] Error fetching overdue reminders:", error);
@@ -323,14 +323,14 @@ class ReminderService {
     if (!this.userId) return false;
 
     try {
-      const { error } = await (supabase
-        .from("reminders" as any)
+      const { error } = await supabase
+        .from("reminders")
         .update({
           completed: true,
           completed_at: new Date().toISOString(),
-        } as any)
+        })
         .eq("id", reminderId)
-        .eq("user_id", this.userId) as any);
+        .eq("user_id", this.userId);
 
       if (error) {
         logger.error("[ReminderService] Error completing reminder:", error);
@@ -355,22 +355,22 @@ class ReminderService {
       snoozedUntil.setHours(snoozedUntil.getHours() + hours);
 
       // Obtener el contador actual
-      const { data: reminder } = await (supabase
-        .from("reminders" as any)
+      const { data: reminder } = await supabase
+        .from("reminders")
         .select("snooze_count")
         .eq("id", reminderId)
-        .single() as any);
+        .single();
 
       const newCount = (reminder?.snooze_count || 0) + 1;
 
-      const { error } = await (supabase
-        .from("reminders" as any)
+      const { error } = await supabase
+        .from("reminders")
         .update({
           snoozed_until: snoozedUntil.toISOString(),
           snooze_count: newCount,
-        } as any)
+        })
         .eq("id", reminderId)
-        .eq("user_id", this.userId) as any);
+        .eq("user_id", this.userId);
 
       if (error) {
         logger.error("[ReminderService] Error snoozing reminder:", error);
@@ -391,11 +391,11 @@ class ReminderService {
     if (!this.userId) return false;
 
     try {
-      const { error } = await (supabase
-        .from("reminders" as any)
+      const { error } = await supabase
+        .from("reminders")
         .delete()
         .eq("id", reminderId)
-        .eq("user_id", this.userId) as any);
+        .eq("user_id", this.userId);
 
       if (error) {
         logger.error("[ReminderService] Error deleting reminder:", error);

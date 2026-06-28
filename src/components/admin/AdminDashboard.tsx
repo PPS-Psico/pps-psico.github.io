@@ -23,9 +23,8 @@ const AdminDashboard: React.FC = () => {
     setIsReanalyzing(true);
     try {
       const apiUrl = import.meta.env.VITE_HERMES_API_URL || "https://pps-hermes.n8n-blas.com.ar";
-      const token =
-        import.meta.env.VITE_HERMES_INTERNAL_TOKEN ||
-        "8KqNm3vR7tYxL2pH9wJ4sZ6bF1cA5dG0eU8iO3kP4qX7vN2mL9";
+      // El token interno se lee solo del entorno (no hardcodear en el bundle).
+      const token = import.meta.env.VITE_HERMES_INTERNAL_TOKEN || "";
 
       const response = await fetch(`${apiUrl}/tasks/daily_brief_from_db`, {
         method: "POST",

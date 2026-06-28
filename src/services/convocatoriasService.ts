@@ -60,15 +60,22 @@ export const fetchConvocatoriasData = async (
     });
   }
 
-  const openLaunches = await db.lanzamientos.getAll({
+  const visibleLaunches = await db.lanzamientos.getAll({
     filters: {
-      [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: ["Abierta", "Abierto", "Cerrado"],
+      [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: [
+        "Abierta",
+        "Abierto",
+        "Cerrado",
+        "Cerrada",
+        "Confirmacion",
+        "Confirmación",
+      ],
     },
     sort: [{ field: C.FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "desc" }],
   });
 
-  const openLaunchIds = new Set(openLaunches.map((l) => l.id));
-  const missingLaunchIds = Array.from(enrolledLaunchIds).filter((id) => !openLaunchIds.has(id));
+  const visibleLaunchIds = new Set(visibleLaunches.map((l) => l.id));
+  const missingLaunchIds = Array.from(enrolledLaunchIds).filter((id) => !visibleLaunchIds.has(id));
 
   let historicalLaunches: LanzamientoPPS[] = [];
   if (missingLaunchIds.length > 0) {
@@ -77,7 +84,7 @@ export const fetchConvocatoriasData = async (
     });
   }
 
-  const allRawLanzamientos = [...openLaunches, ...historicalLaunches];
+  const allRawLanzamientos = [...visibleLaunches, ...historicalLaunches];
   const launchesMap = new Map(allRawLanzamientos.map((l) => [l.id, l]));
 
   const hydratedEnrollments = myEnrollments.map((row) => {
@@ -107,12 +114,15 @@ export const fetchConvocatoriasData = async (
     } as Convocatoria;
   });
 
-  const cleanedOpenLaunches = openLaunches.map((l) => ({
+  const cleanedVisibleLaunches = visibleLaunches.map((l) => ({
     ...l,
     [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]),
   }));
 
-  const lanzamientos = cleanedOpenLaunches.filter((l) => {
+  const today0 = new Date();
+  today0.setHours(0, 0, 0, 0);
+
+  const lanzamientos = cleanedVisibleLaunches.filter((l) => {
     const estadoConv = normalizeStringForComparison(l[C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
     const estadoGestion = l[C.FIELD_ESTADO_GESTION_LANZAMIENTOS];
 
@@ -124,12 +134,23 @@ export const fetchConvocatoriasData = async (
 
     const isClosed =
       normalizeStringForComparison(estadoConv) === "cerrada" ||
-      normalizeStringForComparison(estadoConv) === "cerrado";
+      normalizeStringForComparison(estadoConv) === "cerrado" ||
+      normalizeStringForComparison(estadoConv) === "confirmacion";
+
+    // Una convocatoria cerrada debe seguir visible para el estudiante hasta el
+    // día en que comienza, AUNQUE ya esté archivada (el archivado puede ocurrir
+    // manualmente o automáticamente). Solo ocultamos archivadas cuyo inicio ya pasó.
+    const inicioRaw = l[C.FIELD_FECHA_INICIO_LANZAMIENTOS];
+    const inicioDate = inicioRaw ? new Date(inicioRaw) : null;
+    if (inicioDate) inicioDate.setHours(0, 0, 0, 0);
+    const startNotPast = inicioDate ? inicioDate >= today0 : false;
+    const notArchivedOrUpcoming = estadoGestion !== "Archivado" || startNotPast;
 
     return (
       estadoConv !== "oculto" &&
-      estadoGestion !== "Archivado" &&
-      ["abierta", "abierto", "cerrado", "cerrada"].includes(estadoConv) &&
+      notArchivedOrUpcoming &&
+      ["abierta", "abierto", "cerrado", "cerrada", "confirmacion"].includes(estadoConv) &&
+      (!isClosed || startNotPast) &&
       (isClosed || !isScheduledForFuture)
     );
   });
@@ -152,7 +173,7 @@ export const fetchConvocatoriasData = async (
   });
 
   const institutionLogoMap = new Map<string, { url: string; invert: boolean }>();
-  institutions.forEach((inst: any) => {
+  institutions.forEach((inst) => {
     const name = cleanInstitutionName(inst[C.FIELD_NOMBRE_INSTITUCIONES]);
     const url = inst[C.FIELD_LOGO_URL_INSTITUCIONES];
     const invert = inst[C.FIELD_LOGO_INVERT_DARK_INSTITUCIONES];
@@ -218,7 +239,7 @@ export const fetchSeleccionados = async (
       const { data: rpcData } = await supabase.rpc("get_seleccionados_for_launch", {
         p_lanzamiento_id: lanzamientoId,
       });
-      if (rpcData && (rpcData as any[]).length > 0) {
+      if (rpcData && (rpcData as unknown[]).length > 0) {
         const grouped: GroupedSeleccionados = {};
         (rpcData as { horario: string; nombre: string; legajo: string }[]).forEach((row) => {
           addToGrouped(grouped, row.horario, {
@@ -263,7 +284,7 @@ export const toggleStudentSelection = async (
 ): Promise<{ success: boolean; error?: string }> => {
   const newStatus = isSelecting ? "Seleccionado" : "Inscripto";
   try {
-    const updatePayload: Record<string, any> = {
+    const updatePayload: Record<string, unknown> = {
       [C.FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: newStatus,
     };
     if (isSelecting) {
@@ -275,7 +296,10 @@ export const toggleStudentSelection = async (
       updatePayload.reminder_sent_at = null;
       updatePayload.baja_automatica_at = null;
     }
-    await db.convocatorias.update(convocatoriaId, updatePayload);
+    await db.convocatorias.update(
+      convocatoriaId,
+      updatePayload as Parameters<typeof db.convocatorias.update>[1]
+    );
 
     if (isSelecting) {
       let rawName = lanzamiento[C.FIELD_NOMBRE_PPS_LANZAMIENTOS];
@@ -337,10 +361,10 @@ export const toggleStudentSelection = async (
           [C.FIELD_NOTA_PRACTICAS]: "Sin calificar",
         };
 
-        await db.practicas.create(payload as any);
+        await db.practicas.create(payload as Parameters<typeof db.practicas.create>[0]);
       } else {
         logger.info(`[DATA SERVICE] Practica already exists. Checking data integrity...`);
-        const existingPractica = existing as any;
+        const existingPractica = existing as { id: string; [key: string]: unknown };
         const currentName = existingPractica[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
         const currentNameStr = Array.isArray(currentName) ? currentName[0] : String(currentName);
 

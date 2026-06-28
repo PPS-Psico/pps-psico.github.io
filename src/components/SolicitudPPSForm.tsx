@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { z } from "zod";
-import Input from "./ui/Input";
-import Button from "./ui/Button";
-import Select from "./ui/Select";
+import "./student/home/atlas/atlasHome.css";
 import { cleanWhatsAppNumber } from "../utils/formatters";
 import { logger } from "../utils/logger";
 
@@ -12,6 +10,26 @@ interface SolicitudPPSFormProps {
   onClose: () => void;
   onSubmit: (formData: any) => Promise<void>;
 }
+
+// Campo de formulario con etiqueta + error/hint (estilo Atlas).
+const FormField: React.FC<{
+  label: string;
+  required?: boolean;
+  error?: string;
+  hint?: React.ReactNode;
+  full?: boolean;
+  children: React.ReactNode;
+}> = ({ label, required, error, hint, full, children }) => (
+  <div className={"ah-formfield" + (full ? " ah-formfield--full" : "")}>
+    <label className="ah-field__lbl">
+      {label}
+      {required ? <span className="ah-formreq"> *</span> : null}
+    </label>
+    {children}
+    {hint ? <div className="ah-formhint">{hint}</div> : null}
+    {error ? <p className="ah-formerr">{error}</p> : null}
+  </div>
+);
 
 // Definición del esquema de validación
 const solicitudSchema = z
@@ -148,272 +166,231 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
   };
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 p-4"
-      onClick={handleBackdropClick}
-    >
-      <div
-        ref={modalRef}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden"
-      >
-        {/* Header */}
-        <div className="flex-shrink-0 p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <span className="material-icons !text-2xl">add_business</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Solicitar Nueva PPS
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Propuesta de institución para autogestión.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onClose();
-            }}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-          >
-            <span className="material-icons !text-2xl">close</span>
-          </button>
-        </div>
-
-        {/* Form Content */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-white dark:bg-slate-900"
+    <div className="ah-root" data-accent="teal">
+      <div className="ah-cmodal-overlay" onClick={handleBackdropClick}>
+        <div
+          ref={modalRef}
+          onClick={(e) => e.stopPropagation()}
+          className="ah-cmodal ah-cmodal--form"
         >
-          {/* Section 1: Institution */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">
-              Datos de la Institución
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Nombre de la Institución <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  name="nombreInstitucion"
-                  value={formData.nombreInstitucion}
-                  onChange={handleChange}
-                  placeholder="Ej: Hospital Zonal..."
-                />
-                {errors.nombreInstitucion && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">
-                    {errors.nombreInstitucion}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Localidad <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  name="localidad"
-                  value={formData.localidad}
-                  onChange={handleChange}
-                  placeholder="Ej: Cipolletti"
-                />
-                {errors.localidad && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{errors.localidad}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Dirección Completa <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  name="direccion"
-                  value={formData.direccion}
-                  onChange={handleChange}
-                  placeholder="Calle y Altura"
-                />
-                {errors.direccion && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{errors.direccion}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Email de Contacto <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  name="emailInstitucion"
-                  type="email"
-                  value={formData.emailInstitucion}
-                  onChange={handleChange}
-                  placeholder="contacto@institucion.com"
-                />
-                {errors.emailInstitucion && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">
-                    {errors.emailInstitucion}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Teléfono <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  name="telefonoInstitucion"
-                  type="tel"
-                  value={formData.telefonoInstitucion}
-                  onChange={handleChange}
-                  placeholder="Ej: 2991234567"
-                />
-                {phoneWarning && (
-                  <p className="text-amber-600 text-xs mt-1 font-medium flex items-center gap-1">
-                    <span className="material-icons !text-xs">warning</span>
-                    {phoneWarning} - Formato WhatsApp: código país + área + número (ej: 542991234567
-                    para Argentina)
-                  </p>
-                )}
-                {errors.telefonoInstitucion && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">
-                    {errors.telefonoInstitucion}
-                  </p>
-                )}
-              </div>
+          {/* Header */}
+          <div className="ah-cmodal__head">
+            <div>
+              <span className="eyebrow">Autogestión</span>
+              <h2 className="ah-cmodal__title">Solicitar una nueva PPS</h2>
+              <p className="ah-cmodal__sub">Proponé una institución para gestionar tu práctica.</p>
             </div>
+            <button
+              type="button"
+              className="ah-iconbtn"
+              aria-label="Cerrar"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+            >
+              <span className="material-icons" aria-hidden>
+                close
+              </span>
+            </button>
           </div>
 
-          {/* Section 2: Contact & Agreement */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">
-              Referentes y Convenio
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Referente Institucional (Director/Coord) <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  name="referente"
-                  value={formData.referente}
-                  onChange={handleChange}
-                  placeholder="Autoridad de la institución"
-                />
-                {errors.referente && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{errors.referente}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  ¿Tiene convenio con UFLO?
-                </label>
-                <Select name="tieneConvenio" value={formData.tieneConvenio} onChange={handleChange}>
-                  <option value="No sé">No lo sé</option>
-                  <option value="Sí">Sí, tiene convenio vigente</option>
-                  <option value="No">No, hay que gestionarlo</option>
-                </Select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Nombre del Lic. en Psicología (Tutor) <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  name="nombreTutor"
-                  value={formData.nombreTutor}
-                  onChange={handleChange}
-                  placeholder="Nombre del profesional que supervisará"
-                />
-                <p className="text-xs text-slate-400 mt-1 font-medium">
-                  Debe ser un psicólogo/a graduado que trabaje en la institución.
-                </p>
-                {errors.nombreTutor && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{errors.nombreTutor}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Practice Details */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">
-              Sobre la Práctica
-            </h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                    Alcance de la Práctica
-                  </label>
-                  <Select name="alcance" value={formData.alcance} onChange={handleChange}>
-                    <option value="Individual">Solo para mí</option>
-                    <option value="Grupal">Para varios estudiantes</option>
-                  </Select>
-                </div>
-                {formData.alcance === "Grupal" && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                      Cantidad aprox. de estudiantes <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      name="cantidadEstudiantes"
-                      value={formData.cantidadEstudiantes}
+          {/* Body */}
+          <div className="ah-cmodal__body">
+            <form onSubmit={handleSubmit} className="ah-form">
+              {/* Sección 1: institución */}
+              <section className="ah-formsec">
+                <span className="eyebrow ah-formsec__head">Datos de la institución</span>
+                <div className="ah-formgrid">
+                  <FormField
+                    label="Nombre de la institución"
+                    required
+                    error={errors.nombreInstitucion}
+                    full
+                  >
+                    <input
+                      className="ah-textinput"
+                      name="nombreInstitucion"
+                      value={formData.nombreInstitucion}
                       onChange={handleChange}
-                      placeholder="Ej: 3 o 4"
+                      placeholder="Ej: Hospital Zonal…"
                     />
-                    {errors.cantidadEstudiantes && (
-                      <p className="text-red-500 text-xs mt-1 font-semibold">
-                        {errors.cantidadEstudiantes}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+                  </FormField>
+                  <FormField label="Localidad" required error={errors.localidad}>
+                    <input
+                      className="ah-textinput"
+                      name="localidad"
+                      value={formData.localidad}
+                      onChange={handleChange}
+                      placeholder="Ej: Cipolletti"
+                    />
+                  </FormField>
+                  <FormField label="Dirección completa" required error={errors.direccion}>
+                    <input
+                      className="ah-textinput"
+                      name="direccion"
+                      value={formData.direccion}
+                      onChange={handleChange}
+                      placeholder="Calle y altura"
+                    />
+                  </FormField>
+                  <FormField label="Email de contacto" required error={errors.emailInstitucion}>
+                    <input
+                      className="ah-textinput"
+                      name="emailInstitucion"
+                      type="email"
+                      value={formData.emailInstitucion}
+                      onChange={handleChange}
+                      placeholder="contacto@institucion.com"
+                    />
+                  </FormField>
+                  <FormField
+                    label="Teléfono"
+                    required
+                    error={errors.telefonoInstitucion}
+                    hint={
+                      phoneWarning ? (
+                        <span className="ah-formhint ah-formhint--warn">
+                          <span className="material-icons" aria-hidden>
+                            warning
+                          </span>
+                          {phoneWarning} — formato WhatsApp: país + área + número (ej:
+                          542991234567).
+                        </span>
+                      ) : undefined
+                    }
+                  >
+                    <input
+                      className="ah-textinput"
+                      name="telefonoInstitucion"
+                      type="tel"
+                      value={formData.telefonoInstitucion}
+                      onChange={handleChange}
+                      placeholder="Ej: 2991234567"
+                    />
+                  </FormField>
+                </div>
+              </section>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Descripción de Actividades <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  name="descripcion"
-                  value={formData.descripcion}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-500 p-3 text-sm font-medium bg-white dark:bg-slate-950 focus:border-blue-600 dark:focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/40 outline-none transition-all resize-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  placeholder="Describe brevemente qué actividades se realizarían (ej: observación, admisión, talleres)..."
-                />
-                {errors.descripcion && (
-                  <p className="text-red-500 text-xs mt-1 font-semibold">{errors.descripcion}</p>
-                )}
+              {/* Sección 2: referentes y convenio */}
+              <section className="ah-formsec">
+                <span className="eyebrow ah-formsec__head">Referentes y convenio</span>
+                <div className="ah-formgrid">
+                  <FormField
+                    label="Referente institucional (director/coord.)"
+                    required
+                    error={errors.referente}
+                  >
+                    <input
+                      className="ah-textinput"
+                      name="referente"
+                      value={formData.referente}
+                      onChange={handleChange}
+                      placeholder="Autoridad de la institución"
+                    />
+                  </FormField>
+                  <FormField label="¿Tiene convenio con UFLO?">
+                    <select
+                      className="ah-selectctrl"
+                      name="tieneConvenio"
+                      value={formData.tieneConvenio}
+                      onChange={handleChange}
+                    >
+                      <option value="No sé">No lo sé</option>
+                      <option value="Sí">Sí, tiene convenio vigente</option>
+                      <option value="No">No, hay que gestionarlo</option>
+                    </select>
+                  </FormField>
+                  <FormField
+                    label="Nombre del Lic. en Psicología (tutor)"
+                    required
+                    error={errors.nombreTutor}
+                    hint="Debe ser un psicólogo/a graduado que trabaje en la institución."
+                    full
+                  >
+                    <input
+                      className="ah-textinput"
+                      name="nombreTutor"
+                      value={formData.nombreTutor}
+                      onChange={handleChange}
+                      placeholder="Nombre del profesional que supervisará"
+                    />
+                  </FormField>
+                </div>
+              </section>
+
+              {/* Sección 3: sobre la práctica */}
+              <section className="ah-formsec">
+                <span className="eyebrow ah-formsec__head">Sobre la práctica</span>
+                <div className="ah-formgrid">
+                  <FormField label="Alcance de la práctica">
+                    <select
+                      className="ah-selectctrl"
+                      name="alcance"
+                      value={formData.alcance}
+                      onChange={handleChange}
+                    >
+                      <option value="Individual">Solo para mí</option>
+                      <option value="Grupal">Para varios estudiantes</option>
+                    </select>
+                  </FormField>
+                  {formData.alcance === "Grupal" ? (
+                    <FormField
+                      label="Cantidad aprox. de estudiantes"
+                      required
+                      error={errors.cantidadEstudiantes}
+                    >
+                      <input
+                        className="ah-textinput"
+                        name="cantidadEstudiantes"
+                        value={formData.cantidadEstudiantes}
+                        onChange={handleChange}
+                        placeholder="Ej: 3 o 4"
+                      />
+                    </FormField>
+                  ) : null}
+                  <FormField
+                    label="Descripción de actividades"
+                    required
+                    error={errors.descripcion}
+                    full
+                  >
+                    <textarea
+                      className="ah-textarea"
+                      name="descripcion"
+                      value={formData.descripcion}
+                      onChange={handleChange}
+                      rows={3}
+                      placeholder="Describí brevemente qué actividades se realizarían (ej: observación, admisión, talleres)…"
+                    />
+                  </FormField>
+                </div>
+              </section>
+
+              {/* Footer */}
+              <div className="ah-cmodal__foot" style={{ justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="ah-btn ah-btn--secondary"
+                  disabled={isSubmitting}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClose();
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="ah-btn ah-btn--primary" disabled={isSubmitting}>
+                  {isSubmitting ? "Enviando…" : "Enviar solicitud"}
+                  <span className="material-icons" style={{ fontSize: 17 }} aria-hidden>
+                    send
+                  </span>
+                </button>
               </div>
-            </div>
+            </form>
           </div>
-        </form>
-
-        {/* Footer */}
-        <div className="flex-shrink-0 p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-3">
-          <Button
-            variant="secondary"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onClose();
-            }}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleSubmit(e);
-            }}
-            isLoading={isSubmitting}
-            disabled={isSubmitting}
-            icon="send"
-          >
-            Enviar Solicitud
-          </Button>
         </div>
       </div>
     </div>,

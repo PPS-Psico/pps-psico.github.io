@@ -27,6 +27,18 @@ import PaginationControls from "../PaginationControls";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
+import type { Estudiante } from "../../types";
+
+type ToastState = { message: string; type: "success" | "error" | "warning" | "info" } | null;
+type StudentEditingState =
+  | (Record<string, unknown> & { id?: string })
+  | { isCreating: true }
+  | null;
+type StudentRow = Estudiante & { __totalHours: number };
+interface StudentPage {
+  records: StudentRow[];
+  total: number;
+}
 
 const TABLE_CONFIG = {
   label: "Estudiantes",
@@ -77,9 +89,9 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
-  const [editingRecord, setEditingRecord] = useState<any>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; record: any } | null>(null);
-  const [toastInfo, setToastInfo] = useState<any>(null);
+  const [editingRecord, setEditingRecord] = useState<StudentEditingState>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; record: StudentRow } | null>(null);
+  const [toastInfo, setToastInfo] = useState<ToastState>(null);
   const [idToDelete, setIdToDelete] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
@@ -93,7 +105,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<StudentPage>({
     queryKey: [
       "editor-students",
       currentPage,
@@ -120,7 +132,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         // Filtro de estado
         if (filterEstado) {
           filteredRecords = filteredRecords.filter(
-            (s) => (s as any)[FIELD_ESTADO_ESTUDIANTES] === filterEstado
+            (s) => (s as Record<string, unknown>)[FIELD_ESTADO_ESTUDIANTES] === filterEstado
           );
         }
 
@@ -142,13 +154,13 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         const from = (currentPage - 1) * itemsPerPage;
         const to = from + itemsPerPage;
         return {
-          records: enriched.slice(from, to),
+          records: enriched.slice(from, to) as unknown as StudentRow[],
           total: enriched.length,
         };
       }
 
       // MODO REAL: Consultar base de datos
-      const filters: any = {};
+      const filters: Record<string, unknown> = {};
       if (filterEstado) filters[FIELD_ESTADO_ESTUDIANTES] = filterEstado;
 
       const { records, total, error } = await db.estudiantes.getPage(currentPage, itemsPerPage, {
@@ -156,7 +168,10 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES],
         filters,
       });
-      if (error) throw new Error(error.error?.message || "Error al cargar estudiantes");
+      if (error) {
+        const msg = typeof error.error === "string" ? error.error : error.error?.message;
+        throw new Error(msg || "Error al cargar estudiantes");
+      }
 
       // Enriquecer con horas totales para visibilidad inmediata
       const studentIds = records.map((r) => r.id);
@@ -185,7 +200,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         };
       });
 
-      return { records: enriched, total };
+      return { records: enriched as unknown as StudentRow[], total };
     },
   });
 
@@ -193,12 +208,12 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     return <EmptyState icon="error" title="Error de Carga" message={(error as Error).message} />;
 
   const updateMutation = useMutation({
-    mutationFn: (vars: any) => {
+    mutationFn: (vars: { id: string; fields: Record<string, unknown> }) => {
       if (isTestingMode) {
         return Promise.resolve({
           ...MOCK_ESTUDIANTES.find((s) => s.id === vars.id),
           ...vars.fields,
-        } as any);
+        } as unknown as Estudiante);
       }
       const fields = { ...vars.fields };
       if (
@@ -210,16 +225,16 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         const fullName = [nombre, apellido].filter(Boolean).join(" ");
         if (fullName) fields[FIELD_NOMBRE_ESTUDIANTES] = fullName;
       }
-      return db.estudiantes.update(vars.id, fields);
+      return db.estudiantes.update(vars.id, fields as Parameters<typeof db.estudiantes.update>[1]);
     },
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: ["editor-students"] });
       const prev = queryClient.getQueryData(["editor-students"]);
-      queryClient.setQueryData(["editor-students"], (old: any) => {
+      queryClient.setQueryData(["editor-students"], (old: StudentPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.map((r: any) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
+          records: old.records.map((r) => (r.id === vars.id ? { ...r, ...vars.fields } : r)),
         };
       });
       return { prev };
@@ -241,9 +256,9 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
   });
 
   const createMutation = useMutation({
-    mutationFn: (fields: any) => {
+    mutationFn: (fields: Record<string, unknown>) => {
       if (isTestingMode) {
-        return Promise.resolve({ id: `st_${Date.now()}`, ...fields } as any);
+        return Promise.resolve({ id: `st_${Date.now()}`, ...fields } as unknown as Estudiante);
       }
       const fieldsToCreate = { ...fields };
       if (
@@ -261,7 +276,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       if (!fieldsToCreate[FIELD_ESTADO_ESTUDIANTES]) {
         fieldsToCreate[FIELD_ESTADO_ESTUDIANTES] = "Nuevo (Sin cuenta)";
       }
-      return db.estudiantes.create(fieldsToCreate);
+      return db.estudiantes.create(fieldsToCreate as Parameters<typeof db.estudiantes.create>[0]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["editor-students"] });
@@ -283,11 +298,11 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["editor-students"] });
       const prev = queryClient.getQueryData(["editor-students"]);
-      queryClient.setQueryData(["editor-students"], (old: any) => {
+      queryClient.setQueryData(["editor-students"], (old: StudentPage | undefined) => {
         if (!old?.records) return old;
         return {
           ...old,
-          records: old.records.filter((r: any) => r.id !== id),
+          records: old.records.filter((r) => r.id !== id),
           total: Math.max(0, (old.total || 0) - 1),
         };
       });
@@ -314,13 +329,13 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     setSelectedRowId((prev) => (prev === id ? null : id));
   };
 
-  const handleRowContextMenu = (e: React.MouseEvent, record: any) => {
+  const handleRowContextMenu = (e: React.MouseEvent, record: StudentRow) => {
     e.preventDefault();
     setSelectedRowId(record.id);
     setMenu({ x: e.clientX, y: e.clientY, record });
   };
 
-  const getStatusTone = (estado: string): string => {
+  const getStatusTone = (estado: string | null | undefined): string => {
     switch (estado) {
       case "Activo":
         return "ok";
@@ -426,7 +441,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
                 </tr>
               </thead>
               <tbody>
-                {data?.records.map((s: any) => {
+                {data?.records.map((s) => {
                   const isSelected = selectedRowId === s.id;
                   return (
                     <tr

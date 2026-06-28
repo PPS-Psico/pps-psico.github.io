@@ -1,0 +1,2160 @@
+/* ============================================================
+   atlasHome.css — Home del estudiante · Atlas DS (escritorio)
+   Portado del prototipo "Mi Panel Inicio Atlas". Todos los tokens
+   y reglas viven bajo `.ah-root` para no contaminar el resto de la app.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap");
+
+.ah-root {
+  /* TYPE */
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --lh-tight: 1.1;
+  --lh-snug: 1.25;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-wide: 0.04em;
+  --tracking-caps: 0.08em;
+
+  /* Neutrals — warm zinc */
+  --neutral-0: #ffffff;
+  --neutral-50: #fafaf7;
+  --neutral-100: #f4f3ee;
+  --neutral-200: #e8e6de;
+  --neutral-300: #d6d3c8;
+  --neutral-400: #a8a498;
+  --neutral-500: #76736a;
+  --neutral-600: #54524b;
+  --neutral-700: #38362f;
+  --neutral-800: #23211d;
+  --neutral-900: #141310;
+  --neutral-1000: #0a0907;
+
+  /* Brand — UFLO teal sobre base Atlas */
+  --uflo-purple: #46253d;
+  --uflo-navy: #203b73;
+  --uflo-teal: #3cb88d;
+  --primary-50: #eaf7f1;
+  --primary-100: #d7f0e5;
+  --primary-300: #8ed9bc;
+  --primary-500: #3cb88d;
+  --primary-600: #2e9b76;
+  --primary-700: #1f7a5c;
+  --primary-900: #0e3d2d;
+  --fg-on-brand: #04221a;
+
+  --accent-500: #d9744c;
+
+  /* Semantic */
+  --success-500: #2e8b57;
+  --success-50: #e6f2ec;
+  --warning-500: #c98a1b;
+  --warning-50: #fbf1dc;
+  --danger-500: #c73e3e;
+  --danger-50: #fbeaea;
+  --info-500: #2e7cc1;
+  --info-50: #e5f0fa;
+
+  /* Áreas */
+  --area-clinica: #3cb88d;
+  --area-educacional: #203b73;
+  --area-comunitaria: #7a3f9e;
+  --display-accent: var(--uflo-purple);
+
+  /* Semantic surfaces */
+  --bg: var(--neutral-50);
+  --bg-elevated: var(--neutral-0);
+  --bg-sunken: var(--neutral-100);
+  --fg: var(--neutral-900);
+  --fg-muted: var(--neutral-600);
+  --fg-subtle: var(--neutral-500);
+  --border: var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --link: var(--primary-700);
+  --link-hover: var(--primary-900);
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(20, 19, 16, 0.05), 0 1px 1px rgba(20, 19, 16, 0.04);
+  --shadow-md: 0 4px 8px -2px rgba(20, 19, 16, 0.06), 0 2px 4px -2px rgba(20, 19, 16, 0.04);
+  --shadow-lg: 0 18px 48px -12px rgba(20, 19, 16, 0.22), 0 8px 16px -8px rgba(20, 19, 16, 0.14);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+html.dark .ah-root {
+  /* Paleta navy unificada con el home editorial (.ed) para que las superficies
+     combinen con el fondo de la app (#0a0e1a) en todas las pestañas. */
+  --bg: #0a0e1a;
+  --bg-elevated: #131829;
+  --bg-sunken: #060812;
+  --fg: #f2f3f7;
+  --fg-muted: #8c92a4;
+  --fg-subtle: #5c6275;
+  --border: #1f2438;
+  --border-strong: #2d344e;
+  --area-clinica: #4fd49e;
+  --area-educacional: #7b91de;
+  --area-comunitaria: #bc85dc;
+  --display-accent: #c9a2bd;
+  --link: var(--primary-300);
+  --link-hover: var(--primary-100);
+  --neutral-100: #1a1f32;
+}
+
+/* ---------- helpers tipográficos (scopeados) ---------- */
+.ah-root .eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.ah-root h6 {
+  margin: 0;
+  font: 600 14px/1.1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+/* ---------- detalles de calidad (foco, selección, motion) ---------- */
+/* Foco visible para teclado — coherente en todos los controles del panel. */
+.ah-root a:focus-visible,
+.ah-root button:focus-visible,
+.ah-root [tabindex]:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary-500) 55%, transparent);
+  outline-offset: 2px;
+}
+.ah-root .ah-toggle:focus-visible {
+  outline-offset: 3px;
+}
+/* Los campos editables ya tienen su propio indicador (borde inferior). */
+.ah-root .ah-field__input:focus-visible,
+.ah-root .ah-field__select:focus-visible {
+  outline: none;
+}
+.ah-root ::selection {
+  background: color-mix(in oklab, var(--primary-500) 22%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-root *,
+  .ah-root *::before,
+  .ah-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- layout ---------- */
+.ah-root {
+  background: transparent;
+}
+.ah-main {
+  max-width: 1232px;
+  margin: 0 auto;
+  padding: 8px 0 24px;
+}
+
+/* ---------- hero: saludo + próximo paso ---------- */
+.ah-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  gap: 48px;
+  align-items: end;
+}
+.ah-hero__date {
+  display: block;
+  margin-bottom: 14px;
+}
+/* Saludo del Inicio (solo desktop · StudentHomeAtlas): firma serif Atlas,
+   igual que los títulos de Solicitudes/Perfil (Instrument Serif + em itálica
+   con --display-accent). En mobile el saludo es otro componente (Bricolage). */
+.ah-hero__greet {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 54px;
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+  color: var(--fg);
+}
+.ah-hero__greet em {
+  font-style: italic;
+  /* Claro: púrpura vivo (eco del lavanda del dark, con contraste para fondo claro). */
+  color: #9d3f86;
+}
+/* Oscuro: lavanda sólido (queda mejor sobre el navy). */
+html.dark .ah-root .ah-hero__greet em {
+  color: var(--display-accent);
+}
+.ah-hero__line {
+  margin: 16px 0 0;
+  font-size: 15.5px;
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+  max-width: 52ch;
+}
+.ah-hero__line b {
+  font-weight: 500;
+  color: var(--fg);
+}
+
+/* ---------- resaltado tipo marcador (highlighter) ---------- */
+/* Banda de color suave detrás del texto, como pasada de resaltador. El color
+   se controla con --mc; en dark se sube la opacidad para que siga visible. */
+.ah-root .ah-mark {
+  --mc: var(--primary-500);
+  --ma: 22%;
+  background-image: linear-gradient(
+    100deg,
+    transparent 0.4%,
+    color-mix(in oklab, var(--mc) var(--ma), transparent) 2%,
+    color-mix(in oklab, var(--mc) var(--ma), transparent) 97%,
+    transparent 99.6%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 56%;
+  background-position: 0 64%;
+  padding: 0 0.12em;
+  border-radius: 0.08em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+html.dark .ah-root .ah-mark {
+  --ma: 34%;
+}
+.ah-root .ah-mark--teal {
+  --mc: var(--primary-500);
+}
+.ah-root .ah-mark--amber {
+  --mc: var(--warning-500);
+}
+.ah-root .ah-mark--purple {
+  --mc: var(--uflo-purple);
+}
+html.dark .ah-root .ah-mark--purple {
+  --mc: var(--display-accent);
+}
+.ah-root .ah-mark--navy {
+  --mc: var(--uflo-navy);
+}
+html.dark .ah-root .ah-mark--navy {
+  --mc: var(--area-educacional);
+}
+
+.ah-next {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+}
+.ah-next__tag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ah-next__body {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.ah-next__date {
+  width: 56px;
+  flex-shrink: 0;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+.ah-next__date .m {
+  display: block;
+  font: 500 10px/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  padding: 5px 0 4px;
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+}
+html.dark .ah-root .ah-next__date .m {
+  background: var(--neutral-0);
+  color: var(--neutral-900);
+}
+.ah-next__date .d {
+  display: block;
+  font: 500 22px/1 var(--font-sans);
+  letter-spacing: var(--tracking-tight);
+  padding: 8px 0 9px;
+}
+.ah-next__t {
+  font: 500 15px/1.3 var(--font-sans);
+  letter-spacing: var(--tracking-snug);
+}
+.ah-next__s {
+  font: 400 12.5px/1.45 var(--font-sans);
+  color: var(--fg-muted);
+  margin-top: 4px;
+}
+.ah-next__s b {
+  font-weight: 500;
+  color: var(--fg);
+}
+
+/* ---------- section head ---------- */
+.ah-sechead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 52px 0 18px;
+}
+.ah-sechead .n {
+  font: 400 12px/1 var(--font-mono);
+  color: var(--fg-subtle);
+}
+.ah-sechead a {
+  margin-left: auto;
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--link);
+  cursor: pointer;
+}
+.ah-sechead a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- convocatorias ---------- */
+.ah-convs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 20px;
+}
+.ah-conv {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 26px 28px 22px;
+  cursor: pointer;
+  transition:
+    box-shadow var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard);
+  display: flex;
+  flex-direction: column;
+}
+.ah-conv:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+.ah-conv__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.ah-areabadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 11.5px/1 var(--font-sans);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.ah-areabadge .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ac, var(--primary-500));
+}
+.ah-closes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 11.5px/1 var(--font-mono);
+  color: var(--warning-500);
+  background: var(--warning-50);
+  border-radius: var(--radius-pill);
+  padding: 5px 11px;
+}
+.ah-closes--soft {
+  color: var(--fg-muted);
+  background: var(--bg-sunken);
+}
+.ah-conv__name {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 1.02;
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+  margin: 0;
+}
+.ah-conv__desc {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+}
+.ah-conv__data {
+  display: flex;
+  gap: 0;
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.ah-conv__cell {
+  flex: 1;
+  padding: 13px 18px 14px 0;
+}
+.ah-conv__cell + .ah-conv__cell {
+  border-left: 1px solid var(--border);
+  padding-left: 18px;
+}
+.ah-conv__cell .k {
+  display: block;
+  font: 500 10.5px/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  margin-bottom: 6px;
+}
+.ah-conv__cell .v {
+  font: 500 15px/1.2 var(--font-mono);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+  white-space: nowrap;
+}
+.ah-conv__cell .v .u {
+  color: var(--fg-subtle);
+  font-weight: 400;
+}
+.ah-conv__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.ah-conv__spacer {
+  flex: 1;
+}
+
+/* ============================================================
+   Convocatoria destacada — card expandida del Home cuando hay
+   UNA sola convocatoria abierta. Diseño propio (no la vista de
+   detalle): columna editorial + panel de acción, lista para
+   inscribirse desde el inicio. Atlas DS · microdetalles.
+   ============================================================ */
+.ah-feat {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 332px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--duration-base) var(--ease-standard);
+}
+.ah-feat:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- columna editorial ---------- */
+.ah-feat__main {
+  padding: 30px 32px 30px;
+  min-width: 0;
+}
+.ah-feat__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+/* La etiqueta de área de la card destacada toma el color del área (detalle). */
+.ah-feat .ah-areabadge {
+  color: var(--ac, var(--primary-500));
+}
+.ah-feat__name {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(30px, 3vw, 42px);
+  line-height: 1.02;
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+  margin: 0;
+  text-wrap: balance;
+}
+.ah-feat__desc {
+  margin: 14px 0 0;
+  font-size: 14.5px;
+  line-height: var(--lh-relaxed);
+  color: var(--fg-muted);
+  max-width: 62ch;
+}
+
+/* horarios + ubicación */
+.ah-feat__meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px 28px;
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.ah-feat__block {
+  min-width: 0;
+}
+.ah-feat__block .eyebrow {
+  display: block;
+  margin-bottom: 11px;
+  font-size: 10.5px;
+}
+.ah-feat__hlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.ah-feat__hlist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--fg);
+  letter-spacing: var(--tracking-snug);
+}
+/* Chip de color para los íconos de la card (horarios y ubicación). */
+.ah-feat__ic {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  color: var(--ac, var(--primary-500));
+  background: color-mix(in oklab, var(--ac, var(--primary-500)) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ac, var(--primary-500)) 22%, transparent);
+}
+.ah-feat__ic .material-icons {
+  font-size: 16px;
+}
+.ah-feat__map {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: var(--fg);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+.ah-feat__map:hover {
+  border-color: color-mix(in oklab, var(--ac, var(--primary-500)) 45%, var(--border));
+  background: color-mix(in oklab, var(--ac, var(--primary-500)) 5%, var(--bg-elevated));
+}
+.ah-feat__map .ah-feat__ic {
+  width: 32px;
+  height: 32px;
+}
+.ah-feat__map .ah-feat__ic .material-icons {
+  font-size: 18px;
+}
+.ah-feat__map-txt {
+  flex: 1;
+  min-width: 0;
+}
+.ah-feat__map-addr {
+  display: block;
+  font: 500 13px/1.35 var(--font-sans);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-feat__map-hint {
+  display: block;
+  margin-top: 2px;
+  font: 400 11px/1 var(--font-mono);
+  color: var(--fg-subtle);
+}
+.ah-feat__map svg {
+  color: var(--fg-subtle);
+  flex-shrink: 0;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.ah-feat__map:hover svg {
+  transform: translateX(3px);
+  color: var(--ac, var(--primary-500));
+}
+
+/* "Vas a" — actividades */
+.ah-feat__acts {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.ah-feat__acts .eyebrow {
+  display: block;
+  font-size: 10.5px;
+}
+.ah-feat__acts ul {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 24px;
+}
+.ah-feat__acts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+.ah-feat__bullet {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ac, var(--primary-500));
+  margin-top: 7px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ac, var(--primary-500)) 16%, transparent);
+}
+
+/* ---------- panel de acción (lateral) ---------- */
+.ah-feat__side {
+  position: relative;
+  padding: 26px 26px 24px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-sunken);
+  display: flex;
+  flex-direction: column;
+}
+/* halo sutil de acento en el panel */
+.ah-feat__side::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(
+    120px 120px at 100% 0%,
+    color-mix(in oklab, var(--ac, var(--primary-500)) 12%, transparent),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+.ah-feat__side > * {
+  position: relative;
+}
+.ah-feat__sidehead {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 10.5px;
+}
+.ah-feat__stats {
+  display: flex;
+  flex-direction: column;
+}
+.ah-feat__stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--border);
+}
+.ah-feat__stat:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.ah-feat__stat .k {
+  font: 500 11px/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+.ah-feat__stat .v {
+  font: 500 16px/1.1 var(--font-sans);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ah-feat__stat .v .u {
+  font-size: 12px;
+  color: var(--fg-muted);
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+/* cronograma mini */
+.ah-feat__time {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.ah-feat__time .eyebrow {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 10.5px;
+}
+.ah-feat__steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  position: relative;
+}
+/* línea base que conecta los nodos */
+.ah-feat__steps::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 12%;
+  right: 12%;
+  height: 1.5px;
+  background: var(--border-strong);
+}
+.ah-feat__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  position: relative;
+}
+.ah-feat__node {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  border: 1.5px solid var(--border-strong);
+  position: relative;
+  z-index: 1;
+}
+.ah-feat__step.is-active .ah-feat__node {
+  background: var(--ac, var(--primary-500));
+  border-color: var(--ac, var(--primary-500));
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--ac, var(--primary-500)) 18%, transparent);
+}
+.ah-feat__step .sk {
+  font: 500 9.5px/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+.ah-feat__step .sv {
+  font: 500 11.5px/1.1 var(--font-mono);
+  color: var(--fg);
+  letter-spacing: var(--tracking-snug);
+}
+.ah-feat__step.is-active .sv {
+  color: var(--ac, var(--primary-500));
+}
+
+/* CTA + nota */
+.ah-feat__cta {
+  margin-top: auto;
+  width: 100%;
+  justify-content: center;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  margin-bottom: 0;
+}
+.ah-feat__side .ah-feat__cta {
+  margin-top: 22px;
+}
+.ah-feat__cta svg {
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.ah-feat__cta:hover svg {
+  transform: translateX(3px);
+}
+.ah-feat__note {
+  margin: 11px 0 0;
+  font: 400 11px/1.5 var(--font-mono);
+  color: var(--fg-subtle);
+  text-align: center;
+}
+
+/* píldora "cierra en…" con pulso cuando es urgente */
+.ah-closes__pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+  position: relative;
+}
+.ah-closes__pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: currentColor;
+  animation: ah-pulse 1.8s var(--ease-out) infinite;
+}
+@keyframes ah-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-closes__pulse::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 880px) {
+  .ah-feat {
+    grid-template-columns: 1fr;
+  }
+  .ah-feat__side {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .ah-feat__meta,
+  .ah-feat__acts ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* estado vacío */
+.ah-empty {
+  grid-column: 1 / -1;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 56px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.ah-empty__ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--fg-subtle);
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+.ah-empty__t {
+  font: 500 16px/1.3 var(--font-sans);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-empty__s {
+  font: 400 13.5px/1.5 var(--font-sans);
+  color: var(--fg-muted);
+  max-width: 44ch;
+  margin: 0;
+}
+.ah-empty .ah-btn {
+  margin-top: 14px;
+}
+
+/* botones */
+.ah-btn {
+  font: 500 13.5px/1 var(--font-sans);
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    transform 80ms var(--ease-standard);
+  white-space: nowrap;
+}
+.ah-btn:active {
+  transform: scale(0.98);
+}
+.ah-btn--primary {
+  background: var(--primary-500);
+  color: var(--fg-on-brand);
+}
+.ah-btn--primary:hover {
+  background: var(--primary-600);
+}
+.ah-btn--secondary {
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+.ah-btn--secondary:hover {
+  background: var(--bg-sunken);
+}
+
+/* ---------- estado de tus PPS ---------- */
+.ah-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  gap: 20px;
+  margin-top: 28px;
+  align-items: start;
+}
+.ah-estado__seeall {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 13px 20px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--link);
+  font: 500 13px/1 var(--font-sans);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.ah-estado__seeall:hover {
+  background: var(--bg-sunken);
+}
+.ah-bottom--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ah-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.ah-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.ah-card__head .meta {
+  font: 400 12px/1 var(--font-mono);
+  color: var(--fg-subtle);
+}
+.ah-estado__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 20px 14px;
+}
+.ah-accr__big {
+  margin-left: auto;
+  font: 500 24px/1 var(--font-sans);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+}
+.ah-accr__big .den {
+  color: var(--fg-subtle);
+  font-weight: 400;
+  font-size: 16px;
+}
+.ah-accr__pct {
+  font: 500 12px/1 var(--font-mono);
+  color: var(--primary-700);
+  background: var(--primary-50);
+  border-radius: var(--radius-pill);
+  padding: 5px 10px;
+}
+html.dark .ah-root .ah-accr__pct {
+  color: var(--primary-300);
+  background: rgba(60, 184, 141, 0.14);
+}
+.ah-estado__progress {
+  padding: 0 20px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.ah-bar {
+  display: flex;
+  gap: 3px;
+  height: 24px;
+}
+.ah-bar__seg {
+  border-radius: 5px;
+  background: var(--sc, var(--neutral-300));
+  position: relative;
+  min-width: 14px;
+  transition: flex-grow 600ms var(--ease-out);
+}
+.ah-bar__seg.rest {
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 5px, var(--border) 5px 6px), var(--bg-sunken);
+}
+.ah-bar__seg .tip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 500 11px/1 var(--font-mono);
+  color: rgba(255, 255, 255, 0.95);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.ah-bar__seg:hover .tip {
+  opacity: 1;
+}
+.ah-bar__seg.rest .tip {
+  color: var(--fg-muted);
+}
+.ah-accr__legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.ah-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 12.5px/1 var(--font-sans);
+  color: var(--fg-muted);
+}
+.ah-leg .sw {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--sc, var(--neutral-300));
+}
+.ah-leg b {
+  font-weight: 500;
+  color: var(--fg);
+  margin-right: 4px;
+}
+.ah-accr__note {
+  margin-left: auto;
+  font: 400 13px/1.4 var(--font-sans);
+  color: var(--fg-muted);
+}
+.ah-accr__note b {
+  font-weight: 500;
+  color: var(--fg);
+}
+
+/* tabla de prácticas */
+.ah-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ah-table th,
+.ah-table td {
+  text-align: left;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+  color: var(--fg);
+}
+.ah-table th {
+  color: var(--fg-subtle);
+  font: 500 11px/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  padding-top: 16px;
+  padding-bottom: 12px;
+}
+.ah-table tr:last-child td {
+  border-bottom: 0;
+}
+.ah-table tbody tr {
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.ah-table tbody tr:hover {
+  background: var(--bg-sunken);
+}
+.ah-table .name {
+  font-weight: 500;
+  letter-spacing: var(--tracking-snug);
+}
+.ah-table .mono {
+  font: 500 12.5px/1.3 var(--font-mono);
+  color: var(--fg-muted);
+}
+.ah-table .nota {
+  font: 500 13px/1 var(--font-mono);
+}
+
+/* solicitudes */
+.ah-sols {
+  padding: 6px 0;
+}
+.ah-sol {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+}
+.ah-sol + .ah-sol {
+  border-top: 1px solid var(--border);
+}
+.ah-sol__name {
+  font: 500 13.5px/1.25 var(--font-sans);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-sol__sub {
+  font: 400 12px/1.3 var(--font-sans);
+  color: var(--fg-subtle);
+  margin-top: 3px;
+}
+.ah-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font: 500 11px/1.5 var(--font-sans);
+  white-space: nowrap;
+}
+.ah-badge .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.ah-badge--wait {
+  background: var(--neutral-100);
+  color: var(--fg-muted);
+}
+.ah-badge--info {
+  background: var(--info-50);
+  color: var(--info-500);
+}
+.ah-badge--ok {
+  background: var(--success-50);
+  color: var(--success-500);
+}
+.ah-badge--warn {
+  background: var(--warning-50);
+  color: var(--warning-500);
+}
+html.dark .ah-root .ah-badge--warn {
+  background: rgba(201, 138, 27, 0.16);
+  color: #e0b24e;
+}
+
+/* Próximo paso en estado de alerta (consentimiento pendiente) */
+.ah-next--alert {
+  border-color: color-mix(in oklab, var(--warning-500) 45%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--warning-500) 7%, var(--bg-elevated)),
+    var(--bg-elevated) 60%
+  );
+}
+html.dark .ah-root .ah-badge--info {
+  background: rgba(46, 124, 193, 0.16);
+  color: #6fb2e6;
+}
+html.dark .ah-root .ah-badge--ok {
+  background: rgba(46, 139, 87, 0.16);
+  color: #5fd49e;
+}
+
+/* ---------- perfil ---------- */
+.ah-profilehdr {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+}
+.ah-profilehdr__av {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-size: 34px;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  flex-shrink: 0;
+}
+html.dark .ah-root .ah-profilehdr__av {
+  background: rgba(60, 184, 141, 0.18);
+  color: var(--primary-300);
+}
+.ah-profilehdr__name {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+}
+.ah-profilehdr__sub {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 11.5px/1 var(--font-mono);
+  color: var(--fg-subtle);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.ah-profilehdr__sub .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--success-500);
+}
+.ah-fieldgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+.ah-field {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  padding: 16px 18px;
+}
+.ah-field--edit {
+  border-color: color-mix(in oklab, var(--primary-500) 35%, var(--border));
+  background: color-mix(in oklab, var(--primary-500) 4%, var(--bg-elevated));
+}
+.ah-field__lbl {
+  font: 500 10.5px/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  margin-bottom: 9px;
+}
+.ah-field__val {
+  font: 500 16px/1.2 var(--font-sans);
+  color: var(--fg);
+  letter-spacing: var(--tracking-snug);
+  word-break: break-word;
+}
+.ah-field__input,
+.ah-field__select {
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid var(--primary-300);
+  background: transparent;
+  font: 500 16px/1.3 var(--font-sans);
+  color: var(--fg);
+  padding: 2px 0;
+  outline: none;
+}
+.ah-field__input:focus,
+.ah-field__select:focus {
+  border-color: var(--primary-500);
+}
+.ah-rowcard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+}
+.ah-toggle {
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--border-strong);
+  position: relative;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.ah-toggle.on {
+  background: var(--primary-500);
+}
+.ah-toggle__dot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #fff;
+  transition: left var(--duration-base) var(--ease-out);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.ah-toggle.on .ah-toggle__dot {
+  left: 23px;
+}
+
+/* ---------- prácticas · tarjeta de acreditación unificada ---------- */
+.ah-accr-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 28px;
+}
+.ah-accr-hero__main {
+  padding: 22px 24px;
+}
+.ah-accr-hero__side {
+  padding: 20px 24px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.ah-accr-hero__orient {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.ah-accr-hero__orient .ah-field__lbl {
+  margin: 0;
+}
+/* Cabecera del panel de requisitos: título + contador X/3 */
+.ah-accr-hero__sidehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ah-req__count {
+  font: 500 12px/1 var(--font-mono);
+  color: var(--fg-muted);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px 9px;
+  font-variant-numeric: tabular-nums;
+}
+.ah-req__count.is-done {
+  color: var(--primary-700);
+  background: var(--primary-50);
+  border-color: transparent;
+}
+html.dark .ah-root .ah-req__count.is-done {
+  color: var(--primary-300);
+  background: rgba(60, 184, 141, 0.14);
+}
+/* Nota al pie del panel (reemplaza el CTA; apunta a Solicitudes) */
+.ah-accr-hero__hint {
+  margin: 16px 0 0;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font: 400 12.5px/1.5 var(--font-sans);
+  color: var(--fg-subtle);
+}
+.ah-accr-hero__hint .material-icons {
+  font-size: 17px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--fg-muted);
+}
+.ah-accr-hero__hint b {
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+@media (max-width: 880px) {
+  .ah-accr-hero {
+    grid-template-columns: 1fr;
+  }
+  .ah-accr-hero__side {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ---------- prácticas (2 columnas) ---------- */
+.ah-prac-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 20px;
+  align-items: start;
+}
+.ah-prac-side {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ah-prog {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+  margin: 14px 0 0;
+}
+.ah-prog > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #46253d 0%, #203b73 50%, #3cb88d 100%);
+  transition: width 700ms var(--ease-out);
+}
+.ah-req {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.ah-req:first-of-type {
+  border-top: 0;
+}
+.ah-req__mk {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--border-strong);
+  margin-top: 1px;
+}
+.ah-req__mk.on {
+  background: var(--primary-500);
+  border-color: var(--primary-500);
+  color: #fff;
+}
+.ah-req__lbl {
+  font: 500 13.5px/1.25 var(--font-sans);
+  color: var(--fg);
+  letter-spacing: var(--tracking-snug);
+}
+.ah-req__sub {
+  font: 400 12px/1.3 var(--font-sans);
+  color: var(--fg-subtle);
+  margin-top: 2px;
+}
+.ah-nota {
+  font: 700 22px/1 var(--font-serif);
+  letter-spacing: var(--tracking-tight);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.ah-nota:hover {
+  opacity: 0.6;
+}
+.ah-iconbtn--sm {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background: transparent;
+  color: var(--fg-subtle);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: var(--duration-fast);
+}
+.ah-iconbtn--sm:hover {
+  background: var(--bg-sunken);
+  color: var(--primary-700);
+}
+@media (max-width: 1080px) {
+  .ah-prac-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ah-prac-side {
+    position: static;
+  }
+}
+
+/* ---------- modal de consentimiento (Atlas) ---------- */
+.ah-cmodal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(10, 9, 7, 0.55);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  padding: 16px;
+  overflow-y: auto;
+}
+.ah-cmodal {
+  max-width: 860px;
+  margin: 28px auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.ah-cmodal__head {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ah-cmodal__title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+  margin: 6px 0 0;
+}
+.ah-cmodal__sub {
+  font-size: 13.5px;
+  color: var(--fg-muted);
+  margin: 8px 0 0;
+}
+.ah-cmodal__body {
+  padding: 24px 28px;
+}
+.ah-cmodal__steptop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ah-cmodal__stitle {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.08;
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+  margin: 6px 0 0;
+}
+.ah-cmodal__sdesc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--fg-muted);
+  margin: 10px 0 0;
+  max-width: 60ch;
+}
+.ah-stepbar {
+  display: flex;
+  gap: 6px;
+  margin-top: 18px;
+}
+.ah-stepbar span {
+  height: 6px;
+  flex: 1;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  transition: background var(--duration-base) var(--ease-standard);
+}
+.ah-stepbar span.on {
+  background: var(--primary-500);
+}
+.ah-stepnum {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  font: 600 17px/1 var(--font-sans);
+  flex-shrink: 0;
+}
+html.dark .ah-root .ah-stepnum,
+html.dark .ah-root .ah-clause__n {
+  background: rgba(60, 184, 141, 0.16);
+  color: var(--primary-300);
+}
+.ah-clause {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  padding: 18px 20px;
+}
+.ah-clause--soft {
+  background: var(--bg-sunken);
+}
+.ah-clause__n {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  font: 600 13px/1 var(--font-sans);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.ah-clause__lbl {
+  font: 600 15px/1.3 var(--font-sans);
+  color: var(--fg);
+  letter-spacing: var(--tracking-snug);
+}
+.ah-clause__txt {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fg-muted);
+  margin-top: 6px;
+}
+.ah-hl {
+  color: var(--primary-700);
+  font-weight: 600;
+}
+html.dark .ah-root .ah-hl {
+  color: var(--primary-300);
+}
+.ah-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: 10px 12px;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.ah-input:focus-within {
+  border-color: var(--primary-500);
+}
+.ah-input .material-icons {
+  color: var(--fg-subtle);
+  font-size: 19px;
+}
+.ah-input input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: 400 14px/1.3 var(--font-sans);
+  color: var(--fg);
+  width: 100%;
+}
+.ah-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font: 400 13px/1.5 var(--font-sans);
+  color: var(--fg-muted);
+}
+.ah-check input {
+  margin-top: 2px;
+  accent-color: var(--primary-500);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.ah-note {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-sunken);
+  padding: 14px 16px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fg-subtle);
+}
+.ah-err {
+  border: 1px solid color-mix(in oklab, var(--danger-500) 40%, var(--border));
+  background: color-mix(in oklab, var(--danger-500) 9%, var(--bg-elevated));
+  color: var(--danger-500);
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+}
+.ah-cmodal__foot {
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- formularios en modal (Atlas) ---------- */
+.ah-cmodal--form {
+  max-width: 640px;
+}
+.ah-formsec + .ah-formsec {
+  margin-top: 26px;
+}
+.ah-formsec__head {
+  display: block;
+  padding-bottom: 11px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ah-formgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.ah-formfield {
+  min-width: 0;
+}
+.ah-formfield--full {
+  grid-column: 1 / -1;
+}
+.ah-formreq {
+  color: var(--danger-500);
+}
+.ah-textinput,
+.ah-textarea,
+.ah-selectctrl {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: 10px 12px;
+  font: 400 14px/1.35 var(--font-sans);
+  color: var(--fg);
+  outline: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.ah-textinput:focus,
+.ah-textarea:focus,
+.ah-selectctrl:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-500) 14%, transparent);
+}
+.ah-textinput::placeholder,
+.ah-textarea::placeholder {
+  color: var(--fg-subtle);
+}
+.ah-textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+.ah-selectctrl {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2376736a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  padding-right: 34px;
+  cursor: pointer;
+}
+.ah-formerr {
+  margin: 6px 0 0;
+  font: 400 12px/1.4 var(--font-sans);
+  color: var(--danger-500);
+}
+.ah-formhint {
+  margin: 6px 0 0;
+  font: 400 11.5px/1.45 var(--font-sans);
+  color: var(--fg-subtle);
+}
+.ah-formhint--warn {
+  color: var(--warning-500);
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+.ah-formhint--warn .material-icons {
+  font-size: 14px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+@media (max-width: 560px) {
+  .ah-formgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- header de página (Solicitudes / Perfil) ---------- */
+.ah-pagehead {
+  margin-bottom: 28px;
+}
+.ah-pagehead h1 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 46px;
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+  margin: 8px 0 0;
+}
+.ah-pagehead h1 em {
+  font-style: italic;
+  color: var(--display-accent);
+}
+.ah-pagehead p {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+  max-width: 62ch;
+}
+
+/* ---------- cards de acción ---------- */
+.ah-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.ah-action {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font: inherit;
+  color: var(--fg);
+  transition:
+    box-shadow var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    transform 80ms var(--ease-standard);
+}
+.ah-action:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+.ah-action:active {
+  transform: scale(0.99);
+}
+.ah-action__ic {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.ah-action__t {
+  font: 500 15px/1.2 var(--font-sans);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-action__d {
+  font: 400 13px/1.4 var(--font-sans);
+  color: var(--fg-muted);
+  margin-top: 3px;
+}
+.ah-action__arrow {
+  margin-left: auto;
+  color: var(--fg-subtle);
+  display: inline-flex;
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    color var(--duration-fast) var(--ease-standard);
+}
+.ah-action:hover .ah-action__arrow {
+  transform: translateX(3px);
+  color: var(--fg-muted);
+}
+.ah-details summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 2px;
+  font: 500 13px/1 var(--font-sans);
+  color: var(--fg-muted);
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+}
+.ah-details summary::-webkit-details-marker {
+  display: none;
+}
+.ah-details summary:hover {
+  color: var(--fg);
+}
+.ah-details[open] summary .material-icons {
+  transform: rotate(90deg);
+}
+.ah-details summary .material-icons {
+  transition: transform var(--duration-fast) var(--ease-standard);
+  font-size: 18px;
+}
+
+/* ---------- nota al pie por sección (contacto + descargo, slim) ---------- */
+.ah-footnote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 44px 0 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.ah-footnote__txt {
+  margin: 0;
+  font: 400 12.5px/1.55 var(--font-sans);
+  color: var(--fg-subtle);
+  max-width: 78ch;
+}
+.ah-footnote__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12.5px/1 var(--font-sans);
+  letter-spacing: var(--tracking-snug);
+  color: var(--link);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.ah-footnote__link:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+.ah-footnote__link .material-icons {
+  font-size: 15px;
+}
+
+/* ---------- topbar Atlas (navegación del estudiante · escritorio) ---------- */
+.ah-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+.ah-topbar__inner {
+  max-width: 1232px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.ah-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.ah-topbar__mark {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--neutral-900);
+  color: var(--neutral-0);
+  display: grid;
+  place-items: center;
+  font: 600 13px/1 var(--font-sans);
+}
+html.dark .ah-root .ah-topbar__mark {
+  background: var(--primary-500);
+  color: var(--fg-on-brand);
+}
+.ah-topbar__name {
+  font: 500 14px/1.2 var(--font-sans);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-topbar__sub {
+  font: 400 11px/1.2 var(--font-sans);
+  color: var(--fg-subtle);
+  margin-top: 2px;
+}
+.ah-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 20px;
+}
+.ah-nav__item {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: 400 13.5px/1 var(--font-sans);
+  color: var(--fg-muted);
+  padding: 8px 13px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+.ah-nav__item:hover {
+  background: var(--bg-sunken);
+  color: var(--fg);
+}
+.ah-nav__item.active {
+  background: var(--bg-sunken);
+  color: var(--fg);
+  font-weight: 500;
+}
+.ah-topbar__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ah-iconbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.ah-iconbtn:hover {
+  background: var(--bg-sunken);
+  color: var(--fg);
+}
+.ah-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  margin-left: 8px;
+  background: var(--primary-100);
+  color: var(--primary-700);
+  display: grid;
+  place-items: center;
+  font: 500 12px/1 var(--font-sans);
+}
+html.dark .ah-root .ah-avatar {
+  background: rgba(60, 184, 141, 0.18);
+  color: var(--primary-300);
+}
+
+/* serif opcional → sans (no usado por defecto, queda por si se desea) */
+.ah-root[data-display="sans"] .ah-hero__greet {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 46px;
+}
+.ah-root[data-display="sans"] .ah-conv__name {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 28px;
+}
+
+/* ============================================================
+   RESPONSIVE — mobile (al final para ganar a las reglas base)
+   ============================================================ */
+@media (max-width: 640px) {
+  .ah-main {
+    padding: 4px 0 16px;
+  }
+  .ah-actions,
+  .ah-fieldgrid {
+    grid-template-columns: 1fr;
+  }
+  .ah-pagehead h1,
+  .ah-profilehdr__name {
+    font-size: 34px;
+  }
+  .ah-profilehdr {
+    flex-wrap: wrap;
+    gap: 14px 16px;
+    padding: 20px;
+  }
+  /* El nombre + estado ocupan la fila junto al avatar… */
+  .ah-profilehdr > :nth-child(2) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* …y la acción (Editar / Guardar-Cancelar) baja a su propia fila completa. */
+  .ah-profilehdr > :nth-child(3) {
+    flex: 1 0 100%;
+  }
+  .ah-profilehdr > .ah-btn:nth-child(3) {
+    width: 100%;
+    justify-content: center;
+  }
+  .ah-table {
+    font-size: 13px;
+  }
+}
+
+/* ============================================================
+   MOBILE = Bricolage en todo el sistema Atlas (PC mantiene la
+   Instrument Serif). El árbol mobile de la app se muestra hasta
+   767px (Tailwind `md`), así que ese es el corte. Reusa el mismo
+   tratamiento Bricolage + gradiente UFLO del `.ah-hero__greet`.
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Flip de TODA la tipografía serif del scope Atlas a Bricolage. */
+  .ah-root {
+    --font-serif: "Bricolage Grotesque", var(--font-sans);
+  }
+  /* Cabecera de página (Solicitudes / Perfil): peso display + tracking
+     editorial, y el acento deja de ser itálica-serif para pasar a
+     gradiente (idéntico a Inicio/Convocatorias). */
+  .ah-pagehead h1 {
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  .ah-pagehead h1 em {
+    font-style: normal;
+    background: linear-gradient(110deg, #46253d 0%, #203b73 50%, #3cb88d 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  html.dark .ah-pagehead h1 em {
+    background: linear-gradient(100deg, #8ef0cd 0%, #57d9a6 44%, #9cc0ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}

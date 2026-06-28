@@ -455,7 +455,7 @@ const INITIAL_WHATSAPP_MENSAJES_CONTEXT = [
 
 // Simulación de base de datos en memoria (Singleton)
 class MockDatabase {
-  public data: any = {
+  public data: Record<string, Record<string, unknown>[]> = {
     estudiantes: [...DETAILED_MOCK_ESTUDIANTES],
     instituciones: [...MOCK_INSTITUCIONES],
     lanzamientos_pps: [...MOCK_LANZAMIENTOS],
@@ -488,23 +488,23 @@ class MockDatabase {
     };
   }
 
-  async getAll(table: string, filters?: Record<string, any>) {
+  async getAll(table: string, filters?: Record<string, unknown>) {
     await new Promise((resolve) => setTimeout(resolve, 300)); // Simular latencia de red
     let rows = this.data[table] || [];
 
     if (filters) {
-      rows = rows.filter((row: any) => {
+      rows = rows.filter((row) => {
         return Object.entries(filters).every(([key, value]) => {
           // Check array containment
           if (Array.isArray(value)) {
             return value.includes(row[key]);
           }
           // Handle comma-separated values in DB (legacy airtable style simulation)
-          if (typeof row[key] === "string" && row[key].includes(",")) {
-            return row[key]
+          if (typeof row[key] === "string" && (row[key] as string).includes(",")) {
+            return (row[key] as string)
               .split(",")
               .map((s: string) => s.trim())
-              .includes(value);
+              .includes(value as string);
           }
           // Normal equality
           return String(row[key]) === String(value);
@@ -514,7 +514,7 @@ class MockDatabase {
     return JSON.parse(JSON.stringify(rows)); // Return copy to avoid ref mutation issues
   }
 
-  async create(table: string, fields: any) {
+  async create(table: string, fields: Record<string, unknown>) {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const newRecord = {
       id: `mock_${table}_${Date.now()}`,
@@ -528,9 +528,9 @@ class MockDatabase {
     return newRecord;
   }
 
-  async update(table: string, id: string, fields: any) {
+  async update(table: string, id: string, fields: Record<string, unknown>) {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    const index = this.data[table].findIndex((r: any) => r.id === id);
+    const index = this.data[table].findIndex((r) => r.id === id);
     if (index === -1) throw new Error(`Record ${id} not found in mock db table ${table}`);
 
     this.data[table][index] = { ...this.data[table][index], ...fields };
@@ -539,7 +539,7 @@ class MockDatabase {
 
   async delete(table: string, id: string) {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    this.data[table] = this.data[table].filter((r: any) => r.id !== id);
+    this.data[table] = this.data[table].filter((r) => r.id !== id);
     return { success: true };
   }
 }

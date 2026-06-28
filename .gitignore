@@ -61,3 +61,6 @@ scratch/
 # Backups locales de Hermes y scripts temporales de deploy del VPS
 agent/hermes-pps/app/main.py.bak*
 agent/hermes-pps/_commit_main.sh
+
+# Added by ggshield
+.cache_ggshield

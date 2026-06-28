@@ -5,6 +5,7 @@ import type {
   ComparativeExecutiveReportData,
   TimelineMonthData,
   PPSRequestSummary,
+  NewAgreementDetail,
 } from "../types";
 import DOMPurify from "dompurify";
 import { normalizeStringForComparison } from "../utils/formatters";
@@ -135,6 +136,72 @@ const SolicitudesBreakdown: React.FC<{ requests: PPSRequestSummary[] }> = ({ req
           <SimpleRequestTable requests={enGestion} />
         </div>
       )}
+    </div>
+  );
+};
+
+const NewAgreementsDetailSection: React.FC<{ details: NewAgreementDetail[] }> = ({ details }) => {
+  if (!details || details.length === 0) {
+    return <p className="text-sm text-slate-500 italic dark:text-slate-400">No hay datos.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      {details.map((d) => (
+        <div
+          key={d.institucion}
+          className="printable-section border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden"
+        >
+          <div className="bg-slate-100 dark:bg-slate-800 p-3 flex justify-between items-start gap-3">
+            <div className="min-w-0">
+              <h4 className="font-bold text-base text-slate-800 dark:text-slate-100">
+                {d.institucion}
+              </h4>
+              <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                Convenio {d.anioConvenio ?? "—"}
+                {d.orientaciones.length > 0 && <> · {d.orientaciones.join(" · ")}</>}
+              </div>
+            </div>
+            <div className="text-right text-xs text-slate-700 dark:text-slate-300 shrink-0">
+              <div className="font-semibold">
+                {d.totalRotaciones} PPS · {d.totalCupos} cupos
+              </div>
+              <div className="text-slate-500 dark:text-slate-400">
+                {d.totalEstudiantes} estudiantes
+              </div>
+            </div>
+          </div>
+          {d.porAnio.length > 0 && (
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/50">
+                <tr>
+                  <th className="p-2 text-left font-bold text-slate-600 dark:text-slate-300">
+                    Año
+                  </th>
+                  <th className="p-2 text-center font-bold text-slate-600 dark:text-slate-300">
+                    PPS lanzadas
+                  </th>
+                  <th className="p-2 text-center font-bold text-slate-600 dark:text-slate-300">
+                    Cupos ofertados
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                {d.porAnio.map((y) => (
+                  <tr key={y.year}>
+                    <td className="p-2 text-slate-700 dark:text-slate-300 font-medium">{y.year}</td>
+                    <td className="p-2 text-center text-slate-800 dark:text-slate-100">
+                      {y.rotaciones}
+                    </td>
+                    <td className="p-2 text-center text-slate-800 dark:text-slate-100">
+                      {y.cupos}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ))}
     </div>
   );
 };
@@ -287,6 +354,17 @@ const SingleYearReport: React.FC<{ data: ExecutiveReportData }> = ({ data }) => 
           Gestión de Solicitudes de PPS
         </h2>
         <SolicitudesBreakdown requests={data.ppsRequests} />
+      </section>
+
+      <section className="mb-10 printable-section">
+        <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 border-b-2 border-slate-300 dark:border-slate-700 pb-3 mb-5 tracking-tight">
+          Convenios Nuevos · Ficha por Institución ({data.newAgreementsDetail.length})
+        </h2>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Detalle de cada convenio nuevo del ciclo: orientación, rotaciones (PPS lanzadas) y cupos
+          ofertados por año, y estudiantes que ocuparon un cupo (seleccionados).
+        </p>
+        <NewAgreementsDetailSection details={data.newAgreementsDetail} />
       </section>
     </>
   );

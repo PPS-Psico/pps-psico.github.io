@@ -19,7 +19,8 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
               nombre_pps,
               orientacion,
               fecha_inicio,
-              fecha_finalizacion
+              fecha_finalizacion,
+              direccion
           )
       `
     )
@@ -30,31 +31,19 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
     return [];
   }
 
+  type JoinedLanzamiento = {
+    nombre_pps: string | null;
+    orientacion: string | null;
+    fecha_inicio: string | null;
+    fecha_finalizacion: string | null;
+    direccion: string | null;
+  };
+
   type RawPracticaRow = Practica & {
-    lanzamiento:
-      | {
-          nombre_pps: string | null;
-          orientacion: string | null;
-          fecha_inicio: string | null;
-          fecha_finalizacion: string | null;
-        }
-      | {
-          nombre_pps: string | null;
-          orientacion: string | null;
-          fecha_inicio: string | null;
-          fecha_finalizacion: string | null;
-        }[]
-      | null;
+    lanzamiento: JoinedLanzamiento | JoinedLanzamiento[] | null;
   };
 
   return (data as unknown as RawPracticaRow[]).map((row) => {
-    type JoinedLanzamiento = {
-      nombre_pps: string | null;
-      orientacion: string | null;
-      fecha_inicio: string | null;
-      fecha_finalizacion: string | null;
-    };
-
     let lanzamiento: JoinedLanzamiento | null = null;
     if (row.lanzamiento) {
       if (Array.isArray(row.lanzamiento)) {
@@ -83,6 +72,11 @@ export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
     }
 
     updatedRow[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = finalName;
+
+    // Modalidad online: persistida en la práctica o derivada del lanzamiento
+    // (direccion === "Modalidad Virtual", checkbox del Lanzador).
+    updatedRow[C.FIELD_ES_ONLINE_PRACTICAS] =
+      row[C.FIELD_ES_ONLINE_PRACTICAS] === true || lanzamiento?.direccion === "Modalidad Virtual";
 
     return updatedRow;
   });

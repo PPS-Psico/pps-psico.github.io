@@ -116,6 +116,17 @@ const PUSH_SCENARIOS: AutomationScenario[] = [
       "Hola {{nombre_alumno}}, has sido seleccionado para la PPS: {{nombre_pps}}. Revisá tu correo para más detalles.",
   },
   {
+    id: "compromiso_push",
+    label: "Recordatorio Consentimiento Digital (Push)",
+    description:
+      "Notificación push que recuerda al estudiante aceptar el compromiso digital apenas queda seleccionado.",
+    icon: "draw",
+    variables: ["{{nombre_alumno}}", "{{nombre_pps}}"],
+    defaultSubject: "Falta tu consentimiento digital ✍️",
+    defaultBody:
+      "Hola {{nombre_alumno}}, para confirmar tu lugar en {{nombre_pps}} tenés que aceptar el compromiso digital desde Mi Panel. ¡No te quedes afuera!",
+  },
+  {
     id: "nueva_convocatoria_push",
     label: "Nueva Convocatoria (Push)",
     description: "Notificación push a todos los estudiantes cuando se abre una nueva convocatoria.",

@@ -97,8 +97,8 @@ describe("Seleccionador de Candidatos (Integration Test)", () => {
 
     // Y queda persistido en la capa de datos (mockDb)
     await waitFor(() => {
-      const persisted = mockDb.data.convocatorias.find((c: any) => c.id === "conv_3");
-      expect(normalizeStringForComparison(persisted.estado_inscripcion)).toBe("seleccionado");
+      const persisted = mockDb.data.convocatorias.find((c) => c.id === "conv_3");
+      expect(normalizeStringForComparison(persisted!.estado_inscripcion)).toBe("seleccionado");
     });
 
     // Ahora hay 3 seleccionados
@@ -123,8 +123,8 @@ describe("Seleccionador de Candidatos (Integration Test)", () => {
     act(() => result.current.handleToggle(seleccionado));
 
     await waitFor(() => {
-      const persisted = mockDb.data.convocatorias.find((c: any) => c.id === "conv_1");
-      expect(normalizeStringForComparison(persisted.estado_inscripcion)).toBe("inscripto");
+      const persisted = mockDb.data.convocatorias.find((c) => c.id === "conv_1");
+      expect(normalizeStringForComparison(persisted!.estado_inscripcion)).toBe("inscripto");
     });
   });
 });

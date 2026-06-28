@@ -9,6 +9,7 @@ import type {
   AppRecord,
   ConvocatoriaFields,
   Estudiante,
+  EnrollmentFormData,
 } from "../types";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
@@ -53,6 +54,8 @@ import {
 import { normalizeStringForComparison, cleanInstitutionName, safeGetId } from "../utils/formatters";
 import { logger } from "../utils/logger";
 
+type ConvocatoriasQueryData = Awaited<ReturnType<typeof fetchConvocatoriasData>>;
+
 export const useConvocatorias = (
   legajo: string,
   studentId: string | null,
@@ -78,10 +81,12 @@ export const useConvocatorias = (
           }),
           mockDb.getAll("lanzamientos_pps"),
         ]);
-        const launchesMap = new Map(allLanz.map((l: any) => [l.id, l]));
-        const hydratedEnrollments = myConvs.map((row: any) => {
-          const launchId = row[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-          const launch: any = launchesMap.get(launchId);
+        const launchesMap = new Map(
+          allLanz.map((l: Record<string, unknown>) => [l.id as string, l])
+        );
+        const hydratedEnrollments = myConvs.map((row: Record<string, unknown>) => {
+          const launchId = row[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] as string;
+          const launch = launchesMap.get(launchId) as Record<string, unknown> | undefined;
           return {
             ...row,
             [FIELD_NOMBRE_PPS_CONVOCATORIAS]: cleanInstitutionName(
@@ -94,7 +99,7 @@ export const useConvocatorias = (
             [FIELD_HORAS_ACREDITADAS_CONVOCATORIAS]: launch?.[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS],
           };
         });
-        const availableLaunches = allLanz.filter((l: any) => {
+        const availableLaunches = allLanz.filter((l: Record<string, unknown>) => {
           const estadoConv = normalizeStringForComparison(
             l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
           );
@@ -106,9 +111,9 @@ export const useConvocatorias = (
           );
         });
         const institutionAddressMap = new Map<string, string>();
-        allLanz.forEach((l: any) => {
-          const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS];
-          const addr = l[FIELD_DIRECCION_LANZAMIENTOS];
+        allLanz.forEach((l: Record<string, unknown>) => {
+          const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | undefined;
+          const addr = l[FIELD_DIRECCION_LANZAMIENTOS] as string | undefined;
           if (name && addr) institutionAddressMap.set(normalizeStringForComparison(name), addr);
         });
         return {
@@ -132,12 +137,12 @@ export const useConvocatorias = (
     allLanzamientos = [],
     institutionAddressMap = new Map(),
     institutionLogoMap = new Map(),
-  } = (convocatoriasData as any) || {};
+  } = (convocatoriasData as ConvocatoriasQueryData | undefined) || {};
 
   const enrollmentMutation = useMutation<
     AppRecord<ConvocatoriaFields> | null,
     Error,
-    { formData: any; selectedLanzamiento: LanzamientoPPS }
+    { formData: EnrollmentFormData; selectedLanzamiento: LanzamientoPPS }
   >({
     mutationFn: async ({ formData, selectedLanzamiento }) => {
       if (legajo === "99999") {
@@ -152,7 +157,7 @@ export const useConvocatorias = (
           [FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS]: formData.cursandoElectivas ? "Sí" : "No",
         };
         await mockDb.create("convocatorias", newRecord);
-        return newRecord as any;
+        return newRecord as unknown as AppRecord<ConvocatoriaFields>;
       }
 
       if (!studentId) throw new Error("No student ID");
@@ -210,7 +215,7 @@ export const useConvocatorias = (
 
       // CRITICAL FIX: Ensure plain IDs and clean names before sending to Supabase
       // Added FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS and FIELD_FINALES_ADEUDA_CONVOCATORIAS
-      const newRecordFields: any = {
+      const newRecordFields: Record<string, unknown> = {
         [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: safeGetId(selectedLanzamiento.id),
         [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: safeGetId(studentId),
         [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
@@ -251,7 +256,7 @@ export const useConvocatorias = (
       });
 
       const canceledEnrollment = existingConvocatorias.find(
-        (c: any) =>
+        (c: ConvocatoriaFields) =>
           normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) ===
           "inscripcion cancelada"
       );
@@ -264,11 +269,11 @@ export const useConvocatorias = (
         return db.convocatorias.update(canceledEnrollment.id, {
           [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
           ...newRecordFields,
-        });
+        } as Parameters<typeof db.convocatorias.update>[1]);
       }
 
       const existingActive = existingConvocatorias.find(
-        (c: any) =>
+        (c: ConvocatoriaFields) =>
           normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) === "inscripto" ||
           normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) === "seleccionado"
       );
@@ -277,7 +282,9 @@ export const useConvocatorias = (
         throw new Error("Ya estás inscripto a esta PPS.");
       }
 
-      return db.convocatorias.create(newRecordFields);
+      return db.convocatorias.create(
+        newRecordFields as Parameters<typeof db.convocatorias.create>[0]
+      );
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["convocatorias", legajo, studentId] });
@@ -297,7 +304,12 @@ export const useConvocatorias = (
     },
   });
 
-  const cancelEnrollmentMutation = useMutation<void, Error, { convocatoriaId: string }>({
+  const cancelEnrollmentMutation = useMutation<
+    void,
+    Error,
+    { convocatoriaId: string },
+    { prev: unknown }
+  >({
     mutationFn: async ({ convocatoriaId }) => {
       if (legajo === "99999") {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -310,12 +322,28 @@ export const useConvocatorias = (
       });
       await db.convocatorias.delete(convocatoriaId);
     },
-    onSuccess: () => {
-      logger.info("[Enrollment] Convocatoria deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
-      showModal("Inscripción eliminada", "La inscripción se eliminó correctamente.");
+    // Optimistic UI: quitamos la inscripción del cache al instante para que la
+    // tarjeta desaparezca sin esperar al server. Si falla, hacemos rollback.
+    onMutate: async ({ convocatoriaId }) => {
+      const key = ["convocatorias", legajo, studentId];
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old: ConvocatoriasQueryData | undefined) => {
+        if (!old?.myEnrollments) return old;
+        return {
+          ...old,
+          myEnrollments: old.myEnrollments.filter(
+            (c: ConvocatoriaFields) => c.id !== convocatoriaId
+          ),
+        };
+      });
+      return { prev };
     },
-    onError: (err, variables) => {
+    onError: (err, variables, context) => {
+      // Rollback al estado previo si la baja falló.
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(["convocatorias", legajo, studentId], context.prev);
+      }
       logger.error("[Enrollment] Error deleting convocatoria", {
         convocatoriaId: variables.convocatoriaId,
         studentId,
@@ -323,6 +351,14 @@ export const useConvocatorias = (
         message: err.message,
       });
       showModal("No se pudo eliminar la inscripción", err.message);
+    },
+    onSuccess: () => {
+      logger.info("[Enrollment] Convocatoria deleted successfully");
+      showModal("Inscripción eliminada", "La inscripción se eliminó correctamente.");
+    },
+    // Reconciliamos con el server tanto en éxito como en error.
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
     },
   });
 

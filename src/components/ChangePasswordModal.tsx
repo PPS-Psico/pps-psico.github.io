@@ -37,21 +37,20 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
     setIsLoading(true);
     try {
       // 1. Actualizar contraseña en Sistema de Autenticación (Supabase Auth)
-      const { error: updateError } = await (supabase.auth as any).updateUser({
+      const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
       if (updateError) throw updateError;
 
       // 2. Sincronizar "banderita" en la Base de Datos (Tabla estudiantes)
-      // Intentamos primero por RPC (más seguro/admin)
-      // Cast to any to bypass strict checks, pass empty object as args
-      const { error: rpcError } = await (supabase.rpc as any)("mark_password_changed", {});
+      // Intentamos primero por RPC (más seguro/admin). La RPC no recibe args.
+      const { error: rpcError } = await supabase.rpc("mark_password_changed");
 
       // Si el RPC falla (a veces por permisos o caché), intentamos actualización directa
       if (rpcError) {
         logger.warn("RPC mark_password_changed falló, intentando update directo...", rpcError);
 
-        const { data: userData } = await (supabase.auth as any).getUser();
+        const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
           const { error: directError } = await (supabase as any)
             .from("estudiantes")

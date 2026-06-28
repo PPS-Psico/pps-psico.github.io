@@ -20,6 +20,7 @@ import {
 } from "../../constants/dbConstants";
 import { normalizeStringForComparison, safeGetId } from "../../utils/formatters";
 import { sendSmartEmail } from "../../utils/emailService";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 import Loader from "../Loader";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
@@ -199,15 +200,18 @@ const ProximosFinalizarPanel: React.FC = () => {
       const estudiantes = estRes.data || [];
       const practicas = pracRes.data || [];
       const finalizaciones = finRes.data || [];
+      type EstRow = (typeof estudiantes)[number];
+      type PracRow = (typeof practicas)[number];
+      type FinRow = (typeof finalizaciones)[number];
 
-      const finalizacionMap = new Map<string, any>();
-      finalizaciones.forEach((f: any) => {
+      const finalizacionMap = new Map<string, FinRow>();
+      finalizaciones.forEach((f) => {
         const sId = safeGetId(f[FIELD_ESTUDIANTE_FINALIZACION]);
         if (sId) finalizacionMap.set(sId, f);
       });
 
-      const studentPracticesMap = new Map<string, any[]>();
-      practicas.forEach((p: any) => {
+      const studentPracticesMap = new Map<string, PracRow[]>();
+      practicas.forEach((p) => {
         const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
         if (sId) {
           const existing = studentPracticesMap.get(sId) || [];
@@ -218,7 +222,7 @@ const ProximosFinalizarPanel: React.FC = () => {
 
       const result: StudentDeficit[] = [];
 
-      estudiantes.forEach((est: any) => {
+      estudiantes.forEach((est: EstRow) => {
         const estado = normalizeStringForComparison(est[FIELD_ESTADO_ESTUDIANTES]);
         if (estado !== "activo") return;
 
@@ -234,8 +238,8 @@ const ProximosFinalizarPanel: React.FC = () => {
         const horasPorOrientacion: Record<string, number> = {};
         const orientacionesCursadasSet = new Set<string>();
 
-        studentPracticas.forEach((p: any) => {
-          const horas = p[FIELD_HORAS_PRACTICAS] || 0;
+        studentPracticas.forEach((p) => {
+          const horas = Number(p[FIELD_HORAS_PRACTICAS] || 0);
           horasTotales += horas;
 
           const especialidad = p[FIELD_ESPECIALIDAD_PRACTICAS];
@@ -255,9 +259,9 @@ const ProximosFinalizarPanel: React.FC = () => {
 
         result.push({
           id: est.id,
-          nombre: est[FIELD_NOMBRE_ESTUDIANTES] || "",
-          legajo: est[FIELD_LEGAJO_ESTUDIANTES] || "",
-          correo: est[FIELD_CORREO_ESTUDIANTES] || "",
+          nombre: (est[FIELD_NOMBRE_ESTUDIANTES] as string) || "",
+          legajo: (est[FIELD_LEGAJO_ESTUDIANTES] as string) || "",
+          correo: (est[FIELD_CORREO_ESTUDIANTES] as string) || "",
           horasTotales,
           horasFaltantes: Math.max(0, HOURS_TOTAL_REQUIRED - horasTotales),
           horasPorOrientacion,
@@ -337,8 +341,11 @@ const ProximosFinalizarPanel: React.FC = () => {
       });
 
       setToast({ message: `Email enviado a ${student.nombre}`, type: "success" });
-    } catch (error: any) {
-      setToast({ message: `Error al enviar a ${student.nombre}: ${error.message}`, type: "error" });
+    } catch (error) {
+      setToast({
+        message: `Error al enviar a ${student.nombre}: ${getErrorMessage(error)}`,
+        type: "error",
+      });
     } finally {
       setSendingEmails((prev) => {
         const newSet = new Set(prev);

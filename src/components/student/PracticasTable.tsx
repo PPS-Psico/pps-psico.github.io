@@ -1,5 +1,4 @@
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
@@ -22,6 +21,7 @@ import EmptyState from "../EmptyState";
 import NotaSelector from "../NotaSelector";
 import { TableSkeleton } from "../Skeletons";
 import { logger } from "../../utils/logger";
+import { haptics } from "../../utils/haptics";
 
 interface PracticasTableProps {
   practicas: Practica[];
@@ -33,100 +33,46 @@ interface PracticasTableProps {
   onRequestNuevaPPS?: () => void;
 }
 
-// Animated Grade Display with Slot Machine Effect
-const AnimatedGradeDisplay: React.FC<{
+// Flat editorial grade — número plano clickeable, color de marca (sin caja ni slot-machine)
+const FlatGrade: React.FC<{
   nota: string;
   onClick: () => void;
   isSaving: boolean;
   isSuccess: boolean;
   isOpen: boolean;
-  prevNota?: string;
-}> = ({ nota, onClick, isSaving, isSuccess, isOpen, prevNota }) => {
-  const [displayNota, setDisplayNota] = useState(nota);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  // Slot machine animation when grade changes
-  useEffect(() => {
-    if (nota !== prevNota && prevNota !== undefined && !isNaN(parseInt(nota, 10))) {
-      setIsAnimating(true);
-      const targetNum = parseInt(nota, 10);
-      const duration = 800;
-      const steps = 10;
-      const stepDuration = duration / steps;
-      let currentStep = 0;
-
-      const interval = setInterval(() => {
-        currentStep++;
-        if (currentStep >= steps) {
-          setDisplayNota(nota);
-          setIsAnimating(false);
-          clearInterval(interval);
-        } else {
-          // Random number during animation
-          const randomNum = Math.floor(Math.random() * 10) + 1;
-          setDisplayNota(randomNum.toString());
-        }
-      }, stepDuration);
-
-      return () => clearInterval(interval);
-    } else {
-      setDisplayNota(nota);
-    }
-  }, [nota, prevNota]);
-
-  const getGradeStyle = (n: string) => {
-    const num = parseInt(n, 10);
-    if (!isNaN(num)) {
-      if (num >= 7)
-        return "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-emerald-500/10 dark:shadow-emerald-500/20";
-      if (num >= 4)
-        return "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 shadow-amber-500/10 dark:shadow-amber-500/20";
-      return "bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30 shadow-rose-500/10 dark:shadow-rose-500/20";
-    }
-    return "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700";
-  };
-
-  const style = getGradeStyle(nota);
-  const displayText = !isNaN(parseInt(displayNota, 10)) ? displayNota : "-";
+}> = ({ nota, onClick, isSaving, isSuccess, isOpen }) => {
+  const num = parseInt(nota, 10);
+  const hasGrade = !isNaN(num);
+  const color = !hasGrade
+    ? "var(--student-ink-subtle, #94a3b8)"
+    : num >= 7
+      ? "#3CB88D" // teal · aprobado holgado
+      : num >= 4
+        ? "#B7770B" // ámbar · aprobado justo
+        : "#C0392B"; // rojo · desaprobado
+  const displayText = hasGrade ? String(num) : "—";
 
   return (
-    <motion.div
-      className={`
-        relative flex items-center justify-center w-14 h-14 rounded-2xl border-2 text-2xl font-black
-        ${style}
-        transition-all duration-300 cursor-pointer overflow-hidden
-        ${isSaving ? "animate-pulse" : "hover:shadow-lg hover:scale-105"}
-        ${isOpen ? "ring-4 ring-blue-100 dark:ring-blue-900/40 border-blue-400 z-50" : ""}
-      `}
+    <button
+      type="button"
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
-      whileTap={{ scale: 0.95 }}
       title="Clic para editar nota"
+      className={`prow__nota cursor-pointer leading-none transition-opacity hover:opacity-60 ${
+        isOpen ? "opacity-100 underline underline-offset-4 decoration-2" : ""
+      }`}
+      style={{ color }}
     >
       {isSaving ? (
-        <div className="w-5 h-5 border-3 border-current border-t-transparent rounded-full animate-spin" />
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle" />
       ) : isSuccess ? (
-        <motion.span
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="material-icons !text-2xl"
-        >
-          check
-        </motion.span>
+        <span className="material-icons !text-2xl align-middle">check</span>
       ) : (
-        <motion.span
-          key={isAnimating ? "animating" : displayText}
-          initial={isAnimating ? { y: -20, opacity: 0 } : false}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          className={isAnimating ? "blur-[1px]" : ""}
-        >
-          {displayText}
-        </motion.span>
+        displayText
       )}
-    </motion.div>
+    </button>
   );
 };
 
@@ -161,7 +107,7 @@ const DateDisplay: React.FC<{
             e.currentTarget.blur();
           }
         }}
-        className="bg-white dark:bg-slate-800 border border-blue-500 rounded px-1 py-0.5 text-xs text-slate-800 dark:text-white outline-none w-28"
+        className="bg-white dark:bg-slate-800 border border-emerald-500 rounded px-1 py-0.5 text-xs text-slate-800 dark:text-white outline-none w-28"
       />
     );
   }
@@ -169,7 +115,7 @@ const DateDisplay: React.FC<{
   return (
     <span
       onClick={handleContainerClick}
-      className="group/date relative cursor-default md:cursor-pointer flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+      className="group/date relative cursor-default md:cursor-pointer flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
       title="Clic para editar fecha (Solo PC)"
     >
       {formatDate(dateStr)}
@@ -177,53 +123,6 @@ const DateDisplay: React.FC<{
         edit
       </span>
     </span>
-  );
-};
-
-// 3D Tilt Card Component
-const TiltCard: React.FC<{
-  children: React.ReactNode;
-  className?: string;
-}> = ({ children, className = "" }) => {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const mouseXSpring = useSpring(x, { stiffness: 500, damping: 100 });
-  const mouseYSpring = useSpring(y, { stiffness: 500, damping: 100 });
-
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["1.5deg", "-1.5deg"]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-1.5deg", "1.5deg"]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const xPct = mouseX / width - 0.5;
-    const yPct = mouseY / height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  return (
-    <motion.div
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        rotateX,
-        rotateY,
-        transformStyle: "preserve-3d",
-      }}
-      className={className}
-    >
-      {children}
-    </motion.div>
   );
 };
 
@@ -244,12 +143,10 @@ const PracticaRow: React.FC<{
   onDeletePractica,
   isSaving,
   isSuccess,
-  index,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [triggerRect, setTriggerRect] = useState<DOMRect>(new DOMRect(0, 0, 0, 0));
   const triggerRef = useRef<HTMLDivElement>(null);
-  const [prevNota, setPrevNota] = useState(practica[FIELD_NOTA_PRACTICAS] || "Sin calificar");
 
   const handleMenuToggle = () => {
     if (!isSaving && triggerRef.current) {
@@ -276,121 +173,147 @@ const PracticaRow: React.FC<{
     }
   }
 
-  const statusVisuals = getStatusVisuals(status || "");
-  const espVisuals = getEspecialidadClasses(practica[FIELD_ESPECIALIDAD_PRACTICAS] || "");
+  const getAreaColor = (area: string) => {
+    const norm = normalizeStringForComparison(area);
+    if (norm.includes("clinica")) return "var(--orient-clinica, #3CB88D)";
+    if (norm.includes("educacion") || norm.includes("educacional"))
+      return "var(--orient-educacional, #203B73)";
+    if (norm.includes("laboral") || norm.includes("trabajo"))
+      return "var(--orient-laboral, #B7770B)";
+    if (norm.includes("comunitaria") || norm.includes("social"))
+      return "var(--orient-comunitaria, #7A3F9E)";
+    return "var(--accent, #1f3a8a)";
+  };
+
+  const areaText = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
+  const color = getAreaColor(areaText);
   const notaActual = practica[FIELD_NOTA_PRACTICAS] || "Sin calificar";
 
   const handleSelectGrade = (selectedNota: string) => {
-    setPrevNota(notaActual);
+    haptics.select();
     onNotaChange(practica.id, selectedNota);
     setIsMenuOpen(false);
   };
 
+  // Long-press en la tarjeta → solicitar modificación (reemplaza el botón de
+  // editar para ganar espacio). Un toque corto sobre la nota sigue editándola.
+  const lpTimer = useRef<number | null>(null);
+  const lpFired = useRef(false);
+  const lpStart = useRef<{ x: number; y: number } | null>(null);
+  const lpStartPress = (e: React.PointerEvent) => {
+    if (!onRequestModificacion) return;
+    lpFired.current = false;
+    lpStart.current = { x: e.clientX, y: e.clientY };
+    lpTimer.current = window.setTimeout(() => {
+      lpFired.current = true;
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(12);
+      onRequestModificacion(practica);
+    }, 500);
+  };
+  const lpCancel = () => {
+    if (lpTimer.current) {
+      clearTimeout(lpTimer.current);
+      lpTimer.current = null;
+    }
+    lpStart.current = null;
+  };
+  const lpMove = (e: React.PointerEvent) => {
+    if (!lpStart.current) return;
+    if (
+      Math.abs(e.clientX - lpStart.current.x) > 10 ||
+      Math.abs(e.clientY - lpStart.current.y) > 10
+    ) {
+      lpCancel();
+    }
+  };
+
   return (
-    <TiltCard
-      className={`
-        group relative bg-white dark:bg-slate-900 rounded-2xl p-5
-        border border-slate-200 dark:border-slate-800
-        transition-shadow duration-300
-        flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between
-        shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50
-        ${isMenuOpen ? "z-[60] ring-2 ring-blue-200 dark:ring-blue-800" : "z-10"}
-        border-l-[6px] ${espVisuals.leftBorder}
-      `}
+    <div
+      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-100 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
+      onPointerDown={lpStartPress}
+      onPointerUp={lpCancel}
+      onPointerCancel={lpCancel}
+      onPointerLeave={lpCancel}
+      onPointerMove={lpMove}
+      onContextMenu={(e) => {
+        if (onRequestModificacion) e.preventDefault();
+      }}
+      onClickCapture={(e) => {
+        if (lpFired.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          lpFired.current = false;
+        }
+      }}
+      style={onRequestModificacion ? { WebkitTouchCallout: "none" } : undefined}
     >
-      <div className="pl-1 flex-1 min-w-0 w-full">
-        <div className="flex items-center gap-2 mb-2">
-          <span className={`${espVisuals.tag} text-[10px] py-0.5 px-2 font-bold rounded-full`}>
-            {practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General"}
+      <div className="prow__bar" style={{ background: color }} />
+      <div className="flex-1 min-w-0 pr-2">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="prow__area font-semibold text-xs" style={{ color }}>
+            {areaText}
           </span>
-          <span
-            className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${statusVisuals.labelClass} border bg-opacity-10`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+          <span className="prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider text-slate-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
             {status}
           </span>
         </div>
 
-        <h3 className="text-base font-bold text-slate-900 dark:text-white pr-2 leading-tight break-words hyphens-auto">
+        <h3 className="prow__name text-slate-900 dark:text-white text-base md:text-lg font-display font-semibold leading-tight break-words">
           {institucion}
         </h3>
 
-        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
-          <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">
-            <span className="material-icons !text-sm opacity-70">date_range</span>
-            <span>{formatDate(practica[FIELD_FECHA_INICIO_PRACTICAS])}</span>
-            <span className="mx-1">-</span>
-            <DateDisplay
-              dateStr={practica[FIELD_FECHA_FIN_PRACTICAS] || null}
-              onDateChange={(newDate) => onFechaFinChange && onFechaFinChange(practica.id, newDate)}
-              label="Fecha Fin"
-            />
-          </div>
+        <div className="prow__dates flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-2">
+          <span>{formatDate(practica[FIELD_FECHA_INICIO_PRACTICAS])}</span>
+          <span>-</span>
+          <DateDisplay
+            dateStr={practica[FIELD_FECHA_FIN_PRACTICAS] || null}
+            onDateChange={(newDate) => onFechaFinChange && onFechaFinChange(practica.id, newDate)}
+            label="Fecha Fin"
+          />
         </div>
       </div>
 
-      <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 dark:border-slate-800 pt-3 sm:pt-0">
-        {/* Modern Float Edit Button - Top Right Corner */}
-        {onRequestModificacion && (
-          <motion.button
-            whileHover={{ scale: 1.1, backgroundColor: "var(--tw-bg-opacity)" }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRequestModificacion(practica);
-            }}
-            className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100 z-30"
-            title="Solicitar modificación"
-          >
-            <span className="material-icons text-base">edit</span>
-          </motion.button>
-        )}
-
-        {/* Botón de eliminar PPS */}
+      <div className="prow__metrics flex items-center gap-4 flex-shrink-0 self-center pr-1">
+        {/* Eliminar — solo en contextos que lo habilitan (no en el panel del alumno).
+            La edición/modificación se dispara manteniendo presionada la tarjeta. */}
         {onDeletePractica && (
-          <motion.button
+          <button
             onClick={(e) => {
               e.stopPropagation();
               if (window.confirm("¿Estás seguro de que deseas eliminar esta práctica?")) {
                 onDeletePractica(practica.id);
               }
             }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
             title="Eliminar práctica"
           >
-            <span className="material-icons text-lg">delete_outline</span>
-          </motion.button>
+            <span className="material-icons text-base">delete_outline</span>
+          </button>
         )}
 
-        {/* Separator and Hours Display */}
-        <div className="flex flex-col items-center justify-center min-w-[3.5rem] text-center ml-2">
-          <p className="text-2xl font-black text-slate-800 dark:text-slate-200 leading-none">
+        <div className="prow__hs flex flex-col items-center justify-center min-w-[3rem] text-center">
+          <span className="display text-xl font-bold font-display text-slate-800 dark:text-slate-200">
             {practica[FIELD_HORAS_PRACTICAS] || 0}
-          </p>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-            Horas
-          </p>
+          </span>
+          <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400">
+            hs
+          </span>
         </div>
 
-        <div className="w-px h-10 bg-gradient-to-b from-transparent via-slate-200 dark:via-slate-700 to-transparent hidden sm:block" />
+        <div className="w-px h-8 bg-slate-100 dark:bg-slate-800" />
 
-        <div className="relative flex flex-col items-center">
-          <div ref={triggerRef}>
-            <AnimatedGradeDisplay
-              nota={notaActual}
-              prevNota={prevNota}
-              onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
-              isSaving={isSaving}
-              isSuccess={isSuccess}
-              isOpen={isMenuOpen}
-            />
-          </div>
-
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 text-center">
-            Nota
-          </p>
+        <div className="relative flex flex-col items-center min-w-[2rem]" ref={triggerRef}>
+          <FlatGrade
+            nota={notaActual}
+            onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
+            isSaving={isSaving}
+            isSuccess={isSuccess}
+            isOpen={isMenuOpen}
+          />
+          <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">
+            nota
+          </span>
         </div>
       </div>
 
@@ -411,7 +334,7 @@ const PracticaRow: React.FC<{
           />
         </>
       )}
-    </TiltCard>
+    </div>
   );
 };
 
@@ -498,15 +421,14 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
       {/* Botón sutil para agregar nueva PPS */}
       {onRequestNuevaPPS && (
         <div className="flex justify-center py-4">
-          <motion.button
+          <button
+            type="button"
             onClick={onRequestNuevaPPS}
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-900/30 transition-all"
+            className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-uflo-teal hover:shadow-lg hover:scale-110 hover:border-emerald-200 dark:hover:border-emerald-900/30 active:scale-90 transition-all"
             title="Solicitar agregar una PPS"
           >
             <span className="material-icons text-2xl">add</span>
-          </motion.button>
+          </button>
         </div>
       )}
     </div>

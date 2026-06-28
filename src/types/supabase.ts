@@ -1,6 +1,11 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5";
+  };
   public: {
     Tables: {
       admin_action_log: {
@@ -326,6 +331,50 @@ export type Database = {
           },
         ];
       };
+      convenios: {
+        Row: {
+          archivo_url: string | null;
+          created_at: string;
+          es_renovacion: boolean;
+          fecha_firma: string;
+          fecha_vencimiento: string | null;
+          id: string;
+          institucion_id: string;
+          notas: string | null;
+          tipo: string;
+        };
+        Insert: {
+          archivo_url?: string | null;
+          created_at?: string;
+          es_renovacion?: boolean;
+          fecha_firma: string;
+          fecha_vencimiento?: string | null;
+          id?: string;
+          institucion_id: string;
+          notas?: string | null;
+          tipo?: string;
+        };
+        Update: {
+          archivo_url?: string | null;
+          created_at?: string;
+          es_renovacion?: boolean;
+          fecha_firma?: string;
+          fecha_vencimiento?: string | null;
+          id?: string;
+          institucion_id?: string;
+          notas?: string | null;
+          tipo?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "convenios_institucion_id_fkey";
+            columns: ["institucion_id"];
+            isOneToOne: false;
+            referencedRelation: "instituciones";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       convocatorias: {
         Row: {
           airtable_id: string | null;
@@ -612,6 +661,7 @@ export type Database = {
           airtable_id: string | null;
           certificado_url: Json | null;
           created_at: string | null;
+          detalle_practicas: Json | null;
           estado: string | null;
           estudiante_id: string | null;
           fecha_solicitud: string | null;
@@ -625,6 +675,7 @@ export type Database = {
           airtable_id?: string | null;
           certificado_url?: Json | null;
           created_at?: string | null;
+          detalle_practicas?: Json | null;
           estado?: string | null;
           estudiante_id?: string | null;
           fecha_solicitud?: string | null;
@@ -638,6 +689,7 @@ export type Database = {
           airtable_id?: string | null;
           certificado_url?: Json | null;
           created_at?: string | null;
+          detalle_practicas?: Json | null;
           estado?: string | null;
           estudiante_id?: string | null;
           fecha_solicitud?: string | null;
@@ -743,7 +795,7 @@ export type Database = {
         Row: {
           airtable_id: string | null;
           codigo_tarjeta_campus: string | null;
-          convenio_nuevo: string | null;
+          convenio_nuevo: number | null;
           created_at: string | null;
           direccion: string | null;
           id: string;
@@ -757,7 +809,7 @@ export type Database = {
         Insert: {
           airtable_id?: string | null;
           codigo_tarjeta_campus?: string | null;
-          convenio_nuevo?: string | null;
+          convenio_nuevo?: number | null;
           created_at?: string | null;
           direccion?: string | null;
           id?: string;
@@ -771,7 +823,7 @@ export type Database = {
         Update: {
           airtable_id?: string | null;
           codigo_tarjeta_campus?: string | null;
-          convenio_nuevo?: string | null;
+          convenio_nuevo?: number | null;
           created_at?: string | null;
           direccion?: string | null;
           id?: string;
@@ -968,6 +1020,7 @@ export type Database = {
         Row: {
           airtable_id: string | null;
           created_at: string | null;
+          es_online: boolean;
           especialidad: string | null;
           estado: string | null;
           estudiante_id: string | null;
@@ -982,6 +1035,7 @@ export type Database = {
         Insert: {
           airtable_id?: string | null;
           created_at?: string | null;
+          es_online?: boolean;
           especialidad?: string | null;
           estado?: string | null;
           estudiante_id?: string | null;
@@ -996,6 +1050,7 @@ export type Database = {
         Update: {
           airtable_id?: string | null;
           created_at?: string | null;
+          es_online?: boolean;
           especialidad?: string | null;
           estado?: string | null;
           estudiante_id?: string | null;
@@ -1431,6 +1486,10 @@ export type Database = {
       };
       archive_lanzamientos_after_start_grace: { Args: never; Returns: number };
       auth_email: { Args: never; Returns: string };
+      calc_cohorte_estudiante: {
+        Args: { p_estudiante_id: string };
+        Returns: number;
+      };
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean };
       clean_dirty_text: { Args: { val: string }; Returns: string };
       cleanup_old_verification_attempts: { Args: never; Returns: undefined };
@@ -1438,8 +1497,6 @@ export type Database = {
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
       get_activos_list: { Args: { p_year: number }; Returns: Json };
       get_admin_metrics_kpis: { Args: { p_year: number }; Returns: Json };
-      get_consent_counts_by_launch: { Args: { p_launch_ids: string[] }; Returns: Json };
-      get_convocatoria_counts_by_launch: { Args: { p_launch_ids: string[] }; Returns: Json };
       get_all_fcm_tokens: {
         Args: never;
         Returns: {
@@ -1447,7 +1504,38 @@ export type Database = {
           user_id: string;
         }[];
       };
+      get_consent_counts_by_launch: {
+        Args: { p_launch_ids: string[] };
+        Returns: Json;
+      };
+      get_convenios_kpis: { Args: { p_year: number }; Returns: Json };
+      get_convenios_list: {
+        Args: { p_kind: string; p_year: number };
+        Returns: {
+          fecha_firma: string;
+          fecha_vencimiento: string;
+          nombre: string;
+          tipo: string;
+        }[];
+      };
+      get_convenios_por_vencer: {
+        Args: { p_days?: number };
+        Returns: {
+          convenio_id: string;
+          dias_restantes: number;
+          fecha_firma: string;
+          fecha_vencimiento: string;
+          institucion: string;
+          institucion_id: string;
+          tipo: string;
+        }[];
+      };
+      get_convocatoria_counts_by_launch: {
+        Args: { p_launch_ids: string[] };
+        Returns: Json;
+      };
       get_dashboard_metrics: { Args: { target_year: number }; Returns: Json };
+      get_estudiantes_en_pps_list: { Args: { p_year: number }; Returns: Json };
       get_finalizados_list: {
         Args: { p_year: number };
         Returns: {
@@ -1464,26 +1552,9 @@ export type Database = {
           nombre: string;
         }[];
       };
-      get_ingresantes_list: {
-        Args: { p_year: number };
-        Returns: {
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
-      get_estudiantes_en_pps_list: {
-        Args: { p_year: number };
-        Returns: Json;
-      };
-      get_heredados_count: {
-        Args: { p_year: number };
-        Returns: number;
-      };
-      get_heredados_list: {
-        Args: { p_year: number };
-        Returns: Json;
-      };
+      get_heredados_count: { Args: { p_year: number }; Returns: number };
+      get_heredados_list: { Args: { p_year: number }; Returns: Json };
+      get_ingresantes_list: { Args: { p_year: number }; Returns: Json };
       get_metrics_years: { Args: never; Returns: Json };
       get_my_role: { Args: never; Returns: string };
       get_postulantes_seleccionados: {

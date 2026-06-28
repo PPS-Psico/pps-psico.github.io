@@ -64,8 +64,8 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
     await waitFor(() => expect(result.current.updateNota.isSuccess).toBe(true));
 
     // Y la nota quedó persistida en la capa de datos
-    const persisted = mockDb.data.practicas.find((p: any) => p.id === "prac_1");
-    expect(persisted[FIELD_NOTA_PRACTICAS]).toBe("10");
+    const persisted = mockDb.data.practicas.find((p) => p.id === "prac_1");
+    expect(persisted![FIELD_NOTA_PRACTICAS]).toBe("10");
   });
 
   it("refleja la nota actualizada al refrescar las prácticas", async () => {

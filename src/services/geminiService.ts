@@ -1,5 +1,6 @@
 import { SUPABASE_URL } from "../constants";
 import { supabase } from "../lib/supabaseClient";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 const getAuthToken = async (): Promise<string> => {
   const {
@@ -86,8 +87,8 @@ export const testGeminiModel = async (model: string): Promise<ModelDiagnostic> =
     }
 
     return { model, status: "error", message: errorMessage || `Error ${response.status}` };
-  } catch (error: any) {
-    return { model, status: "error", message: error.message };
+  } catch (error) {
+    return { model, status: "error", message: getErrorMessage(error) };
   }
 };
 

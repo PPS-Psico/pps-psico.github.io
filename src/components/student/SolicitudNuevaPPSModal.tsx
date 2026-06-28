@@ -7,10 +7,21 @@ import {
   FIELD_ORIENTACION_LANZAMIENTOS,
 } from "../../constants/dbConstants";
 import { useNotifications } from "../../contexts/NotificationContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { supabase } from "../../lib/supabaseClient";
 import { submitSolicitudNuevaPPS, uploadSolicitudFile } from "../../services";
 import type { Institucion, LanzamientoPPS } from "../../types";
-import Button from "../ui/Button";
+import { Icon } from "./ds";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+
+/** Proyección parcial de lanzamiento usada por el modal (datos del select + extras opcionales). */
+interface LanzamientoLite {
+  id: string;
+  institucion_id: string | null;
+  cupos_disponibles?: number | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 interface SolicitudNuevaPPSModalProps {
   isOpen: boolean;
@@ -26,6 +37,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   onSuccess,
 }) => {
   const { showToast } = useNotifications();
+  const { resolvedTheme } = useTheme();
 
   // Estados del formulario
   const [nombreInstitucionManual, setNombreInstitucionManual] = useState<string>("");
@@ -58,25 +70,25 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     enabled: isOpen,
   });
 
-  const { data: lanzamientos = [] } = useQuery({
+  const { data: lanzamientos = [] } = useQuery<LanzamientoLite[]>({
     queryKey: ["lanzamientos_pps"],
     queryFn: async () => {
       const { data } = await supabase
         .from("lanzamientos_pps")
         .select("id, institucion_id, cupos_disponibles")
         .order("created_at", { ascending: false });
-      return (data as any[]) || [];
+      return (data as unknown as LanzamientoLite[]) || [];
     },
     enabled: isOpen,
   });
 
   // Agrupar lanzamientos por institucion_id para filtrar por cupos
   const lanzamientosPorInstitucion = useMemo(() => {
-    const map = new Map<string, any[]>();
+    const map = new Map<string, LanzamientoLite[]>();
     for (const l of lanzamientos) {
-      const existing = map.get(l.institucion_id) || [];
+      const existing = map.get(l.institucion_id || "") || [];
       existing.push(l);
-      map.set(l.institucion_id, existing);
+      map.set(l.institucion_id || "", existing);
     }
     return map;
   }, [lanzamientos]);
@@ -113,13 +125,13 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     if (lanzamientosDeInstitucion.length > 0) {
       // Ordenar por fecha para obtener el más reciente
       const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
       );
       const ultimoLanzamiento = sortedLanzamientos[0];
 
       // Autocompletar orientación
       if (ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]) {
-        setOrientacion(ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
+        setOrientacion(ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string);
       }
 
       // Autocompletar horas
@@ -129,10 +141,10 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
 
       // Verificar si es online (Inteligente)
       const modalidad =
-        (ultimoLanzamiento as any).modalidad_online === "Online" ||
-        (ultimoLanzamiento as any).modalidad_online === true ||
-        (ultimoLanzamiento as any).modalidad === "Online" ||
-        (ultimoLanzamiento as any).es_online === true;
+        (ultimoLanzamiento as Record<string, unknown>).modalidad_online === "Online" ||
+        (ultimoLanzamiento as Record<string, unknown>).modalidad_online === true ||
+        (ultimoLanzamiento as Record<string, unknown>).modalidad === "Online" ||
+        (ultimoLanzamiento as Record<string, unknown>).es_online === true;
       setEsOnline(modalidad);
     }
   }, [institucionSeleccionada, lanzamientosDeInstitucion, isOpen]);
@@ -284,8 +296,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       onSuccess?.();
       onClose();
       resetForm();
-    } catch (error: any) {
-      showToast(error.message || "Error al enviar la solicitud", "error");
+    } catch (error) {
+      showToast(getErrorMessage(error, "Error al enviar la solicitud"), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -319,13 +331,11 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         handleFileChange(type, f);
       }}
       onClick={() => document.getElementById(`file-${type}`)?.click()}
-      className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
-        dragActive === type
-          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-          : file
-            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-            : "border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-600"
-      }`}
+      className="relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all"
+      style={{
+        borderColor: dragActive === type || file ? "var(--accent)" : "var(--line-strong)",
+        background: dragActive === type || file ? "var(--tint)" : "var(--bg-sunken)",
+      }}
     >
       <input
         id={`file-${type}`}
@@ -343,71 +353,116 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       />
       {file ? (
         <div className="flex items-center justify-center gap-2">
-          <span className="material-icons text-emerald-600 dark:text-emerald-400">
-            check_circle
-          </span>
-          <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-[200px]">
+          <Icon name="check" size={18} color="var(--accent-text)" strokeWidth={2.4} />
+          <span
+            className="text-sm font-bold truncate max-w-[200px]"
+            style={{ color: "var(--accent-text)" }}
+          >
             {file.name}
           </span>
-          <button onClick={() => setFile(null)} className="ml-2 text-slate-400 hover:text-rose-500">
-            <span className="material-icons text-sm">close</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setFile(null);
+            }}
+            className="ml-1 p-1 rounded-md"
+            style={{ color: "var(--ink-muted)" }}
+          >
+            <Icon name="x" size={15} />
           </button>
         </div>
       ) : (
-        <>
-          <span className="material-icons text-3xl text-slate-400 dark:text-slate-500 mb-2">
-            {type === "planilla" ? "description" : "assignment"}
-          </span>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+        <div className="flex flex-col items-center gap-1.5">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center mb-1"
+            style={{ background: "var(--bg-elevated)", color: "var(--accent)" }}
+          >
+            <Icon name="upload" size={18} strokeWidth={2} />
+          </div>
+          <p className="text-sm font-bold" style={{ color: "var(--ink-soft)" }}>
             {type === "planilla"
-              ? "Arrastrá tu planilla de asistencia o hacé clic para seleccionar"
-              : "Arrastrá tu informe final o hacé clic para seleccionar"}
+              ? "Arrastrá tu planilla de asistencia o hacé clic"
+              : "Arrastrá tu informe final o hacé clic"}
           </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            Soportado: PDF, Word, JPG, PNG, WEBP (máx 10MB)
+          <p className="text-xs" style={{ color: "var(--ink-subtle)" }}>
+            PDF, Word, JPG, PNG, WEBP · máx 10MB
           </p>
-        </>
+        </div>
       )}
     </div>
   );
 
   if (!isOpen) return null;
 
+  const fieldStyle: React.CSSProperties = {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--line-strong)",
+    color: "var(--ink)",
+  };
+  const labelStyle: React.CSSProperties = { color: "var(--ink-muted)" };
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div
+      className="ed fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4"
+      data-mode={resolvedTheme}
+      data-accent="teal"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+        exit={{ opacity: 0, scale: 0.96 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
       >
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Solicitar nueva PPS
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+        <div
+          className="flex-shrink-0 px-5 py-4 sm:px-7 sm:py-5 flex items-center justify-between safe-area-top"
+          style={{ borderBottom: "1px solid var(--line)" }}
+        >
+          <div className="min-w-0 pr-4">
+            <span className="eyebrow" style={{ color: "var(--accent-text)" }}>
+              Nueva solicitud
+            </span>
+            <h2
+              style={{
+                fontSize: 26,
+                marginTop: 2,
+                color: "var(--ink)",
+                fontFamily: '"Instrument Serif", ui-serif, Georgia, serif',
+                fontWeight: 400,
+                lineHeight: 1.05,
+                letterSpacing: "-0.01em",
+              }}
             >
-              <span className="material-icons">close</span>
-            </button>
+              Solicitar una PPS
+            </h2>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-1 rounded-full transition-colors hover:bg-[var(--bg-sunken)]"
+            style={{ color: "var(--ink-muted)" }}
+            aria-label="Cerrar"
+          >
+            <Icon name="x" size={20} />
+          </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-7 custom-scrollbar">
+          <div className="space-y-5">
             {/* Institución */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Institución <span className="text-rose-500">*</span>
+              <label className="block text-sm font-bold mb-2" style={labelStyle}>
+                Institución <span style={{ color: "#c0563f" }}>*</span>
               </label>
 
               <div className="relative">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-icons text-slate-400">
-                      search
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Icon name="search" size={18} color="var(--ink-muted)" />
                     </span>
                     <input
                       type="text"
@@ -421,7 +476,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                       }}
                       onFocus={() => setShowResults(true)}
                       placeholder="Escribí para buscar institución..."
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      className="w-full pl-12 pr-4 py-3 rounded-xl outline-none focus:ring-2 transition-all"
+                      style={fieldStyle}
                     />
                   </div>
                 </div>
@@ -437,7 +493,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                             key={inst.id}
                             onClick={() => {
                               if (inst.disabled) return;
-                              setInstitucionSeleccionada(inst as any);
+                              setInstitucionSeleccionada(inst as unknown as Institucion);
                               setSearchTerm(inst.nombre || "");
                               setShowResults(false);
                             }}
@@ -488,13 +544,14 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
 
             {/* Orientación */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Orientación <span className="text-rose-500">*</span>
+              <label className="block text-sm font-bold mb-2" style={labelStyle}>
+                Orientación <span style={{ color: "#c0563f" }}>*</span>
               </label>
               <select
                 value={orientacion}
                 onChange={(e) => setOrientacion(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2"
+                style={fieldStyle}
               >
                 <option value="">Seleccioná una orientación</option>
                 {["Clínica", "Educacional", "Laboral", "Comunitaria"].map((ori) => (
@@ -508,33 +565,35 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
             {/* Fechas */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Fecha inicio <span className="text-rose-500">*</span>
+                <label className="block text-sm font-bold mb-2" style={labelStyle}>
+                  Fecha inicio <span style={{ color: "#c0563f" }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={fechaInicio}
                   onChange={(e) => setFechaInicio(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-sshare-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2"
+                  style={fieldStyle}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Fecha fin <span className="text-rose-500">*</span>
+                <label className="block text-sm font-bold mb-2" style={labelStyle}>
+                  Fecha fin <span style={{ color: "#c0563f" }}>*</span>
                 </label>
                 <input
                   type="date"
                   value={fechaFinalizacion}
                   onChange={(e) => setFechaFinalizacion(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2"
+                  style={fieldStyle}
                 />
               </div>
             </div>
 
             {/* Horas */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Cantidad de horas <span className="text-rose-500">*</span>
+              <label className="block text-sm font-bold mb-2" style={labelStyle}>
+                Cantidad de horas <span style={{ color: "#c0563f" }}>*</span>
               </label>
               <input
                 type="number"
@@ -543,16 +602,22 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 placeholder="Ej: 80"
                 min="1"
                 max="120"
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 transition-all"
+                style={fieldStyle}
               />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Máximo 120 horas</p>
+              <p className="text-xs mt-1" style={{ color: "var(--ink-subtle)" }}>
+                Máximo 120 horas
+              </p>
             </div>
 
             {/* Info sobre modalidad online */}
             {esOnline && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20 flex items-start gap-3">
-                <span className="material-icons text-blue-500">info</span>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
+              <div
+                className="p-4 rounded-xl flex items-start gap-3"
+                style={{ background: "var(--tint)", border: "1px solid var(--line)" }}
+              >
+                <Icon name="help" size={18} color="var(--accent-text)" />
+                <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
                   Esta institución es <strong>Online</strong>. Solo necesitás subir el informe
                   final.
                 </p>
@@ -563,34 +628,42 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
             <div className="space-y-4">
               {!esOnline && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Planilla de asistencia <span className="text-rose-500">*</span>
+                  <label className="block text-sm font-bold mb-2" style={labelStyle}>
+                    Planilla de asistencia <span style={{ color: "#c0563f" }}>*</span>
                   </label>
                   {renderFileUpload("planilla", planillaFile, setPlanillaFile, true)}
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Informe final <span className="text-rose-500">*</span>
+                <label className="block text-sm font-bold mb-2" style={labelStyle}>
+                  Informe final <span style={{ color: "#c0563f" }}>*</span>
                 </label>
                 {renderFileUpload("informe", informeFile, setInformeFile, true)}
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-            <Button variant="secondary" onClick={onClose} className="flex-1">
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              Enviar solicitud
-            </Button>
-          </div>
+        <div
+          className="flex-shrink-0 px-5 py-4 sm:px-7 sm:py-4 flex gap-3 safe-area-bottom"
+          style={{ borderTop: "1px solid var(--line)", background: "var(--bg-elevated)" }}
+        >
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-colors hover:bg-[var(--bg-sunken)] disabled:opacity-40"
+            style={{ color: "var(--ink-muted)", border: "1px solid var(--line-strong)" }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex-1 px-4 py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
+            style={{ background: "var(--accent)" }}
+          >
+            {isSubmitting ? "Enviando…" : "Enviar solicitud"}
+          </button>
         </div>
       </motion.div>
     </div>,

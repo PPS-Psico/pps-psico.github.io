@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useState, useEffect } from "react";
 import {
   Navigate,
   Route,
@@ -24,6 +24,7 @@ import { PwaInstallProvider } from "./contexts/PwaInstallContext";
 import { StudentPanelProvider } from "./contexts/StudentPanelContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import PracticasView from "./views/student/PracticasView";
+import StudentConvocatoriaDetailView from "./views/student/StudentConvocatoriaDetailView";
 import DataCompletionModal from "./components/student/DataCompletionModal";
 import { logger } from "./utils/logger";
 
@@ -35,6 +36,7 @@ const StudentHome = lazy(() =>
 );
 const SolicitudesView = lazy(() => import("./views/student/SolicitudesView"));
 const StudentProfileView = lazy(() => import("./views/student/StudentProfileView"));
+const StudentConvocatoriasView = lazy(() => import("./views/student/StudentConvocatoriasView"));
 
 const AdminView = lazy(() => import("./views/AdminView"));
 const AdminDashboard = lazy(() => import("./components/admin/AdminDashboard"));
@@ -125,10 +127,22 @@ const AppRoutes = () => {
         }
       >
         <Route index element={<StudentHome />} />
+        <Route path="convocatorias" element={<StudentConvocatoriasView />} />
         <Route path="practicas" element={<PracticasView />} />
         <Route path="solicitudes" element={<SolicitudesView />} />
         <Route path="perfil" element={<StudentProfileView />} />
       </Route>
+
+      <Route
+        path="/student/convocatoria/:id"
+        element={
+          <ProtectedRoute allowedRoles={["Student"]}>
+            <StudentWrapper>
+              <StudentConvocatoriaDetailView />
+            </StudentWrapper>
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin"
@@ -203,7 +217,165 @@ const AppRoutes = () => {
   );
 };
 
+/**
+ * Barra "Volver al campus": solo aparece cuando el panel corre embebido dentro
+ * del iframe del campus (Moodle). Permite volver al aula sin abrir otra ventana.
+ * Si el estudiante abrió el panel por URL directa, no se muestra (pantalla completa).
+ */
+const CampusReturnBar: React.FC = () => {
+  const [embedded, setEmbedded] = useState(false);
+  useEffect(() => {
+    let e = false;
+    try {
+      e = window.self !== window.top;
+    } catch {
+      e = true; // cross-origin ⇒ embebidos
+    }
+    setEmbedded(e);
+  }, []);
+
+  if (!embedded) return null;
+
+  return (
+    <div
+      role="navigation"
+      aria-label="Volver al campus"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "8px 14px",
+        background: "var(--bg-elevated, #ffffff)",
+        borderBottom: "1px solid var(--border, #e8e6de)",
+        position: "relative",
+        zIndex: 50,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = "aula.html";
+        }}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "7px 13px",
+          borderRadius: 999,
+          border: "1px solid var(--border-strong, #d6d3c8)",
+          background: "transparent",
+          color: "var(--fg, #141310)",
+          font: "inherit",
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.9}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M19 12H5" />
+          <path d="M11 19l-7-7 7-7" />
+        </svg>
+        Volver al campus
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          // Abre el panel en una ventana nueva a pantalla completa.
+          // Mismo origen ⇒ comparte la sesión, así entra ya logueado.
+          window.open(window.location.href, "_blank", "noopener");
+        }}
+        style={{
+          marginLeft: "auto",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "7px 13px",
+          borderRadius: 999,
+          border: "1px solid var(--border-strong, #d6d3c8)",
+          background: "transparent",
+          color: "var(--fg, #141310)",
+          font: "inherit",
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.9}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M15 3h6v6" />
+          <path d="M9 21H3v-6" />
+          <path d="M21 3l-7 7" />
+          <path d="M3 21l7-7" />
+        </svg>
+        Pantalla completa
+      </button>
+      <span
+        style={{
+          marginLeft: 12,
+          fontSize: 12,
+          fontWeight: 600,
+          letterSpacing: "-0.01em",
+          color: "var(--fg-muted, #6a7081)",
+        }}
+      >
+        PPS 2026
+      </span>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
+  // Cuando el panel corre embebido (iframe del campus Moodle), le avisa al
+  // contenedor que debe expandirse a pantalla completa para sentirse como una
+  // sola app integrada. El label de Moodle escucha el mensaje { ppsPanel: true }.
+  useEffect(() => {
+    let isEmbedded = false;
+    try {
+      isEmbedded = window.self !== window.top;
+    } catch {
+      isEmbedded = true; // cross-origin ⇒ embebidos
+    }
+    if (!isEmbedded) return;
+
+    const notifyParent = () => {
+      try {
+        window.parent.postMessage({ ppsPanel: true }, "*");
+      } catch {
+        /* noop */
+      }
+    };
+
+    notifyParent();
+    const t1 = setTimeout(notifyParent, 300);
+    const t2 = setTimeout(notifyParent, 1200);
+    window.addEventListener("resize", notifyParent);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener("resize", notifyParent);
+    };
+  }, []);
+
   return (
     <ErrorProvider>
       <Router>
@@ -214,6 +386,7 @@ const App: React.FC = () => {
                 <ThemeProvider>
                   <ModalProvider>
                     <ErrorBoundary>
+                      <CampusReturnBar />
                       <Layout>
                         <InstallPWA />
                         <Suspense fallback={<Loader />}>

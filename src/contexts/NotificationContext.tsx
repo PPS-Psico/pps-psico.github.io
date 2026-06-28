@@ -31,6 +31,11 @@ import { supabase } from "../lib/supabaseClient";
 import ReminderService, { Reminder } from "../services/reminderService";
 import { useAuth } from "./AuthContext";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+
+/** Fila genérica de un payload de Supabase Realtime (acceso dinámico por columna). */
+type RtRow = { id: string; [key: string]: unknown };
 
 export interface AppNotification {
   id: string;
@@ -140,13 +145,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             .limit(20);
 
           if (pendingPPS) {
-            pendingPPS.forEach((req: any) => {
+            pendingPPS.forEach((req) => {
               const notifId = `pps-${req.id}`;
               loadedNotifications.push({
                 id: notifId,
                 title: "Solicitud PPS Pendiente",
                 message: `${req[FIELD_SOLICITUD_NOMBRE_ALUMNO] || "Estudiante"} solicitó iniciar en ${req[FIELD_EMPRESA_PPS_SOLICITUD] || "Institución"}.`,
-                timestamp: new Date(req.created_at),
+                timestamp: new Date(req.created_at ?? ""),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes?tab=ingreso",
                 isRead: readNotificationIds.has(notifId),
@@ -172,7 +177,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             .limit(20);
 
           if (pendingFinals) {
-            pendingFinals.forEach((req: any) => {
+            pendingFinals.forEach((req) => {
               const notifId = `fin-${req.id}`;
               const studentData = Array.isArray(req.estudiante)
                 ? req.estudiante[0]
@@ -183,7 +188,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 id: notifId,
                 title: "Acreditación Pendiente",
                 message: `${studentName} ha enviado documentación para acreditar.`,
-                timestamp: new Date(req.created_at),
+                timestamp: new Date(req.created_at ?? ""),
                 type: "acreditacion",
                 link: "/admin/solicitudes?tab=egreso",
                 isRead: readNotificationIds.has(notifId),
@@ -207,7 +212,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             .limit(10);
 
           if (pendingMods) {
-            pendingMods.forEach((mod: any) => {
+            pendingMods.forEach((mod) => {
               const notifId = `mod-${mod.id}`;
               const studentName = Array.isArray(mod.estudiante)
                 ? mod.estudiante[0]?.nombre
@@ -216,7 +221,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 id: notifId,
                 title: "Solicitud de Modificación",
                 message: `${studentName || "Estudiante"} solicita cambio de ${mod.tipo_modificacion}.`,
-                timestamp: new Date(mod.created_at),
+                timestamp: new Date(mod.created_at ?? ""),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes",
                 isRead: readNotificationIds.has(notifId),
@@ -241,7 +246,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             .limit(10);
 
           if (pendingNewRequests) {
-            pendingNewRequests.forEach((req: any) => {
+            pendingNewRequests.forEach((req) => {
               const notifId = `newpps-${req.id}`;
               const studentName = Array.isArray(req.estudiante)
                 ? req.estudiante[0]?.nombre
@@ -255,7 +260,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 id: notifId,
                 title: "Nueva PPS Autogestiva",
                 message: `${studentName || "Estudiante"} solicita iniciar en ${instName || "Institución"}.`,
-                timestamp: new Date(req.created_at),
+                timestamp: new Date(req.created_at ?? ""),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes",
                 isRead: readNotificationIds.has(notifId),
@@ -277,13 +282,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             .order("created_at", { ascending: false });
 
           if (newLaunches) {
-            newLaunches.forEach((l: any) => {
+            newLaunches.forEach((l) => {
               const notifId = `launch-${l.id}`;
               loadedNotifications.push({
                 id: notifId,
                 title: "Nueva Convocatoria",
                 message: `${l[FIELD_NOMBRE_PPS_LANZAMIENTOS]} est� abierta para inscripci�n.`,
-                timestamp: new Date(l.created_at),
+                timestamp: new Date(l.created_at ?? ""),
                 type: "lanzamiento",
                 link: "/student",
                 isRead: readNotificationIds.has(notifId),
@@ -332,11 +337,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: TABLE_NAME_PPS },
-        async (payload: any) => {
+        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
           if (!isAdmin) return;
           if (!payload || !payload.new) return;
 
-          const newRecord = payload.new;
+          const newRecord = payload.new as RtRow;
           const notifId = `pps-${newRecord.id}`;
 
           addNotification({
@@ -353,11 +358,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: TABLE_NAME_FINALIZACION },
-        async (payload: any) => {
+        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
           if (!isAdmin) return;
           if (!payload || !payload.new) return;
 
-          const newRecord = payload.new;
+          const newRecord = payload.new as RtRow;
           const notifId = `fin-${newRecord.id}`;
 
           addNotification({
@@ -374,12 +379,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: TABLE_NAME_SOLICITUDES_MODIFICACION },
-        async (payload: any) => {
+        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
           if (!isAdmin) return;
           if (!payload || !payload.new) return;
 
           addNotification({
-            id: `mod-${payload.new.id}`,
+            id: `mod-${(payload.new as RtRow).id}`,
             title: "Solicitud de Modificación",
             message: `Un estudiante solicita un cambio en su práctica.`,
             timestamp: new Date(),
@@ -392,12 +397,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: TABLE_NAME_SOLICITUDES_NUEVA },
-        async (payload: any) => {
+        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
           if (!isAdmin) return;
           if (!payload || !payload.new) return;
 
           addNotification({
-            id: `newpps-${payload.new.id}`,
+            id: `newpps-${(payload.new as RtRow).id}`,
             title: "Nueva PPS Autogestiva",
             message: `Nueva solicitud autogestiva recibida.`,
             timestamp: new Date(),
@@ -410,10 +415,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: TABLE_NAME_LANZAMIENTOS_PPS },
-        async (payload: any) => {
+        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
           if (!isStudent) return;
 
-          const newRecord = payload.new;
+          const newRecord = payload.new as RtRow;
           if (!newRecord) return;
 
           const isNewActive =
@@ -441,11 +446,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: TABLE_NAME_CONVOCATORIAS },
-        async (payload: any) => {
+        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
           if (!isStudent) return;
 
-          const newRecord = payload.new;
-          const oldRecord = payload.old;
+          const newRecord = payload.new as RtRow;
+          const oldRecord = payload.old as Partial<RtRow>;
 
           const studentIdInRecord = newRecord[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
           const cleanId = Array.isArray(studentIdInRecord)
@@ -539,8 +544,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       } else {
         showToast(result.error || "No se pudo activar notificaciones", "error");
       }
-    } catch (error: any) {
-      showToast(error.message || "Error al activar notificaciones", "error");
+    } catch (error) {
+      showToast(getErrorMessage(error, "Error al activar notificaciones"), "error");
     } finally {
       setPushLoading(false);
     }
@@ -556,8 +561,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       } else {
         showToast(result.error || "No se pudo desactivar notificaciones", "error");
       }
-    } catch (error: any) {
-      showToast(error.message || "Error al desactivar notificaciones", "error");
+    } catch (error) {
+      showToast(getErrorMessage(error, "Error al desactivar notificaciones"), "error");
     } finally {
       setPushLoading(false);
     }

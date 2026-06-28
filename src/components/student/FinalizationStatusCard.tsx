@@ -62,7 +62,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
   const isOverdue = daysDisplay < 0 && !isFinished && !isPaused;
 
   const gradientName = (
-    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400">
+    <span className="text-transparent bg-clip-text bg-gradient-to-r from-uflo-purple via-uflo-navy to-uflo-teal dark:from-[#c9a2bd] dark:via-[#8fb1ff] dark:to-[#5EE6B7]">
       {firstName}
     </span>
   );
@@ -100,7 +100,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                 href="https://alumno.uflo.edu.ar"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center gap-3 px-10 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-indigo-500/20 hover:-translate-y-1 transition-all duration-300"
+                className="group inline-flex items-center gap-3 px-10 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-uflo-teal/20 hover:-translate-y-1 transition-all duration-300"
               >
                 <span>Verificar en SAC</span>
                 <span className="material-icons !text-2xl group-hover:translate-x-1 transition-transform">
@@ -122,7 +122,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
     "Estamos evaluando tu solicitud y validando la documentación presentada. Este proceso es manual y requiere revisión por parte de coordinación.";
   let bannerStatus = "Solicitud Enviada";
   let bannerColorClass =
-    "text-blue-600 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800";
+    "text-uflo-navy bg-uflo-navy/10 dark:text-[#8fb1ff] dark:bg-uflo-navy/30 border-uflo-navy/20 dark:border-uflo-navy/50";
   let currentStepIndex = 0;
 
   if (isEnProceso) {
@@ -131,7 +131,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
       "Tus documentos fueron validados correctamente y el expediente se encuentra en el circuito de acreditación interna.";
     bannerStatus = "En Proceso";
     bannerColorClass =
-      "text-indigo-600 bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800";
+      "text-uflo-teal bg-uflo-teal/10 dark:text-[#5EE6B7] dark:bg-uflo-teal/20 border-uflo-teal/20 dark:border-uflo-teal/40";
     currentStepIndex = 1;
   }
 
@@ -158,7 +158,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
     <div className="w-full animate-fade-in-up pb-12 space-y-8">
       {/* HERO BANNER */}
       <div className="relative overflow-hidden glass-panel rounded-[3rem] shadow-xl p-8 sm:p-14 mb-8">
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-blue-100/30 to-transparent dark:from-blue-900/20 rounded-full blur-[120px] -mr-60 -mt-60 pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-uflo-teal/10 to-transparent dark:from-uflo-teal/10 rounded-full blur-[120px] -mr-60 -mt-60 pointer-events-none"></div>
         <div className="relative z-10">
           <div
             className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-6 border shadow-sm ${bannerColorClass}`}
@@ -182,7 +182,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
         {/* TIMELINE (IZQUIERDA - ANCHO) - OCULTO EN MOBILE */}
         <div className="hidden lg:flex lg:col-span-8">
           <div className="w-full bg-white/80 dark:bg-[#0F172A]/80 rounded-[3rem] border border-slate-200/80 dark:border-slate-800 p-10 sm:p-12 backdrop-blur-xl h-full flex flex-col shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-20"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-uflo-purple via-uflo-navy to-uflo-teal opacity-20"></div>
 
             <div className="flex items-center gap-4 mb-8 flex-shrink-0">
               <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-300 shadow-sm">
@@ -199,7 +199,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
               <div className="absolute left-[30px] top-8 bottom-8 w-1 bg-slate-100 dark:bg-slate-800 -z-10 rounded-full"></div>
               {/* Barra de progreso animada */}
               <div
-                className="absolute left-[30px] top-8 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 -z-10 rounded-full transition-all duration-1000"
+                className="absolute left-[30px] top-8 w-1 bg-gradient-to-b from-uflo-teal to-uflo-navy -z-10 rounded-full transition-all duration-1000"
                 style={{ height: `${(currentStepIndex / (steps.length - 1)) * 85}%` }}
               ></div>
 
@@ -219,7 +219,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                                               isCompleted
                                                 ? "bg-emerald-500 border-white dark:border-slate-900 text-white shadow-xl shadow-emerald-500/30"
                                                 : isActive
-                                                  ? "bg-white dark:bg-slate-900 border-blue-500 text-blue-600 shadow-2xl ring-4 ring-blue-100 dark:ring-blue-900/30 scale-110"
+                                                  ? "bg-white dark:bg-slate-900 border-uflo-teal text-uflo-teal shadow-2xl ring-4 ring-uflo-teal/10 dark:ring-uflo-teal/20 scale-110"
                                                   : "bg-slate-100 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400"
                                             }
                                         `}
@@ -233,7 +233,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                     <div>
                       <div className="flex items-center gap-3 mb-1">
                         <h4
-                          className={`text-xl font-black tracking-tight ${isActive ? "text-blue-700 dark:text-blue-400" : isCompleted ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}`}
+                          className={`text-xl font-black tracking-tight ${isActive ? "text-uflo-teal dark:text-[#5EE6B7]" : isCompleted ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}`}
                         >
                           {step.title}
                         </h4>
@@ -243,7 +243,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                           </span>
                         )}
                         {isActive && (
-                          <span className="text-[9px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-black uppercase tracking-widest animate-pulse">
+                          <span className="text-[9px] bg-uflo-teal/10 text-uflo-teal dark:text-[#5EE6B7] px-2 py-0.5 rounded-md font-black uppercase tracking-widest animate-pulse">
                             EN CURSO
                           </span>
                         )}
@@ -296,7 +296,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
 
             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 mb-8 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-1000 ${isPaused ? "bg-amber-400 striped-bar" : daysDisplay < 0 && !isFinished && !isPaused ? "bg-rose-500" : "bg-blue-600"}`}
+                className={`h-full rounded-full transition-all duration-1000 ${isPaused ? "bg-amber-400 striped-bar" : daysDisplay < 0 && !isFinished && !isPaused ? "bg-rose-500" : "bg-uflo-teal"}`}
                 style={{ width: `${percentage}%` }}
               ></div>
             </div>
@@ -320,7 +320,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
 
           {/* Tarjeta de Soporte - Adaptada a Modo Claro y Oscuro */}
           <div className="glass-panel rounded-[3rem] p-10 shadow-xl border border-slate-200 dark:border-slate-700 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 dark:bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-uflo-teal/10 dark:bg-uflo-teal/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
 
             <h3 className="font-bold text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-[0.2em] mb-4">
               Soporte y Consultas
@@ -337,7 +337,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                   ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${firstName}`
                   : undefined
               }
-              className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-all ${daysDisplay < 0 && !isFinished && !isPaused ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed"}`}
+              className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-all ${daysDisplay < 0 && !isFinished && !isPaused ? "bg-uflo-teal hover:bg-[#2e9b76] text-white shadow-lg shadow-uflo-teal/20" : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed"}`}
             >
               <span className="material-icons">
                 {daysDisplay < 0 && !isFinished && !isPaused ? "mail" : "lock_clock"}

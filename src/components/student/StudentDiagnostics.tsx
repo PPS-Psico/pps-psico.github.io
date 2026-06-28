@@ -12,11 +12,23 @@ import {
 import Card from "../ui/Card";
 import Input from "../ui/Input";
 import Button from "../ui/Button";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+
+interface EnrollmentItem {
+  id: string;
+  created_at?: string;
+  estado_inscripcion?: string;
+}
+
+interface DiagnosticsResult {
+  student: { exists: boolean; count: number; records: Record<string, unknown>[] };
+  enrollments: { count: number; items: EnrollmentItem[] };
+}
 
 const StudentDiagnostics: React.FC = () => {
   const [legajo, setLegajo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<DiagnosticsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleCheck = async () => {
@@ -28,14 +40,14 @@ const StudentDiagnostics: React.FC = () => {
     try {
       // 1. Check Student Record
       const { data: students, error: dbError } = await supabase
-        .from(TABLE_NAME_ESTUDIANTES as any)
+        .from(TABLE_NAME_ESTUDIANTES)
         .select("*")
         .eq(FIELD_LEGAJO_ESTUDIANTES, legajo);
 
       if (dbError) throw dbError;
 
-      // Ensure students is treated as an array of any to access properties safely
-      const safeStudents = (students || []) as any[];
+      // Ensure students is treated as an array of records to access properties safely
+      const safeStudents = (students || []) as unknown as Record<string, unknown>[];
 
       const studentData = {
         exists: safeStudents.length > 0,
@@ -43,18 +55,18 @@ const StudentDiagnostics: React.FC = () => {
         records: safeStudents,
       };
 
-      let convocatoriasData = { count: 0, items: [] };
+      let convocatoriasData: { count: number; items: EnrollmentItem[] } = { count: 0, items: [] };
 
       // 2. Check Enrollments if student exists
       if (safeStudents.length === 1) {
-        const studentId = safeStudents[0].id;
+        const studentId = safeStudents[0].id as string;
         const { data: convs, error: convError } = await supabase
-          .from(TABLE_NAME_CONVOCATORIAS as any)
+          .from(TABLE_NAME_CONVOCATORIAS)
           .select("id, created_at, estado_inscripcion")
           .eq(FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS, studentId);
 
         if (!convError && convs) {
-          convocatoriasData = { count: convs.length, items: convs as any };
+          convocatoriasData = { count: convs.length, items: convs as EnrollmentItem[] };
         }
       }
 
@@ -62,8 +74,8 @@ const StudentDiagnostics: React.FC = () => {
         student: studentData,
         enrollments: convocatoriasData,
       });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -118,9 +130,9 @@ const StudentDiagnostics: React.FC = () => {
             </p>
           </div>
 
-          {result.student.records.map((s: any, idx: number) => (
+          {result.student.records.map((s: Record<string, unknown>, idx: number) => (
             <div
-              key={s.id}
+              key={s.id as string}
               className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-sm space-y-2 shadow-sm"
             >
               <h5 className="font-bold text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700 pb-1 mb-2">
@@ -129,13 +141,15 @@ const StudentDiagnostics: React.FC = () => {
               <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                 <div>
                   <span className="text-slate-400">ID Interno:</span>{" "}
-                  <span className="font-mono text-xs">{s.id}</span>
+                  <span className="font-mono text-xs">{s.id as string}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400">Nombre:</span> {s[FIELD_NOMBRE_ESTUDIANTES]}
+                  <span className="text-slate-400">Nombre:</span>{" "}
+                  {s[FIELD_NOMBRE_ESTUDIANTES] as string}
                 </div>
                 <div>
-                  <span className="text-slate-400">Email:</span> {s[FIELD_CORREO_ESTUDIANTES]}
+                  <span className="text-slate-400">Email:</span>{" "}
+                  {s[FIELD_CORREO_ESTUDIANTES] as string}
                 </div>
                 <div>
                   <span className="text-slate-400">Usuario Vinculado (Auth):</span>
@@ -159,7 +173,7 @@ const StudentDiagnostics: React.FC = () => {
                 Inscripciones detectadas ({result.enrollments.count})
               </h4>
               <ul className="list-disc pl-4 text-xs text-blue-700 dark:text-blue-300">
-                {result.enrollments.items.map((e: any) => (
+                {result.enrollments.items.map((e: EnrollmentItem) => (
                   <li key={e.id}>
                     ID: {e.id} - Estado: {e.estado_inscripcion}
                   </li>

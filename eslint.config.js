@@ -76,11 +76,23 @@ export default [
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
       'react/jsx-uses-react': 'off',
-      'react-hooks/rules-of-hooks': 'warn',
-      'react-hooks/exhaustive-deps': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
-      'no-console': 'off',
+      // Bug real: usar hooks fuera del tope de un componente rompe React.
+      // Debe ser error, no warning.
+      'react-hooks/rules-of-hooks': 'error',
+      // Dependencias faltantes en hooks = fuente clasica de stale state.
+      // Se sube a warn primero para medir impacto antes de escalar a error.
+      'react-hooks/exhaustive-deps': 'warn',
+      // El tipado fuerte se anula con `any`. Se marca como warn para visibilizar
+      // la deuda (684 ocurrencias) sin frenar el build mientras se reduce.
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // Codigo muerto: variables/imports sin usar. Warn para limpieza gradual.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
+      // El logger centralizado es el unico canal permitido. console.warn/error
+      // se toleran para soporte; el resto se silencia en build de produccion.
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off',
       'no-undef': 'off',
       'security/detect-object-injection': 'warn',

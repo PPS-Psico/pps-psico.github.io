@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { LanzamientoPPS, GroupedSeleccionados, Estudiante } from "../types";
+import { LanzamientoPPS, GroupedSeleccionados, Estudiante, EnrollmentFormData } from "../types";
 
-type OnSubmitEnrollment = (formData: any) => Promise<void>;
-type OnSubmitSolicitudPPS = (formData: any) => Promise<void>;
+type OnSubmitEnrollment = (formData: EnrollmentFormData) => Promise<void>;
+type OnSubmitSolicitudPPS = (formData: Record<string, unknown>) => Promise<void>;
 
 interface ModalContextType {
   // Generic Modal

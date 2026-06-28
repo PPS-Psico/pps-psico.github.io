@@ -17,6 +17,7 @@ import Toast from "./ui/Toast";
 import { safeGetId, parseToUTCDate } from "../utils/formatters";
 import { useQueryClient } from "@tanstack/react-query";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 const OrphanFixer: React.FC = () => {
   const [mismatchedCount, setMismatchedCount] = useState(0);
@@ -60,15 +61,15 @@ const OrphanFixer: React.FC = () => {
 
       const activeStudents = new Set<string>();
 
-      (convRes.data as any[])?.forEach((c: any) => {
+      (convRes.data as Record<string, unknown>[] | null)?.forEach((c) => {
         const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
         const lId = safeGetId(c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]);
         if (sId && lId && validLaunchIds.has(lId)) activeStudents.add(sId);
       });
 
-      (pracRes.data as any[])?.forEach((p: any) => {
+      (pracRes.data as Record<string, unknown>[] | null)?.forEach((p) => {
         const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
-        const date = parseToUTCDate(p.fecha_inicio);
+        const date = parseToUTCDate(p.fecha_inicio as string);
         if (sId && date?.getUTCFullYear() === currentYear) activeStudents.add(sId);
       });
 
@@ -85,7 +86,7 @@ const OrphanFixer: React.FC = () => {
 
       setIdsToFix(toFix);
       setMismatchedCount(toFix.length);
-    } catch (e: any) {
+    } catch (e) {
       logger.error(e);
     } finally {
       setIsScanning(false);
@@ -110,8 +111,8 @@ const OrphanFixer: React.FC = () => {
       setMismatchedCount(0);
       setIdsToFix([]);
       queryClient.invalidateQueries();
-    } catch (e: any) {
-      setToast({ m: `Error: ${e.message}`, t: "error" });
+    } catch (e) {
+      setToast({ m: `Error: ${getErrorMessage(e)}`, t: "error" });
     } finally {
       setIsFixing(false);
     }

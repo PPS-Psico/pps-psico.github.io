@@ -400,7 +400,7 @@ function useTallerStats(isTestingMode: boolean) {
           supabase
             .from(TABLE_NAME_INSTITUCIONES)
             .select("*", { count: "exact", head: true })
-            .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, String(year)),
+            .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, year),
         ]);
         return {
           penalizaciones: pen.count ?? undefined,

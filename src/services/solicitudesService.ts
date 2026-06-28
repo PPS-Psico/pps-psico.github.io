@@ -283,6 +283,7 @@ export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?:
     nota: null,
     lanzamiento_id: null,
     nombre_institucion: nombreInstitucion,
+    es_online: solicitud.es_online ?? false,
   };
 
   const { data: practica, error: practicaError } = await supabase

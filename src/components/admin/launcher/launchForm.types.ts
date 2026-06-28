@@ -39,6 +39,13 @@ export type FormData = {
   mensajeWhatsApp: string;
   actividadesLabel: string;
   horariosFijos: boolean;
+  /**
+   * Opt-in: marcar que esta PPS se lanza tras RENOVAR el convenio con la
+   * institución (re-firma del específico, ~cada 2 años). Solo se tilda en la
+   * primera PPS posterior a la renovación; el resto van sin tildar. Al lanzar,
+   * crea un registro en `convenios` con es_renovacion=true.
+   */
+  convenioRenovado: boolean;
 };
 
 export interface ScheduleEntry {
@@ -69,6 +76,7 @@ export const initialState: FormData = {
   mensajeWhatsApp: "",
   actividadesLabel: "Actividades",
   horariosFijos: false,
+  convenioRenovado: false,
 };
 
 export const mockInstitutions = [

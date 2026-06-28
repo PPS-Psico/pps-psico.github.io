@@ -264,10 +264,70 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
 }) => {
   const { logout, isSuperUserMode, isJefeMode, isDirectivoMode } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, showToast } = useNotifications();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   const showNotifications = isSuperUserMode || isJefeMode || isDirectivoMode;
+
+  const handleCopyMoodleTemplate = () => {
+    const templateHtml = `<div style="max-width:720px;border:1px solid #ECEAE2;border-radius:18px;overflow:hidden;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B0F19;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#203B73;background:linear-gradient(110deg,#46253D 0%,#203B73 52%,#3CB88D 100%);">
+    <tr>
+      <td style="padding:20px 24px;color:#ffffff;">
+        <div style="font-size:21px;font-weight:700;letter-spacing:-0.3px;">[Nombre de la Institución]</div>
+        <div style="font-size:12.5px;color:#ffffff;opacity:0.88;margin-top:3px;">Entrega de informes &middot; Área [Clínica/Educacional/Laboral/Comunitaria]</div>
+      </td>
+      <td align="right" style="padding:20px 24px;">
+        <span style="display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,0.18);color:#ffffff;padding:6px 11px;border-radius:999px;">PPS 2026</span>
+      </td>
+    </tr>
+  </table>
+  <div style="padding:22px 24px;background:#ffffff;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:8px 0;margin-bottom:16px;">
+      <tr>
+        <td width="33%" style="background:#F1F0EA;border:1px solid #E5E3DA;border-radius:12px;padding:11px 14px;">
+          <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#A0A4B0;">Desde</div>
+          <div style="font-size:15px;font-weight:700;color:#0B0F19;margin-top:2px;">[Fecha Inicio]</div>
+        </td>
+        <td width="33%" style="background:#F1F0EA;border:1px solid #E5E3DA;border-radius:12px;padding:11px 14px;">
+          <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#A0A4B0;">Fecha de entrega</div>
+          <div style="font-size:15px;font-weight:700;color:#0B0F19;margin-top:2px;">[Fecha Entrega]</div>
+        </td>
+        <td width="33%" style="background:#F1F0EA;border:1px solid #E5E3DA;border-radius:12px;padding:11px 14px;">
+          <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#A0A4B0;">Fecha límite</div>
+          <div style="font-size:15px;font-weight:700;color:#0B0F19;margin-top:2px;">[Fecha Límite]</div>
+        </td>
+      </tr>
+    </table>
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#6A7081;font-weight:700;margin-bottom:9px;">Documentación a subir</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:8px 0;">
+      <tr>
+        <td width="50%" style="background:#F1F0EA;border:1px solid #E5E3DA;border-radius:12px;padding:13px 15px;vertical-align:top;">
+          <div style="font-size:14px;font-weight:700;color:#0B0F19;">Planilla de asistencia firmada</div>
+          <div style="font-size:12px;color:#6A7081;margin-top:2px;">Firmada por tu referente institucional</div>
+        </td>
+        <td width="50%" style="background:#F1F0EA;border:1px solid #E5E3DA;border-radius:12px;padding:13px 15px;vertical-align:top;">
+          <div style="font-size:14px;font-weight:700;color:#0B0F19;">Informe final</div>
+          <div style="font-size:12px;color:#6A7081;margin-top:2px;">PDF &middot; una sola entrega por institución</div>
+        </td>
+      </tr>
+    </table>
+    <div style="margin-top:14px;padding:13px 16px;background:#F1F0EA;border:1px solid #E5E3DA;border-left:3px solid #203B73;border-radius:12px;font-size:13px;line-height:1.5;color:#2B3245;">
+      <strong style="color:#0B0F19;">Consultas:</strong> solo por correo institucional. El WhatsApp y el chat del campus no son canales de respuesta para consultas individuales.
+    </div>
+  </div>
+</div>`;
+
+    navigator.clipboard
+      .writeText(templateHtml)
+      .then(() => {
+        showToast("HTML para Moodle copiado al portapapeles", "success");
+      })
+      .catch((err) => {
+        console.error("Failed to copy Moodle HTML template", err);
+        showToast("Error al copiar al portapapeles", "error");
+      });
+  };
 
   return (
     <header className="admin-topbar no-print">
@@ -351,6 +411,15 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
               {isNotifOpen && <NotificationsPopover onClose={() => setIsNotifOpen(false)} />}
             </div>
           )}
+
+          <button
+            className="admin-icon-btn"
+            onClick={handleCopyMoodleTemplate}
+            aria-label="Copiar encabezado de marca Moodle"
+            title="Copiar encabezado de marca Moodle"
+          >
+            <span className="material-icons">school</span>
+          </button>
 
           <button
             className="admin-icon-btn"

@@ -115,12 +115,13 @@ describe("Flujo de Inscripción de Estudiante (Integration Test)", () => {
     await waitFor(() => expect(mockDb.data.convocatorias.length).toBe(convocatoriasAntes + 1));
 
     const nueva = mockDb.data.convocatorias.find(
-      (c: any) =>
-        c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === "lanz_3" && c.id.startsWith("mock_")
+      (c) =>
+        c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === "lanz_3" &&
+        (c.id as string).startsWith("mock_")
     );
     expect(nueva).toBeDefined();
-    expect(nueva[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]).toBe(TEST_STUDENT_ID);
-    expect(normalizeStringForComparison(nueva[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS])).toBe(
+    expect(nueva![FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]).toBe(TEST_STUDENT_ID);
+    expect(normalizeStringForComparison(nueva![FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS])).toBe(
       "inscripto"
     );
   });

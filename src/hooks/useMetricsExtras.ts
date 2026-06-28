@@ -661,8 +661,8 @@ export const useMetricsTimeline = ({
         const { data } = await supabase
           .from(TABLE_NAME_INSTITUCIONES)
           .select(FIELD_NOMBRE_INSTITUCIONES)
-          // convenio_nuevo migró a smallint (año): comparamos con el número.
-          .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, year as unknown as string);
+          // convenio_nuevo es smallint (año): comparamos con el número.
+          .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, year);
         const nombres = Array.from(
           new Set(
             (data || []).map((i: Record<string, unknown>) =>

@@ -269,7 +269,18 @@ BEGIN
     ),
     'target_year', p_year
   ) INTO result;
-  
+
   RETURN result;
 END;
 $$;
+
+-- ----------------------------------------------------------------------------
+-- Convenios (nuevos vs renovaciones + próximos a vencer)
+-- Definidos en la migración 20260625120000_create_convenios.sql:
+--   · get_convenios_kpis(p_year)        → { nuevos_convenios, renovaciones,
+--                                            convenios_por_vencer, target_year }
+--   · get_convenios_por_vencer(p_days)  → tabla para el panel de vencimientos
+--   · get_convenios_list(p_year,p_kind) → drill de 'nuevos' | 'renovaciones'
+-- `nuevos_convenios` del KPI principal sigue leyendo instituciones.convenio_nuevo
+-- (cache derivado por trigger = año del primer convenio no-renovación).
+-- ----------------------------------------------------------------------------

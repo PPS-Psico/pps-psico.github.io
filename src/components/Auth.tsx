@@ -1,19 +1,172 @@
 import React, { useState } from "react";
-import MiPanelLogo from "./MiPanelLogo";
-import UfloLogo from "./UfloLogo";
 import ThemeToggle from "./layout/ThemeToggle";
 import { useAuth } from "../contexts/AuthContext";
 import { useModal } from "../contexts/ModalContext";
 import { useTheme } from "../contexts/ThemeContext";
-import Input from "./ui/Input";
 import { useAuthLogic } from "../hooks/useAuthLogic";
+import { useMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
 import {
   FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
   FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
 } from "../constants";
 import { toTitleCase } from "../utils/formatters";
-import Button from "./ui/Button";
+
+/* ── Íconos de trazo (lucide-style) — misma firma que ds/Icon ── */
+type AuthIconName =
+  | "idcard"
+  | "fingerprint"
+  | "mail"
+  | "phone"
+  | "lock"
+  | "lockreset"
+  | "eye"
+  | "eyeoff"
+  | "arrow"
+  | "shieldcheck"
+  | "chart"
+  | "cap"
+  | "check"
+  | "alert";
+
+const AUTH_PATHS: Record<AuthIconName, React.ReactNode> = {
+  idcard: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="9" cy="12" r="2.5" />
+      <path d="M14 10h4M14 14h4" />
+    </>
+  ),
+  fingerprint: (
+    <>
+      <path d="M5 11a7 7 0 0 1 14 0" />
+      <path d="M8.5 11a3.5 3.5 0 0 1 7 0c0 4-.5 7-1.5 9" />
+      <path d="M12 11v3c0 3 .5 5 1 7" />
+      <path d="M8 13c0 4-.7 6.5-1.5 8" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  phone: (
+    <>
+      <rect x="6" y="3" width="12" height="18" rx="2" />
+      <path d="M11 18h2" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
+  lockreset: (
+    <>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 7-2.5" />
+      <path d="M15 3v3h-3" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  eyeoff: (
+    <>
+      <path d="M10.7 5.1A9.6 9.6 0 0 1 12 5c6.5 0 10 7 10 7a13 13 0 0 1-2.2 2.9" />
+      <path d="M6.6 6.6A13 13 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      <path d="M2 2l20 20" />
+    </>
+  ),
+  arrow: (
+    <>
+      <path d="M5 12h14" />
+      <path d="M13 5l7 7-7 7" />
+    </>
+  ),
+  shieldcheck: (
+    <>
+      <path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z" />
+      <path d="M9 12l2 2 4-4" />
+    </>
+  ),
+  chart: (
+    <>
+      <path d="M3 3v18h18" />
+      <path d="M7 14l3-3 3 3 5-6" />
+    </>
+  ),
+  cap: (
+    <>
+      <path d="M12 4 2 9l10 5 10-5-10-5z" />
+      <path d="M6 11v4c0 1.5 2.7 3 6 3s6-1.5 6-3v-4" />
+    </>
+  ),
+  check: <path d="M5 13l4 4L19 7" />,
+  alert: (
+    <>
+      <path d="M10.3 4 3.3 16A2 2 0 0 0 5 19h14a2 2 0 0 0 1.7-3l-7-12a2 2 0 0 0-3.4 0z" />
+      <path d="M12 9v4" />
+      <circle cx="12" cy="16.5" r="0.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+};
+
+const AuthIcon: React.FC<{ name: AuthIconName; size?: number; strokeWidth?: number }> = ({
+  name,
+  size = 18,
+  strokeWidth = 1.7,
+}) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    {AUTH_PATHS[name]}
+  </svg>
+);
+
+/* ── Campo editorial (scope .ed) ── */
+interface EdInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  icon: AuthIconName;
+  hasError?: boolean;
+  reveal?: { shown: boolean; toggle: () => void };
+}
+const EdInput: React.FC<EdInputProps> = ({ icon, hasError, reveal, className = "", ...props }) => (
+  <div className="ed-field">
+    <span className="ed-field__icon">
+      <AuthIcon name={icon} size={18} />
+    </span>
+    <input
+      {...props}
+      name={props.name ?? props.id}
+      className={`ed-input ${hasError ? "ed-input--error" : ""} ${className}`}
+    />
+    {reveal && (
+      <button
+        type="button"
+        onClick={reveal.toggle}
+        className="ed-field__reveal"
+        aria-label={reveal.shown ? "Ocultar" : "Mostrar"}
+      >
+        <AuthIcon name={reveal.shown ? "eyeoff" : "eye"} size={19} />
+      </button>
+    )}
+  </div>
+);
 
 const Auth: React.FC = () => {
   const { login } = useAuth();
@@ -47,6 +200,20 @@ const Auth: React.FC = () => {
 
   const [showPassword, setShowPassword] = useState(false);
 
+  // Ingreso automático desde el campus Moodle (si el email matchea un estudiante).
+  const autoLoginStatus = useMoodleAutoLogin();
+
+  // Embebido en el campus: forzamos el layout de escritorio (ajustado al ancho
+  // de la columna) en vez del mobile, aunque el iframe sea más angosto que el
+  // breakpoint normal.
+  const [embedded] = useState(() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true; // cross-origin ⇒ embebidos
+    }
+  });
+
   const copyLogsToClipboard = () => {
     const logsText = debugLogs.join("\n");
     navigator.clipboard.writeText(logsText).then(() => {
@@ -62,57 +229,73 @@ const Auth: React.FC = () => {
     return toTitleCase(foundStudent[FIELD_NOMBRE_ESTUDIANTES] || "");
   };
 
+  const submitBtn = (label: string, withArrow = false) => (
+    <button type="submit" disabled={isLoading} className="ed-btn-primary">
+      {isLoading ? (
+        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <>
+          <span>{label}</span>
+          {withArrow && (
+            <span className="transition-transform group-hover:translate-x-1">
+              <AuthIcon name="arrow" size={20} strokeWidth={2} />
+            </span>
+          )}
+        </>
+      )}
+    </button>
+  );
+
+  const backLink = (label: string) => (
+    <button
+      type="button"
+      onClick={() => setMode("login")}
+      className="w-full text-center text-sm font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors p-2"
+    >
+      {label}
+    </button>
+  );
+
   // --- SUB-COMPONENTES DE FORMULARIO ---
 
   const renderLogin = () => (
     <>
-      <div className="text-left mb-10">
-        <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-          Hola de nuevo.
+      <div className="text-left mb-9 hidden lg:block">
+        <span className="ed-eyebrow block mb-4">Acceso · Panel PPS</span>
+        <h2 className="au-h text-[52px]">
+          Hola <em>de nuevo.</em>
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-3 text-lg font-medium">
-          Ingresa a tu panel académico.
+        <p className="text-[var(--ink-muted)] mt-3 text-[15.5px] leading-relaxed max-w-sm">
+          Ingresá con tu legajo para ver tus prácticas, convocatorias y horas acreditadas.
         </p>
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-6">
-        <div className="space-y-6">
-          <Input
+        <div className="space-y-5">
+          <EdInput
             id="legajo"
             type="text"
             value={legajo}
             onChange={(e) => setLegajo(e.target.value)}
             placeholder="Número de Legajo"
-            icon="badge"
+            icon="idcard"
             disabled={isLoading}
             autoComplete="username"
             autoFocus
-            className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 h-14 font-semibold"
           />
 
-          <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Contraseña"
-              icon="lock"
-              disabled={isLoading}
-              autoComplete="current-password"
-              className={`bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 h-14 font-semibold ${fieldError === "password" ? "border-red-500 focus:border-red-500 ring-1 ring-red-500/20" : ""}`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors z-10"
-              aria-label={showPassword ? "Ocultar" : "Mostrar"}
-            >
-              <span className="material-icons !text-xl">
-                {showPassword ? "visibility_off" : "visibility"}
-              </span>
-            </button>
-          </div>
+          <EdInput
+            id="password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Contraseña"
+            icon="lock"
+            disabled={isLoading}
+            autoComplete="current-password"
+            hasError={fieldError === "password"}
+            reveal={{ shown: showPassword, toggle: () => setShowPassword(!showPassword) }}
+          />
 
           <div className="flex justify-between items-center px-1">
             <label
@@ -127,13 +310,13 @@ const Auth: React.FC = () => {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   disabled={isLoading}
-                  className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-slate-300 dark:border-slate-600 bg-transparent transition-all checked:border-slate-900 checked:bg-slate-900 dark:checked:border-white dark:checked:bg-white"
+                  className="ed-check peer"
                 />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white dark:text-slate-900 opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity">
-                  <span className="material-icons !text-[14px] font-bold">check</span>
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--bg-elevated)] opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity">
+                  <AuthIcon name="check" size={13} strokeWidth={2.6} />
                 </span>
               </div>
-              <span className="text-sm font-semibold text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+              <span className="text-sm font-semibold text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors">
                 Recordarme
               </span>
             </label>
@@ -141,42 +324,22 @@ const Auth: React.FC = () => {
             <button
               type="button"
               onClick={() => setMode("recover")}
-              className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+              className="text-sm font-bold text-[var(--accent-text)] hover:opacity-80 transition-opacity"
             >
               ¿Olvidaste tu contraseña?
             </button>
           </div>
         </div>
 
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="group w-full relative overflow-hidden bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg py-4 px-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/20 dark:hover:shadow-white/10 hover:-translate-y-1 active:scale-95 disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
-            <div className="relative flex items-center justify-center gap-3">
-              {isLoading ? (
-                <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <span>Iniciar Sesión</span>
-                  <span className="material-icons !text-2xl transition-transform group-hover:translate-x-1">
-                    arrow_forward
-                  </span>
-                </>
-              )}
-            </div>
-          </button>
-        </div>
+        <div className="group pt-2">{submitBtn("Iniciar Sesión", true)}</div>
 
-        <div className="mt-8 flex items-center justify-center pt-8 border-t border-slate-100 dark:border-slate-800">
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+        <div className="mt-8 flex items-center justify-center pt-8 border-t border-[var(--line)]">
+          <p className="text-[var(--ink-muted)] text-sm font-medium">
             ¿Primera vez aquí?{" "}
             <button
               type="button"
               onClick={() => setMode("register")}
-              className="font-bold text-slate-900 dark:text-white hover:underline transition-all"
+              className="font-bold text-[var(--ink)] hover:underline transition-all"
             >
               Crear cuenta de estudiante
             </button>
@@ -191,47 +354,39 @@ const Auth: React.FC = () => {
       {registerStep === 1 ? (
         <>
           <div className="text-left mb-8">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              Crear Cuenta
+            <span className="ed-eyebrow block mb-3">Registro · Paso 1 de 2</span>
+            <h2 className="au-h text-[40px]">
+              Crear <em>cuenta.</em>
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 text-base leading-relaxed">
+            <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
               Ingresa tu legajo para verificar si estás habilitado.
             </p>
           </div>
-          <Input
+          <EdInput
             id="legajo"
             type="text"
             value={legajo}
             onChange={(e) => setLegajo(e.target.value)}
             placeholder="Número de Legajo"
-            icon="badge"
+            icon="idcard"
             disabled={isLoading}
             autoFocus
-            className="bg-slate-50 dark:bg-slate-800/50 h-14"
           />
-          <div className="pt-2">
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 h-14 text-lg rounded-2xl"
-              size="lg"
-            >
-              Verificar
-            </Button>
-          </div>
+          <div className="pt-2">{submitBtn("Verificar")}</div>
         </>
       ) : (
         <>
           <div className="text-left mb-8">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              ¡Hola, {getDisplayName()}!
+            <span className="ed-eyebrow block mb-3">Registro · Paso 2 de 2</span>
+            <h2 className="au-h text-[40px]">
+              ¡Hola, <em>{getDisplayName()}!</em>
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 text-base leading-relaxed">
+            <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
               Confirma tus datos y crea una contraseña segura.
             </p>
           </div>
           <div className="space-y-4">
-            <Input
+            <EdInput
               name="dni"
               type="text"
               placeholder="DNI (sin puntos)"
@@ -241,29 +396,26 @@ const Auth: React.FC = () => {
               disabled={isLoading}
               inputMode="numeric"
               autoFocus
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
-            <Input
+            <EdInput
               name="correo"
               type="email"
               placeholder="Correo electrónico"
-              icon="email"
+              icon="mail"
               value={verificationData.correo}
               onChange={handleVerificationDataChange}
               disabled={isLoading}
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
-            <Input
+            <EdInput
               name="telefono"
               type="tel"
               placeholder="Número de Celular"
-              icon="smartphone"
+              icon="phone"
               value={verificationData.telefono}
               onChange={handleVerificationDataChange}
               disabled={isLoading}
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
-            <Input
+            <EdInput
               id="password"
               type="password"
               value={password}
@@ -271,9 +423,8 @@ const Auth: React.FC = () => {
               placeholder="Nueva Contraseña (mín. 6 caracteres)"
               icon="lock"
               disabled={isLoading}
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
-            <Input
+            <EdInput
               id="confirmPassword"
               type="password"
               value={confirmPassword}
@@ -281,30 +432,12 @@ const Auth: React.FC = () => {
               placeholder="Confirmar Contraseña"
               icon="lock"
               disabled={isLoading}
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
           </div>
-          <div className="pt-4">
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 h-14 text-lg rounded-2xl"
-              size="lg"
-            >
-              Crear Cuenta
-            </Button>
-          </div>
+          <div className="pt-2">{submitBtn("Crear Cuenta")}</div>
         </>
       )}
-      <div className="text-center pt-2">
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          className="text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors p-2"
-        >
-          Volver a Iniciar Sesión
-        </button>
-      </div>
+      <div className="text-center pt-2">{backLink("Volver a Iniciar Sesión")}</div>
     </form>
   );
 
@@ -313,15 +446,16 @@ const Auth: React.FC = () => {
       {migrationStep === 1 ? (
         <>
           <div className="text-left mb-8">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              Activación
+            <span className="ed-eyebrow block mb-3">Activación · Paso 1 de 2</span>
+            <h2 className="au-h text-[40px]">
+              Activá <em>tu acceso.</em>
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 text-base leading-relaxed">
+            <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
               Valida tu identidad para configurar el nuevo acceso.
             </p>
           </div>
           <div className="space-y-4">
-            <Input
+            <EdInput
               name="dni"
               type="text"
               placeholder="DNI (sin puntos)"
@@ -330,42 +464,32 @@ const Auth: React.FC = () => {
               onChange={handleVerificationDataChange}
               disabled={isLoading}
               autoFocus
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
-            <Input
+            <EdInput
               name="correo"
               type="email"
               placeholder="Correo registrado"
-              icon="email"
+              icon="mail"
               value={verificationData.correo}
               onChange={handleVerificationDataChange}
               disabled={isLoading}
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
           </div>
-          <div className="pt-4">
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 h-14 text-lg rounded-2xl"
-              size="lg"
-            >
-              Validar
-            </Button>
-          </div>
+          <div className="pt-2">{submitBtn("Validar")}</div>
         </>
       ) : (
         <>
           <div className="text-left mb-8">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              Identidad Verificada
+            <span className="ed-eyebrow block mb-3">Activación · Paso 2 de 2</span>
+            <h2 className="au-h text-[40px]">
+              Identidad <em>verificada.</em>
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 text-base leading-relaxed">
+            <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
               Crea tu nueva contraseña.
             </p>
           </div>
           <div className="space-y-4">
-            <Input
+            <EdInput
               id="password"
               type="password"
               value={password}
@@ -374,9 +498,8 @@ const Auth: React.FC = () => {
               icon="lock"
               disabled={isLoading}
               autoFocus
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
-            <Input
+            <EdInput
               id="confirmPassword"
               type="password"
               value={confirmPassword}
@@ -384,44 +507,23 @@ const Auth: React.FC = () => {
               placeholder="Confirmar Contraseña"
               icon="lock"
               disabled={isLoading}
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
             />
           </div>
-          <div className="pt-4">
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 h-14 text-lg rounded-2xl"
-              size="lg"
-            >
-              Establecer
-            </Button>
-          </div>
+          <div className="pt-2">{submitBtn("Establecer")}</div>
         </>
       )}
-      <div className="text-center pt-2">
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          className="text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors p-2"
-        >
-          Cancelar
-        </button>
-      </div>
+      <div className="text-center pt-2">{backLink("Cancelar")}</div>
     </form>
   );
 
   const renderRecover = () => (
     <form onSubmit={handleFormSubmit} className="space-y-8 animate-fade-in-up">
       <div className="text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold mb-6 border border-slate-200 dark:border-slate-700">
-          <span className="material-icons !text-sm">lock_reset</span>
-          Recuperación
-        </div>
-        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-          Recuperar Acceso
+        <span className="ed-eyebrow block mb-4">Recuperación de acceso</span>
+        <h2 className="au-h text-[40px]">
+          Recuperar <em>acceso.</em>
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-base leading-relaxed">
+        <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
           {resetStep === "verify"
             ? "Completa los datos para validar tu identidad."
             : resetStep === "reset_password"
@@ -432,17 +534,16 @@ const Auth: React.FC = () => {
 
       {resetStep === "verify" && (
         <div className="space-y-4 animate-fade-in">
-          <Input
+          <EdInput
             id="rec-legajo"
             type="text"
             value={legajo}
             onChange={(e) => setLegajo(e.target.value)}
             placeholder="Número de Legajo"
-            icon="badge"
+            icon="idcard"
             disabled={isLoading}
-            className="bg-slate-50 dark:bg-slate-800/50 h-14"
           />
-          <Input
+          <EdInput
             name="dni"
             type="text"
             placeholder="DNI"
@@ -451,104 +552,70 @@ const Auth: React.FC = () => {
             onChange={handleVerificationDataChange}
             disabled={isLoading}
             inputMode="numeric"
-            className="bg-slate-50 dark:bg-slate-800/50 h-14"
           />
-          <Input
+          <EdInput
             name="correo"
             type="email"
             placeholder="Correo registrado"
-            icon="email"
+            icon="mail"
             value={verificationData.correo}
             onChange={handleVerificationDataChange}
             disabled={isLoading}
-            className="bg-slate-50 dark:bg-slate-800/50 h-14"
           />
-          <Input
+          <EdInput
             name="telefono"
             type="tel"
             placeholder="Celular registrado"
-            icon="smartphone"
+            icon="phone"
             value={verificationData.telefono}
             onChange={handleVerificationDataChange}
             disabled={isLoading}
-            className="bg-slate-50 dark:bg-slate-800/50 h-14"
           />
         </div>
       )}
 
       {resetStep === "reset_password" && (
         <div className="space-y-5 animate-fade-in">
-          <div className="relative">
-            <Input
-              id="new-password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Nueva Contraseña"
-              icon="lock"
-              disabled={isLoading}
-              autoFocus
-              className="bg-slate-50 dark:bg-slate-800/50 h-14"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors z-10"
-            >
-              <span className="material-icons !text-xl">
-                {showPassword ? "visibility_off" : "visibility"}
-              </span>
-            </button>
-          </div>
-          <Input
+          <EdInput
+            id="new-password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Nueva Contraseña"
+            icon="lock"
+            disabled={isLoading}
+            autoFocus
+            reveal={{ shown: showPassword, toggle: () => setShowPassword(!showPassword) }}
+          />
+          <EdInput
             id="confirm-password"
             type={showPassword ? "text" : "password"}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Repetir Contraseña"
-            icon="lock_reset"
+            icon="lockreset"
             disabled={isLoading}
-            className="bg-slate-50 dark:bg-slate-800/50 h-14"
           />
         </div>
       )}
 
       {resetStep === "success" && (
-        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-8 rounded-2xl text-center animate-fade-in">
-          <div className="mx-auto bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 w-16 h-16 rounded-full flex items-center justify-center mb-6 shadow-sm">
-            <span className="material-icons !text-4xl">check</span>
+        <div className="bg-[var(--tint)] border border-[var(--accent-soft)] p-8 rounded-2xl text-center animate-fade-in">
+          <div className="mx-auto bg-[var(--accent)] text-[var(--on-accent)] w-16 h-16 rounded-full flex items-center justify-center mb-6 shadow-sm">
+            <AuthIcon name="check" size={30} strokeWidth={2.4} />
           </div>
-          <h3 className="font-black text-xl text-slate-900 dark:text-white mb-2">¡Listo!</h3>
-          <p className="text-slate-600 dark:text-slate-300 mb-8 font-medium text-sm">
-            Contraseña actualizada.
-          </p>
-          <button
-            type="button"
-            onClick={() => setMode("login")}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all"
-          >
+          <h3 className="au-h text-3xl text-[var(--ink)] mb-2">¡Listo!</h3>
+          <p className="text-[var(--ink-soft)] mb-8 font-medium text-sm">Contraseña actualizada.</p>
+          <button type="button" onClick={() => setMode("login")} className="ed-btn-primary">
             Iniciar Sesión
           </button>
         </div>
       )}
 
       {resetStep !== "success" && (
-        <div className="pt-4 space-y-4">
-          <Button
-            type="submit"
-            isLoading={isLoading}
-            className="w-full bg-slate-900 text-white hover:bg-slate-800 h-14 text-lg rounded-2xl"
-            size="lg"
-          >
-            {resetStep === "verify" ? "Validar Identidad" : "Establecer Contraseña"}
-          </Button>
-          <button
-            type="button"
-            onClick={() => setMode("login")}
-            className="w-full text-center text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors p-2"
-          >
-            Cancelar
-          </button>
+        <div className="pt-2 space-y-3">
+          {submitBtn(resetStep === "verify" ? "Validar Identidad" : "Establecer Contraseña")}
+          {backLink("Cancelar")}
         </div>
       )}
     </form>
@@ -569,221 +636,371 @@ const Auth: React.FC = () => {
     }
   };
 
-  return (
-    <div className="fixed inset-0 w-full h-[100dvh] bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden font-sans selection:bg-blue-500/30">
-      {/* BACKGROUND EFFECTS */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-400/20 dark:bg-indigo-900/10 rounded-full mix-blend-multiply filter blur-[120px] animate-blob"></div>
-        <div className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-blue-400/20 dark:bg-blue-900/10 rounded-full mix-blend-multiply filter blur-[120px] animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-[-20%] left-[20%] w-[60vw] h-[60vw] bg-purple-400/20 dark:bg-purple-900/10 rounded-full mix-blend-multiply filter blur-[120px] animate-blob animation-delay-4000"></div>
-        <div className="absolute inset-0 bg-[url('https://www.gradients.app/linear-gradient-to-t/white-on-stone/20')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-      </div>
+  const features: { icon: AuthIconName; text: string; desc: string }[] = [
+    { icon: "shieldcheck", text: "Gestión 100% Digital", desc: "Olvídate del papel." },
+    { icon: "chart", text: "Seguimiento Real", desc: "Tu progreso al instante." },
+    { icon: "cap", text: "Acreditación Directa", desc: "Vinculación con SAC." },
+  ];
 
-      {/* HEADER (ABSOLUTE TOP) */}
-      <header className="flex-none h-20 px-6 sm:px-12 flex items-center justify-between z-30 relative w-full">
-        <div className="flex items-center gap-6">
-          <div className="drop-shadow-sm">
-            <MiPanelLogo className="h-10 sm:h-12 w-auto" variant={resolvedTheme} />
-          </div>
+  // Alerta de error (reutilizable en desktop y mobile)
+  const errorAlert = error ? (
+    <div className="flex items-start gap-4 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl shadow-sm animate-shake transition-all duration-300">
+      <div className="p-2 bg-white dark:bg-rose-950 rounded-full text-rose-500 dark:text-rose-400 shadow-sm border border-rose-100 dark:border-rose-900/50 flex-shrink-0">
+        <AuthIcon name="alert" size={18} />
+      </div>
+      <div className="flex-1">
+        <h4 className="text-sm font-bold text-rose-800 dark:text-rose-200 mb-1">Atención</h4>
+        <div className="space-y-2">
+          <p className="text-sm text-rose-600 dark:text-rose-300 leading-snug font-medium whitespace-pre-line">
+            {error}
+          </p>
+          {mode === "recover" && resetStep === "reset_password" && (
+            <details className="group">
+              <summary className="text-xs font-bold text-rose-700 dark:text-rose-300 cursor-pointer hover:text-rose-900 dark:hover:text-rose-100 transition-colors select-none">
+                🔧 Ver información técnica
+              </summary>
+              <div className="mt-2 p-3 bg-rose-100/50 dark:bg-rose-900/30 rounded-lg border border-rose-200 dark:border-rose-800">
+                <p className="text-xs text-rose-700 dark:text-rose-300 font-mono leading-relaxed">
+                  <span className="font-bold">Código de referencia:</span> REC-001
+                  <br />
+                  <span className="font-bold">Paso:</span> Restablecer contraseña
+                  <br />
+                  <span className="font-bold">Acción recomendada:</span> Si el error persiste,
+                  contacta a blas.rivera@uflouniversidad.edu.ar con tu número de legajo.
+                  <br />
+                  <span className="font-bold">Posibles causas:</span>
+                  <ul className="mt-1 ml-4 list-disc space-y-0.5">
+                    <li>El servidor no está respondiendo correctamente</li>
+                    <li>Hay un problema con la base de datos</li>
+                    <li>La sesión ha expirado (vuelve a validar)</li>
+                  </ul>
+                </p>
+              </div>
+            </details>
+          )}
         </div>
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="hidden sm:block opacity-80 hover:opacity-100 transition-opacity">
-            <UfloLogo
-              className="h-8 sm:h-10 w-auto grayscale contrast-125"
-              variant={resolvedTheme}
-            />
+      </div>
+    </div>
+  ) : null;
+
+  const debugBlock =
+    debugLogs.length > 0 ? (
+      <div className="mt-4">
+        <details className="group">
+          <summary className="flex items-center gap-2 cursor-pointer select-none">
+            <span className="material-icons text-amber-500 !text-lg">bug_report</span>
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+              Ver Logs de Diagnóstico ({debugLogs.length})
+            </span>
+          </summary>
+          <div className="mt-3 p-4 bg-[var(--bg-sunken)] rounded-xl border border-[var(--line)]">
+            <div className="flex justify-between items-center mb-3 pb-3 border-b border-[var(--line)]">
+              <span className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
+                Log del sistema
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyLogsToClipboard}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-elevated)] border border-[var(--line-strong)] rounded-lg text-xs font-bold text-[var(--ink-soft)] hover:bg-[var(--bg-sunken)] transition-colors"
+                >
+                  <span className="material-icons !text-sm">content_copy</span>
+                  Copiar
+                </button>
+                <button
+                  onClick={clearLogs}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-elevated)] border border-rose-200 dark:border-rose-800 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                >
+                  <span className="material-icons !text-sm">delete</span>
+                  Borrar
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+              <pre className="text-xs font-mono text-[var(--ink-soft)] leading-relaxed whitespace-pre-wrap break-all">
+                {debugLogs.map((log, index) => (
+                  <div
+                    key={index}
+                    className={`mb-1 ${log.includes("[ERROR]") ? "text-red-600 dark:text-red-400" : log.includes("[SUCCESS]") ? "text-emerald-600 dark:text-emerald-400" : ""}`}
+                  >
+                    {log}
+                  </div>
+                ))}
+              </pre>
+            </div>
           </div>
-          <div className="pl-2 border-l border-slate-200 dark:border-slate-800">
-            <ThemeToggle />
-          </div>
-        </div>
+        </details>
+      </div>
+    ) : null;
+
+  // Marca "Mi Panel" (mismo mark editorial que el header del panel)
+  const brandMark = (
+    <div className="mp-mark">
+      <div className="mp-logo">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+          <rect x="3" y="10" width="4" height="11" rx="1.5" fill="currentColor" />
+          <rect x="10" y="4" width="4" height="17" rx="1.5" fill="currentColor" />
+          <rect x="17" y="14" width="4" height="7" rx="1.5" fill="currentColor" />
+        </svg>
+      </div>
+      <span className="mp-brand">
+        Mi&nbsp;<b>Panel</b>
+      </span>
+    </div>
+  );
+
+  // ===== LOGIN MOBILE — pantalla completa "Ingresá a tu práctica." (top-aligned) =====
+  const renderMobileLogin = () => (
+    <div className="au-mlogin">
+      <span className="au-orb au-orb--1" aria-hidden="true" />
+      <span className="au-orb au-orb--2" aria-hidden="true" />
+      <span className="au-orb au-orb--3" aria-hidden="true" />
+
+      <header className="au-mtop">
+        {brandMark}
+        <span className="au-mtag">PPS · 2026</span>
       </header>
 
-      {/* MAIN SCROLLABLE AREA */}
-      <main className="flex-1 w-full relative overflow-y-auto overflow-x-hidden custom-scrollbar z-20">
-        <div className="min-h-full flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 py-8 sm:py-12">
-          {/* TARJETA FLOTANTE (ISLA) */}
-          <div className="w-full max-w-[1100px] min-h-[600px] bg-white/80 dark:bg-[#0f1523]/80 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 dark:shadow-black/80 overflow-hidden border border-white/60 dark:border-slate-700/50 relative backdrop-blur-2xl flex flex-col xl:flex-row ring-1 ring-white/40 dark:ring-white/5">
-            {/* LEFT SIDE (Branding - Desktop Only) */}
-            <div className="hidden xl:flex w-5/12 relative flex-col justify-between p-16 overflow-hidden bg-slate-50/50 dark:bg-[#0B1120]/50 border-r border-slate-100 dark:border-slate-800">
-              <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
-              <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-gradient-to-tr from-emerald-400/10 to-teal-400/10 rounded-full blur-3xl -ml-20 -mb-20"></div>
+      <form onSubmit={handleFormSubmit} className="au-mbody">
+        <div className="au-mcenter">
+          <div className="au-mhead animate-fade-in-up">
+            <span className="au-eyebrow">Mi Panel · Estudiantes</span>
+            <h1 className="au-title mt-3 text-[clamp(40px,12vw,52px)]">
+              Ingresá a
+              <br />
+              tu <span className="au-grad">práctica.</span>
+            </h1>
+          </div>
 
-              <div className="relative z-10 h-full flex flex-col justify-center gap-12">
-                {/* Logo removed from here to ensure clean layout and no duplication with header */}
+          <div className="mt-10 space-y-6 animate-fade-in-up">
+            <div className="au-mfield">
+              <label htmlFor="m-legajo" className="au-mlabel">
+                Legajo
+              </label>
+              <input
+                id="m-legajo"
+                name="legajo"
+                className="au-min"
+                type="text"
+                inputMode="numeric"
+                value={legajo}
+                onChange={(e) => setLegajo(e.target.value)}
+                placeholder="Nº de legajo"
+                autoComplete="username"
+                disabled={isLoading}
+                autoFocus
+              />
+              <span className="au-mhelp">Usá tu legajo institucional.</span>
+            </div>
 
-                <div className="space-y-10">
-                  <div className="space-y-6">
-                    <h1 className="text-5xl font-black leading-[1.05] tracking-tighter text-slate-900 dark:text-white">
-                      Gestión académica <br />
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-                        inteligente.
-                      </span>
-                    </h1>
-                    <p className="text-lg leading-relaxed font-medium text-slate-600 dark:text-slate-400 max-w-sm">
-                      Centraliza tus prácticas, inscripciones y acreditaciones en una plataforma
-                      unificada y simple.
-                    </p>
-                  </div>
-
-                  <div className="space-y-5">
-                    {[
-                      {
-                        icon: "verified_user",
-                        text: "Gestión 100% Digital",
-                        desc: "Olvídate del papel.",
-                      },
-                      {
-                        icon: "insights",
-                        text: "Seguimiento Real",
-                        desc: "Tu progreso al instante.",
-                      },
-                      {
-                        icon: "school",
-                        text: "Acreditación Directa",
-                        desc: "Vinculación con SAC.",
-                      },
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-start gap-4 group">
-                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm text-blue-600 dark:text-blue-400 shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          <span className="material-icons !text-xl">{item.icon}</span>
-                        </div>
-                        <div>
-                          <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">
-                            {item.text}
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                            {item.desc}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 pt-8 border-t border-slate-200/60 dark:border-slate-800">
-                  <div className="opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-                    <UfloLogo className="h-8 w-auto" variant={resolvedTheme} />
-                  </div>
-                  <div className="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-tight">
-                    Facultad de Psicología <br /> y Ciencias Sociales
-                  </p>
-                </div>
+            <div className="au-mfield">
+              <label htmlFor="m-pass" className="au-mlabel">
+                Contraseña
+              </label>
+              <div className="au-mpass">
+                <input
+                  id="m-pass"
+                  name="password"
+                  className="au-min"
+                  style={{ paddingRight: 48 }}
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Tu contraseña"
+                  autoComplete="current-password"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className="au-meye"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  <AuthIcon name={showPassword ? "eyeoff" : "eye"} size={19} />
+                </button>
               </div>
             </div>
 
-            {/* RIGHT SIDE: Form Wrapper */}
-            <div className="w-full xl:w-7/12 flex flex-col relative bg-white/50 dark:bg-transparent">
-              <div className="flex-1 flex flex-col justify-center p-8 sm:p-12 lg:p-16 w-full max-w-xl mx-auto">
-                {renderContent()}
-
-                {/* Error Message Area */}
-                <div aria-live="assertive" className="mt-8 min-h-[60px]">
-                  {error && (
-                    <div className="flex items-start gap-4 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl shadow-sm animate-shake transition-all duration-300">
-                      <div className="p-2 bg-white dark:bg-rose-950 rounded-full text-rose-500 dark:text-rose-400 shadow-sm border border-rose-100 dark:border-rose-900/50 flex-shrink-0">
-                        <span className="material-icons !text-lg">error</span>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-bold text-rose-800 dark:text-rose-200 mb-1">
-                          Atención
-                        </h4>
-                        <div className="space-y-2">
-                          <p className="text-sm text-rose-600 dark:text-rose-300 leading-snug font-medium whitespace-pre-line">
-                            {error}
-                          </p>
-                          {mode === "recover" && resetStep === "reset_password" && (
-                            <details className="group">
-                              <summary className="text-xs font-bold text-rose-700 dark:text-rose-300 cursor-pointer hover:text-rose-900 dark:hover:text-rose-100 transition-colors select-none">
-                                🔧 Ver información técnica
-                              </summary>
-                              <div className="mt-2 p-3 bg-rose-100/50 dark:bg-rose-900/30 rounded-lg border border-rose-200 dark:border-rose-800">
-                                <p className="text-xs text-rose-700 dark:text-rose-300 font-mono leading-relaxed">
-                                  <span className="font-bold">Código de referencia:</span> REC-001
-                                  <br />
-                                  <span className="font-bold">Paso:</span> Restablecer contraseña
-                                  <br />
-                                  <span className="font-bold">Acción recomendada:</span> Si el error
-                                  persiste, contacta a blas.rivera@uflouniversidad.edu.ar con tu
-                                  número de legajo.
-                                  <br />
-                                  <span className="font-bold">Posibles causas:</span>
-                                  <ul className="mt-1 ml-4 list-disc space-y-0.5">
-                                    <li>El servidor no está respondiendo correctamente</li>
-                                    <li>Hay un problema con la base de datos</li>
-                                    <li>La sesión ha expirado (vuelve a validar)</li>
-                                  </ul>
-                                </p>
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="m-remember-me"
+                className="flex items-center gap-2.5 cursor-pointer group select-none"
+              >
+                <div className="relative flex items-center">
+                  <input
+                    id="m-remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={isLoading}
+                    className="ed-check peer"
+                  />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--bg-elevated)] opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity">
+                    <AuthIcon name="check" size={13} strokeWidth={2.6} />
+                  </span>
                 </div>
+                <span className="text-sm font-semibold text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors">
+                  Recordarme
+                </span>
+              </label>
+              <button type="button" className="au-mlink" onClick={() => setMode("recover")}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          </div>
 
-                {/* Debug Logs Area - Only visible when there are logs */}
-                {debugLogs.length > 0 && (
-                  <div className="mt-4">
-                    <details className="group">
-                      <summary className="flex items-center gap-2 cursor-pointer select-none">
-                        <span className="material-icons text-amber-500 !text-lg">bug_report</span>
-                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
-                          Ver Logs de Diagnóstico ({debugLogs.length})
-                        </span>
-                      </summary>
-                      <div className="mt-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-3 pb-3 border-b border-slate-200 dark:border-slate-700">
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            Log del sistema
-                          </span>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={copyLogsToClipboard}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                            >
-                              <span className="material-icons !text-sm">content_copy</span>
-                              Copiar
-                            </button>
-                            <button
-                              onClick={clearLogs}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
-                            >
-                              <span className="material-icons !text-sm">delete</span>
-                              Borrar
-                            </button>
-                          </div>
-                        </div>
-                        <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
-                          <pre className="text-xs font-mono text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap break-all">
-                            {debugLogs.map((log, index) => (
-                              <div
-                                key={index}
-                                className={`mb-1 ${log.includes("[ERROR]") ? "text-red-600 dark:text-red-400" : log.includes("[SUCCESS]") ? "text-emerald-600 dark:text-emerald-400" : ""}`}
-                              >
-                                {log}
-                              </div>
-                            ))}
-                          </pre>
-                        </div>
-                      </div>
-                    </details>
+          {(errorAlert || debugBlock) && (
+            <div className="mt-6 space-y-3" aria-live="assertive">
+              {errorAlert}
+              {debugBlock}
+            </div>
+          )}
+        </div>
+
+        <div className="au-mctabar">
+          <button type="submit" className="au-mcta" disabled={isLoading}>
+            {isLoading ? (
+              <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <span>Entrar a mi panel</span>
+                <AuthIcon name="arrow" size={19} strokeWidth={2.2} />
+              </>
+            )}
+          </button>
+          <p className="au-mfoot">
+            ¿No tenés cuenta?{" "}
+            <button type="button" onClick={() => setMode("register")}>
+              Crear cuenta
+            </button>
+          </p>
+        </div>
+      </form>
+    </div>
+  );
+
+  // Mientras se intenta el ingreso automático desde el campus Moodle, mostramos
+  // un loader en vez del formulario para evitar el parpadeo del login.
+  if (autoLoginStatus === "checking") {
+    return (
+      <div
+        className="ed fixed inset-0 w-full h-[100dvh] flex flex-col items-center justify-center gap-5"
+        data-mode={resolvedTheme}
+        data-accent="teal"
+        style={{ background: "var(--bg)", color: "var(--ink)" }}
+      >
+        {brandMark}
+        <div className="w-9 h-9 border-2 border-current border-t-transparent rounded-full animate-spin opacity-70" />
+        <p className="text-sm font-semibold text-[var(--ink-muted)]">Ingresando desde el campus…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="ed fixed inset-0 w-full h-[100dvh] overflow-hidden"
+      data-mode={resolvedTheme}
+      data-accent="teal"
+      style={{ background: "var(--bg)", color: "var(--ink)" }}
+    >
+      {/* ============ MOBILE ============ */}
+      <div
+        className={`${embedded ? "hidden" : "lg:hidden"} h-full overflow-y-auto overflow-x-hidden custom-scrollbar`}
+      >
+        {mode === "login" ? (
+          renderMobileLogin()
+        ) : (
+          <div className="au-mlogin">
+            <span className="au-orb au-orb--1" aria-hidden="true" />
+            <span className="au-orb au-orb--2" aria-hidden="true" />
+            <span className="au-orb au-orb--3" aria-hidden="true" />
+            <header className="au-mtop">
+              {brandMark}
+              <ThemeToggle />
+            </header>
+            <div className="au-mbody" style={{ paddingTop: 28, paddingBottom: 32 }}>
+              <div className="w-full max-w-md mx-auto">
+                {renderContent()}
+                {(errorAlert || debugBlock) && (
+                  <div className="mt-6 space-y-3" aria-live="assertive">
+                    {errorAlert}
+                    {debugBlock}
                   </div>
                 )}
               </div>
-
-              {/* Mobile Footer Branding */}
-              <div className="xl:hidden p-6 text-center border-t border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">
-                  UFLO Universidad • Facultad de Psicología
-                </p>
-              </div>
             </div>
           </div>
-        </div>
-      </main>
+        )}
+      </div>
+
+      {/* ============ DESKTOP ============ */}
+      <div className={`${embedded ? "grid" : "hidden lg:grid"} h-full grid-cols-[1.04fr_0.96fr]`}>
+        {/* ===== PANEL DE MARCA (desktop) — gradiente UFLO inmersivo ===== */}
+        <aside className="au-brand relative flex flex-col justify-between p-12 xl:p-16">
+          <div className="relative z-10">{brandMark}</div>
+
+          <div className="relative z-10 max-w-xl">
+            <div className="flex items-center gap-3 mb-7">
+              <span className="au-eyebrow">Mi Panel · Estudiantes</span>
+              <span className="au-rule" />
+            </div>
+            <h1 className="au-title text-[clamp(52px,5vw,76px)]">
+              Tu práctica
+              <br />
+              empieza <span className="au-grad">acá.</span>
+            </h1>
+            <p className="au-sub mt-6 text-[17px] leading-relaxed max-w-md">
+              Centralizá tus prácticas, inscripciones y acreditaciones en una sola plataforma —
+              clara, ordenada y siempre al día.
+            </p>
+          </div>
+
+          <div className="relative z-10">
+            <div className="max-w-md">
+              {features.map((item) => (
+                <div key={item.text} className="au-feat">
+                  <span className="au-feat__ic">
+                    <AuthIcon name={item.icon} size={19} />
+                  </span>
+                  <div>
+                    <h4 className="au-feat__t">{item.text}</h4>
+                    <p className="au-feat__d">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8">
+              <p className="au-sub text-[10px] font-semibold uppercase tracking-[0.14em] leading-relaxed">
+                Prácticas Profesionales Supervisadas
+                <br />
+                Psicología
+              </p>
+            </div>
+          </div>
+        </aside>
+
+        {/* ===== PANEL DE FORMULARIO ===== */}
+        <main className="relative flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
+          {/* topbar */}
+          <header className="flex-none h-20 px-10 flex items-center justify-between">
+            <span />
+            <ThemeToggle />
+          </header>
+
+          {/* FORM */}
+          <div className="flex-1 flex flex-col justify-center px-14 xl:px-20 py-12">
+            <div className="w-full max-w-md mx-auto">
+              {renderContent()}
+
+              <div aria-live="assertive" className="mt-8 min-h-[60px]">
+                {errorAlert}
+              </div>
+
+              {debugBlock}
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

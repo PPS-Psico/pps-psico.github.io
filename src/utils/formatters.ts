@@ -16,7 +16,7 @@ export function formatDate(dateStr?: string | null): string {
 /**
  * Normalizes a string for comparison.
  */
-export function normalizeStringForComparison(str?: any): string {
+export function normalizeStringForComparison(str?: unknown): string {
   if (str === undefined || str === null) return "";
   if (typeof str === "boolean") return str ? "true" : "false";
 
@@ -158,7 +158,7 @@ export function getStatusVisuals(status?: string | null) {
   };
 }
 
-export function safeGetId(val: any): string | null {
+export function safeGetId(val: unknown): string | null {
   if (!val) return null;
   return String(val).trim() || null;
 }
@@ -261,7 +261,7 @@ export function isValidWhatsAppFormat(phone?: string | null): boolean {
   return isValid;
 }
 
-export function cleanInstitutionName(input?: any): string {
+export function cleanInstitutionName(input?: unknown): string {
   return cleanDbValue(input);
 }
 
@@ -270,7 +270,7 @@ export function cleanInstitutionName(input?: any): string {
  * Ahora que la DB está limpia, esta función es liviana y solo asegura
  * que no haya nulos o arrays inesperados, confiando en los datos SQL.
  */
-export function cleanDbValue(input?: any): string {
+export function cleanDbValue(input?: unknown): string {
   if (input === null || input === undefined) return "";
 
   // 1. Handle real arrays

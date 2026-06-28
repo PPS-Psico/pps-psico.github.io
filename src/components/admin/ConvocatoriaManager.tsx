@@ -12,6 +12,16 @@ import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
 import GestionCard from "./GestionCard";
+import type { LanzamientoPPS } from "../../types";
+
+/** Lanzamiento enriquecido por el hook de gestión con métricas de días. */
+type GestionItem = LanzamientoPPS & {
+  daysLeft?: number;
+  daysSinceEnd?: number;
+  daysWaiting?: number;
+  daysSinceResponse?: number;
+  urgency?: "high" | "normal";
+};
 
 interface ConvocatoriaManagerProps {
   forcedOrientations?: string[];
@@ -133,14 +143,14 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
     const decision = filteredData.respondidasPendienteDecision || [];
 
     const missingPhoneCount = [...endingSoon, ...overdue, ...waiting, ...decision].filter(
-      (pps: any) => !getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])?.phone
+      (pps: GestionItem) => !getInstitutionForPpsName(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS])?.phone
     ).length;
 
     const baseActionItems = [
-      ...endingSoon.map((pps: any) => ({
+      ...endingSoon.map((pps: GestionItem) => ({
         id: `ending-${pps.id}`,
         pps,
-        priority: pps.daysLeft <= 7 ? "Alta" : "Media",
+        priority: (pps.daysLeft ?? 0) <= 7 ? "Alta" : "Media",
         label: "Contactar antes del cierre",
         detail:
           pps.daysLeft === 0
@@ -150,13 +160,13 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
         targetStatus: "Esperando Respuesta",
         icon: "event_busy",
         tone:
-          pps.daysLeft <= 7
+          (pps.daysLeft ?? 0) <= 7
             ? "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-100"
             : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100",
-        rank: pps.daysLeft <= 7 ? 0 : 1,
+        rank: (pps.daysLeft ?? 0) <= 7 ? 0 : 1,
         sortDays: pps.daysLeft || 0,
       })),
-      ...overdue.map((pps: any) => ({
+      ...overdue.map((pps: GestionItem) => ({
         id: `overdue-${pps.id}`,
         pps,
         priority: "Alta",
@@ -170,8 +180,8 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
         sortDays: -(pps.daysSinceEnd || 0),
       })),
       ...waiting
-        .filter((pps: any) => (pps.daysWaiting || 0) >= 3)
-        .map((pps: any) => ({
+        .filter((pps: GestionItem) => (pps.daysWaiting || 0) >= 3)
+        .map((pps: GestionItem) => ({
           id: `waiting-${pps.id}`,
           pps,
           priority: (pps.daysWaiting || 0) >= 7 ? "Alta" : "Media",
@@ -184,7 +194,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
           rank: 3,
           sortDays: -(pps.daysWaiting || 0),
         })),
-      ...decision.map((pps: any) => ({
+      ...decision.map((pps: GestionItem) => ({
         id: `decision-${pps.id}`,
         pps,
         priority: "Media",
@@ -202,7 +212,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
     ];
 
     const actionItems = baseActionItems
-      .map((item: any) => {
+      .map((item) => {
         const ppsName = item.pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
         const institution = getInstitutionForPpsName(ppsName);
 
@@ -235,7 +245,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
   }, [filteredData, institutionsMap]);
 
   const selectedAction =
-    managementBrief.actionItems.find((item: any) => item.id === selectedActionId) ||
+    managementBrief.actionItems.find((item) => item.id === selectedActionId) ||
     managementBrief.actionItems[0] ||
     null;
 
@@ -357,8 +367,9 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                   },
                   {
                     label: "Reinsistir",
-                    value: managementBrief.waiting.filter((pps: any) => (pps.daysWaiting || 0) >= 3)
-                      .length,
+                    value: managementBrief.waiting.filter(
+                      (pps: GestionItem) => (pps.daysWaiting || 0) >= 3
+                    ).length,
                     filter: "demoradas" as FilterType,
                     color: "text-orange-600 dark:text-orange-400",
                   },
@@ -400,7 +411,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {managementBrief.actionItems.slice(0, 12).map((item: any) => {
+                  {managementBrief.actionItems.slice(0, 12).map((item) => {
                     const ppsName = item.pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS sin nombre";
                     const institution = getInstitutionForPpsName(ppsName);
                     const groupName = getGroupName(ppsName);
@@ -601,7 +612,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
           const allStagnant = [
             ...filteredData.contactadasEsperandoRespuesta,
             ...filteredData.respondidasPendienteDecision,
-          ].filter((pps: any) => {
+          ].filter((pps: GestionItem) => {
             const lastUpdate = pps.updated_at || pps.created_at;
             const daysSince = lastUpdate
               ? Math.floor((now.getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24))
@@ -649,7 +660,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
                 (Relanzamiento Confirmado, Archivado o No se Relanza).
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
-                {allStagnant.map((pps: any) => (
+                {allStagnant.map((pps: GestionItem) => (
                   <GestionCard
                     key={pps.id}
                     pps={pps}
@@ -686,7 +697,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
               relanzamiento.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
-              {filteredData.porContactar.map((pps: any) => (
+              {filteredData.porContactar.map((pps: GestionItem) => (
                 <GestionCard
                   key={pps.id}
                   pps={pps}
@@ -720,7 +731,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
               Instituciones que ya fueron contactadas pero aún no han respondido.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
-              {filteredData.contactadasEsperandoRespuesta.map((pps: any) => (
+              {filteredData.contactadasEsperandoRespuesta.map((pps: GestionItem) => (
                 <GestionCard
                   key={pps.id}
                   pps={pps}
@@ -753,7 +764,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
               Instituciones que respondieron y están en conversación. Necesitan decisión final.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
-              {filteredData.respondidasPendienteDecision.map((pps: any) => (
+              {filteredData.respondidasPendienteDecision.map((pps: GestionItem) => (
                 <GestionCard
                   key={pps.id}
                   pps={pps}
@@ -788,7 +799,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
               Prácticas que aún están activas o por finalizar.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4 items-start">
-              {filteredData.activasPorFinalizar.map((pps: any) => (
+              {filteredData.activasPorFinalizar.map((pps: GestionItem) => (
                 <GestionCard
                   key={pps.id}
                   pps={pps}

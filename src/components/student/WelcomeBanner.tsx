@@ -62,13 +62,13 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ studentName, isLoading })
       <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-4">
         {/* Saludo Principal - Línea fluida en PC */}
         <div className="flex-1">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
             <span className="block md:inline">
               {greeting}
               <span className="hidden md:inline">,</span>
             </span>
             <span className="hidden md:inline"> </span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400">
+            <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-[var(--uflo-purple)] via-[var(--uflo-navy)] to-[var(--uflo-teal)] dark:from-purple-300 dark:via-blue-300 dark:to-uflo-teal">
               {firstName}.
             </span>
           </h1>

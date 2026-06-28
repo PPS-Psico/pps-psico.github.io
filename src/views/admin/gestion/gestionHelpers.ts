@@ -11,6 +11,15 @@ import {
 } from "../../../constants";
 import type { InstitutionInfo } from "../../../hooks/useGestionConvocatorias";
 import type { LanzamientoPPS } from "../../../types";
+
+/** Lanzamiento con los campos derivados que agrega el hook de gestión. */
+type EnrichedLaunch = LanzamientoPPS & {
+  daysSinceEnd?: number;
+  daysWaiting?: number;
+  daysSinceResponse?: number;
+  daysLeft?: number;
+  noClasificada?: boolean;
+};
 import {
   getGroupName,
   normalizeStringForComparison,
@@ -93,12 +102,11 @@ export function buildItems(
       null;
     const phone = inst?.phone || null;
 
-    const daysSinceEnd = (launch as any).daysSinceEnd as number | undefined;
-    const daysWaiting = ((launch as any).daysWaiting ?? (launch as any).daysSinceResponse) as
-      | number
-      | undefined;
-    const daysLeft = (launch as any).daysLeft as number | undefined;
-    const noClasificada = (launch as any).noClasificada === true;
+    const el = launch as EnrichedLaunch;
+    const daysSinceEnd = el.daysSinceEnd;
+    const daysWaiting = el.daysWaiting ?? el.daysSinceResponse;
+    const daysLeft = el.daysLeft;
+    const noClasificada = el.noClasificada === true;
 
     let titulo = grupo;
     let razon = "";
@@ -203,7 +211,7 @@ export function buildItems(
     items.push(
       mk(
         l,
-        ((l as any).daysWaiting ?? 0) > REINSISTIR_THRESHOLD_DAYS
+        ((l as EnrichedLaunch).daysWaiting ?? 0) > REINSISTIR_THRESHOLD_DAYS
           ? "reinsistir"
           : "esperandoRespuesta"
       )
@@ -212,7 +220,7 @@ export function buildItems(
   (fd.respondidasPendienteDecision || []).forEach((l) => items.push(mk(l, "pendienteDecision")));
   (fd.relanzamientosConfirmados || []).forEach((l) => items.push(mk(l, "confirmada")));
   (fd.activasYPorFinalizar || []).forEach((l) => {
-    const dl = (l as any).daysLeft as number | undefined;
+    const dl = (l as EnrichedLaunch).daysLeft;
     items.push(mk(l, dl != null && dl <= POR_FINALIZAR_THRESHOLD_DAYS ? "porFinalizar" : "activa"));
   });
   (fd.activasIndefinidas || []).forEach((l) => items.push(mk(l, "indefinida")));

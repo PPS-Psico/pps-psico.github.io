@@ -30,6 +30,14 @@ export interface ListResult {
   description?: string;
 }
 
+/** Fila genérica devuelta por las RPC `get_*_list` del dashboard. */
+interface RpcListRow {
+  nombre: string;
+  legajo: string;
+  correo?: string;
+  horas_total?: number;
+}
+
 /**
  * Clasifica una orientación de texto libre en las categorías canónicas usadas
  * por el dashboard. Réplica del CASE/regex de get_admin_metrics_kpis
@@ -72,6 +80,10 @@ export async function fetchMetricList(key: string, year: number): Promise<ListRe
       return fetchCuposList(year);
     case "nuevos_convenios":
       return fetchConveniosList(year);
+    case "renovaciones":
+      return fetchRenovacionesList(year);
+    case "convenios_por_vencer":
+      return fetchConveniosPorVencerList();
     case "orientation":
       return { students: [], description: "" };
     default:
@@ -81,10 +93,10 @@ export async function fetchMetricList(key: string, year: number): Promise<ListRe
 
 async function fetchIngresantesList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_ingresantes_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
 
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
     })),
@@ -98,10 +110,10 @@ async function fetchIngresantesList(year: number): Promise<ListResult> {
 
 async function fetchEstudiantesEnPpsList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_estudiantes_en_pps_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
 
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
     })),
@@ -115,10 +127,10 @@ async function fetchEstudiantesEnPpsList(year: number): Promise<ListResult> {
 
 async function fetchHeredadosList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_heredados_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
 
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
     })),
@@ -132,10 +144,10 @@ async function fetchHeredadosList(year: number): Promise<ListResult> {
 
 async function fetchFinalizadosList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_finalizados_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
 
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
     })),
@@ -149,9 +161,9 @@ async function fetchFinalizadosList(year: number): Promise<ListResult> {
 
 async function fetchActivosList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_activos_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
     })),
@@ -165,10 +177,10 @@ async function fetchActivosList(year: number): Promise<ListResult> {
 
 async function fetchSinPpsList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_sin_pps_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
 
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
       correo: s.correo,
@@ -184,10 +196,10 @@ async function fetchSinPpsList(year: number): Promise<ListResult> {
 
 async function fetchProximosFinalizarList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_proximos_finalizar_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
 
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
       correo: s.horas_total ? `${s.horas_total}hs` : "",
@@ -203,10 +215,10 @@ async function fetchProximosFinalizarList(year: number): Promise<ListResult> {
 
 async function fetchHaciendoPpsList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_haciendo_pps_list", { p_year: year });
-  const list = (data || []) as unknown as any[];
+  const list = (data || []) as unknown as RpcListRow[];
 
   return {
-    students: list.map((s: any) => ({
+    students: list.map((s) => ({
       nombre: s.nombre,
       legajo: s.legajo,
     })),
@@ -228,10 +240,10 @@ async function fetchPpsLanzadasList(year: number): Promise<ListResult> {
     .lt("fecha_inicio", end);
 
   return {
-    students: (data || []).map((l: any) => ({
-      nombre: l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre",
-      legajo: l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0,
-      institucion: l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "",
+    students: (data || []).map((l: Record<string, unknown>) => ({
+      nombre: (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Sin nombre",
+      legajo: String(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] ?? 0),
+      institucion: (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "",
     })),
     headers: [
       { key: "nombre", label: "PPS" },
@@ -250,8 +262,8 @@ async function fetchInstitucionesActivasList(year: number): Promise<ListResult> 
     .lt("fecha_inicio", end);
 
   const names = new Set<string>();
-  (data || []).forEach((l: any) => {
-    const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS];
+  (data || []).forEach((l: Record<string, unknown>) => {
+    const name = l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | undefined;
     if (name) names.add(getGroupName(name));
   });
 
@@ -270,9 +282,9 @@ async function fetchCuposList(year: number): Promise<ListResult> {
     .lt("fecha_inicio", end);
 
   return {
-    students: (data || []).map((l: any) => ({
-      nombre: l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre",
-      legajo: l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0,
+    students: (data || []).map((l: Record<string, unknown>) => ({
+      nombre: (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Sin nombre",
+      legajo: String(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] ?? 0),
     })),
     headers: [
       { key: "nombre", label: "PPS" },
@@ -285,18 +297,51 @@ async function fetchConveniosList(year: number): Promise<ListResult> {
   const { data } = await supabase
     .from(TABLE_NAME_INSTITUCIONES)
     .select(FIELD_NOMBRE_INSTITUCIONES)
-    // convenio_nuevo migra a smallint (año). Comparamos con el número.
-    // El cast cubre el desajuste temporal hasta regenerar src/types/supabase.ts.
-    .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, year as unknown as string);
+    // convenio_nuevo es smallint (año). Comparamos con el número.
+    .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, year);
 
   const names = new Set<string>();
-  (data || []).forEach((i: any) => {
-    const name = i[FIELD_NOMBRE_INSTITUCIONES];
+  (data || []).forEach((i: Record<string, unknown>) => {
+    const name = i[FIELD_NOMBRE_INSTITUCIONES] as string | undefined;
     if (name) names.add(getGroupName(name));
   });
 
   return {
     students: Array.from(names).map((n) => ({ nombre: n, legajo: "Confirmado" })),
+  };
+}
+
+async function fetchRenovacionesList(year: number): Promise<ListResult> {
+  const { data } = await supabase.rpc("get_convenios_list", {
+    p_year: year,
+    p_kind: "renovaciones",
+  });
+
+  return {
+    students: (data || []).map((c: { nombre?: string; fecha_vencimiento?: string }) => ({
+      nombre: c.nombre || "Sin nombre",
+      legajo: c.fecha_vencimiento ? `vence ${c.fecha_vencimiento}` : "Renovación",
+    })),
+    headers: [
+      { key: "nombre", label: "Institución" },
+      { key: "legajo", label: "Vencimiento" },
+    ],
+  };
+}
+
+async function fetchConveniosPorVencerList(): Promise<ListResult> {
+  const { data } = await supabase.rpc("get_convenios_por_vencer", { p_days: 90 });
+
+  return {
+    students: (data || []).map((c: { institucion?: string; dias_restantes?: number }) => ({
+      nombre: c.institucion || "Sin nombre",
+      legajo: `${c.dias_restantes} días`,
+    })),
+    headers: [
+      { key: "nombre", label: "Institución" },
+      { key: "legajo", label: "Restan" },
+    ],
+    description: "Convenios cuyo vencimiento cae dentro de los próximos 90 días sin renovar.",
   };
 }
 
@@ -320,7 +365,7 @@ export async function fetchOrientationList(year: number, orientation: string): P
   const launchIds = Array.from(
     new Set(
       convocatorias
-        .map((c: any) => {
+        .map((c: Record<string, unknown>) => {
           const raw = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
           return Array.isArray(raw) ? raw[0] : raw;
         })
@@ -333,27 +378,32 @@ export async function fetchOrientationList(year: number, orientation: string): P
     .select(`id, orientacion, ${FIELD_NOMBRE_PPS_LANZAMIENTOS}`)
     .in("id", launchIds);
 
-  const launchMap = new Map((launches || []).map((l: any) => [l.id, l]));
+  const launchMap = new Map(
+    (launches || []).map((l: Record<string, unknown>) => [l.id as string, l])
+  );
 
   const students: StudentInfo[] = [];
-  convocatorias.forEach((c: any) => {
+  convocatorias.forEach((c: Record<string, unknown>) => {
     const rawLanzId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
     const lanzId = Array.isArray(rawLanzId) ? rawLanzId[0] : rawLanzId;
-    const launch = launchMap.get(lanzId);
+    const launch = launchMap.get(lanzId as string);
     if (!launch) return;
 
     // Clasifica la orientación con el MISMO criterio que el RPC
     // get_admin_metrics_kpis (orientation_distribution), para que la lista del
     // modal coincida exactamente con el conteo del gráfico.
-    if (classifyOrientation(launch.orientacion) !== orientation) return;
+    if (classifyOrientation(launch.orientacion as string) !== orientation) return;
 
-    const s = Array.isArray(c.estudiantes) ? c.estudiantes[0] : c.estudiantes;
+    const estudiantesRaw = (c as { estudiantes?: unknown }).estudiantes;
+    const s = (Array.isArray(estudiantesRaw) ? estudiantesRaw[0] : estudiantesRaw) as
+      | Record<string, unknown>
+      | undefined;
     if (s) {
       students.push({
-        nombre: s[FIELD_NOMBRE_ESTUDIANTES],
-        legajo: s[FIELD_LEGAJO_ESTUDIANTES],
-        institucion: launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "N/A",
-        raw_value: launch.orientacion || "(Vacio)",
+        nombre: s[FIELD_NOMBRE_ESTUDIANTES] as string,
+        legajo: s[FIELD_LEGAJO_ESTUDIANTES] as string,
+        institucion: (launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "N/A",
+        raw_value: (launch.orientacion as string) || "(Vacio)",
       });
     }
   });

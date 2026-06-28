@@ -11,6 +11,7 @@ export const TABLE_PENALIZACIONES = "penalizaciones";
 export const TABLE_SOLICITUDES_MODIFICACION = "solicitudes_modificacion_pps";
 export const TABLE_SOLICITUDES_NUEVA = "solicitudes_nueva_pps";
 export const TABLE_COMPROMISOS_PPS = "compromisos_pps";
+export const TABLE_CONVENIOS = "convenios";
 
 // Legacy Aliases for Tables (Kept for compatibility)
 export const TABLE_NAME_PPS = TABLE_PPS;
@@ -59,6 +60,7 @@ export const FIELD_ESTADO_PRACTICA = "estado";
 export const FIELD_FECHA_INICIO_PRACTICAS = "fecha_inicio";
 export const FIELD_FECHA_FIN_PRACTICAS = "fecha_finalizacion";
 export const FIELD_ESPECIALIDAD_PRACTICAS = "especialidad";
+export const FIELD_ES_ONLINE_PRACTICAS = "es_online";
 export const FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS = "nombre_institucion";
 export const FIELD_NOMBRE_BUSQUEDA_PRACTICAS = "legajo_busqueda"; // Deprecated? Kept for schema
 
@@ -189,6 +191,15 @@ export const FIELD_ORIENTACIONES_INSTITUCIONES = "orientaciones";
 export const FIELD_LOGO_URL_INSTITUCIONES = "logo_url";
 export const FIELD_LOGO_INVERT_DARK_INSTITUCIONES = "logo_invert_dark";
 
+// Convenios
+export const FIELD_INSTITUCION_ID_CONVENIOS = "institucion_id";
+export const FIELD_TIPO_CONVENIOS = "tipo";
+export const FIELD_FECHA_FIRMA_CONVENIOS = "fecha_firma";
+export const FIELD_FECHA_VENCIMIENTO_CONVENIOS = "fecha_vencimiento";
+export const FIELD_ES_RENOVACION_CONVENIOS = "es_renovacion";
+export const FIELD_ARCHIVO_URL_CONVENIOS = "archivo_url";
+export const FIELD_NOTAS_CONVENIOS = "notas";
+
 // Finalizacion
 export const FIELD_ESTUDIANTE_FINALIZACION = "estudiante_id";
 export const FIELD_FECHA_SOLICITUD_FINALIZACION = "fecha_solicitud";
@@ -197,6 +208,7 @@ export const FIELD_INFORME_FINAL_FINALIZACION = "informe_final_url";
 export const FIELD_PLANILLA_HORAS_FINALIZACION = "planilla_horas_url";
 export const FIELD_PLANILLA_ASISTENCIA_FINALIZACION = "planilla_asistencia_url";
 export const FIELD_SUGERENCIAS_MEJORAS_FINALIZACION = "sugerencias_mejoras";
+export const FIELD_DETALLE_PRACTICAS_FINALIZACION = "detalle_practicas";
 
 // Penalizaciones
 export const FIELD_PENALIZACION_ESTUDIANTE_LINK = "estudiante_id";

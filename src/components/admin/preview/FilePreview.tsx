@@ -1,11 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Attachment, getFileType } from "../../../utils/attachmentUtils";
 import { ExcelViewer } from "./ExcelViewer";
 import { FileInfoButton } from "./FileInfo";
 import { ImageViewer } from "./ImageViewer";
-import { PdfViewer } from "./PdfViewer";
+
+// react-pdf + pdfjs (~368 KB) se cargan solo cuando se previsualiza un PDF.
+const PdfViewer = lazy(() => import("./PdfViewer").then((m) => ({ default: m.PdfViewer })));
 
 interface FilePreviewProps {
   files: Attachment[];
@@ -202,7 +204,17 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
     switch (fileType) {
       case "pdf":
-        return <PdfViewer {...viewerProps} />;
+        return (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full text-white/60 text-sm">
+                Cargando visor de PDF…
+              </div>
+            }
+          >
+            <PdfViewer {...viewerProps} />
+          </Suspense>
+        );
       case "office":
         return <ExcelViewer {...viewerProps} filename={currentFile.filename} />;
       case "image":
