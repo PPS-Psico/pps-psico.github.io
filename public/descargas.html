@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Descargas · PPS 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+#pps-aula-2026{
+  --bg:#FAFAF7; --bg-elevated:#FFFFFF; --bg-sunken:#F1F0EA;
+  --ink:#0B0F19; --ink-soft:#2B3245; --ink-muted:#6A7081; --ink-subtle:#A0A4B0;
+  --line:#ECEAE2; --line-strong:#D9D6CB; --hairline:#E5E3DA;
+  --accent:#3CB88D; --accent-deep:#25785A; --tint:#EEF6F1;
+  --uflo-navy:#203B73; --uflo-deep:#0F1B62;
+  --font-display:"Bricolage Grotesque","Geist",system-ui,sans-serif;
+  --font-sans:"Geist","Inter",system-ui,sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,monospace;
+  --t-fast:140ms cubic-bezier(.2,.7,.2,1);
+  background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+html,body{ margin:0; background:#FAFAF7; overflow-x:hidden; }
+#pps-aula-2026 *,#pps-aula-2026 *::before,#pps-aula-2026 *::after{ box-sizing:border-box; }
+#pps-aula-2026 a{ color:inherit; }
+
+#pps-aula-2026 .pa-display{ font-family:var(--font-display); font-weight:700; letter-spacing:-.04em; line-height:.92; }
+
+/* nav */
+#pps-aula-2026 .pa-nav{ display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap; padding:16px 40px; border-bottom:1px solid var(--hairline); background:rgba(250,250,247,.86); backdrop-filter:blur(14px) saturate(140%); -webkit-backdrop-filter:blur(14px) saturate(140%); }
+#pps-aula-2026 .pa-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; }
+#pps-aula-2026 .pa-brand__mark{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-.06em; }
+#pps-aula-2026 .pa-brand__sep{ width:1px; height:22px; background:var(--line); display:inline-block; }
+#pps-aula-2026 .pa-navlinks{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+#pps-aula-2026 .pa-navlinks a{ padding:8px 14px; border-radius:999px; text-decoration:none; color:var(--ink-muted); font-size:14px; font-weight:500; white-space:nowrap; transition:var(--t-fast); }
+#pps-aula-2026 .pa-navlinks a:hover{ color:var(--ink); background:var(--bg-sunken); }
+#pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
+
+/* masthead */
+#pps-aula-2026 .pa-mast{ position:relative; padding:64px 72px 0; max-width:1180px; margin:0 auto; }
+#pps-aula-2026 .pa-mast__rule{ height:3px; border-radius:3px; width:88px; margin-bottom:30px; background:linear-gradient(90deg,#46253D 0%,#203B73 48%,#3CB88D 100%); }
+#pps-aula-2026 .pa-mast__eyebrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-muted); }
+#pps-aula-2026 .pa-mast__eyebrow b{ color:var(--accent-deep); font-weight:600; }
+#pps-aula-2026 .pa-mast__eyebrow .sep{ width:4px; height:4px; border-radius:50%; background:var(--line-strong); }
+#pps-aula-2026 .pa-mast__title{ font-family:var(--font-display); font-weight:700; font-size:clamp(40px,5.4vw,68px); line-height:.96; letter-spacing:-.045em; color:var(--uflo-deep); margin:22px 0 0; max-width:760px; }
+#pps-aula-2026 .pa-mast__sub{ margin:22px 0 0; max-width:560px; font-size:18px; line-height:1.55; color:var(--ink-muted); }
+
+/* lista de descargas */
+#pps-aula-2026 .pa-dl-wrap{ max-width:1180px; margin:0 auto; padding:36px 72px 84px; }
+#pps-aula-2026 .pa-dl-group + .pa-dl-group{ margin-top:40px; }
+#pps-aula-2026 .pa-dl-group__head{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:14px; }
+#pps-aula-2026 .pa-dl-group__title{ margin:0; font-family:var(--font-display); font-weight:700; font-size:24px; letter-spacing:-.03em; color:var(--ink); }
+#pps-aula-2026 .pa-dl-group__kick{ font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-subtle); }
+#pps-aula-2026 .pa-dl-list{ border:1px solid var(--line); border-radius:18px; overflow:hidden; background:var(--bg-elevated); }
+#pps-aula-2026 .pa-dl-row{ display:flex; align-items:center; gap:18px; padding:16px 20px; text-decoration:none; color:var(--ink); border-bottom:1px solid var(--hairline); transition:background var(--t-fast); }
+#pps-aula-2026 .pa-dl-row:last-child{ border-bottom:0; }
+#pps-aula-2026 .pa-dl-row:hover{ background:var(--bg-sunken); }
+#pps-aula-2026 .pa-dl-row:hover .pa-dl-row__dl{ color:var(--accent-deep); border-color:color-mix(in oklab,var(--accent) 40%,var(--line)); }
+#pps-aula-2026 .pa-dl-row.is-feat{ background:var(--tint); }
+#pps-aula-2026 .pa-dl-row__ext{ width:50px; height:50px; border-radius:13px; flex-shrink:0; display:grid; place-items:center; font-family:var(--font-mono); font-size:11px; font-weight:600; letter-spacing:.02em; background:var(--bg-sunken); border:1px solid var(--line); color:var(--ink-muted); }
+#pps-aula-2026 .pa-dl-row__ext.ext-pdf{ color:#B4452F; background:color-mix(in oklab,#B4452F 9%,var(--bg)); border-color:color-mix(in oklab,#B4452F 22%,var(--line)); }
+#pps-aula-2026 .pa-dl-row__ext.ext-docx,
+#pps-aula-2026 .pa-dl-row__ext.ext-doc{ color:var(--uflo-navy); background:color-mix(in oklab,var(--uflo-navy) 9%,var(--bg)); border-color:color-mix(in oklab,var(--uflo-navy) 22%,var(--line)); }
+#pps-aula-2026 .pa-dl-row__ext.ext-xlsx{ color:#1F8A5B; background:color-mix(in oklab,#1F8A5B 10%,var(--bg)); border-color:color-mix(in oklab,#1F8A5B 24%,var(--line)); }
+#pps-aula-2026 .pa-dl-row__main{ flex:1; min-width:0; }
+#pps-aula-2026 .pa-dl-row__name{ display:block; font-family:var(--font-display); font-weight:600; font-size:16.5px; letter-spacing:-.02em; color:var(--ink); }
+#pps-aula-2026 .pa-dl-row__desc{ display:block; font-size:13.5px; color:var(--ink-muted); margin-top:2px; line-height:1.45; }
+#pps-aula-2026 .pa-dl-row__size{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-subtle); letter-spacing:.02em; white-space:nowrap; }
+#pps-aula-2026 .pa-dl-row__dl{ width:40px; height:40px; border-radius:11px; flex-shrink:0; display:grid; place-items:center; color:var(--ink-muted); background:var(--bg); border:1px solid var(--line); transition:var(--t-fast); }
+
+@media (max-width:980px){ #pps-aula-2026 .pa-dl-wrap{ padding-left:40px; padding-right:40px; } }
+@media (max-width:680px){
+  #pps-aula-2026 .pa-nav{ padding:14px 20px; }
+  #pps-aula-2026 .pa-mast{ padding:48px 20px 0; }
+  #pps-aula-2026 .pa-dl-wrap{ padding:28px 20px 64px; }
+  #pps-aula-2026 .pa-dl-row__desc{ display:none; }
+  #pps-aula-2026 .pa-dl-row{ gap:12px; padding:14px 16px; }
+}
+
+/* ===== POLISH · foco, microinteracciones y entrada ===== */
+#pps-aula-2026 a:focus-visible{ outline:2.5px solid var(--accent); outline-offset:3px; border-radius:12px; }
+#pps-aula-2026 .pa-dl-row__dl svg{ transition:transform var(--t-fast); }
+#pps-aula-2026 .pa-dl-row:hover .pa-dl-row__dl svg{ transform:translateY(2px); }
+#pps-aula-2026 .pa-dl-row__name{ transition:color var(--t-fast); }
+#pps-aula-2026 .pa-dl-row:hover .pa-dl-row__name{ color:var(--accent-deep); }
+#pps-aula-2026 .pa-dl-row__ext{ transition:transform var(--t-fast); }
+#pps-aula-2026 .pa-dl-row:hover .pa-dl-row__ext{ transform:scale(1.05); }
+@media (prefers-reduced-motion: no-preference){
+  html{ scroll-behavior:smooth; }
+  #pps-aula-2026 .pa-anim{ animation:paIn .55s cubic-bezier(.2,.7,.2,1) backwards; }
+  @keyframes paIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
+}
+</style>
+</head>
+<body>
+<div id="pps-aula-2026">
+
+  <!-- NAV -->
+  <header class="pa-nav">
+    <a class="pa-brand" href="aula.html">
+      <span class="pa-brand__mark">UFLO</span><span class="pa-brand__sep"></span>
+      <span class="pa-display" style="font-size:18px;">PPS 2026</span>
+    </a>
+    <nav class="pa-navlinks">
+      <a href="aula.html">Inicio</a>
+      <a href="guia.html">Guía 2026</a>
+      <a href="descargas.html" class="is-on">Descargas</a>
+      <a href="preguntas.html">Preguntas</a>
+      <a href="entregas.html">Entregas</a>
+      <a href="https://pps-psico.github.io/" target="_blank" rel="noopener">Mi panel</a>
+    </nav>
+  </header>
+
+  <!-- MASTHEAD -->
+  <div class="pa-mast">
+    <div class="pa-mast__rule"></div>
+    <div class="pa-mast__eyebrow"><b>Descargas</b><span class="sep"></span>Ciclo 2026<span class="sep"></span><span id="dlCount">…</span> archivos</div>
+    <h1 class="pa-mast__title">Todo lo que tenés que tener a mano.</h1>
+    <p class="pa-mast__sub">Guías, plantillas y documentos oficiales de la práctica. Lo mantenemos actualizado durante toda la cursada.</p>
+  </div>
+
+  <div class="pa-dl-wrap" id="dlWrap"></div>
+</div>
+
+<!-- ============================================================================
+     DATOS — EDITÁ ACÁ (y volvé a desplegar). No hace falta tocar Moodle.
+     · ext: PDF | DOC | DOCX | XLSX (define el color del ícono)
+     · url: enlace de descarga del archivo
+     · size: opcional. Dejalo en "" si no lo sabés (no se muestra)
+     · feat:true resalta la fila (destacado)
+     ============================================================================ -->
+<script id="descargas-data">
+window.DESCARGAS = [
+  {
+    title:"Plantillas", kick:"Documentos que completás vos",
+    items:[
+      { n:"Planilla de seguimiento de horas", d:"Tu control exacto de horas, clase a clase. Planilla oficial.", ext:"XLSX", size:"", feat:true, url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/Planilla_Seguimiento%20%281%29.xlsx" },
+      { n:"Planilla de asistencia",            d:"Registro presencial para la firma de tu referente en sede.",   ext:"DOC",  size:"", url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/PlanillaAsistencia_vacia.doc" }
+    ]
+  },
+  {
+    title:"Guías y normativa", kick:"Material de referencia",
+    items:[
+      { n:"Guía para la elaboración del informe", d:"Pautas de elaboración académica del informe de PPS.", ext:"PDF", size:"", url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/Guia%20para%20la%20elaboraci%C3%B3n%20Informe%20de%20PPS%20%281%29.pdf" },
+      { n:"Reglamento de PPS",                    d:"Marco oficial y resoluciones de referencia.",          ext:"PDF", size:"", url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/UFLO%20Reglamento%20de%20PPS%20%282%29.pdf" }
+    ]
+  }
+];
+</script>
+
+<script>
+(function(){
+  var DATA = window.DESCARGAS || [];
+  var DL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 10l6 6 6-6"/><path d="M5 20h14"/></svg>';
+  var total = DATA.reduce(function(s,g){ return s + g.items.length; }, 0);
+  document.getElementById('dlCount').textContent = total;
+
+  document.getElementById('dlWrap').innerHTML = DATA.map(function(g){
+    var rows = g.items.map(function(it){
+      return '<a class="pa-dl-row'+(it.feat?' is-feat':'')+'" href="'+(it.url||'#')+'" target="_blank" rel="noopener">'
+        + '<span class="pa-dl-row__ext ext-'+it.ext.toLowerCase()+'">'+it.ext+'</span>'
+        + '<span class="pa-dl-row__main"><span class="pa-dl-row__name">'+it.n+'</span>'
+        + '<span class="pa-dl-row__desc">'+it.d+'</span></span>'
+        + (it.size ? '<span class="pa-dl-row__size">'+it.size+'</span>' : '')
+        + '<span class="pa-dl-row__dl">'+DL+'</span></a>';
+    }).join('');
+    return '<section class="pa-dl-group"><div class="pa-dl-group__head">'
+      + '<h2 class="pa-dl-group__title">'+g.title+'</h2>'
+      + '<span class="pa-dl-group__kick">'+g.kick+'</span></div>'
+      + '<div class="pa-dl-list">'+rows+'</div></section>';
+  }).join('');
+
+  if(!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    var anim = document.getElementById('pps-aula-2026').querySelectorAll('.pa-mast__eyebrow,.pa-mast__title,.pa-mast__sub,.pa-dl-group__head,.pa-dl-row');
+    [].slice.call(anim).forEach(function(el,i){ el.style.animationDelay=((i%7)*45)+'ms'; el.classList.add('pa-anim'); });
+  }
+
+  if (window.self !== window.top){ document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden'; }
+  var wrap=document.getElementById('pps-aula-2026');
+  function reportH(){ var h=(wrap?Math.ceil(wrap.getBoundingClientRect().height):document.body.scrollHeight)+2; try{ parent.postMessage({ppsAula:true,height:h},'*'); }catch(e){} }
+  window.addEventListener('load', reportH); window.addEventListener('resize', reportH);
+  if(window.ResizeObserver&&wrap) new ResizeObserver(reportH).observe(wrap);
+  var n=0, iv=setInterval(function(){ reportH(); if(++n>12) clearInterval(iv); }, 400);
+})();
+</script>
+</body>
+</html>
