@@ -9,7 +9,6 @@ import { processAndLinkStudentData } from "../utils/dataLinker";
 import { FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES } from "../constants";
 import { useAppConfig } from "../contexts/ConfigContext";
 
-import type { UseMutationResult } from "@tanstack/react-query";
 import type {
   EstudianteFields,
   Practica,
@@ -18,7 +17,6 @@ import type {
   Convocatoria,
   Orientacion,
   InformeTask,
-  AppRecord,
   CriteriosCalculados,
 } from "../types";
 
@@ -40,19 +38,14 @@ interface StudentPanelContextType {
   isLoading: boolean;
   error: Error | null;
 
-  // Mutations and refetch functions
-  updateOrientation: UseMutationResult<any, Error, Orientacion | "", unknown>;
-  updateInternalNotes: UseMutationResult<any, Error, string, unknown>;
-  updateNota: UseMutationResult<
-    (AppRecord<any> | null)[],
-    Error,
-    { practicaId: string; nota: string; convocatoriaId?: string },
-    unknown
-  >;
-  updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string }, unknown>;
+  // Mutations and refetch functions (tipos derivados de los hooks fuente)
+  updateOrientation: ReturnType<typeof useStudentData>["updateOrientation"];
+  updateInternalNotes: ReturnType<typeof useStudentData>["updateInternalNotes"];
+  updateNota: ReturnType<typeof useStudentPracticas>["updateNota"];
+  updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
-  confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
+  confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
   refetchAll: () => void;
   refetchPracticas: () => void;
 }

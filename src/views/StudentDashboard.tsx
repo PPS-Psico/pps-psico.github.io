@@ -149,7 +149,9 @@ export const StudentHome: React.FC = () => {
         practicas={practicas}
         criterios={criterios}
         onAddPPS={() => setShowNuevaPPSModal(true)}
-        onDeletePractica={(id) => deletePractica.mutateAsync(id)}
+        onDeletePractica={async (id) => {
+          await deletePractica.mutateAsync(id);
+        }}
         isDeletingPractica={deletePractica.isPending}
       />
       <SolicitudNuevaPPSModal
@@ -702,7 +704,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         practicas={practicas}
         criterios={criterios}
         onAddPPS={() => setShowNuevaPPSModal(true)}
-        onDeletePractica={(id) => deletePractica.mutateAsync(id)}
+        onDeletePractica={async (id) => {
+          await deletePractica.mutateAsync(id);
+        }}
         isDeletingPractica={deletePractica.isPending}
       />
       <div className="print-only">

@@ -11,9 +11,7 @@ import { useStudentCommitments } from "../hooks/useStudentCommitments";
 import { calculateCriterios, initialCriterios } from "../utils/criteriaCalculations";
 import { processAndLinkStudentData } from "../utils/dataLinker";
 
-import type { UseMutationResult } from "@tanstack/react-query";
 import type {
-  AppRecord,
   CompromisoPPS,
   Convocatoria,
   CriteriosCalculados,
@@ -54,33 +52,16 @@ interface StudentPanelContextType {
   isCommitmentsLoading: boolean;
   error: Error | null;
 
-  // Mutations and refetch functions
-  updateOrientation: UseMutationResult<any, Error, Orientacion | "", unknown>;
-  updateInternalNotes: UseMutationResult<any, Error, string, unknown>;
-  updateNota: UseMutationResult<
-    (AppRecord<any> | null)[],
-    Error,
-    { practicaId: string; nota: string; convocatoriaId?: string },
-    unknown
-  >;
-  updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string }, unknown>;
-  deletePractica: UseMutationResult<any, Error, string, unknown>;
+  // Mutations and refetch functions (tipos derivados de los hooks fuente)
+  updateOrientation: ReturnType<typeof useStudentData>["updateOrientation"];
+  updateInternalNotes: ReturnType<typeof useStudentData>["updateInternalNotes"];
+  updateNota: ReturnType<typeof useStudentPracticas>["updateNota"];
+  updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
+  deletePractica: ReturnType<typeof useStudentPracticas>["deletePractica"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
-  confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
-  acceptCompromiso: UseMutationResult<
-    any,
-    Error,
-    {
-      convocatoriaId: string;
-      lanzamientoId: string;
-      fullName: string;
-      dni: number | null;
-      legajo: string;
-      signature: string;
-    },
-    unknown
-  >;
+  confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
+  acceptCompromiso: ReturnType<typeof useStudentCommitments>["acceptCompromiso"];
   refetchAll: () => void;
   refetchPracticas: () => void;
 }

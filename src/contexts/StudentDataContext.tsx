@@ -1,15 +1,14 @@
 import React, { createContext, useContext, ReactNode } from "react";
 import { useStudentData } from "../hooks/useStudentData";
-import type { UseMutationResult } from "@tanstack/react-query";
-import type { Estudiante, Orientacion } from "../types";
+import type { Estudiante } from "../types";
 
 interface StudentDataContextType {
   studentDetails: Estudiante | null;
   studentId: string | null;
   isStudentLoading: boolean;
   studentError: Error | null;
-  updateOrientation: UseMutationResult<any, Error, Orientacion | "", unknown>;
-  updateInternalNotes: UseMutationResult<any, Error, string, unknown>;
+  updateOrientation: ReturnType<typeof useStudentData>["updateOrientation"];
+  updateInternalNotes: ReturnType<typeof useStudentData>["updateInternalNotes"];
   refetchStudent: () => void;
 }
 

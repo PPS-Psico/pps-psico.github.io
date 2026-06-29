@@ -7,7 +7,7 @@ import { useConvocatorias } from "../hooks/useConvocatorias";
 import { calculateCriterios, initialCriterios } from "../utils/criteriaCalculations";
 import { processAndLinkStudentData } from "../utils/dataLinker";
 import { FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES } from "../constants";
-import { useQuery, UseMutationResult } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { fetchFinalizacionRequest } from "../services";
 import type {
   Practica,
@@ -15,7 +15,6 @@ import type {
   LanzamientoPPS,
   Convocatoria,
   InformeTask,
-  AppRecord,
   CriteriosCalculados,
   FinalizacionPPS,
   Orientacion,
@@ -36,17 +35,12 @@ interface StudentAcademicContextType {
   finalizacionRequest: FinalizacionPPS | null;
   isAcademicLoading: boolean;
   academicError: Error | null;
-  updateNota: UseMutationResult<
-    (AppRecord<any> | null)[],
-    Error,
-    { practicaId: string; nota: string; convocatoriaId?: string },
-    unknown
-  >;
+  updateNota: ReturnType<typeof useStudentPracticas>["updateNota"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
-  confirmInforme: UseMutationResult<any, Error, InformeTask, any>;
+  confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
   refetchAcademic: () => void;
-  updateFechaFin: UseMutationResult<any, Error, { practicaId: string; fecha: string }, unknown>;
+  updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
 }
 
 const StudentAcademicContext = createContext<StudentAcademicContextType | undefined>(undefined);
