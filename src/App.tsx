@@ -235,9 +235,14 @@ const App: React.FC = () => {
 
     document.documentElement.classList.add("pps-embedded");
 
+    // Reporta el alto real del contenido para que el iframe del campus crezca a
+    // su medida (scroll en la página de Moodle, sin barra interna ni recorte).
+    const measureHeight = () =>
+      Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0);
+
     const notifyParent = () => {
       try {
-        window.parent.postMessage({ ppsPanel: true }, "*");
+        window.parent.postMessage({ ppsPanel: true, height: measureHeight() }, "*");
       } catch {
         /* noop */
       }
@@ -248,10 +253,25 @@ const App: React.FC = () => {
     const t2 = setTimeout(notifyParent, 1200);
     window.addEventListener("resize", notifyParent);
 
+    // El panel es una SPA: el alto cambia al navegar tabs o cargar datos.
+    let ro: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(notifyParent);
+      ro.observe(document.body);
+    }
+    // Re-mide los primeros segundos (datos async, fuentes, imágenes).
+    let n = 0;
+    const iv = setInterval(() => {
+      notifyParent();
+      if (++n > 15) clearInterval(iv);
+    }, 500);
+
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearInterval(iv);
       window.removeEventListener("resize", notifyParent);
+      if (ro) ro.disconnect();
     };
   }, []);
 

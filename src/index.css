@@ -8,6 +8,18 @@ html.pps-embedded body,
 html.pps-embedded #root {
   background: transparent !important;
 }
+/* En modo embebido el alto lo maneja el iframe (postMessage al padre): los
+   contenedores no deben forzar 100vh, si no el iframe nunca puede medir el
+   contenido real y aparece scroll interno / recorte. */
+html.pps-embedded,
+html.pps-embedded body,
+html.pps-embedded #root {
+  min-height: 0 !important;
+  height: auto !important;
+}
+html.pps-embedded .min-h-screen {
+  min-height: 0 !important;
+}
 
 :root {
   --color-primary: 37, 99, 235;

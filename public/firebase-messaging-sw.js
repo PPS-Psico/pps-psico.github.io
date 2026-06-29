@@ -22,7 +22,7 @@ const messaging = firebase.messaging();
 
 // --- PWA CACHING ---
 
-const CACHE_NAME = "mi-panel-academico-cache-v31";
+const CACHE_NAME = "mi-panel-academico-cache-v32";
 const FILES_TO_CACHE = ["./index.html", "./manifest.json"];
 
 // Install and precache the minimal shell
@@ -59,8 +59,19 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     (async () => {
+      // El documento HTML (navegaciones) se revalida SIEMPRE contra la red sin
+      // usar la caché HTTP del navegador. Así un index.html viejo no puede
+      // seguir apuntando a bundles JS/CSS hash viejos tras un deploy.
+      const isNavigation =
+        event.request.mode === "navigate" ||
+        event.request.url.endsWith("/") ||
+        event.request.url.endsWith("index.html");
+
       try {
-        const networkResponse = await fetch(event.request);
+        const networkResponse = await fetch(
+          event.request,
+          isNavigation ? { cache: "no-store" } : undefined
+        );
 
         // Handle 404s for hashed assets (old versions after deploy)
         if (
