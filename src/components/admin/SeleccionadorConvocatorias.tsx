@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -17,7 +16,6 @@ import {
   normalizeStringForComparison,
 } from "../../utils/formatters";
 import { parseSchedules } from "../../utils/scheduleUtils";
-import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
@@ -431,7 +429,13 @@ const StudentRow: React.FC<{
           className={`lv4-fab ${isCommitmentConfirmed ? "confirmed" : isSelected ? "selected" : ""}`}
           onClick={() => onToggleSelection(student)}
           disabled={isUpdating}
-          title={isSelected ? "Dar de Baja (con penalización)" : "Seleccionar Alumno"}
+          title={
+            isSelected
+              ? isEditMode
+                ? "Dar de Baja (con penalización)"
+                : "Deseleccionar Alumno"
+              : "Seleccionar Alumno"
+          }
         >
           {isUpdating ? (
             <span className="lv4-spinner" />
@@ -624,7 +628,6 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
 
 interface SeleccionadorProps {
   isTestingMode?: boolean;
-  onNavigateToInsurance?: (lanzamientoId: string) => void;
   preSelectedLaunchId?: string | null;
   /**
    * Oculta a los estudiantes que ya confirmaron el compromiso (seleccionados +
@@ -637,7 +640,6 @@ interface SeleccionadorProps {
 
 const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   isTestingMode = false,
-  onNavigateToInsurance,
   preSelectedLaunchId,
   hideConfirmed = false,
 }) => {
@@ -649,7 +651,6 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     toastInfo,
     setToastInfo,
     updatingId,
-    isClosingTable,
     openLaunches,
     isLoadingLaunches,
     candidates,
@@ -660,11 +661,8 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     isEditMode,
     handleToggle,
     handleUpdateSchedule,
-    handleConfirmAndCloseTable,
-    closeLaunchMutation,
-  } = useSeleccionadorLogic(isTestingMode, onNavigateToInsurance, preSelectedLaunchId);
+  } = useSeleccionadorLogic(isTestingMode, preSelectedLaunchId);
 
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [studentToBaja, setStudentToBaja] = useState<EnrichedStudent | null>(null);
   const [showPenalizacionModal, setShowPenalizacionModal] = useState(false);
   const [penaltyType, setPenaltyType] = useState("Baja Anticipada");
@@ -702,7 +700,10 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   const handleToggleWithPenalty = (student: EnrichedStudent) => {
     const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
 
-    if (isCurrentlySelected) {
+    // La penalización solo aplica al deseleccionar cuando la inscripción ya está
+    // cerrada (modo edición). Mientras la inscripción siga abierta, el coordinador
+    // puede deseleccionar libremente sin generar una penalización.
+    if (isCurrentlySelected && isEditMode) {
       setStudentToBaja(student);
       setShowPenalizacionModal(true);
     } else {
@@ -802,10 +803,6 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     );
   }
 
-  const isCerrado =
-    normalizeStringForComparison(selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]) ===
-    "cerrado";
-
   return (
     <div className="lv4-anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {toastInfo && (
@@ -813,25 +810,6 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
           message={toastInfo.message}
           type={toastInfo.type}
           onClose={() => setToastInfo(null)}
-        />
-      )}
-
-      {selectedLanzamiento && (
-        <ConfirmModal
-          isOpen={isConfirmOpen}
-          title={isCerrado ? "¿Guardar Cambios?" : "¿Cerrar Mesa de Inscripción?"}
-          message={
-            isCerrado
-              ? `Se guardarán los cambios realizados (${selectedCandidates.length} estudiantes seleccionados). No se enviarán correos automáticos porque la convocatoria ya está cerrada. ¿Deseas continuar?`
-              : `Se enviarán correos automáticos de confirmación a los ${selectedCandidates.length} alumnos seleccionados. ¿Deseas proceder con el cierre definitivo de esta convocatoria?`
-          }
-          onConfirm={() => {
-            handleConfirmAndCloseTable();
-            setIsConfirmOpen(false);
-          }}
-          onClose={() => setIsConfirmOpen(false)}
-          confirmText={isCerrado ? "Guardar Cambios" : "Confirmar Cierre"}
-          type={isCerrado ? "warning" : "info"}
         />
       )}
 

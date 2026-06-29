@@ -1,7 +1,7 @@
 import React, { lazy, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppModals from "../components/AppModals";
-import Loader from "../components/Loader";
+import { AdminDashboardSkeleton } from "../components/Skeletons";
 import { type TabItem } from "../components/UnifiedTabs";
 import AdminTopBar from "../components/layout/AdminTopBar";
 import { useAdminPreferences } from "../contexts/AdminPreferencesContext";
@@ -144,13 +144,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
   const renderContent = () => {
     if (!isTestingMode) {
       return (
-        <React.Suspense
-          fallback={
-            <div className="flex justify-center p-20">
-              <Loader />
-            </div>
-          }
-        >
+        <React.Suspense fallback={<AdminDashboardSkeleton />}>
           <Outlet />
         </React.Suspense>
       );
@@ -158,13 +152,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
 
     // Mock routing for testing mode
     return (
-      <React.Suspense
-        fallback={
-          <div className="flex justify-center p-20">
-            <Loader />
-          </div>
-        }
-      >
+      <React.Suspense fallback={<AdminDashboardSkeleton />}>
         <div className="animate-fade-in-up">
           {localTab === "dashboard" && <AdminDashboard />}
           {localTab === "lanzador" && <LanzadorView isTestingMode={true} />}

@@ -32,9 +32,12 @@ import {
 } from "../../constants";
 import { notifySelectedStudents, fetchSelectedCandidatesForLaunch } from "../../services";
 import { normalizeStringForComparison } from "../../utils/formatters";
+import { logger } from "../../utils/logger";
 import type { LanzamientoPPS } from "../../types";
 // Estilos scoped (.lv4) — importar este módulo inyecta el CSS una sola vez.
 import "./lanzador/lanzadorStyles";
+import ConfirmModal from "../../components/ConfirmModal";
+import { launchKeys, invalidateLaunchData } from "../../lib/launchQueryKeys";
 import { type UIState, buildSidebarEntries } from "./lanzador/lanzadorState";
 import { Loader, LanzadorSidebar, type RowAction, type SidebarEntry } from "./lanzador/shared";
 import {
@@ -75,10 +78,22 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
     );
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Confirmación unificada (reemplaza window.confirm) — una sola instancia de
+  // ConfirmModal manejada por este estado. `onConfirm` ejecuta la acción pendiente.
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: React.ReactNode;
+    confirmText?: string;
+    type?: "warning" | "info" | "danger";
+    onConfirm: () => void;
+  } | null>(null);
 
   const handleSelect = useCallback((id: string) => {
     setIsCreating(false);
     setSelectedId(id);
+    setMobileSidebarOpen(false);
   }, []);
 
   useEffect(() => {
@@ -91,7 +106,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
 
   // ── Fetch launches ────────────────────────────────────────────────────────
   const { data: launches = [], isLoading } = useQuery<LanzamientoPPS[]>({
-    queryKey: ["launchHistory", isTestingMode],
+    queryKey: launchKeys.history(isTestingMode),
     queryFn: async () => {
       if (isTestingMode) return [];
       return db.lanzamientos.getAll({
@@ -107,7 +122,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   const { data: countsByLaunch = {} } = useQuery<
     Record<string, { inscriptos: number; seleccionados: number }>
   >({
-    queryKey: ["convCountsByLaunch", launchIds.join(",")],
+    queryKey: launchKeys.convCounts(launchIds),
     queryFn: async () => {
       if (launchIds.length === 0) return {};
       const { data, error } = await supabase.rpc("get_convocatoria_counts_by_launch", {
@@ -125,7 +140,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   const { data: consentByLaunch = {} } = useQuery<
     Record<string, { aceptados: number; total: number }>
   >({
-    queryKey: ["consentByLaunch", launchIds.join(",")],
+    queryKey: launchKeys.consentCounts(launchIds),
     queryFn: async () => {
       if (launchIds.length === 0) return {};
       const { data, error } = await supabase.rpc("get_consent_counts_by_launch", {
@@ -158,20 +173,14 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   const handleNew = useCallback(() => {
     setSelectedId(null);
     setIsCreating(true);
-  }, []);
-
-  const handleNavigateToInsurance = useCallback((lanzamientoId: string) => {
-    setSelectedId(lanzamientoId);
+    setMobileSidebarOpen(false);
   }, []);
 
   const refreshLaunches = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
-    // Las claves reales de los conteos derivados. Antes se invalidaban
-    // "convStatusByLaunch"/"inscCountByLaunch" (claves inexistentes), por lo que
-    // los conteos de inscriptos/seleccionados/consentimientos quedaban obsoletos
-    // en el sidebar tras cerrar una mesa o cambiar de estado.
-    queryClient.invalidateQueries({ queryKey: ["convCountsByLaunch"] });
-    queryClient.invalidateQueries({ queryKey: ["consentByLaunch"] });
+    // Invalida TODO lo derivado de lanzamientos (lista, conteos, consentimientos,
+    // roster, prácticas y las queries del seleccionador) desde un único helper,
+    // para que sidebar, canvas y seleccionador reconcilien siempre.
+    invalidateLaunchData(queryClient);
   }, [queryClient]);
 
   // ── Estado mutations ──────────────────────────────────────────────────────
@@ -181,28 +190,64 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: estado,
       } as Record<string, unknown>);
 
-      // Si estamos cerrando la inscripción, notificar a los seleccionados
+      // Al cerrar la inscripción notificamos a los seleccionados, pero en
+      // SEGUNDO PLANO: enviar emails + push tarda varios segundos y no debe
+      // bloquear el avance del pipeline ni la actualización de la vista. Si
+      // algo falla, se registra sin frenar el cierre.
       if (estado === "Cerrado") {
         const launch = launches.find((l) => l.id === id);
         if (launch) {
-          const candidates = await fetchSelectedCandidatesForLaunch(id);
-          if (candidates.length > 0) {
-            await notifySelectedStudents(launch, candidates);
-          }
+          void fetchSelectedCandidatesForLaunch(id)
+            .then((candidates) => {
+              if (candidates.length > 0) return notifySelectedStudents(launch, candidates);
+            })
+            .catch((e) => logger.error("[Lanzador] Error notificando seleccionados:", e));
         }
       }
     },
-    onSuccess: () => refreshLaunches(),
-    onError: (e: unknown) =>
+    // Update optimista: avanzamos el estado del lanzamiento en la cache para que
+    // el pipeline y el canvas cambien al instante, sin esperar el refetch.
+    onMutate: async ({ id, estado }) => {
+      const key = launchKeys.history(isTestingMode);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<LanzamientoPPS[]>(key);
+      queryClient.setQueryData<LanzamientoPPS[]>(key, (old) =>
+        (old || []).map((l) =>
+          l.id === id
+            ? ({ ...l, [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: estado } as LanzamientoPPS)
+            : l
+        )
+      );
+      return { previous };
+    },
+    onError: (e: unknown, _vars, context) => {
+      // Revertimos el update optimista si la escritura en DB falló.
+      if (context?.previous)
+        queryClient.setQueryData(launchKeys.history(isTestingMode), context.previous);
       showModal(
         "No se pudo actualizar",
         (e as Error)?.message || "Ocurrió un error al cambiar el estado."
-      ),
+      );
+    },
+    onSettled: () => refreshLaunches(),
   });
 
+  type ConfirmOpts = {
+    title: string;
+    message: React.ReactNode;
+    confirmText?: string;
+    type?: "warning" | "info" | "danger";
+  };
+
   const handleChangeEstado = useCallback(
-    (id: string, estado: string, confirmMsg?: string) => {
-      if (confirmMsg && !window.confirm(confirmMsg)) return;
+    (id: string, estado: string, confirm?: ConfirmOpts) => {
+      if (confirm) {
+        setConfirmState({
+          ...confirm,
+          onConfirm: () => changeEstadoMutation.mutate({ id, estado }),
+        });
+        return;
+      }
       changeEstadoMutation.mutate({ id, estado });
     },
     [changeEstadoMutation]
@@ -254,13 +299,16 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
 
   const handleRowAction = useCallback(
     (id: string, action: RowAction) => {
-      if (
-        action === "archivar" &&
-        !window.confirm(
-          "¿Archivar esta convocatoria? Dejará de verse para los estudiantes y pasará a «Archivadas»."
-        )
-      )
+      if (action === "archivar") {
+        setConfirmState({
+          title: "¿Archivar convocatoria?",
+          message: "Dejará de verse para los estudiantes y pasará a «Archivadas».",
+          confirmText: "Archivar",
+          type: "warning",
+          onConfirm: () => rowActionMutation.mutate({ id, action }),
+        });
         return;
+      }
       rowActionMutation.mutate({ id, action });
     },
     [rowActionMutation]
@@ -339,11 +387,13 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             <BorradorView
               launch={selectedLaunch}
               onPublish={() =>
-                handleChangeEstado(
-                  selectedLaunch.id,
-                  "Abierta",
-                  "¿Publicar esta convocatoria? Pasará a estado «Abierta» y será visible para inscripción."
-                )
+                handleChangeEstado(selectedLaunch.id, "Abierta", {
+                  title: "¿Publicar convocatoria?",
+                  message:
+                    "Pasará a estado «Abierta» y será visible para inscripción de los estudiantes.",
+                  confirmText: "Publicar",
+                  type: "info",
+                })
               }
               onRefresh={refreshLaunches}
             />
@@ -355,11 +405,13 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             <SeleccionView
               launch={selectedLaunch}
               onCerrarInscripcion={() =>
-                handleChangeEstado(
-                  selectedLaunch.id,
-                  "Cerrado",
-                  "¿Cerrar la mesa de selección? Ya no se podrán anotar más estudiantes ni modificar las selecciones actuales, y se enviarán automáticamente los correos de confirmación a los estudiantes seleccionados."
-                )
+                handleChangeEstado(selectedLaunch.id, "Cerrado", {
+                  title: "¿Cerrar la mesa de inscripción?",
+                  message:
+                    "Ya no se podrán anotar más estudiantes ni modificar las selecciones actuales, y se enviarán automáticamente los correos de confirmación a los estudiantes seleccionados.",
+                  confirmText: "Cerrar y notificar",
+                  type: "warning",
+                })
               }
             />
           </div>
@@ -367,17 +419,25 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       case "seguro":
         return (
           <div className="lv4-canvas">
-            <SeguroView
-              launch={selectedLaunch}
-              onNavigateToInsurance={handleNavigateToInsurance}
-              showModal={showModal}
-            />
+            <SeguroView launch={selectedLaunch} showModal={showModal} />
           </div>
         );
       case "confirmacion":
         return (
           <div className="lv4-canvas">
-            <ConfirmacionView launch={selectedLaunch} showModal={showModal} />
+            <ConfirmacionView
+              launch={selectedLaunch}
+              showModal={showModal}
+              onActivar={() =>
+                handleChangeEstado(selectedLaunch.id, "Activa", {
+                  title: "¿Activar esta PPS?",
+                  message:
+                    "Pasará a estado «Activa» (en curso). Los estudiantes con el compromiso aún pendiente quedarán como reemplazos.",
+                  confirmText: "Activar PPS",
+                  type: "info",
+                })
+              }
+            />
           </div>
         );
       case "activa":
@@ -386,11 +446,12 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             <ActivaView
               launch={selectedLaunch}
               onArchivar={() =>
-                handleChangeEstado(
-                  selectedLaunch.id,
-                  "Archivado",
-                  "¿Archivar esta convocatoria? Quedará como referencia histórica."
-                )
+                handleChangeEstado(selectedLaunch.id, "Archivado", {
+                  title: "¿Archivar esta convocatoria?",
+                  message: "Quedará como referencia histórica.",
+                  confirmText: "Archivar",
+                  type: "warning",
+                })
               }
             />
           </div>
@@ -402,11 +463,13 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
               launch={selectedLaunch}
               onDuplicar={() => duplicateMutation.mutate(selectedLaunch)}
               onReabrir={() =>
-                handleChangeEstado(
-                  selectedLaunch.id,
-                  "Abierta",
-                  "¿Reabrir la inscripción de esta convocatoria archivada?"
-                )
+                handleChangeEstado(selectedLaunch.id, "Abierta", {
+                  title: "¿Reabrir la inscripción?",
+                  message:
+                    "La convocatoria archivada volverá a estado «Abierta» para recibir nuevos postulantes.",
+                  confirmText: "Reabrir",
+                  type: "info",
+                })
               }
             />
           </div>
@@ -472,11 +535,36 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
           onNew={handleNew}
           onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
           onAction={handleRowAction}
+          mobileOpen={mobileSidebarOpen}
+        />
+        {/* Backdrop del drawer (solo mobile, via CSS) */}
+        <div
+          className={`lv4-aside-backdrop${mobileSidebarOpen ? " open" : ""}`}
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
         />
         <main style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
           {isCreating ? renderNewConvocatoria() : renderCanvas()}
         </main>
       </div>
+      {/* Botón flotante para abrir la lista en mobile (oculto en desktop via CSS) */}
+      <button
+        className="lv4-mobile-menu-btn"
+        onClick={() => setMobileSidebarOpen(true)}
+        aria-label="Abrir lista de convocatorias"
+      >
+        <span className="material-icons">menu</span>
+        Convocatorias
+      </button>
+      <ConfirmModal
+        isOpen={!!confirmState}
+        title={confirmState?.title || ""}
+        message={confirmState?.message || ""}
+        confirmText={confirmState?.confirmText}
+        type={confirmState?.type}
+        onConfirm={() => confirmState?.onConfirm()}
+        onClose={() => setConfirmState(null)}
+      />
     </>
   );
 };

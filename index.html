@@ -60,6 +60,50 @@
       }
     </script>
 
+    <!-- Anti-FOUC: evita el "flash" de estilo viejo mientras cargan las fuentes
+         de marca (Bricolage Grotesque / Manrope / Geist). Mantenemos el contenido
+         oculto sobre un fondo neutro acorde al tema hasta que las tipografías estén
+         listas (o tras un máximo de seguridad), y recién ahí se revela ya con el
+         estilo final. Así el usuario nunca ve el render con la fuente del sistema. -->
+    <style id="pps-anti-fouc">
+      html.fonts-loading body {
+        visibility: hidden;
+      }
+      html.fonts-loading {
+        background-color: #fafaf7;
+      }
+      html.fonts-loading.dark {
+        background-color: #0e0e0c;
+      }
+    </style>
+    <script>
+      (function () {
+        var docEl = document.documentElement;
+        docEl.classList.add("fonts-loading");
+        var revealed = false;
+        function reveal() {
+          if (revealed) return;
+          revealed = true;
+          docEl.classList.remove("fonts-loading");
+        }
+        // Failsafe: nunca dejar la página oculta más de 1.2s, pase lo que pase.
+        var failsafe = setTimeout(reveal, 1200);
+        function done() {
+          clearTimeout(failsafe);
+          reveal();
+        }
+        if (document.fonts && document.fonts.load) {
+          Promise.all([
+            document.fonts.load("600 1em 'Bricolage Grotesque'"),
+            document.fonts.load("500 1em 'Geist'"),
+            document.fonts.load("700 1em 'Manrope'"),
+          ]).then(done, done);
+        } else {
+          window.addEventListener("load", done);
+        }
+      })();
+    </script>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -897,6 +897,32 @@ html.dark .ah-root .ah-next__date .m {
   margin-top: 14px;
 }
 
+/* Variante compacta: cuando no hay convocatorias abiertas pero SÍ cerradas con
+   resultados, achicamos este bloque para darle protagonismo a las cerradas
+   (el alumno entra a ver si quedó seleccionado). */
+.ah-empty--compact {
+  padding: 24px 28px;
+  flex-direction: row;
+  text-align: left;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.ah-empty--compact .ah-empty__ic {
+  margin-bottom: 0;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.ah-empty--compact .ah-empty__t {
+  align-self: center;
+}
+.ah-empty--compact .ah-empty__s {
+  flex-basis: 100%;
+  margin-left: 52px;
+  margin-top: 2px;
+}
+
 /* botones */
 .ah-btn {
   font: 500 13.5px/1 var(--font-sans);

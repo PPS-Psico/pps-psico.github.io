@@ -9,11 +9,22 @@ import { useModal } from "../../../contexts/ModalContext";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../../constants";
 import { normalizeStringForComparison, getWhatsAppUrl } from "../../../utils/formatters";
 import type { LanzamientoPPS } from "../../../types";
-import { CanvasHeader, Loader, useLaunchEditor, SeleccionadorConvocatorias } from "./shared";
+import {
+  CanvasHeader,
+  Loader,
+  Stat,
+  StatGrid,
+  Banner,
+  useLaunchEditor,
+  SeleccionadorConvocatorias,
+} from "./shared";
+import { useLaunchRoster } from "./useLaunchData";
+import { launchKeys } from "../../../lib/launchQueryKeys";
 const ConfirmacionView: React.FC<{
   launch: LanzamientoPPS;
   showModal: ReturnType<typeof useModal>["showModal"];
-}> = ({ launch, showModal }) => {
+  onActivar: () => void;
+}> = ({ launch, showModal, onActivar }) => {
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
   const [gestionOpen, setGestionOpen] = useState(false);
   const [firmadosOpen, setFirmadosOpen] = useState(false);
@@ -21,28 +32,27 @@ const ConfirmacionView: React.FC<{
   const instNombre = launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | null;
 
   // Roster de la confirmación. OJO con dos sutilezas del flujo:
-  //  1. La DB guarda "Seleccionado" (mayúscula) → usamos ilike, no eq.
+  //  1. La DB guarda "Seleccionado" (mayúscula) → comparamos normalizado.
   //  2. Hay BAJA AUTOMÁTICA: si un seleccionado no firma en 24h, un cron
   //     revierte su estado a "Inscripto" y marca baja_automatica_at. Esos
   //     estudiantes "desaparecían" del conteo de seleccionados, por eso el
   //     coordinador veía 9 en vez de 12. Los recuperamos incluyendo a los que
   //     tienen baja_automatica_at (= fueron seleccionados pero no firmaron).
-  const { data: seleccionados = [] } = useQuery({
-    queryKey: ["seleccionadosForLaunch", launch.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("convocatorias")
-        .select(
-          "id, estado_inscripcion, estudiante_id, horario_asignado, horario_seleccionado, selected_at, baja_automatica_at, reminder_sent_at"
-        )
-        .eq("lanzamiento_id", launch.id)
-        .or("estado_inscripcion.ilike.seleccionado,baja_automatica_at.not.is.null");
-      return data || [];
-    },
-  });
+  // Usa el roster compartido (`useLaunchRoster`) — misma fuente que el resto
+  // del Lanzador, así sidebar/canvas/seleccionador nunca divergen.
+  const { data: roster = [] } = useLaunchRoster(launch.id);
+  const seleccionados = useMemo(
+    () =>
+      roster.filter(
+        (r) =>
+          normalizeStringForComparison(r.estado_inscripcion) === "seleccionado" ||
+          r.baja_automatica_at != null
+      ),
+    [roster]
+  );
 
   const { data: compromisos = [] } = useQuery({
-    queryKey: ["compromisosForLaunch", launch.id],
+    queryKey: launchKeys.compromisos(launch.id),
     queryFn: async () => {
       const { data } = await supabase
         .from("compromisos_pps")
@@ -390,35 +400,22 @@ const ConfirmacionView: React.FC<{
       <CanvasHeader
         launch={launch}
         uiState="confirmacion"
+        primaryAction={{ label: "Activar PPS", icon: "play_circle", onClick: onActivar }}
         secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
       />
       {editModal}
       <div className="lv4-canvas-body">
         {/* Stats compromisos */}
-        <div className="lv4-stats" style={{ marginBottom: 24 }}>
-          <div className="lv4-stat">
-            <div className="lv4-stat-label">Seleccionados</div>
-            <div className="lv4-stat-val">{total}</div>
-            <div className="lv4-stat-hint">estudiantes</div>
-          </div>
-          <div className="lv4-stat">
-            <div className="lv4-stat-label">Consintieron</div>
-            <div className="lv4-stat-val" style={{ color: "var(--ok)" }}>
-              {confirmados}
-            </div>
-            <div className="lv4-stat-hint">compromiso digital</div>
-          </div>
-          <div className="lv4-stat">
-            <div className="lv4-stat-label">Pendientes</div>
-            <div
-              className="lv4-stat-val"
-              style={{ color: pendientes > 0 ? "var(--warn)" : "var(--ok)" }}
-            >
-              {pendientes}
-            </div>
-            <div className="lv4-stat-hint">sin firmar</div>
-          </div>
-        </div>
+        <StatGrid style={{ marginBottom: 24 }}>
+          <Stat label="Seleccionados" value={total} hint="estudiantes" />
+          <Stat label="Consintieron" value={confirmados} hint="compromiso digital" tone="ok" />
+          <Stat
+            label="Pendientes"
+            value={pendientes}
+            hint="sin firmar"
+            tone={pendientes > 0 ? "warn" : "ok"}
+          />
+        </StatGrid>
 
         {/* Progreso de consentimientos */}
         {total > 0 && (
@@ -466,76 +463,45 @@ const ConfirmacionView: React.FC<{
 
         {/* Banner estado */}
         {total === 0 ? (
-          <div
-            className="lv4-banner"
-            style={{ borderColor: "var(--rule-3)", background: "var(--paper-2)", marginBottom: 28 }}
+          <Banner
+            tone="neutral"
+            icon="group_add"
+            title="Todavía no hay estudiantes seleccionados"
+            style={{ marginBottom: 28 }}
+            action={
+              <button
+                className="lv4-btn lv4-btn-primary"
+                style={{ flexShrink: 0 }}
+                onClick={() => setGestionOpen(true)}
+              >
+                <span className="material-icons" style={{ fontSize: 14 }}>
+                  person_add
+                </span>
+                Seleccionar estudiantes
+              </button>
+            }
           >
-            <span
-              className="material-icons"
-              style={{ fontSize: 20, color: "var(--ink-3)", marginTop: 2 }}
-            >
-              group_add
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>
-                Todavía no hay estudiantes seleccionados
-              </div>
-              <div style={{ fontSize: 13, color: "var(--ink-3)" }}>
-                Elegí estudiantes de la lista de inscriptos para empezar la sala de consentimientos.
-              </div>
-            </div>
-            <button
-              className="lv4-btn lv4-btn-primary"
-              style={{ flexShrink: 0 }}
-              onClick={() => setGestionOpen(true)}
-            >
-              <span className="material-icons" style={{ fontSize: 14 }}>
-                person_add
-              </span>
-              Seleccionar estudiantes
-            </button>
-          </div>
+            Elegí estudiantes de la lista de inscriptos para empezar la sala de consentimientos.
+          </Banner>
         ) : pendientes > 0 ? (
-          <div
-            className="lv4-banner"
-            style={{ borderColor: "var(--warn)", background: "var(--warn-s)", marginBottom: 28 }}
+          <Banner
+            tone="warn"
+            icon="pending_actions"
+            title={`${pendientes} de ${total} sin firmar el compromiso`}
+            style={{ marginBottom: 28 }}
           >
-            <span
-              className="material-icons"
-              style={{ fontSize: 20, color: "var(--warn)", marginTop: 2 }}
-            >
-              pending_actions
-            </span>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 13, color: "var(--warn)", marginBottom: 3 }}>
-                {pendientes} de {total} sin firmar el compromiso
-              </div>
-              <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
-                Seleccionaste {total} estudiante{total !== 1 ? "s" : ""} y {confirmados} firmaron.
-                Revisá abajo quiénes faltan y contactalos directo por WhatsApp o email.
-              </div>
-            </div>
-          </div>
+            Seleccionaste {total} estudiante{total !== 1 ? "s" : ""} y {confirmados} firmaron.
+            Revisá abajo quiénes faltan y contactalos directo por WhatsApp o email.
+          </Banner>
         ) : (
-          <div
-            className="lv4-banner"
-            style={{ borderColor: "var(--ok)", background: "var(--ok-s)", marginBottom: 28 }}
+          <Banner
+            tone="ok"
+            icon="check_circle"
+            title="Todos los compromisos aceptados"
+            style={{ marginBottom: 28 }}
           >
-            <span
-              className="material-icons"
-              style={{ fontSize: 20, color: "var(--ok)", marginTop: 2 }}
-            >
-              check_circle
-            </span>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ok)", marginBottom: 3 }}>
-                Todos los compromisos aceptados
-              </div>
-              <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
-                Podés proceder a generar los seguros y actas.
-              </div>
-            </div>
-          </div>
+            Podés proceder a generar los seguros y actas.
+          </Banner>
         )}
 
         {/* Faltan firmar — prioridad operativa (pendientes + bajas) */}
@@ -759,52 +725,54 @@ const ConfirmacionView: React.FC<{
             <div className="lv4-eyebrow" style={{ marginBottom: 8 }}>
               Activar la PPS
             </div>
+            <Banner
+              tone="ok"
+              icon="play_circle"
+              title={
+                pendientes > 0
+                  ? `${pendientes} compromiso${pendientes !== 1 ? "s" : ""} aún pendiente${
+                      pendientes !== 1 ? "s" : ""
+                    }`
+                  : "Todos los compromisos aceptados"
+              }
+              style={{ marginBottom: 16 }}
+            >
+              {pendientes > 0
+                ? "Podés avanzar igual: la PPS arranca con los confirmados y los pendientes pasan a la lista de reemplazos."
+                : "Activá la PPS para marcar el lanzamiento como en curso. Los estudiantes ya están listos."}
+            </Banner>
             <div
-              className="lv4-banner"
               style={{
-                borderColor: "var(--ok)",
-                background: "var(--ok-s)",
-                marginBottom: 16,
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginBottom: 24,
               }}
             >
-              <span
-                className="material-icons"
-                style={{ fontSize: 20, color: "var(--ok)", marginTop: 2 }}
-              >
-                play_circle
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ok)", marginBottom: 3 }}>
-                  {pendientes > 0
-                    ? `${pendientes} compromiso${pendientes !== 1 ? "s" : ""} aún pendiente${
-                        pendientes !== 1 ? "s" : ""
-                      }`
-                    : "Todos los compromisos aceptados"}
-                </div>
-                <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
-                  {pendientes > 0
-                    ? "Podés avanzar igual: la PPS arranca con los confirmados y los pendientes pasan a la lista de reemplazos."
-                    : "Activá la PPS para marcar el lanzamiento como en curso. Los estudiantes ya están listos."}
-                </div>
-              </div>
-            </div>
-            {pendientes > 0 && (
-              <button
-                className="lv4-btn lv4-btn-ghost"
-                style={{ marginBottom: 24 }}
-                onClick={() =>
-                  showModal(
-                    "Avanzar con pendientes",
-                    "Esta acción mueve el lanzamiento a Activa aunque haya compromisos sin firmar. Los pendientes podrán ser reemplazados desde la sala de Confirmación."
-                  )
-                }
-              >
+              <button className="lv4-btn lv4-btn-primary" onClick={onActivar}>
                 <span className="material-icons" style={{ fontSize: 16 }}>
-                  warning
+                  play_circle
                 </span>
-                ¿Por qué hay pendientes?
+                Activar PPS
               </button>
-            )}
+              {pendientes > 0 && (
+                <button
+                  className="lv4-btn lv4-btn-ghost"
+                  onClick={() =>
+                    showModal(
+                      "Avanzar con pendientes",
+                      "Esta acción mueve el lanzamiento a Activa aunque haya compromisos sin firmar. Los pendientes podrán ser reemplazados desde la sala de Confirmación."
+                    )
+                  }
+                >
+                  <span className="material-icons" style={{ fontSize: 16 }}>
+                    warning
+                  </span>
+                  ¿Por qué hay pendientes?
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>

@@ -82,7 +82,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div
       className="flex flex-col min-h-screen"
       style={
-        isStudent ? { background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" } : undefined
+        isStudent
+          ? { background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }
+          : hasOwnTopBar
+            ? // Admin/Jefe/Directivo/Reportero usan el sistema Paper & Ink: pintamos
+              // el fondo "paper" desde el contenedor raíz para que no aparezca un
+              // flash blanco (estilo viejo) mientras cargan los chunks/skeletons.
+              { background: "var(--paper)" }
+            : undefined
       }
     >
       {!isOnline && (

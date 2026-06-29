@@ -136,50 +136,140 @@ export const ListSkeleton: React.FC<{ items?: number }> = ({ items = 4 }) => (
   </div>
 );
 
-// Admin Dashboard Skeleton
+// Editorial (Paper & Ink) skeleton block — usado por el skeleton del panel admin
+// para que coincida con su sistema visual real (tokens --paper/--ink/--rule),
+// en lugar de las tarjetas blancas "slate" del diseño anterior.
+const InkSkeleton: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
+  <div
+    className="relative overflow-hidden"
+    style={{ background: "var(--paper-3)", borderRadius: 12, ...style }}
+  >
+    <div
+      className="absolute inset-0 -translate-x-full animate-shimmer"
+      style={{
+        background:
+          "linear-gradient(90deg, transparent 0%, rgba(127,127,127,0.14) 50%, transparent 100%)",
+      }}
+    />
+  </div>
+);
+
+// Admin Dashboard Skeleton · replica la estructura real del dashboard
+// (PageHead → Briefing → bandas de métricas → borradores/prioridades) sobre el
+// fondo "paper", para que no aparezcan los widgets viejos durante la carga.
 export const AdminDashboardSkeleton: React.FC = () => (
-  <div className="space-y-8 animate-fade-in">
-    {/* Metrics Row */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-        <SkeletonBox className="h-6 w-24 mb-4" />
-        <SkeletonBox className="h-10 w-16" />
-        <SkeletonBox className="h-4 w-32 mt-4" />
+  <div
+    style={{
+      minHeight: "100vh",
+      background: "var(--paper)",
+      color: "var(--ink)",
+      fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+    }}
+  >
+    <div
+      className="animate-fade-in"
+      style={{ maxWidth: 1280, margin: "0 auto", padding: "32px clamp(16px, 5vw, 48px) 64px" }}
+    >
+      {/* PageHead */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 24,
+          marginBottom: 32,
+        }}
+      >
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+          <InkSkeleton style={{ height: 14, width: 180 }} />
+          <InkSkeleton style={{ height: 40, width: "55%", maxWidth: 420 }} />
+          <InkSkeleton style={{ height: 16, width: "40%", maxWidth: 320 }} />
+        </div>
+        <InkSkeleton style={{ height: 40, width: 140, borderRadius: 999 }} />
       </div>
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-        <SkeletonBox className="h-6 w-24 mb-4" />
-        <SkeletonBox className="h-10 w-16" />
-        <SkeletonBox className="h-4 w-32 mt-4" />
-      </div>
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-        <SkeletonBox className="h-6 w-24 mb-4" />
-        <SkeletonBox className="h-10 w-16" />
-        <SkeletonBox className="h-4 w-32 mt-4" />
-      </div>
-    </div>
 
-    {/* Main Card */}
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-      <div className="flex items-center justify-between mb-6">
-        <SkeletonBox className="h-8 w-1/3" />
-        <SkeletonBox className="h-10 w-32" />
+      {/* Briefing (tarjeta hero) */}
+      <div
+        style={{
+          border: "1px solid var(--rule-2)",
+          borderRadius: 24,
+          padding: 28,
+          marginBottom: 28,
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <InkSkeleton style={{ height: 14, width: 120 }} />
+        <InkSkeleton style={{ height: 28, width: "70%" }} />
+        <InkSkeleton style={{ height: 16, width: "85%" }} />
+        <InkSkeleton style={{ height: 16, width: "60%" }} />
       </div>
-      <div className="space-y-4">
-        <SkeletonCard hasImage={false} />
-        <SkeletonCard hasImage={false} />
-        <SkeletonCard hasImage={false} />
-      </div>
-    </div>
 
-    {/* Secondary Columns */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 h-80">
-        <SkeletonBox className="h-8 w-1/2 mb-6" />
-        <ListSkeleton items={3} />
-      </div>
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 h-80">
-        <SkeletonBox className="h-8 w-1/2 mb-6" />
-        <ListSkeleton items={3} />
+      {/* Bandas de métricas (DetectionBand + SolicitudesBand) */}
+      {[0, 1].map((band) => (
+        <div
+          key={band}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                border: "1px solid var(--rule-2)",
+                borderRadius: 16,
+                padding: 18,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <InkSkeleton style={{ height: 12, width: "60%" }} />
+              <InkSkeleton style={{ height: 30, width: 56 }} />
+              <InkSkeleton style={{ height: 12, width: "80%" }} />
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* Borradores + Prioridades */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 24,
+          marginTop: 8,
+        }}
+      >
+        {[0, 1].map((col) => (
+          <div
+            key={col}
+            style={{
+              border: "1px solid var(--rule-2)",
+              borderRadius: 20,
+              padding: 20,
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}
+          >
+            <InkSkeleton style={{ height: 16, width: "45%" }} />
+            {[0, 1, 2].map((i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <InkSkeleton style={{ height: 36, width: 36, borderRadius: 10 }} />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <InkSkeleton style={{ height: 13, width: "75%" }} />
+                  <InkSkeleton style={{ height: 11, width: "50%" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   </div>

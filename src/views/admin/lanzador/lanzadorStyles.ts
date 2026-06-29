@@ -143,6 +143,24 @@ html.dark .lv4 {
 .lv4-row:hover { background: var(--paper-2); }
 .lv4-row.active { background: var(--paper-3); border-left-color: var(--ink); }
 .lv4-row.active .lv4-row-name { color: var(--ink); font-weight: 600; }
+.lv4-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Menú de estado (kebab) */
+.lv4-state-menu {
+  position: absolute; top: 36px; right: 8px; z-index: 41; min-width: 188px;
+  background: var(--paper); border: 1px solid var(--rule-3); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.lv4-state-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 10px; background: transparent; border: none; border-radius: 7px;
+  cursor: pointer; font-size: 13px; color: var(--ink); text-align: left;
+  font-family: inherit; transition: background .12s ease;
+}
+.lv4-state-menu-item:hover,
+.lv4-state-menu-item:focus-visible { background: var(--paper-3); outline: none; }
+.lv4-state-menu-item .material-icons { font-size: 17px; color: var(--ink-3); }
 .lv4-row-name {
   font-size: 13px; font-weight: 500; color: var(--ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -279,6 +297,12 @@ html.dark .lv4 {
   font-family: 'JetBrains Mono', monospace; line-height: 1;
 }
 .lv4-stat-hint { font-size: 11.5px; color: var(--ink-4); }
+.lv4-stat-val.accent { color: var(--accent); }
+.lv4-stat-val.ok     { color: var(--ok); }
+.lv4-stat-val.warn   { color: var(--warn); }
+.lv4-stat-val.muted  { color: var(--ink-4); }
+.lv4-stat-val.md { font-size: 20px; padding-top: 4px; }
+.lv4-stat-val.sm { font-size: 16px; padding-top: 6px; }
 
 /* ── Section titles ──────────────────────────────────────────────────────── */
 .lv4-eyebrow {
@@ -297,6 +321,20 @@ html.dark .lv4 {
   padding: 14px 18px; border-radius: 10px; border: 1px solid;
   margin-bottom: 24px;
 }
+.lv4-banner.ok      { border-color: var(--ok);     background: var(--ok-s); }
+.lv4-banner.warn    { border-color: var(--warn);   background: var(--warn-s); }
+.lv4-banner.info    { border-color: var(--accent); background: var(--accent-s); }
+.lv4-banner.neutral { border-color: var(--rule-2); background: var(--paper-2); }
+.lv4-banner-ico { font-size: 20px; margin-top: 2px; color: var(--ink-3); flex-shrink: 0; }
+.lv4-banner.ok   .lv4-banner-ico { color: var(--ok); }
+.lv4-banner.warn .lv4-banner-ico { color: var(--warn); }
+.lv4-banner.info .lv4-banner-ico { color: var(--accent); }
+.lv4-banner-main { flex: 1; min-width: 0; }
+.lv4-banner-title { font-weight: 600; font-size: 13px; margin-bottom: 3px; color: var(--ink); }
+.lv4-banner.ok   .lv4-banner-title { color: var(--ok); }
+.lv4-banner.warn .lv4-banner-title { color: var(--warn); }
+.lv4-banner-body { font-size: 13px; color: var(--ink-2); }
+.lv4-banner.neutral .lv4-banner-body { color: var(--ink-3); }
 
 /* ── Progress bar ────────────────────────────────────────────────────────── */
 .lv4-progress-track {
@@ -359,18 +397,12 @@ html.dark .lv4-wa-bubble {
 }
 .lv4-horario-card.low { border-color: color-mix(in oklab, var(--warn) 40%, var(--rule-2)); }
 .lv4-horario-head {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 8; margin-bottom: 10px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px;
 }
 .lv4-horario-label { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.3; }
 .lv4-horario-track { height: 5px; border-radius: 999px; background: var(--rule-2); overflow: hidden; position: relative; }
 .lv4-horario-fill { height: 100%; border-radius: 999px; transition: width .3s ease; }
 .lv4-horario-foot { font-size: 11.5px; color: var(--warn); margin-top: 9px; }
-
-/* ── Mix bars ────────────────────────────────────────────────────────────── */
-.lv4-mix-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-.lv4-mix-label { font-size: 11px; color: var(--ink-3); min-width: 72px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-.lv4-mix-bar { display: flex; height: 7px; border-radius: 999px; overflow: hidden; flex: 1; background: var(--rule-2); }
-.lv4-mix-legend { font-size: 10.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; min-width: 120px; text-align: right; }
 
 /* ── Difusión / link box ─────────────────────────────────────────────────── */
 .lv4-linkbox {
@@ -809,6 +841,59 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-tip-trigger .material-icons { font-size: 14px; opacity: .65; }
 .lv4-tip-trigger:hover .lv4-tooltip { opacity: 1; transform: translateX(-50%) translateY(-2px); pointer-events: auto; }
 .lv4-tip-trigger .lv4-tooltip { opacity: 0; transition: opacity .12s ease, transform .12s ease; }
+
+/* ── Foco visible (accesibilidad de teclado) ─────────────────────────────── */
+.lv4-btn:focus-visible,
+.lv4-btn-new:focus-visible,
+.lv4-icon-btn:focus-visible,
+.lv4-search:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .lv4-canvas-head { padding: 18px 20px 14px; }
+  .lv4-canvas-body { padding: 20px 20px 48px; }
+  .lv4-aside:not(.collapsed) { width: 248px; }
+}
+@media (max-width: 720px) {
+  /* Las stats pasan de una fila a una grilla de 2 columnas. */
+  .lv4-stats { flex-wrap: wrap; }
+  .lv4-stat { flex: 1 1 50%; border-right: none; border-bottom: 1px solid var(--rule-2); }
+  .lv4-stat:nth-last-child(-n + 2) { border-bottom: none; }
+  /* La grilla de franjas y campos a una sola columna. */
+  .lv4-horario-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .lv4-canvas-head { padding: 14px 14px 12px; }
+  .lv4-canvas-body { padding: 16px 14px 40px; }
+  .lv4-stat { flex-basis: 100%; }
+  .lv4-stat:not(:last-child) { border-bottom: 1px solid var(--rule-2); }
+}
+
+/* ── Sidebar como drawer en mobile ───────────────────────────────────────── */
+.lv4-mobile-menu-btn { display: none; }
+.lv4-aside-backdrop { display: none; }
+@media (max-width: 760px) {
+  /* El sidebar deja de ocupar espacio y se vuelve un panel deslizable. */
+  .lv4-aside,
+  .lv4-aside.collapsed {
+    position: fixed; top: 60px; left: 0; bottom: 0; width: 284px;
+    z-index: 60; transform: translateX(-100%); transition: transform .22s ease;
+  }
+  .lv4-aside.mobile-open { transform: translateX(0); box-shadow: 2px 0 28px rgba(0,0,0,.28); }
+  /* Botón flotante para abrir la lista de convocatorias. */
+  .lv4-mobile-menu-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    position: fixed; left: 16px; bottom: 16px; z-index: 50;
+    height: 44px; padding: 0 16px; border-radius: 999px;
+    background: var(--ink); color: var(--paper); border: none; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,0,0,.28); font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  .lv4-mobile-menu-btn .material-icons { font-size: 18px; }
+  .lv4-aside-backdrop.open {
+    display: block; position: fixed; inset: 60px 0 0 0; z-index: 55;
+    background: rgba(0,0,0,.42); backdrop-filter: blur(1px);
+  }
+}
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

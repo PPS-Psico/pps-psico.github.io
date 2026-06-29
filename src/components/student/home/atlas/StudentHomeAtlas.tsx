@@ -380,22 +380,16 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
         </div>
         {nConvs === 0 ? (
           <div className="ah-convs">
-            <div className="ah-empty">
+            <div
+              className={"ah-empty" + (closedLanzamientos.length > 0 ? " ah-empty--compact" : "")}
+            >
               <div className="ah-empty__ic">
                 <AhIcon name="bell" size={20} />
               </div>
               <div className="ah-empty__t">No hay convocatorias abiertas</div>
               <p className="ah-empty__s">
-                Las próximas se publican al inicio de cada cuatrimestre. Te avisamos por mail y acá
-                ni bien aparezca una que encaje con tu rotación.
+                Estate atento al grupo de WhatsApp para no perderte novedades.
               </p>
-              <button
-                type="button"
-                className="ah-btn ah-btn--secondary"
-                onClick={() => onNavigate("solicitudes")}
-              >
-                Revisar mis solicitudes
-              </button>
             </div>
           </div>
         ) : nConvs === 1 ? (

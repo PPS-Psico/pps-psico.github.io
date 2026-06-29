@@ -33,11 +33,8 @@ import {
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import {
-  toggleStudentSelection,
-  updatePracticaFromSchedule,
-  notifySelectedStudents,
-} from "../services";
+import { invalidateLaunchData } from "../lib/launchQueryKeys";
+import { toggleStudentSelection, updatePracticaFromSchedule } from "../services";
 import { mockDb } from "../services/mockDb";
 import type {
   AirtableRecord,
@@ -61,7 +58,6 @@ type CompromisoLite = {
 
 export const useSeleccionadorLogic = (
   isTestingMode = false,
-  onNavigateToInsurance?: (id: string) => void,
   initialLaunchId?: string | null,
   preSelectedLaunchId?: string | null
 ) => {
@@ -74,7 +70,6 @@ export const useSeleccionadorLogic = (
     null
   );
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [isClosingTable, setIsClosingTable] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -353,6 +348,8 @@ export const useSeleccionadorLogic = (
           queryClient.setQueryData(candidatesQueryKey, context.previousCandidates);
       }
       queryClient.invalidateQueries({ queryKey: candidatesQueryKey });
+      // Propaga el cambio de selección a sidebar/canvas (conteos, roster, etc.).
+      invalidateLaunchData(queryClient);
     },
     onError: (err, vars, context) => {
       setToastInfo({ message: `Error: ${err.message}`, type: "error" });
@@ -397,27 +394,6 @@ export const useSeleccionadorLogic = (
     },
   });
 
-  const closeLaunchMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedLanzamiento) return;
-      if (isTestingMode)
-        return mockDb.update("lanzamientos_pps", selectedLanzamiento.id, {
-          [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
-        });
-      return db.lanzamientos.update(selectedLanzamiento.id, {
-        [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
-      });
-    },
-    onSuccess: () => {
-      setToastInfo({ message: "Convocatoria cerrada exitosamente.", type: "success" });
-      queryClient.invalidateQueries({ queryKey: ["openLaunchesForSelector"] });
-      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
-      setSelectedLanzamiento(null);
-    },
-    onError: (err: Error) =>
-      setToastInfo({ message: `Error al cerrar: ${err.message}`, type: "error" }),
-  });
-
   const handleToggle = (student: EnrichedStudent) => {
     setUpdatingId(student.enrollmentId);
     toggleMutation.mutate(student);
@@ -431,50 +407,6 @@ export const useSeleccionadorLogic = (
       student,
       isSelected: normalizeStringForComparison(student.status) === "seleccionado",
     });
-  };
-
-  const handleConfirmAndCloseTable = async () => {
-    if (!selectedLanzamiento) return;
-    setIsClosingTable(true);
-    try {
-      // Verificar si la convocatoria ya está cerrada (modo gestión de bajas desde historial)
-      const isAlreadyClosed =
-        normalizeStringForComparison(
-          selectedLanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]
-        ) === "cerrado";
-
-      if (!isTestingMode) {
-        // Solo enviar correos si la convocatoria NO estaba cerrada previamente
-        if (!isAlreadyClosed) {
-          // Notificar a los seleccionados (email + push)
-          await notifySelectedStudents(selectedLanzamiento, selectedCandidates);
-
-          // Close Launch solo si no estaba cerrada
-          await db.lanzamientos.update(selectedLanzamiento.id, {
-            [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
-          });
-        }
-      } else {
-        await mockDb.update("lanzamientos_pps", selectedLanzamiento.id, {
-          [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
-        });
-      }
-      setToastInfo({
-        message: isAlreadyClosed ? `Cambios guardados.` : `Mesa cerrada.`,
-        type: "success",
-      });
-      if (onNavigateToInsurance)
-        setTimeout(() => onNavigateToInsurance(selectedLanzamiento.id), 1500);
-      else {
-        queryClient.invalidateQueries({ queryKey: ["openLaunchesForSelector"] });
-        queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
-        setSelectedLanzamiento(null);
-      }
-    } catch (e) {
-      setToastInfo({ message: `Error: ${getErrorMessage(e)}`, type: "error" });
-    } finally {
-      setIsClosingTable(false);
-    }
   };
 
   // Query para estudiantes disponibles (no inscriptos)
@@ -539,6 +471,7 @@ export const useSeleccionadorLogic = (
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: candidatesQueryKey });
       queryClient.invalidateQueries({ queryKey: ["availableStudents"] });
+      invalidateLaunchData(queryClient);
       setToastInfo({ message: "Estudiante inscripto correctamente", type: "success" });
     },
     onError: (error) => {
@@ -596,7 +529,6 @@ export const useSeleccionadorLogic = (
     toastInfo,
     setToastInfo,
     updatingId,
-    isClosingTable,
     openLaunches,
     isLoadingLaunches,
     candidates,
@@ -607,8 +539,6 @@ export const useSeleccionadorLogic = (
     isEditMode,
     handleToggle,
     handleUpdateSchedule,
-    handleConfirmAndCloseTable,
-    closeLaunchMutation,
     availableStudents,
     isLoadingAvailable,
     enrollNewStudent: enrollNewStudentMutation.mutate,

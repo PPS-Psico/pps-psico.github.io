@@ -635,7 +635,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                 <EmptyState
                   type="no-convocatorias"
                   title="No hay convocatorias abiertas"
-                  message="Por el momento no hay procesos de inscripción disponibles. ¡Volvé a consultar pronto!"
+                  message="Estate atento al grupo de WhatsApp para no perderte novedades."
                   size="lg"
                 />
               </div>

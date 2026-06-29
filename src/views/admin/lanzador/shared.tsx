@@ -6,7 +6,7 @@
  * `LanzadorView.tsx` (relocalización pura, sin cambios de lógica) para que el
  * orquestador y los step-views consuman estas piezas desde un único lugar.
  */
-import React, { useState, useMemo, lazy } from "react";
+import React, { useState, useMemo, useEffect, lazy } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { db } from "../../../lib/db";
 import { supabase } from "../../../lib/supabaseClient";
@@ -24,7 +24,7 @@ import {
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
 } from "../../../constants";
-import { normalizeStringForComparison, formatDate } from "../../../utils/formatters";
+import { formatDate } from "../../../utils/formatters";
 import type { LanzamientoPPS } from "../../../types";
 import RecordEditModal from "../../../components/admin/RecordEditModal";
 import { LAUNCH_TABLE_CONFIG } from "../../../components/admin/LanzadorConvocatorias";
@@ -90,44 +90,54 @@ const Loader: React.FC = () => (
   </div>
 );
 
-// ─── MiniSpark — sparkline inline (tendencia de inscripción) ───────────────────
-const MiniSpark: React.FC<{ values: number[]; w?: number; h?: number; color?: string }> = ({
-  values,
-  w = 320,
-  h = 48,
-  color = "var(--ink)",
-}) => {
-  if (!values || values.length < 2) return null;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = Math.max(1, max - min);
-  const step = w / Math.max(1, values.length - 1);
-  const pts = values.map((v, i) => [i * step, h - ((v - min) / range) * (h - 8) - 4] as const);
-  const path = pts
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`)
-    .join(" ");
-  const fill = `M 0 ${h} ${path.slice(2)} L ${w} ${h} Z`;
-  const last = pts[pts.length - 1];
-  return (
-    <svg
-      width="100%"
-      height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      style={{ display: "block" }}
-    >
-      <path d={fill} fill={color} opacity={0.06} />
-      <path
-        d={path}
-        stroke={color}
-        fill="none"
-        strokeWidth={1.5}
-        vectorEffect="non-scaling-stroke"
-      />
-      <circle cx={last[0]} cy={last[1]} r={3} fill={color} />
-    </svg>
-  );
-};
+// ─── Stat / StatGrid — tarjetas de estadística reutilizables ───────────────────
+// Reemplazan el markup repetido de `.lv4-stat` en todas las vistas. El color y
+// el tamaño del valor se resuelven por clase (ver lanzadorStyles), no inline.
+type StatTone = "accent" | "ok" | "warn" | "muted";
+
+const Stat: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  hint?: React.ReactNode;
+  tone?: StatTone;
+  size?: "md" | "sm";
+}> = ({ label, value, hint, tone, size }) => (
+  <div className="lv4-stat">
+    <div className="lv4-stat-label">{label}</div>
+    <div className={`lv4-stat-val${tone ? ` ${tone}` : ""}${size ? ` ${size}` : ""}`}>{value}</div>
+    {hint != null && <div className="lv4-stat-hint">{hint}</div>}
+  </div>
+);
+
+const StatGrid: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({
+  children,
+  style,
+}) => (
+  <div className="lv4-stats" style={style}>
+    {children}
+  </div>
+);
+
+// ─── Banner — aviso con ícono, título y cuerpo (tono por clase) ────────────────
+type BannerTone = "ok" | "warn" | "info" | "neutral";
+
+const Banner: React.FC<{
+  tone?: BannerTone;
+  icon: string;
+  title?: React.ReactNode;
+  children?: React.ReactNode;
+  action?: React.ReactNode;
+  style?: React.CSSProperties;
+}> = ({ tone = "neutral", icon, title, children, action, style }) => (
+  <div className={`lv4-banner ${tone}`} style={style}>
+    <span className="material-icons lv4-banner-ico">{icon}</span>
+    <div className="lv4-banner-main">
+      {title != null && <div className="lv4-banner-title">{title}</div>}
+      {children != null && <div className="lv4-banner-body">{children}</div>}
+    </div>
+    {action}
+  </div>
+);
 
 // ─── Archivada efectiva ─────────────────────────────────────────────────────
 
@@ -145,6 +155,8 @@ interface SidebarProps {
   onNew: () => void;
   onToggleCollapsed: () => void;
   onAction: (id: string, action: RowAction) => void;
+  /** En mobile el sidebar es un drawer; este flag controla si está abierto. */
+  mobileOpen?: boolean;
 }
 
 const LanzadorSidebar: React.FC<SidebarProps> = ({
@@ -155,12 +167,23 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
   onNew,
   onToggleCollapsed,
   onAction,
+  mobileOpen = false,
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<SidebarBucket>>(
     () => new Set(BUCKET_ORDER.filter((b) => BUCKET_META[b].collapsedByDefault))
   );
   const [query, setQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Cerrar el menú de estado con Escape (accesibilidad de teclado).
+  useEffect(() => {
+    if (!openMenuId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenMenuId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openMenuId]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return entries;
@@ -193,7 +216,7 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
   // ── Collapsed rail ──────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <aside className="lv4-aside collapsed">
+      <aside className={`lv4-aside collapsed${mobileOpen ? " mobile-open" : ""}`}>
         <button
           onClick={onToggleCollapsed}
           className="lv4-icon-btn"
@@ -253,7 +276,7 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
 
   // ── Full sidebar ────────────────────────────────────────────────────────
   return (
-    <aside className="lv4-aside">
+    <aside className={`lv4-aside${mobileOpen ? " mobile-open" : ""}`}>
       {/* Header */}
       <div className="lv4-aside-head">
         <div className="lv4-aside-title">
@@ -312,7 +335,17 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                     <div
                       key={entry.id}
                       className={`lv4-row ${selectedId === entry.id ? "active" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-current={selectedId === entry.id ? "true" : undefined}
+                      aria-label={entry.nombre || "Convocatoria sin nombre"}
                       onClick={() => onSelect(entry.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onSelect(entry.id);
+                        }
+                      }}
                       style={{ position: "relative" }}
                     >
                       <div className={`lv4-dot lv4-dot-${entry.uiState}`} />
@@ -345,6 +378,8 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                         className="lv4-icon-btn"
                         title="Cambiar estado"
                         aria-label="Cambiar estado"
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuId === entry.id}
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenMenuId((cur) => (cur === entry.id ? null : entry.id));
@@ -369,21 +404,7 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                           <div
                             onClick={(e) => e.stopPropagation()}
                             className="lv4-state-menu"
-                            style={{
-                              position: "absolute",
-                              top: 36,
-                              right: 8,
-                              zIndex: 41,
-                              minWidth: 188,
-                              background: "var(--paper)",
-                              border: "1px solid var(--line, rgba(0,0,0,.12))",
-                              borderRadius: 10,
-                              boxShadow: "0 10px 30px rgba(0,0,0,.18)",
-                              padding: 6,
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 2,
-                            }}
+                            role="menu"
                           >
                             {(
                               [
@@ -405,39 +426,15 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                             ).map((opt) => (
                               <button
                                 key={opt.action}
+                                role="menuitem"
+                                className="lv4-state-menu-item"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setOpenMenuId(null);
                                   onAction(entry.id, opt.action);
                                 }}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 10,
-                                  width: "100%",
-                                  padding: "8px 10px",
-                                  background: "transparent",
-                                  border: "none",
-                                  borderRadius: 7,
-                                  cursor: "pointer",
-                                  fontSize: 13,
-                                  color: "var(--ink, #1a1a1a)",
-                                  textAlign: "left",
-                                }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "var(--ink-bg-hover, rgba(0,0,0,.06))")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background = "transparent")
-                                }
                               >
-                                <span
-                                  className="material-icons"
-                                  style={{ fontSize: 17, color: "var(--ink-3)" }}
-                                >
-                                  {opt.icon}
-                                </span>
+                                <span className="material-icons">{opt.icon}</span>
                                 {opt.label}
                               </button>
                             ))}
@@ -963,7 +960,9 @@ export {
   Chip,
   Pipeline,
   Loader,
-  MiniSpark,
+  Stat,
+  StatGrid,
+  Banner,
   normDateValue,
   useLaunchEditor,
   CanvasHeader,

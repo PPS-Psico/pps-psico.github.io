@@ -16,6 +16,11 @@ let messaging: Messaging | null = null;
 let cachedToken: string | null = null;
 let isGettingToken = false;
 let tokenPromise: Promise<string | null> | null = null;
+// Una vez que getToken() falla (p. ej. "AbortError: push service error"), no
+// reintentamos automáticamente en cada refresh de sesión de Supabase: eso es lo
+// que generaba el spam de errores en consola. Sólo se reintenta cuando el usuario
+// activa explícitamente las notificaciones (subscribeToFCM pasa forceRetry=true).
+let tokenFetchFailed = false;
 
 const isPushSupported = (): boolean => {
   if (!("serviceWorker" in navigator)) return false;
@@ -50,10 +55,16 @@ export const initializeFCM = async () => {
 /**
  * Get FCM token for the current user (with caching)
  */
-export const getFCMToken = async (): Promise<string | null> => {
+export const getFCMToken = async (forceRetry = false): Promise<string | null> => {
   // Return cached token if available
   if (cachedToken) {
     return cachedToken;
+  }
+
+  // Si ya falló antes y no es un reintento explícito del usuario, no insistimos.
+  // Evita el bucle de errores en cada TOKEN_REFRESHED de Supabase.
+  if (tokenFetchFailed && !forceRetry) {
+    return null;
   }
 
   // If already getting token, return the existing promise
@@ -87,13 +98,25 @@ export const getFCMToken = async (): Promise<string | null> => {
       if (token) {
         logger.info("[FCM] Token obtained:", token.substring(0, 20) + "...");
         cachedToken = token;
+        tokenFetchFailed = false;
         return token;
       } else {
         logger.warn("[FCM] No token available");
         return null;
       }
     } catch (error) {
-      logger.error("[FCM] Error getting token:", error);
+      // No reintentar automáticamente tras un fallo (push service caído,
+      // VAPID/endpoint inalcanzable, etc.). Lo registramos una sola vez como
+      // advertencia en lugar de error para no inundar la consola.
+      tokenFetchFailed = true;
+      const name = (error as { name?: string } | null)?.name;
+      if (name === "AbortError") {
+        logger.warn(
+          "[FCM] Servicio push no disponible (AbortError). Se omiten reintentos automáticos."
+        );
+      } else {
+        logger.warn("[FCM] No se pudo obtener el token push:", error);
+      }
       return null;
     } finally {
       isGettingToken = false;
@@ -118,6 +141,9 @@ export const subscribeToFCM = async (
   try {
     logger.info("[FCM] Subscribing user:", userId);
 
+    // Acción explícita del usuario: permitimos reintentar aunque antes fallara.
+    tokenFetchFailed = false;
+
     // Check browser support
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       return {
@@ -127,7 +153,7 @@ export const subscribeToFCM = async (
     }
 
     // Get token (will return cached if exists)
-    const token = await getFCMToken();
+    const token = await getFCMToken(true);
 
     if (!token) {
       return {
@@ -238,8 +264,21 @@ export const isFCMSubscribed = async (): Promise<boolean> => {
       return false;
     }
 
-    const token = await getFCMToken();
-    return !!token;
+    // Si ya tenemos token en memoria, está suscrito.
+    if (cachedToken) {
+      return true;
+    }
+
+    // IMPORTANTE: no llamamos a getFCMToken() acá. Hacerlo disparaba getToken()
+    // en cada chequeo de estado (y en cada refresh de sesión), provocando el
+    // bucle de errores "push service error". En su lugar, consultamos si ya
+    // existe una suscripción push en el Service Worker, que es no intrusivo.
+    if (!("serviceWorker" in navigator)) {
+      return false;
+    }
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    return !!subscription;
   } catch (error) {
     return false;
   }
