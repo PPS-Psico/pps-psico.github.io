@@ -485,6 +485,9 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
    Así el panel puede auto-loguear al alumno. Si no hay email, los links quedan
    igual y el panel pide login normal. */
 (function(){
+  // Versión del panel: subila en cada deploy del panel para forzar que el
+  // alumno baje el bundle nuevo (evita que el SW/navegador sirva el viejo).
+  var PANEL_VER = '20';
   function getParam(name){
     try {
       var v = new URLSearchParams(window.location.search).get(name);
@@ -496,7 +499,6 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
     if (email) sessionStorage.setItem('pps_email', email);
     else email = sessionStorage.getItem('pps_email') || '';
   } catch(e){}
-  if (!email) return;
   var PANEL_ORIGIN = 'https://pps-psico.github.io/';
   document.querySelectorAll('a[href^="' + PANEL_ORIGIN + '"]').forEach(function(a){
     try {
@@ -504,7 +506,8 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
       // Solo a la raíz del panel (no a aula/guia/descargas/entregas).
       var path = url.pathname.replace(/\/+$/, '');
       if (path === '' || path === '/') {
-        url.searchParams.set('email', email);
+        url.searchParams.set('v', PANEL_VER);          // cache-buster (siempre)
+        if (email) url.searchParams.set('email', email); // auto-login (si hay)
         a.setAttribute('href', url.toString());
       }
     } catch(e){}

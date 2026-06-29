@@ -381,11 +381,11 @@ window.ENTREGAS = [
 (function(){
   var PANEL_ORIGIN='https://pps-psico.github.io/';
   function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
+  var PANEL_VER='20';
   var email=getParam('email');
   try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
-  if(!email) return;
   document.querySelectorAll('a[href^="'+PANEL_ORIGIN+'"]').forEach(function(a){
-    try{ var url=new URL(a.getAttribute('href'),window.location.href); var p=url.pathname.replace(/\/+$/,''); if(p===''||p==='/'){ url.searchParams.set('email',email); a.setAttribute('href',url.toString()); } }catch(e){}
+    try{ var url=new URL(a.getAttribute('href'),window.location.href); var p=url.pathname.replace(/\/+$/,''); if(p===''||p==='/'){ url.searchParams.set('v',PANEL_VER); if(email) url.searchParams.set('email',email); a.setAttribute('href',url.toString()); } }catch(e){}
   });
 })();
 </script>
