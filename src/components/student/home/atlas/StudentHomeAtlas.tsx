@@ -139,6 +139,20 @@ function closesLabel(raw?: unknown): { text: string; soft: boolean } {
   return { text: `Cierra en ${n} días`, soft: n > 4 };
 }
 
+// Estados de solicitud "completados/cerrados" que ya no requieren acción en el
+// home (constante de módulo: estable entre renders).
+const COMPLETED_SOL = [
+  "realizada",
+  "creada",
+  "concretar",
+  "aprobada",
+  "rechazada",
+  "finalizada",
+  "cerrada",
+  "concretada",
+  "baja",
+];
+
 const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   studentName,
   criterios,
@@ -202,17 +216,6 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   // ── Solicitudes ───────────────────────────────────────────────
   // Solo mostramos las que siguen en proceso; las completadas/cerradas
   // no aportan acción y ya viven en la pestaña de Solicitudes.
-  const COMPLETED_SOL = [
-    "realizada",
-    "creada",
-    "concretar",
-    "aprobada",
-    "rechazada",
-    "finalizada",
-    "cerrada",
-    "concretada",
-    "baja",
-  ];
   const solItems = useMemo(
     () =>
       (solicitudes || [])

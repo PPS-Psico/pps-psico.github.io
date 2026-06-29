@@ -500,6 +500,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       practicas,
       handleNotaChange,
       handleFechaFinChange,
+      isPracticasLoading,
       handleRequestModificacion,
       handleRequestNuevaPPS,
     ]
