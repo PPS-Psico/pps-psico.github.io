@@ -75,8 +75,14 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 >   decrecientes; mayormente casts en componentes grandes).
 > - **103 `@typescript-eslint/no-unused-vars`** — quedan locales/args; algunos son features
 >   incompletas (handlers de Todoist) → revisar con intención, no a ciegas.
-> - **24 `react-hooks/exhaustive-deps`** — pueden esconder bugs; arreglar a ciegas puede
->   causar loops. Revisar **caso por caso**, no masivo.
+> - **24 `react-hooks/exhaustive-deps`** → ✅ **RESUELTOS (sesión 10)**: 24 → 0. Se corrigieron
+>   caso por caso — deps innecesarias quitadas, valores inestables estabilizados
+>   (`today`/`jefeOrientations`/`safeOrientacion` vía `useMemo`/`Date.now()`), deps faltantes
+>   agregadas donde son estables (refetch de React Query, `handleLoadLastData`, `onAccion`,
+>   guards de `useSmartAnalysis`, `StudentDashboard.homeContent`), y `eslint-disable`
+>   documentado en los efectos intencionalmente mount-only o que pisarían estado del usuario
+>   (auth listener, `EmailDraftReviewModal`, keys de `FilePreview`, `useSeleccionadorLogic`,
+>   auto-proceso de `SeguroGenerator`).
 > - Resto: 3 timing-attacks, 2 non-literal-regexp, 2 `no-console`, 1 unsafe-regex.
 
 ---
