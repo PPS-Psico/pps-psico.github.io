@@ -31,6 +31,15 @@
   <script>
     (function(){
       var f = document.getElementById('panel');
+      // Reenvía ?email= de ESTA url al iframe para que auto-loguee y llegue al
+      // dashboard (donde se aplica la transparencia). Abrí esta página como:
+      //   _diagnostico.html?email=TU_MAIL
+      try {
+        var em = new URLSearchParams(location.search).get('email');
+        if (em) {
+          f.src = 'https://pps-psico.github.io/?v=diag1&email=' + encodeURIComponent(em.trim());
+        }
+      } catch(e){}
       function fallbackH(){ return Math.max(500, Math.round(window.innerHeight * 0.9)); }
       window.addEventListener('message', function(e){
         var d = e.data; if(!d) return;
