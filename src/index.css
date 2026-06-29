@@ -20,6 +20,13 @@ html.pps-embedded #root {
 html.pps-embedded .min-h-screen {
   min-height: 0 !important;
 }
+/* El lienzo del panel del estudiante (.ed) trae un fondo crema y min-height:100vh
+   inline. Embebido eso tapa la transparencia (se ve "recortado") y, al medir
+   100vh, realimenta el auto-alto (scroll infinito). Lo neutralizamos. */
+html.pps-embedded .ed {
+  background: transparent !important;
+  min-height: 0 !important;
+}
 
 :root {
   --color-primary: 37, 99, 235;

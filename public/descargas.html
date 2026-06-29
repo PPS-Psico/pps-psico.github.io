@@ -215,7 +215,7 @@ window.DESCARGAS = [
 (function(){
   var PANEL_ORIGIN='https://pps-psico.github.io/';
   function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
-  var PANEL_VER='20';
+  var PANEL_VER='21';
   var email=getParam('email');
   try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
   document.querySelectorAll('a[href^="'+PANEL_ORIGIN+'"]').forEach(function(a){

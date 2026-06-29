@@ -61,16 +61,16 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 /* ====== Header / nav (estático, no pelea con el chrome de Moodle) ======== */
 #pps-aula-2026 .pa-nav{
   display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap;
-  padding:16px 40px; border-bottom:0;
+  padding:10px 40px 14px; border-bottom:0;
   background:transparent;
 }
 #pps-aula-2026 .pa-brand{ display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; }
-#pps-aula-2026 .pa-brand__mark{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-.06em; }
-#pps-aula-2026 .pa-brand__sep{ width:1px; height:22px; background:var(--line); display:inline-block; }
-#pps-aula-2026 .pa-navlinks{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+#pps-aula-2026 .pa-brand__mark{ font-family:var(--font-display); font-weight:700; font-size:24px; letter-spacing:-.06em; }
+#pps-aula-2026 .pa-brand__sep{ width:1px; height:24px; background:var(--line); display:inline-block; }
+#pps-aula-2026 .pa-navlinks{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
 #pps-aula-2026 .pa-navlinks a{
-  padding:8px 14px; border-radius:999px; text-decoration:none;
-  color:var(--ink-muted); font-size:14px; font-weight:500; white-space:nowrap; transition:var(--t-fast);
+  padding:9px 17px; border-radius:999px; text-decoration:none;
+  color:var(--ink-muted); font-size:15.5px; font-weight:500; white-space:nowrap; transition:var(--t-fast);
 }
 #pps-aula-2026 .pa-navlinks a:hover{ color:var(--ink); background:var(--bg-sunken); }
 #pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
@@ -99,7 +99,7 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 }
 
 /* ====== Hero ============================================================= */
-#pps-aula-2026 .pa-hero{ position:relative; padding:80px 56px 96px; isolation:isolate; overflow:hidden; }
+#pps-aula-2026 .pa-hero{ position:relative; padding:44px 56px 88px; isolation:isolate; overflow:hidden; }
 #pps-aula-2026 .pa-hero__orb{ position:absolute; inset:0; z-index:-1; pointer-events:none; }
 #pps-aula-2026 .pa-orb{ position:absolute; border-radius:50%; filter:blur(14px); opacity:.34; pointer-events:none; will-change:transform,opacity; }
 #pps-aula-2026 .pa-orb--1{ width:250px; height:250px; top:50px;  right:175px; background:radial-gradient(circle, #46253d 0%, transparent 70%); }
@@ -487,7 +487,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 (function(){
   // Versión del panel: subila en cada deploy del panel para forzar que el
   // alumno baje el bundle nuevo (evita que el SW/navegador sirva el viejo).
-  var PANEL_VER = '20';
+  var PANEL_VER = '21';
   function getParam(name){
     try {
       var v = new URLSearchParams(window.location.search).get(name);
