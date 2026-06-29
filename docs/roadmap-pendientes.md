@@ -4,28 +4,32 @@ Consolidado de todo lo que queda, ordenado por prioridad. Estado al cierre de la
 sesión de mejoras internas (app + base + tipos + seguridad + modernización).
 
 El detalle de lo ya hecho está en `internal-professionalization-plan.md`
-(secciones 14 en adelante). Estado base verificado: **type-check 0, 218 tests, build OK**.
+(secciones 14 en adelante). Estado base verificado: **type-check 0, 221 tests, build OK**.
 
 > **Sesión 8 (calidad, no solo tipos).** Se creó `docs/auditoria-calidad.md` con el
 > informe de hallazgos. Hecho en esta sesión:
 >
 > - 🗑️ **Código muerto eliminado**: `SolicitudesCorreccionManager.tsx` (~644 líneas,
 >   duplicado sin imports) y `useCycleReset.ts` (sin uso + bug `gestionStatus`).
-> - 🧪 **+12 tests** (206 → 218): `useFinalizacionLogic` (integración con mockDb) y
->   `gestionHelpers` (unitarios puros). Los archivos nuevos están **untracked**: hay que
->   `git add` + commitear (la gestión de git/cutover la lleva el owner / otra sesión).
+> - 🧪 **+15 tests** (206 → 221): `useFinalizacionLogic` y `useOperationalData`
+>   (integración con mockDb) y `gestionHelpers` (unitarios puros). Commits `ab8830f`,
+>   `de90571`. **Falta `git push`** (lo maneja el owner / la otra sesión en el cutover).
 > - 🔀 Se resolvió un merge con `origin/main` (tomando HEAD, validado como superconjunto).
 >
 > **Pendiente de calidad (de la auditoría, por prioridad):**
 >
-> - 🔴 **Más tests de comportamiento**: tabs de `SolicitudesManager`, editores de DB,
->   `useConvocatorias` (inscripción/baja). Es la red de seguridad que falta.
+> - 🔴 **Más tests de comportamiento**: tabs de `SolicitudesManager`, editores de DB.
+>   (`useConvocatorias` ya está cubierto por `StudentView.integration`.)
 > - 🟠 **Validación con `zod` en el borde de datos** (`lib/db.ts`/`supabaseService`):
->   ataca la raíz del `any` (filas sin validar + acceso por clave dinámica) y evita casts.
-> - 🟠 **`eslint --fix` de formato** (~5141 problemas auto-corregibles) en un commit aparte
->   - chequeo de formato en CI. Deja ~1609 warnings reales para tratar caso por caso.
-> - 🟢 **Bug menor**: `HomeView` lee `FIELD_HORAS_PRACTICAS` sobre `convocatorias` (campo de
->   `practicas`) → suma 0 siempre. Revisar.
+>   ataca la raíz del `any`. ⚠️ Tocar `db.ts` con sesiones git concurrentes es riesgoso
+>   (merge conflicts) — hacerlo en una ventana sin trabajo paralelo.
+> - 🟠 **`eslint --fix` de formato** (~5141 auto-corregibles) en un commit aparte. ⚠️ Diff
+>   enorme + concurrencia; el hook lint-staged ya formatea lo que se commitea.
+> - 🟢 **Bug confirmado en `HomeView`**: `educacionHs` lee `FIELD_HORAS_PRACTICAS` sobre
+>   `myEnrollments` (convocatorias, sin ese campo) → **siempre 0**. Alimenta una tarjeta de
+>   stats del estudiante. No se corrige a ciegas: requiere decisión de producto sobre la
+>   fuente correcta (¿`practicas` filtradas por "Educacional"? ¿`criterios.horasOrientacionElegida`?).
+>   **Confirmar con el owner.**
 > - 🟢 **Componentes gigantes** con lógica en JSX (`GestionView` 1397, `WhatsAppContactClassifier`
 >   1432, `SeguroGenerator` 1103, `Auth` 959): extraer hooks/subcomponentes.
 
