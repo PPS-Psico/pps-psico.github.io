@@ -275,10 +275,8 @@ window.ENTREGAS = [
   var active = 0;
 
   var rootEl = document.getElementById('pps-aula-2026');
-  var modalOpen = false, MODAL_H = 0;
   function reportH(){
-    var contentH = (rootEl ? Math.ceil(rootEl.getBoundingClientRect().height) : document.body.scrollHeight) + 2;
-    var h = modalOpen ? Math.max(contentH, MODAL_H) : contentH;
+    var h = (rootEl ? Math.ceil(rootEl.getBoundingClientRect().height) : document.body.scrollHeight) + 2;
     try { parent.postMessage({ ppsAula:true, height:h }, '*'); } catch(e){}
   }
 
@@ -364,102 +362,6 @@ window.ENTREGAS = [
       .catch(function(){ /* silencioso: quedan las tarjetas semilla */ });
   }
   loadDynamic();
-
-  /* ── Vista previa embebida (popup) de la Tarea de Moodle ─────────────────────
-     En vez de abrir una pestaña nueva, muestra la entrega dentro del campus en
-     un modal. Pide al Moodle padre que agrande el iframe (ppsPanel / height) para
-     que el popup tenga espacio. Ctrl/⌘+clic o el botón "Abrir en Moodle" siguen
-     abriendo en pestaña nueva como respaldo. */
-  (function(){
-    var CSS = ''
-      + '.pa-pv{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px;font-family:inherit}'
-      + '.pa-pv[hidden]{display:none}'
-      + '.pa-pv__bd{position:absolute;inset:0;background:rgba(18,22,30,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:paPvFade .18s ease}'
-      + '.pa-pv__panel{position:relative;width:min(1000px,96vw);height:min(100%,860px);max-height:100%;background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.35);animation:paPvUp .2s cubic-bezier(.2,.7,.3,1)}'
-      + '.pa-pv__bar{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid #e9e9ec;background:#fafafa}'
-      + '.pa-pv__dot{width:9px;height:9px;border-radius:50%;background:var(--o,#3CB88D);flex:0 0 auto;box-shadow:0 0 0 4px color-mix(in srgb,var(--o,#3CB88D) 18%,transparent)}'
-      + '.pa-pv__title{font-weight:700;font-size:14.5px;color:#1c2024;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-      + '.pa-pv__acts{display:flex;align-items:center;gap:8px}'
-      + '.pa-pv__btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;border:1px solid #d8d8dd;background:#fff;color:#26303a;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;font-family:inherit;line-height:1}'
-      + '.pa-pv__btn:hover{background:#f2f3f5}'
-      + '.pa-pv__btn--x{width:34px;padding:0;justify-content:center;font-size:17px;color:#5a626c}'
-      + '.pa-pv__body{position:relative;flex:1;background:#fff}'
-      + '.pa-pv__frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}'
-      + '.pa-pv__load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;color:#6b7280;font-size:13.5px;background:#fff;z-index:1}'
-      + '.pa-pv__spin{width:18px;height:18px;border:2.5px solid #d6d9de;border-top-color:#5b6675;border-radius:50%;animation:paPvSpin .7s linear infinite}'
-      + '@keyframes paPvSpin{to{transform:rotate(360deg)}}'
-      + '@keyframes paPvFade{from{opacity:0}to{opacity:1}}'
-      + '@keyframes paPvUp{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}'
-      + '@media (max-width:560px){.pa-pv{padding:0}.pa-pv__panel{width:100%;height:100%;border-radius:0}}';
-    var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-
-    var box = document.createElement('div');
-    box.className = 'pa-pv'; box.id = 'paPv'; box.hidden = true;
-    box.innerHTML = ''
-      + '<div class="pa-pv__bd" data-close></div>'
-      + '<div class="pa-pv__panel" role="dialog" aria-modal="true" aria-label="Vista previa de la entrega">'
-      +   '<header class="pa-pv__bar">'
-      +     '<span class="pa-pv__dot"></span>'
-      +     '<span class="pa-pv__title" id="paPvTitle">Entrega</span>'
-      +     '<div class="pa-pv__acts">'
-      +       '<a class="pa-pv__btn" id="paPvOpen" href="#" target="_blank" rel="noopener">Abrir en Moodle '+svg("arrow",14)+'</a>'
-      +       '<button class="pa-pv__btn pa-pv__btn--x" id="paPvClose" type="button" aria-label="Cerrar">✕</button>'
-      +     '</div>'
-      +   '</header>'
-      +   '<div class="pa-pv__body">'
-      +     '<div class="pa-pv__load" id="paPvLoad"><span class="pa-pv__spin"></span> Cargando entrega…</div>'
-      +     '<iframe class="pa-pv__frame" id="paPvFrame" title="Entrega de Moodle"></iframe>'
-      +   '</div>'
-      + '</div>';
-    document.body.appendChild(box);
-
-    var titleEl = box.querySelector('#paPvTitle');
-    var openLink = box.querySelector('#paPvOpen');
-    var closeBtn = box.querySelector('#paPvClose');
-    var loadEl = box.querySelector('#paPvLoad');
-    var frameEl = box.querySelector('#paPvFrame');
-
-    frameEl.addEventListener('load', function(){
-      if (frameEl.src && frameEl.src !== 'about:blank') { loadEl.style.display = 'none'; }
-    });
-
-    function openPreview(url, name){
-      if(!url || url === '#') return;
-      MODAL_H = Math.max(560, Math.min(860, Math.round(((window.screen && screen.availHeight) ? screen.availHeight : 860) * 0.88)));
-      titleEl.textContent = name || 'Entrega';
-      openLink.href = url;
-      try { box.style.setProperty('--o', (DATA[active] && DATA[active].color) || '#3CB88D'); } catch(e){}
-      loadEl.style.display = '';
-      frameEl.src = url;
-      box.hidden = false;
-      modalOpen = true;
-      try { parent.postMessage({ ppsPanel:true }, '*'); } catch(e){}   // modo panel (≈92vh) si el padre lo soporta
-      reportH();                                                        // fallback: agranda por altura
-      try { closeBtn.focus(); } catch(e){}
-    }
-    function closePreview(){
-      box.hidden = true;
-      modalOpen = false;
-      frameEl.src = 'about:blank';
-      reportH();                                                        // vuelve a la altura del contenido
-    }
-
-    // Interceptar clic en tarjetas (delegación: sobrevive a los re-render).
-    cardsEl.addEventListener('click', function(ev){
-      var a = ev.target && ev.target.closest ? ev.target.closest('.pa-ent-card') : null;
-      if(!a) return;
-      if(ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button === 1) return; // dejar abrir en pestaña nueva
-      ev.preventDefault();
-      var nameEl = a.querySelector('.pa-ent-card__name');
-      openPreview(a.getAttribute('href'), nameEl ? nameEl.textContent : 'Entrega');
-    });
-
-    box.addEventListener('click', function(e){
-      if(e.target === box || (e.target && e.target.hasAttribute && e.target.hasAttribute('data-close'))) closePreview();
-    });
-    closeBtn.addEventListener('click', closePreview);
-    document.addEventListener('keydown', function(e){ if((e.key === 'Escape' || e.keyCode === 27) && !box.hidden) closePreview(); });
-  })();
 
   if(!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
     [].slice.call(rootEl.querySelectorAll('.pa-mast__eyebrow,.pa-mast__title,.pa-mast__sub,.pa-ent-tab')).forEach(function(el,i){
