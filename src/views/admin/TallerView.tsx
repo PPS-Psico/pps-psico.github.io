@@ -54,6 +54,7 @@ const ConvenioGenerator = lazy(() => import("../../components/admin/ConvenioGene
 const SeguroGenerator = lazy(() => import("../../components/admin/SeguroGenerator"));
 const PersonalizationPanel = lazy(() => import("../../components/PersonalizationPanel"));
 const AdminSearch = lazy(() => import("../../components/admin/AdminSearch"));
+const InformeCampusLinker = lazy(() => import("../../components/admin/InformeCampusLinker"));
 
 // ─── CSS scoped (Paper & Ink · trastienda) ────────────────────────────────────
 
@@ -195,6 +196,7 @@ type ToolId =
   | "seguros"
   | "convenios-nuevos"
   | "convenios-vencer"
+  | "informe-campus"
   | "penalizaciones"
   | "automation"
   | "backups"
@@ -268,6 +270,12 @@ const FAMILIES: FamilyDef[] = [
         name: "Vencimientos de convenios",
         desc: "Registrá convenios/renovaciones y revisá los próximos a vencer.",
         icon: "event_busy",
+      },
+      {
+        id: "informe-campus",
+        name: "Espacio de informe (Campus)",
+        desc: "Vinculá la Tarea de Moodle a una PPS ya lanzada para habilitar la entrega de informe.",
+        icon: "assignment_turned_in",
       },
     ],
   },
@@ -356,6 +364,11 @@ const TOOL_META: Record<ToolId, { title: string; sub: string; crumb: string }> =
     title: "Vencimientos de convenios",
     sub: "Registrá convenios y renovaciones, y revisá los que están próximos a vencer.",
     crumb: "Vencimientos",
+  },
+  "informe-campus": {
+    title: "Espacio de informe (Campus)",
+    sub: "Pegá el link de la Tarea de Moodle en una PPS ya lanzada y el campus generará sola la tarjeta de entrega de informe. Pensado para PPS viejas que se lanzaron antes de esta función.",
+    crumb: "Espacio de informe",
   },
   penalizaciones: {
     title: "Penalizaciones",
@@ -775,6 +788,12 @@ const TallerView: React.FC<TallerViewProps> = ({ onStudentSelect, isTestingMode 
           {activeTool === "convenios-vencer" && (
             <ErrorBoundary>
               <ConveniosPorVencerPanel isTestingMode={isTestingMode} />
+            </ErrorBoundary>
+          )}
+
+          {activeTool === "informe-campus" && (
+            <ErrorBoundary>
+              <InformeCampusLinker isTestingMode={isTestingMode} />
             </ErrorBoundary>
           )}
 

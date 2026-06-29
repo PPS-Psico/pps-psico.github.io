@@ -207,6 +207,42 @@ export const fetchSeleccionados = async (
   const lanzamientoId = lanzamiento.id;
   if (!lanzamientoId) return null;
 
+  // ── Fuente principal: RPC SECURITY DEFINER ────────────────────────────────
+  // Devuelve la lista completa de seleccionados con nombre, horario y estado de
+  // firma (compromiso). Es la única fuente que funciona para estudiantes: por
+  // RLS, un alumno solo puede leer su propio perfil (estudiantes) y su propia
+  // firma (compromisos_pps), así que las consultas directas de abajo dejarían a
+  // los demás sin nombre y a todos como "pendiente". El RPC saltea esa RLS y
+  // sirve igual para admins. Las consultas directas quedan como fallback.
+  try {
+    const { data: rpcData, error } = await supabase.rpc("get_seleccionados_for_launch", {
+      p_lanzamiento_id: lanzamientoId,
+    });
+    if (!error && rpcData && (rpcData as unknown[]).length > 0) {
+      const grouped: GroupedSeleccionados = {};
+      (
+        rpcData as {
+          horario: string;
+          nombre: string;
+          legajo: string;
+          firmo: boolean | null;
+          accepted_at: string | null;
+        }[]
+      ).forEach((row) => {
+        addToGrouped(grouped, row.horario, {
+          nombre: row.nombre,
+          legajo: row.legajo,
+          compromisoEstado: row.firmo ? "aceptado" : null,
+          compromisoFecha: row.accepted_at,
+        });
+      });
+      return sortGrouped(grouped);
+    }
+  } catch (rpcErr) {
+    logger.warn("[fetchSeleccionados] RPC principal falló, usando consultas directas:", rpcErr);
+  }
+
+  // ── Fallback: consultas directas (admins con RLS completa) ────────────────
   const enrollments = await db.convocatorias.getAll({
     filters: { [C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: lanzamientoId },
   });

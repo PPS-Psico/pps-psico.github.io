@@ -1585,9 +1585,12 @@ export type Database = {
       get_seleccionados_for_launch: {
         Args: { p_lanzamiento_id: string };
         Returns: {
+          convocatoria_id: string;
           horario: string;
           legajo: string;
           nombre: string;
+          firmo: boolean;
+          accepted_at: string | null;
         }[];
       };
       get_sin_pps_list: {
