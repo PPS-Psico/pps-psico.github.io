@@ -16,6 +16,7 @@ import {
 import { formatDate } from "../../utils/formatters";
 import Loader from "../Loader";
 import RecordEditModal from "./RecordEditModal";
+import { paginate } from "./editorHelpers";
 import Toast from "../ui/Toast";
 import PaginationControls from "../PaginationControls";
 import ContextMenu from "./ContextMenu";
@@ -145,11 +146,8 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           };
         });
 
-        // Paginar
-        const from = (currentPage - 1) * itemsPerPage;
-        const to = from + itemsPerPage;
         return {
-          records: enriched.slice(from, to) as unknown as ConvRow[],
+          records: paginate(enriched, currentPage, itemsPerPage) as unknown as ConvRow[],
           total: enriched.length,
         };
       }

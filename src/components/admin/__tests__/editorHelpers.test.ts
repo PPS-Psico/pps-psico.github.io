@@ -1,4 +1,4 @@
-import { sumHoursByStudent } from "../editorHelpers";
+import { sumHoursByStudent, paginate } from "../editorHelpers";
 
 describe("sumHoursByStudent", () => {
   it("suma las horas por estudiante (link como string)", () => {
@@ -41,5 +41,29 @@ describe("sumHoursByStudent", () => {
       "horas_realizadas"
     );
     expect(result.get("st_99")).toBeUndefined();
+  });
+});
+
+describe("paginate", () => {
+  const items = [1, 2, 3, 4, 5, 6, 7];
+
+  it("devuelve la primera página", () => {
+    expect(paginate(items, 1, 3)).toEqual([1, 2, 3]);
+  });
+
+  it("devuelve una página intermedia", () => {
+    expect(paginate(items, 2, 3)).toEqual([4, 5, 6]);
+  });
+
+  it("devuelve la última página parcial", () => {
+    expect(paginate(items, 3, 3)).toEqual([7]);
+  });
+
+  it("devuelve [] para una página fuera de rango", () => {
+    expect(paginate(items, 4, 3)).toEqual([]);
+  });
+
+  it("maneja listas vacías", () => {
+    expect(paginate([], 1, 10)).toEqual([]);
   });
 });

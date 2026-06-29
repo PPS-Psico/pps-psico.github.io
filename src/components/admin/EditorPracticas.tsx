@@ -23,6 +23,7 @@ import { ALL_ORIENTACIONES } from "../../types";
 import { formatDate, cleanInstitutionName, safeGetId } from "../../utils/formatters";
 import Loader from "../Loader";
 import RecordEditModal from "./RecordEditModal";
+import { paginate } from "./editorHelpers";
 import BulkEditModal, { type BulkFieldConfig } from "./BulkEditModal";
 import ContextMenu from "./ContextMenu";
 import DuplicateToStudentModal from "./DuplicateToStudentModal";
@@ -286,10 +287,8 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
           },
         }));
 
-        const from = (currentPage - 1) * itemsPerPage;
-        const to = from + itemsPerPage;
         return {
-          records: enriched.slice(from, to) as unknown as PracticaRow[],
+          records: paginate(enriched, currentPage, itemsPerPage) as unknown as PracticaRow[],
           total: enriched.length,
         };
       }

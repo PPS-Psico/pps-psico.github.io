@@ -25,6 +25,7 @@ import PaginationControls from "../PaginationControls";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
+import { paginate } from "./editorHelpers";
 import { logger } from "../../utils/logger";
 import type { Institucion } from "../../types";
 import { getErrorMessage } from "../../utils/getErrorMessage";
@@ -123,11 +124,8 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
           );
         }
 
-        // Paginar
-        const from = (currentPage - 1) * itemsPerPage;
-        const to = from + itemsPerPage;
         return {
-          records: filteredRecords.slice(from, to) as unknown as Institucion[],
+          records: paginate(filteredRecords, currentPage, itemsPerPage) as unknown as Institucion[],
           total: filteredRecords.length,
         };
       }

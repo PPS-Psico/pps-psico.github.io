@@ -27,3 +27,12 @@ export function sumHoursByStudent(
   }
   return totals;
 }
+
+/**
+ * Devuelve la página `page` (1-based) de `records` con `pageSize` elementos.
+ * Patrón compartido por los editores en modo testing (paginación local).
+ */
+export function paginate<T>(records: T[], page: number, pageSize: number): T[] {
+  const from = (page - 1) * pageSize;
+  return records.slice(from, from + pageSize);
+}

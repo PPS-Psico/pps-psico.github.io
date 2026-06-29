@@ -27,7 +27,7 @@ import PaginationControls from "../PaginationControls";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
-import { sumHoursByStudent } from "./editorHelpers";
+import { sumHoursByStudent, paginate } from "./editorHelpers";
 import type { Estudiante } from "../../types";
 
 type ToastState = { message: string; type: "success" | "error" | "warning" | "info" } | null;
@@ -148,11 +148,8 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
           __totalHours: mockHours.get(String(s.id)) || 0,
         }));
 
-        // Paginar
-        const from = (currentPage - 1) * itemsPerPage;
-        const to = from + itemsPerPage;
         return {
-          records: enriched.slice(from, to) as unknown as StudentRow[],
+          records: paginate(enriched, currentPage, itemsPerPage) as unknown as StudentRow[],
           total: enriched.length,
         };
       }
