@@ -28,9 +28,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // full-bleed y sin el AppHeader global (evita la pila de dos barras).
   const isFocusedScreen = location.pathname.startsWith("/student/convocatoria/");
 
-  // Rutas que deben ocupar todo el ancho de la pantalla (dashboard)
+  // Rutas que deben ocupar todo el ancho de la pantalla (dashboard).
+  // El panel del estudiante también va full-width: su ancho/gutters los
+  // controla el CSS de Atlas (.ah-main / .ah-topbar__inner), no el max-w-7xl.
   const fullWidthRoutes = ["/admin", "/jefe", "/directivo", "/reportero", "/testing"];
-  const isFullWidth = fullWidthRoutes.some((route) => location.pathname.startsWith(route));
+  const isFullWidth =
+    fullWidthRoutes.some((route) => location.pathname.startsWith(route)) || isStudent;
 
   // Rutas que traen su propia barra superior v3 (AdminTopBar) y por lo tanto
   // no deben renderizar el AppHeader legacy (evita la pila de dos barras).
