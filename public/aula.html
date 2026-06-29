@@ -102,13 +102,18 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 .pa-hero{ position:relative; padding:80px 56px 96px; isolation:isolate; overflow:hidden; }
 #pps-aula-2026 .pa-hero__orb{
   position:absolute; inset:0; z-index:-1; pointer-events:none;
-  background:
-    radial-gradient(circle at 60% 34%, #46253D 0%, transparent 48%),
-    radial-gradient(circle at 80% 52%, #203B73 0%, transparent 56%),
-    radial-gradient(circle at 64% 82%, #3CB88D 0%, transparent 56%);
-  filter:blur(38px); opacity:.42;
-  -webkit-mask-image:radial-gradient(46% 58% at 70% 46%, #000 0%, #000 22%, transparent 70%);
-  mask-image:radial-gradient(46% 58% at 70% 46%, #000 0%, #000 22%, transparent 70%);
+}
+#pps-aula-2026 .pa-hero__orb::before,
+#pps-aula-2026 .pa-hero__orb::after{
+  content:""; position:absolute; inset:0; filter:blur(44px); will-change:transform;
+}
+/* Orbe violeta (arriba, centro-derecha) */
+#pps-aula-2026 .pa-hero__orb::before{
+  background:radial-gradient(34% 42% at 62% 36%, rgba(124,92,255,.42) 0%, rgba(124,92,255,0) 66%);
+}
+/* Orbe verde (abajo, más a la derecha) — se superpone con el violeta */
+#pps-aula-2026 .pa-hero__orb::after{
+  background:radial-gradient(36% 44% at 72% 64%, rgba(54,196,150,.40) 0%, rgba(54,196,150,0) 66%);
 }
 #pps-aula-2026 .pa-hero h1{
   font-family:var(--font-display); font-weight:700; letter-spacing:-.04em;
@@ -210,8 +215,10 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 .pa-foot .pa-btn:hover svg{ transform:translateX(2px); }
 @media (prefers-reduced-motion: no-preference){
   html{ scroll-behavior:smooth; }
-  #pps-aula-2026 .pa-hero__orb{ animation:paFloat 16s ease-in-out infinite; }
-  @keyframes paFloat{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-22px,14px) scale(1.05); } }
+  #pps-aula-2026 .pa-hero__orb::before{ animation:paFloatA 19s ease-in-out infinite; }
+  #pps-aula-2026 .pa-hero__orb::after{ animation:paFloatB 25s ease-in-out infinite; }
+  @keyframes paFloatA{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-20px,16px) scale(1.06); } }
+  @keyframes paFloatB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(16px,-14px) scale(1.05); } }
   #pps-aula-2026 .pa-anim{ animation:paIn .6s cubic-bezier(.2,.7,.2,1) backwards; }
   @keyframes paIn{ from{ opacity:0; transform:translateY(18px); } to{ opacity:1; transform:none; } }
 }
