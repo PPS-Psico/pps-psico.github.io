@@ -46,7 +46,8 @@ const SolicitudesView: React.FC = () => {
   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
 
   const getStudentId = () => {
-    if (studentDetails && (studentDetails as any).id) return (studentDetails as any).id;
+    const sd = studentDetails as { id?: string } | null;
+    if (sd && sd.id) return sd.id;
     return authenticatedUser?.id || null;
   };
 
@@ -81,9 +82,23 @@ const SolicitudesView: React.FC = () => {
   }, [allLanzamientos]);
 
   const createSolicitudMutation = useMutation({
-    mutationFn: async (formData: any) => {
+    mutationFn: async (formData: Record<string, unknown>) => {
       const studentId = getStudentId();
       if (!studentId) throw new Error("Error identificando al estudiante.");
+
+      const f = formData as {
+        nombreInstitucion?: string;
+        localidad?: string;
+        direccion?: string;
+        emailInstitucion?: string;
+        telefonoInstitucion?: string;
+        referente?: string;
+        tieneConvenio?: string;
+        tieneTutor?: string;
+        contactoTutor?: string;
+        tipoPractica?: string;
+        descripcion?: string;
+      };
 
       const newRecord = {
         [FIELD_LEGAJO_PPS]: studentId,
@@ -91,23 +106,23 @@ const SolicitudesView: React.FC = () => {
         [FIELD_SOLICITUD_NOMBRE_ALUMNO]: studentDetails?.[FIELD_NOMBRE_ESTUDIANTES],
         [FIELD_SOLICITUD_EMAIL_ALUMNO]: studentDetails?.[FIELD_CORREO_ESTUDIANTES],
 
-        [FIELD_EMPRESA_PPS_SOLICITUD]: formData.nombreInstitucion,
-        [FIELD_SOLICITUD_LOCALIDAD]: formData.localidad,
-        [FIELD_SOLICITUD_DIRECCION]: formData.direccion,
-        [FIELD_SOLICITUD_EMAIL_INSTITUCION]: formData.emailInstitucion,
-        [FIELD_SOLICITUD_TELEFONO_INSTITUCION]: formData.telefonoInstitucion,
-        [FIELD_SOLICITUD_REFERENTE]: formData.referente,
-        [FIELD_SOLICITUD_TIENE_CONVENIO]: formData.tieneConvenio,
-        [FIELD_SOLICITUD_TIENE_TUTOR]: formData.tieneTutor,
-        [FIELD_SOLICITUD_CONTACTO_TUTOR]: formData.contactoTutor,
-        [FIELD_SOLICITUD_TIPO_PRACTICA]: formData.tipoPractica,
-        [FIELD_SOLICITUD_DESCRIPCION]: formData.descripcion,
+        [FIELD_EMPRESA_PPS_SOLICITUD]: f.nombreInstitucion,
+        [FIELD_SOLICITUD_LOCALIDAD]: f.localidad,
+        [FIELD_SOLICITUD_DIRECCION]: f.direccion,
+        [FIELD_SOLICITUD_EMAIL_INSTITUCION]: f.emailInstitucion,
+        [FIELD_SOLICITUD_TELEFONO_INSTITUCION]: f.telefonoInstitucion,
+        [FIELD_SOLICITUD_REFERENTE]: f.referente,
+        [FIELD_SOLICITUD_TIENE_CONVENIO]: f.tieneConvenio,
+        [FIELD_SOLICITUD_TIENE_TUTOR]: f.tieneTutor,
+        [FIELD_SOLICITUD_CONTACTO_TUTOR]: f.contactoTutor,
+        [FIELD_SOLICITUD_TIPO_PRACTICA]: f.tipoPractica,
+        [FIELD_SOLICITUD_DESCRIPCION]: f.descripcion,
 
         [FIELD_ESTADO_PPS]: "Pendiente",
         [FIELD_ULTIMA_ACTUALIZACION_PPS]: new Date().toISOString().split("T")[0],
       };
 
-      await db.solicitudes.create(newRecord as any);
+      await db.solicitudes.create(newRecord as Parameters<typeof db.solicitudes.create>[0]);
     },
     onSuccess: () => {
       showToast(
@@ -116,7 +131,7 @@ const SolicitudesView: React.FC = () => {
       );
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       showToast(`Hubo un problema al enviar la solicitud: ${err.message}`, "error");
     },
   });

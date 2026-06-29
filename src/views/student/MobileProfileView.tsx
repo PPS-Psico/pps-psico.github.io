@@ -78,10 +78,10 @@ const MobileProfileView: React.FC<MobileProfileViewProps> = ({ studentDetails, i
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: typeof editForm) => {
-      if (!(studentDetails as any)?.id) throw new Error("ID no encontrado");
+      if (!(studentDetails as { id?: string })?.id) throw new Error("ID no encontrado");
       const dniValue = data.dni ? parseInt(data.dni, 10) : null;
       const tieneDatosCompletos = dniValue && dniValue > 0 && data.correo && data.telefono;
-      return db.estudiantes.update((studentDetails as any).id, {
+      return db.estudiantes.update((studentDetails as { id: string }).id, {
         [FIELD_CORREO_ESTUDIANTES]: data.correo,
         [FIELD_TELEFONO_ESTUDIANTES]: data.telefono,
         [FIELD_DNI_ESTUDIANTES]: dniValue,
@@ -95,7 +95,7 @@ const MobileProfileView: React.FC<MobileProfileViewProps> = ({ studentDetails, i
       queryClient.invalidateQueries({ queryKey: ["student"] });
       refreshAuth();
     },
-    onError: (error: any) => showModal("Error", `No se pudo actualizar: ${error.message}`),
+    onError: (error) => showModal("Error", `No se pudo actualizar: ${error.message}`),
   });
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
