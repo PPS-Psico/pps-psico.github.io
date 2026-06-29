@@ -101,14 +101,14 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 /* ====== Hero ============================================================= */
 #pps-aula-2026 .pa-hero{ position:relative; padding:80px 56px 96px; isolation:isolate; overflow:hidden; }
 #pps-aula-2026 .pa-hero__orb{
-  position:absolute; top:-80px; right:-160px; width:600px; height:600px; border-radius:50%;
+  position:absolute; top:24px; right:24px; width:clamp(240px,34%,420px); height:clamp(240px,34%,420px); border-radius:50%;
   background:
     radial-gradient(circle at 30% 30%, #46253D 0%, transparent 45%),
     radial-gradient(circle at 70% 50%, #203B73 0%, transparent 55%),
     radial-gradient(circle at 50% 80%, #3CB88D 0%, transparent 60%);
-  filter:blur(30px); opacity:.45; z-index:-1; pointer-events:none;
-  -webkit-mask-image:radial-gradient(circle at 62% 45%, #000 24%, transparent 66%);
-  mask-image:radial-gradient(circle at 62% 45%, #000 24%, transparent 66%);
+  filter:blur(44px); opacity:.4; z-index:-1; pointer-events:none;
+  -webkit-mask-image:radial-gradient(circle, #000 18%, transparent 60%);
+  mask-image:radial-gradient(circle, #000 18%, transparent 60%);
 }
 #pps-aula-2026 .pa-hero h1{
   font-family:var(--font-display); font-weight:700; letter-spacing:-.04em;
