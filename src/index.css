@@ -2876,6 +2876,7 @@ html.dark {
 }
 @media (min-width: 640px) {
   .sel-sheet {
+    max-width: min(92vw, 720px);
     height: min(88dvh, 760px);
     border-radius: 28px;
     box-shadow: 0 30px 80px -30px rgba(11, 15, 25, 0.5);
