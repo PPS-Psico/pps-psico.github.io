@@ -163,12 +163,15 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
+  /* Fondo base alineado al sistema Paper & Ink (theme-aware vía --paper). Antes
+     era #f8fafc/#020617 (paleta slate vieja), que asomaba como "flash de versión
+     vieja" en cualquier hueco antes de que pinte el panel. */
+  background-color: var(--paper);
   color: #0f172a;
 }
 
 html.dark body {
-  background-color: #020617;
+  background-color: var(--paper);
   color: #f1f5f9;
 }
 
