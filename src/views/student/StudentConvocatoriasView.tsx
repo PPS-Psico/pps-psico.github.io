@@ -36,27 +36,24 @@ const StudentConvocatoriasView: React.FC = () => {
       const title = (lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Convocatoria";
       openSeleccionadosModal(data, title);
     },
-    onError: (error: any) => showModal("Error", error.message),
+    onError: (error) => showModal("Error", error.message),
   });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const startedLanzamientoIds = useMemo(
-    () =>
-      new Set(
-        (allLanzamientos ?? [])
-          .filter((l) => {
-            const fechaInicio = l[FIELD_FECHA_INICIO_LANZAMIENTOS];
-            if (!fechaInicio) return false;
-            const startDate = new Date(fechaInicio);
-            startDate.setHours(0, 0, 0, 0);
-            return startDate <= today;
-          })
-          .map((l) => l.id)
-      ),
-    [allLanzamientos, today]
-  );
+  const startedLanzamientoIds = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Set(
+      (allLanzamientos ?? [])
+        .filter((l) => {
+          const fechaInicio = l[FIELD_FECHA_INICIO_LANZAMIENTOS];
+          if (!fechaInicio) return false;
+          const startDate = new Date(fechaInicio);
+          startDate.setHours(0, 0, 0, 0);
+          return startDate <= today;
+        })
+        .map((l) => l.id)
+    );
+  }, [allLanzamientos]);
 
   const { openLanzamientos, closedLanzamientos } = useMemo(() => {
     const open: LanzamientoPPS[] = [];

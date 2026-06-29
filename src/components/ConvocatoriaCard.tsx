@@ -154,13 +154,7 @@ const ConvocatoriaCard: React.FC<ConvocatoriaCardProps> = ({
         "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
       hover: "",
     };
-  }, [
-    enrollmentState,
-    estadoConvocatoria,
-    convocatoriaStatusVisuals,
-    getGenderedText,
-    convocatoriaState,
-  ]);
+  }, [enrollmentState, convocatoriaStatusVisuals, getGenderedText, convocatoriaState]);
 
   const LoadingSpinner: React.FC<{ variant?: "light" | "dark" }> = ({ variant = "light" }) => (
     <div

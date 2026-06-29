@@ -70,7 +70,7 @@ export const CalendarView: React.FC<{
   }, [events]);
 
   const agenda = useMemo(() => {
-    const now = today.getTime();
+    const now = Date.now();
     return events
       .filter((e) => e.date.getTime() >= now - 86400000)
       .sort((a, b) => a.date.getTime() - b.date.getTime())

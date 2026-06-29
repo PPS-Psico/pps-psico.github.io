@@ -115,14 +115,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     }
 
     return baseTabs;
-  }, [
-    preferences.showManagementTab,
-    isTestingMode,
-    currentTabId,
-    params.legajo,
-    location.pathname,
-    isMobile,
-  ]);
+  }, [isTestingMode, currentTabId, params.legajo, location.pathname, isMobile]);
 
   const handleTabChange = (tabId: string, path?: string) => {
     if (isTestingMode) {

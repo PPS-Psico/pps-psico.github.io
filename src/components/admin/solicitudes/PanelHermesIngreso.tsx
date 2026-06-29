@@ -158,8 +158,6 @@ const PanelHermesIngreso: React.FC<{
       }
     }
   }, [
-    sol.convenio_uflo,
-    sol.tutor_disponible,
     sol.nombre_institucion,
     sol.contacto_tutor,
     sol.referente_institucion,

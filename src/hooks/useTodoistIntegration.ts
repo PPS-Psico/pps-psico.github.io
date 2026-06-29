@@ -67,7 +67,7 @@ export const useTodoistIntegration = ({ onToast }: UseTodoistIntegrationProps = 
         // onToast?.("Error al crear tarea en Todoist", "error");
       }
     },
-    [onToast]
+    []
   );
 
   const createManualTodoistTask = useCallback(

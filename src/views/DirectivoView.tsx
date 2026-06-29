@@ -23,7 +23,10 @@ const DirectivoView: React.FC = () => {
   const { authenticatedUser } = useAuth();
   const [studentTabs, setStudentTabs] = useState<StudentTabInfo[]>([]);
 
-  const jefeOrientations = authenticatedUser?.orientaciones || [];
+  const jefeOrientations = useMemo(
+    () => authenticatedUser?.orientaciones || [],
+    [authenticatedUser?.orientaciones]
+  );
   const initialTabId = "metrics";
   const [activeTabId, setActiveTabId] = useState(initialTabId);
   const [activeMetricsTabId, setActiveMetricsTabId] = useState("dashboard");

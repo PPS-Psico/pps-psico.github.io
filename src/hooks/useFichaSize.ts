@@ -112,7 +112,7 @@ export const useFichaSize = ({
   const size = useMemo<FichaSize>(() => {
     if (hasRichContent) return "expanded";
     return overrides[mode] ?? autoFor(mode, false);
-  }, [overrides, mode, auto, hasRichContent]);
+  }, [overrides, mode, hasRichContent]);
 
   // Al abrir una tarjeta en el modo actual, limpiamos el override del usuario
   // para que al deseleccionar la ficha vuelva a su estado base (auto del modo)
