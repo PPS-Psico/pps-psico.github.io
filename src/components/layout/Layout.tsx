@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import AppHeader from "./Header";
 import { useModal } from "../../contexts/ModalContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../utils/logger";
 import { isEmbedded } from "../../utils/isEmbedded";
 
@@ -14,10 +15,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { showModal } = useModal();
   const { resolvedTheme } = useTheme();
+  const { isAuthLoading } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const isLoginPage = location.pathname === "/login";
   const isStudent = location.pathname.startsWith("/student");
+  // Ruta raíz: es solo un redireccionador por rol (no tiene UI propia). Mientras
+  // resuelve a /admin o /student NO debe renderizar el header legacy (eso era el
+  // "flash de versión vieja" al entrar).
+  const isRootRedirect = location.pathname === "/";
   // Detalle de convocatoria: pantalla enfocada con su propio header (back),
   // full-bleed y sin el AppHeader global (evita la pila de dos barras).
   const isFocusedScreen = location.pathname.startsWith("/student/convocatoria/");
@@ -81,22 +87,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div
+      id="pps-embed-root"
       className="flex flex-col min-h-screen"
       style={
-        isStudent
-          ? {
-              background: isEmbedded()
-                ? "transparent"
-                : resolvedTheme === "dark"
-                  ? "#0a0e1a"
-                  : "#fafaf7",
-            }
-          : hasOwnTopBar
-            ? // Admin/Jefe/Directivo/Reportero usan el sistema Paper & Ink: pintamos
-              // el fondo "paper" desde el contenedor raíz para que no aparezca un
-              // flash blanco (estilo viejo) mientras cargan los chunks/skeletons.
+        isEmbedded()
+          ? { background: "transparent" }
+          : isStudent
+            ? { background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }
+            : // Admin/Jefe/Directivo/Reportero (Paper & Ink) y también la ruta raíz
+              // y la pantalla de carga de auth: pintamos "paper" desde el contenedor
+              // raíz para que nunca aparezca un flash blanco (estilo viejo).
               { background: "var(--paper)" }
-            : undefined
       }
     >
       {!isOnline && (
@@ -107,6 +108,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
       {!hasOwnTopBar &&
         !isFocusedScreen &&
+        !isRootRedirect &&
+        !isAuthLoading &&
         (isStudent ? (
           // En escritorio el estudiante usa la topbar Atlas (dentro del panel);
           // el AppHeader legacy queda solo para mobile.

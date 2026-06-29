@@ -237,8 +237,14 @@ const App: React.FC = () => {
 
     // Reporta el alto real del contenido para que el iframe del campus crezca a
     // su medida (scroll en la página de Moodle, sin barra interna ni recorte).
-    const measureHeight = () =>
-      Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0);
+    // OJO: medimos un wrapper de contenido, NO body/documentElement: dentro de
+    // un iframe el body se estira al alto del iframe y realimenta el cálculo
+    // (crece sin parar). El wrapper mide solo el contenido y es estable.
+    const measureHeight = () => {
+      const wrap = document.getElementById("pps-embed-root");
+      if (wrap) return Math.ceil(wrap.getBoundingClientRect().height);
+      return document.body?.offsetHeight || 0;
+    };
 
     const notifyParent = () => {
       try {
