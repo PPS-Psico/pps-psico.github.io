@@ -1,6 +1,7 @@
 import { KEY_EMAIL_COUNT, KEY_EMAIL_MONTH } from "../constants";
 import { supabase } from "../lib/supabaseClient";
 import { logger } from "./logger";
+import { getErrorMessage } from "./getErrorMessage";
 
 type EmailScenario =
   | "seleccion"
@@ -405,8 +406,8 @@ export const sendSmartEmail = async (
 
     incrementCounter();
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     logger.error(`[EmailService] Error enviando correo (${scenario}):`, error);
-    return { success: false, message: error.message || "Error de envío" };
+    return { success: false, message: getErrorMessage(error, "Error de envío") };
   }
 };

@@ -148,7 +148,7 @@ export const calculateDashboardMetrics = (allData: DashboardData, targetYear: nu
   // Alumnos Finalizados:
   // 1. Los que tienen fecha_finalizacion en tabla estudiantes
   // 2. Los que tienen solicitud en tabla finalizaciones (por fecha_solicitud)
-  const finalizacionMap = new Map<string, any>();
+  const finalizacionMap = new Map<string, MetricRow>();
   allData.finalizaciones.forEach((f) => {
     const sId = safeGetId(f[FIELD_ESTUDIANTE_FINALIZACION]);
     if (sId) {
@@ -309,7 +309,8 @@ export const calculateDashboardMetrics = (allData: DashboardData, targetYear: nu
 
   // --- 5. DATOS DE INSTITUCIONES ---
   const yearLaunches = allData.lanzamientos.filter(
-    (l: any) => parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS])?.getUTCFullYear() === targetYear
+    (l: MetricRow) =>
+      parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS])?.getUTCFullYear() === targetYear
   );
   const totalCupos = yearLaunches.reduce(
     (sum: number, l) => sum + (l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0),
@@ -362,7 +363,7 @@ export const calculateDashboardMetrics = (allData: DashboardData, targetYear: nu
   });
 
   const acreditacionesPendientesList = allData.finalizaciones.filter(
-    (f: any) => f[FIELD_ESTADO_FINALIZACION] === "Pendiente"
+    (f: MetricRow) => f[FIELD_ESTADO_FINALIZACION] === "Pendiente"
   );
 
   // --- 7. GRÁFICOS HISTÓRICOS (INGRESANTES) ---

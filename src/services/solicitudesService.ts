@@ -267,7 +267,9 @@ export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?:
   if (!solicitud) throw new Error("Solicitud no encontrada");
   if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
 
-  const instData = (solicitud as any).institucion;
+  const instData = (
+    solicitud as { institucion?: { nombre?: string } | { nombre?: string }[] | null }
+  ).institucion;
   const nombreInstitucion =
     (Array.isArray(instData) ? instData[0]?.nombre : instData?.nombre) ||
     solicitud.nombre_institucion_manual ||

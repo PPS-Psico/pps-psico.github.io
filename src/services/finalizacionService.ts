@@ -105,11 +105,11 @@ export const submitFinalizationRequest = async (
 
 export const deleteFinalizationRequest = async (
   id: string
-): Promise<{ success: boolean; error: any }> => {
+): Promise<{ success: boolean; error: Error | null }> => {
   try {
     await db.finalizacion.delete(id);
     return { success: true, error: null };
   } catch (e) {
-    return { success: false, error: e };
+    return { success: false, error: e instanceof Error ? e : new Error(String(e)) };
   }
 };

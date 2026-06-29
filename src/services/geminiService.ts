@@ -152,9 +152,9 @@ export const generateWithGemini = async (prompt: string): Promise<string> => {
       }
 
       return text;
-    } catch (error: any) {
-      lastError = error;
-      const errorMsg = error.message?.toLowerCase() || "";
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(getErrorMessage(error));
+      const errorMsg = getErrorMessage(error).toLowerCase();
       if (isSkippableError(errorMsg)) {
         continue;
       }
