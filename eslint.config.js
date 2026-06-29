@@ -95,7 +95,12 @@ export default [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off',
       'no-undef': 'off',
-      'security/detect-object-injection': 'warn',
+      // Desactivada: marca CUALQUIER acceso `obj[variable]`, patrón ubicuo y ya
+      // tipado en este código (acceso por clave dinámica a filas de Supabase).
+      // Generaba ~1265 falsos positivos (80% del ruido de lint) que tapaban los
+      // warnings que sí importan. La propia plugin documenta su alta tasa de
+      // falsos positivos. Si hiciera falta, validar índices puntuales a mano.
+      'security/detect-object-injection': 'off',
       'security/detect-non-literal-fs-filename': 'warn',
       'security/detect-non-literal-regexp': 'warn',
       'security/detect-unsafe-regex': 'warn',
