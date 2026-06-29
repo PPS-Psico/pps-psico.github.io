@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import "./atlasHome.css";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -21,6 +21,16 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
   const { authenticatedUser, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const initial = (authenticatedUser?.nombre || "E").trim().charAt(0).toUpperCase() || "E";
+
+  // Embebido en el campus: mostramos los accesos "Volver al campus" y
+  // "Pantalla completa" dentro de esta misma barra (no como franja aparte).
+  const [embedded] = useState(() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  });
 
   return (
     <div className="ah-root">
@@ -49,6 +59,34 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
           </nav>
 
           <div className="ah-topbar__right">
+            {embedded && (
+              <>
+                <button
+                  type="button"
+                  className="ah-iconbtn"
+                  onClick={() => {
+                    window.location.href = "aula.html";
+                  }}
+                  title="Volver al campus"
+                  aria-label="Volver al campus"
+                >
+                  <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
+                    arrow_back
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="ah-iconbtn"
+                  onClick={() => window.open(window.location.href, "_blank", "noopener")}
+                  title="Abrir en pantalla completa"
+                  aria-label="Abrir en pantalla completa"
+                >
+                  <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
+                    open_in_full
+                  </span>
+                </button>
+              </>
+            )}
             <button
               type="button"
               className="ah-iconbtn"
