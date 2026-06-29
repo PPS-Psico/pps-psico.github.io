@@ -6,7 +6,6 @@
 // Hermes). Hermes NO narra: aparece solo como FUENTE de una métrica dura.
 // ──────────────────────────────────────────────────────────────────────────
 import React, { useMemo, useState, useCallback } from "react";
-import { useMetricsData } from "../../../hooks/useMetricsData";
 import type { MetricsKPIs } from "../../../hooks/useMetricsData";
 import {
   useMetricsDinamica,

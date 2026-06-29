@@ -12,7 +12,6 @@ import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_CONVOCATORIAS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_CONVOCATORIAS,
 } from "../../constants";
 import { formatDate } from "../../utils/formatters";
 import Loader from "../Loader";

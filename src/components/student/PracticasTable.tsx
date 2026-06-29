@@ -12,8 +12,6 @@ import type { Practica } from "../../types";
 import {
   cleanDbValue,
   formatDate,
-  getEspecialidadClasses,
-  getStatusVisuals,
   normalizeStringForComparison,
   parseToUTCDate,
 } from "../../utils/formatters";

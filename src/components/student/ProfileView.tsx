@@ -11,7 +11,7 @@ import {
   FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
   FIELD_TELEFONO_ESTUDIANTES,
 } from "../../constants";
-import { ALL_ORIENTACIONES, Orientacion } from "../../types";
+import { ALL_ORIENTACIONES } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { useModal } from "../../contexts/ModalContext";
 import { db } from "../../lib/db";
@@ -21,7 +21,6 @@ import type { EstudianteFields } from "../../types";
 import { SkeletonBox } from "../Skeletons";
 
 // Premium Profile Card Component
-import Select from "../ui/Select";
 import { logger } from "../../utils/logger";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 

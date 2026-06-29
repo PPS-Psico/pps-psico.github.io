@@ -2,8 +2,6 @@ import React from "react";
 import {
   CriteriosPanelSkeleton,
   SkeletonBox,
-  SkeletonText,
-  SkeletonCircle,
   ConvocatoriaCardSkeleton,
   ListSkeleton,
 } from "../Skeletons";

@@ -2,7 +2,6 @@ import JSZip from "jszip";
 import React, { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { generateWithGemini, ModelDiagnostic, testGeminiModel } from "../../services/geminiService";
-import Loader from "../Loader";
 import Toast from "../ui/Toast";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { injectPremiumMotion } from "./premiumMotion";

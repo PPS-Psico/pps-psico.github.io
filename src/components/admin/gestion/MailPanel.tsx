@@ -9,7 +9,7 @@
 //
 // Seguridad: el envío respeta el kill-switch (gmailService).
 // ──────────────────────────────────────────────────────────────────────────
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getThread,
