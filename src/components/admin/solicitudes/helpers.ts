@@ -3,30 +3,50 @@ import { normalizeStringForComparison } from "../../../utils/formatters";
 
 // ─── Helpers puros del módulo de Solicitudes ────────────────────────
 
-export const normalizeAttachments = (attachment: any): Attachment[] => {
+/** Forma laxa de un adjunto tal como puede venir de la base (Airtable/Supabase). */
+type AttachmentLike = {
+  url?: string;
+  signedUrl?: string;
+  filename?: string;
+  name?: string;
+  type?: string;
+};
+
+export const normalizeAttachments = (attachment: unknown): Attachment[] => {
   if (!attachment) return [];
-  let data = attachment;
+  let data: unknown = attachment;
   if (typeof data === "string") {
+    const raw = data;
     try {
       data = JSON.parse(data);
-    } catch (e) {
-      return [{ url: data, filename: "Archivo Adjunto", type: "unknown" }];
+    } catch {
+      return [{ url: raw, filename: "Archivo Adjunto", type: "unknown" }];
     }
   }
   const arr = Array.isArray(data) ? data : [data];
   return arr
-    .map((a: any) => {
+    .map((a: unknown): Attachment => {
       if (typeof a === "string") return { url: a, filename: "Archivo Adjunto", type: "unknown" };
+      const obj = (a ?? {}) as AttachmentLike;
       return {
-        url: a.url || a.signedUrl || "",
-        filename: a.filename || a.name || "Archivo",
-        type: a.type,
+        url: obj.url || obj.signedUrl || "",
+        filename: obj.filename || obj.name || "Archivo",
+        type: obj.type,
       };
     })
     .filter((a: Attachment) => !!a.url);
 };
 
-export const getInstitutionNameFromRequest = (req: any): string => {
+/** Campos posibles de los que se puede inferir el nombre de la institución. */
+type InstitutionNameSource = {
+  nombre_institucion?: unknown;
+  nombre_institucion_manual?: unknown;
+  institucion_nombre?: unknown;
+  institucion?: unknown;
+  empresa?: unknown;
+};
+
+export const getInstitutionNameFromRequest = (req: InstitutionNameSource): string => {
   const candidates = [
     req.nombre_institucion,
     req.nombre_institucion_manual,

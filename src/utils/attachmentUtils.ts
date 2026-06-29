@@ -34,9 +34,9 @@ export const getStoragePath = (fullUrl: string): string | null => {
   }
 };
 
-export const getNormalizationState = (request: any): string => {
-  if (!request) return "";
-  const rawState = request[FIELD_ESTADO_FINALIZACION];
+export const getNormalizationState = (request: unknown): string => {
+  if (!request || typeof request !== "object") return "";
+  const rawState = (request as Record<string, unknown>)[FIELD_ESTADO_FINALIZACION];
   const stateStr = Array.isArray(rawState) ? rawState[0] : rawState;
   return normalizeStringForComparison(stateStr || "");
 };
