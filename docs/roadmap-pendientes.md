@@ -4,7 +4,7 @@ Consolidado de todo lo que queda, ordenado por prioridad. Estado al cierre de la
 sesión de mejoras internas (app + base + tipos + seguridad + modernización).
 
 El detalle de lo ya hecho está en `internal-professionalization-plan.md`
-(secciones 14 en adelante). Estado base verificado: **type-check 0, 277 tests, build OK**.
+(secciones 14 en adelante). Estado base verificado: **type-check 0, 306 tests, build OK**.
 
 > **Sesión 8 (calidad, no solo tipos).** Se creó `docs/auditoria-calidad.md` con el
 > informe de hallazgos. Hecho en esta sesión:
@@ -39,19 +39,18 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 > - 🟢 **Componentes gigantes** con lógica en JSX (`GestionView` 1397, `WhatsAppContactClassifier`
 >   1432, `SeguroGenerator` 1103, `Auth` 959): extraer hooks/subcomponentes.
 
-> **Sesión 9 (autónoma, nocturna).** type-check 0, **277 tests**, build OK. Sin push (lo
+> **Sesión 9 (autónoma, nocturna).** type-check 0, **306 tests**, build OK. Sin push (lo
 > maneja el owner). Hecho:
 >
 > - 🟠 **Validación `zod` en el borde** ✅ (detallada arriba). Commit `e81be02`.
-> - 🧪 **+39 tests** (238 → 277) de lógica pura/helpers sin cobertura previa:
->   `solicitudes/helpers` (adjuntos, nombre de institución, timeAgo), `attachmentUtils`
->   (tipo de archivo, storage path, estado de normalización), `getErrorMessage`,
->   `calendarUtils` (RRULE de Google/iCal) y `dbSchemas`. Commits `bf0e023`, + el de tests
->   de calendario/errores.
-> - 🧹 **Imports muertos eliminados** en 15 archivos (~20 imports: constantes `FIELD_*`,
->   hooks/components no usados). Verificado por `tsc`. Commit `47150bf`.
-> - 🔧 **`any` → tipos seguros** en `solicitudes/helpers.ts` y `attachmentUtils.ts`
->   (`unknown` + shapes laxos) sin cambiar comportamiento.
+> - 🧪 **+68 tests** (238 → 306) de lógica pura/helpers/hooks sin cobertura previa:
+>   `solicitudes/helpers`, `attachmentUtils`, `getErrorMessage`, `calendarUtils`,
+>   `dbSchemas`, `convocatoriasService` (visibilidad), `scheduleUtils` y
+>   `useSortablePracticas`. Commits `bf0e023`, `c0f7597`, `28ab0d2`, `9dc8f70`, `a183a04`.
+> - 🧹 **Imports muertos eliminados** en 15 archivos (~20 imports). Commit `47150bf`.
+> - 🔧 **`any` → tipos seguros** en `solicitudes/helpers.ts` y `attachmentUtils.ts`.
+> - ♻️ **Refactor testeable**: el filtro de visibilidad de lanzamientos se extrajo a la
+>   función pura `isLaunchVisibleToStudent(launch, now)` en `convocatoriasService.ts`.
 >
 > **Hallazgo nuevo (bug latente, NO corregido — requiere decisión del owner):**
 >
@@ -62,17 +61,18 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 >   Fix simple (normalizar acentos antes de comparar) pero cambia links ya visibles en
 >   producción. Test que fija la conducta actual en `calendarUtils.test.ts`. **Confirmar.**
 >
-> **Análisis real de ESLint (Sesión 9): 0 errores, 1603 warnings.** Composición:
+> **Análisis real de ESLint (Sesión 9): 0 errores, 1581 warnings** (bajó de 1603 tras
+> limpiar imports). Composición:
 >
-> - **1265 `security/detect-object-injection` (79%)** — casi todo falsos positivos (la regla
+> - **1265 `security/detect-object-injection` (80%)** — casi todo falsos positivos (la regla
 >   marca cualquier `obj[variable]`, patrón ubicuo y tipado en este código). Es el grueso
 >   del ruido y oculta lo que sí importa. **Recomendación:** desactivar esa regla (o bajarla
 >   a `off`) en `eslint.config`. Es una **decisión de seguridad del owner**, por eso no la
 >   tocué; la plugin misma documenta su alta tasa de falsos positivos.
 > - **181 `@typescript-eslint/no-explicit-any`** — el `any` restante (rendimientos
 >   decrecientes; mayormente casts en componentes grandes).
-> - **125 `@typescript-eslint/no-unused-vars`** — ~20 ya limpiados (imports). Quedan
->   locales/args; algunos son features incompletas (handlers de Todoist) → revisar con intención.
+> - **103 `@typescript-eslint/no-unused-vars`** — quedan locales/args; algunos son features
+>   incompletas (handlers de Todoist) → revisar con intención, no a ciegas.
 > - **24 `react-hooks/exhaustive-deps`** — pueden esconder bugs; arreglar a ciegas puede
 >   causar loops. Revisar **caso por caso**, no masivo.
 > - Resto: 3 timing-attacks, 2 non-literal-regexp, 2 `no-console`, 1 unsafe-regex.
