@@ -4,7 +4,7 @@ Consolidado de todo lo que queda, ordenado por prioridad. Estado al cierre de la
 sesión de mejoras internas (app + base + tipos + seguridad + modernización).
 
 El detalle de lo ya hecho está en `internal-professionalization-plan.md`
-(secciones 14 en adelante). Estado base verificado: **type-check 0, 307 tests, build OK**.
+(secciones 14 en adelante). Estado base verificado: **type-check 0, 343 tests, build OK**.
 
 > **Sesión 8 (calidad, no solo tipos).** Se creó `docs/auditoria-calidad.md` con el
 > informe de hallazgos. Hecho en esta sesión:
@@ -36,18 +36,22 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 > - 🟢 **Componentes gigantes** con lógica en JSX (`GestionView` 1397, `WhatsAppContactClassifier`
 >   1432, `SeguroGenerator` 1103, `Auth` 959): extraer hooks/subcomponentes.
 
-> **Sesión 9 (autónoma, nocturna).** type-check 0, **307 tests**, build OK. Sin push (lo
+> **Sesión 9 (autónoma, nocturna).** type-check 0, **343 tests**, build OK. Sin push (lo
 > maneja el owner). Hecho:
 >
 > - 🟠 **Validación `zod` en el borde** ✅ (detallada arriba). Commit `e81be02`.
-> - 🧪 **+68 tests** (238 → 306) de lógica pura/helpers/hooks sin cobertura previa:
+> - 🧪 **+105 tests** (238 → 343) de lógica pura/helpers/hooks sin cobertura previa:
 >   `solicitudes/helpers`, `attachmentUtils`, `getErrorMessage`, `calendarUtils`,
->   `dbSchemas`, `convocatoriasService` (visibilidad), `scheduleUtils` y
->   `useSortablePracticas`. Commits `bf0e023`, `c0f7597`, `28ab0d2`, `9dc8f70`, `a183a04`.
+>   `dbSchemas`, `convocatoriasService` (visibilidad), `scheduleUtils`,
+>   `useSortablePracticas`, los **3 tabs de SolicitudesManager** (filtrado Ingreso/Egreso/
+>   Correcciones) y `editorHelpers`.
 > - 🧹 **Imports muertos eliminados** en 15 archivos (~20 imports). Commit `47150bf`.
 > - 🔧 **`any` → tipos seguros** en `solicitudes/helpers.ts` y `attachmentUtils.ts`.
-> - ♻️ **Refactor testeable**: el filtro de visibilidad de lanzamientos se extrajo a la
->   función pura `isLaunchVisibleToStudent(launch, now)` en `convocatoriasService.ts`.
+> - ♻️ **Refactors testeables (sin cambio de conducta):** se extrajeron a funciones puras
+>   `isLaunchVisibleToStudent` (visibilidad de lanzamientos), el filtrado de los 3 tabs de
+>   solicitudes (`filterIngresoSolicitudes`/`filterEgresoFinalizaciones`/`buildCorreccionesList`)
+>   y los helpers compartidos de los 4 editores en `editorHelpers.ts` (`sumHoursByStudent`,
+>   `paginate`, `removeRecordById`), eliminando duplicación.
 >
 > **Hallazgo nuevo (bug latente) ✅ CORREGIDO (sesión 9):**
 >
@@ -175,8 +179,9 @@ Notas de método para componentes JSX:
 
 - Tests de integración del **flujo Lanzador** (hoy: `lanzadorState`, `aseguramientoService`,
   `buildSidebarEntries`, `shared` puros; falta render del orquestador / mutaciones de estado).
-- Tests de los **componentes grandes** antes de seguir refactorizándolos
-  (SolicitudesManager tabs, GestionView).
+- Tests de los **componentes grandes** antes de seguir refactorizándolos.
+  ✅ **SolicitudesManager (3 tabs)** y los **4 editores de DB** ya tienen su lógica de
+  negocio extraída a funciones puras y cubierta (sesión 9). Falta `GestionView`.
 - Subir gradualmente reglas ESLint de `warn` a `error` a medida que baja la deuda
   (empezando por `no-unused-vars` y `exhaustive-deps`).
 
