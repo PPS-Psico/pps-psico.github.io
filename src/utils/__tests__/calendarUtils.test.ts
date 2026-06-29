@@ -31,20 +31,23 @@ describe("generateRecurringCalendarLinks", () => {
     expect(decodeURIComponent(result!.google)).toContain("FREQ=WEEKLY");
   });
 
-  // ⚠️ Bug latente documentado: parseDaysOfWeek compara contra claves SIN
-  // acento ("miercoles", "sabado"), pero toLowerCase() conserva el acento del
-  // texto real ("Miércoles", "Sábado"). Resultado: esos dos días NO se detectan.
-  // Este test fija la conducta ACTUAL (no la deseada) hasta que el owner decida
-  // corregirlo (cambiaría links de calendario ya en producción).
-  it("NO detecta días acentuados (miércoles) — conducta actual, bug conocido", () => {
+  // ✅ Corregido (sesión 9): parseDaysOfWeek ahora normaliza diacríticos
+  // (NFD + strip), así que "Miércoles"/"Sábado" se detectan correctamente.
+  it("detecta días acentuados (Miércoles → WE)", () => {
     const result = generateRecurringCalendarLinks(
       baseEvent({ schedule: "Lunes y Miércoles 9 a 13hs" }),
       new Date("2026-03-02")
     );
     const decoded = decodeURIComponent(result!.google);
-    // Solo el lunes queda en la RRULE; el miércoles se pierde por el acento:
-    expect(decoded).toContain("BYDAY=MO;UNTIL");
-    expect(decoded).not.toContain("BYDAY=MO,WE");
+    expect(decoded).toContain("BYDAY=MO,WE");
+  });
+
+  it("detecta sábado acentuado (Sábado → SA)", () => {
+    const result = generateRecurringCalendarLinks(
+      baseEvent({ schedule: "Sábado 10 a 14" }),
+      new Date("2026-03-07")
+    );
+    expect(decodeURIComponent(result!.google)).toContain("BYDAY=SA");
   });
 
   it("respeta la exclusión 'no <día>'", () => {

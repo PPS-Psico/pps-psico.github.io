@@ -35,7 +35,10 @@ function parseDaysOfWeek(schedule: string): string {
     sabado: "SA",
     domingo: "SU",
   };
-  const normalizedSchedule = schedule.toLowerCase();
+  const normalizedSchedule = schedule
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
   return Object.keys(dayMap)
     .filter((day) => normalizedSchedule.includes(day) && !normalizedSchedule.includes(`no ${day}`))
     .map((day) => dayMap[day])
