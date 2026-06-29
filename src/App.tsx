@@ -233,6 +233,8 @@ const App: React.FC = () => {
     }
     if (!isEmbedded) return;
 
+    document.documentElement.classList.add("pps-embedded");
+
     const notifyParent = () => {
       try {
         window.parent.postMessage({ ppsPanel: true }, "*");

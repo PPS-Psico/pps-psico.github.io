@@ -27,6 +27,7 @@ import {
   FIELD_DIRECCION_LANZAMIENTOS,
 } from "../../constants";
 import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
+import { isEmbedded } from "../../utils/isEmbedded";
 import type { LanzamientoPPS } from "../../types";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -121,7 +122,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
       data-accent="teal"
       style={{
         minHeight: "100vh",
-        background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7",
+        background: isEmbedded() ? "transparent" : resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7",
         display: "flex",
         flexDirection: "column",
       }}

@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Embebido en el campus (iframe): fondos transparentes para fundirse con Moodle */
+html.pps-embedded,
+html.pps-embedded body,
+html.pps-embedded #root {
+  background: transparent !important;
+}
+
 :root {
   --color-primary: 37, 99, 235;
   --glass-border: rgba(255, 255, 255, 0.4);

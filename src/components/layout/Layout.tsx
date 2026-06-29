@@ -4,6 +4,7 @@ import AppHeader from "./Header";
 import { useModal } from "../../contexts/ModalContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { logger } from "../../utils/logger";
+import { isEmbedded } from "../../utils/isEmbedded";
 
 interface LayoutProps {
   children: ReactNode;
@@ -83,7 +84,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       className="flex flex-col min-h-screen"
       style={
         isStudent
-          ? { background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }
+          ? {
+              background: isEmbedded()
+                ? "transparent"
+                : resolvedTheme === "dark"
+                  ? "#0a0e1a"
+                  : "#fafaf7",
+            }
           : hasOwnTopBar
             ? // Admin/Jefe/Directivo/Reportero usan el sistema Paper & Ink: pintamos
               // el fondo "paper" desde el contenedor raíz para que no aparezca un

@@ -1,5 +1,6 @@
 import React from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { isEmbedded } from "../../utils/isEmbedded";
 import AtlasTopbar from "./home/atlas/AtlasTopbar";
 
 /**
@@ -43,7 +44,7 @@ const DashboardLoadingSkeleton: React.FC = () => {
       data-mode={resolvedTheme}
       data-accent="teal"
       style={{
-        background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7",
+        background: isEmbedded() ? "transparent" : resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7",
         minHeight: "100vh",
       }}
     >

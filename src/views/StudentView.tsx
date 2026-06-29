@@ -11,6 +11,7 @@ import StudentDashboard from "./StudentDashboard";
 import { PullToRefresh, TabTransitionWrapper } from "../components/layout/MobileTransitions";
 import { useTabSwipe } from "../hooks/useSwipe";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { isEmbedded } from "../utils/isEmbedded";
 
 // Inner component to consume Context
 const StudentLayout: React.FC = () => {
@@ -68,7 +69,9 @@ const StudentLayout: React.FC = () => {
   return (
     <div
       className="pb-28 md:pb-8 min-h-screen flex flex-col"
-      style={{ background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }}
+      style={{
+        background: isEmbedded() ? "transparent" : resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7",
+      }}
     >
       <main className="flex-grow md:block">
         {/* Montamos SOLO la rama del viewport actual (no las dos ocultas por CSS)
