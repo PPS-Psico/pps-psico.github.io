@@ -13,6 +13,19 @@ import type {
   ConvenioFields,
 } from "../types";
 import { cleanDbValue } from "./formatters";
+import {
+  validateDbRow,
+  estudianteSchema,
+  practicaSchema,
+  solicitudSchema,
+  lanzamientoSchema,
+  convocatoriaSchema,
+  institucionSchema,
+  penalizacionSchema,
+  finalizacionSchema,
+  compromisoSchema,
+  convenioSchema,
+} from "../lib/dbSchemas";
 
 type Tables = Database["public"]["Tables"];
 
@@ -40,6 +53,7 @@ const cleanArrayField = (value: string[] | string | null | undefined): string =>
 };
 
 export const mapEstudiante = (row: Tables["estudiantes"]["Row"]): AppRecord<EstudianteFields> => {
+  validateDbRow(estudianteSchema, row, "estudiantes");
   const cleanRow = { ...row };
   if (row.legajo) cleanRow.legajo = cleanDbValue(row.legajo);
   if (row.nombre) cleanRow.nombre = cleanDbValue(row.nombre);
@@ -54,6 +68,7 @@ export const mapEstudiante = (row: Tables["estudiantes"]["Row"]): AppRecord<Estu
 };
 
 export const mapPractica = (row: Tables["practicas"]["Row"]): AppRecord<PracticaFields> => {
+  validateDbRow(practicaSchema, row, "practicas");
   // Create a copy for mapping, preserving original types for fields we don't modify
   const mapped = {
     ...row,
@@ -69,6 +84,7 @@ export const mapPractica = (row: Tables["practicas"]["Row"]): AppRecord<Practica
 export const mapSolicitud = (
   row: Tables["solicitudes_pps"]["Row"]
 ): AppRecord<SolicitudPPSFields> => {
+  validateDbRow(solicitudSchema, row, "solicitudes_pps");
   const cleanRow = { ...row };
   cleanRow.nombre_institucion = cleanDbValue(row.nombre_institucion);
   cleanRow.nombre_alumno = cleanDbValue(row.nombre_alumno);
@@ -79,6 +95,7 @@ export const mapSolicitud = (
 export const mapLanzamiento = (
   row: Tables["lanzamientos_pps"]["Row"]
 ): AppRecord<LanzamientoPPSFields> => {
+  validateDbRow(lanzamientoSchema, row, "lanzamientos_pps");
   const cleanRow = { ...row };
   cleanRow.nombre_pps = cleanDbValue(row.nombre_pps);
   cleanRow.orientacion = cleanDbValue(row.orientacion);
@@ -89,6 +106,7 @@ export const mapLanzamiento = (
 export const mapConvocatoria = (
   row: Tables["convocatorias"]["Row"]
 ): AppRecord<ConvocatoriaFields> => {
+  validateDbRow(convocatoriaSchema, row, "convocatorias");
   const cleanRow = { ...row };
   cleanRow.nombre_pps = cleanDbValue(row.nombre_pps);
   cleanRow.estado_inscripcion = cleanDbValue(row.estado_inscripcion);
@@ -99,6 +117,7 @@ export const mapConvocatoria = (
 export const mapInstitucion = (
   row: Tables["instituciones"]["Row"]
 ): AppRecord<InstitucionFields> => {
+  validateDbRow(institucionSchema, row, "instituciones");
   const cleanRow = { ...row };
   cleanRow.nombre = cleanDbValue(row.nombre);
   cleanRow.direccion = cleanDbValue(row.direccion);
@@ -109,12 +128,14 @@ export const mapInstitucion = (
 export const mapPenalizacion = (
   row: Tables["penalizaciones"]["Row"]
 ): AppRecord<PenalizacionFields> => {
+  validateDbRow(penalizacionSchema, row, "penalizaciones");
   return toAppRecord(row) as AppRecord<PenalizacionFields>;
 };
 
 export const mapFinalizacion = (
   row: Tables["finalizacion_pps"]["Row"]
 ): AppRecord<FinalizacionPPSFields> => {
+  validateDbRow(finalizacionSchema, row, "finalizacion_pps");
   const cleanRow = { ...row };
   cleanRow.estado = cleanDbValue(row.estado);
   return toAppRecord(cleanRow) as AppRecord<FinalizacionPPSFields>;
@@ -123,6 +144,7 @@ export const mapFinalizacion = (
 export const mapCompromiso = (
   row: Tables["compromisos_pps"]["Row"]
 ): AppRecord<CompromisoPPSFields> => {
+  validateDbRow(compromisoSchema, row, "compromisos_pps");
   const cleanRow = { ...row };
   cleanRow.estado = cleanDbValue(row.estado);
   cleanRow.nombre_completo = cleanDbValue(row.nombre_completo);
@@ -132,6 +154,7 @@ export const mapCompromiso = (
 };
 
 export const mapConvenio = (row: Tables["convenios"]["Row"]): AppRecord<ConvenioFields> => {
+  validateDbRow(convenioSchema, row, "convenios");
   const cleanRow = { ...row };
   cleanRow.tipo = cleanDbValue(row.tipo);
   if (row.notas) cleanRow.notas = cleanDbValue(row.notas);

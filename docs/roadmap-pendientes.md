@@ -4,7 +4,7 @@ Consolidado de todo lo que queda, ordenado por prioridad. Estado al cierre de la
 sesión de mejoras internas (app + base + tipos + seguridad + modernización).
 
 El detalle de lo ya hecho está en `internal-professionalization-plan.md`
-(secciones 14 en adelante). Estado base verificado: **type-check 0, 221 tests, build OK**.
+(secciones 14 en adelante). Estado base verificado: **type-check 0, 238 tests, build OK**.
 
 > **Sesión 8 (calidad, no solo tipos).** Se creó `docs/auditoria-calidad.md` con el
 > informe de hallazgos. Hecho en esta sesión:
@@ -20,9 +20,14 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 >
 > - 🔴 **Más tests de comportamiento**: tabs de `SolicitudesManager`, editores de DB.
 >   (`useConvocatorias` ya está cubierto por `StudentView.integration`.)
-> - 🟠 **Validación con `zod` en el borde de datos** (`lib/db.ts`/`supabaseService`):
->   ataca la raíz del `any`. ⚠️ Tocar `db.ts` con sesiones git concurrentes es riesgoso
->   (merge conflicts) — hacerlo en una ventana sin trabajo paralelo.
+> - 🟠 **Validación con `zod` en el borde de datos** ✅ **HECHO (sesión 9)**. Se creó
+>   `src/lib/dbSchemas.ts` con un schema _lenient_ por tabla (`.passthrough()` + campos
+>   `.nullable().optional()`, uniones `string|number` para `legajo`/`dni`) y el helper
+>   `validateDbRow(schema, row, tableName)`. Se cableó en los 10 mappers de
+>   `src/utils/mappers.ts` (punto único de borde). La validación corre **solo en dev**
+>   (`import.meta.env.DEV`) y **nunca lanza**: ante drift emite `logger.warn` y sigue con
+>   el row original → **cero overhead/ruido y riesgo nulo en producción**. +17 tests en
+>   `src/lib/__tests__/dbSchemas.test.ts` (221 → 238). type-check 0, build OK.
 > - 🟠 **`eslint --fix` de formato** (~5141 auto-corregibles) en un commit aparte. ⚠️ Diff
 >   enorme + concurrencia; el hook lint-staged ya formatea lo que se commitea.
 > - 🟢 **Bug confirmado en `HomeView`**: `educacionHs` lee `FIELD_HORAS_PRACTICAS` sobre
