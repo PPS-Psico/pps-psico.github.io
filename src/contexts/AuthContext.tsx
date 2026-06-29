@@ -248,6 +248,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
       subscription.unsubscribe();
     };
+    // Listener de auth: debe montarse UNA sola vez. Re-suscribir ante cada cambio
+    // de isAuthLoading provocaría bucles de suscripción; el safety-timeout asume
+    // el estado inicial de carga a propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient, deepCleanup]);
 
   const login = useCallback((user: AuthUser) => {

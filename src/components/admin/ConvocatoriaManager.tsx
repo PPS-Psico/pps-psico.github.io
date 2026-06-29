@@ -242,6 +242,9 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
       actionItems,
       totalActionItems: actionItems.length,
     };
+    // getInstitutionForPpsName solo depende de institutionsMap (ya en deps);
+    // no se agrega para no recalcular el brief en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredData, institutionsMap]);
 
   const selectedAction =

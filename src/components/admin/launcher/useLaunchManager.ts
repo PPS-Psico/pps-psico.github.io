@@ -108,7 +108,10 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     return unique.size >= 2;
   }, [formData.orientacion]);
 
-  const safeOrientacion = Array.isArray(formData.orientacion) ? formData.orientacion : [];
+  const safeOrientacion = useMemo(
+    () => (Array.isArray(formData.orientacion) ? formData.orientacion : []),
+    [formData.orientacion]
+  );
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: institutions = [] } = useQuery<AirtableRecord<InstitucionFields>[]>({
@@ -576,7 +579,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
 
   useEffect(() => {
     if (lastLanzamiento && selectedInstitution) handleLoadLastData();
-  }, [lastLanzamiento, selectedInstitution]);
+  }, [lastLanzamiento, selectedInstitution, handleLoadLastData]);
 
   const handleSelectInstitution = useCallback((inst: AirtableRecord<InstitucionFields> | null) => {
     if (!inst) {

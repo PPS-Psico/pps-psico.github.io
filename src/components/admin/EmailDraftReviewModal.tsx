@@ -25,7 +25,10 @@ const EmailDraftReviewModal: React.FC<EmailDraftReviewModalProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    // Reseteamos el texto SOLO al cambiar de borrador (por id), no cuando cambia
+    // el contenido del mismo borrador, para no pisar las ediciones del usuario.
     setEditedText(draft?.borrador ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.id]);
 
   useEffect(() => {

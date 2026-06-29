@@ -191,7 +191,7 @@ export const useSmartAnalysis = (data: DashboardData | undefined, isLoading: boo
     if (algorithmicAnalysis.status !== "loading" && !isAiLoading && !aiSummary) {
       fetchAiInsight();
     }
-  }, [algorithmicAnalysis.rawData, algorithmicAnalysis.status]);
+  }, [algorithmicAnalysis.rawData, algorithmicAnalysis.status, isAiLoading, aiSummary]);
 
   return {
     status: algorithmicAnalysis.status,

@@ -143,6 +143,10 @@ export const useSeleccionadorLogic = (
         setSelectedLanzamiento(target);
       }
     }
+    // NO incluir selectedLanzamiento: el efecto solo debe reaccionar a la
+    // navegación (initialLaunchId/openLaunches). Agregarlo re-seleccionaría el
+    // lanzamiento inicial cada vez que el usuario elige otro, pisando su elección.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLaunchId, openLaunches]);
 
   const candidatesQueryKey = ["candidatesForLaunch", selectedLanzamiento?.id, isTestingMode];

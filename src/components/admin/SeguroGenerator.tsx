@@ -369,6 +369,10 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         handleProceedToReview(sel, loaded);
       }
     });
+    // Auto-proceso de montaje: debe correr al cargar / cambiar el lanzamiento
+    // pre-seleccionado, no ante cambios de identidad de handleProceedToReview
+    // (re-ejecutarlo dispararía un re-fetch y re-compilación duplicados).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleFetchConvocatorias, preSelectedLanzamientoId]);
 
   // Cargar la marca persistida (seguro_gestionado_at) del lanzamiento de contexto.

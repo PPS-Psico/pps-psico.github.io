@@ -269,7 +269,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
       }
     };
     syncContacts();
-  }, [solicitudesIngreso, whatsappContactos, isTestingMode]);
+  }, [solicitudesIngreso, whatsappContactos, isTestingMode, refetchContacts]);
 
   // 2. QUERY EGRESO (finalizacion_pps)
   const { data: solicitudesEgreso = [], isLoading: loadingEgreso } = useQuery<

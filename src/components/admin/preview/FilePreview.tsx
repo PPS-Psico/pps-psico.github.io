@@ -102,6 +102,10 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // Los handlers (handleNext/handlePrev/onClose/toggleFullscreen) se definen
+    // más abajo; el listener se re-vincula con el estado que sí importa
+    // (currentIndex/showInfo/...), capturando handlers frescos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, files.length, currentIndex, showInfo, showShortcuts]);
 
   const toggleFullscreen = useCallback(() => {

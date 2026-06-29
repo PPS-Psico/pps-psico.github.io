@@ -174,7 +174,7 @@ export const HermesFlow: React.FC<Props> = ({
         onClick: () => onAccion(a),
       };
     });
-  }, [acciones, hilos]);
+  }, [acciones, hilos, onAccion]);
 
   const cards: CardDescriptor[] = React.useMemo(() => {
     return [...planCards, ...extraCards].sort((a, b) => a.rank - b.rank);

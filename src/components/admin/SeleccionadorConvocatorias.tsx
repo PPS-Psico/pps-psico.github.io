@@ -463,6 +463,9 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
     if (isOpen && student) {
       fetchPracticas();
     }
+    // fetchPracticas solo depende de `student` (ya en deps); el intent es
+    // refetchear al abrir el modal o cambiar de estudiante.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, student]);
 
   const fetchPracticas = async () => {
