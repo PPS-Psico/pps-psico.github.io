@@ -1075,3 +1075,428 @@ Cuando una IA tome este documento como base, debería trabajar así:
 - revisar si alguna lectura publica/semipublica en `convocatorias` merece separarse en una tabla o vista especifica para bajar warnings sin tocar la UX;
 - decidir si conviene mover las RPC privilegiadas de auth fuera de `public` o si alcanza con el cierre actual de grants para este panel interno;
 - decidir si `debug_logs` sigue teniendo valor operativo o conviene retirarla.
+
+---
+
+## 14. Track de calidad de codigo y tipado (sesiones tooling)
+
+Este track es transversal a las sesiones de dominio. Apunta a los criterios de
+"calidad tecnica minima" de la seccion 7 (type-check limpio, tipos alineados,
+sin nuevos bypasses) y a sentar base para el refactor de los monolitos.
+
+### Fase 1. Tooling de calidad con dientes (cerrada)
+
+Problema detectado: el proyecto parecia profesional por fuera (CI, husky,
+commitlint, tests) pero los controles de calidad estaban desactivados por dentro.
+
+Cambios aplicados:
+
+- `eslint.config.js`: se activaron reglas clave que estaban en `off`:
+  - `react-hooks/rules-of-hooks`: `warn` -> `error` (verificado: 0 violaciones reales);
+  - `react-hooks/exhaustive-deps`: `off` -> `warn` (24 casos a revisar);
+  - `@typescript-eslint/no-explicit-any`: `off` -> `warn` (deuda ahora visible);
+  - `@typescript-eslint/no-unused-vars`: `off` -> `warn` con patron `^_`;
+  - `no-console`: `off` -> `warn` permitiendo solo `warn`/`error`.
+  - Todo en modo `warn` para no romper build ni CI; visibiliza deuda para limpieza gradual.
+- Dependencias deprecadas/sin uso eliminadas: `@google/generative-ai`,
+  `@sentry/tracing`, `@types/xlsx`.
+- `tsconfig.json`: `target`/`lib` ES2020 -> ES2022.
+- Verificacion: `tsc --noEmit` OK, `npm run build` OK.
+
+Observacion para performance futura: el build genera chunks de ~940 KB
+(`index` y `exceljs.min`). Candidato a code-splitting con `manualChunks`.
+
+### Fase 2. Tipado de la capa de datos (cerrada)
+
+Objetivo: el `strict: true` existia en papel pero ~684 `any` lo anulaban. Se
+ataco primero la capa que consume todo el proyecto.
+
+Cambios aplicados:
+
+- `src/services/supabaseService.ts`:
+  - tipos compartidos exportados `SortSpec` y `QueryFilters` (antes `any[]` y `Record<string, any>`);
+  - `applyFilters(query: any)` -> generico `applyFilters<Q>(query: Q): Q` con interfaz estructural `GenericFilterBuilder`;
+  - helper `toErrorMessage(e: unknown)`: los 6 `catch (e: any)` pasaron a `catch (e)` con narrowing seguro;
+  - `allRows: any[]` -> `Row[]`; `lastError: any` -> `unknown`;
+  - quedan 4 `as any` (escape hatch documentado de supabase-js con tablas genericas T), ahora con comentario y `eslint-disable` puntual.
+- `src/lib/db.ts`: firmas `getAll/get/getPage` usan `QueryFilters`/`SortSpec`;
+  `getPage` retorna `AppErrorResponse | null` (antes `error: any`);
+  `getStudentLoginInfo` sin `(supabase.rpc as any)` ni `(data as any)` (la RPC ya estaba tipada).
+- `src/hooks/useAuthLogic.ts`: eliminado `(supabase.rpc as any)` para `get_student_email_by_legajo`.
+- `src/components/admin/EditorEstudiantes.tsx`: el tipado estricto expuso un bug
+  latente (acceso a `.message` sobre `string | AppError` sin narrowing). Corregido;
+  ademas `filters: any` -> `Record<string, unknown>`.
+- Verificacion: `tsc --noEmit` OK, tests de `src/services`/`src/lib` (14) en verde, `npm run build` OK.
+
+### Siguiente paso sugerido del track
+
+- antes de refactorizar los monolitos (`LanzadorView.tsx` ~3270 lineas,
+  `SolicitudesManager.tsx` ~3659 lineas), reforzar la red de tests de integracion
+  de esos flujos (alinea con Sesion 11);
+- continuar reduciendo `any` por dominio (servicios -> hooks -> componentes),
+  apoyandose en los tipos compartidos ya creados.
+
+### Fase 3. Refactor de monolitos — SolicitudesManager (primera pasada)
+
+Objetivo: dividir el componente monolítico `SolicitudesManager.tsx` (3714 líneas,
+7 componentes apilados) en módulos enfocados, sin cambiar comportamiento. Se apoya
+en la red de tests de `solicitudesService` creada en la sesión anterior.
+
+Patrón seguido: extraer cada componente a `src/components/admin/solicitudes/`
+(donde un refactor previo ya había movido `types`, `helpers`, `primitives`, `modals`).
+
+Cambios aplicados:
+
+- `EmailReviewModal` -> `solicitudes/EmailReviewModal.tsx` (modal de presentación puro).
+- `CorreccionesTabView` + `CorreccionCardItem` -> `solicitudes/CorreccionesTab.tsx`.
+- `EgresoTabView` + `EgresoCardItem` -> `solicitudes/EgresoTab.tsx`.
+- `CollapsibleHistory` (genérico, compartido por Ingreso y Egreso) -> movido a `solicitudes/primitives.tsx`.
+- Limpieza de imports muertos en el archivo principal tras las extracciones.
+
+Resultado:
+
+- `SolicitudesManager.tsx`: **3714 -> 2305 líneas** (-38%).
+- Verificación: `tsc --noEmit` OK, suite completa (16 suites / 189 tests) en verde, `npm run build` OK.
+
+Pendiente en este monolito (próxima pasada):
+
+- extraer `IngresoTabView` + `IngresoCardItem` -> `solicitudes/IngresoTab.tsx`;
+- extraer `PanelHermesIngreso` y `HermesSolicitudesEditorial` -> componentes Hermes propios;
+- dejar `SolicitudesManager` como orquestador delgado (estado de tabs + data fetching + wiring).
+
+Siguiente monolito del backlog: `LanzadorView.tsx` (~3270 líneas).
+
+### Fase 3 (cont.). SolicitudesManager completo + LanzadorView
+
+**SolicitudesManager.tsx — segunda pasada (cerrada).** Se completó la división:
+
+- `IngresoTabView` + `IngresoCardItem` -> `solicitudes/IngresoTab.tsx`.
+- `PanelHermesIngreso` -> `solicitudes/PanelHermesIngreso.tsx`.
+- `HermesSolicitudesEditorial` -> `solicitudes/HermesSolicitudesEditorial.tsx`.
+- limpieza de imports muertos.
+- Resultado: `SolicitudesManager.tsx` **3714 -> 839 líneas (-77%)**, ahora orquestador (tabs + data fetching + wiring). Módulo `solicitudes/`: EmailReviewModal (139), CorreccionesTab (610), EgresoTab (763), IngresoTab (743), PanelHermesIngreso (419), HermesSolicitudesEditorial (296), más types/helpers/primitives/modals previos.
+
+**LanzadorView.tsx (cerrada).** Relocalización pura (sin cambios de lógica) a `views/admin/lanzador/`:
+
+- `lanzador/shared.tsx` (965): primitivos (Dot/Chip/Pipeline/Loader/MiniSpark), helpers puros (isEffectivelyArchived, normDateValue), hook `useLaunchEditor`, `CanvasHeader`, `PropagateDatesDialog`, `LanzadorSidebar`.
+- `lanzador/stepViews.tsx` (2010): las 6 vistas por estado (Borrador/Seleccion/Seguro/Confirmacion/Activa/Archivada) + helpers de WhatsApp.
+- Resultado: `LanzadorView.tsx` **3424 -> 588 líneas (-83%)**, ahora orquestador (estado de pipeline + sidebar + ruteo de vistas).
+- El CSS scoped `.lv4` (lanzadorStyles) se mantiene importado en el orquestador (side-effect preservado).
+
+Verificación de toda la Fase 3: `tsc --noEmit` OK, suite completa (16 suites / 189 tests) en verde, `npm run build` OK.
+
+Pendiente (mejora futura, no urgente):
+
+- `stepViews.tsx` (2010) sigue siendo grande; se puede dividir una vista por archivo en una pasada posterior.
+- agregar tests de integración del flujo Lanzador antes de tocar su lógica (hoy solo `lanzadorState` tiene tests unitarios).
+- continuar reduciendo `any` en los módulos extraídos.
+
+### Fase 3 (cont.). Split fino de stepViews — ConfirmacionView aislada
+
+- `ConfirmacionView` (la vista más grande, ~803 líneas) -> `lanzador/ConfirmacionView.tsx` (818).
+- Los sub-componentes lazy (`SeleccionadorConvocatorias`, `SeguroGenerator`) y los
+  helpers de mensajes WhatsApp (`buildWhatsappFromLaunch`, `buildFranjasLibresMessage`)
+  se consolidaron en `lanzador/shared.tsx` (los usaban varias vistas).
+- `stepViews.tsx` quedó como módulo de las 5 vistas restantes (Borrador/Seleccion/Seguro/Activa/Archivada)
+  y re-exporta `ConfirmacionView` (barrel), así el orquestador no cambia su import.
+- Limpieza de imports muertos en shared.tsx, stepViews.tsx y ConfirmacionView.tsx.
+- Tamaños: LanzadorView 592, shared 1024, stepViews 1117, ConfirmacionView 818.
+- Verificación: `tsc --noEmit` OK, 16 suites / 189 tests en verde, `npm run build` OK.
+
+### Fase 3 (cont.). Red de tests del Lanzador
+
+Se agregó `views/admin/lanzador/__tests__/shared.test.ts` (11 tests) cubriendo la
+lógica pura que el refactor relocalizó a `lanzador/shared.tsx`:
+
+- `isEffectivelyArchived`: archivado por `estado_gestion`, archivado por bucket
+  pre-inicio con fecha de inicio vencida (+gracia), respeto del período de gracia,
+  y los casos que NO deben archivar.
+- `buildWhatsappFromLaunch`: incluye datos clave + link, omite secciones vacías.
+- `buildFranjasLibresMessage`: singular vs plural, listado de franjas, `libres` null = 0.
+
+Estado de cobertura del dominio Lanzador (suite total: 17 suites / 200 tests, en verde):
+
+- `lanzadorState.test.ts`: máquina de estados (mapDbToUiState, inscripcionVencida, metadata).
+- `aseguramientoService.test.ts` + `.property.test.ts`: deriveBucket (property-based) y mutaciones de seguro.
+- `shared.test.ts` (nuevo): helpers de archivado y mensajes.
+
+Pendiente (mejora futura): test de render del orquestador `LanzadorView` (agrupación
+de buckets en el sidebar) — requiere montar lazy + searchParams + modal; de mayor
+costo y fragilidad, se difiere.
+
+### Fase 3 (cont.). Test de buckets del Lanzador + reducción de `any`
+
+**Test del orquestador (vía extracción a función pura).** Para cubrir la
+clasificación del sidebar sin montar el componente (que en testing mode no trae
+datos), se extrajo la lógica del `useMemo` de `entries` a una función pura
+`buildSidebarEntries` en `lanzadorState.ts` (también se movieron ahí
+`isEffectivelyArchived`, `STALE_PRESTART_BUCKETS` y el tipo `SidebarEntry`;
+`shared.tsx` los re-exporta para compatibilidad).
+
+- `LanzadorView.tsx`: 588 -> ~488 líneas (el `useMemo` quedó en una línea).
+- Nuevo test `buildSidebarEntries.test.ts` (6 tests): borrador, abierta con conteos,
+  archivada forzada por `estado_gestion`, confirmación con `needsAction` + metaLine
+  de consentimientos, activa con seguro, y orden preservado.
+- Suite Lanzador: 3 suites / 34 tests. Suite total: **18 suites / 206 tests**.
+
+**Reducción de `any` (primera pasada del barrido).**
+
+- Eliminados 9 casts `(supabase.auth as any)` (la API de auth ya está tipada):
+  `ChangePasswordModal`, `AuthContext`, `useAuthLogic`.
+- `utils/metricsCalculations.ts`: `calculateDashboardMetrics(allData: any)` ->
+  `allData: DashboardData` (interfaz que documenta las 7 colecciones). Los ~24
+  `any` dispersos de callbacks y casts `(launch as any)` se reemplazaron por
+  inferencia sobre `MetricRow` (un único `[key: string]: any` para el acceso
+  dinámico por columna). Comportamiento idéntico (validado por sus 10 tests).
+- `any` en src (sin tests/generados): **665 -> 630**.
+
+**Hallazgo (deuda):** quitar los casts `(supabase.rpc as any)` destapó drift entre
+los tipos generados (`src/types/supabase.ts`) y las firmas reales de varias RPCs
+(args opcionales, `null` vs `undefined`, `.status` en `PostgrestError`). Varias
+RPCs ni siquiera están en los tipos generados. Antes de seguir limpiando esos
+casts hay que correr `npm run gen-types` (requiere acceso al proyecto Supabase)
+para sincronizar las firmas; por eso esos casts se dejaron intactos.
+
+### Reducción de `any` — dominio de métricas/reportes (cerrado)
+
+Se tipó el contrato de datos del dashboard con un patrón reutilizable: una
+interfaz `DashboardData` (las 7 colecciones) y `MetricRow` (`{ id: string;
+[key: string]: any }` para el acceso dinámico por columna). Ambos se exportan
+desde `utils/metricsCalculations.ts` y se reutilizan en los hooks.
+
+Archivos limpiados (comportamiento idéntico, validado por type-check + suite + build):
+
+- `utils/metricsCalculations.ts`: `allData: any` -> `DashboardData`; ~24 `any` -> 1 index signature.
+- `services/metricsLists.ts`: filas de RPC tipadas con `RpcListRow` (27 -> 11 `any`).
+- `hooks/useExecutiveReportData.ts`: `processAllData`/`processRequestsForYear` tipados con `DashboardData`/`MetricRow` (34 -> 5).
+- `hooks/useOperationalData.ts` y `hooks/useActivityFeed.ts`: arrays locales + callbacks tipados con `MetricRow`.
+- 9 casts `(supabase.auth as any)` eliminados.
+
+Total `any` en src (sin tests/generados): **665 -> 564**.
+
+Nota técnica: al spread-ear un `MetricRow` en un object literal, TS pierde el index
+signature en el tipo resultante; los `.filter` posteriores a un `.map` que vuelven
+a indexar por columna se anotan explícitamente como `MetricRow`.
+
+### Bloqueo conocido: drift de tipos de RPC (requiere acceso a Supabase)
+
+Los casts `(supabase.rpc as any)` restantes NO se pueden quitar de forma segura
+hasta sincronizar `src/types/supabase.ts` con la base:
+
+- varias RPCs no están en los tipos generados (`get_convenios_list`,
+  `get_convenios_por_vencer`, `get_convenios_kpis`, `get_student_signup_*`, etc.);
+- otras tienen firmas desactualizadas (args opcionales, `null` vs `undefined`,
+  `.status` en `PostgrestError`).
+
+Resolución: correr `npm run gen-types` (requiere token/acceso al proyecto Supabase
+`qxnxtnhtbpsgzprqtrjl`) y luego quitar los casts y ajustar los call-sites. Esto se
+facilita instalando el **MCP de Supabase** (introspección de schema + generación de
+tipos) — pendiente de credenciales del owner.
+
+El resto de los `any` (~564) vive mayormente en componentes de presentación sin
+tests; se recomienda seguir el enfoque incremental guiado por el warning de
+`@typescript-eslint/no-explicit-any` ya activo, archivo por archivo.
+
+### Sincronización de tipos Supabase + limpieza de casts de RPC (CLI linkeado)
+
+Con el CLI de Supabase autenticado y linkeado (`qxnxtnhtbpsgzprqtrjl`), se regeneró
+`src/types/supabase.ts` desde el schema vivo (`npm run gen-types`). Resultado:
+
+- **Todas las RPCs quedaron tipadas** (antes faltaban `get_convenios_*`,
+  `get_student_signup_status`, etc.). Se eliminaron **todos** los `(supabase.rpc as any)`.
+- Al quitar los casts, el `type-check` destapó desajustes reales que el `any` ocultaba,
+  ahora corregidos:
+  - `mark_password_changed` no recibe args (se pasaba `{}`).
+  - `telefono_input`/`correo_input`: `null` -> `undefined` (la firma de la RPC los toma opcionales).
+  - `rpcResetError.status` no existe en `PostgrestError`: el branch `status >= 500` era
+    **código muerto** (siempre false); se conservó el comportamiento con acceso opcional tipado.
+  - `get_convenios_kpis`: cast vía `unknown` (Json no solapa con `ConveniosKpis`).
+- `any` total: 564 -> **554**. Tests 206/206, build OK.
+
+#### ⚠️ Drift de schema detectado (DECISIÓN PENDIENTE del owner)
+
+La regeneración reveló que la migración local
+`supabase/migrations/20260625130000_acreditacion_por_pps.sql` (agrega
+`practicas.es_online` y `finalizacion_pps.detalle_practicas`) **NO está aplicada en
+la base remota**, pero el código ya depende de esas columnas. Es decir: feature
+desplegada sin su migración.
+
+- Estado actual: se parchearon manualmente esas 2 columnas en `src/types/supabase.ts`
+  (marcado como stopgap) para mantener el build verde sin tocar la base productiva.
+- La migración es ADITIVA, idempotente (`IF NOT EXISTS`), retrocompatible y con rollback
+  documentado; su propio encabezado dice "aplicarla NO rompe la app actual".
+- **Acción recomendada (requiere OK del owner):** aplicar la migración a remoto
+  (`supabase db push` o MCP `apply_migration`), luego `npm run gen-types` para reemplazar
+  el parche manual por los tipos reales. Incluye un backfill de datos
+  (`UPDATE practicas SET es_online = true WHERE ...`), por eso se pide confirmación.
+
+### Escaneo de seguridad (ggshield) — 2 secretos hardcodeados removidos
+
+`ggshield secret scan` sobre `src/`, `supabase/`, `scripts/` detectó **2 secretos reales** committeados:
+
+- `src/services/todoistDirectService.ts:5`: token de API de Todoist hardcodeado.
+- `src/components/admin/AdminDashboard.tsx:28`: token interno de Hermes hardcodeado (como fallback de la env var).
+
+Ambos se removieron del código y ahora se leen solo de variables de entorno
+(`VITE_TODOIST_TOKEN`, `VITE_HERMES_INTERNAL_TOKEN`), documentadas en `.env.example`.
+Re-escaneo: 0 incidencias. type-check + tests + build OK.
+
+**⚠️ ACCIÓN REQUERIDA del owner (los tokens estuvieron en el repo → potencialmente expuestos):**
+
+1. **Rotar** ambos tokens (Todoist + Hermes interno) — revocar los viejos y emitir nuevos.
+2. Setear los nuevos valores como env vars (local `.env` + secrets de CI/GitHub).
+3. Considerar proxyear Todoist vía Edge Function: una `VITE_*` se incluye en el bundle
+   del cliente, así que un token de Todoist en el frontend queda expuesto igual.
+
+### Pendiente sin resolver: aplicar migración a remoto
+
+No se pudo aplicar la migración `20260625130000` (es_online/detalle_practicas) porque:
+
+- `supabase db push` está bloqueado por drift de historial (el remoto tiene ~60
+  migraciones no presentes como archivos locales; repararlo en producción es riesgoso).
+- El MCP de Supabase (que permitiría `apply_migration` puntual) requiere que el owner
+  complete el login OAuth en el navegador (Command Palette → "Kiro: Focus on MCP Servers View").
+
+Mientras tanto el parche manual de tipos mantiene todo verde. Una vez que el owner
+conecte el MCP o autorice el push, aplico la migración + `gen-types` y quito el parche.
+
+### Reducción de `any` — casts de tabla obsoletos (post gen-types)
+
+Con los tipos sincronizados, varios `as any` que existían solo porque los tipos
+viejos no incluían ciertas tablas quedaron innecesarios:
+
+- `services/reminderService.ts`: la tabla `reminders` ya está tipada; se eliminaron
+  **los 21** `as any` (`.from("reminders" as any)`, `.insert({...} as any)`, wrappers).
+- `contexts/ConfigContext.tsx`: la tabla `app_config` ya está tipada; se quitó el cast
+  de `.from()` y los `(data as any)`.
+
+`any` total: 554 -> **528**. type-check + 206 tests + build OK.
+
+Nota: `todoist_tasks` NO está en los tipos generados (otra tabla con posible drift),
+así que su cast `as any` se conservó.
+
+### Nota sobre el MCP de Supabase
+
+El MCP hosted (`https://mcp.supabase.com/mcp`) usa OAuth de navegador ligado a la
+cuenta del owner; no puede conectarse de forma autónoma desde el agente. Para
+habilitarlo: Command Palette → "Kiro: Focus on MCP Servers View" → conectar/login
+en `supabase`. Una vez conectado, queda disponible `apply_migration` para aplicar la
+migración pendiente sin pelear con el drift de historial de `db push`.
+
+### Migración pendiente APLICADA + tipos reales (vía Management API)
+
+Resuelto el drift de schema:
+
+- La migración `20260625130000` (columnas `practicas.es_online` y
+  `finalizacion_pps.detalle_practicas`) se aplicó al proyecto remoto vía la
+  Management API de Supabase (`POST /v1/projects/{ref}/database/query`), evitando
+  el bloqueo de `db push` (drift de historial) y el OAuth del MCP.
+- Verificado contra `information_schema.columns`: ambas columnas existen en la base viva.
+- `src/types/supabase.ts` regenerado desde el schema vivo vía Management API
+  (`GET /v1/projects/{ref}/types/typescript`) — el parche manual de tipos quedó
+  reemplazado por las columnas reales. type-check + 206 tests + build OK.
+
+Nota operativa: el CLI (`supabase gen types` / `migration repair`) devolvió 403
+para esta cuenta; la Management API con PAT funcionó. La migración NO quedó
+registrada en `supabase_migrations.schema_migrations` (el DDL es idempotente con
+`IF NOT EXISTS`, así que re-aplicarla en el futuro no rompe nada).
+
+### MCP de Supabase: configurado por token (no OAuth)
+
+El OAuth hosted (`mcp.supabase.com`) daba `Unauthorized`. Se configuró en su lugar
+el server por token en `~/.kiro/settings/mcp.json` (nivel usuario, FUERA del repo):
+`@supabase/mcp-server-supabase` con `SUPABASE_ACCESS_TOKEN` y `--project-ref`.
+Reconectar el server `supabase` en la MCP Servers View para que cargue las tools.
+
+> ⚠️ El PAT se compartió en el chat → debe ROTARSE. Tras rotar, actualizar el valor
+> de `SUPABASE_ACCESS_TOKEN` en `~/.kiro/settings/mcp.json`.
+
+### Migración pendiente APLICADA + tipos reales
+
+Con un Personal Access Token del owner se aplicó la migración `20260625130000`
+(es_online + detalle_practicas) directamente vía la Management API de Supabase
+(`POST /v1/projects/{ref}/database/query`), evitando el bloqueo de `db push`
+(drift de historial) y el OAuth del MCP.
+
+- Columnas creadas en remoto (additivas, idempotentes); backfill de `es_online` ejecutado.
+- `src/types/supabase.ts` regenerado desde el schema vivo vía Management API
+  (`GET /v1/projects/{ref}/types/typescript`) — ahora trae `es_online`,
+  `detalle_practicas` y `convenios` reales. **Se eliminó el parche manual de tipos.**
+- type-check 0, 206 tests, build OK.
+- MCP `supabase` (token, `@supabase/mcp-server-supabase`) configurado en el
+  `~/.kiro/settings/mcp.json` del usuario; el OAuth hosted (que daba "Unauthorized")
+  quedó deshabilitado.
+
+Notas:
+
+- `npm run gen-types` (CLI) empezó a fallar con error de privilegios; la generación
+  vía Management API + PAT funciona como alternativa. Revisar privilegios del login del CLI.
+- **El PAT quedó expuesto en el chat de la sesión → ROTARLO** (revocar en
+  https://supabase.com/dashboard/account/tokens y reemplazar el valor en `mcp.json`).
+
+### Pulido de base guiado por Supabase Advisors (vía Management API + PAT)
+
+Auditoría de la base con los advisors de Supabase (`/advisors/security` y
+`/advisors/performance`) y corrección de los ítems seguros/aditivos:
+
+Estado inicial relevante:
+
+- security: `function_search_path_mutable` (8 funciones), + warnings esperables
+  (`*_security_definer_function_executable` x71 = RPCs intencionales,
+  `extension_in_public` x2, `public_bucket_allows_listing` x1,
+  `auth_leaked_password_protection` x1, `rls_enabled_no_policy` INFO x1).
+- performance: `multiple_permissive_policies` x21, `unindexed_foreign_keys` x5,
+  `unused_index` x11.
+- RLS: **todas** las tablas de `public` tienen RLS habilitado (verificado).
+
+Corregido (migraciones `20260628120000` y `20260628130000`, aplicadas a remoto e
+idempotentes):
+
+- **`function_search_path_mutable`: 8 -> 0.** Se fijó `search_path = 'public'` en
+  las 6 RPCs de métricas SECURITY DEFINER (`get_activos_list`, `get_admin_metrics_kpis`,
+  `get_finalizados_list`, `get_metrics_years`, `get_proximos_finalizar_list`,
+  `get_sin_pps_list`) + `safe_date_cast` y `set_gmail_hilos_updated_at`.
+- **`unindexed_foreign_keys`: 5 -> 0.** Índices de cobertura para FKs en
+  `admin_action_log`, `agent_suggestions` (x2) y `whatsapp_contactos` (x2).
+- Funciones verificadas post-cambio (ejecutan OK con search_path fijo).
+
+Pendientes (no aplicados — requieren decisión/criterio, no son "free"):
+
+- `auth_leaked_password_protection`: habilitar el chequeo HaveIBeenPwned en Auth
+  (toggle de config, beneficioso; afecta signup/cambio de contraseña).
+- `multiple_permissive_policies` x21: consolidar políticas RLS (rework, validar flujos).
+- `unused_index` x11: evaluar drop (ahorro de escritura; confirmar que no se usan).
+- `*_security_definer_function_executable` x71: revisar grants de RPCs (mayormente intencional).
+- `extension_in_public` x2, `public_bucket_allows_listing` x1: revisar caso por caso.
+
+### Estado de `any` (rendimientos decrecientes)
+
+`any` total: 665 -> 528 en la sesión. Lo limpiado fue lo de mayor valor y menor
+riesgo (dominio métricas/reportes, servicios, contextos con tablas ya tipadas,
+casts de RPC/tabla obsoletos). El remanente (~528) vive sobre todo en componentes
+de presentación sin tests (payloads realtime, `catch (e: any)`, `useState<any>`,
+filas en handlers) y conviene seguirlo de forma incremental guiado por el warning
+de `@typescript-eslint/no-explicit-any` ya activo, archivo por archivo y con QA manual.
+
+### Modernización: code-splitting del bundle + manejo de errores centralizado
+
+**Code-splitting (vite `manualChunks`).** El build generaba un `index` monolítico
+de ~938 KB. Se agregó `manualChunks` en `vite.config.ts` que separa las librerías
+pesadas en chunks vendor independientes y cacheables:
+
+- `index`: **938 KB -> 294 KB** (gzip 83 KB).
+- chunks aislados: `react-vendor` (154 KB), `supabase` (175 KB), `charts` (295 KB),
+  `motion` (114 KB), `firebase` (77 KB), `pdf` (368 KB), `spreadsheet`/exceljs (940 KB),
+  `vendor` (341 KB).
+- Beneficio: mejor carga inicial (las libs pesadas solo se bajan cuando se usan) y
+  mejor cache-hit entre deploys (un cambio en la app no invalida el vendor de React).
+- Cambio puramente de bundling; build OK.
+
+**Util de errores centralizado.** Se creó `src/utils/getErrorMessage.ts`
+(`getErrorMessage(e: unknown)`), reemplazando el `toErrorMessage` inline de
+`supabaseService.ts` (DRY). Se empezó a migrar `catch (e: any)` -> `catch (e)` +
+`getErrorMessage(e)` en servicios (`geminiService`, `storageService`,
+`todoistDirectService`). El resto de los `catch (e: any)` queda como limpieza
+incremental con el mismo patrón.
+
+`any` total: **526**. type-check 0, 206 tests, build OK.
