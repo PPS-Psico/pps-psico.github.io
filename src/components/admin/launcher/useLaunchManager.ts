@@ -13,6 +13,7 @@ import {
   FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
   FIELD_ARCHIVO_DESCARGABLE_URL,
   FIELD_CODIGO_CAMPUS_INSTITUCIONES,
+  FIELD_CODIGO_CAMPUS_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_DIRECCION_INSTITUCIONES,
@@ -676,6 +677,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       [FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS]: formData.actividadesLabel,
       [FIELD_HORARIOS_FIJOS_LANZAMIENTOS]: formData.horariosFijos,
       [FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS]: formData.fechaEncuentroInicial || null,
+      [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: (formData.linkTareaCampus || "").trim() || null,
       [FIELD_INSTITUCION_LINK_PRACTICAS]: selectedInstitution?.id || "recInstMock_nuevo",
     };
 

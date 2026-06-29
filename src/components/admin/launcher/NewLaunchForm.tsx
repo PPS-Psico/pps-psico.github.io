@@ -673,6 +673,19 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
             style={{ marginTop: 8 }}
           />
         </FormField>
+
+        <FormField
+          label="Link de la Tarea · Campus / Moodle · opcional"
+          hint="Pegá el enlace de la Tarea (buzón de entrega) que creaste en Moodle. El campus generará solo la tarjeta de entrega en la orientación correspondiente."
+        >
+          <input
+            className="field"
+            name="linkTareaCampus"
+            value={(formData.linkTareaCampus as string) || ""}
+            onChange={handleChange}
+            placeholder="https://campus.uflo.edu.ar/mod/assign/view.php?id=…"
+          />
+        </FormField>
       </FormSection>
 
       {/* ── 04 · HORARIOS ── */}

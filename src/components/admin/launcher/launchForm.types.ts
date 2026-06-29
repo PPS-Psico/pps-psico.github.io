@@ -40,6 +40,13 @@ export type FormData = {
   actividadesLabel: string;
   horariosFijos: boolean;
   /**
+   * Link de la Tarea de Moodle (mod_assign) que el coordinador crea a mano en
+   * el campus. Al cargarlo, el campus genera automáticamente la tarjeta de
+   * entrega en la orientación correspondiente (ver public/entregas.html).
+   * Se persiste en la columna `codigo_tarjeta_campus` de `lanzamientos_pps`.
+   */
+  linkTareaCampus: string;
+  /**
    * Opt-in: marcar que esta PPS se lanza tras RENOVAR el convenio con la
    * institución (re-firma del específico, ~cada 2 años). Solo se tilda en la
    * primera PPS posterior a la renovación; el resto van sin tildar. Al lanzar,
@@ -76,6 +83,7 @@ export const initialState: FormData = {
   mensajeWhatsApp: "",
   actividadesLabel: "Actividades",
   horariosFijos: false,
+  linkTareaCampus: "",
   convenioRenovado: false,
 };
 

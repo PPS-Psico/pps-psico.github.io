@@ -5,6 +5,7 @@
 import {
   FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
   FIELD_ARCHIVO_DESCARGABLE_URL,
+  FIELD_CODIGO_CAMPUS_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_DIRECCION_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
@@ -114,6 +115,16 @@ export const LAUNCH_TABLE_CONFIG = {
     },
 
     { key: "sec_internal", label: "Notas e Internos", type: "section" as const },
+
+    { key: "sec_campus", label: "Campus Virtual · Entregas", type: "section" as const },
+    {
+      key: FIELD_CODIGO_CAMPUS_LANZAMIENTOS,
+      label: "Link de la Tarea (Campus / Moodle)",
+      type: "text" as const,
+      isFullWidth: true,
+      description:
+        "Pegá el enlace de la Tarea de Moodle (buzón de entrega). El campus genera sola la tarjeta de entrega en la orientación de esta PPS. Dejalo vacío si todavía no la creaste.",
+    },
 
     { key: "sec_file", label: "Archivo Descargable", type: "section" as const },
     {
