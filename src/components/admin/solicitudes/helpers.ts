@@ -150,3 +150,24 @@ export function filterEgresoFinalizaciones(
     (s) => !q || norm(s.studentName).includes(q) || norm(s.studentLegajo).includes(q)
   );
 }
+
+// ─── Tab de Correcciones ────────────────────────────────────────────
+
+/**
+ * Combina las solicitudes de modificación y de nueva PPS, las etiqueta con su
+ * `tipo_solicitud`, selecciona el subtab activo y las ordena por fecha de
+ * creación descendente (más nuevas primero). Función pura extraída de
+ * `CorreccionesTab`.
+ */
+export function buildCorreccionesList<T extends { created_at: string }>(
+  modificaciones: T[],
+  nuevas: T[],
+  subtab: "modificaciones" | "nuevas"
+): (T & { tipo_solicitud: "modificacion" | "nueva" })[] {
+  const mods = modificaciones.map((s) => ({ ...s, tipo_solicitud: "modificacion" as const }));
+  const news = nuevas.map((s) => ({ ...s, tipo_solicitud: "nueva" as const }));
+  const combined = subtab === "modificaciones" ? mods : news;
+  return combined.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+}

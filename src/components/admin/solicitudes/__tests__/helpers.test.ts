@@ -6,6 +6,7 @@ import {
   isHistorySolicitud,
   filterEgresoFinalizaciones,
   isHistoryFinalizacion,
+  buildCorreccionesList,
 } from "../helpers";
 import type { SolicitudPPSWithStudent, FinalizacionWithStudent } from "../types";
 
@@ -244,5 +245,35 @@ describe("filterEgresoFinalizaciones", () => {
 
   it("devuelve [] si no hay coincidencias", () => {
     expect(filterEgresoFinalizaciones(list, "zzz")).toEqual([]);
+  });
+});
+
+describe("buildCorreccionesList", () => {
+  const mods = [
+    { id: "m1", created_at: "2026-01-10T00:00:00Z" },
+    { id: "m2", created_at: "2026-03-10T00:00:00Z" },
+  ];
+  const nuevas = [{ id: "n1", created_at: "2026-02-10T00:00:00Z" }];
+
+  it("con subtab 'modificaciones' devuelve solo modificaciones etiquetadas", () => {
+    const result = buildCorreccionesList(mods, nuevas, "modificaciones");
+    expect(result.map((r) => r.id)).toEqual(["m2", "m1"]); // ordenadas desc por fecha
+    expect(result.every((r) => r.tipo_solicitud === "modificacion")).toBe(true);
+  });
+
+  it("con subtab 'nuevas' devuelve solo nuevas etiquetadas", () => {
+    const result = buildCorreccionesList(mods, nuevas, "nuevas");
+    expect(result.map((r) => r.id)).toEqual(["n1"]);
+    expect(result[0].tipo_solicitud).toBe("nueva");
+  });
+
+  it("ordena por fecha de creación descendente (más nueva primero)", () => {
+    const result = buildCorreccionesList(mods, [], "modificaciones");
+    expect(result[0].id).toBe("m2");
+    expect(result[1].id).toBe("m1");
+  });
+
+  it("devuelve [] si la lista del subtab activo está vacía", () => {
+    expect(buildCorreccionesList([], nuevas, "modificaciones")).toEqual([]);
   });
 });

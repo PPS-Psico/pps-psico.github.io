@@ -8,7 +8,7 @@ import {
 } from "../../../services";
 import Loader from "../../Loader";
 import { DataItem, EmptyState, FilterTabs } from "./primitives";
-import { normalizeAttachments } from "./helpers";
+import { normalizeAttachments, buildCorreccionesList } from "./helpers";
 import { getErrorMessage } from "../../../utils/getErrorMessage";
 
 /** Solicitud de corrección (modificación o nueva PPS) normalizada para la UI. */
@@ -76,17 +76,10 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
       )) as unknown as CorreccionItem[],
   });
 
-  const allList = useMemo(() => {
-    const mods = solicitudesModificacion.map((s) => ({
-      ...s,
-      tipo_solicitud: "modificacion" as const,
-    }));
-    const news = solicitudesNuevas.map((s) => ({ ...s, tipo_solicitud: "nueva" as const }));
-    const combined = subtab === "modificaciones" ? mods : news;
-    return combined.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [solicitudesModificacion, solicitudesNuevas, subtab]);
+  const allList = useMemo(
+    () => buildCorreccionesList(solicitudesModificacion, solicitudesNuevas, subtab),
+    [solicitudesModificacion, solicitudesNuevas, subtab]
+  );
 
   // Update count bubble in parent tabs
   useEffect(() => {
