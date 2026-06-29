@@ -160,15 +160,15 @@ window.DESCARGAS = [
   {
     title:"Plantillas", kick:"Documentos que completás vos",
     items:[
-      { n:"Planilla de seguimiento de horas", d:"Tu control exacto de horas, clase a clase. Planilla oficial.", ext:"XLSX", size:"", feat:true, url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/Planilla_Seguimiento%20%281%29.xlsx" },
-      { n:"Planilla de asistencia",            d:"Registro presencial para la firma de tu referente en sede.",   ext:"DOC",  size:"", url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/PlanillaAsistencia_vacia.doc" }
+      { n:"Planilla de seguimiento de horas", d:"Tu control exacto de horas, clase a clase. Planilla oficial.", ext:"XLSX", size:"", feat:true, url:"descargas/planilla-seguimiento-horas.xlsx" },
+      { n:"Planilla de asistencia",            d:"Registro presencial para la firma de tu referente en sede.",   ext:"DOC",  size:"", url:"descargas/planilla-asistencia.doc" }
     ]
   },
   {
     title:"Guías y normativa", kick:"Material de referencia",
     items:[
-      { n:"Guía para la elaboración del informe", d:"Pautas de elaboración académica del informe de PPS.", ext:"PDF", size:"", url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/Guia%20para%20la%20elaboraci%C3%B3n%20Informe%20de%20PPS%20%281%29.pdf" },
-      { n:"Reglamento de PPS",                    d:"Marco oficial y resoluciones de referencia.",          ext:"PDF", size:"", url:"https://campus.uflo.edu.ar/draftfile.php/650961/user/draft/261574238/UFLO%20Reglamento%20de%20PPS%20%282%29.pdf" }
+      { n:"Guía para la elaboración del informe", d:"Pautas de elaboración académica del informe de PPS.", ext:"PDF", size:"", url:"descargas/guia-elaboracion-informe.pdf" },
+      { n:"Reglamento de PPS",                    d:"Marco oficial y resoluciones de referencia.",          ext:"PDF", size:"", url:"descargas/reglamento-pps.pdf" }
     ]
   }
 ];
@@ -183,7 +183,7 @@ window.DESCARGAS = [
 
   document.getElementById('dlWrap').innerHTML = DATA.map(function(g){
     var rows = g.items.map(function(it){
-      return '<a class="pa-dl-row'+(it.feat?' is-feat':'')+'" href="'+(it.url||'#')+'" target="_blank" rel="noopener">'
+      return '<a class="pa-dl-row'+(it.feat?' is-feat':'')+'" href="'+(it.url||'#')+'" download target="_blank" rel="noopener">'
         + '<span class="pa-dl-row__ext ext-'+it.ext.toLowerCase()+'">'+it.ext+'</span>'
         + '<span class="pa-dl-row__main"><span class="pa-dl-row__name">'+it.n+'</span>'
         + '<span class="pa-dl-row__desc">'+it.d+'</span></span>'
