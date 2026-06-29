@@ -43,28 +43,13 @@ export default defineConfig(({ mode }) => {
           entryFileNames: 'assets/[name]-[hash].js',
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]',
-          // Code-splitting por familia de librería: chunks vendor independientes
-          // y cacheables, en vez de un único bundle monolítico. Mejora la carga
-          // inicial (lazy de las vistas que usan pdf/xlsx/charts) y el cache-hit
-          // entre deploys (un cambio en la app no invalida el vendor de React).
-          manualChunks(id) {
-            if (!id.includes('node_modules')) return undefined;
-            if (id.includes('pdfjs-dist') || id.includes('react-pdf')) return 'pdf';
-            if (id.includes('xlsx') || id.includes('exceljs')) return 'spreadsheet';
-            if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory'))
-              return 'charts';
-            if (id.includes('framer-motion') || id.includes('/motion-')) return 'motion';
-            if (id.includes('firebase')) return 'firebase';
-            if (id.includes('@supabase')) return 'supabase';
-            if (
-              id.includes('/react/') ||
-              id.includes('/react-dom/') ||
-              id.includes('/scheduler/') ||
-              id.includes('react-router')
-            )
-              return 'react-vendor';
-            return 'vendor';
-          },
+          // NOTA: se quitó `manualChunks`. La versión anterior separaba React en
+          // un chunk propio mientras librerías que dependen de React (react-query,
+          // framer-motion, recharts…) quedaban en otros chunks que se evaluaban
+          // antes de que React cargara → `React undefined` → "Cannot read
+          // properties of undefined (reading 'createContext')" → pantalla en
+          // blanco en producción. El chunking automático de Vite respeta el orden
+          // de dependencias y evita ese crash.
         }
       },
       // Asegurar que archivos en public/ se copien al dist/
