@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { FIELD_ESTADO_PPS } from "../../../constants";
 import { CollapsibleHistory, DataItem, EmptyState, FilterTabs, SearchBar } from "./primitives";
 import type { SolicitudPPSWithStudent } from "./types";
+import { filterIngresoSolicitudes, isHistorySolicitud } from "./helpers";
 import HermesSolicitudesEditorial from "./HermesSolicitudesEditorial";
 import PanelHermesIngreso from "./PanelHermesIngreso";
 interface IngresoTabViewProps {
@@ -41,39 +42,13 @@ const IngresoTabView: React.FC<IngresoTabViewProps> = ({
   whatsappContactos,
   onContactWhatsApp,
 }) => {
-  const norm = (s: string) => (s || "").toLowerCase();
+  const filtered = useMemo(
+    () => filterIngresoSolicitudes(list, search, filter),
+    [list, search, filter]
+  );
 
-  const filtered = useMemo(() => {
-    const q = norm(search);
-    return list.filter((s) => {
-      // 1. Search filter
-      const matchesSearch =
-        !q ||
-        norm(s._studentName).includes(q) ||
-        norm(s._studentLegajo).includes(q) ||
-        norm(s.nombre_institucion || "").includes(q);
-
-      if (!matchesSearch) return false;
-
-      // 2. Tab filter
-      if (filter === "all") return true;
-      if (filter === "priorizo") {
-        return !s.convenio_uflo || s.convenio_uflo.toLowerCase() !== "sí";
-      }
-      if (filter === "sin_mov") {
-        return (
-          s._daysSinceUpdate > 4 &&
-          !["Realizada", "No se pudo concretar", "Archivado"].includes(s.estado_seguimiento || "")
-        );
-      }
-      return s.estado_seguimiento === filter;
-    });
-  }, [list, search, filter]);
-
-  const isHistory = (s: SolicitudPPSWithStudent) =>
-    ["Realizada", "No se pudo concretar", "Archivado"].includes(s.estado_seguimiento || "");
-  const pendingList = filtered.filter((s) => !isHistory(s));
-  const historyList = filtered.filter(isHistory);
+  const pendingList = filtered.filter((s) => !isHistorySolicitud(s));
+  const historyList = filtered.filter(isHistorySolicitud);
 
   const opts = [
     { value: "all", label: "Todas", count: list.length },

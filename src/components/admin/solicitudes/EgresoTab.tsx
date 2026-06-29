@@ -5,7 +5,7 @@ import { Attachment, getStoragePath } from "../../../utils/attachmentUtils";
 import { formatDate, safeGetId } from "../../../utils/formatters";
 import { logger } from "../../../utils/logger";
 import { FilePreview } from "../preview";
-import { normalizeAttachments } from "./helpers";
+import { normalizeAttachments, filterEgresoFinalizaciones, isHistoryFinalizacion } from "./helpers";
 import { CollapsibleHistory, EmptyState, SearchBar } from "./primitives";
 import type { FinalizacionWithStudent } from "./types";
 
@@ -31,17 +31,10 @@ const EgresoTabView: React.FC<EgresoTabViewProps> = ({
   onDelete,
   onToast,
 }) => {
-  const norm = (s: string) => (s || "").toLowerCase();
+  const filtered = useMemo(() => filterEgresoFinalizaciones(list, search), [list, search]);
 
-  const filtered = useMemo(() => {
-    const q = norm(search);
-    return list.filter((s) => {
-      return !q || norm(s.studentName).includes(q) || norm(s.studentLegajo).includes(q);
-    });
-  }, [list, search]);
-
-  const active = filtered.filter((s) => s.estado !== "Cargado" && s.estado !== "Finalizada");
-  const history = filtered.filter((s) => s.estado === "Cargado" || s.estado === "Finalizada");
+  const active = filtered.filter((s) => !isHistoryFinalizacion(s));
+  const history = filtered.filter(isHistoryFinalizacion);
 
   return (
     <div>
