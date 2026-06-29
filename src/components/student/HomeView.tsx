@@ -19,6 +19,7 @@ import {
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+  FIELD_ESTADO_GESTION_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_HORAS_PRACTICAS,
   FIELD_HORARIO_FORMULA_CONVOCATORIAS,
@@ -200,7 +201,18 @@ const HomeView: React.FC<HomeViewProps> = ({
       .map((l) => l.id)
   );
 
+  // Un lanzamiento archivado no debe verse en el inicio del estudiante, ni como
+  // abierto ni como cerrado. Cubre ambas fuentes de "archivado":
+  //   · estado_gestion = 'Archivado' / 'No se Relanza' (auto-archivado o admin)
+  //   · estado_convocatoria = 'Archivado' / 'Archivada'
+  const isArchivedLaunch = (l: LanzamientoPPS) => {
+    const g = normalizeStringForComparison(l[FIELD_ESTADO_GESTION_LANZAMIENTOS] || "");
+    const c = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] || "");
+    return g === "archivado" || g === "no se relanza" || c === "archivado" || c === "archivada";
+  };
+
   const openLanzamientos = lanzamientos.filter((l) => {
+    if (isArchivedLaunch(l)) return false;
     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
     const isStarted = startedLanzamientoIds.has(l.id);
     return !isStarted && (status === "abierta" || status === "abierto");
@@ -226,7 +238,7 @@ const HomeView: React.FC<HomeViewProps> = ({
     const seen = new Set<string>();
     const out: LanzamientoPPS[] = [];
     const push = (l: LanzamientoPPS) => {
-      if (seen.has(l.id) || openIds.has(l.id) || !notStarted(l)) return;
+      if (seen.has(l.id) || openIds.has(l.id) || !notStarted(l) || isArchivedLaunch(l)) return;
       seen.add(l.id);
       out.push(l);
     };
