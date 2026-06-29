@@ -1,4 +1,4 @@
-import { sumHoursByStudent, paginate } from "../editorHelpers";
+import { sumHoursByStudent, paginate, removeRecordById } from "../editorHelpers";
 
 describe("sumHoursByStudent", () => {
   it("suma las horas por estudiante (link como string)", () => {
@@ -65,5 +65,40 @@ describe("paginate", () => {
 
   it("maneja listas vacías", () => {
     expect(paginate([], 1, 10)).toEqual([]);
+  });
+});
+
+describe("removeRecordById", () => {
+  const page = {
+    records: [{ id: "a" }, { id: "b" }, { id: "c" }],
+    total: 10,
+  };
+
+  it("quita el registro y decrementa el total", () => {
+    const result = removeRecordById(page, "b");
+    expect(result.records.map((r) => r.id)).toEqual(["a", "c"]);
+    expect(result.total).toBe(9);
+  });
+
+  it("no muta la página original", () => {
+    const snapshot = JSON.parse(JSON.stringify(page));
+    removeRecordById(page, "b");
+    expect(page).toEqual(snapshot);
+  });
+
+  it("si el id no existe, no cambia los records pero igual decrementa total", () => {
+    const result = removeRecordById(page, "zzz");
+    expect(result.records.map((r) => r.id)).toEqual(["a", "b", "c"]);
+    expect(result.total).toBe(9);
+  });
+
+  it("nunca baja el total de 0", () => {
+    const result = removeRecordById({ records: [{ id: "a" }], total: 0 }, "a");
+    expect(result.total).toBe(0);
+  });
+
+  it("preserva otros campos de la página", () => {
+    const withExtra = { records: [{ id: "a" }], total: 1, error: null };
+    expect(removeRecordById(withExtra, "a")).toMatchObject({ error: null });
   });
 });

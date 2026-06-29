@@ -27,7 +27,7 @@ import PaginationControls from "../PaginationControls";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
-import { sumHoursByStudent, paginate } from "./editorHelpers";
+import { sumHoursByStudent, paginate, removeRecordById } from "./editorHelpers";
 import type { Estudiante } from "../../types";
 
 type ToastState = { message: string; type: "success" | "error" | "warning" | "info" } | null;
@@ -287,11 +287,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       const prev = queryClient.getQueryData(["editor-students"]);
       queryClient.setQueryData(["editor-students"], (old: StudentPage | undefined) => {
         if (!old?.records) return old;
-        return {
-          ...old,
-          records: old.records.filter((r) => r.id !== id),
-          total: Math.max(0, (old.total || 0) - 1),
-        };
+        return removeRecordById(old, id);
       });
       return { prev };
     },

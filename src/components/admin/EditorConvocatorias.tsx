@@ -16,7 +16,7 @@ import {
 import { formatDate } from "../../utils/formatters";
 import Loader from "../Loader";
 import RecordEditModal from "./RecordEditModal";
-import { paginate } from "./editorHelpers";
+import { paginate, removeRecordById } from "./editorHelpers";
 import Toast from "../ui/Toast";
 import PaginationControls from "../PaginationControls";
 import ContextMenu from "./ContextMenu";
@@ -274,11 +274,7 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       const prev = queryClient.getQueryData(["editor-convocatorias"]);
       queryClient.setQueryData(["editor-convocatorias"], (old: ConvPage | undefined) => {
         if (!old?.records) return old;
-        return {
-          ...old,
-          records: old.records.filter((r) => r.id !== id),
-          total: Math.max(0, (old.total || 0) - 1),
-        };
+        return removeRecordById(old, id);
       });
       return { prev };
     },

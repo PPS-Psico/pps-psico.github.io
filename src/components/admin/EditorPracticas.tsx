@@ -23,7 +23,7 @@ import { ALL_ORIENTACIONES } from "../../types";
 import { formatDate, cleanInstitutionName, safeGetId } from "../../utils/formatters";
 import Loader from "../Loader";
 import RecordEditModal from "./RecordEditModal";
-import { paginate } from "./editorHelpers";
+import { paginate, removeRecordById } from "./editorHelpers";
 import BulkEditModal, { type BulkFieldConfig } from "./BulkEditModal";
 import ContextMenu from "./ContextMenu";
 import DuplicateToStudentModal from "./DuplicateToStudentModal";
@@ -455,11 +455,7 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       const prev = queryClient.getQueryData(["editor-practicas"]);
       queryClient.setQueryData(["editor-practicas"], (old: PracticaPage | undefined) => {
         if (!old?.records) return old;
-        return {
-          ...old,
-          records: old.records.filter((r) => r.id !== id),
-          total: Math.max(0, (old.total || 0) - 1),
-        };
+        return removeRecordById(old, id);
       });
       return { prev };
     },

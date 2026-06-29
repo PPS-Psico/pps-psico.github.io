@@ -25,7 +25,7 @@ import PaginationControls from "../PaginationControls";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
-import { paginate } from "./editorHelpers";
+import { paginate, removeRecordById } from "./editorHelpers";
 import { logger } from "../../utils/logger";
 import type { Institucion } from "../../types";
 import { getErrorMessage } from "../../utils/getErrorMessage";
@@ -241,11 +241,7 @@ const EditorInstituciones: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       const prev = queryClient.getQueryData(["editor-instituciones"]);
       queryClient.setQueryData(["editor-instituciones"], (old: InstPage | undefined) => {
         if (!old?.records) return old;
-        return {
-          ...old,
-          records: old.records.filter((r) => r.id !== id),
-          total: Math.max(0, (old.total || 0) - 1),
-        };
+        return removeRecordById(old, id);
       });
       return { prev };
     },

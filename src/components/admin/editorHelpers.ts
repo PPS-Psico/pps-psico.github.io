@@ -36,3 +36,19 @@ export function paginate<T>(records: T[], page: number, pageSize: number): T[] {
   const from = (page - 1) * pageSize;
   return records.slice(from, from + pageSize);
 }
+
+/**
+ * Quita un registro por id de una página cacheada y decrementa el total (sin
+ * bajar de 0). Patrón de borrado optimista compartido por los editores en sus
+ * mutaciones `onMutate`. Devuelve una copia nueva (no muta `page`).
+ */
+export function removeRecordById<P extends { records: { id: string }[]; total: number }>(
+  page: P,
+  id: string
+): P {
+  return {
+    ...page,
+    records: page.records.filter((r) => r.id !== id),
+    total: Math.max(0, (page.total || 0) - 1),
+  };
+}
