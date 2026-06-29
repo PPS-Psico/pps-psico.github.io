@@ -256,20 +256,6 @@ const HomeView: React.FC<HomeViewProps> = ({
   const progressPct =
     totalTarget > 0 ? Math.min(100, Math.round((hoursAcc / totalTarget) * 100)) : 0;
 
-  const educacionHs = (() => {
-    let total = 0;
-    myEnrollments?.forEach((e) => {
-      const lanzamientoId = (e as Record<string, unknown>)[
-        FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS
-      ];
-      const lanzamiento = lanzamientos.find((l) => l.id === lanzamientoId);
-      const area = normalizeStringForComparison(lanzamiento?.[FIELD_ORIENTACION_LANZAMIENTOS]);
-      const hs = Number((e as Record<string, unknown>)[FIELD_HORAS_PRACTICAS] || 0);
-      if (area.startsWith("ed")) total += hs;
-    });
-    return total;
-  })();
-
   const practicasTotal = myEnrollments?.length ?? 0;
 
   const hasOpen = openLanzamientos.length > 0;
@@ -555,7 +541,6 @@ const HomeView: React.FC<HomeViewProps> = ({
               totalTarget={totalTarget}
               progressPct={progressPct}
               hoursAcc={hoursAcc}
-              educacionHs={educacionHs}
               practicasTotal={practicasTotal}
             />
 

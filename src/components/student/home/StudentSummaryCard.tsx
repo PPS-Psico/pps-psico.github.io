@@ -8,7 +8,6 @@ interface StudentSummaryCardProps {
   totalTarget: number;
   progressPct: number;
   hoursAcc: number;
-  educacionHs: number;
   practicasTotal: number;
 }
 
