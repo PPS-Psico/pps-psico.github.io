@@ -4,7 +4,7 @@ Consolidado de todo lo que queda, ordenado por prioridad. Estado al cierre de la
 sesión de mejoras internas (app + base + tipos + seguridad + modernización).
 
 El detalle de lo ya hecho está en `internal-professionalization-plan.md`
-(secciones 14 en adelante). Estado base verificado: **type-check 0, 306 tests, build OK**.
+(secciones 14 en adelante). Estado base verificado: **type-check 0, 307 tests, build OK**.
 
 > **Sesión 8 (calidad, no solo tipos).** Se creó `docs/auditoria-calidad.md` con el
 > informe de hallazgos. Hecho en esta sesión:
@@ -31,15 +31,12 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 > - 🟠 **Formato/ESLint** — ⚠️ el dato del audit (~5141 auto-corregibles) está **obsoleto**:
 >   `npm run format:check` hoy reporta **todo el código ya formateado** (lint-staged lo
 >   mantiene). Ver el análisis real de ESLint en la nota de Sesión 9 más abajo.
-> - 🟢 **Bug confirmado en `HomeView`**: `educacionHs` lee `FIELD_HORAS_PRACTICAS` sobre
->   `myEnrollments` (convocatorias, sin ese campo) → **siempre 0**. Alimenta una tarjeta de
->   stats del estudiante. No se corrige a ciegas: requiere decisión de producto sobre la
->   fuente correcta (¿`practicas` filtradas por "Educacional"? ¿`criterios.horasOrientacionElegida`?).
->   **Confirmar con el owner.**
+> - 🟢 **Bug de `HomeView` (`educacionHs`)** ✅ RESUELTO en sesión 9 — era código muerto (ver
+>   nota de Sesión 9 abajo). El cálculo nunca se mostraba. Eliminado.
 > - 🟢 **Componentes gigantes** con lógica en JSX (`GestionView` 1397, `WhatsAppContactClassifier`
 >   1432, `SeguroGenerator` 1103, `Auth` 959): extraer hooks/subcomponentes.
 
-> **Sesión 9 (autónoma, nocturna).** type-check 0, **306 tests**, build OK. Sin push (lo
+> **Sesión 9 (autónoma, nocturna).** type-check 0, **307 tests**, build OK. Sin push (lo
 > maneja el owner). Hecho:
 >
 > - 🟠 **Validación `zod` en el borde** ✅ (detallada arriba). Commit `e81be02`.
@@ -52,23 +49,24 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 > - ♻️ **Refactor testeable**: el filtro de visibilidad de lanzamientos se extrajo a la
 >   función pura `isLaunchVisibleToStudent(launch, now)` en `convocatoriasService.ts`.
 >
-> **Hallazgo nuevo (bug latente, NO corregido — requiere decisión del owner):**
+> **Hallazgo nuevo (bug latente) ✅ CORREGIDO (sesión 9):**
 >
-> - 🟢 **`calendarUtils.parseDaysOfWeek` no detecta días acentuados.** Compara contra
->   claves sin acento (`"miercoles"`, `"sabado"`) pero `toLowerCase()` conserva el acento
->   del texto real (`"Miércoles"`, `"Sábado"`). → Los eventos de PPS que caen miércoles o
->   sábado **generan links de Google Calendar / iCal SIN ese día** (recurrencia incompleta).
->   Fix simple (normalizar acentos antes de comparar) pero cambia links ya visibles en
->   producción. Test que fija la conducta actual en `calendarUtils.test.ts`. **Confirmar.**
+> - 🟢 **`calendarUtils.parseDaysOfWeek` no detectaba días acentuados.** Comparaba contra
+>   claves sin acento (`"miercoles"`, `"sabado"`) pero `toLowerCase()` conservaba el acento
+>   del texto real. → Las PPS de miércoles/sábado generaban links de calendario SIN ese
+>   día. **Fix:** normaliza diacríticos (NFD + strip) antes de comparar. Commit `7e182c3`.
 >
-> **Análisis real de ESLint (Sesión 9): 0 errores, 1581 warnings** (bajó de 1603 tras
-> limpiar imports). Composición:
+> **Bug de `HomeView.educacionHs` ✅ RESUELTO (sesión 9):** resultó ser **código muerto** —
+> el valor se calculaba (con un cálculo roto que siempre daba 0) y se pasaba como prop a
+> `StudentSummaryCard`, pero la tarjeta **nunca lo renderizaba**. Sin impacto visible. Se
+> eliminó el cálculo y la prop. Commit `24b6789`. (Ya no requiere decisión de producto.)
 >
-> - **1265 `security/detect-object-injection` (80%)** — casi todo falsos positivos (la regla
->   marca cualquier `obj[variable]`, patrón ubicuo y tipado en este código). Es el grueso
->   del ruido y oculta lo que sí importa. **Recomendación:** desactivar esa regla (o bajarla
->   a `off`) en `eslint.config`. Es una **decisión de seguridad del owner**, por eso no la
->   tocué; la plugin misma documenta su alta tasa de falsos positivos.
+> **Análisis real de ESLint (Sesión 9): 0 errores, 316 warnings** (bajó de 1603 → 1581 tras
+> limpiar imports → **316** tras desactivar `detect-object-injection`). Composición:
+>
+> - ✅ **`security/detect-object-injection` DESACTIVADA** (commit `c639a55`) — eran ~1265
+>   falsos positivos (80% del ruido). La regla marca cualquier `obj[variable]`; patrón
+>   ubicuo y tipado en este código. Ahora el linter muestra solo señal real.
 > - **181 `@typescript-eslint/no-explicit-any`** — el `any` restante (rendimientos
 >   decrecientes; mayormente casts en componentes grandes).
 > - **103 `@typescript-eslint/no-unused-vars`** — quedan locales/args; algunos son features
