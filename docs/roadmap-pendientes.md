@@ -4,7 +4,7 @@ Consolidado de todo lo que queda, ordenado por prioridad. Estado al cierre de la
 sesión de mejoras internas (app + base + tipos + seguridad + modernización).
 
 El detalle de lo ya hecho está en `internal-professionalization-plan.md`
-(secciones 14 en adelante). Estado base verificado: **type-check 0, 343 tests, build OK**.
+(secciones 14 en adelante). Estado base verificado: **type-check 0, 381 tests, build OK**.
 
 > **Sesión 8 (calidad, no solo tipos).** Se creó `docs/auditoria-calidad.md` con el
 > informe de hallazgos. Hecho en esta sesión:
@@ -78,6 +78,27 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 > - **24 `react-hooks/exhaustive-deps`** — pueden esconder bugs; arreglar a ciegas puede
 >   causar loops. Revisar **caso por caso**, no masivo.
 > - Resto: 3 timing-attacks, 2 non-literal-regexp, 2 `no-console`, 1 unsafe-regex.
+
+---
+
+> **Sesión 10 (post-publicación, sin concurrencia).** type-check 0, **381 tests**, build OK.
+> Trabajo de tipos + tests, todo behavior-preserving y verificado:
+>
+> - 🧯 **Manejo de errores unificado**: se eliminaron **todos** los `catch (...: any)` del repo
+>   (student + admin + servicios) → `catch (e)` + `getErrorMessage`. Ya no queda ninguno.
+> - 🔧 **`any` → tipos seguros**: contexts de estudiante vía `ReturnType<typeof hook>` (destapó
+>   y corrigió un mismatch real en `StudentDashboard.onDeletePractica`); servicios
+>   (`geminiService`, `emailService`, `solicitudesService`, `finalizacionService`),
+>   `metricsCalculations` (`MetricRow`), vistas de perfil/solicitudes de estudiante,
+>   formularios/modales, y los `CustomTooltip` de los 3 charts (`TooltipProps` de recharts).
+> - 🧪 **+38 tests**: `processAndLinkStudentData` (dataLinker, lógica core del panel), y
+>   `buildInstitutions`/`buildActivityLabel` (GestionView) — cerrando el último hueco de
+>   cobertura de los componentes grandes señalados por el audit.
+> - ✅ **CI ya cubre lint + type-check + tests + build** en push a main (no requirió cambios).
+>
+> **`any` restante**: mayormente casts estructurales en componentes admin grandes
+> (`BackupManager`, `LaunchForm`, `BulkEditModal`, `AdminActionCenter`, `NuevosConvenios`) y
+> un par de params `pps: any` en helpers. Rendimientos decrecientes; atacar por sitio con QA.
 
 ---
 
