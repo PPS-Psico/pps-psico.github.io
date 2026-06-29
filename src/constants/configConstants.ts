@@ -1,4 +1,5 @@
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -31,8 +32,8 @@ export const testSupabaseConnection = async () => {
       logger.error(`Unexpected status ${status}`);
       return { success: false, status, error: `Status ${status}` };
     }
-  } catch (error: any) {
+  } catch (error) {
     logger.error("Connection failed", error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 };

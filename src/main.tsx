@@ -43,7 +43,7 @@ if (import.meta.env.DEV) {
           },
         });
         logger.debug("Public Table Access", tableResponse.status);
-      } catch (e: any) {
+      } catch (e) {
         logger.error("Diagnostic error", e);
       }
     }

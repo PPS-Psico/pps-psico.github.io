@@ -16,6 +16,7 @@ import Toast from "../ui/Toast";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { injectPremiumMotion } from "./premiumMotion";
 import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 
 interface AutomationScenario {
   id: string;
@@ -379,10 +380,10 @@ const EmailAutomationManager: React.FC = () => {
       if (error) throw error;
 
       setToastInfo({ message: `Prueba de "${scenario.label}" enviada.`, type: "success" });
-    } catch (error: any) {
+    } catch (error) {
       logger.error("Error sending test:", error);
       setToastInfo({
-        message: `Fallo el envío: ${error.message || "Error desconocido"}`,
+        message: `Fallo el envío: ${getErrorMessage(error)}`,
         type: "error",
       });
     } finally {
@@ -427,9 +428,12 @@ const EmailAutomationManager: React.FC = () => {
           type: "success",
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       logger.error("[FCM Test] Error:", error);
-      setToastInfo({ message: error.message || "Error al enviar notificación", type: "error" });
+      setToastInfo({
+        message: getErrorMessage(error, "Error al enviar notificación"),
+        type: "error",
+      });
     } finally {
       setIsSendingCustomPush(false);
     }

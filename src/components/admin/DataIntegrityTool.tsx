@@ -19,6 +19,7 @@ import Card from "../ui/Card";
 import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 
 const isRealData = (val: any): boolean => {
   if (val === null || val === undefined) return false;
@@ -107,8 +108,8 @@ const DataIntegrityTool: React.FC = () => {
         t: "success",
       });
       queryClient.invalidateQueries();
-    } catch (e: any) {
-      setToast({ m: `Error técnico: ${e.message}`, t: "error" });
+    } catch (e) {
+      setToast({ m: `Error técnico: ${getErrorMessage(e)}`, t: "error" });
     } finally {
       setIsFixing(false);
     }
@@ -209,9 +210,9 @@ const DataIntegrityTool: React.FC = () => {
           t: "success",
         });
       }
-    } catch (e: any) {
+    } catch (e) {
       logger.error(e);
-      setToast({ m: `Error al sanitizar: ${e.message}`, t: "error" });
+      setToast({ m: `Error al sanitizar: ${getErrorMessage(e)}`, t: "error" });
     } finally {
       setIsSanitizing(false);
     }

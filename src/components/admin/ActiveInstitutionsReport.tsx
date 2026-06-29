@@ -259,7 +259,7 @@ const ActiveInstitutionsReport: React.FC<{ isTestingMode?: boolean }> = ({
       document.body.removeChild(link);
 
       setToastInfo({ message: "Reporte descargado exitosamente.", type: "success" });
-    } catch (e: any) {
+    } catch (e) {
       logger.error("Failed to generate Excel file:", e);
       setToastInfo({ message: "Ocurrió un error al generar el archivo Excel.", type: "error" });
     } finally {

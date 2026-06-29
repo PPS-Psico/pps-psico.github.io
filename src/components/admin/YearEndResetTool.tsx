@@ -13,6 +13,7 @@ import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import ConfirmModal from "../ConfirmModal";
 import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 
 const YearEndResetTool: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -53,9 +54,9 @@ const YearEndResetTool: React.FC = () => {
         message: `Ciclo reiniciado con éxito. ${requestsCount || 0} solicitudes archivadas y ${launchesCount || 0} gestiones reseteadas.`,
         type: "success",
       });
-    } catch (error: any) {
+    } catch (error) {
       logger.error("Error reseteando ciclo:", error);
-      setToastInfo({ message: error.message || "Error desconocido.", type: "error" });
+      setToastInfo({ message: getErrorMessage(error, "Error desconocido."), type: "error" });
     } finally {
       setIsLoading(false);
       setShowConfirm(false);

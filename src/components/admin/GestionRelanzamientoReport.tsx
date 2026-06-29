@@ -13,6 +13,7 @@ import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
 import { logger } from "../../utils/logger";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 
 interface ReportData {
   institucion: string;
@@ -212,7 +213,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
       document.body.removeChild(link);
 
       setToastInfo({ message: "Reporte descargado exitosamente.", type: "success" });
-    } catch (e: any) {
+    } catch (e) {
       logger.error("Failed to generate Excel file:", e);
       setToastInfo({ message: "Ocurrió un error al generar el archivo Excel.", type: "error" });
     } finally {
@@ -285,9 +286,9 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
         type: "success",
       });
       refetch(); // Recargar datos
-    } catch (e: any) {
+    } catch (e) {
       logger.error("Error importing:", e);
-      setToastInfo({ message: `Error al importar: ${e.message}`, type: "error" });
+      setToastInfo({ message: `Error al importar: ${getErrorMessage(e)}`, type: "error" });
     } finally {
       setIsImporting(false);
       event.target.value = ""; // Reset input
