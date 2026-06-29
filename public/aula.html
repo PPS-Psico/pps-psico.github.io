@@ -10,40 +10,7 @@
        curso (block drawer). Está comentado cómo activarlo / quitarlo.
      ============================================================================ -->
 
-<script>(function(){
-  var embedded=false; try{ embedded = window.self !== window.top; }catch(e){ embedded = true; }
-  function apply(t){ if(t==='dark'||t==='light') document.documentElement.setAttribute('data-theme', t); }
-  function resolveLocal(){ try{ var t=localStorage.getItem('theme'); if(t==='dark'||t==='light') return t; }catch(e){} return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
-
-  // Tema inicial (mientras no llegue el de Moodle, usamos el local/SO)
-  apply(resolveLocal());
-
-  if (embedded){
-    // Embebida en Moodle: seguimos SU tema para que el fondo transparente matchee.
-    document.documentElement.setAttribute('data-embedded','1');
-    window.addEventListener('message', function(e){
-      var d=e.data; if(d && d.ppsTheme) apply(d.ppsTheme);
-    });
-    function askTheme(){ try{ parent.postMessage({ ppsRequestTheme:true }, '*'); }catch(e){} }
-    askTheme();
-    window.addEventListener('load', askTheme);
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    var b=document.getElementById('paThemeBtn'); if(!b) return;
-    if (embedded){
-      // Embebida sigue a Moodle: ocultamos el toggle propio para no desincronizar.
-      b.style.display='none';
-    } else {
-      b.addEventListener('click', function(){
-        var next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
-        apply(next);
-        try{ localStorage.setItem('theme', next); }catch(e){}
-      });
-    }
-  });
-  window.addEventListener('storage', function(e){ if(!embedded && e.key==='theme' && (e.newValue==='dark'||e.newValue==='light')) apply(e.newValue); });
-})();</script>
+<!-- Modo claro fijo (sin modo oscuro en el campus) -->
 
 <div id="pps-aula-2026" class="pa-root">
 <style>
@@ -250,7 +217,7 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 /* ===== MODO OSCURO (toggle manual + auto · paleta navy de Mi Panel PC) ===== */
 #pps-aula-2026 .pa-themebtn{ display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; flex-shrink:0; border-radius:999px; border:1px solid var(--line); background:var(--bg-elevated); color:var(--ink-muted); cursor:pointer; transition:var(--t-fast); }
 #pps-aula-2026 .pa-themebtn:hover{ color:var(--ink); border-color:var(--line-strong); background:var(--bg-sunken); transform:translateY(-1px); }
-#pps-aula-2026 .pa-themebtn .ic-sun{ display:none; }
+#pps-aula-2026 .pa-themebtn{ display:none!important; }
 html[data-theme="dark"] #pps-aula-2026 .pa-themebtn .ic-moon{ display:none; }
 html[data-theme="dark"] #pps-aula-2026 .pa-themebtn .ic-sun{ display:inline-flex; }
 
@@ -451,10 +418,6 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
         <div class="pa-muted" style="font-size:13.5px;">Coordinación responde de lunes a viernes, 10–18h.</div>
       </div>
     </div>
-    <a class="pa-btn pa-btn--ink" href="mailto:pps@uflo.edu.ar">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
-      Escribir a coord.
-    </a>
   </footer>
 
 </div><!-- /pa-wrap -->

@@ -3,19 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script>(function(){
-  function resolve(){ try{ var t=localStorage.getItem('theme'); if(t==='dark'||t==='light') return t; }catch(e){} return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
-  document.documentElement.setAttribute('data-theme', resolve());
-  document.addEventListener('DOMContentLoaded', function(){
-    var b=document.getElementById('paThemeBtn'); if(!b) return;
-    b.addEventListener('click', function(){
-      var next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      try{ localStorage.setItem('theme', next); }catch(e){}
-    });
-  });
-  window.addEventListener('storage', function(e){ if(e.key==='theme' && (e.newValue==='dark'||e.newValue==='light')) document.documentElement.setAttribute('data-theme', e.newValue); });
-})();</script>
+<!-- Modo claro fijo (sin modo oscuro en el campus) -->
 <title>Guía de cursada 2026 · PPS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,10 +20,10 @@
   --font-sans:"Geist","Inter",system-ui,sans-serif;
   --font-mono:"Geist Mono",ui-monospace,monospace;
   --t-fast:140ms cubic-bezier(.2,.7,.2,1);
-  background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+  background:transparent; color:var(--ink); font-family:var(--font-sans);
   font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
 }
-html,body{ margin:0; background:#FAFAF7; overflow-x:hidden; }
+html,body{ margin:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 *,#pps-aula-2026 *::before,#pps-aula-2026 *::after{ box-sizing:border-box; }
 #pps-aula-2026 a{ color:inherit; }
 
@@ -154,7 +142,7 @@ html,body{ margin:0; background:#FAFAF7; overflow-x:hidden; }
 /* ===== MODO OSCURO (toggle manual + auto · paleta navy de Mi Panel PC) ===== */
 #pps-aula-2026 .pa-themebtn{ display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; flex-shrink:0; border-radius:999px; border:1px solid var(--line); background:var(--bg-elevated); color:var(--ink-muted); cursor:pointer; transition:var(--t-fast); }
 #pps-aula-2026 .pa-themebtn:hover{ color:var(--ink); border-color:var(--line-strong); background:var(--bg-sunken); transform:translateY(-1px); }
-#pps-aula-2026 .pa-themebtn .ic-sun{ display:none; }
+#pps-aula-2026 .pa-themebtn{ display:none!important; }
 html[data-theme="dark"] #pps-aula-2026 .pa-themebtn .ic-moon{ display:none; }
 html[data-theme="dark"] #pps-aula-2026 .pa-themebtn .ic-sun{ display:inline-flex; }
 
