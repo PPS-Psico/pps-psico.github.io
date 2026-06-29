@@ -27,6 +27,7 @@ import PaginationControls from "../PaginationControls";
 import Toast from "../ui/Toast";
 import ContextMenu from "./ContextMenu";
 import RecordEditModal from "./RecordEditModal";
+import { sumHoursByStudent } from "./editorHelpers";
 import type { Estudiante } from "../../types";
 
 type ToastState = { message: string; type: "success" | "error" | "warning" | "info" } | null;
@@ -137,18 +138,15 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         }
 
         // Enriquecer con horas totales desde mock data
-        const enriched = filteredRecords.map((s) => {
-          const sPracticas = MOCK_PRACTICAS.filter(
-            (p) => String(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]) === String(s.id)
-          );
-          return {
-            ...s,
-            __totalHours: sPracticas.reduce(
-              (sum, p) => sum + (Number(p[FIELD_HORAS_PRACTICAS]) || 0),
-              0
-            ),
-          };
-        });
+        const mockHours = sumHoursByStudent(
+          MOCK_PRACTICAS as unknown as Record<string, unknown>[],
+          FIELD_ESTUDIANTE_LINK_PRACTICAS,
+          FIELD_HORAS_PRACTICAS
+        );
+        const enriched = filteredRecords.map((s) => ({
+          ...s,
+          __totalHours: mockHours.get(String(s.id)) || 0,
+        }));
 
         // Paginar
         const from = (currentPage - 1) * itemsPerPage;
@@ -182,23 +180,15 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
         fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS],
       });
 
-      const enriched = records.map((s) => {
-        const sPracticas = practicas.filter((p) => {
-          const link = p[FIELD_ESTUDIANTE_LINK_PRACTICAS];
-          // Handle both array (['id']) and string ('id') formats
-          if (Array.isArray(link)) {
-            return link.includes(s.id);
-          }
-          return String(link) === s.id;
-        });
-        return {
-          ...s,
-          __totalHours: sPracticas.reduce(
-            (sum, p) => sum + (Number(p[FIELD_HORAS_PRACTICAS]) || 0),
-            0
-          ),
-        };
-      });
+      const realHours = sumHoursByStudent(
+        practicas,
+        FIELD_ESTUDIANTE_LINK_PRACTICAS,
+        FIELD_HORAS_PRACTICAS
+      );
+      const enriched = records.map((s) => ({
+        ...s,
+        __totalHours: realHours.get(String(s.id)) || 0,
+      }));
 
       return { records: enriched as unknown as StudentRow[], total };
     },
