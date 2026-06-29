@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Cell,
   LabelList,
+  type TooltipProps,
 } from "recharts";
 import { motion } from "framer-motion";
 
@@ -18,7 +19,7 @@ interface EvolutionData {
   label: string;
   isProjection?: boolean;
   isManualCorrection?: boolean;
-  list?: any[];
+  list?: unknown[];
 }
 
 interface EnrollmentEvolutionChartProps {
@@ -26,9 +27,9 @@ interface EnrollmentEvolutionChartProps {
   onBarClick?: (yearData: EvolutionData) => void;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
+    const data = payload[0].payload as EvolutionData;
     return (
       <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-xl">
         <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
