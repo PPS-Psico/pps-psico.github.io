@@ -33,6 +33,50 @@ function sortGrouped(grouped: GroupedSeleccionados): GroupedSeleccionados {
   return grouped;
 }
 
+/**
+ * Determina si un lanzamiento debe ser visible para el estudiante.
+ *
+ * Función pura extraída del filtro de `fetchConvocatoriasData` (cutover "ocultar
+ * finalizadas"). Regla: una convocatoria cerrada sigue visible hasta el día en
+ * que comienza, aunque esté archivada; solo se ocultan las archivadas cuyo
+ * inicio ya pasó. Las programadas a futuro solo se muestran si están cerradas.
+ *
+ * @param now Fecha de referencia (inyectable para tests). Por defecto `new Date()`.
+ */
+export function isLaunchVisibleToStudent(l: LanzamientoPPS, now: Date = new Date()): boolean {
+  const today0 = new Date(now);
+  today0.setHours(0, 0, 0, 0);
+
+  const estadoConv = normalizeStringForComparison(l[C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
+  const estadoGestion = l[C.FIELD_ESTADO_GESTION_LANZAMIENTOS];
+
+  const publicationDate =
+    l[C.FIELD_FECHA_PUBLICACION_LANZAMIENTOS] ||
+    l[C.FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] ||
+    l[C.FIELD_FECHA_INICIO_LANZAMIENTOS];
+  const isScheduledForFuture = publicationDate ? new Date(publicationDate) > now : false;
+
+  const isClosed =
+    estadoConv === "cerrada" || estadoConv === "cerrado" || estadoConv === "confirmacion";
+
+  // Una convocatoria cerrada debe seguir visible para el estudiante hasta el
+  // día en que comienza, AUNQUE ya esté archivada (el archivado puede ocurrir
+  // manualmente o automáticamente). Solo ocultamos archivadas cuyo inicio ya pasó.
+  const inicioRaw = l[C.FIELD_FECHA_INICIO_LANZAMIENTOS];
+  const inicioDate = inicioRaw ? new Date(inicioRaw) : null;
+  if (inicioDate) inicioDate.setHours(0, 0, 0, 0);
+  const startNotPast = inicioDate ? inicioDate >= today0 : false;
+  const notArchivedOrUpcoming = estadoGestion !== "Archivado" || startNotPast;
+
+  return (
+    estadoConv !== "oculto" &&
+    notArchivedOrUpcoming &&
+    ["abierta", "abierto", "cerrado", "cerrada", "confirmacion"].includes(estadoConv) &&
+    (!isClosed || startNotPast) &&
+    (isClosed || !isScheduledForFuture)
+  );
+}
+
 export const fetchConvocatoriasData = async (
   studentId: string | null
 ): Promise<{
@@ -119,41 +163,7 @@ export const fetchConvocatoriasData = async (
     [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]),
   }));
 
-  const today0 = new Date();
-  today0.setHours(0, 0, 0, 0);
-
-  const lanzamientos = cleanedVisibleLaunches.filter((l) => {
-    const estadoConv = normalizeStringForComparison(l[C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-    const estadoGestion = l[C.FIELD_ESTADO_GESTION_LANZAMIENTOS];
-
-    const publicationDate =
-      l[C.FIELD_FECHA_PUBLICACION_LANZAMIENTOS] ||
-      l[C.FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] ||
-      l[C.FIELD_FECHA_INICIO_LANZAMIENTOS];
-    const isScheduledForFuture = publicationDate ? new Date(publicationDate) > new Date() : false;
-
-    const isClosed =
-      normalizeStringForComparison(estadoConv) === "cerrada" ||
-      normalizeStringForComparison(estadoConv) === "cerrado" ||
-      normalizeStringForComparison(estadoConv) === "confirmacion";
-
-    // Una convocatoria cerrada debe seguir visible para el estudiante hasta el
-    // día en que comienza, AUNQUE ya esté archivada (el archivado puede ocurrir
-    // manualmente o automáticamente). Solo ocultamos archivadas cuyo inicio ya pasó.
-    const inicioRaw = l[C.FIELD_FECHA_INICIO_LANZAMIENTOS];
-    const inicioDate = inicioRaw ? new Date(inicioRaw) : null;
-    if (inicioDate) inicioDate.setHours(0, 0, 0, 0);
-    const startNotPast = inicioDate ? inicioDate >= today0 : false;
-    const notArchivedOrUpcoming = estadoGestion !== "Archivado" || startNotPast;
-
-    return (
-      estadoConv !== "oculto" &&
-      notArchivedOrUpcoming &&
-      ["abierta", "abierto", "cerrado", "cerrada", "confirmacion"].includes(estadoConv) &&
-      (!isClosed || startNotPast) &&
-      (isClosed || !isScheduledForFuture)
-    );
-  });
+  const lanzamientos = cleanedVisibleLaunches.filter((l) => isLaunchVisibleToStudent(l));
 
   const institutionAddressMap = new Map<string, string>();
   allRawLanzamientos.forEach((l) => {
