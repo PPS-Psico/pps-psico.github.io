@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { FIELD_DNI_ESTUDIANTES, FIELD_ESTADO_ESTUDIANTES } from "../../constants";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 
 interface DataCompletionModalProps {
   studentId: string;
@@ -43,8 +44,8 @@ const DataCompletionModal: React.FC<DataCompletionModalProps> = ({
       if (updateError) throw updateError;
 
       onComplete();
-    } catch (err: any) {
-      setError(err.message || "Error al guardar los datos");
+    } catch (err) {
+      setError(getErrorMessage(err, "Error al guardar los datos"));
     } finally {
       setIsLoading(false);
     }

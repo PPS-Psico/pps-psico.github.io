@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "./ui/Toast";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -72,8 +73,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
       setTimeout(() => {
         completePasswordChange();
       }, 1500);
-    } catch (e: any) {
-      setError(e.message || "Error al actualizar la contraseña.");
+    } catch (e) {
+      setError(getErrorMessage(e, "Error al actualizar la contraseña."));
       setIsLoading(false); // Solo detenemos carga si hubo error en el paso 1
     }
   };

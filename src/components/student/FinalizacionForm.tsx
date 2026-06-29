@@ -326,7 +326,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
       queryClient.invalidateQueries({ queryKey: ["practicas"] });
       showToast("Solicitud de acreditación enviada con éxito.", "success");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       logger.error("Finalizacion submission error:", error);
       showToast(`Error al enviar: ${error?.message || "desconocido"}.`, "error");
     },

@@ -5,6 +5,7 @@ import Button from "../ui/Button";
 import { useNotifications } from "../../contexts/NotificationContext";
 import { uploadSolicitudFile, submitSolicitudModificacion, deletePractica } from "../../services";
 import type { Practica } from "../../types";
+import { getErrorMessage } from "../../utils/getErrorMessage";
 import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
@@ -163,8 +164,8 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
       showToast("Solicitud enviada correctamente", "success");
       onSuccess?.();
       onClose();
-    } catch (error: any) {
-      showToast(error.message || "Error al enviar la solicitud", "error");
+    } catch (error) {
+      showToast(getErrorMessage(error, "Error al enviar la solicitud"), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -179,8 +180,8 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
       showToast("PPS eliminada correctamente", "success");
       onSuccess?.();
       onClose();
-    } catch (error: any) {
-      showToast(error.message || "Error al eliminar la PPS", "error");
+    } catch (error) {
+      showToast(getErrorMessage(error, "Error al eliminar la PPS"), "error");
     } finally {
       setIsDeleting(false);
     }

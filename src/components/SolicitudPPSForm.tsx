@@ -123,7 +123,7 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
     const result = solicitudSchema.safeParse(formData);
 
     if (!result.success) {
-      const fieldErrors: any = {};
+      const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
         if (issue.path[0]) fieldErrors[issue.path[0]] = issue.message;
       });

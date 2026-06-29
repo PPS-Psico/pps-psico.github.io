@@ -4,6 +4,7 @@ import { FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES, FIELD_TRABAJA_ESTUDIANTES } from
 import { supabase } from "../lib/supabaseClient";
 import { Estudiante } from "../types";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 import { useTheme } from "../contexts/ThemeContext";
 import { Icon, type IconName } from "./student/ds";
 import "./student/home/atlas/atlasHome.css";
@@ -392,7 +393,9 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       const fieldErrors = result.error.flatten().fieldErrors;
       const newErrors: Partial<Record<keyof FormData, string>> = {};
       for (const key in fieldErrors) {
-        newErrors[key as keyof FormData] = (fieldErrors as any)[key]?.[0];
+        newErrors[key as keyof FormData] = (fieldErrors as Record<string, string[] | undefined>)[
+          key
+        ]?.[0];
       }
       setErrors(newErrors);
 
@@ -423,8 +426,8 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       }
 
       await onSubmit({ ...result.data, certificadoTrabajoUrl: certificadoUrl, cvUrl: cvUrl });
-    } catch (error: any) {
-      setErrors({ submit: error.message || "Error al enviar." });
+    } catch (error) {
+      setErrors({ submit: getErrorMessage(error, "Error al enviar.") });
     }
   };
 
