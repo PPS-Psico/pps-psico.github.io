@@ -4,6 +4,17 @@
 // learn more: https://github.com/testing-library/jest-dom
 import "@testing-library/jest-dom";
 import { configure } from "@testing-library/react";
+import { TextEncoder, TextDecoder } from "util";
+
+// React Router v7 (y otras libs web modernas) usan TextEncoder/TextDecoder, que
+// jsdom no expone por defecto en el entorno de test de Node. Los polyfilleamos
+// desde `util` para que los módulos que los requieren puedan cargarse.
+if (typeof globalThis.TextEncoder === "undefined") {
+  globalThis.TextEncoder = TextEncoder as typeof globalThis.TextEncoder;
+}
+if (typeof globalThis.TextDecoder === "undefined") {
+  globalThis.TextDecoder = TextDecoder as unknown as typeof globalThis.TextDecoder;
+}
 
 // Raise the default async timeout for findBy*/waitFor queries. The default of
 // 1000ms is too tight when the full suite runs in parallel and the heavier
