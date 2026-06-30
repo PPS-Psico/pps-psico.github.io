@@ -54,7 +54,8 @@ export const DetectionCard: React.FC<DetectionCardProps> = ({ m }) => {
         cursor: "pointer",
         fontFamily: "inherit",
         textAlign: "left",
-        transition: "all .12s ease",
+        transition:
+          "border-color .12s ease, background-color .12s ease, box-shadow .12s ease, transform .12s ease, color .12s ease",
         minWidth: 0,
       }}
       onMouseEnter={(e) => {

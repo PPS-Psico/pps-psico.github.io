@@ -271,7 +271,8 @@ const IngresoCardItem: React.FC<IngresoCardItemProps> = ({
         background: isStagnant && !expanded ? "var(--warn-soft)" : "var(--paper)",
         overflow: "hidden",
         position: "relative",
-        transition: "all .12s ease",
+        transition:
+          "border-color .12s ease, background-color .12s ease, box-shadow .12s ease, transform .12s ease, color .12s ease",
       }}
     >
       {/* accent rail */}

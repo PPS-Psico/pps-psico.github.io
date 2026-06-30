@@ -278,7 +278,8 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
         background: "var(--paper)",
         overflow: "hidden",
         position: "relative",
-        transition: "all .14s ease",
+        transition:
+          "border-color .14s ease, background-color .14s ease, box-shadow .14s ease, transform .14s ease, color .14s ease",
       }}
     >
       <div

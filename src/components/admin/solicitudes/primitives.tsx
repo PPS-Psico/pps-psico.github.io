@@ -50,7 +50,8 @@ export const SubTabs: React.FC<{
               cursor: "pointer",
               fontFamily: "inherit",
               boxShadow: on ? "0 1px 3px rgba(20,19,16,0.1)" : "none",
-              transition: "all .12s ease",
+              transition:
+                "border-color .12s ease, background-color .12s ease, box-shadow .12s ease, transform .12s ease, color .12s ease",
             }}
           >
             <span className="material-icons" style={{ fontSize: 16 }}>

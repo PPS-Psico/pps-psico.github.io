@@ -325,7 +325,8 @@ export const HermesFlow: React.FC<Props> = ({
                   fontFamily: "inherit",
                   textAlign: "left",
                   width: "100%",
-                  transition: "all .12s ease",
+                  transition:
+                    "border-color .12s ease, background-color .12s ease, box-shadow .12s ease, transform .12s ease, color .12s ease",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = "var(--rule-3)";
