@@ -12,6 +12,8 @@ export const PageHead: React.FC<PageHeadProps> = ({ userName }) => {
   // Capitalize first letter of today
   const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1);
   const time = format(now, "HH:mm");
+  // Solo el primer nombre para un saludo más cercano ("Buen día, Blas.")
+  const firstName = (userName || "").trim().split(/\s+/)[0] || userName;
 
   return (
     <div
@@ -56,7 +58,7 @@ export const PageHead: React.FC<PageHeadProps> = ({ userName }) => {
               color: "var(--ink)",
             }}
           >
-            Buen día, <em>{userName}</em>.
+            Buen día, <em>{firstName}</em>.
           </h1>
         </div>
         <div className="meta mono" style={{ fontSize: 12, textAlign: "right", lineHeight: 1.6 }}>

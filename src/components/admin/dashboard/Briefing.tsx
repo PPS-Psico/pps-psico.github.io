@@ -13,6 +13,22 @@ interface BriefingProps {
   isReanalyzing?: boolean;
 }
 
+// Resalta cifras y cantidades (ej. "10 solicitudes", "3 novedades", "144 hs")
+// con el efecto marcador del Inicio del estudiante. Solo toca nodos de texto,
+// nunca el interior de etiquetas, para no romper el HTML que llega de Hermes.
+const FIGURE_RX =
+  /\d[\d.]*\s*(?:%|hs\b|h\b)?(?:\s(?:solicitudes?|convocatorias?|novedades?|mails?|chats?|instituciones?|d[ií]as?|borradores?|lanzamientos?|alumnos?|pendientes?))?/gi;
+
+const highlightFigures = (html: string): string =>
+  html
+    .split(/(<[^>]+>)/g)
+    .map((seg) =>
+      seg.startsWith("<")
+        ? seg
+        : seg.replace(FIGURE_RX, (m) => `<mark class="brief-hl">${m.trim()}</mark>`)
+    )
+    .join("");
+
 export const Briefing: React.FC<BriefingProps> = ({
   data,
   totalChats,
@@ -20,11 +36,37 @@ export const Briefing: React.FC<BriefingProps> = ({
   isReanalyzing,
 }) => {
   return (
-    <section style={{ padding: "32px 0 8px" }}>
+    <section className="admin-brief" style={{ padding: "32px 0 8px" }}>
       <style>{`
         @keyframes hermes-spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        .admin-brief .brief-hl {
+          background-image: linear-gradient(
+            100deg,
+            transparent 0.4%,
+            color-mix(in oklab, #3cb88d 22%, transparent) 2%,
+            color-mix(in oklab, #3cb88d 22%, transparent) 97%,
+            transparent 99.6%
+          );
+          background-repeat: no-repeat;
+          background-size: 100% 56%;
+          background-position: 0 64%;
+          padding: 0 0.12em;
+          border-radius: 0.08em;
+          font-style: normal;
+          -webkit-box-decoration-break: clone;
+          box-decoration-break: clone;
+        }
+        html.dark .admin-brief .brief-hl {
+          background-image: linear-gradient(
+            100deg,
+            transparent 0.4%,
+            color-mix(in oklab, #3cb88d 34%, transparent) 2%,
+            color-mix(in oklab, #3cb88d 34%, transparent) 97%,
+            transparent 99.6%
+          );
         }
       `}</style>
       <div
@@ -89,7 +131,7 @@ export const Briefing: React.FC<BriefingProps> = ({
           maxWidth: 760,
           textWrap: "pretty",
         }}
-        dangerouslySetInnerHTML={{ __html: data.lead }}
+        dangerouslySetInnerHTML={{ __html: highlightFigures(data.lead) }}
       />
 
       <div
@@ -111,7 +153,7 @@ export const Briefing: React.FC<BriefingProps> = ({
               color: "var(--ink-2)",
               textWrap: "pretty",
             }}
-            dangerouslySetInnerHTML={{ __html: p }}
+            dangerouslySetInnerHTML={{ __html: highlightFigures(p) }}
           />
         ))}
       </div>
