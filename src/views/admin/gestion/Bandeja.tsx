@@ -14,7 +14,19 @@ const BandejaCard: React.FC<{
 }> = ({ item, index, active, onSelect, onContact }) => {
   const meta = STATE_META[item.state];
   return (
-    <div className={`bandeja-card ${active ? "active" : ""}`} onClick={onSelect}>
+    <div
+      className={`bandeja-card press ${active ? "active" : ""}`}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      aria-pressed={active}
+      onKeyDown={(e) => {
+        if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+    >
       <div
         style={{
           display: "grid",

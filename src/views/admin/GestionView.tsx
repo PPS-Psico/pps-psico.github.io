@@ -291,6 +291,7 @@ html.dark .gestion-v3 .filter-menu{ box-shadow:0 12px 32px rgba(0,0,0,0.5); }
 .gestion-v3 .bandeja-card{ border:1px solid var(--rule-2); border-radius:12px; background:var(--paper); padding:16px 18px; cursor:pointer; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; position:relative; }
 .gestion-v3 .bandeja-card:hover{ background:var(--paper-2); border-color:var(--rule-3); }
 .gestion-v3 .bandeja-card.active{ border-color:var(--ink); background:var(--paper-2); }
+.gestion-v3 .bandeja-card:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 .gestion-v3 .bandeja-card.active::before{ content:''; position:absolute; left:-1px; top:14px; bottom:14px; width:3px; background:var(--ink); border-radius:999px; }
 
 .gestion-v3 .inst-row{ display:grid; grid-template-columns:minmax(170px,1.7fr) 132px 104px minmax(128px,1.2fr) 92px 64px; gap:14px; align-items:center; padding:13px 32px; border-bottom:1px solid var(--rule); cursor:pointer; transition:background .12s ease; text-align:left; width:100%; background:transparent; border-left:3px solid transparent; border-right:none; border-top:none; font-family:inherit; }
