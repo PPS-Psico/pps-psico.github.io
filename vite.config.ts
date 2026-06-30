@@ -19,7 +19,20 @@ export default defineConfig(({ mode }) => {
     // React Compiler (v1.0, estable): auto-memoización en build. Permite dejar
     // de escribir useMemo/useCallback a mano y mejora el runtime. Funciona con
     // @vitejs/plugin-react 4.x (basado en Babel). Target React 19 por defecto.
-    plugins: [react({ babel: { plugins: [["babel-plugin-react-compiler", {}]] } })],
+    //
+    // IMPORTANTE: lo activamos SOLO en producción. En dev, Vite transforma cada
+    // módulo on-demand la primera vez que se importa; el análisis Babel del
+    // compiler agrega latencia por archivo, lo que se nota al entrar por primera
+    // vez a cada sección lazy-loaded ("se traba y luego sigue"). En el build de
+    // producción todo se pre-compila una sola vez, así que conservamos el
+    // beneficio de runtime sin penalizar la experiencia de desarrollo.
+    plugins: [
+      react(
+        mode === "production"
+          ? { babel: { plugins: [["babel-plugin-react-compiler", {}]] } }
+          : undefined
+      ),
+    ],
     // En producción eliminamos los logs de depuración (log/info/debug) y los
     // `debugger`, pero conservamos console.error y console.warn para soporte.
     // Esto evita ruido y posible filtrado de datos en la consola del usuario
