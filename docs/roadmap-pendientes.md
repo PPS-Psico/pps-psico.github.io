@@ -20,6 +20,11 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 >   plugin-react. Auto-memoización en build. ⚠️ **Pendiente: smoke-test en preview antes
 >   del próximo deploy** (es transform de runtime; tests y build verdes, pero conviene ojo
 >   humano en producción).
+> - ✅ **React Compiler ahora SOLO en producción** (`e562068`) — en dev causaba lentitud al
+>   entrar por primera vez a secciones lazy-loaded (el análisis Babel del compiler corre
+>   on-demand por archivo → "se traba y luego sigue"). Condicionado a `mode==="production"`
+>   en `vite.config.ts`: se conserva el beneficio de runtime en el deploy sin penalizar el
+>   dev server. Build de prod verificado (2m46s, el compiler sigue aplicándose ahí).
 >
 > **Deferido a propósito:**
 >
@@ -254,6 +259,23 @@ Notas de método para componentes JSX:
 - **`exceljs` (940 KB)**: ya es import dinámico; evaluar alternativa más liviana para export
   si el peso del chunk molesta en conexiones lentas.
 - Revisar `web-vitals` ya integrado y publicar métricas a GA4/Sentry si interesa.
+
+> **Diagnóstico de lentitud en dev (sesión 12).** El reporte de "secciones que se
+> traban y luego siguen" en `localhost:5173` se explicaba por el React Compiler
+> corriendo el análisis Babel on-demand en cada sección lazy-loaded (la app usa
+> `React.lazy` en casi todas las vistas admin/estudiante). ✅ Resuelto dejando el
+> compiler solo en producción (ver arriba, `e562068`). **Requiere reiniciar el
+> dev server** para tomar el cambio de `vite.config.ts`.
+>
+> **Bug aparte detectado (NO frontend) — agente Python Hermes:** los logs de
+> Postgres mostraban errores repetidos `column gmail_hilos.email_institucion does
+not exist`. La tabla `gmail_hilos` no tiene esa columna, pero
+> `agent/hermes-pps/app/main.py` la pide en dos `select(...)` (≈ líneas 411 y 982).
+> Cae en el `try/except` y devuelve `[]`, así que degrada en silencio el
+> `daily_brief`/historial de email sin romper nada visible. No afecta la velocidad
+> del frontend. **Pendiente (decisión del owner):** quitar `email_institucion` de
+> esos dos selects en el servicio Python, o agregar la columna a la tabla. Es un
+> servicio desplegado aparte, por eso no se tocó sin confirmar.
 
 ---
 
