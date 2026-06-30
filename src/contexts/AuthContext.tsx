@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
   useRef,
 } from "react";
@@ -305,25 +306,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const isAdminTesterMode = authenticatedUser?.role === "AdminTester";
   const isReporteroMode = authenticatedUser?.role === "Reportero";
 
-  return (
-    <AuthContext.Provider
-      value={{
-        authenticatedUser,
-        isSuperUserMode,
-        isJefeMode,
-        isDirectivoMode,
-        isAdminTesterMode,
-        isReporteroMode,
-        isAuthLoading,
-        login,
-        logout,
-        completePasswordChange,
-        refreshAuth,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  // Memoizamos el value para no recrear el objeto en cada render del provider:
+  // así los muchos consumidores de `useAuth` solo re-renderizan cuando cambian
+  // el usuario o el estado de carga, no por re-renders del árbol superior.
+  const value = useMemo(
+    () => ({
+      authenticatedUser,
+      isSuperUserMode,
+      isJefeMode,
+      isDirectivoMode,
+      isAdminTesterMode,
+      isReporteroMode,
+      isAuthLoading,
+      login,
+      logout,
+      completePasswordChange,
+      refreshAuth,
+    }),
+    [
+      authenticatedUser,
+      isSuperUserMode,
+      isJefeMode,
+      isDirectivoMode,
+      isAdminTesterMode,
+      isReporteroMode,
+      isAuthLoading,
+      login,
+      logout,
+      completePasswordChange,
+      refreshAuth,
+    ]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {
