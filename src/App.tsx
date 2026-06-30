@@ -4,6 +4,7 @@ import {
   Route,
   HashRouter as Router,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -49,6 +50,18 @@ const JefeView = lazy(() => import("./views/JefeView"));
 const DirectivoView = lazy(() => import("./views/DirectivoView"));
 const ReporteroView = lazy(() => import("./views/ReporteroView"));
 const AdminTestingView = lazy(() => import("./views/AdminTestingView"));
+
+// Resetea el scroll al tope cuando cambia la ruta. React Router no restaura el
+// scroll por defecto: al abrir el detalle de una convocatoria (u otra ruta) se
+// conservaba la posición de la lista anterior y había que subir a mano. Se monta
+// dentro del Router. 'auto' evita el salto animado.
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+  return null;
+};
 
 const AdminStudentWrapper = () => {
   const { legajo } = useParams();
@@ -284,6 +297,7 @@ const App: React.FC = () => {
   return (
     <ErrorProvider>
       <Router>
+        <ScrollToTop />
         <ConfigProvider>
           <AdminPreferencesProvider>
             <NotificationProvider>
