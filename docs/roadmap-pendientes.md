@@ -176,20 +176,26 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
     `get_student_for_signup`, `get_student_signup_status`) intacto con anon, dashboards de
     staff (SuperUser/Jefe/Directivo/Reportero — todos `authenticated`) y modo testing (mocks)
     sin afectar. Reversible con `GRANT EXECUTE ... TO anon`.
-- **🟠 FASE 2 pendiente (requiere OK del owner) — bloquear a alumnos logueados.** Tras la
-  Fase 1, un `Alumno` autenticado todavía podría llamar las RPCs de métricas vía REST manual
-  (el rol PG `authenticated` no distingue staff de alumno; el rol real está en
-  `estudiantes.role`). Para cerrarlo hay que agregar un guard `if not <staff> then raise`
-  DENTRO de cada función — lo que implica reescribir el cuerpo de ~18 funciones en prod
-  (varias son `LANGUAGE sql` → pasar a plpgsql). Riesgo medio (podría romper un dashboard si
-  se reproduce mal un body). **Importante:** `is_admin()` cubre SuperUser/Jefe/Directivo/
-  AdminTester pero **NO Reportero** → el guard debe usar un set que incluya Reportero
-  (o crear `is_staff()`), si no se rompe el Reportero. `get_seleccionados_for_launch` NO lleva
-  guard de staff (la usan alumnos para "ver convocados"); solo necesita seguir sin anon.
-- **Otros `anon`-ejecutables menores detectados:** `increment_snooze_count` (reminders, debería
-  ser admin) y varias funciones de trigger (`check_practica_updates`, `log_practica_update`,
-  `set_cohorte_on_activity`, `process_consentimiento_timeouts`, `calc_cohorte_estudiante`) que
-  no deberían ser RPC. Revocar anon/public de estas es seguro (los triggers no usan el grant).
+- **🟠→✅ FASE 2 CERRADA (sesión 12, migraciones `create_is_staff_helper` +
+  `guard_pii_rpcs_with_is_staff`) — bloqueado el alumno logueado.** Se creó `is_staff()`
+  (SuperUser/Jefe/Directivo/AdminTester/**Reportero**) y se aplicó patrón rename+wrapper a
+  las 11 RPCs que devuelven PII de alumnos (`get_ingresantes_list`, `get_estudiantes_en_pps_list`,
+  `get_heredados_list`, `get_activos_list`, `get_finalizados_list`, `get_haciendo_pps_list`,
+  `get_proximos_finalizar_list`, `get_sin_pps_list`, `get_convenios_list`,
+  `get_postulantes_seleccionados`, `get_seleccionados`): la lógica original quedó intacta en
+  `<fn>_impl` (sin EXECUTE para anon/authenticated), el wrapper homónimo valida `is_staff()` y
+  delega. **Verificado con JWT simulado**: alumno → `insufficient_privilege` (bloqueado) en json
+  y TABLE; staff (SuperUser) → OK en las 11 (filas reales). `get_seleccionados_for_launch` se
+  dejó sin guard de staff a propósito (la usan alumnos para "ver convocados"; solo sin anon).
+  NOTA: el advisor seguirá marcando estas funciones como "authenticated puede ejecutar" porque
+  el grant es a authenticated; la protección real es el guard interno (el advisor no lo ve).
+- **✅ Endurecimiento de funciones internas (migración `harden_minor_anon_executable_functions`).**
+  Triggers/cron/backfill (`process_consentimiento_timeouts`, `check_practica_updates`,
+  `log_practica_update`, `set_cohorte_on_activity`, `calc_cohorte_estudiante`) → revocado
+  public/anon/authenticated, solo service_role (los triggers se disparan igual; el cron corre como
+  postgres). `increment_snooze_count` → sin anon, queda authenticated. Estado final: las únicas
+  RPCs SECURITY DEFINER ejecutables por anon son las del flujo de login/recuperación (intencional)
+  - `is_admin()` (devuelve false para anon; necesaria para RLS).
 - **Habilitar `auth_leaked_password_protection`** (HaveIBeenPwned) — toggle de Auth,
   beneficioso, afecta signup/cambio de contraseña. (pendiente: decisión del owner)
 - **`multiple_permissive_policies` x21** — consolidar políticas RLS permisivas múltiples
