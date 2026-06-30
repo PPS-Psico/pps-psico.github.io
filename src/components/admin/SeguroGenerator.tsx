@@ -116,7 +116,7 @@ html.dark .seg {
 .seg-count{ display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:22px; padding:0 7px; font-size:11.5px; font-weight:700; font-family:'JetBrains Mono', monospace; border-radius:999px; background:var(--accent-s); color:var(--accent); }
 
 /* Checkbox simple */
-.seg-check{ width:18px; height:18px; border-radius:5px; border:1.5px solid var(--rule-3); display:inline-flex; align-items:center; justify-content:center; background:var(--paper); transition:all .12s; }
+.seg-check{ width:18px; height:18px; border-radius:5px; border:1.5px solid var(--rule-3); display:inline-flex; align-items:center; justify-content:center; background:var(--paper); transition: color .12s, background-color .12s, border-color .12s, box-shadow .12s, transform .12s, opacity .12s, filter .12s; }
 .seg-check[data-on="1"]{ background:var(--ink); border-color:var(--ink); }
 .seg-check .material-icons{ font-size:14px; color:var(--paper); }
 

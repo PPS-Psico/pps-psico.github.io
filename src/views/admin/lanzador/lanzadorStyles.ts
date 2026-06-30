@@ -267,7 +267,7 @@ html.dark .lv4 {
   font-size: 13px; font-weight: 500; padding: 8px 14px;
   border-radius: 8px; border: 1px solid var(--rule-3);
   background: transparent; color: var(--ink); cursor: pointer;
-  font-family: inherit; transition: all .12s ease;
+  font-family: inherit; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease;
 }
 .lv4-btn:hover { background: var(--paper-2); }
 .lv4-btn-primary {
@@ -496,7 +496,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   width: 40px; height: 40px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid var(--rule-3); background: var(--paper-2); color: var(--ink-3);
-  cursor: pointer; transition: all .12s ease; flex-shrink: 0;
+  cursor: pointer; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; flex-shrink: 0;
 }
 .lv4-fab:hover { border-color: var(--accent); color: var(--accent); }
 .lv4-fab.selected  { background: var(--ok); color: var(--paper); border-color: var(--ok); }
@@ -533,7 +533,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 10px; border-radius: 8px; border: 1px solid var(--rule-3);
   background: var(--paper-2); color: var(--ink-2); font-size: 12px; line-height: 1.3;
-  cursor: pointer; transition: all .12s ease; position: relative;
+  cursor: pointer; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; position: relative;
   max-width: 100%;
 }
 .lv4-schedule-chip:hover { background: var(--paper-3); }
@@ -546,7 +546,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-schedule-remove {
   flex-shrink: 0; padding: 2px; border-radius: 4px; color: var(--ink-3);
   border: none; background: transparent; cursor: pointer; display: flex; align-items: center;
-  transition: all .12s ease;
+  transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease;
 }
 .lv4-schedule-remove:hover { background: var(--warn); color: var(--paper); }
 .lv4-schedule-remove .material-icons { font-size: 12px; }
@@ -565,7 +565,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   border: 1.5px dashed color-mix(in oklab, var(--ok) 50%, transparent);
   font-size: 12px; font-weight: 600; font-family: inherit;
   cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-  transition: all .12s ease;
+  transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease;
 }
 .lv4-schedule-add:hover { background: var(--ok-s); }
 .lv4-schedule-add .material-icons { font-size: 14px; }
@@ -662,7 +662,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   width: 36px; height: 36px; border-radius: 8px; padding: 0;
   background: transparent; color: var(--paper);
   border: 1px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all .12s ease;
+  transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease;
 }
 .lv4-modal-close:hover { background: color-mix(in oklab, var(--paper) 15%, transparent); border-color: color-mix(in oklab, var(--paper) 25%, transparent); }
 .lv4-modal-close .material-icons { font-size: 20px; }
@@ -759,7 +759,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   position: relative; text-align: left; padding: 18px;
   border: 1px solid var(--rule-2); border-radius: 12px;
   background: var(--paper); cursor: pointer;
-  transition: all .14s ease; overflow: hidden; font-family: inherit; color: inherit;
+  transition: color .14s ease, background-color .14s ease, border-color .14s ease, box-shadow .14s ease, transform .14s ease, opacity .14s ease, filter .14s ease; overflow: hidden; font-family: inherit; color: inherit;
   display: flex; flex-direction: column; gap: 12px;
 }
 .lv4-launch-card::before {
@@ -801,7 +801,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   width: 36px; height: 36px; border-radius: 8px;
   background: transparent; color: var(--ink-3);
   border: 1px solid var(--rule-2); cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all .12s ease;
+  transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease;
 }
 .lv4-back-btn:hover { background: var(--paper-2); color: var(--ink); border-color: var(--rule-3); }
 .lv4-back-btn .material-icons { font-size: 18px; }
@@ -826,7 +826,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-tab {
   padding: 5px 14px; border: none; background: transparent; color: var(--ink-3);
   font-size: 12px; font-weight: 500; border-radius: 6px; cursor: pointer; font-family: inherit;
-  display: flex; align-items: center; gap: 6px; transition: all .12s ease;
+  display: flex; align-items: center; gap: 6px; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease;
 }
 .lv4-tab:hover { color: var(--ink); }
 .lv4-tab.active { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }

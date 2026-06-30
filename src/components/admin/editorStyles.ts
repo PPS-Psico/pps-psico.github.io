@@ -51,7 +51,7 @@ html.dark .dbe {
 .dbe-warnline .material-icons{ font-size:14px; }
 
 .dbe-tabs{ display:inline-flex; gap:4px; padding:4px; border:1px solid var(--rule-2); border-radius:11px; background:var(--paper-2); margin-bottom:22px; flex-wrap:wrap; }
-.dbe-tab{ display:inline-flex; align-items:center; gap:7px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; border:none; background:transparent; color:var(--ink-3); transition:all .22s var(--ease); }
+.dbe-tab{ display:inline-flex; align-items:center; gap:7px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; border:none; background:transparent; color:var(--ink-3); transition: color .22s var, background-color .22s var, border-color .22s var, box-shadow .22s var, transform .22s var, opacity .22s var, filter .22s var(--ease); }
 .dbe-tab[data-on="1"]{ background:var(--paper); color:var(--ink); box-shadow:0 1px 2px rgba(20,19,16,0.06); }
 .dbe-tab:not([data-on="1"]):hover{ color:var(--ink-2); }
 .dbe-tab .material-icons{ font-size:16px; }

@@ -191,7 +191,7 @@ html.dark .gestion-v3 {
 .gestion-v3 .label{ font-size:11px; letter-spacing:0.06em; text-transform:uppercase; font-weight:600; color:var(--ink-3); }
 .gestion-v3 .meta{ font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
 
-.gestion-v3 .btn{ display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:500; padding:8px 14px; border-radius:8px; border:1px solid var(--rule-2); background:transparent; color:var(--ink); transition:all .12s ease; cursor:pointer; font-family:inherit; line-height:1; }
+.gestion-v3 .btn{ display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:500; padding:8px 14px; border-radius:8px; border:1px solid var(--rule-2); background:transparent; color:var(--ink); transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; cursor:pointer; font-family:inherit; line-height:1; }
 .gestion-v3 .btn:hover{ background:var(--paper-2); border-color:var(--rule-3); }
 .gestion-v3 .btn-primary{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
 .gestion-v3 .btn-primary:hover{ background:var(--ink-2); border-color:var(--ink-2); }
@@ -288,7 +288,7 @@ html.dark .gestion-v3 .filter-menu{ box-shadow:0 12px 32px rgba(0,0,0,0.5); }
 .gestion-v3.rail-collapsed .rail-row{ grid-template-columns:1fr; justify-items:center; padding:9px 0; }
 .gestion-v3.rail-collapsed .rail-label, .gestion-v3.rail-collapsed .rail-row .count, .gestion-v3.rail-collapsed .rail-hideable{ display:none !important; }
 
-.gestion-v3 .bandeja-card{ border:1px solid var(--rule-2); border-radius:12px; background:var(--paper); padding:16px 18px; cursor:pointer; transition:all .12s ease; position:relative; }
+.gestion-v3 .bandeja-card{ border:1px solid var(--rule-2); border-radius:12px; background:var(--paper); padding:16px 18px; cursor:pointer; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; position:relative; }
 .gestion-v3 .bandeja-card:hover{ background:var(--paper-2); border-color:var(--rule-3); }
 .gestion-v3 .bandeja-card.active{ border-color:var(--ink); background:var(--paper-2); }
 .gestion-v3 .bandeja-card.active::before{ content:''; position:absolute; left:-1px; top:14px; bottom:14px; width:3px; background:var(--ink); border-radius:999px; }

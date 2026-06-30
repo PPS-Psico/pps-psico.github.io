@@ -52,7 +52,7 @@ html.dark .conv {
 .conv-drop-name{ font-size:13.5px; font-weight:600; color:var(--ink); }
 .conv-drop-meta{ font-size:12px; color:var(--ink-3); margin-top:3px; }
 
-.conv-type-opt{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-radius:10px; font-size:13.5px; font-weight:500; cursor:pointer; font-family:inherit; border:1px solid var(--rule-3); background:var(--paper-2); color:var(--ink-2); transition:all .12s; text-transform:capitalize; }
+.conv-type-opt{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-radius:10px; font-size:13.5px; font-weight:500; cursor:pointer; font-family:inherit; border:1px solid var(--rule-3); background:var(--paper-2); color:var(--ink-2); transition: color .12s, background-color .12s, border-color .12s, box-shadow .12s, transform .12s, opacity .12s, filter .12s; text-transform:capitalize; }
 .conv-type-opt + .conv-type-opt{ margin-top:8px; }
 .conv-type-opt:hover{ background:var(--paper-3); }
 .conv-type-opt[data-on="1"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
@@ -77,7 +77,7 @@ html.dark .conv {
 
 .conv-result-bar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
 .conv-tabs{ display:inline-flex; gap:3px; padding:4px; border:1px solid var(--rule-2); border-radius:10px; background:var(--paper-2); }
-.conv-tab{ padding:7px 13px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:none; background:transparent; color:var(--ink-3); transition:all .12s; }
+.conv-tab{ padding:7px 13px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:none; background:transparent; color:var(--ink-3); transition: color .12s, background-color .12s, border-color .12s, box-shadow .12s, transform .12s, opacity .12s, filter .12s; }
 .conv-tab[data-on="1"]{ background:var(--paper); color:var(--accent); box-shadow:0 1px 2px rgba(20,19,16,0.06); }
 .conv-tab.raw[data-on="1"]{ color:var(--warn); }
 

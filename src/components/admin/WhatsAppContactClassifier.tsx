@@ -132,7 +132,7 @@ const CSS = `
 .wcc-queue-search button { border: none; background: transparent; cursor: pointer; color: var(--ink-4); display: inline-flex; padding: 0; }
 .wcc-queue-search button:hover { color: var(--ink-2); }
 .wcc-conf-filters { display: flex; gap: 5px; }
-.wcc-conf-pill { flex: 1; padding: 4px 6px; border-radius: 7px; border: 1px solid var(--rule-2); background: var(--paper); color: var(--ink-3); font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer; transition: all .12s ease; }
+.wcc-conf-pill { flex: 1; padding: 4px 6px; border-radius: 7px; border: 1px solid var(--rule-2); background: var(--paper); color: var(--ink-3); font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
 .wcc-conf-pill:hover { border-color: var(--ink-4); color: var(--ink-2); }
 .wcc-conf-pill.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
@@ -171,7 +171,7 @@ const CSS = `
   padding: 8px 13px; border-radius: 10px; cursor: pointer;
   border: 1px solid var(--rule-2); background: var(--paper);
   font-family: inherit; font-size: 13px; font-weight: 500; color: var(--ink-3);
-  transition: all .12s ease;
+  transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease;
 }
 .wcc-type-chip:hover { border-color: var(--ink-4); color: var(--ink-2); }
 .wcc-type-chip .material-icons { font-size: 16px; }
@@ -242,7 +242,7 @@ textarea.wcc-field { resize: vertical; min-height: 56px; line-height: 1.5; }
 }
 
 /* Buttons */
-.wcc-btn { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; padding: 9px 15px; border-radius: 9px; border: 1px solid var(--rule-2); background: transparent; color: var(--ink); cursor: pointer; font-family: inherit; transition: all .12s ease; }
+.wcc-btn { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; padding: 9px 15px; border-radius: 9px; border: 1px solid var(--rule-2); background: transparent; color: var(--ink); cursor: pointer; font-family: inherit; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
 .wcc-btn:hover { background: var(--paper-2); }
 .wcc-btn:disabled { opacity: .5; cursor: not-allowed; }
 .wcc-btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
@@ -254,7 +254,7 @@ textarea.wcc-field { resize: vertical; min-height: 56px; line-height: 1.5; }
 
 /* Sub-tabs (cola / archivados) */
 .wcc-tabs { display: flex; gap: 4px; margin-top: 14px; }
-.wcc-tab { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 9px 9px 0 0; border: none; background: transparent; color: var(--ink-3); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all .12s ease; }
+.wcc-tab { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 9px 9px 0 0; border: none; background: transparent; color: var(--ink-3); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
 .wcc-tab:hover { color: var(--ink-2); }
 .wcc-tab.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
 .wcc-tab-badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: var(--ink); color: var(--paper); }

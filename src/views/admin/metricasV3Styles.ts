@@ -32,7 +32,7 @@ export const METRICAS_V3_CSS = `
 .metricas-v3 .masthead { padding: 20px 0 26px; border-bottom: 1.5px solid var(--ink); }
 .metricas-v3 .masthead h1 { margin: 6px 0 0; font-size: 56px; line-height: 0.98; letter-spacing: -0.015em; }
 .metricas-v3 .year-seg { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--rule-2); border-radius: 10px; background: var(--paper); }
-.metricas-v3 .year-seg button { border: 0; cursor: pointer; font-family: 'JetBrains Mono', monospace; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; background: transparent; color: var(--ink-3); transition: all .12s ease; }
+.metricas-v3 .year-seg button { border: 0; cursor: pointer; font-family: 'JetBrains Mono', monospace; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; background: transparent; color: var(--ink-3); transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
 .metricas-v3 .year-seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
 
 /* — subtabs — */
@@ -49,14 +49,14 @@ export const METRICAS_V3_CSS = `
 .metricas-v3 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .metricas-v3 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
-.metricas-v3 .kpi { display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 15px; border-radius: 14px; border: 1px solid var(--rule-2); background: var(--paper); cursor: pointer; font-family: inherit; text-align: left; min-width: 0; width: 100%; transition: all .12s ease; }
+.metricas-v3 .kpi { display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 15px; border-radius: 14px; border: 1px solid var(--rule-2); background: var(--paper); cursor: pointer; font-family: inherit; text-align: left; min-width: 0; width: 100%; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
 .metricas-v3 .kpi:hover { border-color: var(--rule-3); background: var(--paper-2); }
-.metricas-v3 .kpi .num { font-size: 30px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; }
+.metricas-v3 .kpi .num { font-size: 30px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .metricas-v3 .kpi .ctx { font-size: 12px; color: var(--ink-3); line-height: 1.4; }
 
-.metricas-v3 .hero { display: flex; flex-direction: column; gap: 14px; padding: 24px 24px 22px; border-radius: 16px; border: 1px solid var(--rule-2); background: var(--paper); cursor: pointer; font-family: inherit; text-align: left; min-width: 0; width: 100%; transition: all .12s ease; }
+.metricas-v3 .hero { display: flex; flex-direction: column; gap: 14px; padding: 24px 24px 22px; border-radius: 16px; border: 1px solid var(--rule-2); background: var(--paper); cursor: pointer; font-family: inherit; text-align: left; min-width: 0; width: 100%; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
 .metricas-v3 .hero:hover { border-color: var(--rule-3); background: var(--paper-2); }
-.metricas-v3 .hero .num { font-size: 52px; font-weight: 300; letter-spacing: -0.045em; line-height: 0.9; }
+.metricas-v3 .hero .num { font-size: 52px; font-weight: 300; letter-spacing: -0.045em; line-height: 0.9; font-variant-numeric: tabular-nums; }
 
 .metricas-v3 .card { padding: 20px 20px 16px; border: 1px solid var(--rule-2); border-radius: 14px; background: var(--paper); }
 .metricas-v3 .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
