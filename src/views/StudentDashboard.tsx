@@ -61,9 +61,11 @@ import { db } from "../lib/db";
 import type { Orientacion, Practica, TabId } from "../types";
 // import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
 import FinalizationStatusCard from "../components/student/FinalizationStatusCard";
+import FinalizacionReadOnlyView from "../components/student/FinalizacionReadOnlyView";
 // import MobileSectionHeader from '../components/layout/MobileSectionHeader'; // Unused
 import ErrorBoundary from "../components/ErrorBoundary";
 import { logger } from "../utils/logger";
+import { getErrorMessage } from "../utils/getErrorMessage";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 // Export individual views for Router
@@ -124,19 +126,25 @@ export const StudentHome: React.FC = () => {
   }, []);
 
   // BLOQUEO POR FINALIZACIÓN (Vista Estudiante Nativa)
+  // Ya no ocultamos todo: mostramos el estado del trámite + progreso e historial
+  // en modo solo lectura (es lo que el alumno quiere mirar mientras espera).
   if (finalizacionRequest) {
     return (
-      <div className="py-2 sm:py-6 animate-fade-in w-full max-w-7xl mx-auto">
-        <FinalizationStatusCard
-          status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
-          requestDate={
-            finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
-            finalizacionRequest.created_at ||
-            ""
-          }
-          studentName={studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || undefined}
-        />
-      </div>
+      <FinalizacionReadOnlyView
+        status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
+        requestDate={
+          finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
+          finalizacionRequest.created_at ||
+          ""
+        }
+        studentName={studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || undefined}
+        criterios={criterios}
+        selectedOrientacion={
+          (studentDetails?.[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "") as Orientacion | ""
+        }
+        practicas={practicas}
+        informeTasks={informeTasks}
+      />
     );
   }
 
@@ -192,6 +200,25 @@ interface StudentDashboardProps {
   activeTab?: TabId;
   onTabChange?: (tabId: TabId) => void;
   showExportButton?: boolean;
+}
+
+/**
+ * Forma del payload del formulario de solicitud de PPS que consume la mutación.
+ * Todos opcionales (el form puede no traer todos los campos); reemplaza el `any`
+ * previo para tener seguridad de tipos al construir el registro.
+ */
+interface SolicitudFormInput {
+  nombreInstitucion?: string;
+  localidad?: string;
+  direccion?: string;
+  emailInstitucion?: string;
+  telefonoInstitucion?: string;
+  referente?: string;
+  tieneConvenio?: string;
+  tieneTutor?: string;
+  contactoTutor?: string;
+  tipoPractica?: string;
+  descripcion?: string;
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -323,10 +350,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   }, [allLanzamientos, activeInstitutionsDB]);
 
   const createSolicitudMutation = useMutation({
-    mutationFn: async (formData: any) => {
+    mutationFn: async (formData: SolicitudFormInput) => {
       const studentId = getStudentId();
       if (!studentId) throw new Error("Error identificando al estudiante.");
-      const newRecord: any = {
+      const newRecord: Record<string, unknown> = {
         [FIELD_LEGAJO_PPS]: studentId,
         [FIELD_SOLICITUD_LEGAJO_ALUMNO]: studentDetails?.[FIELD_LEGAJO_ESTUDIANTES],
         [FIELD_SOLICITUD_NOMBRE_ALUMNO]: studentDetails?.[FIELD_NOMBRE_ESTUDIANTES],
@@ -351,7 +378,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       showToast("Tu solicitud de PPS ha sido registrada.", "success");
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
     },
-    onError: (err: any) => showToast(`Error: ${err.message} `, "error"),
+    onError: (err: unknown) => showToast(`Error: ${getErrorMessage(err)} `, "error"),
   });
 
   const handleStartSolicitud = useCallback(() => setIsPreCheckModalOpen(true), []);
@@ -629,19 +656,23 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   if (error) return <ErrorState error={error.message} onRetry={() => refetchAll()} />;
 
   // CASO DE BLOQUEO POR FINALIZACIÓN (Solo si NO es un Admin mirando)
+  // Solo lectura: estado del trámite + progreso + historial. El admin que simula
+  // sigue viendo el panel completo (más abajo) para poder gestionar.
   if (finalizacionRequest && !isAdminViewing) {
     return (
-      <div className="py-2 sm:py-6 animate-fade-in w-full max-w-7xl mx-auto">
-        <FinalizationStatusCard
-          status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
-          requestDate={
-            finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
-            finalizacionRequest.created_at ||
-            ""
-          }
-          studentName={studentNameForPanel}
-        />
-      </div>
+      <FinalizacionReadOnlyView
+        status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
+        requestDate={
+          finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
+          finalizacionRequest.created_at ||
+          ""
+        }
+        studentName={studentNameForPanel}
+        criterios={criterios}
+        selectedOrientacion={selectedOrientacion}
+        practicas={practicas}
+        informeTasks={informeTasks}
+      />
     );
   }
 

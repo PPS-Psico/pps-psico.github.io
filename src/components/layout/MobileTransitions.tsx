@@ -205,17 +205,24 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
             }}
           >
             {!isRefreshing && progress < 1 && (
-              <span className="material-icons text-slate-400 dark:text-slate-500 !text-base">
+              <span
+                className="material-icons text-slate-400 dark:text-slate-500 !text-base"
+                aria-hidden="true"
+              >
                 arrow_downward
               </span>
             )}
             {(progress >= 1 || isRefreshing) && (
-              <span className="material-icons text-white !text-base">
+              <span className="material-icons text-white !text-base" aria-hidden="true">
                 {isRefreshing ? "refresh" : "check"}
               </span>
             )}
           </div>
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          <span
+            className="text-xs font-medium text-slate-500 dark:text-slate-400"
+            role="status"
+            aria-live="polite"
+          >
             {isRefreshing
               ? "Actualizando..."
               : progress >= 1

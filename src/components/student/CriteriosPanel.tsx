@@ -52,6 +52,33 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
     [criterios, hasPendingCorrections]
   );
 
+  // "Qué te falta para acreditar": lista textual y explícita de lo pendiente.
+  // Complementa los anillos/contadores (que muestran el cuánto) diciendo el qué,
+  // e integra informes pendientes y correcciones, que antes no se veían acá.
+  const pendingInformesCount = useMemo(
+    () => informeTasks.filter((t) => !t.informeSubido).length,
+    [informeTasks]
+  );
+  const faltantes = useMemo(() => {
+    const out: string[] = [];
+    if (!criterios.cumpleHorasTotales && criterios.horasFaltantes250 > 0)
+      out.push(`${Math.round(criterios.horasFaltantes250)} h totales`);
+    if (!criterios.cumpleHorasOrientacion && criterios.horasFaltantesOrientacion > 0)
+      out.push(`${Math.round(criterios.horasFaltantesOrientacion)} h de tu orientación`);
+    if (!criterios.cumpleRotacion) {
+      const faltanRot = Math.max(
+        0,
+        ROTACION_OBJETIVO_ORIENTACIONES - criterios.orientacionesCursadasCount
+      );
+      if (faltanRot > 0) out.push(`${faltanRot} ${faltanRot === 1 ? "rotación" : "rotaciones"}`);
+    }
+    if (pendingInformesCount > 0)
+      out.push(`${pendingInformesCount} ${pendingInformesCount === 1 ? "informe" : "informes"}`);
+    if (criterios.tienePracticasPendientes) out.push("prácticas en curso");
+    if (hasPendingCorrections) out.push("correcciones de informe");
+    return out;
+  }, [criterios, pendingInformesCount, hasPendingCorrections]);
+
   const progressPercent = Math.min(
     100,
     Math.round((criterios.horasTotales / HORAS_OBJETIVO_TOTAL) * 100)
@@ -177,6 +204,32 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Qué te falta — checklist textual cuando aún no acreditás */}
+      {!todosLosCriteriosCumplidos && faltantes.length > 0 && (
+        <div
+          className="mt-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 px-4 py-3"
+          role="status"
+          aria-live="polite"
+        >
+          <p className="mono text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 text-center">
+            Te falta para acreditar
+          </p>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {faltantes.map((f) => (
+              <span
+                key={f}
+                className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[11.5px] font-medium text-slate-600 dark:text-slate-300"
+              >
+                <span className="material-icons text-[13px] text-amber-500" aria-hidden="true">
+                  radio_button_unchecked
+                </span>
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Acreditar — visible cuando se cumplen todos los criterios */}
       {todosLosCriteriosCumplidos && (

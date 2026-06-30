@@ -1,4 +1,5 @@
 import React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import Footer from "../components/layout/Footer";
 import AppModals from "../components/AppModals";
@@ -21,6 +22,7 @@ const StudentLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
 
   // Determine active tab from URL
   let activeTab: TabId = "inicio";
@@ -81,9 +83,11 @@ const StudentLayout: React.FC = () => {
           <div className="touch-pan-y animate-fade-in" {...swipeHandlers} style={style}>
             <PullToRefresh
               onRefresh={async () => {
-                // Aquí puedes agregar lógica de refresh
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-                window.location.reload();
+                // Refresca los datos sin recargar la página: conserva scroll,
+                // pestaña y sesión, y reusa el bundle ya cargado. invalidateQueries
+                // refetchea todas las queries activas (datos del alumno) y la
+                // promesa resuelve cuando terminan.
+                await queryClient.invalidateQueries();
               }}
             >
               <StudentDashboard

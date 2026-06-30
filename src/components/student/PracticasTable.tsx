@@ -424,8 +424,11 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
             onClick={onRequestNuevaPPS}
             className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-uflo-teal hover:shadow-lg hover:scale-110 hover:border-emerald-200 dark:hover:border-emerald-900/30 active:scale-90 transition"
             title="Solicitar agregar una PPS"
+            aria-label="Solicitar agregar una PPS"
           >
-            <span className="material-icons text-2xl">add</span>
+            <span className="material-icons text-2xl" aria-hidden="true">
+              add
+            </span>
           </button>
         </div>
       )}

@@ -48,7 +48,8 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
   );
 
   return (
-    <div
+    <nav
+      aria-label="Navegación principal"
       className="ed md:hidden fixed bottom-0 left-0 right-0 z-50"
       data-mode={resolvedTheme}
       data-accent="teal"
@@ -75,6 +76,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
             <motion.button
               key={tab.id}
               onClick={() => handleNavigate(tab)}
+              aria-current={on ? "page" : undefined}
               className={"tab" + (on ? " on" : "")}
               whileTap={{ scale: 0.9 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -97,6 +99,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
             >
               <div
                 className="tab__icon"
+                aria-hidden="true"
                 style={{ position: "relative", background: "transparent" }}
               >
                 {on && (
@@ -124,7 +127,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 };
 

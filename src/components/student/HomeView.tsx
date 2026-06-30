@@ -34,7 +34,12 @@ import {
   FIELD_ESTADO_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../../constants";
-import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
+import {
+  cleanDbValue,
+  formatDate,
+  normalizeStringForComparison,
+  parseToUTCDate,
+} from "../../utils/formatters";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import EmptyState from "../EmptyState";
 import ConfirmModal from "../ConfirmModal";
@@ -52,6 +57,7 @@ import StudentAcreditacionCard from "./home/StudentAcreditacionCard";
 import StudentPracRow, { type StudentPracRowData } from "./home/StudentPracRow";
 import StudentSolicitudItem, { type StudentSolicitudItemData } from "./home/StudentSolicitudItem";
 import StudentHomeAtlas from "./home/atlas/StudentHomeAtlas";
+import StudentOnboardingCard from "./StudentOnboardingCard";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 
 interface HomeViewProps {
@@ -186,16 +192,18 @@ const HomeView: React.FC<HomeViewProps> = ({
   const firstName = studentName.split(" ")[0];
 
   // ── Convocatorias ─────────────────────────────────────────────
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Hoy" como medianoche UTC de la fecha-calendario local. Las fechas de los
+  // lanzamientos son texto (a veces ISO date-only); `parseToUTCDate` las lleva a
+  // medianoche UTC de su fecha-calendario, evitando el corrimiento de un día que
+  // producía `new Date(...).setHours(0,0,0,0)` en zonas con offset negativo (AR).
+  const nowLocal = new Date();
+  const today = new Date(Date.UTC(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate()));
 
   const startedLanzamientoIds = new Set(
     lanzamientos
       .filter((l) => {
-        const fechaInicio = l[FIELD_FECHA_INICIO_LANZAMIENTOS];
-        if (!fechaInicio) return false;
-        const startDate = new Date(fechaInicio);
-        startDate.setHours(0, 0, 0, 0);
+        const startDate = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
+        if (!startDate) return false;
         return startDate <= today;
       })
       .map((l) => l.id)
@@ -227,11 +235,8 @@ const HomeView: React.FC<HomeViewProps> = ({
   // archivado), siempre que aún no hayan comenzado.
   const openIds = new Set(openLanzamientos.map((l) => l.id));
   const notStarted = (l: LanzamientoPPS) => {
-    const ini = l[FIELD_FECHA_INICIO_LANZAMIENTOS];
-    if (!ini) return false;
-    const d = new Date(ini);
-    if (Number.isNaN(d.getTime())) return false;
-    d.setHours(0, 0, 0, 0);
+    const d = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
+    if (!d) return false;
     return d.getTime() >= today.getTime();
   };
   const closedLanzamientos = (() => {
@@ -272,6 +277,13 @@ const HomeView: React.FC<HomeViewProps> = ({
 
   const hasOpen = openLanzamientos.length > 0;
   const hasClosed = closedLanzamientos.length > 0;
+
+  // Alumno "nuevo de verdad": sin prácticas, sin solicitudes y sin inscripciones.
+  // Para este caso mostramos un onboarding en vez del EmptyState seco.
+  const isBrandNewStudent =
+    (practicas?.length ?? 0) === 0 &&
+    (solicitudes?.length ?? 0) === 0 &&
+    (myEnrollments?.length ?? 0) === 0;
 
   // ── Datos derivados para el rail editorial (desktop) ──────────
   const MESES = [
@@ -322,10 +334,8 @@ const HomeView: React.FC<HomeViewProps> = ({
       if (!lanzamiento) continue;
       // El consentimiento es PREVIO al inicio: solo lo pedimos para una PPS que
       // todavía no arrancó. Si ya inició (o terminó), no corresponde firmarlo.
-      const inicioRaw = lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS];
-      if (!inicioRaw) continue;
-      const inicioDate = new Date(inicioRaw as string);
-      inicioDate.setHours(0, 0, 0, 0);
+      const inicioDate = parseToUTCDate(lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
+      if (!inicioDate) continue;
       if (inicioDate < today) continue;
       return {
         enrollment: e,
@@ -361,9 +371,8 @@ const HomeView: React.FC<HomeViewProps> = ({
         (allLanzamientos || []).find((l) => l.id === lanzamientoId);
       if (!lanzamiento) continue;
       const inicioRaw = lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS];
-      if (!inicioRaw) continue;
-      const inicioDate = new Date(inicioRaw as string);
-      inicioDate.setHours(0, 0, 0, 0);
+      const inicioDate = parseToUTCDate(inicioRaw as string);
+      if (!inicioDate) continue;
       if (inicioDate < today) continue;
       return {
         ppsName: ((lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "tu PPS")
@@ -632,12 +641,19 @@ const HomeView: React.FC<HomeViewProps> = ({
 
             {!hasOpen && !hasClosed ? (
               <div className="mt-2">
-                <EmptyState
-                  type="no-convocatorias"
-                  title="No hay convocatorias abiertas"
-                  message="Estate atento al grupo de WhatsApp para no perderte novedades."
-                  size="lg"
-                />
+                {isBrandNewStudent ? (
+                  <StudentOnboardingCard
+                    studentName={studentName}
+                    onNavigate={(tab) => onNavigate(tab as TabId)}
+                  />
+                ) : (
+                  <EmptyState
+                    type="no-convocatorias"
+                    title="No hay convocatorias abiertas"
+                    message="Estate atento al grupo de WhatsApp para no perderte novedades."
+                    size="lg"
+                  />
+                )}
               </div>
             ) : null}
 
