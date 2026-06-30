@@ -365,9 +365,9 @@ html.dark .ah-root .ah-next__date .m {
   padding: 26px 28px 22px;
   cursor: pointer;
   transition:
-    box-shadow var(--duration-base) var(--ease-standard),
-    border-color var(--duration-base) var(--ease-standard),
-    transform var(--duration-base) var(--ease-standard);
+    box-shadow 280ms var(--ease-out),
+    border-color 280ms var(--ease-out),
+    transform 280ms var(--ease-out);
   display: flex;
   flex-direction: column;
 }
@@ -387,25 +387,7 @@ html.dark .ah-root .ah-next__date .m {
   opacity: 0.85;
   pointer-events: none;
   z-index: 0;
-  transition: opacity var(--duration-base) var(--ease-standard);
-}
-/* Barra de acento vertical a la izquierda (aparece en hover). */
-.ah-conv::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--ac, var(--primary-500));
-  opacity: 0;
-  transform: scaleY(0.4);
-  transform-origin: center;
-  pointer-events: none;
-  z-index: 1;
-  transition:
-    opacity var(--duration-base) var(--ease-standard),
-    transform var(--duration-base) var(--ease-standard);
+  transition: opacity 280ms var(--ease-out);
 }
 .ah-conv > * {
   position: relative;
@@ -418,10 +400,6 @@ html.dark .ah-root .ah-next__date .m {
 }
 .ah-conv:hover::before {
   opacity: 1;
-}
-.ah-conv:hover::after {
-  opacity: 0.9;
-  transform: scaleY(1);
 }
 .ah-conv__top {
   display: flex;
@@ -515,11 +493,6 @@ html.dark .ah-root .ah-next__date .m {
 .ah-conv__cell .v .u {
   color: var(--fg-subtle);
   font-weight: 400;
-}
-/* La primera celda (Horas) resalta en el color del área: es el dato que más
-   mira el alumno y le da un pop de color a la tabla de datos. */
-.ah-conv__cell:first-child .v {
-  color: color-mix(in oklab, var(--ac, var(--primary-500)) 70%, var(--fg));
 }
 .ah-conv__foot {
   display: flex;

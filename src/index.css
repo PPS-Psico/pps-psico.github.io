@@ -437,7 +437,7 @@ p {
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translate3d(0, 20px, 0);
+    transform: translate3d(0, 12px, 0);
   }
 
   to {
@@ -447,7 +447,8 @@ p {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInUp 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  will-change: transform, opacity;
 }
 
 /* 3. Subtle Bob para Ilustraciones */
@@ -470,7 +471,7 @@ p {
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
+    transform: scale(0.98) translateY(8px);
   }
 
   to {
@@ -480,7 +481,7 @@ p {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: scaleIn 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
 /* 6. Fade In simple */
@@ -495,7 +496,18 @@ p {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+/* Respeta a quien pide menos movimiento: las animaciones de entrada se vuelven
+   instantáneas (sin desplazamiento ni fundido prolongado). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-scale-in {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
 }
 
 /* 7. Shimmer effect for skeletons */
