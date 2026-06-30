@@ -13,7 +13,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const baseClasses =
-  "inline-flex items-center justify-center font-bold rounded-lg transition-all duration-300 ease-in-out shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 active:scale-95";
+  "inline-flex items-center justify-center font-bold rounded-lg transition-[transform,box-shadow,background-color,border-color] duration-300 ease-in-out shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 active:scale-95";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:

@@ -31,7 +31,7 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <div
-      className={`glass-panel rounded-3xl transition-all duration-300 ${hoverable ? "glass-card-hover cursor-pointer" : ""} ${className}`}
+      className={`glass-panel rounded-3xl transition-[transform,box-shadow,border-color] duration-300 ${hoverable ? "glass-card-hover cursor-pointer active:scale-[.99]" : ""} ${className}`}
       style={style}
     >
       {(title || description || actions) && (
