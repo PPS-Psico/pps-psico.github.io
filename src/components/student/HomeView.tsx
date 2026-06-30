@@ -491,7 +491,11 @@ const HomeView: React.FC<HomeViewProps> = ({
           practicas={practicas ?? []}
           solicitudes={solicitudes ?? []}
           informeTasks={informeTasks ?? []}
-          consent={pendingConsent ? { ppsName: pendingConsent.ppsName } : null}
+          consent={
+            pendingConsent
+              ? { ppsName: pendingConsent.ppsName, lanzamientoId: pendingConsent.lanzamiento.id }
+              : null
+          }
           upcomingStart={upcomingStart}
           onStartConsent={() =>
             pendingConsent &&

@@ -30,6 +30,10 @@ interface StudentConvCardProps {
   onFirmarConsentimiento?: () => void;
   /** Fecha límite de firma, formato corto ("2 jul"). Opcional. */
   consentDeadline?: string;
+  /** En una card CERRADA donde el alumno quedó seleccionado y aún no firmó:
+      el CTA pasa de "Ver convocados" a "Firmar consentimiento" (sin morphear
+      toda la card como hace `needsConsent`). */
+  pendingConsentCta?: boolean;
 }
 
 /**
@@ -48,6 +52,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
   needsConsent = false,
   onFirmarConsentimiento,
   consentDeadline,
+  pendingConsentCta = false,
 }) => {
   const area = lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] || "Clínica";
   const color = getAreaColor(area);
@@ -238,9 +243,24 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
                 <Icon name="arrow" size={15} strokeWidth={2.4} />
               </button>
             )
+          ) : // Cerrada. Si el alumno quedó SELECCIONADO y aún no firmó, el CTA lo
+          // lleva directo a firmar el consentimiento (el dato más accionable de
+          // su resultado). Si no, ofrece "Ver convocados".
+          pendingConsentCta && onFirmarConsentimiento ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.success();
+                onFirmarConsentimiento();
+              }}
+              className="cc__cta"
+              style={{ background: color }}
+            >
+              Firmar consentimiento
+              <Icon name="arrow" size={15} strokeWidth={2.4} />
+            </button>
           ) : (
-            // Cerrada: cualquiera (inscripto, seleccionado o externo) puede ver la
-            // lista de convocados. La firma del consentimiento vive en el banner del Home.
             <button
               type="button"
               onClick={(e) => {

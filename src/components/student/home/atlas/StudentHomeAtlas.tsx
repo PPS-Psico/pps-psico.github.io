@@ -38,7 +38,7 @@ interface StudentHomeAtlasProps {
   informeTasks: InformeTask[];
   closedLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
-  consent: { ppsName: string } | null;
+  consent: { ppsName: string; lanzamientoId: string } | null;
   upcomingStart: { ppsName: string; startDate: string } | null;
   onStartConsent: () => void;
   onOpenDetalle: (l: LanzamientoPPS) => void;
@@ -661,16 +661,24 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 marginBottom: 28,
               }}
             >
-              {closedLanzamientos.map((l) => (
-                <StudentConvCard
-                  key={l.id}
-                  lanzamiento={l}
-                  enrollment={enrollmentMap.get(l.id) ?? null}
-                  isOpen={false}
-                  onOpen={() => onOpenDetalle(l)}
-                  onVerConvocados={() => onVerConvocados(l)}
-                />
-              ))}
+              {closedLanzamientos.map((l) => {
+                // Si esta convocatoria cerrada es en la que el alumno quedó
+                // seleccionado y aún debe firmar, su CTA pasa a "Firmar
+                // consentimiento" (lleva al mismo modal que el "Próximo paso").
+                const isConsentCard = consent?.lanzamientoId === l.id;
+                return (
+                  <StudentConvCard
+                    key={l.id}
+                    lanzamiento={l}
+                    enrollment={enrollmentMap.get(l.id) ?? null}
+                    isOpen={false}
+                    pendingConsentCta={isConsentCard}
+                    onFirmarConsentimiento={isConsentCard ? onStartConsent : undefined}
+                    onOpen={() => onOpenDetalle(l)}
+                    onVerConvocados={() => onVerConvocados(l)}
+                  />
+                );
+              })}
             </div>
           </>
         ) : null}
