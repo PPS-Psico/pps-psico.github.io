@@ -79,7 +79,7 @@ const Tabs: React.FC<TabsProps> = ({
 
   return (
     <div
-      className={`flex flex-col w-full glass-panel rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative transition-all duration-300 ${className}`}
+      className={`flex flex-col w-full glass-panel rounded-[2rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative transition duration-300 ${className}`}
     >
       {/* --- HEADER: NAVIGATION BAR --- */}
       <div className="flex-shrink-0 px-4 sm:px-8 py-6 border-b border-slate-100 dark:border-slate-800/50 bg-white/80 dark:bg-[#0F172A]/90 backdrop-blur-md sticky top-0 z-20">
@@ -93,7 +93,7 @@ const Tabs: React.FC<TabsProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => onTabChange(tab.id)}
-                    className={`relative flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
+                    className={`relative flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-bold transition duration-300 ${
                       isActive
                         ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-lg shadow-slate-200/50 dark:shadow-black/20"
                         : "text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
@@ -140,7 +140,7 @@ const Tabs: React.FC<TabsProps> = ({
           >
             {/* Active Tab Background - Positioned based on actual measurements */}
             <div
-              className="absolute inset-y-1.5 bg-white dark:bg-slate-700/80 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-none ring-1 ring-black/5 dark:ring-white/10 transition-all duration-300 ease-out"
+              className="absolute inset-y-1.5 bg-white dark:bg-slate-700/80 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-none ring-1 ring-black/5 dark:ring-white/10 transition duration-300 ease-out"
               style={{
                 left: `${indicatorStyle.left}px`,
                 width: `${indicatorStyle.width}px`,

@@ -45,7 +45,7 @@ const AdminTestingView: React.FC = () => {
               )}
 
               <div
-                className={`transition-all duration-300 ease-out transform ${isActive ? "-translate-y-1" : "group-hover:-translate-y-0.5"}`}
+                className={`transition duration-300 ease-out transform ${isActive ? "-translate-y-1" : "group-hover:-translate-y-0.5"}`}
               >
                 <div
                   className={`p-1.5 rounded-xl transition-colors duration-300 ${isActive ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" : "text-slate-400 dark:text-slate-500"}`}
@@ -89,7 +89,7 @@ const AdminTestingView: React.FC = () => {
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setActiveTabId("student")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition duration-200 ${
               activeTabId === "student"
                 ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-sm"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
@@ -100,7 +100,7 @@ const AdminTestingView: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTabId("admin")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition duration-200 ${
               activeTabId === "admin"
                 ? "bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-300 shadow-sm"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"

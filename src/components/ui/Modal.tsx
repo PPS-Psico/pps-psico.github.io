@@ -38,7 +38,7 @@ const Modal: React.FC<ModalProps> = ({ title, message, isOpen, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md sm:max-w-lg text-center transform transition-all duration-300 scale-100 opacity-100 border border-slate-200 dark:border-slate-700"
+        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md sm:max-w-lg text-center transform transition duration-300 scale-100 opacity-100 border border-slate-200 dark:border-slate-700"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 w-14 h-14 rounded-full flex items-center justify-center mb-5">
@@ -56,7 +56,7 @@ const Modal: React.FC<ModalProps> = ({ title, message, isOpen, onClose }) => {
         <button
           onClick={onClose}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl text-sm sm:text-base 
-                     transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 shadow-lg hover:shadow-blue-500/20"
+                     transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 shadow-lg hover:shadow-blue-500/20"
           aria-label="Cerrar modal"
         >
           Entendido

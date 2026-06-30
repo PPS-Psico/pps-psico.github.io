@@ -68,7 +68,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {/* 1. HORAS TOTALES */}
             <div
-              className={`p-4 rounded-2xl border transition-all duration-300 ${criterios.cumpleHorasTotales ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700"}`}
+              className={`p-4 rounded-2xl border transition duration-300 ${criterios.cumpleHorasTotales ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700"}`}
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -98,7 +98,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
 
             {/* 2. ROTACIÓN */}
             <div
-              className={`p-4 rounded-2xl border transition-all duration-300 ${criterios.cumpleRotacion ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700"}`}
+              className={`p-4 rounded-2xl border transition duration-300 ${criterios.cumpleRotacion ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700"}`}
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -125,7 +125,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
 
             {/* 3. ESPECIALIDAD */}
             <div
-              className={`p-4 rounded-2xl border transition-all duration-300 ${criterios.cumpleHorasOrientacion ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700"}`}
+              className={`p-4 rounded-2xl border transition duration-300 ${criterios.cumpleHorasOrientacion ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700"}`}
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -157,7 +157,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
 
             {/* 4. ESTADO PRÁCTICAS */}
             <div
-              className={`p-4 rounded-2xl border transition-all duration-300 ${!criterios.tienePracticasPendientes ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-amber-50 border-amber-200 dark:bg-amber-900/10 dark:border-amber-800/30"}`}
+              className={`p-4 rounded-2xl border transition duration-300 ${!criterios.tienePracticasPendientes ? "bg-white border-emerald-100 shadow-sm dark:bg-slate-800 dark:border-emerald-900/30" : "bg-amber-50 border-amber-200 dark:bg-amber-900/10 dark:border-amber-800/30"}`}
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -218,7 +218,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
             <button
               onClick={onConfirm}
               className={`
-                flex-1 sm:flex-none px-8 py-3 text-white rounded-xl text-sm font-bold shadow-lg transition-all flex items-center justify-center gap-2
+                flex-1 sm:flex-none px-8 py-3 text-white rounded-xl text-sm font-bold shadow-lg transition flex items-center justify-center gap-2
                 ${
                   criterios.cumpleHorasTotales &&
                   criterios.cumpleRotacion &&

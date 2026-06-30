@@ -440,7 +440,7 @@ const InformeCard: React.FC<InformeCardProps> = ({ task, onConfirmar }) => {
 
       <article className="relative flex items-center gap-5">
         <motion.div
-          className={`flex-shrink-0 size-12 rounded-xl flex items-center justify-center ${statusInfo.iconContainerClass} transition-all duration-300`}
+          className={`flex-shrink-0 size-12 rounded-xl flex items-center justify-center ${statusInfo.iconContainerClass} transition duration-300`}
           whileHover={{ scale: 1.1, rotate: 5 }}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
         >

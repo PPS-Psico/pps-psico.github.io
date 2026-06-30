@@ -193,7 +193,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                   setTargetYear(year);
                   setActiveTab("overview");
                 }}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${targetYear === year ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"}`}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition ${targetYear === year ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"}`}
               >
                 {year}
               </button>

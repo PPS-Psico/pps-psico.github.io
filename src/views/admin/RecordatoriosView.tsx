@@ -613,7 +613,7 @@ const RecordatoriosView: React.FC<RecordatoriosViewProps> = ({
             <AdminCard
               key={reminder.id}
               variant={reminder.completed ? "default" : "elevated"}
-              className={`transition-all ${reminder.completed ? "opacity-60" : ""}`}
+              className={`transition ${reminder.completed ? "opacity-60" : ""}`}
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">

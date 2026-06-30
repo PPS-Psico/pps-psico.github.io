@@ -339,7 +339,7 @@ const Auth: React.FC = () => {
             <button
               type="button"
               onClick={() => setMode("register")}
-              className="font-bold text-[var(--ink)] hover:underline transition-all"
+              className="font-bold text-[var(--ink)] hover:underline transition"
             >
               Crear cuenta de estudiante
             </button>
@@ -644,7 +644,7 @@ const Auth: React.FC = () => {
 
   // Alerta de error (reutilizable en desktop y mobile)
   const errorAlert = error ? (
-    <div className="flex items-start gap-4 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl shadow-sm animate-shake transition-all duration-300">
+    <div className="flex items-start gap-4 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl shadow-sm animate-shake transition duration-300">
       <div className="p-2 bg-white dark:bg-rose-950 rounded-full text-rose-500 dark:text-rose-400 shadow-sm border border-rose-100 dark:border-rose-900/50 flex-shrink-0">
         <AuthIcon name="alert" size={18} />
       </div>

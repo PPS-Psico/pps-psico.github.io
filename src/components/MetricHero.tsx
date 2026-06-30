@@ -36,7 +36,7 @@ const HeroMetric: React.FC<HeroMetricProps> = ({
   return (
     <button
       onClick={onClick}
-      className={`group relative text-left w-full p-6 rounded-2xl border bg-gradient-to-br transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 dark:focus-visible:ring-offset-slate-900 ${colorClasses[color]}`}
+      className={`group relative text-left w-full p-6 rounded-2xl border bg-gradient-to-br transition duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400 dark:focus-visible:ring-offset-slate-900 ${colorClasses[color]}`}
       aria-label={title}
     >
       <div className="flex justify-between items-start">

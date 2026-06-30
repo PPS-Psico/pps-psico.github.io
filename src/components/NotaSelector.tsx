@@ -89,7 +89,7 @@ const NotaSelector: React.FC<NotaSelectorProps> = ({
               onMouseDown={(e) => e.preventDefault()} // Evita que el botón pierda foco antes del click
               onClick={(e) => handleOptionClick(e, nota)}
               className={`
-                        h-9 w-full rounded-lg font-bold text-sm border transition-all duration-150 flex items-center justify-center
+                        h-9 w-full rounded-lg font-bold text-sm border transition duration-150 flex items-center justify-center
                         ${colorClass}
                     `}
             >

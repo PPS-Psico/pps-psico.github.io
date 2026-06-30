@@ -104,7 +104,7 @@ export const LaunchHistory: React.FC<LaunchHistoryProps> = ({
         return (
           <div
             key={launch.id}
-            className={`bg-white dark:bg-slate-800/50 p-4 rounded-xl border transition-all hover:shadow-md ${
+            className={`bg-white dark:bg-slate-800/50 p-4 rounded-xl border transition hover:shadow-md ${
               isAbierta
                 ? "border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-100 dark:ring-emerald-900/30"
                 : isProgramada
@@ -181,7 +181,7 @@ export const LaunchHistory: React.FC<LaunchHistoryProps> = ({
               {isProgramada && mensajeWhatsApp && (
                 <button
                   onClick={() => onCopyWhatsApp(mensajeWhatsApp || "")}
-                  className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${
+                  className={`hover-lift flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-sm ${
                     isCopied
                       ? "bg-emerald-500 text-white shadow-emerald-500/20"
                       : "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400"

@@ -281,10 +281,10 @@ const RequestListItem: React.FC<{
 
   return (
     <div
-      className={`group relative bg-white dark:bg-slate-900 rounded-xl border transition-all duration-300 ${isExpanded ? "border-blue-400 dark:border-indigo-500 ring-1 ring-blue-100 dark:ring-indigo-500/30 shadow-lg" : "border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-indigo-500 shadow-sm"}`}
+      className={`group relative bg-white dark:bg-slate-900 rounded-xl border transition duration-300 ${isExpanded ? "border-blue-400 dark:border-indigo-500 ring-1 ring-blue-100 dark:ring-indigo-500/30 shadow-lg" : "border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-indigo-500 shadow-sm"}`}
     >
       <div
-        className={`absolute left-0 top-0 bottom-0 w-1.5 transition-all ${isExpanded ? "w-1" : "w-1.5"} ${statusColor} rounded-l-xl`}
+        className={`absolute left-0 top-0 bottom-0 w-1.5 transition ${isExpanded ? "w-1" : "w-1.5"} ${statusColor} rounded-l-xl`}
       ></div>
       <div
         onClick={() => setIsExpanded(!isExpanded)}
@@ -337,7 +337,7 @@ const RequestListItem: React.FC<{
         </div>
       </div>
       <div
-        className={`grid transition-all duration-500 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-800" : "grid-rows-[0fr] opacity-0 h-0 overflow-hidden"}`}
+        className={`grid transition duration-500 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-800" : "grid-rows-[0fr] opacity-0 h-0 overflow-hidden"}`}
       >
         <div className="overflow-hidden p-6 space-y-6">
           {detalle ? (

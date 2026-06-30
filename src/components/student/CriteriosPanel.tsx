@@ -186,7 +186,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
               haptics.success();
               onRequestFinalization();
             }}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm shadow-emerald-500/20 active:scale-95 flex items-center gap-1.5 leading-none"
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition shadow-sm shadow-emerald-500/20 active:scale-95 flex items-center gap-1.5 leading-none"
           >
             <span className="material-icons text-base">verified</span>
             Acreditar PPS

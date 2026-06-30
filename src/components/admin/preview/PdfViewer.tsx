@@ -99,7 +99,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ url, onLoad }) => {
           rel="noopener noreferrer"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 px-6 py-3 rounded-xl font-bold transition-all shadow-lg"
+          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 px-6 py-3 rounded-xl font-bold transition shadow-lg"
         >
           <span className="material-icons">download</span>
           Descargar PDF

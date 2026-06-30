@@ -248,7 +248,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id, tab.path)}
                     className={`
-                    flex flex-col items-center justify-center flex-1 py-2.5 gap-0.5 transition-all duration-200
+                    flex flex-col items-center justify-center flex-1 py-2.5 gap-0.5 transition duration-200
                     ${
                       isActive
                         ? "text-blue-600 dark:text-blue-400"

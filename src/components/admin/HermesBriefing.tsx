@@ -128,7 +128,7 @@ const HermesBriefing: React.FC<HermesBriefingProps> = ({
   const metricas: DailyBriefMetrics = dailyBrief?.metricas ?? {};
 
   return (
-    <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0B1120] text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 transition-all duration-500 shadow-sm">
+    <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0B1120] text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 transition duration-500 shadow-sm">
       {/* Ambient glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div

@@ -144,7 +144,7 @@ const EmailDraftReviewModal: React.FC<EmailDraftReviewModalProps> = ({
               ref={textareaRef}
               value={editedText}
               onChange={(e) => setEditedText(e.target.value)}
-              className="w-full min-h-[280px] p-4 text-sm font-mono rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 transition-all leading-relaxed"
+              className="w-full min-h-[280px] p-4 text-sm font-mono rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 transition leading-relaxed"
               placeholder="El borrador aparecerá aquí..."
               spellCheck
             />
@@ -155,7 +155,7 @@ const EmailDraftReviewModal: React.FC<EmailDraftReviewModalProps> = ({
             <button
               onClick={handleDiscard}
               disabled={isDiscarding || isApproving}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 dark:hover:bg-rose-900/10 dark:hover:text-rose-400 dark:hover:border-rose-800 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 dark:hover:bg-rose-900/10 dark:hover:text-rose-400 dark:hover:border-rose-800 transition disabled:opacity-50"
             >
               {isDiscarding ? (
                 <span className="material-icons animate-spin !text-base">progress_activity</span>
@@ -167,14 +167,14 @@ const EmailDraftReviewModal: React.FC<EmailDraftReviewModalProps> = ({
             <div className="flex-1" />
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               Cerrar
             </button>
             <button
               onClick={handleApprove}
               disabled={isApproving || isDiscarding}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isApproving ? (
                 <span className="material-icons animate-spin !text-base">progress_activity</span>

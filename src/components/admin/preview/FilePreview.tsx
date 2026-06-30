@@ -249,7 +249,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 px-8 py-4 rounded-xl font-bold transition-all shadow-lg hover:shadow-blue-500/25 flex items-center gap-3"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 px-8 py-4 rounded-xl font-bold transition shadow-lg hover:shadow-blue-500/25 flex items-center gap-3"
             >
               <span className="material-icons">download</span>
               Descargar archivo
@@ -350,7 +350,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             rel="noopener noreferrer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 transition-all shadow-lg"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 transition shadow-lg"
           >
             <span className="material-icons text-sm">download</span>
             <span className="hidden sm:inline text-sm font-medium">Descargar</span>
@@ -384,7 +384,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               whileHover={{ scale: 1.1, x: 5 }}
               whileTap={{ scale: 0.9 }}
               onClick={handlePrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl group z-20"
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition border border-white/10 shadow-2xl group z-20"
             >
               <span className="material-icons !text-3xl group-hover:-translate-x-1 transition-transform">
                 chevron_left
@@ -396,7 +396,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               whileHover={{ scale: 1.1, x: -5 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl group z-20"
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl bg-black/40 backdrop-blur-md hover:bg-black/60 text-white/80 hover:text-white transition border border-white/10 shadow-2xl group z-20"
             >
               <span className="material-icons !text-3xl group-hover:translate-x-1 transition-transform">
                 chevron_right
@@ -450,7 +450,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                       }}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden transition-all border-2 ${
+                      className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden transition border-2 ${
                         isActive
                           ? "border-blue-500 shadow-lg shadow-blue-500/25"
                           : "border-transparent hover:border-white/20"

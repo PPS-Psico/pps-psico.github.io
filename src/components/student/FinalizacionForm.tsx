@@ -59,7 +59,7 @@ const StepDots: React.FC<{ index: number; total: number }> = ({ index, total }) 
     {Array.from({ length: total }).map((_, i) => (
       <span
         key={i}
-        className="h-1.5 rounded-full transition-all duration-300"
+        className="h-1.5 rounded-full transition duration-300"
         style={{
           width: i === index ? 22 : 7,
           background: i <= index ? "var(--accent)" : "var(--line-strong)",
@@ -118,7 +118,7 @@ const RowFileButton: React.FC<{
   return (
     <div
       onClick={onPick}
-      className="group cursor-pointer rounded-xl border-2 border-dashed px-3 py-2.5 flex items-center gap-2.5 transition-all duration-200"
+      className="group cursor-pointer rounded-xl border-2 border-dashed px-3 py-2.5 flex items-center gap-2.5 transition duration-200"
       style={{
         borderColor: done ? "var(--accent)" : "var(--line-strong)",
         background: done ? "var(--tint)" : "var(--bg-sunken)",
@@ -981,7 +981,7 @@ const FooterButtons: React.FC<{
         type="button"
         onClick={onNext}
         disabled={nextDisabled}
-        className="px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 flex items-center gap-2"
+        className="px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 flex items-center gap-2"
         style={{ background: "var(--accent)" }}
       >
         {isSubmitting ? "Enviando…" : nextLabel}

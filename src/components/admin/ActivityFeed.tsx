@@ -64,11 +64,11 @@ const ActivityItemCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
   return (
     <div
       onClick={handleAction}
-      className={`group relative flex items-start gap-4 p-4 rounded-xl transition-all duration-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent hover:border-slate-100 dark:hover:border-slate-700/50`}
+      className={`group relative flex items-start gap-4 p-4 rounded-xl transition duration-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent hover:border-slate-100 dark:hover:border-slate-700/50`}
     >
       {/* Avatar Icon */}
       <div
-        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.bgIcon} shadow-sm ring-4 ring-transparent ${config.highlightRing} transition-all duration-300`}
+        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.bgIcon} shadow-sm ring-4 ring-transparent ${config.highlightRing} transition duration-300`}
       >
         <span className="material-icons !text-lg">{config.icon}</span>
       </div>
@@ -119,7 +119,7 @@ const ActivityItemCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
       </div>
 
       {/* Action Icon (Visible on Hover) */}
-      <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-2 group-hover:translate-x-0">
+      <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition duration-200 transform translate-x-2 group-hover:translate-x-0">
         <div className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg">
           {config.actionText} <span className="material-icons !text-xs">arrow_forward</span>
         </div>

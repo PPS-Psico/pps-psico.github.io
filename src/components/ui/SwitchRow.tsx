@@ -20,7 +20,7 @@ const SwitchRow: React.FC<SwitchRowProps> = ({
 }) => (
   <div
     onClick={() => !disabled && onChange(!checked)}
-    className={`flex items-center justify-between cursor-pointer group p-4 rounded-2xl border transition-all duration-200 
+    className={`flex items-center justify-between cursor-pointer group p-4 rounded-2xl border transition duration-200 
             ${
               checked
                 ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-500/50"

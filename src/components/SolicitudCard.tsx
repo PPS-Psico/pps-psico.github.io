@@ -25,7 +25,7 @@ const SolicitudCard: React.FC<SolicitudCardProps> = ({ solicitud }) => {
   const showNotes = normalizedStatus === "no se pudo concretar";
 
   return (
-    <article className="group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 overflow-hidden relative">
+    <article className="group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition duration-300 hover:shadow-lg hover:-translate-y-1 overflow-hidden relative">
       {/* Accent Border */}
       <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${visuals.accentBg}`}></div>
 

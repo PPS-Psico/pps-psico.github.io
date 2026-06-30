@@ -41,7 +41,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
         p-6 rounded-[1.5rem] 
         border border-slate-200 dark:border-slate-700 
         shadow-sm dark:shadow-lg dark:shadow-slate-900/50
-        transition-all duration-300 
+        transition duration-300 
         ${className || ""}
     `;
 

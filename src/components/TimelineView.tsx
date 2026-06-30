@@ -265,7 +265,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ isTestingMode = false }) =>
                 <div className="absolute left-[27px] top-10 bottom-0 w-0.5 bg-slate-200 dark:bg-slate-800 -z-10 group-hover:bg-slate-300 dark:group-hover:bg-slate-700 transition-colors"></div>
               )}
 
-              <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition duration-300 hover:-translate-y-1">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm text-slate-900 dark:text-white">

@@ -292,31 +292,31 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-black/40 p-1 rounded-lg border border-transparent dark:border-white/5">
               <button
                 onClick={() => setFilterType("all")}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${filterType === "all" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${filterType === "all" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
               >
                 Todo
               </button>
               <button
                 onClick={() => setFilterType("vencidas")}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "vencidas" ? "bg-white dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 shadow-sm border border-transparent dark:border-rose-800/50" : "text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400"}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 ${filterType === "vencidas" ? "bg-white dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 shadow-sm border border-transparent dark:border-rose-800/50" : "text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400"}`}
               >
                 <span className="material-icons !text-xs">event_busy</span> Vencidas
               </button>
               <button
                 onClick={() => setFilterType("enGestion")}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "enGestion" ? "bg-white dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 shadow-sm border border-transparent dark:border-blue-800/50" : "text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 ${filterType === "enGestion" ? "bg-white dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 shadow-sm border border-transparent dark:border-blue-800/50" : "text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"}`}
               >
                 <span className="material-icons !text-xs">sync_alt</span> En gestión
               </button>
               <button
                 onClick={() => setFilterType("confirmadas")}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "confirmadas" ? "bg-white dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 shadow-sm border border-transparent dark:border-emerald-800/50" : "text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-400"}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 ${filterType === "confirmadas" ? "bg-white dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 shadow-sm border border-transparent dark:border-emerald-800/50" : "text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-400"}`}
               >
                 <span className="material-icons !text-xs">verified</span> Confirmadas / Lanzadas
               </button>
               <button
                 onClick={() => setFilterType("demoradas")}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${filterType === "demoradas" ? "bg-white dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 shadow-sm border border-transparent dark:border-orange-800/50" : "text-slate-500 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400"}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 ${filterType === "demoradas" ? "bg-white dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 shadow-sm border border-transparent dark:border-orange-800/50" : "text-slate-500 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400"}`}
               >
                 <span className="material-icons !text-xs">hourglass_empty</span> Demoradas
               </button>
@@ -330,7 +330,7 @@ const ConvocatoriaManager: React.FC<ConvocatoriaManagerProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Filtrar por nombre de PPS..."
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-white/10 rounded-lg text-sm bg-slate-50 dark:bg-black/20 focus:border-blue-500 focus:bg-white dark:focus:bg-black/40 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-white/10 rounded-lg text-sm bg-slate-50 dark:bg-black/20 focus:border-blue-500 focus:bg-white dark:focus:bg-black/40 focus:ring-2 focus:ring-blue-500/20 outline-none transition shadow-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 dark:group-focus-within:text-blue-400 transition-colors">
               search

@@ -46,7 +46,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             bg-white dark:bg-slate-950 
             py-3.5 pr-4 text-sm font-medium 
             text-slate-900 dark:text-slate-100 
-            shadow-sm transition-all duration-200 ease-out
+            shadow-sm transition duration-200 ease-out
             placeholder:text-slate-400 dark:placeholder:text-slate-600
             
             ${

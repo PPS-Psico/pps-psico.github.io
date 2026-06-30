@@ -48,7 +48,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             bg-white dark:bg-slate-950 
             py-3.5 pr-10 text-sm font-medium 
             text-slate-900 dark:text-slate-100 
-            shadow-sm transition-all duration-200 ease-out
+            shadow-sm transition duration-200 ease-out
             
             ${
               error

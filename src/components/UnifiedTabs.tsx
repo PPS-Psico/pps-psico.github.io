@@ -72,7 +72,7 @@ const UnifiedTabs: React.FC<UnifiedTabsProps> = ({
             aria-selected={isActive}
             onClick={() => onTabChange(tab.id, tab.path)}
             className={`
-                            relative flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-all duration-300 outline-none whitespace-nowrap z-10 flex-shrink-0
+                            relative flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition duration-300 outline-none whitespace-nowrap z-10 flex-shrink-0
                             ${variant === "primary" ? "rounded-full" : "rounded-xl"}
                             ${isActive ? activeTextClass : inactiveTextClass}
                         `}

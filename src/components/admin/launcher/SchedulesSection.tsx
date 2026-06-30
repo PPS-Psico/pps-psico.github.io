@@ -110,7 +110,7 @@ export const SchedulesSection: React.FC<SchedulesSectionProps> = ({
                       <button
                         type="button"
                         onClick={() => removeSchedule(index)}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                         title="Eliminar horario"
                       >
                         <span className="material-icons !text-xl">delete</span>

@@ -193,7 +193,7 @@ const AppHeader: React.FC = () => {
         initial={{ y: 0 }}
         animate={{ y: isHeaderVisible ? 0 : -80 }}
         transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="ed no-print fixed md:sticky top-0 left-0 right-0 z-50 transition-all duration-300"
+        className="ed no-print fixed md:sticky top-0 left-0 right-0 z-50 transition duration-300"
         data-mode={resolvedTheme}
         data-accent="teal"
         style={{
@@ -252,14 +252,14 @@ const AppHeader: React.FC = () => {
       initial={{ y: 0 }}
       animate={{ y: isHeaderVisible ? 0 : -80 }}
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`no-print fixed md:sticky top-0 left-0 right-0 z-50 bg-white dark:bg-gray-950/80 backdrop-blur-xl transition-all duration-300 ${hasScrolled ? "border-b border-slate-200/70 dark:border-white/10 shadow-sm" : "border-b border-transparent"}`}
+      className={`no-print fixed md:sticky top-0 left-0 right-0 z-50 bg-white dark:bg-gray-950/80 backdrop-blur-xl transition duration-300 ${hasScrolled ? "border-b border-slate-200/70 dark:border-white/10 shadow-sm" : "border-b border-transparent"}`}
     >
       <div className={`px-4 sm:px-6 lg:px-8 ${isFullWidth ? "w-full" : "max-w-7xl mx-auto"}`}>
         <div className="flex justify-between items-center h-16 md:h-20">
           {/* Left side */}
           <div className="flex-shrink-0">
             <MiPanelLogo
-              className="h-10 md:h-14 w-auto transition-all duration-300"
+              className="h-10 md:h-14 w-auto transition duration-300"
               variant={resolvedTheme}
             />
           </div>
@@ -276,7 +276,7 @@ const AppHeader: React.FC = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 p-2.5 rounded-full transition-all duration-200 shadow-sm border border-slate-200/80 dark:border-slate-700 flex items-center justify-center group"
+                  className="relative bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 p-2.5 rounded-full transition duration-200 shadow-sm border border-slate-200/80 dark:border-slate-700 flex items-center justify-center group"
                   aria-label="Notificaciones"
                 >
                   <span
@@ -302,7 +302,7 @@ const AppHeader: React.FC = () => {
             {canInstall && (
               <button
                 onClick={triggerInstall}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2.5 rounded-full transition-all duration-200 shadow-md border border-blue-700 flex items-center justify-center group animate-pulse"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2.5 rounded-full transition duration-200 shadow-md border border-blue-700 flex items-center justify-center group animate-pulse"
                 aria-label="Instalar aplicación"
                 title="Instalar aplicación"
               >
@@ -315,7 +315,7 @@ const AppHeader: React.FC = () => {
             {isLoggedIn && (
               <button
                 onClick={logout}
-                className="bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/50 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 font-semibold p-2.5 rounded-full transition-all duration-200 shadow-sm border border-slate-200/80 dark:border-slate-700 flex items-center justify-center"
+                className="bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/50 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 font-semibold p-2.5 rounded-full transition duration-200 shadow-sm border border-slate-200/80 dark:border-slate-700 flex items-center justify-center"
                 aria-label="Cerrar sesión"
                 title="Cerrar sesión"
               >

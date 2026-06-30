@@ -47,7 +47,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   const baseClasses = `
     inline-flex items-center justify-center gap-2
     font-medium rounded-lg
-    transition-all duration-200
+    transition duration-200
     disabled:opacity-50 disabled:cursor-not-allowed
     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500/50
   `;

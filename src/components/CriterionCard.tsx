@@ -15,7 +15,7 @@ const CriterionCard: React.FC<CriterionCardProps> = ({
   const cardStyles = useMemo(() => {
     const baseClasses = `
       relative bg-white/50 border rounded-xl p-5 flex flex-col justify-center
-      transition-all duration-300 ease-in-out
+      transition duration-300 ease-in-out
     `;
 
     const hoverClasses = !disableHover

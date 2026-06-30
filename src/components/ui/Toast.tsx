@@ -55,7 +55,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
   }
 
   const baseClasses =
-    "fixed top-5 right-5 z-[2000] flex items-center gap-4 w-full max-w-sm p-4 rounded-xl shadow-lg border transition-all duration-300 ease-in-out";
+    "fixed top-5 right-5 z-[2000] flex items-center gap-4 w-full max-w-sm p-4 rounded-xl shadow-lg border transition duration-300 ease-in-out";
   const visibilityClasses = isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4";
 
   return (

@@ -331,7 +331,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         handleFileChange(type, f);
       }}
       onClick={() => document.getElementById(`file-${type}`)?.click()}
-      className="relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all"
+      className="relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition"
       style={{
         borderColor: dragActive === type || file ? "var(--accent)" : "var(--line-strong)",
         background: dragActive === type || file ? "var(--tint)" : "var(--bg-sunken)",
@@ -476,7 +476,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                       }}
                       onFocus={() => setShowResults(true)}
                       placeholder="Escribí para buscar institución..."
-                      className="w-full pl-12 pr-4 py-3 rounded-xl outline-none focus:ring-2 transition-all"
+                      className="w-full pl-12 pr-4 py-3 rounded-xl outline-none focus:ring-2 transition"
                       style={fieldStyle}
                     />
                   </div>
@@ -602,7 +602,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 placeholder="Ej: 80"
                 min="1"
                 max="120"
-                className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 transition-all"
+                className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 transition"
                 style={fieldStyle}
               />
               <p className="text-xs mt-1" style={{ color: "var(--ink-subtle)" }}>
@@ -659,7 +659,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex-1 px-4 py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
+            className="flex-1 px-4 py-3 rounded-xl text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
             style={{ background: "var(--accent)" }}
           >
             {isSubmitting ? "Enviando…" : "Enviar solicitud"}

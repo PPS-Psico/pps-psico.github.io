@@ -250,7 +250,7 @@ const AdminActionCenter: React.FC<AdminActionCenterProps> = ({
               key={action.id}
               type="button"
               onClick={() => navigate(action.route)}
-              className={`rounded-xl border ${style.border} bg-slate-50 p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-md dark:bg-slate-950/30 dark:hover:bg-slate-800/70`}
+              className={`rounded-xl border ${style.border} bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md dark:bg-slate-950/30 dark:hover:bg-slate-800/70`}
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div

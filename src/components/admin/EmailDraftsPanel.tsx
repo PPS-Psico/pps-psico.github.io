@@ -84,7 +84,7 @@ const EmailDraftsPanel: React.FC<EmailDraftsPanelProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: 40, scale: 0.96 }}
                       transition={{ delay: idx * 0.04 }}
-                      className="group flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition-all duration-200"
+                      className="group flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition duration-200"
                     >
                       {/* Confidence indicator */}
                       <div
@@ -114,7 +114,7 @@ const EmailDraftsPanel: React.FC<EmailDraftsPanelProps> = ({
                         <button
                           onClick={() => handleQuickDiscard(draft)}
                           disabled={discardingId === draft.id}
-                          className="w-8 h-8 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-900/10 dark:hover:border-rose-800 dark:hover:text-rose-400 text-slate-400 transition-all"
+                          className="w-8 h-8 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-900/10 dark:hover:border-rose-800 dark:hover:text-rose-400 text-slate-400 transition"
                           title="Descartar"
                         >
                           {discardingId === draft.id ? (
@@ -127,7 +127,7 @@ const EmailDraftsPanel: React.FC<EmailDraftsPanelProps> = ({
                         </button>
                         <button
                           onClick={() => setSelectedDraft(draft)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 shadow-sm shadow-violet-500/20 transition-all"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 shadow-sm shadow-violet-500/20 transition"
                         >
                           <span className="material-icons !text-sm">edit_note</span>
                           Revisar
@@ -137,7 +137,7 @@ const EmailDraftsPanel: React.FC<EmailDraftsPanelProps> = ({
                       {/* Always-visible review button on narrow screens */}
                       <button
                         onClick={() => setSelectedDraft(draft)}
-                        className="group-hover:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 transition-all"
+                        className="group-hover:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 transition"
                       >
                         <span className="material-icons !text-sm">edit_note</span>
                         Revisar

@@ -88,7 +88,7 @@ export const ActivitiesSection: React.FC<ActivitiesSectionProps> = ({
               onChange={handleChange}
               placeholder="Describe la propuesta, objetivos y rol del practicante..."
               rows={6}
-              className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
             />
           </div>
 

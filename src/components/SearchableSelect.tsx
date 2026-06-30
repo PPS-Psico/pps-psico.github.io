@@ -118,7 +118,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           placeholder={placeholder}
           disabled={disabled}
           className={`
-                        w-full h-11 pl-4 pr-10 rounded-xl text-sm font-bold transition-all duration-200 outline-none
+                        w-full h-11 pl-4 pr-10 rounded-xl text-sm font-bold transition duration-200 outline-none
                         border-2 
                         ${
                           disabled

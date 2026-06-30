@@ -340,7 +340,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
             />
             <label
               htmlFor="import-phones"
-              className={`flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg shadow-green-200 transition-all transform hover:scale-105 active:scale-95 cursor-pointer ${isImporting ? "opacity-50" : ""}`}
+              className={`flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg shadow-green-200 transition transform hover:scale-105 active:scale-95 cursor-pointer ${isImporting ? "opacity-50" : ""}`}
             >
               {isImporting ? (
                 <>
@@ -357,7 +357,7 @@ const GestionRelanzamientoReport: React.FC<{ isTestingMode?: boolean }> = ({
             <button
               onClick={handleDownload}
               disabled={isGenerating || reportData.length === 0}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition transform hover:scale-105 active:scale-95 disabled:transform-none"
             >
               {isGenerating ? (
                 <>

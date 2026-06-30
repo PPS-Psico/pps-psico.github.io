@@ -30,7 +30,7 @@ const UpcomingPracticeItem: React.FC<{ event: CalendarEvent; date: Date }> = ({ 
   const calendarLinks = generateRecurringCalendarLinks(event, date);
 
   return (
-    <div className="bg-white dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600">
+    <div className="bg-white dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm transition duration-300 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <p className="text-xs font-bold text-blue-600 dark:text-blue-400">

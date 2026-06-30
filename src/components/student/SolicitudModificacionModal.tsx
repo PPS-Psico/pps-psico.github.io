@@ -206,7 +206,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             setTipoModificacion("horas");
             setStep(2);
           }}
-          className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+          className={`w-full p-4 rounded-xl border-2 text-left transition ${
             tipoModificacion === "horas"
               ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
               : "border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700"
@@ -227,7 +227,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-left transition-all hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/10"
+          className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-left transition hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/10"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
@@ -290,7 +290,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             onDragOver={handleDrag}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${
               dragActive
                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                 : planillaFile

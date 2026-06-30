@@ -23,7 +23,7 @@ const ActionItem: React.FC<ActionItemProps> = ({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left group flex items-start gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-transparent hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-800 relative overflow-hidden"
+      className="w-full text-left group flex items-start gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-transparent hover:shadow-lg transition duration-300 bg-white dark:bg-slate-800 relative overflow-hidden"
     >
       <div
         className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r ${bgClass} pointer-events-none`}
@@ -53,7 +53,7 @@ const ActionItem: React.FC<ActionItemProps> = ({
         </p>
       </div>
 
-      <div className="relative z-10 self-center opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300">
+      <div className="relative z-10 self-center opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition duration-300">
         <span className="material-icons text-slate-400">arrow_forward_ios</span>
       </div>
     </button>

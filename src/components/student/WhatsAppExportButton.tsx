@@ -85,7 +85,7 @@ ${practicasText}
     <button
       onClick={handleExport}
       className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center
-                 transition-all duration-300 ease-in-out transform hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300"
+                 transition duration-300 ease-in-out transform hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300"
       aria-label="Exportar resumen a WhatsApp"
     >
       <span className="material-icons !text-2xl">share</span>

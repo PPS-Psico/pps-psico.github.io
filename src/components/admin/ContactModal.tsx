@@ -134,7 +134,7 @@ UFLO`;
           <button
             onClick={handleSend}
             disabled={!institutionPhone || sent}
-            className={`flex items-center gap-2 py-2 px-6 rounded-lg text-sm font-bold shadow-sm transition-all transform active:scale-95 ${
+            className={`flex items-center gap-2 py-2 px-6 rounded-lg text-sm font-bold shadow-sm transition transform active:scale-95 ${
               sent
                 ? "bg-emerald-500 text-white cursor-default"
                 : !institutionPhone

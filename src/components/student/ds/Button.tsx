@@ -42,7 +42,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...rest
 }) => {
   const base =
-    "inline-flex items-center justify-center font-medium transition-all duration-150 ease-spring focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-student-bg disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center font-medium transition duration-150 ease-spring focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-student-bg disabled:opacity-50 disabled:cursor-not-allowed";
   const blockCls = block ? "w-full" : "";
   const areaStyle = variant === "area" && areaColor ? { ...style, background: areaColor } : style;
   return (

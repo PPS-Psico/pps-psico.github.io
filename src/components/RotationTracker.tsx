@@ -30,7 +30,7 @@ const RotationTracker: React.FC<RotationTrackerProps> = ({
               className="w-8 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"
             >
               <div
-                className={`h-full rounded-full transition-all duration-500 ease-out ${i < count ? activeColor : "opacity-0"}`}
+                className={`h-full rounded-full transition duration-500 ease-out ${i < count ? activeColor : "opacity-0"}`}
                 style={{ width: "100%" }}
               />
             </div>
@@ -44,7 +44,7 @@ const RotationTracker: React.FC<RotationTrackerProps> = ({
   }
 
   return (
-    <div className="w-full p-5 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm transition-all hover:shadow-md">
+    <div className="w-full p-5 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm transition hover:shadow-md">
       {/* Header Unificado */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-3">
@@ -80,7 +80,7 @@ const RotationTracker: React.FC<RotationTrackerProps> = ({
             className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"
           >
             <div
-              className={`h-full rounded-full transition-all duration-500 ease-out ${i < count ? activeColor : "opacity-0"}`}
+              className={`h-full rounded-full transition duration-500 ease-out ${i < count ? activeColor : "opacity-0"}`}
               style={{ width: "100%" }}
             />
           </div>

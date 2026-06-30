@@ -229,7 +229,7 @@ const MobileCriteriaCard: React.FC<MobileCriteriaCardProps> = ({
             {/* Rotation Criteria */}
             <motion.div
               className={`
-                p-4 rounded-2xl border transition-all duration-300
+                p-4 rounded-2xl border transition duration-300
                 ${
                   isRotationComplete
                     ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
@@ -283,7 +283,7 @@ const MobileCriteriaCard: React.FC<MobileCriteriaCardProps> = ({
             {/* Specialty Criteria */}
             <motion.div
               className={`
-                p-4 rounded-2xl border transition-all duration-300
+                p-4 rounded-2xl border transition duration-300
                 ${
                   isSpecialtyComplete
                     ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"

@@ -66,7 +66,7 @@ const SmartBriefing: React.FC<SmartBriefingProps> = ({
   const config = getStatusConfig(status);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0B1120] text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 transition-all duration-500 shadow-sm">
+    <div className="relative w-full overflow-hidden rounded-[2.5rem] bg-white dark:bg-[#0B1120] text-slate-900 dark:text-white border border-slate-200 dark:border-white/5 transition duration-500 shadow-sm">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
@@ -164,7 +164,7 @@ const SmartBriefing: React.FC<SmartBriefingProps> = ({
                 >
                   <Link
                     to={insight.actionLink || "#"}
-                    className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
+                    className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-700 transition duration-200"
                   >
                     <div
                       className={`p-2 rounded-lg ${insight.type === "critical" ? "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"}`}

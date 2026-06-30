@@ -71,7 +71,7 @@ export const ExcelViewer: React.FC<OfficeViewerProps> = ({ url, filename, onLoad
                 setUseOfficeViewer(false);
                 setIsLoading(true);
               }}
-              className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-xl font-bold transition-all"
+              className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-xl font-bold transition"
             >
               <span className="material-icons">refresh</span>
               Reintentar
