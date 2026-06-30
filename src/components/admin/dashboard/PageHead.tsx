@@ -14,7 +14,25 @@ export const PageHead: React.FC<PageHeadProps> = ({ userName }) => {
   const time = format(now, "HH:mm");
 
   return (
-    <div style={{ padding: "40px 0 24px", borderBottom: "1px solid var(--rule-2)" }}>
+    <div
+      className="admin-pagehead"
+      style={{ padding: "40px 0 24px", borderBottom: "1px solid var(--rule-2)" }}
+    >
+      <style>{`
+        .admin-pagehead__rule {
+          display: block;
+          width: 64px;
+          height: 3px;
+          border-radius: 3px;
+          margin-bottom: 14px;
+          background: linear-gradient(90deg, #46253d 0%, #203b73 50%, #3cb88d 100%);
+        }
+        .admin-pagehead h1 em {
+          font-style: italic;
+          color: #9d3f86;
+        }
+        html.dark .admin-pagehead h1 em { color: #c9a2bd; }
+      `}</style>
       <div
         style={{
           display: "flex",
@@ -25,6 +43,7 @@ export const PageHead: React.FC<PageHeadProps> = ({ userName }) => {
         }}
       >
         <div>
+          <span className="admin-pagehead__rule" aria-hidden="true" />
           <span className="eyebrow">Tu mañana · coordinación PPS</span>
           <h1
             style={{
@@ -37,7 +56,7 @@ export const PageHead: React.FC<PageHeadProps> = ({ userName }) => {
               color: "var(--ink)",
             }}
           >
-            Buen día, {userName}.
+            Buen día, <em>{userName}</em>.
           </h1>
         </div>
         <div className="meta mono" style={{ fontSize: 12, textAlign: "right", lineHeight: 1.6 }}>

@@ -18,7 +18,9 @@ export const METRICAS_V3_CSS = `
 .metricas-v3 .wrap { max-width: var(--mx); margin: 0 auto; padding: 0 32px 64px; }
 
 .metricas-v3 .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-style: normal; letter-spacing: -0.01em; color: var(--ink); }
-.metricas-v3 .display em { font-style: italic; color: var(--ink-2); }
+.metricas-v3 .display em { font-style: italic; color: #9d3f86; }
+html.dark .metricas-v3 .display em { color: #c9a2bd; }
+.metricas-v3 .mast-rule { display: block; width: 64px; height: 3px; border-radius: 3px; margin-bottom: 14px; background: linear-gradient(90deg, #46253d 0%, #203b73 50%, #3cb88d 100%); }
 .metricas-v3 .serif { font-family: 'Hanken Grotesk', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.025em; }
 .metricas-v3 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; font-feature-settings: 'zero','ss02'; }
 .metricas-v3 .eyebrow { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--ink-3); }

@@ -168,8 +168,11 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
             }}
           >
             <div style={{ minWidth: 0 }}>
+              <span className="mast-rule" aria-hidden="true" />
               <span className="eyebrow">Métricas · coordinación PPS · ciclo {year}</span>
-              <h1 className="display">El estado del programa</h1>
+              <h1 className="display">
+                El estado del <em>programa</em>
+              </h1>
             </div>
             <div
               style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}
