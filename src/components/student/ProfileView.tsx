@@ -38,7 +38,7 @@ const ProfileCard: React.FC<{
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4, delay }}
-    className={`relative group overflow-hidden rounded-2xl border transition-all duration-300 ${
+    className={`relative group overflow-hidden rounded-2xl border transition duration-300 ${
       isEditable
         ? "bg-gradient-to-br from-blue-50/80 to-white dark:from-blue-900/20 dark:to-slate-900/50 border-blue-200 dark:border-blue-800/50 shadow-sm shadow-blue-500/10"
         : "bg-white dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-500/5"
@@ -51,7 +51,7 @@ const ProfileCard: React.FC<{
         className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
           isEditable
             ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
-            : "bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 text-slate-500 group-hover:text-blue-500 group-hover:from-blue-50 group-hover:to-blue-100 dark:group-hover:from-blue-900/30 dark:group-hover:to-blue-800/20 transition-all duration-300"
+            : "bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 text-slate-500 group-hover:text-blue-500 group-hover:from-blue-50 group-hover:to-blue-100 dark:group-hover:from-blue-900/30 dark:group-hover:to-blue-800/20 transition duration-300"
         }`}
       >
         <span className="material-icons !text-xl">{icon}</span>
@@ -114,7 +114,7 @@ const PremiumButton: React.FC<{
       className={`
         relative overflow-hidden flex-1 py-3.5 px-6 rounded-xl font-bold text-sm
         bg-gradient-to-r ${variants[variant]}
-        shadow-lg transition-all duration-300
+        shadow-lg transition duration-300
         disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none
         ${className}
       `}
@@ -427,7 +427,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.6 }}
-            className="relative group overflow-hidden rounded-2xl border transition-all duration-300 bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-800/50 shadow-sm shadow-purple-500/10"
+            className="relative group overflow-hidden rounded-2xl border transition duration-300 bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-800/50 shadow-sm shadow-purple-500/10"
           >
             <div className="relative z-10 flex items-center gap-4 p-4">
               <motion.div
@@ -573,7 +573,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         : {}
                     }
                     transition={{ repeat: Infinity, duration: 2 }}
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all ${
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition ${
                       isPushEnabled
                         ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/30"
                         : "bg-slate-200 dark:bg-slate-700 text-slate-500"
@@ -591,7 +591,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 <button
                   onClick={isPushEnabled ? handleUnsubscribe : handleSubscribe}
                   disabled={isPushLoading}
-                  className={`relative min-w-[56px] h-8 rounded-full transition-all duration-300 ${
+                  className={`relative min-w-[56px] h-8 rounded-full transition duration-300 ${
                     isPushEnabled
                       ? "bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30"
                       : "bg-slate-300 dark:bg-slate-600"
@@ -663,7 +663,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
               value={internalNotes}
               onChange={handleNotesChange}
               rows={4}
-              className="w-full text-sm rounded-xl border border-amber-200 dark:border-amber-800 bg-white/80 dark:bg-slate-900/50 p-4 focus:ring-2 focus:ring-amber-500 outline-none resize-none transition-all"
+              className="w-full text-sm rounded-xl border border-amber-200 dark:border-amber-800 bg-white/80 dark:bg-slate-900/50 p-4 focus:ring-2 focus:ring-amber-500 outline-none resize-none transition"
               placeholder="Anotar observaciones personales o recordatorios de seguimiento..."
             />
             <div className="mt-3 flex justify-end">
@@ -672,7 +672,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 disabled={!isNotesChanged || updateInternalNotes.isPending}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs shadow-lg shadow-amber-500/30 hover:shadow-amber-500/40 disabled:opacity-50 transition-all flex items-center gap-2"
+                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs shadow-lg shadow-amber-500/30 hover:shadow-amber-500/40 disabled:opacity-50 transition flex items-center gap-2"
               >
                 {updateInternalNotes.isPending ? (
                   <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />

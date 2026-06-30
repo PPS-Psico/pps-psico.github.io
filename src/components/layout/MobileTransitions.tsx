@@ -185,7 +185,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     >
       {/* Pull indicator */}
       <div
-        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-all duration-200 z-10"
+        className="absolute top-0 left-0 right-0 flex items-center justify-center transition-[height] duration-200 z-10"
         style={{
           height: `${pullDistance}px`,
           opacity: pullDistance > 20 ? 1 : 0,
@@ -193,7 +193,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
       >
         <div className="flex flex-col items-center gap-2">
           <div
-            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition duration-300 ${
               isRefreshing
                 ? "border-blue-500 border-t-transparent animate-spin"
                 : progress >= 1

@@ -137,7 +137,7 @@ const InformeCorreccionCard: React.FC<InformeCorreccionCardProps> = ({
 
   return (
     <details
-      className="bg-white dark:bg-gray-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all duration-300 open:shadow-lg open:border-blue-200 dark:open:border-blue-900 group"
+      className="bg-white dark:bg-gray-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition duration-300 open:shadow-lg open:border-blue-200 dark:open:border-blue-900 group"
       open
     >
       <summary className="p-4 cursor-pointer flex justify-between items-center list-none hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-t-xl transition-colors">

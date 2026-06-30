@@ -34,7 +34,7 @@ const Histogram: React.FC<HistogramProps> = ({ data, title, onBarClick }) => {
                 aria-label={`${bin.value} alumnos en el rango ${bin.label}`}
               >
                 <div
-                  className="w-full bg-gradient-to-b from-blue-400 to-blue-600 rounded-t-md transition-all duration-300 group-hover:from-blue-500 group-hover:to-blue-700 group-hover:shadow-lg"
+                  className="w-full bg-gradient-to-b from-blue-400 to-blue-600 rounded-t-md transition-[height,box-shadow] duration-300 group-hover:from-blue-500 group-hover:to-blue-700 group-hover:shadow-lg"
                   style={{
                     height: `${heightPercentage}%`,
                     minHeight: "4px",

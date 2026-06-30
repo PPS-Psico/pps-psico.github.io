@@ -379,7 +379,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
         )}
 
         <div
-          className={`relative bg-white dark:bg-gray-900 rounded-xl transition-all duration-300 overflow-hidden ${cardBorderClass}`}
+          className={`relative bg-white dark:bg-gray-900 rounded-xl transition duration-300 overflow-hidden ${cardBorderClass}`}
           onClick={() => !isEditingPhone && setIsExpanded(!isExpanded)}
         >
           {/* Header Content */}
@@ -427,7 +427,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                 {status === "Pendiente de Gestión" && cardType === "porContactar" && (
                   <button
                     onClick={handleQuickContact}
-                    className="px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-0.5 sm:gap-1"
+                    className="px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-0.5 sm:gap-1"
                     title="Contactar para relanzamiento"
                   >
                     <span className="material-icons !text-[12px] sm:!text-sm">send</span>
@@ -466,7 +466,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
 
           {/* Expanded Body */}
           <div
-            className={`grid transition-all duration-300 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20 cursor-default" : "grid-rows-[0fr] opacity-0"}`}
+            className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20 cursor-default" : "grid-rows-[0fr] opacity-0"}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="overflow-hidden bg-slate-50/50 dark:bg-slate-800/20 cursor-default">
@@ -591,7 +591,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                             type="date"
                             value={nextCheckDate}
                             onChange={(e) => setNextCheckDate(e.target.value)}
-                            className="w-full text-xs rounded-lg border border-amber-100 dark:border-amber-900/50 bg-white dark:bg-slate-800 py-2 px-3 pl-8 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-sm"
+                            className="w-full text-xs rounded-lg border border-amber-100 dark:border-amber-900/50 bg-white dark:bg-slate-800 py-2 px-3 pl-8 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition shadow-sm"
                           />
                           <span className="material-icons absolute left-2.5 top-1/2 -translate-y-1/2 !text-xs text-amber-500/50">
                             event_repeat
@@ -630,7 +630,7 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                   <button
                     onClick={handleSave}
                     disabled={isUpdating || !hasChanges || isJustSaved}
-                    className={`flex items-center gap-2 py-2.5 px-8 rounded-xl text-sm font-bold shadow-sm transition-all transform active:scale-95 w-full sm:w-auto justify-center
+                    className={`flex items-center gap-2 py-2.5 px-8 rounded-xl text-sm font-bold shadow-sm transition transform active:scale-95 w-full sm:w-auto justify-center
                                   ${
                                     isJustSaved
                                       ? "bg-emerald-500 text-white cursor-default"

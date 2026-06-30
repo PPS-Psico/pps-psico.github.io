@@ -54,7 +54,7 @@ const ProgressCircle: React.FC<ProgressCircleProps> = React.memo(
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="transition-all duration-1000 ease-out drop-shadow-md"
+            className="transition-[stroke-dashoffset] duration-1000 ease-out drop-shadow-md"
           />
         </svg>
 

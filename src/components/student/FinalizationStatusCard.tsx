@@ -100,7 +100,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                 href="https://alumno.uflo.edu.ar"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center gap-3 px-10 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-uflo-teal/20 hover:-translate-y-1 transition-all duration-300"
+                className="group inline-flex items-center gap-3 px-10 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-uflo-teal/20 hover:-translate-y-1 transition duration-300"
               >
                 <span>Verificar en SAC</span>
                 <span className="material-icons !text-2xl group-hover:translate-x-1 transition-transform">
@@ -199,7 +199,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
               <div className="absolute left-[30px] top-8 bottom-8 w-1 bg-slate-100 dark:bg-slate-800 -z-10 rounded-full"></div>
               {/* Barra de progreso animada */}
               <div
-                className="absolute left-[30px] top-8 w-1 bg-gradient-to-b from-uflo-teal to-uflo-navy -z-10 rounded-full transition-all duration-1000"
+                className="absolute left-[30px] top-8 w-1 bg-gradient-to-b from-uflo-teal to-uflo-navy -z-10 rounded-full transition-[height] duration-1000"
                 style={{ height: `${(currentStepIndex / (steps.length - 1)) * 85}%` }}
               ></div>
 
@@ -214,7 +214,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                     className={`relative flex items-center gap-8 ${isPending ? "opacity-50 grayscale" : "opacity-100"}`}
                   >
                     <div
-                      className={`flex-shrink-0 w-16 h-16 rounded-full border-[6px] flex items-center justify-center z-10 transition-all duration-500
+                      className={`flex-shrink-0 w-16 h-16 rounded-full border-[6px] flex items-center justify-center z-10 transition duration-500
                                             ${
                                               isCompleted
                                                 ? "bg-emerald-500 border-white dark:border-slate-900 text-white shadow-xl shadow-emerald-500/30"
@@ -296,7 +296,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
 
             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 mb-8 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-1000 ${isPaused ? "bg-amber-400 striped-bar" : daysDisplay < 0 && !isFinished && !isPaused ? "bg-rose-500" : "bg-uflo-teal"}`}
+                className={`h-full rounded-full transition-[width] duration-1000 ${isPaused ? "bg-amber-400 striped-bar" : daysDisplay < 0 && !isFinished && !isPaused ? "bg-rose-500" : "bg-uflo-teal"}`}
                 style={{ width: `${percentage}%` }}
               ></div>
             </div>
@@ -337,7 +337,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
                   ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${firstName}`
                   : undefined
               }
-              className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-all ${daysDisplay < 0 && !isFinished && !isPaused ? "bg-uflo-teal hover:bg-[#2e9b76] text-white shadow-lg shadow-uflo-teal/20" : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed"}`}
+              className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition ${daysDisplay < 0 && !isFinished && !isPaused ? "bg-uflo-teal hover:bg-[#2e9b76] text-white shadow-lg shadow-uflo-teal/20" : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed"}`}
             >
               <span className="material-icons">
                 {daysDisplay < 0 && !isFinished && !isPaused ? "mail" : "lock_clock"}

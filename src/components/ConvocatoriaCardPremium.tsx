@@ -86,7 +86,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   const getButtonConfig = () => {
     // Shared base classes for all states to maintain consistent sizing with better mobile support
     const baseClasses =
-      "px-4 md:px-6 py-2 md:py-2.5 rounded-xl md:rounded-[14px] font-bold text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 md:gap-2 transition-all duration-300 min-w-[140px] md:min-w-[190px] relative overflow-hidden h-9 md:h-11 border shadow-sm";
+      "px-4 md:px-6 py-2 md:py-2.5 rounded-xl md:rounded-[14px] font-bold text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 md:gap-2 transition duration-300 min-w-[140px] md:min-w-[190px] relative overflow-hidden h-9 md:h-11 border shadow-sm";
 
     // PRIORITY 1: If already completed, block enrollment entirely
     if (isCompleted) {
@@ -211,7 +211,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
         dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-950
         backdrop-blur-xl
         border border-slate-100 dark:border-slate-800/60
-        transition-all duration-500 ease-out
+        transition duration-500 ease-out
         group cursor-pointer
         ${!isExpanded ? "hover:border-slate-200 dark:hover:border-slate-700/50" : ""}
       `}
@@ -261,7 +261,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               className={`
                 md:hidden flex-shrink-0 flex w-8 h-8 rounded-full items-center justify-center
                 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500
-                transition-all duration-300
+                transition duration-300
                 ${isExpanded ? "rotate-180 bg-blue-50 text-blue-500" : "group-hover:bg-slate-200 dark:group-hover:bg-slate-700"}
               `}
             >
@@ -330,7 +330,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                     {isVirtual ? "wifi" : "location_on"}
                   </span>
                   <span
-                    className={`whitespace-normal leading-tight max-w-[150px] md:max-w-none truncate md:whitespace-normal ${!isVirtual && "group-hover/addr:underline decoration-indigo-500/30 underline-offset-2"} transition-all`}
+                    className={`whitespace-normal leading-tight max-w-[150px] md:max-w-none truncate md:whitespace-normal ${!isVirtual && "group-hover/addr:underline decoration-indigo-500/30 underline-offset-2"} transition`}
                   >
                     {direccion}
                   </span>
@@ -366,7 +366,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                 onPointerDown={(e) => e.stopPropagation()}
                 disabled={isCancelandoInscripcion}
                 aria-label="Cancelar inscripción"
-                className="px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-[14px] font-bold text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 md:gap-2 transition-all duration-300 h-9 md:h-11 border shadow-sm bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200 border-rose-300 dark:border-rose-700 hover:bg-rose-200 dark:hover:bg-rose-900/80 cursor-pointer"
+                className="px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-[14px] font-bold text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 md:gap-2 transition duration-300 h-9 md:h-11 border shadow-sm bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-200 border-rose-300 dark:border-rose-700 hover:bg-rose-200 dark:hover:bg-rose-900/80 cursor-pointer"
               >
                 {isCancelandoInscripcion ? (
                   <span className="w-4 h-4 border-2 border-rose-500/50 border-t-rose-500 rounded-full animate-spin" />
@@ -403,7 +403,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
             className={`
               hidden md:flex w-10 h-10 rounded-full items-center justify-center
               bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500
-              transition-all duration-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700
+              transition duration-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700
               ${isExpanded ? "rotate-180 bg-blue-50 text-blue-500" : ""}
             `}
             aria-label={`${isExpanded ? "Contraer" : "Expandir"} detalles de ${nombre}`}
@@ -416,7 +416,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
 
       {/* ─── EXPANDABLE CONTENT ─── */}
       <div
-        className={`grid transition-all duration-500 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+        className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
       >
         <div className="overflow-hidden">
           {/* ─── 2. METRICS ROW ─── */}
@@ -672,7 +672,7 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                       className={`
                                             w-full flex items-center px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl
                                             bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60
-                                            hover:border-blue-200 dark:hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300
+                                            hover:border-blue-200 dark:hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg hover:shadow-blue-500/5 transition duration-300
                                         `}
                     >
                       <div
@@ -789,7 +789,7 @@ const MetricItem: React.FC<{
       className={`
       relative p-2 md:p-4 rounded-xl md:rounded-2xl flex flex-col justify-center gap-1 md:gap-1.5 border overflow-hidden
       ${activeStyle}
-      transition-all hover:scale-[1.02] duration-300 text-center
+      transition hover:scale-[1.02] duration-300 text-center
       ${isClickable ? "cursor-pointer hover:shadow-md active:scale-95" : ""}
       ${className}
     `}

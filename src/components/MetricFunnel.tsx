@@ -21,7 +21,7 @@ const FunnelRow: React.FC<FunnelRowProps> = ({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-4 rounded-xl transition-all duration-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/50 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-600"
+      className="w-full text-left p-4 rounded-xl transition duration-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/50 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-600"
       aria-label={`${label}: ${value} (${total > 0 ? Math.round(percentage) : "N/A"}%)`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -35,7 +35,7 @@ const FunnelRow: React.FC<FunnelRowProps> = ({
             aria-hidden="true"
           >
             <div
-              className={`h-2.5 rounded-full transition-all duration-700 ease-out ${color}`}
+              className={`h-2.5 rounded-full transition-[width] duration-700 ease-out ${color}`}
               style={{ width: `${percentage}%` }}
             />
           </div>

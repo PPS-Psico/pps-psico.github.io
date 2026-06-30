@@ -34,7 +34,7 @@ const TiltCard: React.FC<{
       }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="relative group rounded-2xl p-4 transition-all duration-300"
+      className="relative group rounded-2xl p-4 transition duration-300"
     >
       {children}
     </motion.div>
@@ -282,7 +282,7 @@ const PremiumActionButton: React.FC<{
         border-2 ${theme.border}
         ${theme.text}
         hover:shadow-xl ${theme.shadow} cursor-pointer active:scale-95
-        transition-all duration-300 text-left overflow-hidden group touch-manipulation
+        transition duration-300 text-left overflow-hidden group touch-manipulation
         ${className}
       `}
     >

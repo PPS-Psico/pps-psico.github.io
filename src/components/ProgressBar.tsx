@@ -45,7 +45,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         </div>
         <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
           <div
-            className={`${colorClass} h-full rounded-full transition-all duration-1000 ease-out`}
+            className={`${colorClass} h-full rounded-full transition-[width] duration-1000 ease-out`}
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -54,7 +54,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   }
 
   return (
-    <div className="w-full p-5 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm transition-all hover:shadow-md">
+    <div className="w-full p-5 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm transition hover:shadow-md">
       {/* Header Unificado */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-3">
@@ -88,7 +88,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       {/* Bar */}
       <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-2">
         <div
-          className={`${colorClass} h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(59,130,246,0.3)]`}
+          className={`${colorClass} h-full rounded-full transition-[width] duration-1000 ease-out shadow-[0_0_10px_rgba(59,130,246,0.3)]`}
           style={{ width: `${percentage}%` }}
           role="progressbar"
           aria-valuenow={value}

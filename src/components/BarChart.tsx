@@ -43,7 +43,7 @@ const BarChart: React.FC<BarChartProps> = ({ data, title, onBarClick }) => {
                 <div className="w-2/3 flex items-center gap-2">
                   <div className="flex-grow bg-slate-200/70 dark:bg-slate-700 rounded-full h-5 shadow-inner">
                     <div
-                      className="bg-gradient-to-r from-sky-400 to-blue-500 h-5 rounded-full text-right transition-all duration-1000 ease-out flex items-center justify-end pr-2"
+                      className="bg-gradient-to-r from-sky-400 to-blue-500 h-5 rounded-full text-right transition-[width] duration-1000 ease-out flex items-center justify-end pr-2"
                       style={{
                         width: `${percentage}%`,
                         animation: `grow-bar 0.8s ${index * 100}ms ease-out forwards`,

@@ -20,7 +20,7 @@ const SelectionCard: React.FC<{
 }> = ({ selected, onClick, title, subtitle, icon }) => (
   <div
     onClick={onClick}
-    className="relative cursor-pointer rounded-2xl border px-4 py-3 sm:px-5 sm:py-4 transition-all duration-200 flex items-center gap-3 sm:gap-4 group select-none"
+    className="relative cursor-pointer rounded-2xl border px-4 py-3 sm:px-5 sm:py-4 transition duration-200 flex items-center gap-3 sm:gap-4 group select-none"
     style={{
       borderColor: selected ? "var(--accent)" : "var(--line)",
       background: selected ? "var(--tint)" : "var(--bg-elevated)",
@@ -28,7 +28,7 @@ const SelectionCard: React.FC<{
     }}
   >
     <div
-      className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all duration-200"
+      className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition duration-200"
       style={{
         background: selected ? "var(--accent)" : "var(--bg-sunken)",
         color: selected ? "var(--on-accent)" : "var(--ink-muted)",
@@ -69,7 +69,7 @@ const ToggleSwitch: React.FC<{
 }> = ({ checked, onChange, label }) => (
   <div
     onClick={() => onChange(!checked)}
-    className="flex items-center justify-between cursor-pointer p-4 rounded-2xl border transition-all duration-200"
+    className="flex items-center justify-between cursor-pointer p-4 rounded-2xl border transition duration-200"
     style={{
       borderColor: checked ? "var(--accent)" : "var(--line)",
       background: checked ? "var(--tint)" : "var(--bg-elevated)",
@@ -105,7 +105,7 @@ const FileUploadButton: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className="group relative cursor-pointer border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center transition-all duration-200 w-full"
+    className="group relative cursor-pointer border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center transition duration-200 w-full"
     style={{
       borderColor: hasError ? "#c0563f" : "var(--line-strong)",
       background: hasError ? "rgba(192,86,63,0.08)" : "var(--bg-sunken)",
@@ -673,7 +673,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                         <div
                           key={horario}
                           onClick={() => handleHorarioToggle(horario)}
-                          className="cursor-pointer px-5 py-4 rounded-2xl border transition-all flex items-center justify-between group select-none"
+                          className="cursor-pointer px-5 py-4 rounded-2xl border transition flex items-center justify-between group select-none"
                           style={{
                             borderColor: active ? "var(--accent)" : "var(--line)",
                             background: active ? "var(--tint)" : "var(--bg-elevated)",
@@ -777,7 +777,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                             <div
                               key={opt}
                               onClick={() => setFormData((p) => ({ ...p, finalesAdeudados: opt }))}
-                              className="cursor-pointer px-3 py-3 rounded-xl border text-xs font-bold text-center transition-all duration-200 select-none"
+                              className="cursor-pointer px-3 py-3 rounded-xl border text-xs font-bold text-center transition duration-200 select-none"
                               style={{
                                 borderColor: active ? "var(--accent)" : "var(--line)",
                                 background: active ? "var(--tint)" : "var(--bg-elevated)",
@@ -838,7 +838,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                       onChange={(e) =>
                         setFormData((p) => ({ ...p, otraSituacionAcademica: e.target.value }))
                       }
-                      className="w-full p-4 rounded-2xl text-sm outline-none resize-none transition-all placeholder:text-[var(--ink-subtle)] focus:border-[var(--accent)]"
+                      className="w-full p-4 rounded-2xl text-sm outline-none resize-none transition placeholder:text-[var(--ink-subtle)] focus:border-[var(--accent)]"
                       style={inputBase}
                       placeholder="Ej: Estoy cursando el TIF..."
                       rows={2}
@@ -897,7 +897,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               style={{ background: "var(--bg-sunken)" }}
             >
               <div
-                className="h-full transition-all duration-300"
+                className="h-full transition-[width] duration-300"
                 style={{ width: `${fileUploadProgress}%`, background: "var(--accent)" }}
               ></div>
             </div>
@@ -916,7 +916,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               if (formRef.current) formRef.current.requestSubmit();
             }}
             disabled={isSubmitting}
-            className="w-full sm:flex-[2] py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:translate-y-0 text-sm"
+            className="w-full sm:flex-[2] py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:translate-y-0 text-sm"
             style={{ background: "var(--accent)", color: "var(--on-accent)" }}
           >
             {isSubmitting ? (

@@ -46,7 +46,7 @@ const GaugeChart: React.FC<GaugeChartProps> = ({ value, title, description }) =>
           {/* Foreground Arc */}
           <path
             d={`M ${strokeWidth / 2},${size / 2} a ${radius},${radius} 0 0 1 ${radius * 2},0`}
-            className={`bg-gradient-to-r ${gradientClass} transition-all duration-1000 ease-out`}
+            className={`bg-gradient-to-r ${gradientClass} transition-[stroke-dashoffset] duration-1000 ease-out`}
             stroke="url(#gaugeGradient)"
             strokeWidth={strokeWidth}
             fill="transparent"
