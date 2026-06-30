@@ -6,6 +6,41 @@ sesión de mejoras internas (app + base + tipos + seguridad + modernización).
 El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 (secciones 14 en adelante). Estado base verificado: **type-check 0, 381 tests, build OK**.
 
+> **Sesión 11 (modernización de dependencias).** Upgrade coordinado, todo verificado
+> (tsc 0, 381 tests, build OK). Sin push (lo maneja el owner).
+>
+> - ✅ **React Router 6 → 7** (`8ea0541`) — library mode con HashRouter, sin cambios de API.
+>   Polyfill `TextEncoder`/`TextDecoder` en `jest-setup` (RR7 lo requiere en jsdom).
+> - ✅ **Zod 3 → 4** (`d2817f3`) — `issue.path` ahora `PropertyKey[]` (coerción a String).
+> - ✅ **React 18 → 19 + Vite 6 → 7 + Storybook 8 → 10 + testing-library 14 → 16** (`8d71df6`),
+>   upgrade coordinado. Storybook estaba a medio configurar (sin `main.ts`, sin script);
+>   se consolidaron addons en core (essentials/interactions/test) e imports a
+>   `@storybook/react-vite`. **Cero cambios en el código de la app** (compiló limpio en R19).
+> - ✅ **React Compiler v1.0 habilitado** (`da6f4dd`) — `babel-plugin-react-compiler` en
+>   plugin-react. Auto-memoización en build. ⚠️ **Pendiente: smoke-test en preview antes
+>   del próximo deploy** (es transform de runtime; tests y build verdes, pero conviene ojo
+>   humano en producción).
+>
+> **Deferido a propósito:**
+>
+> - 🟠 **Vite 8** (en vez de 7): requiere plugin-react 6 (que dropea Babel → el React
+>   Compiler necesitaría `@rolldown/plugin-babel`). Vite 7 es estable y suficiente; subir a
+>   8 más adelante con esa consideración.
+> - 🔴 **Tailwind 3 → 4**: sube el **piso de navegador** (Safari 16.4+/Chrome 111+) →
+>   riesgo de cara a alumnos con dispositivos viejos. **NO migrar sin confirmar** el parque
+>   de navegadores de los estudiantes.
+>
+> **Aprovechamiento de las nuevas versiones (recomendaciones):**
+>
+> - ✅ React Compiler ya cubre el mayor "leverage" de React 19 (auto-memo).
+> - 🟢 Actions / `useActionState` / `useOptimistic` de React 19 → **NO adoptar**: el proyecto
+>   usa TanStack Query, que ya maneja optimistic updates y estados de pending/error.
+> - 🟢 `forwardRef` → `ref` como prop (React 19): solo 3 componentes (`Input`/`Select`/
+>   `Checkbox`); `forwardRef` sigue funcionando. Limpieza opcional de bajo valor.
+> - 🟢 Zod 4: `z.email()`/`zod/mini` para bundle más chico — marginal dado el uso acotado.
+> - 🟢 `eslint-plugin-react-hooks` v6 trae la regla del React Compiler (validación de Rules
+>   of React) — se podría activar para detectar componentes que el compiler no puede optimizar.
+
 > **Sesión 8 (calidad, no solo tipos).** Se creó `docs/auditoria-calidad.md` con el
 > informe de hallazgos. Hecho en esta sesión:
 >
