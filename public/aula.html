@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <!-- ============================================================================
      AULA MOODLE · PPS 2026 — PORTADA "INICIO"
      Pegar este bloque completo en una Etiqueta / resumen de sección de Moodle
@@ -236,6 +237,18 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 @media (min-width:1024px){
   #pps-aula-2026 .pa-nav{ max-width:1440px !important; margin-left:auto !important; margin-right:auto !important; padding-left:56px !important; padding-right:56px !important; }
   #pps-aula-2026 .pa-wrap{ max-width:1440px !important; }
+}
+/* ===== POLISH v2 · skill make-interfaces-feel-better: press tactil + transiciones explicitas ===== */
+#pps-aula-2026 .pa-btn{ transition:transform var(--t-fast), background var(--t-fast), color var(--t-fast), border-color var(--t-fast); }
+#pps-aula-2026 .pa-navlinks a{ transition:color var(--t-fast), background var(--t-fast), transform var(--t-fast); }
+#pps-aula-2026 .pa-faq-q{ transition:color var(--t-fast), transform var(--t-fast); }
+#pps-aula-2026 h1,#pps-aula-2026 h2,#pps-aula-2026 .pa-mast__title,#pps-aula-2026 .pa-tile__title{ text-wrap:balance; }
+#pps-aula-2026 .pa-hero__lede,#pps-aula-2026 .pa-tile__desc{ text-wrap:pretty; }
+@media (prefers-reduced-motion: no-preference){
+  #pps-aula-2026 .pa-btn:active{ transform:scale(.96); }
+  #pps-aula-2026 .pa-navlinks a:active{ transform:scale(.95); }
+  #pps-aula-2026 .pa-feat:active,#pps-aula-2026 .pa-tile:active{ transform:scale(.985); }
+  #pps-aula-2026 .pa-faq-q:active{ transform:scale(.995); }
 }
 </style>
 

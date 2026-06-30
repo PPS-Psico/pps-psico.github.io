@@ -183,6 +183,16 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
 #pps-aula-2026 .pa-navlinks{ gap:6px !important; }
 #pps-aula-2026 .pa-navlinks a{ padding:9px 17px !important; font-size:15.5px !important; }
 @media (min-width:1024px){ #pps-aula-2026 .pa-nav{ padding-top:10px !important; padding-bottom:14px !important; } }
+/* ===== POLISH v2 · skill make-interfaces-feel-better: press tactil + transiciones explicitas ===== */
+#pps-aula-2026 .pa-band__btn{ transition:filter var(--t-fast), transform var(--t-fast); }
+#pps-aula-2026 .pa-navlinks a{ transition:color var(--t-fast), background var(--t-fast), transform var(--t-fast); }
+#pps-aula-2026 .pa-mast__title{ text-wrap:balance; }
+#pps-aula-2026 .pa-mast__sub{ text-wrap:pretty; }
+@media (prefers-reduced-motion: no-preference){
+  #pps-aula-2026 .pa-band__btn:active{ transform:scale(.96); }
+  #pps-aula-2026 .pa-navlinks a:active{ transform:scale(.95); }
+  #pps-aula-2026 .pa-gcard:active,#pps-aula-2026 .pa-tool:active{ transform:scale(.99); }
+}
 </style>
 </head>
 <body>

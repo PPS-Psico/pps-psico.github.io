@@ -163,6 +163,19 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   #pps-aula-2026 .pa-foot{ max-width:1080px !important; margin:0 auto 48px !important; padding-top:18px !important; padding-bottom:18px !important; }
   #pps-aula-2026 .pa-foot__ic{ width:38px !important; height:38px !important; }
 }
+/* ===== POLISH v2 · skill make-interfaces-feel-better: press tactil + transiciones explicitas ===== */
+#pps-aula-2026 .pa-btn{ transition:transform var(--t-fast), background var(--t-fast), color var(--t-fast); }
+#pps-aula-2026 .pa-navlinks a{ transition:color var(--t-fast), background var(--t-fast), transform var(--t-fast); }
+#pps-aula-2026 .pa-faq-q{ transition:color var(--t-fast), transform var(--t-fast); }
+#pps-aula-2026 .pa-faq-q .pa-qn{ font-variant-numeric:tabular-nums; }
+#pps-aula-2026 .pa-mast__title{ text-wrap:balance; }
+#pps-aula-2026 .pa-mast__sub{ text-wrap:pretty; }
+@media (prefers-reduced-motion: no-preference){
+  #pps-aula-2026 .pa-btn:active{ transform:scale(.96); }
+  #pps-aula-2026 .pa-navlinks a:active{ transform:scale(.95); }
+  #pps-aula-2026 .pa-catnav a:active{ transform:scale(.95); }
+  #pps-aula-2026 .pa-faq-q:active{ transform:scale(.995); }
+}
 </style>
 </head>
 <body>
