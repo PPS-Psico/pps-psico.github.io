@@ -163,15 +163,39 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 
 ## 🟠 P1 — Base de datos (vía advisors; aditivo/seguro lo hace el agente)
 
+- **🔴→✅ Fuga de PII por RPCs SECURITY DEFINER ejecutables por `anon` — FASE 1 CERRADA
+  (sesión 12, migración `secure_metrics_rpcs_revoke_anon`).** Las RPCs de métricas y
+  listados (`get_admin_metrics_kpis`, `get_ingresantes_list`, `get_finalizados_list`,
+  toda la familia `get_*_list`/`get_*_count`/`get_*_kpis`, `get_convocatoria_counts_by_launch`,
+  `get_consent_counts_by_launch`, `get_postulantes_seleccionados`, `get_seleccionados`,
+  `get_seleccionados_for_launch`) eran SECURITY DEFINER y ejecutables por `anon` (vía el
+  grant default a PUBLIC) SIN login → cualquiera con la anon key del bundle podía bajar
+  nombre+legajo de alumnos por `POST /rest/v1/rpc/...`. Fix: `REVOKE EXECUTE FROM PUBLIC, anon`
+  - `GRANT EXECUTE TO authenticated, service_role` en las 19 funciones. **Verificado**: anon
+    bloqueado (`insufficient_privilege`), login pre-auth (`get_student_email_by_legajo`,
+    `get_student_for_signup`, `get_student_signup_status`) intacto con anon, dashboards de
+    staff (SuperUser/Jefe/Directivo/Reportero — todos `authenticated`) y modo testing (mocks)
+    sin afectar. Reversible con `GRANT EXECUTE ... TO anon`.
+- **🟠 FASE 2 pendiente (requiere OK del owner) — bloquear a alumnos logueados.** Tras la
+  Fase 1, un `Alumno` autenticado todavía podría llamar las RPCs de métricas vía REST manual
+  (el rol PG `authenticated` no distingue staff de alumno; el rol real está en
+  `estudiantes.role`). Para cerrarlo hay que agregar un guard `if not <staff> then raise`
+  DENTRO de cada función — lo que implica reescribir el cuerpo de ~18 funciones en prod
+  (varias son `LANGUAGE sql` → pasar a plpgsql). Riesgo medio (podría romper un dashboard si
+  se reproduce mal un body). **Importante:** `is_admin()` cubre SuperUser/Jefe/Directivo/
+  AdminTester pero **NO Reportero** → el guard debe usar un set que incluya Reportero
+  (o crear `is_staff()`), si no se rompe el Reportero. `get_seleccionados_for_launch` NO lleva
+  guard de staff (la usan alumnos para "ver convocados"); solo necesita seguir sin anon.
+- **Otros `anon`-ejecutables menores detectados:** `increment_snooze_count` (reminders, debería
+  ser admin) y varias funciones de trigger (`check_practica_updates`, `log_practica_update`,
+  `set_cohorte_on_activity`, `process_consentimiento_timeouts`, `calc_cohorte_estudiante`) que
+  no deberían ser RPC. Revocar anon/public de estas es seguro (los triggers no usan el grant).
 - **Habilitar `auth_leaked_password_protection`** (HaveIBeenPwned) — toggle de Auth,
   beneficioso, afecta signup/cambio de contraseña. (pendiente: decisión del owner)
 - **`multiple_permissive_policies` x21** — consolidar políticas RLS permisivas múltiples
   por rol/acción (perf). Requiere rework + validar flujos por tabla. NO trivial.
 - **`unused_index` x11** — evaluar `DROP INDEX` (ahorra costo de escritura). Confirmar
   con métricas de uso real antes de dropear.
-- **Revisar grants de RPCs `SECURITY DEFINER` ejecutables por anon/authenticated** (x71)
-  — mayormente intencional (son las RPCs de la app), pero conviene auditar cuáles
-  podrían restringirse.
 - **`extension_in_public` x2** y **`public_bucket_allows_listing` x1** — revisar caso por caso
   (mover extensiones a schema propio es riesgoso; el bucket público puede ser intencional).
 
