@@ -209,7 +209,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="w-9 h-9 rounded-full flex items-center justify-center"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
               style={{ color: "var(--ink-3)" }}
               aria-label="Cambiar tema"
             >
@@ -219,7 +219,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
             </button>
             <button
               onClick={logout}
-              className="w-9 h-9 rounded-full flex items-center justify-center"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
               style={{ color: "var(--ink-3)" }}
               aria-label="Cerrar sesión"
             >
