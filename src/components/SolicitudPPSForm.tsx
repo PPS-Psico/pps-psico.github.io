@@ -125,7 +125,7 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
-        if (issue.path[0]) fieldErrors[issue.path[0]] = issue.message;
+        if (issue.path[0] != null) fieldErrors[String(issue.path[0])] = issue.message;
       });
       setErrors(fieldErrors);
       return;
