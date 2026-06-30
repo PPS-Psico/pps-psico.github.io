@@ -16,7 +16,10 @@ export default defineConfig(({ mode }) => {
     // tanto en el subdirectorio de GitHub Pages como en la raíz del preview local.
     // Esto soluciona los errores 404 de CSS/JS.
     base: './',
-    plugins: [react()],
+    // React Compiler (v1.0, estable): auto-memoización en build. Permite dejar
+    // de escribir useMemo/useCallback a mano y mejora el runtime. Funciona con
+    // @vitejs/plugin-react 4.x (basado en Babel). Target React 19 por defecto.
+    plugins: [react({ babel: { plugins: [["babel-plugin-react-compiler", {}]] } })],
     // En producción eliminamos los logs de depuración (log/info/debug) y los
     // `debugger`, pero conservamos console.error y console.warn para soporte.
     // Esto evita ruido y posible filtrado de datos en la consola del usuario
