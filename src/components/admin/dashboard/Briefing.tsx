@@ -13,11 +13,12 @@ interface BriefingProps {
   isReanalyzing?: boolean;
 }
 
-// Resalta cifras y cantidades (ej. "10 solicitudes", "3 novedades", "144 hs")
-// con el efecto marcador del Inicio del estudiante. Solo toca nodos de texto,
-// nunca el interior de etiquetas, para no romper el HTML que llega de Hermes.
+// Resalta solo cantidades con sentido (número + unidad/sustantivo: "10 solicitudes",
+// "144 hs", "80%", "144 de 250 hs") con el marcador suave del Inicio del estudiante.
+// NO toca fechas (18/06), IDs sueltos ni números pelados, y solo actúa sobre nodos
+// de texto para no romper el HTML que llega de Hermes.
 const FIGURE_RX =
-  /\d[\d.]*\s*(?:%|hs\b|h\b)?(?:\s(?:solicitudes?|convocatorias?|novedades?|mails?|chats?|instituciones?|d[ií]as?|borradores?|lanzamientos?|alumnos?|pendientes?))?/gi;
+  /\d[\d.]*(?:\s+de\s+\d[\d.]*)?\s*(?:%|hs\b)|\d[\d.]*\s+(?:solicitudes?|convocatorias?|novedades?|mails?|chats?|instituciones?|alumnos?|borradores?|lanzamientos?|pendientes?)\b/gi;
 
 const highlightFigures = (html: string): string =>
   html
@@ -25,7 +26,7 @@ const highlightFigures = (html: string): string =>
     .map((seg) =>
       seg.startsWith("<")
         ? seg
-        : seg.replace(FIGURE_RX, (m) => `<mark class="brief-hl">${m.trim()}</mark>`)
+        : seg.replace(FIGURE_RX, (m) => `<mark class="brief-hl">${m}</mark>`)
     )
     .join("");
 
@@ -43,6 +44,8 @@ export const Briefing: React.FC<BriefingProps> = ({
           to { transform: rotate(360deg); }
         }
         .admin-brief .brief-hl {
+          background-color: transparent;
+          color: inherit;
           background-image: linear-gradient(
             100deg,
             transparent 0.4%,
