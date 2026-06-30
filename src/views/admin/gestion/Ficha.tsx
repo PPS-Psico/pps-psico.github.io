@@ -279,8 +279,8 @@ export const Ficha: React.FC<{
               sin clasificar
             </span>
           )}
-          {vm.orientaciones.map((o) => (
-            <span key={o} className="chip-orient" data-orient={orientSlug(o)}>
+          {vm.orientaciones.map((o, i) => (
+            <span key={`${o}-${i}`} className="chip-orient" data-orient={orientSlug(o)}>
               {o}
             </span>
           ))}

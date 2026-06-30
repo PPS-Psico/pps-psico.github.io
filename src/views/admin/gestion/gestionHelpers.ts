@@ -264,16 +264,14 @@ export function buildInstitutions(
     const itemState = itemStateByKey.get(key) || null;
     const state = itemState || dbToUiState(latest[FIELD_ESTADO_GESTION_LANZAMIENTOS] as string);
 
-    const orientaciones =
-      inst?.orientaciones && inst.orientaciones.length
-        ? inst.orientaciones
-        : [
-            ...new Set(
-              launches
-                .map((l) => (l[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "")
-                .filter(Boolean)
-            ),
-          ];
+    const orientaciones = [
+      ...new Set(
+        (inst?.orientaciones && inst.orientaciones.length
+          ? inst.orientaciones
+          : launches.map((l) => (l[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "")
+        ).filter(Boolean)
+      ),
+    ];
 
     // Helper: primer valor no vacío entre los lanzamientos (ordenados del más
     // reciente al más antiguo) para campos que también vienen en la convocatoria.

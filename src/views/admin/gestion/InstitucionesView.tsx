@@ -304,9 +304,9 @@ export const InstitucionesView: React.FC<{
                     flexWrap: "wrap",
                   }}
                 >
-                  {vm.orientaciones.slice(0, 2).map((o) => (
+                  {vm.orientaciones.slice(0, 2).map((o, i) => (
                     <span
-                      key={o}
+                      key={`${o}-${i}`}
                       className="chip-orient"
                       data-orient={orientSlug(o)}
                       style={{ fontSize: 10 }}

@@ -59,6 +59,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshLoopCounter = useRef(0);
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authStabilizationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Dedup del fetch de perfil: `getSession()`, `INITIAL_SESSION` y `SIGNED_IN`
+  // disparan processSession por separado para la MISMA sesión → sin esto se
+  // hacían 3-4 SELECT idénticos a `estudiantes` en el arranque, compitiendo
+  // entre sí y escalando la latencia (medido: 643→1707ms). Guardamos el último
+  // user_id procesado para saltear los duplicados; se resetea en SIGNED_OUT.
+  const processedUserIdRef = useRef<string | null>(null);
 
   // Función de limpieza profunda
   const deepCleanup = useCallback(() => {
@@ -66,6 +72,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem("sb-qxnxtnhtbpsgzprqtrjl-auth-token");
     sessionStorage.clear();
     queryClient.clear();
+    processedUserIdRef.current = null;
     setAuthenticatedUser(null);
   }, [queryClient]);
 
@@ -108,12 +115,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const processSession = async (session: Session | null) => {
       // If no session, clear user and stop loading
       if (!session?.user) {
+        processedUserIdRef.current = null;
         if (isMounted) {
           setAuthenticatedUser(null);
           setIsAuthLoading(false);
         }
         return;
       }
+
+      // Dedup: si ya procesamos (o estamos procesando) este mismo user_id,
+      // evitar el SELECT redundante. El primero en llegar gana y completa el
+      // fetch; los duplicados (getSession + INITIAL_SESSION + SIGNED_IN) salen acá.
+      if (processedUserIdRef.current === session.user.id) {
+        logger.scoped(
+          "Auth",
+          `fetch de perfil omitido — ya procesado (user_id=${session.user.id})`
+        );
+        return;
+      }
+      processedUserIdRef.current = session.user.id;
 
       try {
         // Fetch profile from DB including DNI for validation
@@ -190,6 +210,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               "Profile not found for authenticated user. Posible Admin o Error de Integridad."
             );
             if (session.user.email !== "admin@uflo.edu.ar") {
+              // Permitir reintento: este user_id no quedó resuelto.
+              processedUserIdRef.current = null;
               setAuthenticatedUser(null);
               setIsAuthLoading(false);
             }
@@ -197,6 +219,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (err) {
         logger.error("Profile fetch error:", err);
+        // Falló el fetch: liberar el dedup para poder reintentar.
+        processedUserIdRef.current = null;
         if (isMounted) {
           setAuthenticatedUser(null);
           setIsAuthLoading(false);
@@ -240,6 +264,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         processSession(session);
       } else if (event === "SIGNED_OUT") {
         refreshLoopCounter.current = 0;
+        processedUserIdRef.current = null;
         if (isMounted) {
           setAuthenticatedUser(null);
           setIsAuthLoading(false);

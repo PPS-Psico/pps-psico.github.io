@@ -287,14 +287,22 @@ not exist`. La tabla `gmail_hilos` no tiene esa columna, pero
 > muestra qué prop cambió → para cazar re-render storms. Ya instrumentados:
 > `StudentWrapper` (render trace) y el fetch de perfil de `AuthContext` (timing+count).
 >
-> **Hallazgo con el logging nuevo — fetch de perfil duplicado:** en el arranque,
-> `AuthContext` corre `processSession` 2-3 veces para el MISMO `user_id` porque
-> tanto `getSession()` como los eventos `INITIAL_SESSION`/`SIGNED_IN` lo disparan
-> (gotcha conocido de supabase-js). Cada uno hace un SELECT a `estudiantes`. Es
-> redundante. **Fix propuesto (no aplicado, toca auth de prod):** guard por
-> `useRef` que saltee el fetch si ya hay uno en vuelo / ya se procesó ese mismo
-> `user_id` (reseteando en `SIGNED_OUT`). Bajo riesgo, pero requiere validar el
-> flujo de login/logout/cambio-de-cuenta antes de mergear.
+> **Hallazgo con el logging nuevo — fetch de perfil duplicado ✅ CORREGIDO:** en el
+> arranque, `AuthContext` corría `processSession` **4 veces** para el MISMO
+> `user_id` (lo disparan `getSession()` + `INITIAL_SESSION` + `SIGNED_IN`), cada
+> una con un SELECT a `estudiantes`. Las 4 queries concurrentes competían y la
+> latencia escalaba: 643 → 706 → 1152 → **1707ms** (medido en admin), bloqueando
+> la carga ~2.4s. Fix aplicado: guard por `useRef` (`processedUserIdRef`) que
+> saltea el fetch si ya se procesó ese mismo `user_id`; se resetea en `SIGNED_OUT`
+> y `deepCleanup`, y se libera en error/not-found para permitir reintento. Ahora
+> es **1 sola query** (~640ms). Hay índice `idx_estudiantes_user_id`, así que la
+> latencia restante es red al DB remoto (inherente en dev).
+>
+> **Bug de React corregido — keys duplicadas en Gestión:** `InstitucionesView`
+> tiraba `Encountered two children with the same key, 'Clínica'` cuando una
+> institución traía orientaciones repetidas. Se dedup en `gestionHelpers`
+> (`buildInstitutions`, con `Set` en ambas ramas) + keys compuestas `${o}-${i}`
+> en los chips de `InstitucionesView` y `Ficha` como defensa extra.
 
 ---
 
