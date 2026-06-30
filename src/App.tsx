@@ -26,7 +26,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import PracticasView from "./views/student/PracticasView";
 import StudentConvocatoriaDetailView from "./views/student/StudentConvocatoriaDetailView";
 import DataCompletionModal from "./components/student/DataCompletionModal";
-import { logger } from "./utils/logger";
+import { useRenderTrace } from "./hooks/useRenderTrace";
 
 // Views
 const StudentView = lazy(() => import("./views/StudentView"));
@@ -64,12 +64,12 @@ const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
   const { authenticatedUser } = useAuth();
   const [dataCompleted, setDataCompleted] = useState(false);
 
-  logger.info(
-    "[StudentWrapper] needsDataCompletion:",
-    authenticatedUser?.needsDataCompletion,
-    "role:",
-    authenticatedUser?.role
-  );
+  useRenderTrace("StudentWrapper", {
+    needsDataCompletion: authenticatedUser?.needsDataCompletion,
+    role: authenticatedUser?.role,
+    legajo: authenticatedUser?.legajo,
+    dataCompleted,
+  });
 
   const role = authenticatedUser?.role as string | undefined;
   const isStudent = !role || role === "Alumno";

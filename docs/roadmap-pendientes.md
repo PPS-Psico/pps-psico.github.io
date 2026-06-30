@@ -276,6 +276,25 @@ not exist`. La tabla `gmail_hilos` no tiene esa columna, pero
 > del frontend. **Pendiente (decisión del owner):** quitar `email_institucion` de
 > esos dos selects en el servicio Python, o agregar la columna a la tabla. Es un
 > servicio desplegado aparte, por eso no se tocó sin confirmar.
+>
+> **Logging de diagnóstico mejorado (sesión 12).** Se reescribió `src/utils/logger.ts`
+> (drop-in de `console.*`, sigue dev-only para info/debug) agregando: timestamps
+> relativos `[+1.2s]`, niveles con etiqueta, `logger.scoped(scope, ...)`,
+> `logger.time(label)`/`timeAsync` (mide ms + deja `performance.measure` para la
+> pestaña Performance de DevTools), `logger.count(label)` (detecta llamadas
+> duplicadas, ej. "Auth · fetch perfil (x3)") y `group`/`table`. Nuevo hook
+> `src/hooks/useRenderTrace.ts` (dev-only, no-op en prod) que cuenta renders y
+> muestra qué prop cambió → para cazar re-render storms. Ya instrumentados:
+> `StudentWrapper` (render trace) y el fetch de perfil de `AuthContext` (timing+count).
+>
+> **Hallazgo con el logging nuevo — fetch de perfil duplicado:** en el arranque,
+> `AuthContext` corre `processSession` 2-3 veces para el MISMO `user_id` porque
+> tanto `getSession()` como los eventos `INITIAL_SESSION`/`SIGNED_IN` lo disparan
+> (gotcha conocido de supabase-js). Cada uno hace un SELECT a `estudiantes`. Es
+> redundante. **Fix propuesto (no aplicado, toca auth de prod):** guard por
+> `useRef` que saltee el fetch si ya hay uno en vuelo / ya se procesó ese mismo
+> `user_id` (reseteando en `SIGNED_OUT`). Bajo riesgo, pero requiere validar el
+> flujo de login/logout/cambio-de-cuenta antes de mergear.
 
 ---
 
