@@ -396,9 +396,8 @@ html.dark .ah-root .ah-next__date .m {
   border-radius: 999px;
   background: var(--ac, var(--primary-500));
 }
-/* La orientación se resalta con el "marcador" editorial (banda de color detrás
-   del texto, igual que los números destacados del hero) y el texto va en el
-   color del área. El punto se mantiene con el color del área. */
+/* La orientación va en el color del área (con el punto). Sin banda de resaltado:
+   solo texto coloreado, más grande, para que se lea claro sin recargar la card. */
 .ah-conv .ah-areabadge,
 .ah-feat .ah-areabadge {
   font-size: 13px;
@@ -406,27 +405,7 @@ html.dark .ah-root .ah-next__date .m {
 }
 .ah-conv .ah-areabadge__mark,
 .ah-feat .ah-areabadge__mark {
-  --mc: var(--ac, var(--primary-500));
-  --ma: 20%;
   color: color-mix(in oklab, var(--ac, var(--primary-500)) 88%, var(--fg));
-  background-image: linear-gradient(
-    100deg,
-    transparent 0.4%,
-    color-mix(in oklab, var(--mc) var(--ma), transparent) 2%,
-    color-mix(in oklab, var(--mc) var(--ma), transparent) 97%,
-    transparent 99.6%
-  );
-  background-repeat: no-repeat;
-  background-size: 100% 56%;
-  background-position: 0 64%;
-  padding: 0 0.16em;
-  border-radius: 0.08em;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-html.dark .ah-conv .ah-areabadge__mark,
-html.dark .ah-feat .ah-areabadge__mark {
-  --ma: 32%;
 }
 .ah-closes {
   display: inline-flex;

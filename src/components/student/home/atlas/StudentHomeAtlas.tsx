@@ -653,7 +653,10 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               <h6>Cerradas · tus resultados</h6>
               <span className="n">{String(closedLanzamientos.length).padStart(2, "0")}</span>
             </div>
-            <div className="ah-convs" style={{ marginBottom: 28 }}>
+            <div
+              className="ah-convs"
+              style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginBottom: 28 }}
+            >
               {closedLanzamientos.map((l) => {
                 const area = (l[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "General";
                 const areaPrimary = area.split(/[,/]/)[0].trim();
