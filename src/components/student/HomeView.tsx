@@ -523,10 +523,7 @@ const HomeView: React.FC<HomeViewProps> = ({
             {greeting},{" "}
             <span
               style={{
-                background: "linear-gradient(110deg, #46253D 0%, #203B73 50%, #3CB88D 100%)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
+                color: resolvedTheme === "dark" ? "#c9a2bd" : "#9d3f86",
               }}
             >
               {firstName}.
