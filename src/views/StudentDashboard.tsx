@@ -17,7 +17,6 @@ import SolicitudNuevaPPSModal from "../components/student/SolicitudNuevaPPSModal
 import SolicitudesList from "../components/student/SolicitudesList";
 import StudentConvocatoriasView from "./student/StudentConvocatoriasView";
 import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
-import MobileSolicitudesView from "./student/MobileSolicitudesView";
 import AtlasProfileView from "./student/AtlasProfileView";
 import AtlasPracticasView from "./student/AtlasPracticasView";
 import WelcomeBanner from "../components/student/WelcomeBanner";
@@ -483,28 +482,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   );
 
   // Versión mobile (editorial) de Solicitudes.
-  const mobileSolicitudesContent = useMemo(
-    () => (
-      <ErrorBoundary>
-        <MobileSolicitudesView
-          solicitudes={solicitudes}
-          onCreateSolicitud={handleStartSolicitud}
-          onRequestFinalization={handleOpenFinalization}
-          criterios={criterios}
-          informeTasks={informeTasks}
-          finalizacionRequest={finalizacionRequest}
-        />
-      </ErrorBoundary>
-    ),
-    [
-      solicitudes,
-      handleStartSolicitud,
-      handleOpenFinalization,
-      criterios,
-      informeTasks,
-      finalizacionRequest,
-    ]
-  );
+  const mobileSolicitudesContent = atlasSolicitudesContent;
 
   const handleFechaFinChange = useCallback(
     (practicaId: string, fecha: string) => {

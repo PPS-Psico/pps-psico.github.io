@@ -2242,8 +2242,7 @@ html.dark .ah-root .ah-avatar {
    ============================================================ */
 .ah-root.ah-unified .ah-pagehead h1,
 .ah-root.ah-unified .ah-profilehdr__name,
-.ah-root.ah-unified .ah-profilehdr__av,
-.ah-root.ah-unified .ah-sechead h6 {
+.ah-root.ah-unified .ah-profilehdr__av {
   font-family: var(--font-display);
   font-weight: var(--display-weight);
   letter-spacing: var(--display-tracking);

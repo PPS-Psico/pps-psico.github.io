@@ -111,7 +111,7 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
   const isEmpty = active.length === 0 && history.length === 0 && !finalizacionRequest;
 
   return (
-    <div className="ah-root">
+    <div className="ah-root ah-unified">
       <main className="ah-main">
         {finalizacionRequest ? (
           <FinalizationStatusCard
