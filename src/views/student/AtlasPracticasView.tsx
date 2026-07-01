@@ -180,7 +180,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   };
 
   return (
-    <div className="ah-root">
+    <div className="ah-root ah-unified">
       <main className="ah-main">
         <div className="ah-pagehead">
           <span className="eyebrow">Tu recorrido</span>
@@ -329,7 +329,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
               <span className="n">{String(rows.length).padStart(2, "0")}</span>
             </div>
             {rows.length > 0 ? (
-              <div className="ah-card">
+              <div className="ah-card ah-hist-table">
                 <table className="ah-table">
                   <thead>
                     <tr>
@@ -400,6 +400,60 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                 <p className="ah-empty__s">
                   Cuando completes tu primera PPS, tu historial y tus horas van a aparecer acá.
                 </p>
+              </div>
+            )}
+
+            {/* Historial en tarjetas — versión mobile (<768px) de la tabla. */}
+            {rows.length > 0 && (
+              <div className="ah-hist-list">
+                {rows.map((p) => {
+                  const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
+                  const period = [
+                    fmtShort(p[FIELD_FECHA_INICIO_PRACTICAS]),
+                    fmtShort(p[FIELD_FECHA_FIN_PRACTICAS]),
+                  ]
+                    .filter(Boolean)
+                    .join(" — ");
+                  return (
+                    <div className="ah-prow" key={`m-${p.id}`}>
+                      <div className="ah-prow__top">
+                        <div className="ah-prow__name">
+                          {cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
+                            "Institución"}
+                        </div>
+                        <span
+                          className="ah-areabadge"
+                          style={{ ["--ac" as string]: areaVar(area) }}
+                        >
+                          <span className="dot" />
+                          {area}
+                        </span>
+                      </div>
+                      <div className="ah-prow__meta mono">
+                        <span>{period || "Sin fechas"}</span>
+                        <span>·</span>
+                        <span>{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</span>
+                      </div>
+                      <div className="ah-prow__foot">
+                        <span className="ah-prow__notalbl">Nota</span>
+                        <span className="ah-prow__notaval">{notaCell(p)}</span>
+                        {onRequestModificacion ? (
+                          <button
+                            type="button"
+                            className="ah-iconbtn--sm"
+                            title="Solicitar corrección"
+                            style={{ marginLeft: "auto" }}
+                            onClick={() => onRequestModificacion(p)}
+                          >
+                            <span className="material-icons" style={{ fontSize: 17 }}>
+                              edit
+                            </span>
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

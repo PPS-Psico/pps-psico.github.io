@@ -9,7 +9,6 @@ import CriteriosPanel from "../components/student/CriteriosPanel";
 import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
 import FinalizacionForm from "../components/student/FinalizacionForm";
 import HomeView from "../components/student/HomeView";
-import PracticasTable from "../components/student/PracticasTable";
 import PrintableReport from "../components/student/PrintableReport";
 import ProfileView from "../components/student/ProfileView";
 import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
@@ -53,7 +52,6 @@ import type { AuthUser } from "../contexts/AuthContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useModal } from "../contexts/ModalContext";
 import { useNotifications } from "../contexts/NotificationContext";
-import { useTheme } from "../contexts/ThemeContext";
 import { useStudentPanel } from "../contexts/StudentPanelContext";
 import { db } from "../lib/db";
 import type { Orientacion, Practica, TabId } from "../types";
@@ -227,7 +225,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 }) => {
   const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
   const isMobile = useIsMobile();
-  const { resolvedTheme } = useTheme();
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
@@ -260,7 +257,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     updateOrientation,
     updateInternalNotes,
     updateNota,
-    updateFechaFin,
     deletePractica,
     enrollStudent,
     cancelEnrollment,
@@ -312,8 +308,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     },
     [updateNota]
   );
-
-  // Handlers para modales de corrección de prácticas
   const handleRequestModificacion = useCallback((practica: Practica) => {
     logger.info("[DEBUG] StudentDashboard - Solicitar modificación para:", practica);
     setSelectedPractica(practica);
@@ -483,36 +477,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   // Versión mobile (editorial) de Solicitudes.
   const mobileSolicitudesContent = atlasSolicitudesContent;
-
-  const handleFechaFinChange = useCallback(
-    (practicaId: string, fecha: string) => {
-      updateFechaFin.mutate({ practicaId, fecha });
-    },
-    [updateFechaFin]
-  );
-
-  const practicasContent = useMemo(
-    () => (
-      <ErrorBoundary>
-        <PracticasTable
-          practicas={practicas}
-          handleNotaChange={handleNotaChange}
-          handleFechaFinChange={handleFechaFinChange}
-          isLoading={isPracticasLoading}
-          onRequestModificacion={handleRequestModificacion}
-          onRequestNuevaPPS={handleRequestNuevaPPS}
-        />
-      </ErrorBoundary>
-    ),
-    [
-      practicas,
-      handleNotaChange,
-      handleFechaFinChange,
-      isPracticasLoading,
-      handleRequestModificacion,
-      handleRequestNuevaPPS,
-    ]
-  );
 
   const profileContent = useMemo(
     () => (
@@ -768,22 +732,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           )}
           {currentActiveTab === "convocatorias" && <StudentConvocatoriasView />}
           {currentActiveTab === "solicitudes" && <>{mobileSolicitudesContent}</>}
-          {currentActiveTab === "practicas" && (
-            <div className="ed" data-mode={resolvedTheme} data-accent="teal">
-              {!finalizacionRequest && (
-                <CriteriosPanel
-                  criterios={criterios}
-                  selectedOrientacion={selectedOrientacion}
-                  handleOrientacionChange={handleOrientacionChange}
-                  showSaveConfirmation={showSaveConfirmation}
-                  onRequestFinalization={handleOpenFinalization}
-                  informeTasks={informeTasks}
-                  showOrientationSelector={false}
-                />
-              )}
-              {practicasContent}
-            </div>
-          )}
+          {currentActiveTab === "practicas" && <>{atlasPracticasContent}</>}
           {currentActiveTab === "profile" && <>{atlasProfileContent}</>}
         </div>
       )}
