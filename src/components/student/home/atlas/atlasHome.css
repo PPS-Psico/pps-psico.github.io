@@ -2228,3 +2228,39 @@ html.dark .ah-root .ah-avatar {
     color: transparent;
   }
 }
+
+/* ============================================================
+   UNIFICACIÓN mobile/desktop — secciones migradas (.ah-unified)
+   ------------------------------------------------------------
+   Se aplica SOLO a las secciones ya convergidas (marcadas con la
+   clase `ah-unified` en su raíz). Objetivo: un único look en todo
+   ancho — display Bricolage Grotesque (la del campus) y acento
+   SÓLIDO pastel (sin degradé en superficies de datos). Gana en
+   especificidad (3 clases) sobre las reglas base y sobre el flip
+   móvil de arriba, por lo que el tratamiento es idéntico en PC y
+   celular. Fase 1 = Perfil.
+   ============================================================ */
+.ah-root.ah-unified .ah-pagehead h1,
+.ah-root.ah-unified .ah-profilehdr__name,
+.ah-root.ah-unified .ah-profilehdr__av,
+.ah-root.ah-unified .ah-sechead h6 {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+}
+/* El acento del título deja de ser itálica-serif / degradé y pasa a
+   color de acento sólido pastel, coherente en claro y oscuro. */
+.ah-root.ah-unified .ah-pagehead h1 em {
+  font-style: normal;
+  background: none;
+  color: var(--display-accent);
+  -webkit-text-fill-color: currentColor;
+}
+/* En pantallas angostas el contenedor Atlas no trae padding horizontal
+   (venía pensado para desktop). Al montarse ahora también en mobile,
+   le damos aire lateral para que las cards no toquen los bordes. */
+@media (max-width: 767px) {
+  .ah-root.ah-unified .ah-main {
+    padding: 8px 16px 20px;
+  }
+}

@@ -25,7 +25,7 @@ interface AtlasProfileViewProps {
 }
 
 const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isLoading }) => {
-  const { authenticatedUser, refreshAuth } = useAuth();
+  const { authenticatedUser, refreshAuth, logout } = useAuth();
   const { showModal } = useModal();
   const queryClient = useQueryClient();
 
@@ -149,7 +149,7 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
 
   if (isLoading || !studentDetails) {
     return (
-      <div className="ah-root">
+      <div className="ah-root ah-unified">
         <main className="ah-main">
           <div className="ah-card" style={{ height: 120, opacity: 0.4 }} />
         </main>
@@ -185,7 +185,7 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
   ];
 
   return (
-    <div className="ah-root">
+    <div className="ah-root ah-unified">
       <main className="ah-main">
         <div className="ah-pagehead">
           <span className="eyebrow">Tu cuenta</span>
@@ -339,6 +339,38 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
               </button>
             )}
           </div>
+        </div>
+
+        {/* Cerrar sesión (paridad con la vista mobile) */}
+        <div className="ah-sechead" style={{ marginTop: 36 }}>
+          <h6>Sesión</h6>
+        </div>
+        <div className="ah-card">
+          <button
+            type="button"
+            className="ah-rowcard"
+            onClick={logout}
+            style={{
+              width: "100%",
+              background: "transparent",
+              border: 0,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <span
+              className="ah-action__ic"
+              style={{ background: "var(--bg-sunken)", color: "var(--fg-muted)" }}
+            >
+              <span className="material-icons" style={{ fontSize: 22 }}>
+                logout
+              </span>
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="ah-action__t">Cerrar sesión</div>
+              <div className="ah-action__d">Salir de tu cuenta en este dispositivo.</div>
+            </div>
+          </button>
         </div>
       </main>
     </div>

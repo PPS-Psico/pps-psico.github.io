@@ -19,7 +19,6 @@ import StudentConvocatoriasView from "./student/StudentConvocatoriasView";
 import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
 import MobileSolicitudesView from "./student/MobileSolicitudesView";
 import AtlasProfileView from "./student/AtlasProfileView";
-import MobileProfileView from "./student/MobileProfileView";
 import AtlasPracticasView from "./student/AtlasPracticasView";
 import WelcomeBanner from "../components/student/WelcomeBanner";
 import WhatsAppExportButton from "../components/student/WhatsAppExportButton";
@@ -590,16 +589,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [studentDetails, isLoading]
   );
 
-  // Versión mobile (editorial) de Perfil.
-  const mobileProfileContent = useMemo(
-    () => (
-      <ErrorBoundary>
-        <MobileProfileView studentDetails={studentDetails} isLoading={isLoading} />
-      </ErrorBoundary>
-    ),
-    [studentDetails, isLoading]
-  );
-
   const studentDataTabs = useMemo(
     () => [
       { id: "inicio" as TabId, label: "Inicio", icon: "home", content: homeContent },
@@ -817,7 +806,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               {practicasContent}
             </div>
           )}
-          {currentActiveTab === "profile" && <>{mobileProfileContent}</>}
+          {currentActiveTab === "profile" && <>{atlasProfileContent}</>}
         </div>
       )}
       {showExportButton && (
