@@ -12,6 +12,21 @@
   --font-serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
+  /* ── Tokens unificados (Fase 0 · convergencia mobile/desktop) ──────────────
+     Aditivos: NADA los consume todavía, por lo que no cambian el aspecto de
+     ninguna sección. La migración por sección irá apuntando los títulos
+     display a --font-display (Bricolage, la misma del campus) y las superficies
+     a los alias --surface/--ink/--line/--accent. Fuente única de verdad. */
+  --font-display: "Bricolage Grotesque", var(--font-sans);
+  --display-weight: 700;
+  --display-tracking: -0.04em;
+  --surface: var(--bg-elevated);
+  --surface-sunken: var(--bg-sunken);
+  --ink: var(--fg);
+  --ink-muted: var(--fg-muted);
+  --line: var(--border);
+  --accent: var(--primary-500);
+
   --lh-tight: 1.1;
   --lh-snug: 1.25;
   --lh-normal: 1.5;

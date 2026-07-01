@@ -45,6 +45,9 @@ html.pps-embedded .ed {
   --font-display: "Manrope", "Geist", system-ui, sans-serif;
   --font-sans: "Geist", "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
+  /* Tokens unificados (Fase 0): pesos/tracking display centralizados. Aditivos. */
+  --display-weight: 700;
+  --display-tracking: -0.04em;
 
   /* Student Panel Semantic Tokens - Light Mode */
   --student-bg: #fafaf7;
@@ -2189,6 +2192,12 @@ html.dark {
   --font-display: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
   --font-sans: "Geist", "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
+  /* Tokens unificados (Fase 0): alias de superficie + pesos display. Aditivos,
+     no cambian el aspecto; el scope .ed ya trae --ink/--ink-muted/--line/--accent. */
+  --surface: var(--bg-elevated);
+  --surface-sunken: var(--bg-sunken);
+  --display-weight: 700;
+  --display-tracking: -0.04em;
   color: var(--ink);
   font-family: var(--font-sans);
 }
