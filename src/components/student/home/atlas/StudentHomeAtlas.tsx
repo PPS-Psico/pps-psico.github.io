@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import "./atlasHome.css";
-import StudentConvCard from "../StudentConvCard";
 import type {
   Convocatoria,
   CriteriosCalculados,
@@ -25,6 +24,7 @@ import {
   FIELD_EMPRESA_PPS_SOLICITUD,
   FIELD_ESTADO_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
+  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
 } from "../../../../constants";
 import { formatDate, normalizeStringForComparison } from "../../../../utils/formatters";
 
@@ -447,7 +447,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   <div className="ah-feat__head">
                     <span className="ah-areabadge">
                       <span className="dot" />
-                      {areaPrimary}
+                      <span className="ah-areabadge__mark">{areaPrimary}</span>
                     </span>
                     <span className={"ah-closes" + (closes.soft ? " ah-closes--soft" : "")}>
                       {closes.soft ? (
@@ -601,7 +601,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   <div className="ah-conv__top">
                     <span className="ah-areabadge">
                       <span className="dot" />
-                      {areaPrimary}
+                      <span className="ah-areabadge__mark">{areaPrimary}</span>
                     </span>
                     <span className={"ah-closes" + (closes.soft ? " ah-closes--soft" : "")}>
                       <AhIcon name="timer" size={13} />
@@ -653,30 +653,108 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               <h6>Cerradas · tus resultados</h6>
               <span className="n">{String(closedLanzamientos.length).padStart(2, "0")}</span>
             </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                gap: 16,
-                marginBottom: 28,
-              }}
-            >
+            <div className="ah-convs" style={{ marginBottom: 28 }}>
               {closedLanzamientos.map((l) => {
-                // Si esta convocatoria cerrada es en la que el alumno quedó
-                // seleccionado y aún debe firmar, su CTA pasa a "Firmar
-                // consentimiento" (lleva al mismo modal que el "Próximo paso").
+                const area = (l[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "General";
+                const areaPrimary = area.split(/[,/]/)[0].trim();
+                const name = ((l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Convocatoria")
+                  .split(" - ")[0]
+                  .trim();
+                const rawDesc = (l[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "";
+                const desc = rawDesc
+                  ? rawDesc.split(/(?<=\.)\s/)[0].slice(0, 120)
+                  : "Práctica profesional supervisada.";
+                const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
+                const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
+                const periodo = [
+                  fmtShort(l[FIELD_FECHA_INICIO_LANZAMIENTOS]),
+                  fmtShort(l[FIELD_FECHA_FIN_LANZAMIENTOS]),
+                ]
+                  .filter(Boolean)
+                  .join(" → ");
+                const enrollment = enrollmentMap.get(l.id);
+                const status = enrollment
+                  ? normalizeStringForComparison(
+                      (enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] as string) || ""
+                    )
+                  : "";
+                const isSelected =
+                  status === "seleccionado" || status === "adjudicado" || status === "en curso";
                 const isConsentCard = consent?.lanzamientoId === l.id;
                 return (
-                  <StudentConvCard
+                  <article
                     key={l.id}
-                    lanzamiento={l}
-                    enrollment={enrollmentMap.get(l.id) ?? null}
-                    isOpen={false}
-                    pendingConsentCta={isConsentCard}
-                    onFirmarConsentimiento={isConsentCard ? onStartConsent : undefined}
-                    onOpen={() => onOpenDetalle(l)}
-                    onVerConvocados={() => onVerConvocados(l)}
-                  />
+                    className="ah-conv"
+                    style={{ ["--ac" as string]: areaVar(areaPrimary) }}
+                    onClick={() => onOpenDetalle(l)}
+                  >
+                    <div className="ah-conv__top">
+                      <span className="ah-areabadge">
+                        <span className="dot" />
+                        <span className="ah-areabadge__mark">{areaPrimary}</span>
+                      </span>
+                      {isSelected ? (
+                        <span
+                          className="ah-closes"
+                          style={{
+                            color: "var(--ac)",
+                            background: "color-mix(in oklab, var(--ac) 12%, transparent)",
+                          }}
+                        >
+                          Seleccionado/a
+                        </span>
+                      ) : (
+                        <span className="ah-closes ah-closes--soft">Cerrada</span>
+                      )}
+                    </div>
+                    <h2 className="ah-conv__name">{name}</h2>
+                    <p className="ah-conv__desc">{desc}</p>
+                    <div className="ah-conv__spacer" />
+                    <div className="ah-conv__data">
+                      <div className="ah-conv__cell">
+                        <span className="k">Horas</span>
+                        <span className="v">
+                          {hs || "—"} <span className="u">hs</span>
+                        </span>
+                      </div>
+                      <div className="ah-conv__cell">
+                        <span className="k">Cupos</span>
+                        <span className="v">{cupos || "—"}</span>
+                      </div>
+                      <div className="ah-conv__cell">
+                        <span className="k">Período</span>
+                        <span className="v">{periodo || "A definir"}</span>
+                      </div>
+                    </div>
+                    <div className="ah-conv__foot">
+                      {isConsentCard ? (
+                        <button
+                          type="button"
+                          className="ah-btn ah-btn--primary"
+                          style={{ background: areaVar(areaPrimary) }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStartConsent();
+                          }}
+                        >
+                          Firmar consentimiento
+                          <AhIcon name="arrow" size={15} />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ah-btn ah-btn--secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onVerConvocados(l);
+                          }}
+                        >
+                          Ver convocados
+                          <AhIcon name="arrow" size={15} />
+                        </button>
+                      )}
+                    </div>
+                  </article>
                 );
               })}
             </div>

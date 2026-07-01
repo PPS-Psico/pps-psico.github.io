@@ -357,7 +357,6 @@ html.dark .ah-root .ah-next__date .m {
 }
 .ah-conv {
   position: relative;
-  overflow: hidden;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -371,35 +370,10 @@ html.dark .ah-root .ah-next__date .m {
   display: flex;
   flex-direction: column;
 }
-/* Glow de color por orientación en la esquina superior derecha (sutil). */
-.ah-conv::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(
-    150px 150px at 100% 0%,
-    color-mix(in oklab, var(--ac, var(--primary-500)) 13%, transparent),
-    transparent 72%
-  );
-  opacity: 0.85;
-  pointer-events: none;
-  z-index: 0;
-  transition: opacity 280ms var(--ease-out);
-}
-.ah-conv > * {
-  position: relative;
-  z-index: 1;
-}
 .ah-conv:hover {
   box-shadow: var(--shadow-md);
   border-color: color-mix(in oklab, var(--ac, var(--primary-500)) 45%, var(--border));
   transform: translateY(-2px);
-}
-.ah-conv:hover::before {
-  opacity: 1;
 }
 .ah-conv__top {
   display: flex;
@@ -422,16 +396,37 @@ html.dark .ah-root .ah-next__date .m {
   border-radius: 999px;
   background: var(--ac, var(--primary-500));
 }
-/* En la card de convocatoria, el chip de orientación toma su color (tinte suave)
-   para sumar color con sentido semántico y que cada área se reconozca de un vistazo. */
-.ah-conv .ah-areabadge {
-  color: color-mix(in oklab, var(--ac, var(--primary-500)) 78%, var(--fg));
-  background: color-mix(in oklab, var(--ac, var(--primary-500)) 11%, transparent);
-  border-radius: var(--radius-pill);
-  padding: 5px 10px 5px 9px;
+/* La orientación se resalta con el "marcador" editorial (banda de color detrás
+   del texto, igual que los números destacados del hero) y el texto va en el
+   color del área. El punto se mantiene con el color del área. */
+.ah-conv .ah-areabadge,
+.ah-feat .ah-areabadge {
+  font-size: 13px;
+  font-weight: 600;
 }
-.ah-conv .ah-areabadge .dot {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ac, var(--primary-500)) 18%, transparent);
+.ah-conv .ah-areabadge__mark,
+.ah-feat .ah-areabadge__mark {
+  --mc: var(--ac, var(--primary-500));
+  --ma: 20%;
+  color: color-mix(in oklab, var(--ac, var(--primary-500)) 88%, var(--fg));
+  background-image: linear-gradient(
+    100deg,
+    transparent 0.4%,
+    color-mix(in oklab, var(--mc) var(--ma), transparent) 2%,
+    color-mix(in oklab, var(--mc) var(--ma), transparent) 97%,
+    transparent 99.6%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 56%;
+  background-position: 0 64%;
+  padding: 0 0.16em;
+  border-radius: 0.08em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+html.dark .ah-conv .ah-areabadge__mark,
+html.dark .ah-feat .ah-areabadge__mark {
+  --ma: 32%;
 }
 .ah-closes {
   display: inline-flex;
