@@ -2328,3 +2328,47 @@ html.dark .ah-root .ah-avatar {
   display: inline-flex;
   align-items: center;
 }
+
+/* ── Modales full-screen en mobile (Fase 6) ──────────────────────────────────
+   SolicitudPPSForm y CompromisoPPSModal usan .ah-cmodal (card centrada). En
+   <768px pasan a sheet full-screen: ocupan todo el alto/ancho, header sticky y
+   cuerpo scrollable. Solo cambia el "chrome"; la lógica/validación no se toca. */
+@media (max-width: 767px) {
+  .ah-cmodal-overlay {
+    padding: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ah-cmodal,
+  .ah-cmodal--form {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    min-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .ah-cmodal__head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--surface);
+  }
+  /* El cuerpo toma el alto restante y hace scroll propio; el footer queda al
+     final del contenido con aire extra para no pegarse al borde inferior. */
+  .ah-cmodal__body {
+    flex: 1 1 auto;
+  }
+  .ah-cmodal__foot {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+}
+/* Títulos de modal a Bricolage cuando la raíz está marcada como unificada. */
+.ah-root.ah-unified .ah-cmodal__title,
+.ah-root.ah-unified .ah-cmodal__stitle {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
+}

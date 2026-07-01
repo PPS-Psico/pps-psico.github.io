@@ -156,7 +156,7 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   };
 
   return createPortal(
-    <div className="ah-root">
+    <div className="ah-root ah-unified">
       <div className="ah-cmodal-overlay" onClick={onClose}>
         <div className="ah-cmodal" onClick={(event) => event.stopPropagation()}>
           <div className="ah-cmodal__head">

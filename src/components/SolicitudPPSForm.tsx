@@ -166,7 +166,7 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
   };
 
   return createPortal(
-    <div className="ah-root" data-accent="teal">
+    <div className="ah-root ah-unified" data-accent="teal">
       <div className="ah-cmodal-overlay" onClick={handleBackdropClick}>
         <div
           ref={modalRef}
