@@ -26,7 +26,12 @@ import {
   FIELD_ULTIMA_ACTUALIZACION_PPS,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
 } from "../../../../constants";
-import { formatDate, normalizeStringForComparison } from "../../../../utils/formatters";
+import {
+  formatDate,
+  normalizeStringForComparison,
+  closesLabel,
+  daysUntil,
+} from "../../../../utils/formatters";
 
 interface StudentHomeAtlasProps {
   student: EstudianteFields | null;
@@ -38,7 +43,7 @@ interface StudentHomeAtlasProps {
   informeTasks: InformeTask[];
   closedLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
-  consent: { ppsName: string; lanzamientoId: string } | null;
+  consent: { ppsName: string; lanzamientoId: string; area?: string } | null;
   upcomingStart: { ppsName: string; startDate: string } | null;
   onStartConsent: () => void;
   onOpenDetalle: (l: LanzamientoPPS) => void;
@@ -56,10 +61,10 @@ const fmtShort = (raw?: unknown): string => {
   return `${parseInt(m[1], 10)} ${MESES[parseInt(m[2], 10) - 1] ?? ""}`.trim();
 };
 
-const AhIcon: React.FC<{ name: "bell" | "cal" | "clock" | "arrow" | "timer"; size?: number }> = ({
-  name,
-  size = 18,
-}) => {
+const AhIcon: React.FC<{
+  name: "bell" | "cal" | "clock" | "arrow" | "timer" | "lock";
+  size?: number;
+}> = ({ name, size = 18 }) => {
   const paths: Record<string, React.ReactNode> = {
     bell: (
       <>
@@ -92,6 +97,12 @@ const AhIcon: React.FC<{ name: "bell" | "cal" | "clock" | "arrow" | "timer"; siz
         <circle cx="12" cy="14" r="8" />
       </>
     ),
+    lock: (
+      <>
+        <rect x="3" y="11" width="18" height="11" rx="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </>
+    ),
   };
   return (
     <svg
@@ -119,24 +130,6 @@ function areaVar(area: string): string {
   // Laboral: rojo ladrillo, igual que getAreaColor() / la vista mobile (#C0392B).
   if (a.startsWith("la") || a.startsWith("tr")) return "#c0392b";
   return "var(--primary-500)";
-}
-
-function daysUntil(raw?: unknown): number | null {
-  if (!raw) return null;
-  const d = new Date(raw as string);
-  if (isNaN(d.getTime())) return null;
-  d.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((d.getTime() - today.getTime()) / 86400000);
-}
-function closesLabel(raw?: unknown): { text: string; soft: boolean } {
-  const n = daysUntil(raw);
-  if (n == null) return { text: "Abierta", soft: true };
-  if (n < 0) return { text: "Cerró", soft: true };
-  if (n === 0) return { text: "Cierra hoy", soft: false };
-  if (n === 1) return { text: "Cierra mañana", soft: false };
-  return { text: `Cierra en ${n} días`, soft: n > 4 };
 }
 
 // Estados de solicitud "completados/cerrados" que ya no requieren acción en el
@@ -249,7 +242,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   const nConvs = openLanzamientos.length;
 
   return (
-    <div className="ah-root">
+    <div className="ah-root ah-unified">
       <main className="ah-main">
         {/* Hero: saludo + próximo paso */}
         <div className="ah-hero">
@@ -330,8 +323,13 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 </div>
                 <button
                   type="button"
-                  className="ah-btn ah-btn--primary"
-                  style={{ marginTop: 14, width: "100%", justifyContent: "center" }}
+                  className="ah-btn ah-btn--primary ah-btn--area"
+                  style={{
+                    marginTop: 14,
+                    width: "100%",
+                    justifyContent: "center",
+                    background: areaVar(consent.area || ""),
+                  }}
                   onClick={onStartConsent}
                 >
                   Firmar consentimiento
@@ -449,7 +447,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       <span className="dot" />
                       <span className="ah-areabadge__mark">{areaPrimary}</span>
                     </span>
-                    <span className={"ah-closes" + (closes.soft ? " ah-closes--soft" : "")}>
+                    <span className="ah-closes">
                       {closes.soft ? (
                         <AhIcon name="timer" size={13} />
                       ) : (
@@ -557,7 +555,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
 
                   <button
                     type="button"
-                    className="ah-btn ah-btn--primary ah-feat__cta"
+                    className="ah-btn ah-btn--primary ah-btn--area ah-feat__cta"
+                    style={{ background: areaVar(areaPrimary) }}
                     onClick={() => onInscribir(l)}
                   >
                     Inscribirme{cupos ? ` · ${cupos} ${cupos === 1 ? "cupo" : "cupos"}` : ""}
@@ -603,7 +602,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       <span className="dot" />
                       <span className="ah-areabadge__mark">{areaPrimary}</span>
                     </span>
-                    <span className={"ah-closes" + (closes.soft ? " ah-closes--soft" : "")}>
+                    <span className="ah-closes">
                       <AhIcon name="timer" size={13} />
                       {closes.text}
                     </span>
@@ -630,7 +629,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   <div className="ah-conv__foot">
                     <button
                       type="button"
-                      className="ah-btn ah-btn--secondary"
+                      className="ah-btn ah-btn--primary ah-btn--area"
+                      style={{ background: areaVar(areaPrimary) }}
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenDetalle(l);
@@ -697,17 +697,15 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                         <span className="ah-areabadge__mark">{areaPrimary}</span>
                       </span>
                       {isSelected ? (
-                        <span
-                          className="ah-closes"
-                          style={{
-                            color: "var(--ac)",
-                            background: "color-mix(in oklab, var(--ac) 12%, transparent)",
-                          }}
-                        >
+                        <span className="ah-closes">
+                          <AhIcon name="lock" size={13} />
                           Seleccionado/a
                         </span>
                       ) : (
-                        <span className="ah-closes ah-closes--soft">Cerrada</span>
+                        <span className="ah-closes">
+                          <AhIcon name="lock" size={13} />
+                          Cerrada
+                        </span>
                       )}
                     </div>
                     <h2 className="ah-conv__name">{name}</h2>
@@ -733,7 +731,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       {isConsentCard ? (
                         <button
                           type="button"
-                          className="ah-btn ah-btn--primary"
+                          className="ah-btn ah-btn--primary ah-btn--area"
                           style={{ background: areaVar(areaPrimary) }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -746,7 +744,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       ) : (
                         <button
                           type="button"
-                          className="ah-btn ah-btn--secondary"
+                          className="ah-btn ah-btn--primary ah-btn--area"
+                          style={{ background: areaVar(areaPrimary) }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onVerConvocados(l);

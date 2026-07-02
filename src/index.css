@@ -48,6 +48,14 @@ html.pps-embedded .ed {
   /* Tokens unificados (Fase 0): pesos/tracking display centralizados. Aditivos. */
   --display-weight: 700;
   --display-tracking: -0.04em;
+  /* Fuente display única del panel de estudiante (todas las superficies: .ed
+     y .ah-root). Un solo lugar para probar tipografías distintas — no tocar
+     --font-display de arriba, ese es el default de Admin (Manrope). */
+  --student-display-font: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
+  /* Acento de texto único del panel de estudiante (nombre del saludo, <em> de
+     los títulos display en .ed y .ah-root). Mismo valor que --accent-text
+     (ya probado en toda la app para texto legible sobre el fondo claro). */
+  --student-accent-color: #1f6f54;
 
   /* Student Panel Semantic Tokens - Light Mode */
   --student-bg: #fafaf7;
@@ -114,6 +122,7 @@ html.dark {
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-bg: rgba(15, 23, 42, 0.6);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --student-accent-color: #5fe0b3;
 
   /* PPS INICIO · Dark tokens */
   --paper: #0e0e0c;
@@ -260,7 +269,7 @@ p {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 8px 14px;
   border-radius: 8px;
   border: 1px solid var(--rule-2);
@@ -1149,7 +1158,7 @@ html.dark {
 .mp-brand {
   font-family: var(--font-display);
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--ink);
 }
@@ -1213,7 +1222,7 @@ html.dark {
 .inline-stat__u {
   font-size: 14px;
   color: var(--ink-muted);
-  font-weight: 500;
+  font-weight: 600;
   margin-left: 1px;
 }
 .inline-stat__sub {
@@ -1253,7 +1262,7 @@ html.dark {
   gap: 5px;
   font-family: var(--font-mono);
   font-size: 9.5px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-subtle);
@@ -1342,15 +1351,46 @@ html.dark {
   color: #161335;
 }
 
+/* ---------- Mobile hero head ---------- */
+.mobile-hero-head {
+  margin-bottom: 10px;
+}
+.mobile-hero-head__date {
+  display: block;
+}
+.mobile-hero-head__title {
+  margin-top: 8px;
+  font-size: 29px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.mobile-hero-head__title span {
+  color: #1f6f54;
+}
+[data-mode="dark"] .mobile-hero-head__title span {
+  color: #5fe0b3;
+}
+.mobile-hero-head__copy {
+  margin: 9px 0 0;
+  max-width: 30ch;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+[data-mode="dark"] .mobile-hero-head__copy {
+  color: rgba(255, 255, 255, 0.68);
+}
+
 /* ---------- Home hero (resumen de tu PPS) ----------
-   Claro  → tarjeta limpia y aireada; el color vive en el anillo + barra.
-   Oscuro → bloque con degradé UFLO (queda natural sobre fondo oscuro).
+   Claro/oscuro → progreso semántico en teal; la marca queda en el saludo.
 */
 .home-hero {
   position: relative;
   border-radius: 18px;
   overflow: hidden;
-  padding: 16px 18px;
+  padding: 17px 18px 16px;
   isolation: isolate;
   background: var(--bg-elevated);
   border: 1px solid var(--line);
@@ -1377,10 +1417,12 @@ html.dark {
     radial-gradient(120% 130% at 100% 0%, rgba(60, 184, 141, 0.1) 0%, transparent 46%),
     radial-gradient(120% 130% at 0% 100%, rgba(32, 59, 115, 0.14) 0%, transparent 52%);
 }
+.home-hero__top,
 .home-hero__row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 14px;
 }
 .home-hero__lbl {
   font-size: 10px;
@@ -1395,38 +1437,65 @@ html.dark {
 .home-hero__val {
   font-size: 34px;
   font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 0.9;
+  letter-spacing: 0;
+  line-height: 0.95;
   font-variant-numeric: tabular-nums;
 }
 .home-hero__u {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--ink-muted);
-  font-weight: 500;
+  font-weight: 600;
   margin-left: 2px;
 }
 [data-mode="dark"] .home-hero__u {
   color: rgba(255, 255, 255, 0.6);
 }
-.home-hero__bar {
-  height: 6px;
+.home-hero__pct {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 6px 9px;
   border-radius: 999px;
-  background: var(--bg-sunken);
+  background: color-mix(in oklab, #3cb88d 12%, var(--bg-elevated));
+  border: 1px solid color-mix(in oklab, #3cb88d 22%, var(--line));
+  color: #1f6f54;
+  font: 700 13px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+[data-mode="dark"] .home-hero__pct {
+  background: rgba(94, 230, 183, 0.12);
+  border-color: rgba(94, 230, 183, 0.22);
+  color: #9df2d0;
+}
+.home-hero__bar {
+  height: 7px;
+  border-radius: 999px;
+  background: #ebe8df;
   overflow: hidden;
-  margin-top: 16px;
+  margin-top: 15px;
 }
 [data-mode="dark"] .home-hero__bar {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.14);
 }
 .home-hero__bar > span {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #46253d 0%, #203b73 48%, #3cb88d 100%);
+  background: linear-gradient(90deg, #2f8f72 0%, #45c395 100%);
   transition: width 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 [data-mode="dark"] .home-hero__bar > span {
   background: linear-gradient(90deg, #5ee6b7, #3cb88d);
+}
+.home-hero__hint {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink-muted);
+}
+[data-mode="dark"] .home-hero__hint {
+  color: rgba(255, 255, 255, 0.62);
 }
 
 /* mini ring (claro = trazo degradé UFLO; oscuro = teal brillante) */
@@ -1474,12 +1543,10 @@ html.dark {
 .cc__status {
   font-family: var(--font-mono);
   font-size: 9.5px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-subtle);
   padding: 3px 8px;
-  border: 1px solid var(--line);
   border-radius: 999px;
 }
 .cc__name {
@@ -1496,7 +1563,7 @@ html.dark {
   gap: 6px;
   margin-top: 8px;
   font-size: 11.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-muted);
   letter-spacing: -0.005em;
 }
@@ -1515,6 +1582,40 @@ html.dark {
   font-size: 10.5px;
   color: var(--ink-muted);
   letter-spacing: 0.04em;
+}
+.cc--closed .cc__name {
+  color: color-mix(in oklab, var(--ink) 90%, var(--ink-muted));
+}
+.cc--closed .cc__when,
+.cc--closed .cc__meta {
+  color: color-mix(in oklab, var(--ink-muted) 74%, var(--ink));
+}
+.cc--closed.cc--selected {
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
+}
+.cc--closed.cc--selected .cc__name {
+  color: var(--ink);
+}
+.cc--closed.cc--selected .cc__when,
+.cc--closed.cc--selected .cc__meta {
+  color: var(--ink-muted);
+}
+[data-mode="dark"] .cc--closed .cc__name {
+  color: rgba(242, 243, 247, 0.9);
+}
+[data-mode="dark"] .cc--closed .cc__when,
+[data-mode="dark"] .cc--closed .cc__meta {
+  color: rgba(199, 202, 212, 0.82);
+}
+[data-mode="dark"] .cc--closed.cc--selected {
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
+}
+[data-mode="dark"] .cc--closed.cc--selected .cc__name {
+  color: var(--ink);
+}
+[data-mode="dark"] .cc--closed.cc--selected .cc__when,
+[data-mode="dark"] .cc--closed.cc--selected .cc__meta {
+  color: rgba(199, 202, 212, 0.9);
 }
 .cc__cta {
   display: inline-flex;
@@ -1602,6 +1703,223 @@ html.dark {
   background: var(--bg-sunken);
 }
 
+/* ---------- Enrollment form modal ---------- */
+.enroll-head {
+  padding: 14px 20px;
+}
+.enroll-title {
+  font-size: 22px;
+  letter-spacing: 0;
+}
+.enroll-schedule {
+  padding: 12px 20px 13px;
+}
+.enroll-schedule__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated));
+  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--line));
+}
+.enroll-schedule__text {
+  display: -webkit-box;
+  margin-top: 4px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.32;
+}
+.enroll-body {
+  padding: 18px 20px 104px;
+}
+.enroll-body > * + * {
+  margin-top: 22px;
+}
+.enroll-commit {
+  padding: 14px;
+}
+.enroll-commit__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated));
+}
+.enroll-workpanel {
+  padding: 10px;
+  border: 1px solid color-mix(in oklab, var(--accent) 14%, var(--line));
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--accent) 2%, var(--bg-elevated));
+}
+.enroll-workgrid {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.enroll-workseg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  border: 1px solid color-mix(in oklab, var(--accent) 8%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--bg-sunken) 88%, var(--bg-elevated));
+}
+.enroll-workseg__btn {
+  min-height: 44px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 750;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+.enroll-workseg__btn:active {
+  transform: scale(0.98);
+}
+.enroll-workbtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 66px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+.enroll-workbtn:hover {
+  transform: translateY(-1px);
+}
+.enroll-workbtn__check {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+}
+.enroll-workbtn__sub {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.enroll-cert {
+  position: relative;
+  padding: 13px 0 0;
+  border-radius: 0;
+  background: transparent;
+}
+.enroll-cert::before {
+  content: "";
+  display: block;
+  width: calc(100% - 8px);
+  height: 1px;
+  margin: 0 4px 13px;
+  background: color-mix(in oklab, var(--accent) 10%, var(--line));
+}
+.enroll-cert__label {
+  margin: 0 0 10px;
+  padding: 0 1px;
+}
+.enroll-cert-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 14px;
+}
+.enroll-cert-action {
+  padding: 9px 12px;
+}
+.enroll-foot {
+  padding: 12px 20px 16px;
+}
+.enroll-cancel {
+  padding: 9px 12px;
+  order: 2;
+}
+.enroll-submit {
+  padding: 13px 18px;
+  order: 1;
+}
+@media (min-width: 640px) {
+  .enroll-head {
+    padding: 18px 28px;
+  }
+  .enroll-title {
+    font-size: 27px;
+  }
+  .enroll-schedule {
+    padding: 14px 28px;
+  }
+  .enroll-body {
+    padding: 28px;
+  }
+  .enroll-body > * + * {
+    margin-top: 28px;
+  }
+  .enroll-commit {
+    padding: 20px;
+  }
+  .enroll-workpanel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .enroll-workseg {
+    display: none;
+  }
+  .enroll-workgrid {
+    display: grid;
+  }
+  .enroll-cert {
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--bg-sunken);
+  }
+  .enroll-cert::before {
+    display: none;
+  }
+  .enroll-cert__label {
+    margin-bottom: 14px;
+  }
+  .enroll-cert-card {
+    padding: 14px 16px;
+  }
+  .enroll-cert-action {
+    padding: 10px 14px;
+  }
+  .enroll-foot {
+    padding: 18px 24px;
+  }
+  .enroll-cancel,
+  .enroll-submit {
+    order: 0;
+    padding: 14px 18px;
+  }
+}
+
 /* Tarjeta "Seleccionado → consentimiento": glow de acento que respira,
    para llamar la atención sobre la acción urgente sin distraer. */
 .cc--consent {
@@ -1672,7 +1990,7 @@ html.dark {
 .detail-stat__u {
   font-size: 12px;
   color: var(--ink-muted);
-  font-weight: 500;
+  font-weight: 600;
   margin-left: 1px;
 }
 
@@ -1803,7 +2121,7 @@ html.dark {
 .login2__brand {
   font-family: var(--font-display);
   font-size: 17px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: rgba(255, 255, 255, 0.92);
 }
@@ -1886,7 +2204,7 @@ html.dark {
   padding: 0;
   font: inherit;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.01em;
 }
@@ -1921,7 +2239,7 @@ html.dark {
   font-size: 13.5px;
   color: var(--ink-soft);
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
 }
 .login-check {
   width: 20px;
@@ -2189,7 +2507,7 @@ html.dark {
   --t-base: 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
   --t-slow: 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
   --sh-md: 0 10px 24px -10px rgba(15, 27, 98, 0.18);
-  --font-display: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
+  --font-display: var(--student-display-font);
   --font-sans: "Geist", "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
   /* Tokens unificados (Fase 0): alias de superficie + pesos display. Aditivos,
@@ -2243,10 +2561,7 @@ html.dark {
 /* Titular serif editorial (Instrument Serif) — firma del rediseño Atlas */
 .ed {
   --font-serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
-  --display-accent: #46253d;
-}
-.ed[data-mode="dark"] {
-  --display-accent: #c9a2bd;
+  --display-accent: var(--student-accent-color);
 }
 /* Titular unificado a Bricolage (antes Instrument Serif).
    El acento (<em>) deja de ser italic-serif y pasa a gradiente UFLO. */
@@ -2272,7 +2587,7 @@ html.dark {
 }
 .ed-eyebrow {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-muted);
@@ -2376,7 +2691,7 @@ html.dark {
   padding: 0 16px 0 44px;
   font-family: var(--font-sans);
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
   transition: all var(--t-base);
 }
@@ -2712,7 +3027,7 @@ html.dark {
 /* wordmark "Mi Panel" (marca del panel; no usamos UFLO por no ser oficial) */
 .au-wordmark {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 19px;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -2759,7 +3074,7 @@ html.dark {
   padding: 0 18px;
   font-family: var(--font-sans);
   font-size: 16.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
   transition: all var(--t-base);
 }
@@ -2918,7 +3233,7 @@ html.dark {
 @media (min-width: 640px) {
   .sel-sheet {
     max-width: min(92vw, 720px);
-    height: min(88dvh, 760px);
+    height: min(86dvh, 720px);
     border-radius: 28px;
     box-shadow: 0 30px 80px -30px rgba(11, 15, 25, 0.5);
   }
@@ -2943,24 +3258,29 @@ html.dark {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px 10px;
+  padding: 12px 18px 8px;
   flex-shrink: 0;
 }
 .sel-iconbtn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--bg-elevated);
-  color: var(--ink);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background var(--t-fast);
+  transition:
+    background var(--t-fast),
+    color var(--t-fast),
+    border-color var(--t-fast);
 }
 .sel-iconbtn:hover {
+  border-color: var(--line);
   background: var(--bg-sunken);
+  color: var(--ink);
 }
 .sel-header__label {
   font-family: var(--font-mono);
@@ -2974,7 +3294,7 @@ html.dark {
 .sel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 20px 28px;
+  padding: 6px 20px 30px;
 }
 
 /* kicker (área · cerrada) + titular editorial */
@@ -2988,6 +3308,26 @@ html.dark {
   align-items: center;
   gap: 7px;
 }
+.sel-kicker__area {
+  font-weight: 700;
+}
+.sel-kicker__sep {
+  color: var(--ink-subtle);
+}
+.sel-closed-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  color: var(--ink-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
 .sel-title {
   font-family: var(--font-display);
   font-weight: 700;
@@ -3048,12 +3388,18 @@ html.dark {
 }
 .sel-stat__val {
   font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 750;
   letter-spacing: -0.03em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
+}
+.sel-stat__val[data-tone="ok"] {
+  color: var(--accent-text);
+}
+.sel-stat__val[data-tone="warn"] {
+  color: var(--area-laboral);
 }
 .sel-stat__sub {
   font-family: var(--font-mono);
@@ -3145,9 +3491,9 @@ html.dark {
   transition: all var(--t-fast);
 }
 .sel-chip[data-on="true"] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--bg);
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
+  background: color-mix(in oklab, var(--accent) 13%, var(--bg-elevated));
+  color: var(--accent-text);
 }
 .sel-chip__n {
   font-size: 10px;
@@ -3159,8 +3505,8 @@ html.dark {
   color: var(--ink-muted);
 }
 .sel-chip[data-on="true"] .sel-chip__n {
-  background: rgba(255, 255, 255, 0.22);
-  color: var(--bg);
+  background: color-mix(in oklab, var(--accent) 16%, var(--bg-sunken));
+  color: var(--accent-text);
 }
 
 /* grupos por horario */
@@ -3201,7 +3547,7 @@ html.dark {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 2px;
+  padding: 12px 2px;
   border-bottom: 1px solid var(--hairline);
 }
 .sel-av {
@@ -3248,7 +3594,7 @@ html.dark {
 }
 .sel-row__name {
   font-size: 14.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
@@ -3257,21 +3603,21 @@ html.dark {
 .sel-row__legajo {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--ink-subtle);
-  margin-top: 1px;
+  color: var(--ink-muted);
+  margin-top: 3px;
   letter-spacing: 0.02em;
 }
 .sel-status {
-  padding: 4px 10px;
+  padding: 4px 9px;
   border-radius: 999px;
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .sel-status[data-ok="true"] {
-  background: rgba(60, 184, 141, 0.14);
-  color: var(--area-clinica);
+  background: color-mix(in oklab, var(--accent) 13%, transparent);
+  color: var(--accent-text);
 }
 .sel-status[data-ok="false"] {
   background: rgba(183, 119, 11, 0.13);

@@ -11,7 +11,6 @@ import {
   FIELD_NOTA_PRACTICAS,
 } from "../../constants";
 import type { CriteriosCalculados, InformeTask, Orientacion, Practica } from "../../types";
-import { ALL_ORIENTACIONES } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import NotaSelector from "../../components/NotaSelector";
 
@@ -49,7 +48,6 @@ const ROTACION_OBJETIVO = 3;
 const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   criterios,
   selectedOrientacion,
-  handleOrientacionChange,
   practicas,
   handleNotaChange,
   onRequestModificacion,
@@ -134,7 +132,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     const estado = normalizeStringForComparison((p[FIELD_ESTADO_PRACTICA] as string) || "");
     const raw = p[FIELD_NOTA_PRACTICAS];
     const num = raw != null && String(raw).trim() !== "" ? Number(raw) : NaN;
-    let text = "—";
+    let text = "Pend.";
     let color = "var(--fg-subtle)";
     if (estado.includes("curso")) {
       text = "en curso";
@@ -174,7 +172,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
           setMenu({ id: p.id, rect, current: text });
         }}
       >
-        {text}
+        {Number.isFinite(num) ? text : <span className="ah-nota__pending">{text}</span>}
       </button>
     );
   };
@@ -187,10 +185,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
           <h1>
             Tus <em>prácticas</em>.
           </h1>
-          <p>
-            Todo tu historial y tu avance hacia la acreditación, en un solo lugar. Tocá una nota
-            para editarla.
-          </p>
+          <p>Historial de PPS y avance hacia la acreditación.</p>
         </div>
 
         {/* ── Tu acreditación: una sola tarjeta (progreso + requisitos + CTA) ── */}
@@ -258,21 +253,15 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
               )}
             </p>
 
-            <div className="ah-accr-hero__orient">
+            <div
+              className="ah-accr-hero__orient"
+              style={{ ["--ori" as string]: areaVar(selectedOrientacion || "") }}
+            >
               <span className="ah-field__lbl">Tu orientación</span>
-              <select
-                className="ah-field__select"
-                style={{ maxWidth: 240 }}
-                value={selectedOrientacion}
-                onChange={(e) => handleOrientacionChange(e.target.value as Orientacion | "")}
-              >
-                <option value="">Seleccionar…</option>
-                {ALL_ORIENTACIONES.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
+              <span className="ah-orient-readonly">
+                <span className="ah-orient-readonly__sw" aria-hidden />
+                {selectedOrientacion || "Definir en Mi Perfil"}
+              </span>
             </div>
           </div>
 
@@ -302,34 +291,41 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                   : `Faltan ${Math.round(criterios.horasFaltantesOrientacion || 0)} hs`
               }
             />
-            <p className="ah-accr-hero__hint">
-              <span className="material-icons" aria-hidden>
-                {reqsCumplidos === reqsTotal ? "verified" : "info"}
-              </span>
-              {reqsCumplidos === reqsTotal ? (
-                <span>
-                  Cumplís los requisitos de cursada. El trámite de acreditación se inicia desde{" "}
-                  <b>Solicitudes</b>.
-                </span>
-              ) : (
-                <span>
-                  Cuando completes los requisitos vas a poder iniciar la acreditación desde{" "}
-                  <b>Solicitudes</b>.
-                </span>
-              )}
-            </p>
           </div>
+          <p className="ah-accr-hero__hint">
+            <span className="material-icons" aria-hidden>
+              {reqsCumplidos === reqsTotal ? "verified" : "info"}
+            </span>
+            <span>
+              Cuando completes todos los criterios y tus informes estén corregidos, vas a poder
+              iniciar la acreditación desde <b>Solicitudes</b>.
+            </span>
+          </p>
         </div>
 
-        {/* ── Tu historial: protagonista, ancho completo ── */}
-        <div>
+        {/* ── Mis prácticas: protagonista, ancho completo ── */}
+        <div className="ah-practices-section">
           <div>
             <div className="ah-sechead">
-              <h6>Tu historial</h6>
-              <span className="n">{String(rows.length).padStart(2, "0")}</span>
+              <div className="ah-sechead__title">
+                <h6>Mis prácticas</h6>
+                <span className="n">{String(rows.length).padStart(2, "0")}</span>
+              </div>
+              {onRequestNuevaPPS ? (
+                <button
+                  type="button"
+                  className="ah-btn ah-btn--secondary ah-btn--compact"
+                  onClick={onRequestNuevaPPS}
+                >
+                  <span className="material-icons" style={{ fontSize: 18 }}>
+                    add
+                  </span>
+                  Solicitar agregar una PPS
+                </button>
+              ) : null}
             </div>
             {rows.length > 0 ? (
-              <div className="ah-card ah-hist-table">
+              <div className="ah-card ah-practices-table-card">
                 <table className="ah-table">
                   <thead>
                     <tr>
@@ -369,7 +365,10 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                           </td>
                           <td className="mono">{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</td>
                           <td className="nota">{notaCell(p)}</td>
-                          <td style={{ width: 40, textAlign: "right" }}>
+                          <td
+                            className="ah-table__actions"
+                            style={{ width: 40, textAlign: "right" }}
+                          >
                             {onRequestModificacion ? (
                               <button
                                 type="button"
@@ -402,75 +401,6 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                 </p>
               </div>
             )}
-
-            {/* Historial en tarjetas — versión mobile (<768px) de la tabla. */}
-            {rows.length > 0 && (
-              <div className="ah-hist-list">
-                {rows.map((p) => {
-                  const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
-                  const period = [
-                    fmtShort(p[FIELD_FECHA_INICIO_PRACTICAS]),
-                    fmtShort(p[FIELD_FECHA_FIN_PRACTICAS]),
-                  ]
-                    .filter(Boolean)
-                    .join(" — ");
-                  return (
-                    <div className="ah-prow" key={`m-${p.id}`}>
-                      <div className="ah-prow__top">
-                        <div className="ah-prow__name">
-                          {cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
-                            "Institución"}
-                        </div>
-                        <span
-                          className="ah-areabadge"
-                          style={{ ["--ac" as string]: areaVar(area) }}
-                        >
-                          <span className="dot" />
-                          {area}
-                        </span>
-                      </div>
-                      <div className="ah-prow__meta mono">
-                        <span>{period || "Sin fechas"}</span>
-                        <span>·</span>
-                        <span>{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</span>
-                      </div>
-                      <div className="ah-prow__foot">
-                        <span className="ah-prow__notalbl">Nota</span>
-                        <span className="ah-prow__notaval">{notaCell(p)}</span>
-                        {onRequestModificacion ? (
-                          <button
-                            type="button"
-                            className="ah-iconbtn--sm"
-                            title="Solicitar corrección"
-                            style={{ marginLeft: "auto" }}
-                            onClick={() => onRequestModificacion(p)}
-                          >
-                            <span className="material-icons" style={{ fontSize: 17 }}>
-                              edit
-                            </span>
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {onRequestNuevaPPS ? (
-              <div style={{ marginTop: 14 }}>
-                <button
-                  type="button"
-                  className="ah-btn ah-btn--secondary"
-                  onClick={onRequestNuevaPPS}
-                >
-                  <span className="material-icons" style={{ fontSize: 18 }}>
-                    add
-                  </span>
-                  Solicitar agregar una PPS
-                </button>
-              </div>
-            ) : null}
           </div>
         </div>
 

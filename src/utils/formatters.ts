@@ -177,6 +177,31 @@ export function parseToUTCDate(dateStr?: string | null): Date | null {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
+/** Días de diferencia entre hoy y `raw` (negativo = ya pasó). Fuente única de
+    verdad para "¿cuánto falta para que cierre la inscripción?" — la usan
+    tanto el card de convocatoria mobile como el desktop (Atlas), para que el
+    estado ("Abierta" / "Cierra hoy" / "Cerró") no diverja entre viewports. */
+export function daysUntil(raw?: unknown): number | null {
+  if (!raw) return null;
+  const d = parseToUTCDate(raw as string);
+  if (!d) return null;
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  return Math.round((d.getTime() - today.getTime()) / 86400000);
+}
+
+/** Etiqueta de cierre de inscripción a partir de la fecha fin. `soft` indica
+    si el estado es "tranquilo" (sin urgencia) o necesita el tratamiento de
+    alerta (cierra hoy/mañana/pronto). */
+export function closesLabel(raw?: unknown): { text: string; soft: boolean } {
+  const n = daysUntil(raw);
+  if (n == null) return { text: "Abierta", soft: true };
+  if (n < 0) return { text: "Cerró", soft: true };
+  if (n === 0) return { text: "Cierra hoy", soft: false };
+  if (n === 1) return { text: "Cierra mañana", soft: false };
+  return { text: `Cierra en ${n} días`, soft: n > 4 };
+}
+
 export function toTitleCase(str: string): string {
   if (!str) return "";
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());

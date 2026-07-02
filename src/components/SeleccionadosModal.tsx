@@ -85,7 +85,7 @@ interface SeleccionadosModalProps {
 
 /* ── Helpers ── */
 const AREA_COLOR: Record<string, string> = {
-  Clínica: "var(--area-clinica)",
+  ["Cl\u00ednica"]: "var(--area-clinica)",
   Educacional: "var(--area-educacional)",
   Laboral: "var(--area-laboral)",
   Comunitaria: "var(--area-comunitaria)",
@@ -219,7 +219,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
           <button type="button" className="sel-iconbtn" onClick={onClose} aria-label="Cerrar">
             <SelIcon name="close" size={18} />
           </button>
-          <span className="sel-header__label">Convocados</span>
+          <span className="sel-header__label">Resultados</span>
           {onDescargar ? (
             <button
               type="button"
@@ -237,7 +237,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
         {/* Body scrollable */}
         <div className="sel-body">
           {/* Title block — editorial */}
-          <span className="sel-kicker" style={{ color: areaColor }}>
+          <span className="sel-kicker">
             <span
               style={{
                 width: 7,
@@ -247,7 +247,13 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
                 display: "inline-block",
               }}
             />
-            {orientacionLabel} · CERRADA
+            <span className="sel-kicker__area" style={{ color: areaColor }}>
+              {orientacionLabel}
+            </span>
+            <span className="sel-kicker__sep" aria-hidden="true">
+              {"\u00b7"}
+            </span>
+            <span className="sel-closed-pill">Cerrada</span>
           </span>
           <div style={{ marginTop: 8 }}>
             <span className="ed-eyebrow" style={{ fontSize: 10.5 }}>
@@ -272,14 +278,14 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
                 </div>
                 <div className="sel-stat">
                   <div className="sel-stat__lbl">Confirmados</div>
-                  <div className="sel-stat__val" style={{ color: "var(--area-clinica)" }}>
+                  <div className="sel-stat__val" data-tone="ok">
                     {confirmados}
                   </div>
                   <div className="sel-stat__sub">firmaron</div>
                 </div>
                 <div className="sel-stat">
                   <div className="sel-stat__lbl">Pendientes</div>
-                  <div className="sel-stat__val" style={{ color: "var(--area-laboral)" }}>
+                  <div className="sel-stat__val" data-tone="warn">
                     {pendientes}
                   </div>
                   <div className="sel-stat__sub">sin firmar</div>

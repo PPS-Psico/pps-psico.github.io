@@ -19,14 +19,14 @@ interface NoticeConfig {
 // muestra ninguna (lo decide StudentView).
 const noticeConfig: Partial<Record<TabId, NoticeConfig>> = {
   solicitudes: {
-    text: "El estado se actualiza con cada gestión y te avisamos por mail; la articulación con las instituciones puede llevar tiempo.",
+    text: "El estado se actualiza con cada gestión. Te avisamos por mail cuando haya novedades.",
     mailToSubject: "Consulta sobre Estado de Solicitud de PPS - Mi Panel Académico",
     mailToBody:
       "Hola,\n\nTengo una consulta sobre el estado de mi solicitud de PPS.\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n- Institución Solicitada: [Escribe el nombre de la institución]\n\nGracias.",
     buttonText: "Consultar una solicitud",
   },
   practicas: {
-    text: "Seguimiento interno: no es un registro académico oficial y puede contener diferencias. La validación final depende de las planillas docentes y la carga en SAC.",
+    text: "Seguimiento interno: no es un registro académico oficial y puede contener diferencias. La validación final depende de las planillas de asistencia y los informes realizados.",
     mailToSubject: "Solicitud de Corrección de Datos - Mi Panel Académico",
     mailToBody:
       "Hola,\n\nSolicito una corrección en mis datos. Adjunto la documentación respaldatoria (ej. planilla de asistencia).\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n\nGracias.",

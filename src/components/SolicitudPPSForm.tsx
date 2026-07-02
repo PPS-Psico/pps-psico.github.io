@@ -46,7 +46,7 @@ const solicitudSchema = z
     nombreTutor: z.string().min(3, "El nombre del Lic. en Psicología es requerido"),
 
     alcance: z.enum(["Individual", "Grupal"]),
-    cantidadEstudiantes: z.string().optional(),
+    cantidadEstudiantes: z.string().min(1, "Indica la cantidad total de cupos ofrecidos"),
 
     descripcion: z.string().min(10, "Por favor describe brevemente las actividades"),
   })
@@ -58,8 +58,19 @@ const solicitudSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["cantidadEstudiantes"],
-        message: "Por favor indica la cantidad aproximada",
+        message: "Indica la cantidad total de cupos ofrecidos",
       });
+    }
+    if (data.alcance === "Grupal" && data.cantidadEstudiantes) {
+      const cupos = data.cantidadEstudiantes === "7+" ? 7 : Number(data.cantidadEstudiantes);
+      if (!Number.isFinite(cupos) || cupos < 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["cantidadEstudiantes"],
+          message:
+            "La institución debe ofrecer al menos 3 cupos en total: el tuyo y 2 adicionales.",
+        });
+      }
     }
   });
 
@@ -74,7 +85,7 @@ const initialData: FormData = {
   referente: "",
   tieneConvenio: "No sé",
   nombreTutor: "",
-  alcance: "Individual",
+  alcance: "Grupal",
   cantidadEstudiantes: "",
   descripcion: "",
 };
@@ -139,11 +150,10 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
         ...result.data,
         // Map 'nombreTutor' to the existing 'contactoTutor' field
         contactoTutor: result.data.nombreTutor,
-        // Map 'alcance' + 'cantidad' to the existing 'tipoPractica' field
-        tipoPractica:
-          result.data.alcance === "Individual"
-            ? "Individual"
-            : `Grupal (${result.data.cantidadEstudiantes} estudiantes)`,
+        // Map cupos to the existing 'tipoPractica' field
+        tipoPractica: `Convocatoria institucional (${
+          result.data.cantidadEstudiantes === "7+" ? "7 o más" : result.data.cantidadEstudiantes
+        } cupos)`,
         // Set hardcoded 'Sí' for 'tieneTutor' since it's now a prerequisite
         tieneTutor: "Sí",
       };
@@ -178,7 +188,9 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
             <div>
               <span className="eyebrow">Autogestión</span>
               <h2 className="ah-cmodal__title">Solicitar una nueva PPS</h2>
-              <p className="ah-cmodal__sub">Proponé una institución para gestionar tu práctica.</p>
+              <p className="ah-cmodal__sub">
+                Proponé una institución nueva que pueda abrir al menos 3 cupos de PPS.
+              </p>
             </div>
             <button
               type="button"
@@ -323,33 +335,36 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
               {/* Sección 3: sobre la práctica */}
               <section className="ah-formsec">
                 <span className="eyebrow ah-formsec__head">Sobre la práctica</span>
+                <div className="ah-formnotice" role="note">
+                  <span className="material-icons" aria-hidden>
+                    groups
+                  </span>
+                  <p>
+                    Esta gestión solo avanza si la institución puede ofrecer <b>3 cupos o más</b>:
+                    tu cupo y al menos 2 cupos adicionales.
+                  </p>
+                </div>
                 <div className="ah-formgrid">
-                  <FormField label="Alcance de la práctica">
+                  <FormField
+                    label="Cupos totales que ofrece"
+                    required
+                    error={errors.cantidadEstudiantes}
+                    hint="Mínimo 3 cupos en total: tu cupo + 2 adicionales."
+                  >
                     <select
                       className="ah-selectctrl"
-                      name="alcance"
-                      value={formData.alcance}
+                      name="cantidadEstudiantes"
+                      value={formData.cantidadEstudiantes}
                       onChange={handleChange}
                     >
-                      <option value="Individual">Solo para mí</option>
-                      <option value="Grupal">Para varios estudiantes</option>
+                      <option value="">Seleccionar cupos...</option>
+                      <option value="3">3 cupos</option>
+                      <option value="4">4 cupos</option>
+                      <option value="5">5 cupos</option>
+                      <option value="6">6 cupos</option>
+                      <option value="7+">7 o más</option>
                     </select>
                   </FormField>
-                  {formData.alcance === "Grupal" ? (
-                    <FormField
-                      label="Cantidad aprox. de estudiantes"
-                      required
-                      error={errors.cantidadEstudiantes}
-                    >
-                      <input
-                        className="ah-textinput"
-                        name="cantidadEstudiantes"
-                        value={formData.cantidadEstudiantes}
-                        onChange={handleChange}
-                        placeholder="Ej: 3 o 4"
-                      />
-                    </FormField>
-                  ) : null}
                   <FormField
                     label="Descripción de actividades"
                     required
