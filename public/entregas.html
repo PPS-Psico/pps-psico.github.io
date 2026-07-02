@@ -53,8 +53,7 @@ html,body{ margin:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
 
 /* masthead editorial */
-#pps-aula-2026 .pa-mast{ position:relative; padding:64px 72px 0; max-width:1360px; margin:0 auto; }
-#pps-aula-2026 .pa-mast__rule{ height:3px; border-radius:3px; width:88px; margin-bottom:30px; background:linear-gradient(90deg,#46253D 0%,#203B73 48%,#3CB88D 100%); }
+#pps-aula-2026 .pa-mast{ position:relative; padding:44px 72px 0; max-width:1360px; margin:0 auto; }
 #pps-aula-2026 .pa-mast__eyebrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-muted); }
 #pps-aula-2026 .pa-mast__eyebrow b{ color:var(--accent-deep); font-weight:600; }
 #pps-aula-2026 .pa-mast__eyebrow .sep{ width:4px; height:4px; border-radius:50%; background:var(--line-strong); }
@@ -202,7 +201,6 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 
   <!-- MASTHEAD -->
   <div class="pa-mast">
-    <div class="pa-mast__rule"></div>
     <div class="pa-mast__eyebrow">
       <b>Entrega de informes</b><span class="sep"></span>Ciclo 2026<span class="sep"></span>Buzón por institución
     </div>
@@ -384,8 +382,7 @@ window.ENTREGAS = [
     if(!sb || !sb.url || !sb.key || typeof fetch !== 'function') return;
     var q = sb.url + '/rest/v1/lanzamientos_pps'
       + '?select=nombre_pps,orientacion,estado_convocatoria,codigo_tarjeta_campus'
-      + '&codigo_tarjeta_campus=not.is.null'
-      + '&estado_convocatoria=neq.Oculto';
+      + '&codigo_tarjeta_campus=not.is.null&codigo_tarjeta_campus=not.eq.';
     fetch(q, { headers:{ apikey:sb.key, Authorization:'Bearer '+sb.key } })
       .then(function(r){ return r.ok ? r.json() : []; })
       .then(function(rows){ if(rows && rows.length){ mergeRows(rows); render(); } })
