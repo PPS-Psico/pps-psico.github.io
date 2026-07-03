@@ -16,6 +16,7 @@ interface AtlasTopbarProps {
 // Convocatorias no es un ítem: las abiertas ya viven en Inicio.
 const NAV: { id: TabId; label: string }[] = [
   { id: "inicio", label: "Inicio" },
+  { id: "aula", label: "Aula" },
   { id: "solicitudes", label: "Solicitudes" },
   { id: "practicas", label: "Prácticas" },
   { id: "profile", label: "Perfil" },
@@ -81,10 +82,6 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 {n.label}
               </button>
             ))}
-
-            <a className="ah-nav__item ah-nav__item--bridge" href="/aula.html">
-              Campus PPS
-            </a>
           </nav>
 
           <div className="ah-topbar__right">

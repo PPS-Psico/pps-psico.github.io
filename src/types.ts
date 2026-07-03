@@ -72,6 +72,7 @@ export type Orientacion = (typeof ALL_ORIENTACIONES)[number];
 export type TabId =
   | "inicio"
   | "convocatorias"
+  | "aula"
   | "solicitudes"
   | "practicas"
   | "profile"

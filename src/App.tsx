@@ -141,6 +141,7 @@ const AppRoutes = () => {
       >
         <Route index element={<StudentHome />} />
         <Route path="convocatorias" element={<StudentConvocatoriasView />} />
+        <Route path="aula" element={<StudentHome />} />
         <Route path="practicas" element={<PracticasView />} />
         <Route path="solicitudes" element={<SolicitudesView />} />
         <Route path="perfil" element={<StudentProfileView />} />

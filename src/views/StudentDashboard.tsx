@@ -19,6 +19,7 @@ import StudentConvocatoriasView from "./student/StudentConvocatoriasView";
 import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
 import AtlasProfileView from "./student/AtlasProfileView";
 import AtlasPracticasView from "./student/AtlasPracticasView";
+import StudentAulaView from "./student/StudentAulaView";
 import WelcomeBanner from "../components/student/WelcomeBanner";
 import WhatsAppExportButton from "../components/student/WhatsAppExportButton";
 import Button from "../components/ui/Button";
@@ -570,6 +571,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     () => [
       { id: "inicio" as TabId, label: "Inicio", icon: "home", content: homeContent },
       {
+        id: "aula" as TabId,
+        label: "Aula",
+        icon: "book",
+        content: <StudentAulaView />,
+      },
+      {
         id: "convocatorias" as TabId,
         label: "Convocatorias",
         icon: "campaign",
@@ -726,7 +733,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             onTabChange={(id) => setCurrentActiveTab(id as TabId)}
           />
           <div className="space-y-8 mt-6 animate-fade-in-up">
-            {!["inicio", "solicitudes", "profile", "practicas"].includes(currentActiveTab) && (
+            {!["inicio", "aula", "solicitudes", "profile", "practicas"].includes(
+              currentActiveTab
+            ) && (
               <WelcomeBanner
                 studentName={studentNameForPanel}
                 studentDetails={studentDetails}
@@ -765,6 +774,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </>
           )}
           {currentActiveTab === "convocatorias" && <StudentConvocatoriasView />}
+          {currentActiveTab === "aula" && <StudentAulaView />}
           {currentActiveTab === "solicitudes" && <>{mobileSolicitudesContent}</>}
           {currentActiveTab === "practicas" && (
             <div className="ed" data-mode={resolvedTheme} data-accent="teal">
