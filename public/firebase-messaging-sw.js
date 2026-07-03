@@ -50,7 +50,7 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Network-first fetch strategy with cache fallback
+// Network-first fetch strategy with cache-first for hashed assets to optimize View Transitions
 self.addEventListener("fetch", (event) => {
   // Ignore non-GET and browser extension requests
   if (event.request.method !== "GET" || event.request.url.startsWith("chrome-extension://")) {
@@ -59,13 +59,31 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     (async () => {
+      const url = new URL(event.request.url);
+      const isHashedAsset =
+        url.pathname.includes("/assets/") &&
+        (url.pathname.endsWith(".js") ||
+          url.pathname.endsWith(".css") ||
+          url.pathname.endsWith(".woff2") ||
+          url.pathname.endsWith(".png") ||
+          url.pathname.endsWith(".jpg") ||
+          url.pathname.endsWith(".svg"));
+
+      // Para los assets hasheados e inmutables (ej: CSS, JS, Fuentes), usamos Cache-First:
+      // Si están en la caché del Service Worker, los servimos en 0ms. Esto es crítico para
+      // que las View Transitions no se cancelen por lentitud de red.
+      if (isHashedAsset) {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+      }
+
       // El documento HTML (navegaciones) se revalida SIEMPRE contra la red sin
       // usar la caché HTTP del navegador. Así un index.html viejo no puede
       // seguir apuntando a bundles JS/CSS hash viejos tras un deploy.
       const isNavigation =
         event.request.mode === "navigate" ||
-        event.request.url.endsWith("/") ||
-        event.request.url.endsWith("index.html");
+        url.pathname.endsWith("/") ||
+        url.pathname.endsWith("index.html");
 
       try {
         const networkResponse = await fetch(
@@ -76,12 +94,12 @@ self.addEventListener("fetch", (event) => {
         // Handle 404s for hashed assets (old versions after deploy)
         if (
           networkResponse.status === 404 &&
-          (event.request.url.endsWith(".css") || event.request.url.endsWith(".js"))
+          (url.pathname.endsWith(".css") || url.pathname.endsWith(".js"))
         ) {
           return new Response("", {
             status: 200,
             headers: {
-              "Content-Type": event.request.url.endsWith(".css")
+              "Content-Type": url.pathname.endsWith(".css")
                 ? "text/css"
                 : "application/javascript",
             },
