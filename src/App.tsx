@@ -238,6 +238,7 @@ const App: React.FC = () => {
   // contenedor que debe expandirse a pantalla completa para sentirse como una
   // sola app integrada. El label de Moodle escucha el mensaje { ppsPanel: true }.
   useEffect(() => {
+    console.log("[React App] Componente principal App montado exitosamente en el DOM.");
     let isEmbedded = false;
     try {
       isEmbedded = window.self !== window.top;

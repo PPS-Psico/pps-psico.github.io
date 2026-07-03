@@ -505,6 +505,7 @@ window.ENTREGAS = [
       } catch(e) {}
       var qs = '?v=21&preload=true' + (email ? '&email=' + encodeURIComponent(email.trim()) : '');
 
+      console.log('[Preheat] Iniciando precarga de Mi Panel en iframe invisible...');
       var iframe = document.createElement('iframe');
       iframe.src = '/' + qs + '#/student';
       iframe.style.position = 'fixed';
@@ -516,8 +517,14 @@ window.ENTREGAS = [
       iframe.style.opacity = '0';
       iframe.style.pointerEvents = 'none';
       iframe.setAttribute('aria-hidden', 'true');
+      iframe.onload = function() {
+        console.log('[Preheat] Iframe de precarga cargado exitosamente. Assets cacheados.');
+      };
       document.body.appendChild(iframe);
-    }catch(e){}
+      console.log('[Preheat] Iframe inyectado en DOM con src:', iframe.src);
+    }catch(e){
+      console.warn('[Preheat] Error al inyectar iframe de precarga:', e);
+    }
   }
   document.addEventListener('pointerover',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); },{passive:true});
   document.addEventListener('focusin',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); });

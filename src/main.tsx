@@ -93,6 +93,9 @@ const queryClient = new QueryClient({
   },
 });
 
+console.log("[React] main.tsx inicializado. Montando aplicación...");
+console.log("[React] Estado de __PPS_ENTRY_SHELL__:", !!(window as any).__PPS_ENTRY_SHELL__);
+
 const container = document.getElementById("root");
 
 if (!container) {

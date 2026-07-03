@@ -74,7 +74,10 @@ self.addEventListener("fetch", (event) => {
       // que las View Transitions no se cancelen por lentitud de red.
       if (isHashedAsset) {
         const cached = await caches.match(event.request);
-        if (cached) return cached;
+        if (cached) {
+          console.log("[SW Cache-First] Servido desde caché instantánea (0ms):", url.pathname.split("/").pop());
+          return cached;
+        }
       }
 
       // El documento HTML (navegaciones) se revalida SIEMPRE contra la red sin
@@ -86,6 +89,11 @@ self.addEventListener("fetch", (event) => {
         url.pathname.endsWith("index.html");
 
       try {
+        if (isNavigation) {
+          console.log("[SW Navigation] Buscando en red:", url.pathname);
+        } else {
+          console.log("[SW Network-First] Descargando de red:", url.pathname.split("/").pop());
+        }
         const networkResponse = await fetch(
           event.request,
           isNavigation ? { cache: "no-store" } : undefined
