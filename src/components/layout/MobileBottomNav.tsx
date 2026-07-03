@@ -21,6 +21,7 @@ interface MobileBottomNavProps {
 const ICON_MAP: Partial<Record<TabId, IconName>> = {
   inicio: "home",
   convocatorias: "search",
+  aula: "book",
   practicas: "bag",
   solicitudes: "file",
   profile: "user",

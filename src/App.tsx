@@ -25,6 +25,7 @@ import { PwaInstallProvider } from "./contexts/PwaInstallContext";
 import { StudentPanelProvider } from "./contexts/StudentPanelContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import PracticasView from "./views/student/PracticasView";
+import StudentAulaView from "./views/student/StudentAulaView";
 import StudentConvocatoriaDetailView from "./views/student/StudentConvocatoriaDetailView";
 import DataCompletionModal from "./components/student/DataCompletionModal";
 import { useRenderTrace } from "./hooks/useRenderTrace";
@@ -107,6 +108,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={!authenticatedUser ? <Auth /> : <Navigate to="/" />} />
+      <Route path="/aula" element={<StudentAulaView mode="public" />} />
 
       <Route
         path="/"
@@ -141,6 +143,7 @@ const AppRoutes = () => {
       >
         <Route index element={<StudentHome />} />
         <Route path="convocatorias" element={<StudentConvocatoriasView />} />
+        <Route path="aula" element={<StudentHome />} />
         <Route path="practicas" element={<PracticasView />} />
         <Route path="solicitudes" element={<SolicitudesView />} />
         <Route path="perfil" element={<StudentProfileView />} />

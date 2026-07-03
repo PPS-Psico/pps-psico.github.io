@@ -20,6 +20,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const isLoginPage = location.pathname === "/login";
   const isStudent = location.pathname.startsWith("/student");
+  const isPublicAula = location.pathname === "/aula";
   // Ruta raíz: es solo un redireccionador por rol (no tiene UI propia). Mientras
   // resuelve a /admin o /student NO debe renderizar el header legacy (eso era el
   // "flash de versión vieja" al entrar).
@@ -33,12 +34,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // controla el CSS de Atlas (.ah-main / .ah-topbar__inner), no el max-w-7xl.
   const fullWidthRoutes = ["/admin", "/jefe", "/directivo", "/reportero", "/testing"];
   const isFullWidth =
-    fullWidthRoutes.some((route) => location.pathname.startsWith(route)) || isStudent;
+    fullWidthRoutes.some((route) => location.pathname.startsWith(route)) ||
+    isStudent ||
+    isPublicAula;
 
   // Rutas que traen su propia barra superior v3 (AdminTopBar) y por lo tanto
   // no deben renderizar el AppHeader legacy (evita la pila de dos barras).
   const ownTopBarRoutes = ["/admin", "/jefe", "/directivo", "/reportero", "/testing"];
-  const hasOwnTopBar = ownTopBarRoutes.some((route) => location.pathname.startsWith(route));
+  const hasOwnTopBar =
+    ownTopBarRoutes.some((route) => location.pathname.startsWith(route)) || isPublicAula;
 
   // Global Error Listener: Catch "Silent Failures"
   useEffect(() => {
@@ -95,7 +99,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       style={
         isEmbedded()
           ? { background: "transparent" }
-          : isStudent
+          : isStudent || isPublicAula
             ? { background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }
             : // Admin/Jefe/Directivo/Reportero (Paper & Ink) y también la ruta raíz
               // y la pantalla de carga de auth: pintamos "paper" desde el contenedor

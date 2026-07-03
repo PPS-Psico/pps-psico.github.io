@@ -27,6 +27,7 @@ const StudentLayout: React.FC = () => {
   // Determine active tab from URL
   let activeTab: TabId = "inicio";
   if (location.pathname.includes("/convocatorias")) activeTab = "convocatorias";
+  else if (location.pathname.includes("/aula")) activeTab = "aula";
   else if (location.pathname.includes("/practicas")) activeTab = "practicas";
   else if (location.pathname.includes("/solicitudes")) activeTab = "solicitudes";
   else if (location.pathname.includes("/perfil")) activeTab = "profile";
@@ -44,6 +45,7 @@ const StudentLayout: React.FC = () => {
 
   const mobileNavTabs = [
     { id: "inicio" as TabId, label: "Inicio", icon: "home", path: "/student" },
+    { id: "aula" as TabId, label: "Aula", icon: "book", path: "/student/aula" },
     {
       id: "practicas" as TabId,
       label: "Prácticas",
