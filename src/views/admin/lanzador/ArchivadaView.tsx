@@ -2,7 +2,7 @@
  * lanzador/ArchivadaView.tsx — Vista del estado "archivada".
  * Referencia histórica: stats finales y acciones (duplicar / reabrir).
  */
-import React from "react";
+import React, { useMemo } from "react";
 import { normalizeStringForComparison } from "../../../utils/formatters";
 import type { LanzamientoPPS } from "../../../types";
 import { CanvasHeader, Stat, StatGrid, Banner } from "./shared";
@@ -12,7 +12,9 @@ const ArchivadaView: React.FC<{
   launch: LanzamientoPPS;
   onDuplicar: () => void;
   onReabrir: () => void;
-}> = ({ launch, onDuplicar, onReabrir }) => {
+  onReactivarActiva?: () => void;
+  onReactivarConfirmacion?: () => void;
+}> = ({ launch, onDuplicar, onReabrir, onReactivarActiva, onReactivarConfirmacion }) => {
   const { data: practicas = [] } = useLaunchPracticas(launch.id);
 
   const { data: convocatorias = [] } = useLaunchRoster(launch.id);
@@ -25,6 +27,43 @@ const ArchivadaView: React.FC<{
     (p) => normalizeStringForComparison(p.estado) === "finalizada"
   ).length;
   const tasa = seleccionados > 0 ? Math.round((acreditados / seleccionados) * 100) : null;
+
+  const actionCards = useMemo(() => {
+    return [
+      {
+        icon: "content_copy",
+        title: "Duplicar como base",
+        desc: "Crea un nuevo borrador con los datos de esta convocatoria.",
+        cta: "Crear borrador",
+        onClick: onDuplicar,
+        show: true,
+      },
+      {
+        icon: "restart_alt",
+        title: "Reabrir inscripción",
+        desc: "Vuelve a abrir para recibir nuevos postulantes (Paso 2).",
+        cta: "Reabrir",
+        onClick: onReabrir,
+        show: true,
+      },
+      {
+        icon: "play_circle",
+        title: "Reactivar PPS (En Curso)",
+        desc: "Pone la PPS en curso (Paso 5) para gestionar alumnos, bajas y reemplazos.",
+        cta: "Reactivar",
+        onClick: onReactivarActiva,
+        show: seleccionados > 0 && onReactivarActiva != null,
+      },
+      {
+        icon: "pending_actions",
+        title: "Reactivar Sala de Firmas",
+        desc: "Vuelve al paso de firmas digitales y compromisos pendientes (Paso 4).",
+        cta: "Reactivar firmas",
+        onClick: onReactivarConfirmacion,
+        show: seleccionados > 0 && onReactivarConfirmacion != null,
+      },
+    ].filter((a) => a.show);
+  }, [onDuplicar, onReabrir, onReactivarActiva, onReactivarConfirmacion, seleccionados]);
 
   return (
     <div>
@@ -53,23 +92,14 @@ const ArchivadaView: React.FC<{
         </StatGrid>
 
         {/* Acciones */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-          {[
-            {
-              icon: "content_copy",
-              title: "Duplicar como base",
-              desc: "Crea un nuevo borrador con los datos de esta convocatoria.",
-              cta: "Crear borrador",
-              onClick: onDuplicar,
-            },
-            {
-              icon: "restart_alt",
-              title: "Reabrir inscripción",
-              desc: "Vuelve a abrir para recibir nuevos postulantes.",
-              cta: "Reabrir",
-              onClick: onReabrir,
-            },
-          ].map((a) => (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {actionCards.map((a) => (
             <div key={a.title} className="lv4-action-card">
               <span
                 className="material-icons"

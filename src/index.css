@@ -2,6 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Navigation transitions between Campus and Mi Panel. Unsupported browsers keep the normal flow. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(root) {
+  animation-duration: 360ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+::view-transition-old(root) {
+  animation: pps-page-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+::view-transition-new(root) {
+  animation: pps-page-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+::view-transition-group(pps-brand),
+::view-transition-group(pps-tabs),
+::view-transition-group(pps-actions) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pps-page-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+    filter: blur(2px);
+  }
+}
+
+@keyframes pps-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(root),
+  ::view-transition-group(pps-brand),
+  ::view-transition-group(pps-tabs),
+  ::view-transition-group(pps-actions) {
+    animation-duration: 1ms;
+  }
+}
+
 /* Embebido en el campus (iframe): fondos transparentes para fundirse con Moodle */
 html.pps-embedded,
 html.pps-embedded body,
