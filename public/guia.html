@@ -438,5 +438,39 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
   });
 })();
 </script>
+<script>
+/* Precalienta Mi Panel para que la vuelta desde Campus no se sienta como recarga fria (con iframe invisible para precarga real de assets en prod). */
+(function(){
+  var warmed=false;
+  function warmPanel(){
+    if(warmed) return;
+    warmed=true;
+    try{
+      var email = '';
+      try {
+        email = new URLSearchParams(window.location.search).get('email') || sessionStorage.getItem('pps_email') || '';
+      } catch(e) {}
+      var qs = '?v=21&preload=true' + (email ? '&email=' + encodeURIComponent(email.trim()) : '');
+
+      var iframe = document.createElement('iframe');
+      iframe.src = '/' + qs + '#/student';
+      iframe.style.position = 'fixed';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.border = 'none';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(iframe);
+    }catch(e){}
+  }
+  document.addEventListener('pointerover',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); },{passive:true});
+  document.addEventListener('focusin',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); });
+  if('requestIdleCallback' in window) requestIdleCallback(warmPanel,{timeout:1800});
+  else setTimeout(warmPanel,900);
+})();
+</script>
 </body>
 </html>

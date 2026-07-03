@@ -1,14 +1,14 @@
 <meta charset="utf-8">
 <!-- ============================================================================
-     AULA MOODLE · PPS 2026 — PORTADA "INICIO"
-     Pegar este bloque completo en una Etiqueta / resumen de sección de Moodle
-     (editor Atto/TinyMCE → vista código fuente "<>").
+     AULA MOODLE Â· PPS 2026 â€” PORTADA "INICIO"
+     Pegar este bloque completo en una Etiqueta / resumen de secciÃ³n de Moodle
+     (editor Atto/TinyMCE â†’ vista cÃ³digo fuente "<>").
 
-     · Auto-contenido: HTML + <style> + <script>, sin React ni archivos externos.
-     · Todas las clases van prefijadas con .pa- y scopeadas bajo #pps-aula-2026
+     Â· Auto-contenido: HTML + <style> + <script>, sin React ni archivos externos.
+     Â· Todas las clases van prefijadas con .pa- y scopeadas bajo #pps-aula-2026
        para NO chocar con el Bootstrap de Moodle (.card, .btn, .chip, etc.).
-     · Al final hay un bloque CSS OPCIONAL que OCULTA LA BARRA DERECHA del
-       curso (block drawer). Está comentado cómo activarlo / quitarlo.
+     Â· Al final hay un bloque CSS OPCIONAL que OCULTA LA BARRA DERECHA del
+       curso (block drawer). EstÃ¡ comentado cÃ³mo activarlo / quitarlo.
      ============================================================================ -->
 
 <!-- Modo claro fijo (sin modo oscuro en el campus) -->
@@ -21,7 +21,7 @@
 /* reset para iframe standalone (sin margen del navegador) */
 html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 
-/* ====== TOKENS (light · acento teal UFLO) — scopeados al root ============= */
+/* ====== TOKENS (light Â· acento teal UFLO) â€” scopeados al root ============= */
 #pps-aula-2026{
   --bg:#FAFAF7; --bg-elevated:#FFFFFF; --bg-sunken:#F4F3EE;
   --ink:#141310; --ink-soft:#38362F; --ink-muted:#76736A; --ink-subtle:#A8A498;
@@ -59,7 +59,7 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 .pa-wrap{ max-width:1500px; margin:0 auto; }
 #pps-aula-2026 .pa-pad{ padding:0 56px 48px; }
 
-/* ====== Header / nav (estático, no pelea con el chrome de Moodle) ======== */
+/* ====== Header / nav (estÃ¡tico, no pelea con el chrome de Moodle) ======== */
 #pps-aula-2026 .pa-nav{
   display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap;
   padding:10px 40px 14px; border-bottom:0;
@@ -131,7 +131,7 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 .pa-card__name{ margin-top:18px; font-size:17px; font-weight:500; letter-spacing:-.01em; }
 #pps-aula-2026 .pa-card__role{ color:var(--ink-muted); font-size:13px; margin-top:2px; }
 
-/* ---- Grid / bento "Empezá por acá" ---- */
+/* ---- Grid / bento "EmpezÃ¡ por acÃ¡" ---- */
 #pps-aula-2026 .pa-bento{ display:grid; grid-template-columns:1.4fr 1fr 1fr; grid-template-rows:auto auto; gap:14px; }
 #pps-aula-2026 .pa-feat{
   grid-row:span 2; border-radius:24px; padding:36px; color:#fff; text-decoration:none;
@@ -188,7 +188,7 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
   #pps-aula-2026 .pa-navtools{ display:none; }
 }
 
-/* ===== POLISH · foco accesible, microinteracciones y entrada ===== */
+/* ===== POLISH Â· foco accesible, microinteracciones y entrada ===== */
 #pps-aula-2026 a:focus-visible,#pps-aula-2026 button:focus-visible{ outline:2px solid color-mix(in oklab, var(--accent) 55%, transparent); outline-offset:2px; border-radius:12px; }
 #pps-aula-2026 .pa-feat,#pps-aula-2026 .pa-tile,#pps-aula-2026 .pa-card{ transition:transform var(--t-fast), border-color var(--t-fast), box-shadow .24s ease; }
 #pps-aula-2026 .pa-feat:hover{ transform:translateY(-3px); box-shadow:0 34px 60px -34px rgba(32,59,115,.65); }
@@ -214,7 +214,7 @@ html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
   #pps-aula-2026 .pa-anim{ animation:paIn .6s cubic-bezier(.2,.7,.2,1) backwards; }
   @keyframes paIn{ from{ opacity:0; transform:translateY(18px); } to{ opacity:1; transform:none; } }
 }
-/* ===== MODO OSCURO (toggle manual + auto · paleta navy de Mi Panel PC) ===== */
+/* ===== MODO OSCURO (toggle manual + auto Â· paleta navy de Mi Panel PC) ===== */
 #pps-aula-2026 .pa-themebtn{ display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; flex-shrink:0; border-radius:999px; border:1px solid var(--line); background:var(--bg-elevated); color:var(--ink-muted); cursor:pointer; transition:var(--t-fast); }
 #pps-aula-2026 .pa-themebtn:hover{ color:var(--ink); border-color:var(--line-strong); background:var(--bg-sunken); transform:translateY(-1px); }
 #pps-aula-2026 .pa-themebtn{ display:none!important; }
@@ -233,12 +233,12 @@ html[data-theme="dark"] #pps-aula-2026{
   --uflo-navy:#7B91DE; --uflo-deep:#EDEFF6;
 }
 html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
-/* === Alineación unificada: barra + hero/contenido comparten contenedor === */
+/* === AlineaciÃ³n unificada: barra + hero/contenido comparten contenedor === */
 @media (min-width:1024px){
   #pps-aula-2026 .pa-nav{ max-width:1440px !important; margin-left:auto !important; margin-right:auto !important; padding-left:56px !important; padding-right:56px !important; }
   #pps-aula-2026 .pa-wrap{ max-width:1440px !important; }
 }
-/* ===== POLISH v2 · skill make-interfaces-feel-better: press tactil + transiciones explicitas ===== */
+/* ===== POLISH v2 Â· skill make-interfaces-feel-better: press tactil + transiciones explicitas ===== */
 #pps-aula-2026 .pa-btn{ transition:transform var(--t-fast), background var(--t-fast), color var(--t-fast), border-color var(--t-fast); }
 #pps-aula-2026 .pa-navlinks a{ transition:color var(--t-fast), background var(--t-fast), transform var(--t-fast); }
 #pps-aula-2026 .pa-faq-q{ transition:color var(--t-fast), transform var(--t-fast); }
@@ -321,7 +321,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   </a>
   <nav class="pa-navlinks">
     <a href="aula.html" class="is-on">Inicio</a>
-    <a href="guia.html">Guía 2026</a>
+    <a href="guia.html">GuÃ­a 2026</a>
     <a href="descargas.html">Descargas</a>
     <a href="preguntas.html">Preguntas</a>
     <a href="entregas.html">Entregas</a>
@@ -340,9 +340,9 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
     <span class="pa-orb pa-orb--2" aria-hidden="true"></span>
     <span class="pa-orb pa-orb--3" aria-hidden="true"></span>
   </div>
-  <span class="pa-eyebrow">Facultad de Psicología y Ciencias Sociales</span>
+  <span class="pa-eyebrow">Facultad de PsicologÃ­a y Ciencias Sociales</span>
   <h1 class="pa-display">Bienvenida<br>a <span class="pa-grad">tu aula</span> de PPS.</h1>
-  <p class="pa-hero__lede">Materiales, entregas, consultas y el seguimiento de tu práctica — todo en un mismo lugar. Sin saltar entre cinco pestañas.</p>
+  <p class="pa-hero__lede">Materiales, entregas, consultas y el seguimiento de tu prÃ¡ctica â€” todo en un mismo lugar. Sin saltar entre cinco pestaÃ±as.</p>
   <div class="pa-hero__cta">
     <a class="pa-btn pa-btn--lg pa-btn--ink" href="https://pps-psico.github.io/">
       Entrar a mi panel
@@ -350,7 +350,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
     </a>
     <a class="pa-btn pa-btn--lg pa-btn--ghost" href="guia.html">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7a4 4 0 0 1 4 4v12"/><path d="M20 4h-7a4 4 0 0 0-4 4v12"/></svg>
-      Ver guía 2026
+      Ver guÃ­a 2026
     </a>
   </div>
 </section>
@@ -362,9 +362,9 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
     <div class="pa-sec-head">
       <div>
         <span class="pa-eyebrow">Equipo</span>
-        <h2 class="pa-display">Quiénes te <span class="pa-accent">acompañan</span>.</h2>
+        <h2 class="pa-display">QuiÃ©nes te <span class="pa-accent">acompaÃ±an</span>.</h2>
       </div>
-      <a class="pa-sec-link" href="#pa-faq">Cómo nos escribís
+      <a class="pa-sec-link" href="#pa-faq">CÃ³mo nos escribÃ­s
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
       </a>
     </div>
@@ -373,12 +373,12 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
         <span class="pa-avatar" data-tone="navy" style="width:56px;height:56px;font-size:20px;">BR</span>
         <div class="pa-card__name">Blas Rivera</div>
         <div class="pa-card__role">Coord. general</div>
-        <div style="margin-top:12px;"><span class="pa-chip">Coordinación</span></div>
+        <div style="margin-top:12px;"><span class="pa-chip">CoordinaciÃ³n</span></div>
       </div>
       <div class="pa-card">
         <span class="pa-avatar" data-tone="teal" style="width:56px;height:56px;font-size:20px;">SE</span>
         <div class="pa-card__name">Selva Estrella</div>
-        <div class="pa-card__role">Clínica</div>
+        <div class="pa-card__role">ClÃ­nica</div>
       </div>
       <div class="pa-card">
         <span class="pa-avatar" data-tone="purple" style="width:56px;height:56px;font-size:20px;">FP</span>
@@ -396,18 +396,18 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   <!-- ===== RECORRIDO / BENTO ===== -->
   <section id="pa-recorrido" class="pa-section">
     <span class="pa-eyebrow">Tu recorrido</span>
-    <h2 class="pa-display" style="margin-bottom:32px;">Empezá <span class="pa-accent">por acá</span>.</h2>
+    <h2 class="pa-display" style="margin-bottom:32px;">EmpezÃ¡ <span class="pa-accent">por acÃ¡</span>.</h2>
     <div class="pa-bento">
       <!-- Featured -->
       <a class="pa-feat" href="guia.html">
         <div class="pa-feat__glow"></div>
         <div style="position:relative;">
-          <div class="pa-eyebrow" style="color:rgba(255,255,255,.7);">Empezá por acá</div>
-          <h3 class="pa-display">Guía de<br>cursada 2026</h3>
-          <p>Todo lo que necesitás saber antes del primer encuentro: fechas clave, requisitos por área y los entregables del año.</p>
+          <div class="pa-eyebrow" style="color:rgba(255,255,255,.7);">EmpezÃ¡ por acÃ¡</div>
+          <h3 class="pa-display">GuÃ­a de<br>cursada 2026</h3>
+          <p>Todo lo que necesitÃ¡s saber antes del primer encuentro: fechas clave, requisitos por Ã¡rea y los entregables del aÃ±o.</p>
         </div>
         <div class="pa-feat__foot">
-          <span class="pa-mono" style="font-size:12px;letter-spacing:.04em;opacity:.7;">GUÍA INTERACTIVA · 6 PASOS</span>
+          <span class="pa-mono" style="font-size:12px;letter-spacing:.04em;opacity:.7;">GUÃA INTERACTIVA Â· 6 PASOS</span>
           <span class="pa-feat__go">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
           </span>
@@ -419,7 +419,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
         <div style="margin-top:6px;">
           <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Recursos</div>
           <div class="pa-tile__title">Descargas</div>
-          <p class="pa-tile__desc">Guías, plantillas y documentos oficiales para la cursada.</p>
+          <p class="pa-tile__desc">GuÃ­as, plantillas y documentos oficiales para la cursada.</p>
           <span class="pa-tile__n">4 archivos</span>
         </div>
       </a>
@@ -428,25 +428,25 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
         <div style="margin-top:6px;">
           <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Ayuda</div>
           <div class="pa-tile__title">Preguntas frecuentes</div>
-          <p class="pa-tile__desc">Casi todo se resuelve acá. Lo actualizamos durante la cursada.</p>
+          <p class="pa-tile__desc">Casi todo se resuelve acÃ¡. Lo actualizamos durante la cursada.</p>
           <span class="pa-tile__n">25 respuestas</span>
         </div>
       </a>
       <a class="pa-tile" href="entregas.html">
         <span class="pa-tile__ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8"/><path d="M6 14l6-6 6 6"/><path d="M5 4h14"/></svg></span>
         <div style="margin-top:6px;">
-          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Evaluación</div>
+          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">EvaluaciÃ³n</div>
           <div class="pa-tile__title">Entregas de informes</div>
-          <p class="pa-tile__desc">Subí parciales y final. Vas a ver fechas y feedback acá.</p>
+          <p class="pa-tile__desc">SubÃ­ parciales y final. Vas a ver fechas y feedback acÃ¡.</p>
           <span class="pa-tile__n">4 fechas</span>
         </div>
       </a>
       <a class="pa-tile" href="https://pps-psico.github.io/">
         <span class="pa-tile__ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
         <div style="margin-top:6px;">
-          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Gestión</div>
+          <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">GestiÃ³n</div>
           <div class="pa-tile__title">Tu panel</div>
-          <p class="pa-tile__desc">Inscripción, horas, solicitudes y seguimiento personal.</p>
+          <p class="pa-tile__desc">InscripciÃ³n, horas, solicitudes y seguimiento personal.</p>
           <span class="pa-tile__n">Personalizado</span>
         </div>
       </a>
@@ -458,7 +458,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
     <div class="pa-sec-head">
       <div>
         <span class="pa-eyebrow">Antes que nos escribas</span>
-        <h2 class="pa-display">Lo que <span class="pa-accent">más se pregunta</span>.</h2>
+        <h2 class="pa-display">Lo que <span class="pa-accent">mÃ¡s se pregunta</span>.</h2>
       </div>
       <a class="pa-sec-link" href="preguntas.html">Ver las 25 preguntas
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
@@ -466,24 +466,24 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
     </div>
     <div class="pa-faq">
       <div class="pa-faq-item">
-        <button class="pa-faq-q" type="button"><span>¿Cada cuánto se lanzan las convocatorias?</span>
+        <button class="pa-faq-q" type="button"><span>Â¿Cada cuÃ¡nto se lanzan las convocatorias?</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-        <div class="pa-faq-a"><p>Se publican de forma periódica a lo largo del año. Estate atenta a los anuncios del aula y al grupo de novedades.</p></div>
+        <div class="pa-faq-a"><p>Se publican de forma periÃ³dica a lo largo del aÃ±o. Estate atenta a los anuncios del aula y al grupo de novedades.</p></div>
       </div>
       <div class="pa-faq-item is-open">
-        <button class="pa-faq-q" type="button"><span>¿Cuántas horas necesito para acreditar?</span>
+        <button class="pa-faq-q" type="button"><span>Â¿CuÃ¡ntas horas necesito para acreditar?</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-        <div class="pa-faq-a"><p>250 horas en total: un mínimo de 70 en tu orientación de especialidad y rotando por al menos 3 de las 4 orientaciones.</p></div>
+        <div class="pa-faq-a"><p>250 horas en total: un mÃ­nimo de 70 en tu orientaciÃ³n de especialidad y rotando por al menos 3 de las 4 orientaciones.</p></div>
       </div>
       <div class="pa-faq-item">
-        <button class="pa-faq-q" type="button"><span>¿Puedo cambiar de orientación durante la PPS?</span>
+        <button class="pa-faq-q" type="button"><span>Â¿Puedo cambiar de orientaciÃ³n durante la PPS?</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-        <div class="pa-faq-a"><p>No. Hay que completar las horas en la orientación asignada.</p></div>
+        <div class="pa-faq-a"><p>No. Hay que completar las horas en la orientaciÃ³n asignada.</p></div>
       </div>
       <div class="pa-faq-item">
-        <button class="pa-faq-q" type="button"><span>¿Cómo entrego el informe?</span>
+        <button class="pa-faq-q" type="button"><span>Â¿CÃ³mo entrego el informe?</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6A7081" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-        <div class="pa-faq-a"><p>Desde Entregas, en la institución donde cursaste. Sumá la planilla firmada si la práctica fue presencial.</p></div>
+        <div class="pa-faq-a"><p>Desde Entregas, en la instituciÃ³n donde cursaste. SumÃ¡ la planilla firmada si la prÃ¡ctica fue presencial.</p></div>
       </div>
     </div>
   </section>
@@ -494,7 +494,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 </div><!-- /#pps-aula-2026 -->
 
 <script>
-/* FAQ acordeón — scopeado al root para no tocar nada de Moodle */
+/* FAQ acordeÃ³n â€” scopeado al root para no tocar nada de Moodle */
 (function(){
   var root = document.getElementById('pps-aula-2026');
   if(!root || root.dataset.bound) return;
@@ -519,7 +519,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 </script>
 
 <script>
-/* Entrada en cascada — sólo agrega animación, nunca oculta sin motion/JS */
+/* Entrada en cascada â€” sÃ³lo agrega animaciÃ³n, nunca oculta sin motion/JS */
 (function(){
   var root=document.getElementById('pps-aula-2026'); if(!root) return;
   if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -543,7 +543,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   }
   // medimos el WRAPPER (#pps-aula-2026), NO body/documentElement: dentro de un
   // iframe el body se estira al alto del iframe -> realimenta y crece sin parar.
-  // El wrapper mide sólo el contenido y es estable.
+  // El wrapper mide sÃ³lo el contenido y es estable.
   var wrap = document.getElementById('pps-aula-2026');
   function reportH(){
     var h = (wrap ? Math.ceil(wrap.getBoundingClientRect().height) : document.body.scrollHeight) + 2;
@@ -558,12 +558,12 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 </script>
 
 <script>
-/* Propaga el email del estudiante (que inyecta Moodle vía FilterCodes en la URL
+/* Propaga el email del estudiante (que inyecta Moodle vÃ­a FilterCodes en la URL
    de este iframe: aula.html?email={email}) hacia los enlaces de "Mi panel".
-   Así el panel puede auto-loguear al alumno. Si no hay email, los links quedan
+   AsÃ­ el panel puede auto-loguear al alumno. Si no hay email, los links quedan
    igual y el panel pide login normal. */
 (function(){
-  // Versión del panel: subila en cada deploy del panel para forzar que el
+  // VersiÃ³n del panel: subila en cada deploy del panel para forzar que el
   // alumno baje el bundle nuevo (evita que el SW/navegador sirva el viejo).
   var PANEL_VER = '21';
   function getParam(name){
@@ -581,7 +581,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   document.querySelectorAll('a[href^="' + PANEL_ORIGIN + '"]').forEach(function(a){
     try {
       var url = new URL(a.getAttribute('href'), window.location.href);
-      // Solo a la raíz del panel (no a aula/guia/descargas/entregas).
+      // Solo a la raÃ­z del panel (no a aula/guia/descargas/entregas).
       var path = url.pathname.replace(/\/+$/, '');
       if (path === '' || path === '/') {
         url.searchParams.set('v', PANEL_VER);          // cache-buster (siempre)
@@ -593,13 +593,26 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 })();
 </script>
 
+<script>
+/* Mantiene el acceso integrado a Mi Panel con el email que inyecta Moodle. */
+(function(){
+  var PANEL_VER='21';
+  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
+  var email=getParam('email');
+  try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
+  document.querySelectorAll('a.pa-bridge[href^="/#/student"]').forEach(function(a){
+    var qs='?v='+encodeURIComponent(PANEL_VER)+(email?'&email='+encodeURIComponent(email):'');
+    a.setAttribute('href','/'+qs+'#/student');
+  });
+})();
+</script>
 <!-- ============================================================================
-     OPCIONAL · OCULTAR LA BARRA DERECHA DEL CURSO (block drawer de Moodle)
+     OPCIONAL Â· OCULTAR LA BARRA DERECHA DEL CURSO (block drawer de Moodle)
      ----------------------------------------------------------------------------
-     Descomentá el <style> de abajo para esconder la columna de bloques de la
-     derecha en ESTA página del curso (sirve también dentro de un iframe, porque
+     DescomentÃ¡ el <style> de abajo para esconder la columna de bloques de la
+     derecha en ESTA pÃ¡gina del curso (sirve tambiÃ©n dentro de un iframe, porque
      el CSS corre en el DOM propio de Moodle). Cubre Moodle 4.x (Boost drawers)
-     y 3.x. Para volver atrás, simplemente borrá este bloque.
+     y 3.x. Para volver atrÃ¡s, simplemente borrÃ¡ este bloque.
      ============================================================================ -->
 <!--
 <style id="pps-hide-blocks">
@@ -614,3 +627,37 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   #page-content .row { margin-right:0 !important; }
 </style>
 -->
+<script>
+/* Precalienta Mi Panel para que la vuelta desde Campus no se sienta como recarga fria (con iframe invisible para precarga real de assets en prod). */
+(function(){
+  var warmed=false;
+  function warmPanel(){
+    if(warmed) return;
+    warmed=true;
+    try{
+      var email = '';
+      try {
+        email = new URLSearchParams(window.location.search).get('email') || sessionStorage.getItem('pps_email') || '';
+      } catch(e) {}
+      var qs = '?v=21&preload=true' + (email ? '&email=' + encodeURIComponent(email.trim()) : '');
+
+      var iframe = document.createElement('iframe');
+      iframe.src = '/' + qs + '#/student';
+      iframe.style.position = 'fixed';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.border = 'none';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(iframe);
+    }catch(e){}
+  }
+  document.addEventListener('pointerover',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); },{passive:true});
+  document.addEventListener('focusin',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); });
+  if('requestIdleCallback' in window) requestIdleCallback(warmPanel,{timeout:1800});
+  else setTimeout(warmPanel,900);
+})();
+</script>
