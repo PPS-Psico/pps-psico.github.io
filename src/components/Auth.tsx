@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import ThemeToggle from "./layout/ThemeToggle";
 import { useAuth } from "../contexts/AuthContext";
 import { useModal } from "../contexts/ModalContext";
@@ -981,8 +982,24 @@ const Auth: React.FC = () => {
 
         {/* ===== PANEL DE FORMULARIO ===== */}
         <main className="relative flex flex-col h-full overflow-y-auto lg:overflow-hidden overflow-x-hidden custom-scrollbar">
-          {/* Absolute theme toggle to save vertical space */}
-          <div className="absolute top-6 right-8 z-20">
+          {/* Volver al Aula + theme toggle (solo desktop). El login venía
+              "cortando" el recorrido desde el campus: sin barra, no había
+              camino de vuelta al Aula pública. */}
+          <div className="absolute top-6 right-8 z-20 flex items-center gap-3">
+            <Link
+              to="/aula"
+              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold no-underline transition-colors"
+              style={{
+                borderColor: "var(--line, var(--hairline))",
+                color: "var(--ink-muted)",
+                background: "var(--bg-elevated)",
+              }}
+            >
+              <span aria-hidden style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
+                <AuthIcon name="arrow" size={14} strokeWidth={2} />
+              </span>
+              Aula PPS 2026
+            </Link>
             <ThemeToggle />
           </div>
 

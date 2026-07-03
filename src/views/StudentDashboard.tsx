@@ -19,7 +19,9 @@ import StudentConvocatoriasView from "./student/StudentConvocatoriasView";
 import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
 import AtlasProfileView from "./student/AtlasProfileView";
 import AtlasPracticasView from "./student/AtlasPracticasView";
-import StudentAulaView from "./student/StudentAulaView";
+// Aula (contenido estático pesado en JSX): lazy para sacarlo del bundle inicial.
+const StudentAulaView = React.lazy(() => import("./student/StudentAulaView"));
+const EntregasMobileView = React.lazy(() => import("./student/EntregasMobileView"));
 import WelcomeBanner from "../components/student/WelcomeBanner";
 import WhatsAppExportButton from "../components/student/WhatsAppExportButton";
 import Button from "../components/ui/Button";
@@ -574,7 +576,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         id: "aula" as TabId,
         label: "Aula",
         icon: "book",
-        content: <StudentAulaView />,
+        content: (
+          <React.Suspense fallback={null}>
+            <StudentAulaView />
+          </React.Suspense>
+        ),
       },
       {
         id: "convocatorias" as TabId,
@@ -774,7 +780,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </>
           )}
           {currentActiveTab === "convocatorias" && <StudentConvocatoriasView />}
-          {currentActiveTab === "aula" && <StudentAulaView />}
+          {currentActiveTab === "informes" && (
+            <React.Suspense fallback={null}>
+              <EntregasMobileView />
+            </React.Suspense>
+          )}
           {currentActiveTab === "solicitudes" && <>{mobileSolicitudesContent}</>}
           {currentActiveTab === "practicas" && (
             <div className="ed" data-mode={resolvedTheme} data-accent="teal">

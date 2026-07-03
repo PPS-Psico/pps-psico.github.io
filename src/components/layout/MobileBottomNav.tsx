@@ -22,6 +22,7 @@ const ICON_MAP: Partial<Record<TabId, IconName>> = {
   inicio: "home",
   convocatorias: "search",
   aula: "book",
+  informes: "upload",
   practicas: "bag",
   solicitudes: "file",
   profile: "user",

@@ -28,6 +28,7 @@ const StudentLayout: React.FC = () => {
   let activeTab: TabId = "inicio";
   if (location.pathname.includes("/convocatorias")) activeTab = "convocatorias";
   else if (location.pathname.includes("/aula")) activeTab = "aula";
+  else if (location.pathname.includes("/entregas")) activeTab = "informes";
   else if (location.pathname.includes("/practicas")) activeTab = "practicas";
   else if (location.pathname.includes("/solicitudes")) activeTab = "solicitudes";
   else if (location.pathname.includes("/perfil")) activeTab = "profile";
@@ -40,12 +41,15 @@ const StudentLayout: React.FC = () => {
 
     if (tabId === "inicio") navigate("/student");
     else if (tabId === "profile") navigate("/student/perfil");
+    else if (tabId === "informes") navigate("/student/entregas");
     else navigate(`/student/${tabId}`);
   };
 
   const mobileNavTabs = [
     { id: "inicio" as TabId, label: "Inicio", icon: "home", path: "/student" },
-    { id: "aula" as TabId, label: "Aula", icon: "book", path: "/student/aula" },
+    /* En mobile no va el Aula completa (es una superficie de escritorio):
+       queda solo Entregas, con una vista propia pensada para celular. */
+    { id: "informes" as TabId, label: "Entregas", icon: "upload", path: "/student/entregas" },
     {
       id: "practicas" as TabId,
       label: "Prácticas",

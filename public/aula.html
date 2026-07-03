@@ -14,9 +14,12 @@
 <!-- Modo claro fijo (sin modo oscuro en el campus) -->
 
 <div id="pps-aula-2026" class="pa-root">
+<!-- Fuentes via <link> (no @import: bloqueaba el primer render dentro del iframe).
+     Si el campus bloquea Google Fonts, cae a system-ui. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-/* ----- Fuentes (si el campus bloquea Google Fonts, cae a system-ui) ------- */
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
 
 /* reset para iframe standalone (sin margen del navegador) */
 html,body{ margin:0; padding:0; background:transparent; overflow-x:hidden; }
@@ -309,184 +312,6 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 @keyframes ppsPageOut{ from{ opacity:1; transform:translateY(0); filter:blur(0); } to{ opacity:0; transform:translateY(-6px); filter:blur(2px); } }
 @keyframes ppsPageIn{ from{ opacity:0; transform:translateY(10px); filter:blur(3px); } to{ opacity:1; transform:translateY(0); filter:blur(0); } }
 @media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root),::view-transition-group(root),::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:1ms; } }
-
-
-/* === Hero de inicio editorial, estático y sin blur === */
-#pps-aula-2026 .pa-hero{
-  display:grid;
-  grid-template-columns:minmax(0,680px) minmax(320px,1fr);
-  align-items:center;
-  gap:56px;
-  padding:30px 56px 66px !important;
-  overflow:visible !important;
-}
-#pps-aula-2026 .pa-hero__orb{ display:none !important; }
-#pps-aula-2026 .pa-hero__copy{ min-width:0; }
-#pps-aula-2026 .pa-hero .pa-eyebrow{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  font-family:var(--font-mono);
-  font-size:12px;
-  font-weight:500;
-  letter-spacing:.1em;
-  text-transform:uppercase;
-  color:var(--ink-muted);
-}
-#pps-aula-2026 .pa-hero .pa-eyebrow b{ color:var(--accent-deep); font-weight:600; }
-#pps-aula-2026 .pa-hero .pa-pill{
-  display:inline-flex;
-  align-items:center;
-  min-height:24px;
-  padding:4px 10px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:var(--bg-elevated);
-  color:var(--ink-muted);
-}
-#pps-aula-2026 .pa-hero h1{
-  font-size:clamp(42px,5vw,68px) !important;
-  line-height:.96 !important;
-  letter-spacing:-.047em !important;
-  color:var(--ink) !important;
-  margin:18px 0 0 !important;
-  max-width:760px !important;
-}
-#pps-aula-2026 .pa-grad{
-  background:none !important;
-  -webkit-background-clip:initial !important;
-  background-clip:initial !important;
-  color:var(--accent-deep) !important;
-}
-#pps-aula-2026 .pa-hero__lede{
-  max-width:610px !important;
-  margin:18px 0 30px !important;
-  font-size:18px !important;
-  line-height:1.55 !important;
-}
-#pps-aula-2026 .pa-hero__art{
-  position:relative;
-  min-height:330px;
-  border-radius:28px;
-  overflow:hidden;
-  border:1px solid var(--line);
-  background:
-    linear-gradient(135deg, rgba(70,37,61,.96) 0%, rgba(32,59,115,.94) 50%, rgba(60,184,141,.88) 100%);
-  box-shadow:0 28px 70px -52px rgba(32,59,115,.65);
-  isolation:isolate;
-}
-#pps-aula-2026 .pa-hero__art::before{
-  content:"";
-  position:absolute;
-  inset:22px;
-  border:1px solid rgba(255,255,255,.22);
-  border-radius:22px;
-  z-index:1;
-}
-#pps-aula-2026 .pa-hero__art::after{
-  content:"PPS";
-  position:absolute;
-  right:-8px;
-  bottom:-28px;
-  font-family:var(--font-display);
-  font-weight:800;
-  font-size:150px;
-  line-height:.8;
-  letter-spacing:-.07em;
-  color:rgba(255,255,255,.13);
-  z-index:0;
-}
-#pps-aula-2026 .pa-hero__art-inner{
-  position:relative;
-  z-index:2;
-  min-height:330px;
-  padding:34px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  color:#fff;
-}
-#pps-aula-2026 .pa-hero__art-kicker{
-  font-family:var(--font-mono);
-  font-size:11px;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  color:rgba(255,255,255,.66);
-}
-#pps-aula-2026 .pa-hero__art-title{
-  margin-top:12px;
-  max-width:360px;
-  font-family:var(--font-display);
-  font-size:34px;
-  line-height:1;
-  letter-spacing:-.04em;
-  font-weight:700;
-}
-#pps-aula-2026 .pa-hero__art-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-top:26px;
-}
-#pps-aula-2026 .pa-hero__art-chip{
-  min-height:76px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.10);
-  padding:13px;
-}
-#pps-aula-2026 .pa-hero__art-num{
-  display:block;
-  font-family:var(--font-display);
-  font-size:25px;
-  line-height:1;
-  letter-spacing:-.035em;
-  font-weight:700;
-}
-#pps-aula-2026 .pa-hero__art-label{
-  display:block;
-  margin-top:8px;
-  font-family:var(--font-mono);
-  font-size:10px;
-  line-height:1.25;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  color:rgba(255,255,255,.70);
-}
-#pps-aula-2026 .pa-hero__art-foot{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:16px;
-  font-family:var(--font-mono);
-  font-size:11px;
-  letter-spacing:.09em;
-  text-transform:uppercase;
-  color:rgba(255,255,255,.68);
-}
-#pps-aula-2026 .pa-hero__art-mark{
-  width:42px;
-  height:42px;
-  border-radius:999px;
-  display:grid;
-  place-items:center;
-  background:#fff;
-  color:var(--uflo-deep);
-  font-family:var(--font-display);
-  font-size:18px;
-  font-weight:800;
-  letter-spacing:-.05em;
-}
-@media (max-width:980px){
-  #pps-aula-2026 .pa-hero{ grid-template-columns:1fr; gap:28px; }
-  #pps-aula-2026 .pa-hero__art{ min-height:280px; }
-  #pps-aula-2026 .pa-hero__art-inner{ min-height:280px; }
-}
-@media (max-width:720px){
-  #pps-aula-2026 .pa-hero{ padding:36px 20px 52px !important; }
-  #pps-aula-2026 .pa-hero__art{ display:none; }
-}
 </style>
 
 <!-- ===== NAV / BRAND ===== -->
@@ -502,7 +327,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
     <a href="descargas.html">Descargas</a>
     <a href="preguntas.html">Preguntas</a>
     <a href="entregas.html">Entregas</a>
-    <a href="/#/student" class="pa-bridge">Mi Panel</a>
+    <a href="https://pps-psico.github.io/?v=21#/student" class="pa-bridge">Mi Panel</a>
   </nav>
   <button class="pa-themebtn" type="button" id="paThemeBtn" aria-label="Cambiar tema" title="Cambiar tema">
     <svg class="ic-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -512,34 +337,23 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 
 <!-- ===== HERO ===== -->
 <section class="pa-hero pa-wrap">
-  <div class="pa-hero__copy">
-    <div class="pa-eyebrow"><b>Campus PPS</b><span class="pa-pill">Ciclo 2026</span><span class="pa-pill">Inicio</span></div>
-    <h1 class="pa-display">Bienvenida a <span class="pa-grad">tu aula.</span></h1>
-    <p class="pa-hero__lede">Materiales, entregas, consultas y seguimiento de tu práctica en un mismo lugar.</p>
-    <div class="pa-hero__cta">
-      <a class="pa-btn pa-btn--lg pa-btn--ink" href="https://pps-psico.github.io/">
-        Entrar a mi panel
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
-      </a>
-      <a class="pa-btn pa-btn--lg pa-btn--ghost" href="guia.html">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7a4 4 0 0 1 4 4v12"/><path d="M20 4h-7a4 4 0 0 0-4 4v12"/></svg>
-        Ver guía 2026
-      </a>
-    </div>
+  <div class="pa-hero__orb">
+    <span class="pa-orb pa-orb--1" aria-hidden="true"></span>
+    <span class="pa-orb pa-orb--2" aria-hidden="true"></span>
+    <span class="pa-orb pa-orb--3" aria-hidden="true"></span>
   </div>
-  <div class="pa-hero__art" aria-hidden="true">
-    <div class="pa-hero__art-inner">
-      <div>
-        <div class="pa-hero__art-kicker">Aula PPS 2026</div>
-        <div class="pa-hero__art-title">Un recorrido claro para cursar, entregar y acreditar.</div>
-        <div class="pa-hero__art-grid">
-          <span class="pa-hero__art-chip"><span class="pa-hero__art-num">250</span><span class="pa-hero__art-label">horas totales</span></span>
-          <span class="pa-hero__art-chip"><span class="pa-hero__art-num">70</span><span class="pa-hero__art-label">mínimo especialidad</span></span>
-          <span class="pa-hero__art-chip"><span class="pa-hero__art-num">3/4</span><span class="pa-hero__art-label">orientaciones</span></span>
-        </div>
-      </div>
-      <div class="pa-hero__art-foot"><span>Guía · Descargas · Entregas</span><span class="pa-hero__art-mark">UF</span></div>
-    </div>
+  <span class="pa-eyebrow">Facultad de Psicología y Ciencias Sociales</span>
+  <h1 class="pa-display">Bienvenida<br>a <span class="pa-grad">tu aula</span> de PPS.</h1>
+  <p class="pa-hero__lede">Materiales, entregas, consultas y el seguimiento de tu práctica — todo en un mismo lugar. Sin saltar entre cinco pestañas.</p>
+  <div class="pa-hero__cta">
+    <a class="pa-btn pa-btn--lg pa-btn--ink" href="https://pps-psico.github.io/?v=21#/student">
+      Entrar a mi panel
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+    </a>
+    <a class="pa-btn pa-btn--lg pa-btn--ghost" href="guia.html">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7a4 4 0 0 1 4 4v12"/><path d="M20 4h-7a4 4 0 0 0-4 4v12"/></svg>
+      Ver guía 2026
+    </a>
   </div>
 </section>
 
@@ -629,7 +443,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
           <span class="pa-tile__n">4 fechas</span>
         </div>
       </a>
-      <a class="pa-tile" href="https://pps-psico.github.io/">
+      <a class="pa-tile" href="https://pps-psico.github.io/?v=21#/student">
         <span class="pa-tile__ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
         <div style="margin-top:6px;">
           <div class="pa-eyebrow" style="font-size:10.5px;margin-bottom:4px;">Gestión</div>
@@ -788,9 +602,10 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
   var email=getParam('email');
   try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
-  document.querySelectorAll('a.pa-bridge[href^="/#/student"]').forEach(function(a){
+  var PANEL_ORIGIN='https://pps-psico.github.io/';
+  document.querySelectorAll('a.pa-bridge').forEach(function(a){
     var qs='?v='+encodeURIComponent(PANEL_VER)+(email?'&email='+encodeURIComponent(email):'');
-    a.setAttribute('href','/'+qs+'#/student');
+    a.setAttribute('href',PANEL_ORIGIN+qs+'#/student');
   });
 })();
 </script>
@@ -852,7 +667,8 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   }
   document.addEventListener('pointerover',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); },{passive:true});
   document.addEventListener('focusin',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); });
-  if('requestIdleCallback' in window) requestIdleCallback(warmPanel,{timeout:1800});
-  else setTimeout(warmPanel,900);
+  /* Sin idle-warm automático: precalentaba el panel completo para TODOS los
+     alumnos del campus aunque no fueran al panel. El warm por hover/focus
+     del botón "Mi Panel" (arriba) cubre el caso real con una fracción del costo. */
 })();
 </script>

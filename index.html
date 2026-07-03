@@ -59,12 +59,11 @@
       })();
     </script>
 
-    <!-- Dark mode init -->
+    <!-- Dark mode init — SOLO por elección explícita del usuario (toggle).
+         Sin preferencia guardada la app carga en claro: los visitantes nuevos
+         (aula pública, login) no heredan el modo oscuro del sistema operativo. -->
     <script>
-      if (
-        localStorage.getItem("theme") === "dark" ||
-        (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)
-      ) {
+      if (localStorage.getItem("theme") === "dark") {
         document.documentElement.classList.add("dark");
       } else {
         document.documentElement.classList.remove("dark");

@@ -16,10 +16,10 @@ const getInitialTheme = (): Theme => {
     if (typeof storedPrefs === "string") {
       return storedPrefs === "dark" ? "dark" : "light";
     }
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
   }
+  // Sin preferencia explícita: SIEMPRE claro (no se hereda el dark del sistema).
+  // Los visitantes sin cuenta —aula pública, login— arrancan en modo claro;
+  // quien prefiera oscuro lo elige con el toggle y queda guardado.
   return "light";
 };
 
