@@ -720,12 +720,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       {/* Montamos solo el árbol del viewport actual (desktop ↔ mobile) para no
           renderizar el contenido del tab por duplicado en el DOM. */}
       {!isMobile && (
-        <div className="no-print animate-fade-in-up">
+        <div className="no-print">
           <AtlasTopbar
             activeTab={currentActiveTab}
             onTabChange={(id) => setCurrentActiveTab(id as TabId)}
           />
-          <div className="space-y-8 mt-6">
+          <div className="space-y-8 mt-6 animate-fade-in-up">
             {!["inicio", "solicitudes", "profile", "practicas"].includes(currentActiveTab) && (
               <WelcomeBanner
                 studentName={studentNameForPanel}
