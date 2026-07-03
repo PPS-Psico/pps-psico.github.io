@@ -4,6 +4,10 @@ import { useAuth } from "../../../../contexts/AuthContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import type { TabId } from "../../../../types";
 
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (updateCallback: () => void) => { finished?: Promise<void> };
+};
+
 interface AtlasTopbarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
@@ -21,6 +25,23 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
   const { authenticatedUser, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const initial = (authenticatedUser?.nombre || "E").trim().charAt(0).toUpperCase() || "E";
+
+  const runPanelTransition = (update: () => void) => {
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const startViewTransition = (document as ViewTransitionDocument).startViewTransition;
+
+    if (prefersReducedMotion || typeof startViewTransition !== "function") {
+      update();
+      return;
+    }
+
+    startViewTransition.call(document, update);
+  };
+
+  const handleTabChange = (tab: TabId) => {
+    if (tab === activeTab) return;
+    runPanelTransition(() => onTabChange(tab));
+  };
 
   // Embebido en el campus: mostramos los accesos "Volver al campus" y
   // "Pantalla completa" dentro de esta misma barra (no como franja aparte).
@@ -55,7 +76,7 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 type="button"
                 className={"ah-nav__item" + (activeTab === n.id ? " active" : "")}
                 aria-current={activeTab === n.id ? "page" : undefined}
-                onClick={() => onTabChange(n.id)}
+                onClick={() => handleTabChange(n.id)}
               >
                 {n.label}
               </button>

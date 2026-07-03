@@ -2557,6 +2557,21 @@ html.dark .ah-root .ah-topbar__mark {
 .ah-nav__item--bridge:hover {
   border-color: var(--border-strong);
 }
+
+/* View Transitions: conserva la barra entre Campus y Mi Panel. */
+.ah-topbar__brand {
+  view-transition-name: pps-brand;
+  contain: layout;
+}
+.ah-nav {
+  view-transition-name: pps-tabs;
+  contain: layout;
+}
+.ah-topbar__right {
+  view-transition-name: pps-actions;
+  contain: layout;
+}
+
 .ah-topbar__right {
   margin-left: auto;
   display: flex;
