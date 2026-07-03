@@ -13,13 +13,27 @@ export const useStudentSolicitudes = (legajo: string, studentId: string | null) 
   } = useQuery({
     queryKey: ["solicitudes", legajo],
     queryFn: async () => {
+      let data;
       if (legajo === "99999") {
         const recs: SolicitudPPS[] = await mockDb.getAll("solicitudes_pps", {
           [FIELD_LEGAJO_PPS]: "st_999",
         });
-        return recs.filter((r) => r[FIELD_ESTADO_PPS] !== "Archivado");
+        data = recs.filter((r) => r[FIELD_ESTADO_PPS] !== "Archivado");
+      } else {
+        data = await fetchSolicitudes(legajo, studentId);
       }
-      return fetchSolicitudes(legajo, studentId);
+      try {
+        sessionStorage.setItem(`pps_cache_solicitudes_${legajo}`, JSON.stringify(data));
+      } catch (e) {}
+      return data;
+    },
+    initialData: () => {
+      try {
+        const cached = sessionStorage.getItem(`pps_cache_solicitudes_${legajo}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch (e) {
+        return undefined;
+      }
     },
     enabled: !!legajo,
     staleTime: 1000 * 60 * 5,

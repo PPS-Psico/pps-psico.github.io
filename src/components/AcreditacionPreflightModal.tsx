@@ -86,12 +86,12 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
                 >
                   {Math.round(criterios.horasTotales)}
                 </span>
-                <span className="text-xs font-bold text-slate-400">/ 350 hs</span>
+                <span className="text-xs font-bold text-slate-400">/ 250 hs</span>
               </div>
               <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full ${criterios.cumpleHorasTotales ? "bg-emerald-500" : "bg-blue-500"}`}
-                  style={{ width: `${Math.min(100, (criterios.horasTotales / 350) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (criterios.horasTotales / 250) * 100)}%` }}
                 ></div>
               </div>
             </div>
@@ -116,7 +116,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
                 >
                   {criterios.orientacionesCursadasCount}
                 </span>
-                <span className="text-xs font-bold text-slate-400">/ 2 áreas</span>
+                <span className="text-xs font-bold text-slate-400">/ 3 áreas</span>
               </div>
               <p className="text-[10px] text-slate-500 font-medium leading-tight">
                 Áreas clínicas, educacionales, laborales, etc.

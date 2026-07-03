@@ -186,9 +186,17 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   // ── Estado mutations ──────────────────────────────────────────────────────
   const changeEstadoMutation = useMutation({
     mutationFn: async ({ id, estado }: { id: string; estado: string }) => {
-      await db.lanzamientos.update(id, {
+      const updates: Record<string, unknown> = {
         [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: estado,
-      } as Record<string, unknown>);
+      };
+
+      if (estado !== "Archivado") {
+        updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Relanzamiento Confirmado";
+      } else {
+        updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Archivado";
+      }
+
+      await db.lanzamientos.update(id, updates);
 
       // Al cerrar la inscripción notificamos a los seleccionados, pero en
       // SEGUNDO PLANO: enviar emails + push tarda varios segundos y no debe
@@ -277,12 +285,22 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         case "desarchivar": {
           updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Relanzamiento Confirmado";
           // Si quedó oculta/archivada por `estado_convocatoria`, la normalizamos a
-          // "Cerrado" para que vuelva a ser visible (cerrada) para los estudiantes.
+          // "Cerrado" o "Activa" para que vuelva a ser visible.
           const ec = normalizeStringForComparison(
             (launch?.[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || ""
           );
           if (ec === "archivado" || ec === "archivada" || ec === "oculto") {
-            updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Cerrado";
+            const hasSelected = (countsByLaunch[id]?.seleccionados || 0) > 0;
+            const fechaInicio = launch?.[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
+            const pastStart = fechaInicio
+              ? new Date(fechaInicio).getTime() <= new Date().getTime()
+              : false;
+
+            if (hasSelected && pastStart) {
+              updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Activa";
+            } else {
+              updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Cerrado";
+            }
           }
           break;
         }
@@ -468,6 +486,24 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
                   message:
                     "La convocatoria archivada volverá a estado «Abierta» para recibir nuevos postulantes.",
                   confirmText: "Reabrir",
+                  type: "info",
+                })
+              }
+              onReactivarActiva={() =>
+                handleChangeEstado(selectedLaunch.id, "Activa", {
+                  title: "¿Reactivar esta PPS?",
+                  message:
+                    "La convocatoria volverá al estado «Activa» (en curso) con los alumnos previamente seleccionados.",
+                  confirmText: "Reactivar",
+                  type: "info",
+                })
+              }
+              onReactivarConfirmacion={() =>
+                handleChangeEstado(selectedLaunch.id, "Confirmacion", {
+                  title: "¿Reactivar la Sala de Firmas?",
+                  message:
+                    "La convocatoria volverá al paso «Confirmación» para recolectar compromisos y firmas digitales.",
+                  confirmText: "Reactivar firmas",
                   type: "info",
                 })
               }

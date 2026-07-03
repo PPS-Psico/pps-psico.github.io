@@ -40,8 +40,7 @@ html,body{ margin:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
 
 /* masthead */
-#pps-aula-2026 .pa-mast{ position:relative; padding:64px 72px 0; max-width:1360px; margin:0 auto; }
-#pps-aula-2026 .pa-mast__rule{ height:3px; border-radius:3px; width:88px; margin-bottom:30px; background:linear-gradient(90deg,#46253D 0%,#203B73 48%,#3CB88D 100%); }
+#pps-aula-2026 .pa-mast{ position:relative; padding:44px 72px 0; max-width:1360px; margin:0 auto; }
 #pps-aula-2026 .pa-mast__eyebrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-muted); }
 #pps-aula-2026 .pa-mast__eyebrow b{ color:var(--accent-deep); font-weight:600; }
 #pps-aula-2026 .pa-mast__eyebrow .sep{ width:4px; height:4px; border-radius:50%; background:var(--line-strong); }
@@ -193,6 +192,106 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
   #pps-aula-2026 .pa-navlinks a:active{ transform:scale(.95); }
   #pps-aula-2026 .pa-gcard:active,#pps-aula-2026 .pa-tool:active{ transform:scale(.99); }
 }
+
+/* === Topbar integrada Campus / Mi Panel === */
+#pps-aula-2026 .pa-nav{
+  min-height:70px !important;
+  align-items:center !important;
+  flex-wrap:nowrap !important;
+  gap:24px !important;
+  padding:10px 40px 14px !important;
+}
+#pps-aula-2026 .pa-brand{ min-width:190px; }
+#pps-aula-2026 .pa-brand__mark{ font-size:24px; }
+#pps-aula-2026 .pa-brand__sep{ height:24px; }
+#pps-aula-2026 .pa-navlinks{
+  align-items:center;
+  gap:4px;
+  margin-left:auto;
+  flex-wrap:nowrap;
+}
+#pps-aula-2026 .pa-navlinks a{
+  padding:9px 15px !important;
+  border-radius:10px !important;
+  font-size:14.5px !important;
+  font-weight:500 !important;
+  transition:color var(--t-fast), background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+#pps-aula-2026 .pa-navlinks a.is-on{
+  color:var(--bg);
+  background:var(--ink);
+  font-weight:600 !important;
+}
+#pps-aula-2026 .pa-navlinks a.pa-bridge{
+  margin-left:6px;
+  border:1px solid var(--line);
+  background:var(--bg-elevated);
+  color:var(--ink);
+}
+#pps-aula-2026 .pa-navlinks a.pa-bridge:hover{
+  border-color:var(--line-strong);
+  background:var(--bg-sunken);
+}
+@media (max-width:760px){
+  #pps-aula-2026 .pa-nav{ flex-wrap:wrap !important; padding:14px 20px !important; }
+  #pps-aula-2026 .pa-brand{ min-width:0; }
+  #pps-aula-2026 .pa-navlinks{ order:3; width:100%; overflow-x:auto; padding-bottom:2px; }
+}
+
+
+/* View Transitions: la barra se siente como el mismo objeto entre Campus y Mi Panel. */
+@view-transition { navigation: auto; }
+#pps-aula-2026 .pa-brand{ view-transition-name:pps-brand; contain:layout; }
+#pps-aula-2026 .pa-navlinks{ view-transition-name:pps-tabs; contain:layout; }
+#pps-aula-2026 .pa-themebtn{ view-transition-name:pps-actions; contain:layout; }
+::view-transition-group(root){ animation-duration:360ms; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+::view-transition-old(root){ animation:ppsPageOut 220ms cubic-bezier(.4,0,1,1) both; }
+::view-transition-new(root){ animation:ppsPageIn 360ms cubic-bezier(.16,1,.3,1) both; }
+::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:420ms; animation-timing-function:cubic-bezier(.16,1,.3,1); }
+@keyframes ppsPageOut{ from{ opacity:1; transform:translateY(0); filter:blur(0); } to{ opacity:0; transform:translateY(-6px); filter:blur(2px); } }
+@keyframes ppsPageIn{ from{ opacity:0; transform:translateY(10px); filter:blur(3px); } to{ opacity:1; transform:translateY(0); filter:blur(0); } }
+@media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root),::view-transition-group(root),::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:1ms; } }
+
+
+/* === Masthead editorial unificado con Entregas === */
+#pps-aula-2026 .pa-mast{
+  padding-top:30px !important;
+  max-width:1360px !important;
+}
+#pps-aula-2026 .pa-mast__eyebrow{
+  gap:10px !important;
+  font-size:12px !important;
+  letter-spacing:.1em !important;
+}
+#pps-aula-2026 .pa-mast__eyebrow .sep{ display:none !important; }
+#pps-aula-2026 .pa-mast__eyebrow .pa-pill{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--bg-elevated);
+  color:var(--ink-muted);
+}
+#pps-aula-2026 .pa-mast__title{
+  font-size:clamp(38px,4.55vw,58px) !important;
+  line-height:.98 !important;
+  letter-spacing:-.045em !important;
+  color:var(--ink) !important;
+  margin:18px 0 0 !important;
+  max-width:760px !important;
+}
+#pps-aula-2026 .pa-mast__title span{ color:var(--accent-deep); }
+#pps-aula-2026 .pa-mast__sub{
+  margin:16px 0 0 !important;
+  max-width:610px !important;
+  font-size:17px !important;
+  line-height:1.55 !important;
+}
+@media (max-width:680px){
+  #pps-aula-2026 .pa-mast{ padding:36px 20px 0 !important; }
+}
 </style>
 </head>
 <body>
@@ -210,7 +309,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
       <a href="descargas.html">Descargas</a>
       <a href="preguntas.html">Preguntas</a>
       <a href="entregas.html">Entregas</a>
-      <a href="https://pps-psico.github.io/">Mi panel</a>
+      <a href="/#/student" class="pa-bridge">Mi Panel</a>
     </nav>
     <button class="pa-themebtn" type="button" id="paThemeBtn" aria-label="Cambiar tema" title="Cambiar tema">
       <svg class="ic-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -220,10 +319,9 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
 
   <!-- MASTHEAD -->
   <div class="pa-mast">
-    <div class="pa-mast__rule"></div>
-    <div class="pa-mast__eyebrow"><b>Guía de cursada</b><span class="sep"></span>Ciclo 2026<span class="sep"></span>Facultad de Psicología</div>
-    <h1 class="pa-mast__title">Tu PPS, de principio a fin.</h1>
-    <p class="pa-mast__sub">El recorrido completo de la práctica en seis etapas — del primer acceso a la acreditación final, con lo que tenés que cumplir en cada una.</p>
+    <div class="pa-mast__eyebrow"><b>Campus PPS</b><span class="pa-pill">Ciclo 2026</span><span class="pa-pill">Guía de cursada</span></div>
+    <h1 class="pa-mast__title">Tu PPS, de principio a <span>fin.</span></h1>
+    <p class="pa-mast__sub">El recorrido completo de la práctica en seis etapas, desde el primer acceso hasta la acreditación final.</p>
   </div>
 
   <!-- ÍNDICE -->
@@ -365,6 +463,60 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
   document.querySelectorAll('a[href^="'+PANEL_ORIGIN+'"]').forEach(function(a){
     try{ var url=new URL(a.getAttribute('href'),window.location.href); var p=url.pathname.replace(/\/+$/,''); if(p===''||p==='/'){ url.searchParams.set('v',PANEL_VER); if(email) url.searchParams.set('email',email); a.setAttribute('href',url.toString()); } }catch(e){}
   });
+})();
+</script>
+<script>
+/* Mantiene el acceso integrado a Mi Panel con el email que inyecta Moodle. */
+(function(){
+  var PANEL_VER='21';
+  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
+  var email=getParam('email');
+  try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
+  document.querySelectorAll('a.pa-bridge[href^="/#/student"]').forEach(function(a){
+    var qs='?v='+encodeURIComponent(PANEL_VER)+(email?'&email='+encodeURIComponent(email):'');
+    a.setAttribute('href','/'+qs+'#/student');
+  });
+})();
+</script>
+<script>
+/* Precalienta Mi Panel para que la vuelta desde Campus no se sienta como recarga fria (con iframe invisible para precarga real de assets en prod). */
+(function(){
+  var warmed=false;
+  function warmPanel(){
+    if(warmed) return;
+    warmed=true;
+    try{
+      var email = '';
+      try {
+        email = new URLSearchParams(window.location.search).get('email') || sessionStorage.getItem('pps_email') || '';
+      } catch(e) {}
+      var qs = '?v=21&preload=true' + (email ? '&email=' + encodeURIComponent(email.trim()) : '');
+
+      console.log('[Preheat] Iniciando precarga de Mi Panel en iframe invisible...');
+      var iframe = document.createElement('iframe');
+      iframe.src = '/' + qs + '#/student';
+      iframe.style.position = 'fixed';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.border = 'none';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.setAttribute('aria-hidden', 'true');
+      iframe.onload = function() {
+        console.log('[Preheat] Iframe de precarga cargado exitosamente. Assets cacheados.');
+      };
+      document.body.appendChild(iframe);
+      console.log('[Preheat] Iframe inyectado en DOM con src:', iframe.src);
+    }catch(e){
+      console.warn('[Preheat] Error al inyectar iframe de precarga:', e);
+    }
+  }
+  document.addEventListener('pointerover',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); },{passive:true});
+  document.addEventListener('focusin',function(e){ if(e.target&&e.target.closest&&e.target.closest('a.pa-bridge')) warmPanel(); });
+  if('requestIdleCallback' in window) requestIdleCallback(warmPanel,{timeout:1800});
+  else setTimeout(warmPanel,900);
 })();
 </script>
 </body>

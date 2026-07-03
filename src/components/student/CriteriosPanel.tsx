@@ -52,37 +52,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
     [criterios, hasPendingCorrections]
   );
 
-  // "Qué te falta para acreditar": lista textual y explícita de lo pendiente.
-  // Complementa los anillos/contadores (que muestran el cuánto) diciendo el qué,
-  // e integra informes pendientes y correcciones, que antes no se veían acá.
-  const pendingInformesCount = useMemo(
-    () => informeTasks.filter((t) => !t.informeSubido).length,
-    [informeTasks]
-  );
-  const faltantes = useMemo(() => {
-    const out: string[] = [];
-    if (!criterios.cumpleHorasTotales && criterios.horasFaltantes250 > 0)
-      out.push(`${Math.round(criterios.horasFaltantes250)} h totales`);
-    if (!criterios.cumpleHorasOrientacion && criterios.horasFaltantesOrientacion > 0)
-      out.push(`${Math.round(criterios.horasFaltantesOrientacion)} h de tu orientación`);
-    if (!criterios.cumpleRotacion) {
-      const faltanRot = Math.max(
-        0,
-        ROTACION_OBJETIVO_ORIENTACIONES - criterios.orientacionesCursadasCount
-      );
-      if (faltanRot > 0) out.push(`${faltanRot} ${faltanRot === 1 ? "rotación" : "rotaciones"}`);
-    }
-    if (pendingInformesCount > 0)
-      out.push(`${pendingInformesCount} ${pendingInformesCount === 1 ? "informe" : "informes"}`);
-    if (criterios.tienePracticasPendientes) out.push("prácticas en curso");
-    if (hasPendingCorrections) out.push("correcciones de informe");
-    return out;
-  }, [criterios, pendingInformesCount, hasPendingCorrections]);
-
-  const progressPercent = Math.min(
-    100,
-    Math.round((criterios.horasTotales / HORAS_OBJETIVO_TOTAL) * 100)
-  );
+  const horasFaltantes = Math.max(0, Math.round(criterios.horasFaltantes250));
 
   // Celebración: confetti UFLO una sola vez por sesión cuando se cumplen todos
   // los criterios de acreditación. Respeta prefers-reduced-motion (canvas-confetti
@@ -114,7 +84,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
   }
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto mb-8 bg-white dark:bg-[#131829] rounded-3xl border border-slate-200/80 dark:border-slate-800/60 p-6 md:p-8 pb-2 md:pb-3 shadow-sm">
+    <div className="relative w-full max-w-2xl mx-auto mb-8 bg-white dark:bg-[#131829] rounded-3xl border border-slate-200/80 dark:border-slate-800/60 p-5 md:p-8 shadow-sm">
       {/* Background glow effects */}
       <div className="absolute -top-10 -right-10 w-32 h-32 bg-uflo-teal/5 rounded-full blur-[40px] pointer-events-none" />
       <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-uflo-navy/5 rounded-full blur-[40px] pointer-events-none" />
@@ -124,14 +94,24 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
         <span className="eyebrow text-[11px] tracking-[0.12em] block mb-3 text-slate-400">
           Horas acumuladas
         </span>
-        <RingMeter value={criterios.horasTotales} total={HORAS_OBJETIVO_TOTAL} size={196} />
+        <RingMeter value={criterios.horasTotales} total={HORAS_OBJETIVO_TOTAL} size={172} />
       </div>
 
-      <div className="text-center mb-6">
+      <div className="text-center mb-5">
         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-          Llevás el{" "}
-          <b className="text-uflo-teal dark:text-[#5EE6B7] font-semibold">{progressPercent}%</b> de
-          lo que necesitás para acreditar.
+          {horasFaltantes > 0 ? (
+            <>
+              Te faltan{" "}
+              <b className="text-uflo-teal dark:text-[#5EE6B7] font-semibold">
+                {horasFaltantes} hs
+              </b>{" "}
+              para acreditar.
+            </>
+          ) : (
+            <b className="text-uflo-teal dark:text-[#5EE6B7] font-semibold">
+              Ya alcanzaste las horas requeridas.
+            </b>
+          )}
         </span>
       </div>
 
@@ -153,7 +133,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
           rotación de áreas y horas en la especialidad. Las horas totales ya
           viven en el ring de arriba; el conteo de prácticas vive en la lista. */}
       <div
-        className="inline-stats grid mt-6"
+        className="inline-stats grid mt-5"
         style={{ gridTemplateColumns: "1fr 1fr", borderBottom: "none", marginBottom: 0 }}
       >
         {/* Rotación */}
@@ -175,16 +155,18 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
             </span>
           </div>
           <div className="mono inline-stat__sub text-[9px] text-slate-400 dark:text-slate-500 tracking-wide uppercase mt-1">
-            {criterios.cumpleRotacion ? "completo ✓" : "áreas"}
+            {criterios.cumpleRotacion ? (
+              <span className="text-uflo-teal dark:text-[#5EE6B7]">Completo ✓</span>
+            ) : (
+              "áreas"
+            )}
           </div>
         </div>
 
         {/* Especialidad — horas en la orientación elegida (objetivo 70) */}
         <div className="inline-stat text-center py-4 relative border-l border-slate-100 dark:border-slate-800/80">
           <div className="mono inline-stat__lbl text-[10px] text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">
-            {selectedOrientacion
-              ? selectedOrientacion.slice(0, 11) + (selectedOrientacion.length > 11 ? "..." : "")
-              : "Especialidad"}
+            Orientación
           </div>
           <div
             className={
@@ -200,36 +182,14 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
             </span>
           </div>
           <div className="mono inline-stat__sub text-[9px] text-slate-400 dark:text-slate-500 tracking-wide uppercase mt-1">
-            {criterios.cumpleHorasOrientacion ? "completo ✓" : "horas"}
+            {criterios.cumpleHorasOrientacion ? (
+              <span className="text-uflo-teal dark:text-[#5EE6B7]">Completo ✓</span>
+            ) : (
+              selectedOrientacion || "horas"
+            )}
           </div>
         </div>
       </div>
-
-      {/* Qué te falta — checklist textual cuando aún no acreditás */}
-      {!todosLosCriteriosCumplidos && faltantes.length > 0 && (
-        <div
-          className="mt-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 px-4 py-3"
-          role="status"
-          aria-live="polite"
-        >
-          <p className="mono text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 text-center">
-            Te falta para acreditar
-          </p>
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {faltantes.map((f) => (
-              <span
-                key={f}
-                className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[11.5px] font-medium text-slate-600 dark:text-slate-300"
-              >
-                <span className="material-icons text-[13px] text-amber-500" aria-hidden="true">
-                  radio_button_unchecked
-                </span>
-                {f}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Acreditar — visible cuando se cumplen todos los criterios */}
       {todosLosCriteriosCumplidos && (

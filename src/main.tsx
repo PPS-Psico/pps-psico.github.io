@@ -93,14 +93,18 @@ const queryClient = new QueryClient({
   },
 });
 
+console.log("[React] main.tsx inicializado. Montando aplicación...");
+console.log("[React] Estado de __PPS_ENTRY_SHELL__:", !!(window as any).__PPS_ENTRY_SHELL__);
+
 const container = document.getElementById("root");
 
 if (!container) {
   throw new Error("No se encontró el elemento root");
 }
 
-// Limpiando visual extra por seguridad
-if (container.hasChildNodes()) {
+// Limpiando visual extra por seguridad. La entry shell del panel se mantiene hasta
+// que React monte, para que la transicion desde Campus no caiga en pantalla vacia.
+if (container.hasChildNodes() && !(window as any).__PPS_ENTRY_SHELL__) {
   container.innerHTML = "";
 }
 

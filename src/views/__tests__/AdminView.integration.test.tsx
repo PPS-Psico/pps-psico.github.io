@@ -43,7 +43,7 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
 
     // st_999 tiene al menos una práctica (prac_1 en Garrahan)
     expect(result.current.practicas.length).toBeGreaterThan(0);
-    expect(result.current.practicas.some((p) => p.id === "prac_1")).toBe(true);
+    expect(result.current.practicas.some((p: any) => p.id === "prac_1")).toBe(true);
   });
 
   it("permite editar la nota de una práctica y la persiste", async () => {
@@ -53,7 +53,7 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
 
     await waitFor(() => expect(result.current.practicas.length).toBeGreaterThan(0));
 
-    const practica = result.current.practicas.find((p) => p.id === "prac_1")!;
+    const practica = result.current.practicas.find((p: any) => p.id === "prac_1")!;
     expect(practica[FIELD_NOTA_PRACTICAS]).toBe("Sin calificar");
 
     act(() => {
@@ -85,7 +85,7 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
     });
 
     await waitFor(() => {
-      const practica = result.current.practicas.find((p) => p.id === "prac_1");
+      const practica = result.current.practicas.find((p: any) => p.id === "prac_1");
       expect(practica?.[FIELD_NOTA_PRACTICAS]).toBe("8");
     });
   });

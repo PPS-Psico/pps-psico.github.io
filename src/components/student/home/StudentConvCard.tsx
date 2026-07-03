@@ -115,9 +115,18 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
     enrollmentStatus === "adjudicado" ||
     enrollmentStatus === "en curso";
 
+  const statusText = needsConsent ? "Seleccionado/a" : isSelected ? "Seleccionado" : "Inscripto";
+  const isClosed = !isOpen && !needsConsent;
+  const isClosedSelected = isClosed && isSelected;
+
   return (
     <div
-      className={"cc" + (needsConsent ? " cc--consent" : "")}
+      className={
+        "cc" +
+        (needsConsent ? " cc--consent" : "") +
+        (isClosed ? " cc--closed" : "") +
+        (isClosedSelected ? " cc--selected" : "")
+      }
       onClick={onOpen}
       role={onOpen ? "button" : undefined}
       tabIndex={onOpen ? 0 : undefined}
@@ -146,24 +155,24 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
           />
           {area}
         </span>
-        <span
-          className="cc__status"
-          style={
-            isSelected || needsConsent
-              ? { color: "var(--accent, #3CB88D)", fontWeight: 600 }
-              : undefined
-          }
-        >
-          {needsConsent
-            ? "Seleccionado/a"
-            : isSelected
-              ? "Seleccionado"
-              : isEnrolled && !isOpen
-                ? "Inscripto"
-                : isOpen
-                  ? "Abierta"
-                  : "Cerrada"}
-        </span>
+        {needsConsent || isSelected || (isEnrolled && !isOpen) ? (
+          <span
+            className="cc__status"
+            style={{
+              color,
+              background: "transparent",
+              border: `1px solid ${color}`,
+              fontWeight: 600,
+            }}
+          >
+            {statusText}
+          </span>
+        ) : (
+          // En mobile alcanza con el ícono (ya queda claro por el subtítulo
+          // de la sección si son convocatorias abiertas o cerradas); el texto
+          // completo ("Cierra hoy", etc.) sólo se muestra en desktop.
+          <Icon name={isOpen ? "clock" : "lock"} size={16} color={color} />
+        )}
       </div>
 
       <div className="cc__name">{shortName}</div>
@@ -254,7 +263,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
                 haptics.success();
                 onFirmarConsentimiento();
               }}
-              className="cc__cta"
+              className="cc__cta cc__cta--priority"
               style={{ background: color }}
             >
               Firmar consentimiento
@@ -268,12 +277,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
                 onVerConvocados?.();
               }}
               className="cc__cta"
-              style={{
-                background: "transparent",
-                color: "var(--ink-soft)",
-                border: "1px solid var(--line-strong)",
-                boxShadow: "none",
-              }}
+              style={{ background: color }}
             >
               Ver convocados
               <Icon name="arrow" size={15} strokeWidth={2.4} />

@@ -199,16 +199,6 @@ const HomeView: React.FC<HomeViewProps> = ({
   const nowLocal = new Date();
   const today = new Date(Date.UTC(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate()));
 
-  const startedLanzamientoIds = new Set(
-    lanzamientos
-      .filter((l) => {
-        const startDate = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
-        if (!startDate) return false;
-        return startDate <= today;
-      })
-      .map((l) => l.id)
-  );
-
   // Un lanzamiento archivado no debe verse en el inicio del estudiante, ni como
   // abierto ni como cerrado. Cubre ambas fuentes de "archivado":
   //   · estado_gestion = 'Archivado' / 'No se Relanza' (auto-archivado o admin)
@@ -222,8 +212,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   const openLanzamientos = lanzamientos.filter((l) => {
     if (isArchivedLaunch(l)) return false;
     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-    const isStarted = startedLanzamientoIds.has(l.id);
-    return !isStarted && (status === "abierta" || status === "abierto");
+    return status === "abierta" || status === "abierto";
   });
 
   // Cerradas en el Home: SOLO las que todavía no comenzaron (su fecha de inicio
@@ -452,6 +441,9 @@ const HomeView: React.FC<HomeViewProps> = ({
 
   const renderConv = (lanzamiento: LanzamientoPPS, keySuffix: string, isOpen: boolean) => {
     const enrollment = enrollmentMap.get(lanzamiento.id);
+    const isPendingConsentLaunch =
+      !isOpen && pendingConsent?.lanzamiento?.id === lanzamiento.id && !!pendingConsent.enrollment;
+
     return (
       <StudentConvCard
         key={`${lanzamiento.id}-${keySuffix}`}
@@ -461,6 +453,16 @@ const HomeView: React.FC<HomeViewProps> = ({
         onOpen={() => openDetalle(lanzamiento)}
         onVerConvocados={() => seleccionadosMutation.mutate(lanzamiento)}
         onInscribirse={() => openDetalle(lanzamiento)}
+        pendingConsentCta={isPendingConsentLaunch}
+        onFirmarConsentimiento={
+          isPendingConsentLaunch
+            ? () =>
+                setPendingCompromiso({
+                  lanzamiento: pendingConsent.lanzamiento,
+                  enrollment: pendingConsent.enrollment,
+                })
+            : undefined
+        }
         onCancelarInscripcion={() =>
           enrollment &&
           handleCancelarInscripcion(
@@ -493,7 +495,13 @@ const HomeView: React.FC<HomeViewProps> = ({
           informeTasks={informeTasks ?? []}
           consent={
             pendingConsent
-              ? { ppsName: pendingConsent.ppsName, lanzamientoId: pendingConsent.lanzamiento.id }
+              ? {
+                  ppsName: pendingConsent.ppsName,
+                  lanzamientoId: pendingConsent.lanzamiento.id,
+                  area: pendingConsent.lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as
+                    | string
+                    | undefined,
+                }
               : null
           }
           upcomingStart={upcomingStart}
@@ -512,23 +520,18 @@ const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       {/* ── Mobile: layout editorial existente ── */}
-      <div className="md:hidden mx-auto w-full max-w-[460px] px-1 pb-6">
+      <div className="md:hidden mx-auto w-full max-w-[430px] px-1 pb-6">
         {/* Saludo editorial (mobile · en desktop lo provee WelcomeBanner) */}
-        <div className="md:hidden mb-4">
-          <span className="eyebrow">{currentDate}</span>
-          <div
-            className="display"
-            style={{ fontSize: 28, lineHeight: 0.98, letterSpacing: "-.04em", marginTop: 6 }}
-          >
-            {greeting},{" "}
-            <span
-              style={{
-                color: resolvedTheme === "dark" ? "#c9a2bd" : "#9d3f86",
-              }}
-            >
-              {firstName}.
-            </span>
+        <div className="mobile-hero-head md:hidden">
+          <span className="eyebrow mobile-hero-head__date">{currentDate}</span>
+          <div className="display mobile-hero-head__title">
+            {greeting}, <span>{firstName}.</span>
           </div>
+          <p className="mobile-hero-head__copy">
+            {hasOpen
+              ? "Hay una convocatoria abierta para sumar horas."
+              : "Las próximas oportunidades van a aparecer acá."}
+          </p>
         </div>
 
         {/* Consentimiento digital (mobile) — la convocatoria seleccionada

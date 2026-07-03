@@ -11,7 +11,9 @@ import {
   FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
   FIELD_REQ_CV_LANZAMIENTOS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
 } from "../constants";
+import { getAreaColor } from "./student/ds";
 
 const AppModals: React.FC = () => {
   const isStudentView = typeof window !== "undefined" && window.location.hash.includes("/student");
@@ -66,6 +68,12 @@ const AppModals: React.FC = () => {
   const convocatoriaName =
     selectedLanzamientoForEnrollment?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Convocatoria";
 
+  // Color de acento de la convocatoria (mismo criterio que la vista de detalle):
+  // tomamos la primera orientación y la mapeamos al color del área.
+  const orientacion =
+    (selectedLanzamientoForEnrollment?.[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "";
+  const accentColor = getAreaColor(orientacion.split(/[,/]/)[0].trim());
+
   return (
     <>
       <Modal
@@ -87,6 +95,7 @@ const AppModals: React.FC = () => {
         reqCertificadoTrabajo={reqCertificadoTrabajo}
         reqCv={reqCv}
         horariosFijos={horariosFijos}
+        accentColor={accentColor}
       />
 
       <SeleccionadosModal

@@ -48,7 +48,7 @@ const FlatGrade: React.FC<{
       : num >= 4
         ? "#B7770B" // ámbar · aprobado justo
         : "#C0392B"; // rojo · desaprobado
-  const displayText = hasGrade ? String(num) : "—";
+  const displayText = hasGrade ? String(num) : "Pend.";
 
   return (
     <button
@@ -61,7 +61,14 @@ const FlatGrade: React.FC<{
       className={`prow__nota cursor-pointer leading-none transition-opacity hover:opacity-60 ${
         isOpen ? "opacity-100 underline underline-offset-4 decoration-2" : ""
       }`}
-      style={{ color }}
+      style={{
+        color,
+        fontFamily: hasGrade ? undefined : "var(--font-sans)",
+        fontSize: hasGrade ? undefined : 12,
+        fontWeight: hasGrade ? undefined : 700,
+        letterSpacing: hasGrade ? undefined : 0,
+        minWidth: hasGrade ? undefined : 38,
+      }}
     >
       {isSaving ? (
         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle" />
@@ -173,13 +180,12 @@ const PracticaRow: React.FC<{
 
   const getAreaColor = (area: string) => {
     const norm = normalizeStringForComparison(area);
-    if (norm.includes("clinica")) return "var(--orient-clinica, #3CB88D)";
+    if (norm.includes("clinica")) return "var(--area-clinica, #3CB88D)";
     if (norm.includes("educacion") || norm.includes("educacional"))
-      return "var(--orient-educacional, #203B73)";
-    if (norm.includes("laboral") || norm.includes("trabajo"))
-      return "var(--orient-laboral, #B7770B)";
+      return "var(--area-educacional, #203B73)";
+    if (norm.includes("laboral") || norm.includes("trabajo")) return "#B7770B";
     if (norm.includes("comunitaria") || norm.includes("social"))
-      return "var(--orient-comunitaria, #7A3F9E)";
+      return "var(--area-comunitaria, #7A3F9E)";
     return "var(--accent, #1f3a8a)";
   };
 
@@ -227,7 +233,7 @@ const PracticaRow: React.FC<{
 
   return (
     <div
-      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-100 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
+      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-200/80 dark:border-slate-800/40 rounded-2xl p-4 shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
       onPointerDown={lpStartPress}
       onPointerUp={lpCancel}
       onPointerCancel={lpCancel}
@@ -252,7 +258,7 @@ const PracticaRow: React.FC<{
             {areaText}
           </span>
           <span className="prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider text-slate-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 inline-block" />
             {status}
           </span>
         </div>
@@ -396,10 +402,13 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-end px-2 mb-1">
-        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-          Total: {sortedPracticas.length} Prácticas
+      <div className="flex justify-between items-baseline px-2 mb-1">
+        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-normal">
+          Mis prácticas
         </h3>
+        <span className="mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+          {sortedPracticas.length} {sortedPracticas.length === 1 ? "práctica" : "prácticas"}
+        </span>
       </div>
 
       {sortedPracticas.map((practica, index) => (

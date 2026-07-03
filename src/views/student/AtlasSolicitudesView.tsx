@@ -86,6 +86,15 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
       !criterios.tienePracticasPendientes &&
       !hasPendingCorrections
     : false;
+  const missingAccreditationItems = criterios
+    ? [
+        !criterios.cumpleHorasTotales,
+        !criterios.cumpleRotacion,
+        !criterios.cumpleHorasOrientacion,
+        criterios.tienePracticasPendientes,
+        hasPendingCorrections,
+      ].filter(Boolean).length
+    : 0;
 
   const { active, history } = useMemo(() => {
     const a: SolicitudPPS[] = [];
@@ -138,7 +147,11 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
             {(onCreateSolicitud || onRequestFinalization) && (
               <div className="ah-actions">
                 {onCreateSolicitud && (
-                  <button type="button" className="ah-action" onClick={onCreateSolicitud}>
+                  <button
+                    type="button"
+                    className="ah-action ah-action--primary"
+                    onClick={onCreateSolicitud}
+                  >
                     <span
                       className="ah-action__ic"
                       style={{ background: "var(--primary-50)", color: "var(--primary-700)" }}
@@ -157,7 +170,10 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
                 {onRequestFinalization && (
                   <button
                     type="button"
-                    className="ah-action"
+                    className={
+                      "ah-action ah-action--secondary" +
+                      (isAccreditationReady ? " is-ready" : " is-locked")
+                    }
                     onClick={() => onRequestFinalization && onRequestFinalization()}
                   >
                     <span
@@ -172,7 +188,23 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
                       </span>
                     </span>
                     <div>
-                      <div className="ah-action__t">Trámite de acreditación</div>
+                      <div className="ah-action__top">
+                        <div className="ah-action__t">Trámite de acreditación</div>
+                        <span
+                          className={
+                            "ah-action__status" +
+                            (isAccreditationReady ? " ah-action__status--ok" : "")
+                          }
+                        >
+                          {isAccreditationReady
+                            ? "Listo para iniciar"
+                            : missingAccreditationItems > 0
+                              ? `${missingAccreditationItems} pendiente${
+                                  missingAccreditationItems === 1 ? "" : "s"
+                                }`
+                              : "Faltan requisitos"}
+                        </span>
+                      </div>
                       <div className="ah-action__d">
                         {isAccreditationReady
                           ? "Requisitos cumplidos · iniciar cierre"
@@ -202,10 +234,10 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
             )}
 
             {history.length > 0 && (
-              <details className="ah-details">
+              <details className="ah-details ah-details--solicitudes" open>
                 <summary>
                   <span className="material-icons">chevron_right</span>
-                  Ver historial ({history.length})
+                  Historial ({history.length})
                 </summary>
                 <div className="ah-card" style={{ marginTop: 12 }}>
                   <div className="ah-sols">

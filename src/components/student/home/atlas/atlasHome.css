@@ -17,7 +17,7 @@
      ninguna sección. La migración por sección irá apuntando los títulos
      display a --font-display (Bricolage, la misma del campus) y las superficies
      a los alias --surface/--ink/--line/--accent. Fuente única de verdad. */
-  --font-display: "Bricolage Grotesque", var(--font-sans);
+  --font-display: var(--student-display-font);
   --display-weight: 700;
   --display-tracking: -0.04em;
   --surface: var(--bg-elevated);
@@ -79,7 +79,7 @@
   --area-clinica: #3cb88d;
   --area-educacional: #203b73;
   --area-comunitaria: #7a3f9e;
-  --display-accent: var(--uflo-purple);
+  --display-accent: var(--student-accent-color);
 
   /* Semantic surfaces */
   --bg: var(--neutral-50);
@@ -123,14 +123,13 @@ html.dark .ah-root {
   --bg-elevated: #131829;
   --bg-sunken: #060812;
   --fg: #f2f3f7;
-  --fg-muted: #8c92a4;
-  --fg-subtle: #5c6275;
+  --fg-muted: #a1a7b8;
+  --fg-subtle: #72798f;
   --border: #1f2438;
   --border-strong: #2d344e;
   --area-clinica: #4fd49e;
   --area-educacional: #7b91de;
   --area-comunitaria: #bc85dc;
-  --display-accent: #c9a2bd;
   --link: var(--primary-300);
   --link-hover: var(--primary-100);
   --neutral-100: #1a1f32;
@@ -206,9 +205,8 @@ html.dark .ah-root {
   display: block;
   margin-bottom: 14px;
 }
-/* Saludo del Inicio (solo desktop · StudentHomeAtlas): firma serif Atlas,
-   igual que los títulos de Solicitudes/Perfil (Instrument Serif + em itálica
-   con --display-accent). En mobile el saludo es otro componente (Bricolage). */
+/* Saludo del Inicio en StudentHomeAtlas (desktop). El saludo de mobile vive
+   en otro componente (HomeView, rama `md:hidden`) y usa Bricolage directo. */
 .ah-hero__greet {
   font-family: var(--font-serif);
   font-weight: 400;
@@ -220,11 +218,6 @@ html.dark .ah-root {
 }
 .ah-hero__greet em {
   font-style: italic;
-  /* Claro: púrpura vivo (eco del lavanda del dark, con contraste para fondo claro). */
-  color: #9d3f86;
-}
-/* Oscuro: lavanda sólido (queda mejor sobre el navy). */
-html.dark .ah-root .ah-hero__greet em {
   color: var(--display-accent);
 }
 .ah-hero__line {
@@ -244,7 +237,9 @@ html.dark .ah-root .ah-hero__greet em {
    se controla con --mc; en dark se sube la opacidad para que siga visible. */
 .ah-root .ah-mark {
   --mc: var(--primary-500);
-  --ma: 22%;
+  --ma: 18%;
+  --mark-fg: var(--fg);
+  color: var(--mark-fg);
   background-image: linear-gradient(
     100deg,
     transparent 0.4%,
@@ -253,21 +248,31 @@ html.dark .ah-root .ah-hero__greet em {
     transparent 99.6%
   );
   background-repeat: no-repeat;
-  background-size: 100% 56%;
-  background-position: 0 64%;
+  background-size: 100% 48%;
+  background-position: 0 70%;
   padding: 0 0.12em;
   border-radius: 0.08em;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
 html.dark .ah-root .ah-mark {
-  --ma: 34%;
+  --ma: 17%;
+  background-size: 100% 44%;
+  background-position: 0 72%;
 }
 .ah-root .ah-mark--teal {
   --mc: var(--primary-500);
 }
+html.dark .ah-root .ah-mark--teal {
+  --mc: #5eead4;
+  --mark-fg: #b7f4e6;
+}
 .ah-root .ah-mark--amber {
   --mc: var(--warning-500);
+}
+html.dark .ah-root .ah-mark--amber {
+  --mc: #f7c65f;
+  --mark-fg: #f7d99a;
 }
 .ah-root .ah-mark--purple {
   --mc: var(--uflo-purple);
@@ -347,7 +352,13 @@ html.dark .ah-root .ah-next__date .m {
   display: flex;
   align-items: baseline;
   gap: 12px;
+  justify-content: space-between;
   margin: 52px 0 18px;
+}
+.ah-sechead__title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 .ah-sechead .n {
   font: 400 12px/1 var(--font-mono);
@@ -362,6 +373,9 @@ html.dark .ah-root .ah-next__date .m {
 }
 .ah-sechead a:hover {
   text-decoration: underline;
+}
+.ah-practices-section .ah-sechead {
+  margin-top: 38px;
 }
 
 /* ---------- convocatorias ---------- */
@@ -422,19 +436,19 @@ html.dark .ah-root .ah-next__date .m {
 .ah-feat .ah-areabadge__mark {
   color: color-mix(in oklab, var(--ac, var(--primary-500)) 88%, var(--fg));
 }
+/* Siempre el color de la convocatoria (--ac) — se probó con ámbar de urgencia
+   para "Cierra hoy/mañana" pero no convenció; un solo criterio de color para
+   todos los estados (Abierta / Cierra pronto / Cerró / Cerrada / Seleccionado/a). */
 .ah-closes {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font: 500 11.5px/1 var(--font-mono);
-  color: var(--warning-500);
-  background: var(--warning-50);
+  color: var(--ac, var(--fg-muted));
+  background: transparent;
+  border: 1px solid var(--ac, var(--border-strong));
   border-radius: var(--radius-pill);
-  padding: 5px 11px;
-}
-.ah-closes--soft {
-  color: var(--fg-muted);
-  background: var(--bg-sunken);
+  padding: 4px 10px;
 }
 .ah-conv__name {
   font-family: var(--font-serif);
@@ -548,6 +562,10 @@ html.dark .ah-root .ah-next__date .m {
   line-height: var(--lh-relaxed);
   color: var(--fg-muted);
   max-width: 62ch;
+}
+html.dark .ah-root .ah-feat__desc,
+html.dark .ah-root .ah-conv__desc {
+  color: color-mix(in oklab, var(--fg-muted) 88%, var(--fg));
 }
 
 /* horarios + ubicación */
@@ -690,25 +708,18 @@ html.dark .ah-root .ah-next__date .m {
 .ah-feat__side {
   position: relative;
   padding: 26px 26px 24px;
-  border-left: 1px solid var(--border);
-  background: var(--bg-sunken);
+  border-left: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
+  background: color-mix(in oklab, var(--bg-sunken) 70%, var(--bg-elevated));
   display: flex;
   flex-direction: column;
 }
-/* halo sutil de acento en el panel */
-.ah-feat__side::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(
-    120px 120px at 100% 0%,
-    color-mix(in oklab, var(--ac, var(--primary-500)) 12%, transparent),
-    transparent 70%
+html.dark .ah-root .ah-feat__side {
+  border-left-color: color-mix(in oklab, var(--border) 64%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--bg-elevated) 94%, var(--ac, var(--primary-500))) 0%,
+    color-mix(in oklab, var(--bg-sunken) 62%, var(--bg-elevated)) 100%
   );
-  pointer-events: none;
 }
 .ah-feat__side > * {
   position: relative;
@@ -987,11 +998,50 @@ html.dark .ah-root .ah-next__date .m {
 .ah-btn--secondary:hover {
   background: var(--bg-sunken);
 }
-/* En la card de convocatoria, el "Ver detalle" toma el color del área al hover. */
-.ah-conv__foot .ah-btn--secondary:hover {
-  color: color-mix(in oklab, var(--ac, var(--primary-500)) 82%, var(--fg));
-  border-color: color-mix(in oklab, var(--ac, var(--primary-500)) 50%, var(--border-strong));
-  background: color-mix(in oklab, var(--ac, var(--primary-500)) 7%, var(--bg-elevated));
+.ah-btn--compact {
+  min-height: 36px;
+  padding: 9px 15px 9px 11px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: none;
+}
+.ah-btn--compact .material-icons {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--primary-700);
+  font-weight: 700;
+}
+.ah-btn--compact:hover {
+  color: var(--fg);
+  border-color: color-mix(in oklab, var(--primary-500) 28%, var(--border-strong));
+  background: var(--bg-elevated);
+  transform: none;
+}
+html.dark .ah-root .ah-btn--compact {
+  color: var(--fg);
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+}
+html.dark .ah-root .ah-btn--compact .material-icons {
+  color: var(--primary-300);
+}
+/* CTA relleno con el color de área (--ac), igual que .cc__cta en mobile: texto
+   blanco en claro, oscuro en dark (los rellenos de área se aclaran solo). */
+.ah-btn--area {
+  color: #fff;
+}
+html.dark .ah-btn--area {
+  color: #08160f;
+}
+.ah-btn--area:hover {
+  filter: brightness(1.06);
 }
 
 /* ---------- estado de tus PPS ---------- */
@@ -1087,6 +1137,15 @@ html.dark .ah-root .ah-accr__pct {
   background:
     repeating-linear-gradient(-45deg, transparent 0 5px, var(--border) 5px 6px), var(--bg-sunken);
 }
+html.dark .ah-root .ah-bar__seg.rest {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 6px,
+      color-mix(in oklab, var(--border) 55%, transparent) 6px 7px
+    ),
+    color-mix(in oklab, var(--bg-sunken) 72%, var(--bg-elevated));
+}
 .ah-bar__seg .tip {
   position: absolute;
   inset: 0;
@@ -1144,6 +1203,16 @@ html.dark .ah-root .ah-accr__pct {
   width: 100%;
   border-collapse: collapse;
 }
+.ah-practices-table-card {
+  border-color: color-mix(in oklab, var(--border) 82%, var(--fg-subtle));
+  box-shadow:
+    0 1px 2px rgba(20, 19, 16, 0.05),
+    0 14px 34px -30px rgba(20, 19, 16, 0.32);
+}
+html.dark .ah-root .ah-practices-table-card {
+  border-color: var(--border);
+  box-shadow: none;
+}
 .ah-table th,
 .ah-table td {
   text-align: left;
@@ -1169,6 +1238,15 @@ html.dark .ah-root .ah-accr__pct {
 .ah-table tbody tr:hover {
   background: var(--bg-sunken);
 }
+.ah-table__actions .ah-iconbtn--sm {
+  opacity: 0;
+  transform: translateX(3px);
+}
+.ah-table tbody tr:hover .ah-table__actions .ah-iconbtn--sm,
+.ah-table__actions .ah-iconbtn--sm:focus-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
 .ah-table .name {
   font-weight: 500;
   letter-spacing: var(--tracking-snug);
@@ -1178,7 +1256,8 @@ html.dark .ah-root .ah-accr__pct {
   color: var(--fg-muted);
 }
 .ah-table .nota {
-  font: 500 13px/1 var(--font-mono);
+  font: 600 13px/1 var(--font-display);
+  letter-spacing: 0;
 }
 
 /* solicitudes */
@@ -1350,6 +1429,19 @@ html.dark .ah-root .ah-profilehdr__av {
 .ah-field__select:focus {
   border-color: var(--primary-500);
 }
+.ah-orient-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 15px/1 var(--font-sans);
+  color: var(--fg);
+}
+.ah-orient-readonly__sw {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--ori, var(--area-educacional));
+}
 .ah-rowcard {
   display: flex;
   align-items: center;
@@ -1397,21 +1489,21 @@ html.dark .ah-root .ah-profilehdr__av {
   margin-bottom: 28px;
 }
 .ah-accr-hero__main {
-  padding: 22px 24px;
+  padding: 20px 24px;
 }
 .ah-accr-hero__side {
-  padding: 20px 24px;
+  padding: 20px 24px 18px;
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
 .ah-accr-hero__orient {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 14px;
+  width: fit-content;
   margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  padding-top: 2px;
 }
 .ah-accr-hero__orient .ah-field__lbl {
   margin: 0;
@@ -1443,25 +1535,35 @@ html.dark .ah-root .ah-req__count.is-done {
 }
 /* Nota al pie del panel (reemplaza el CTA; apunta a Solicitudes) */
 .ah-accr-hero__hint {
-  margin: 16px 0 0;
-  margin-top: auto;
-  padding-top: 16px;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 11px 24px;
   border-top: 1px solid var(--border);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: 9px;
-  font: 400 12.5px/1.5 var(--font-sans);
-  color: var(--fg-subtle);
+  text-align: center;
+  font: 400 12px/1.35 var(--font-sans);
+  color: color-mix(in oklab, var(--fg-subtle) 88%, var(--bg-elevated));
+}
+.ah-accr-hero__hint > span:last-child {
+  max-width: 860px;
 }
 .ah-accr-hero__hint .material-icons {
-  font-size: 17px;
+  font-size: 16px;
   flex-shrink: 0;
-  margin-top: 1px;
-  color: var(--fg-muted);
+  color: color-mix(in oklab, var(--fg-muted) 84%, var(--bg-elevated));
 }
 .ah-accr-hero__hint b {
   font-weight: 600;
   color: var(--fg-muted);
+}
+html.dark .ah-root .ah-accr-hero__hint {
+  color: color-mix(in oklab, var(--fg-subtle) 82%, var(--fg-muted));
+}
+html.dark .ah-root .ah-accr-hero__hint .material-icons {
+  color: color-mix(in oklab, var(--fg-muted) 88%, var(--fg));
 }
 @media (max-width: 880px) {
   .ah-accr-hero {
@@ -1470,6 +1572,11 @@ html.dark .ah-root .ah-req__count.is-done {
   .ah-accr-hero__side {
     border-left: 0;
     border-top: 1px solid var(--border);
+  }
+  .ah-accr-hero__hint {
+    grid-column: auto;
+    justify-content: flex-start;
+    text-align: left;
   }
 }
 
@@ -1537,13 +1644,23 @@ html.dark .ah-root .ah-req__count.is-done {
   margin-top: 2px;
 }
 .ah-nota {
-  font: 700 22px/1 var(--font-serif);
-  letter-spacing: var(--tracking-tight);
+  font: 700 20px/1 var(--font-display);
+  letter-spacing: 0;
   background: transparent;
   border: 0;
   cursor: pointer;
   padding: 0;
   transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.ah-nota__pending {
+  display: inline-block;
+  min-width: 42px;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--fg-subtle);
+  transform: translateY(-1px);
 }
 .ah-nota:hover {
   opacity: 0.6;
@@ -1596,7 +1713,11 @@ html.dark .ah-root .ah-req__count.is-done {
 .ah-cmodal__head {
   padding: 22px 28px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg-sunken);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--primary-500) 8%, var(--bg-sunken)),
+    var(--bg-sunken) 42%
+  );
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1618,6 +1739,34 @@ html.dark .ah-root .ah-req__count.is-done {
 }
 .ah-cmodal__body {
   padding: 24px 28px;
+}
+html.dark .ah-root .ah-cmodal--form {
+  background: #151a2c;
+}
+html.dark .ah-root .ah-cmodal--form .ah-cmodal__head {
+  background: linear-gradient(90deg, rgba(60, 184, 141, 0.13), #0b0f1b 46%);
+}
+html.dark .ah-root .ah-cmodal--form .ah-cmodal__body {
+  background: #151a2c;
+}
+html.dark .ah-root .ah-cmodal--form .ah-field__lbl,
+html.dark .ah-root .ah-cmodal--form .ah-formsec__head {
+  color: #aeb6c8;
+}
+html.dark .ah-root .ah-cmodal--form .ah-cmodal__sub,
+html.dark .ah-root .ah-cmodal--form .ah-formhint {
+  color: #a5adbf;
+}
+html.dark .ah-root .ah-cmodal--form .ah-textinput,
+html.dark .ah-root .ah-cmodal--form .ah-textarea,
+html.dark .ah-root .ah-cmodal--form .ah-selectctrl {
+  background-color: #111629;
+  border-color: #2b334c;
+  color: #f4f6fb;
+}
+html.dark .ah-root .ah-cmodal--form .ah-textinput::placeholder,
+html.dark .ah-root .ah-cmodal--form .ah-textarea::placeholder {
+  color: #8f98ad;
 }
 .ah-cmodal__steptop {
   display: flex;
@@ -1778,23 +1927,230 @@ html.dark .ah-root .ah-hl {
   flex-wrap: wrap;
 }
 
+/* ---------- pre-check de solicitud PPS (Atlas) ---------- */
+.ah-cmodal--precheck {
+  max-width: 760px;
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+.ah-cmodal--precheck .ah-cmodal__body {
+  overflow-y: auto;
+}
+.ah-cmodal--precheck .ah-cmodal__foot {
+  margin-top: 0;
+  padding: 18px 28px;
+  justify-content: flex-end;
+  background: var(--bg-elevated);
+}
+.ah-cmodal--precheck .ah-cmodal__foot .ah-btn {
+  min-height: 40px;
+}
+.ah-precheck {
+  display: grid;
+  gap: 14px;
+}
+.ah-precheck__item,
+.ah-precheck__section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+}
+.ah-precheck__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 16px;
+}
+.ah-precheck__item--important {
+  border-color: color-mix(in oklab, var(--primary-500) 28%, var(--border));
+  background: color-mix(in oklab, var(--primary-500) 7%, var(--bg-elevated));
+}
+.ah-precheck__ic {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--primary-700);
+  background: var(--primary-50);
+}
+.ah-precheck__ic .material-icons {
+  font-size: 20px;
+}
+.ah-precheck h3 {
+  margin: 0;
+  font: 700 14px/1.25 var(--font-sans);
+  color: var(--fg);
+  letter-spacing: var(--tracking-snug);
+}
+.ah-precheck p {
+  margin: 6px 0 0;
+  font: 400 13px/1.55 var(--font-sans);
+  color: var(--fg-muted);
+}
+.ah-precheck b {
+  color: var(--fg);
+  font-weight: 700;
+}
+.ah-precheck__section {
+  overflow: hidden;
+}
+.ah-precheck__sectionhead {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ah-precheck__sectionhead > .material-icons {
+  margin-top: 1px;
+  color: var(--primary-600);
+  font-size: 20px;
+}
+.ah-precheck__list {
+  background: var(--bg-sunken);
+  padding: 14px;
+}
+.ah-precheck__search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: 11px 12px;
+}
+.ah-precheck__search .material-icons {
+  font-size: 19px;
+  color: var(--fg-subtle);
+}
+.ah-precheck__search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  font: 500 13px/1.3 var(--font-sans);
+}
+.ah-precheck__search input::placeholder {
+  color: var(--fg-subtle);
+}
+.ah-precheck__institutions {
+  max-height: 210px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+.ah-precheck__institutions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ah-precheck__institutions li {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: 9px 10px;
+  color: var(--fg-muted);
+  font: 500 12px/1.2 var(--font-sans);
+}
+.ah-precheck__institutions li span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-precheck__institutions li .material-icons {
+  color: var(--fg-subtle);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.ah-precheck__empty {
+  text-align: center;
+  padding: 22px 12px;
+}
+html.dark .ah-root .ah-precheck__ic {
+  color: var(--primary-300);
+  background: rgba(60, 184, 141, 0.14);
+}
+html.dark .ah-root .ah-precheck__item--important {
+  background: color-mix(in oklab, var(--primary-500) 10%, var(--bg-elevated));
+}
+
 /* ---------- formularios en modal (Atlas) ---------- */
 .ah-cmodal--form {
-  max-width: 640px;
+  max-width: 760px;
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+.ah-cmodal--form .ah-cmodal__body {
+  overflow-y: auto;
 }
 .ah-formsec + .ah-formsec {
   margin-top: 26px;
 }
 .ah-formsec__head {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   padding-bottom: 11px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);
+}
+.ah-formsec__head::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--primary-500);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary-500) 12%, transparent);
 }
 .ah-formgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+.ah-formnotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 0 0 16px;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in oklab, var(--warning-500) 26%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated));
+  color: var(--fg-muted);
+}
+html.dark .ah-root .ah-formnotice {
+  background: rgba(201, 138, 27, 0.11);
+  border-color: rgba(224, 178, 78, 0.32);
+  color: #c6ccda;
+}
+html.dark .ah-root .ah-formnotice b {
+  color: #f4f6fb;
+}
+.ah-formnotice .material-icons {
+  margin-top: 1px;
+  font-size: 19px;
+  color: var(--warning-500);
+  flex-shrink: 0;
+}
+.ah-formnotice p {
+  margin: 0;
+  font: 400 12.5px/1.5 var(--font-sans);
+}
+.ah-formnotice b {
+  color: var(--fg);
+  font-weight: 600;
 }
 .ah-formfield {
   min-width: 0;
@@ -1825,6 +2181,11 @@ html.dark .ah-root .ah-hl {
 .ah-selectctrl:focus {
   border-color: var(--primary-500);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-500) 14%, transparent);
+}
+.ah-cmodal--form .ah-textinput:hover,
+.ah-cmodal--form .ah-textarea:hover,
+.ah-cmodal--form .ah-selectctrl:hover {
+  border-color: color-mix(in oklab, var(--primary-500) 28%, var(--border));
 }
 .ah-textinput::placeholder,
 .ah-textarea::placeholder {
@@ -1865,8 +2226,21 @@ html.dark .ah-root .ah-hl {
   flex-shrink: 0;
 }
 @media (max-width: 560px) {
+  .ah-precheck__institutions ul {
+    grid-template-columns: 1fr;
+  }
   .ah-formgrid {
     grid-template-columns: 1fr;
+  }
+  .ah-cmodal--precheck .ah-cmodal__foot,
+  .ah-cmodal--form .ah-cmodal__foot {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .ah-cmodal--precheck .ah-cmodal__foot .ah-btn,
+  .ah-cmodal--form .ah-cmodal__foot .ah-btn {
+    justify-content: center;
+    width: 100%;
   }
 }
 
@@ -1885,11 +2259,6 @@ html.dark .ah-root .ah-hl {
 }
 .ah-pagehead h1 em {
   font-style: italic;
-  /* Claro: mismo púrpura vivo del saludo (.ah-hero__greet em) para unificar. */
-  color: #9d3f86;
-}
-html.dark .ah-pagehead h1 em {
-  /* Oscuro: lavanda sólido, igual que el saludo (ya estaba unificado). */
   color: var(--display-accent);
 }
 .ah-pagehead p {
@@ -1905,7 +2274,7 @@ html.dark .ah-pagehead h1 em {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 26px;
 }
 .ah-action {
   display: flex;
@@ -1929,6 +2298,22 @@ html.dark .ah-pagehead h1 em {
   box-shadow: var(--shadow-md);
   border-color: var(--border-strong);
 }
+.ah-action--primary {
+  border-color: color-mix(in oklab, var(--primary-500) 20%, var(--border));
+}
+.ah-action--primary:hover {
+  border-color: color-mix(in oklab, var(--primary-500) 42%, var(--border-strong));
+}
+.ah-action--secondary {
+  background: color-mix(in oklab, var(--bg-elevated) 82%, var(--bg-sunken));
+  box-shadow: none;
+}
+.ah-action--secondary.is-locked .ah-action__arrow {
+  opacity: 0.7;
+}
+html.dark .ah-root .ah-action--secondary {
+  background: color-mix(in oklab, var(--bg-elevated) 78%, var(--bg-sunken));
+}
 .ah-action:active {
   transform: scale(0.99);
 }
@@ -1944,6 +2329,36 @@ html.dark .ah-pagehead h1 em {
   font: 500 15px/1.2 var(--font-sans);
   letter-spacing: var(--tracking-snug);
   color: var(--fg);
+}
+.ah-action__top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.ah-action__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font: 600 10.5px/1 var(--font-sans);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.ah-action__status--ok {
+  background: var(--success-50);
+  color: var(--success-600, var(--success-500));
+}
+html.dark .ah-root .ah-action__status {
+  background: color-mix(in oklab, var(--bg-sunken) 70%, var(--border));
+  color: var(--fg-muted);
+}
+html.dark .ah-root .ah-action__status--ok {
+  background: rgba(60, 184, 141, 0.16);
+  color: var(--primary-300);
 }
 .ah-action__d {
   font: 400 13px/1.4 var(--font-sans);
@@ -1986,6 +2401,12 @@ html.dark .ah-pagehead h1 em {
 .ah-details summary .material-icons {
   transition: transform var(--duration-fast) var(--ease-standard);
   font-size: 18px;
+}
+.ah-details--solicitudes summary {
+  margin-top: 14px;
+}
+.ah-details--solicitudes[open] summary {
+  color: var(--fg);
 }
 
 /* ---------- nota al pie por sección (contacto + descargo, slim) ---------- */
@@ -2033,9 +2454,8 @@ html.dark .ah-pagehead h1 em {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 12px 0;
-  /* Integrada con el campus: sin fondo, blur ni borde, para que no se sienta
-     como una página aparte dentro del iframe de Moodle. */
+  min-height: 70px;
+  padding: 10px 0 14px;
   border-bottom: 0;
   background: transparent;
   backdrop-filter: none;
@@ -2055,18 +2475,34 @@ html.dark .ah-pagehead h1 em {
   gap: 11px;
 }
 .ah-topbar__mark {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-md);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: var(--neutral-900);
   color: var(--neutral-0);
-  display: grid;
-  place-items: center;
-  font: 600 13px/1 var(--font-sans);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 7px 7px;
+}
+.ah-topbar__mark span {
+  width: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.ah-topbar__mark span:nth-child(1) {
+  height: 8px;
+}
+.ah-topbar__mark span:nth-child(2) {
+  height: 14px;
+}
+.ah-topbar__mark span:nth-child(3) {
+  height: 5px;
 }
 html.dark .ah-root .ah-topbar__mark {
-  background: var(--primary-500);
-  color: var(--fg-on-brand);
+  background: var(--fg);
+  color: var(--bg);
 }
 .ah-topbar__name {
   font: 500 14px/1.2 var(--font-sans);
@@ -2080,23 +2516,28 @@ html.dark .ah-root .ah-topbar__mark {
 }
 .ah-nav {
   display: flex;
+  align-items: center;
   gap: 4px;
-  margin-left: 20px;
+  margin-left: 26px;
 }
 .ah-nav__item {
   border: 0;
   background: transparent;
   cursor: pointer;
-  font: 400 13.5px/1 var(--font-sans);
+  font: 500 14.5px/1 var(--font-sans);
   color: var(--fg-muted);
-  padding: 8px 13px;
-  border-radius: var(--radius-md);
+  padding: 9px 15px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  text-decoration: none;
+  white-space: nowrap;
   transition:
     background var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
+    color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
 }
 .ah-nav__item:hover {
   background: var(--bg-sunken);
@@ -2105,8 +2546,32 @@ html.dark .ah-root .ah-topbar__mark {
 .ah-nav__item.active {
   background: var(--bg-sunken);
   color: var(--fg);
-  font-weight: 500;
+  font-weight: 600;
 }
+.ah-nav__item--bridge {
+  margin-left: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--fg);
+}
+.ah-nav__item--bridge:hover {
+  border-color: var(--border-strong);
+}
+
+/* View Transitions: conserva la barra entre Campus y Mi Panel. */
+.ah-topbar__brand {
+  view-transition-name: pps-brand;
+  contain: layout;
+}
+.ah-nav {
+  view-transition-name: pps-tabs;
+  contain: layout;
+}
+.ah-topbar__right {
+  view-transition-name: pps-actions;
+  contain: layout;
+}
+
 .ah-topbar__right {
   margin-left: auto;
   display: flex;
@@ -2205,7 +2670,7 @@ html.dark .ah-root .ah-avatar {
 @media (max-width: 767px) {
   /* Flip de TODA la tipografía serif del scope Atlas a Bricolage. */
   .ah-root {
-    --font-serif: "Bricolage Grotesque", var(--font-sans);
+    --font-serif: var(--student-display-font);
   }
   /* Cabecera de página (Solicitudes / Perfil): peso display + tracking
      editorial, y el acento deja de ser itálica-serif para pasar a
@@ -2242,14 +2707,18 @@ html.dark .ah-root .ah-avatar {
    ============================================================ */
 .ah-root.ah-unified .ah-pagehead h1,
 .ah-root.ah-unified .ah-profilehdr__name,
-.ah-root.ah-unified .ah-profilehdr__av {
+.ah-root.ah-unified .ah-profilehdr__av,
+.ah-root.ah-unified .ah-hero__greet,
+.ah-root.ah-unified .ah-feat__name,
+.ah-root.ah-unified .ah-conv__name {
   font-family: var(--font-display);
   font-weight: var(--display-weight);
   letter-spacing: var(--display-tracking);
 }
 /* El acento del título deja de ser itálica-serif / degradé y pasa a
    color de acento sólido pastel, coherente en claro y oscuro. */
-.ah-root.ah-unified .ah-pagehead h1 em {
+.ah-root.ah-unified .ah-pagehead h1 em,
+.ah-root.ah-unified .ah-hero__greet em {
   font-style: normal;
   background: none;
   color: var(--display-accent);
@@ -2262,71 +2731,6 @@ html.dark .ah-root .ah-avatar {
   .ah-root.ah-unified .ah-main {
     padding: 8px 16px 20px;
   }
-}
-
-/* ── Prácticas · historial responsive (Fase 3) ───────────────────────────────
-   En desktop se ve la tabla (.ah-hist-table); en <768px se oculta y aparece la
-   lista de tarjetas (.ah-hist-list) para no desbordar horizontalmente en el
-   celular. Reusa el patrón de filas del panel editorial. */
-.ah-hist-list {
-  display: none;
-}
-@media (max-width: 767px) {
-  .ah-hist-table {
-    display: none;
-  }
-  .ah-hist-list {
-    display: grid;
-    gap: 10px;
-    margin-top: 4px;
-  }
-}
-.ah-prow {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  padding: 14px 15px;
-}
-.ah-prow__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-.ah-prow__name {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 16px;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: var(--ink);
-  min-width: 0;
-}
-.ah-prow__meta {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--ink-muted);
-}
-.ah-prow__foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 11px;
-  border-top: 1px solid var(--line);
-}
-.ah-prow__notalbl {
-  font: 500 10.5px/1 var(--font-sans);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-.ah-prow__notaval {
-  display: inline-flex;
-  align-items: center;
 }
 
 /* ── Modales full-screen en mobile (Fase 6) ──────────────────────────────────

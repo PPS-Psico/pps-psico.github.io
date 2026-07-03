@@ -35,12 +35,26 @@ export const useStudentData = (legajo: string) => {
   } = useQuery({
     queryKey: ["student", legajo],
     queryFn: async () => {
+      let result;
       if (legajo === "99999") {
         await new Promise((resolve) => setTimeout(resolve, 500));
         const mockStudent = (await mockDb.getAll("estudiantes", { legajo: "99999" }))[0];
-        return { studentDetails: mockStudent, studentId: mockStudent.id };
+        result = { studentDetails: mockStudent, studentId: mockStudent.id };
+      } else {
+        result = await fetchStudentData(legajo);
       }
-      return fetchStudentData(legajo);
+      try {
+        sessionStorage.setItem(`pps_cache_student_${legajo}`, JSON.stringify(result));
+      } catch (e) {}
+      return result;
+    },
+    initialData: () => {
+      try {
+        const cached = sessionStorage.getItem(`pps_cache_student_${legajo}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch (e) {
+        return undefined;
+      }
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,

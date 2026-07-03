@@ -2,16 +2,19 @@ import React from "react";
 
 export type AreaName = "Clínica" | "Educacional" | "Laboral" | "Comunitaria";
 
-const AREA_HEX: Record<AreaName, string> = {
-  Clínica: "#3CB88D",
-  Educacional: "#203B73",
-  Laboral: "#C0392B",
-  Comunitaria: "#7A3F9E",
-};
-
 export function getAreaColor(area: string | null | undefined): string {
-  if (!area) return "#3CB88D";
-  return AREA_HEX[area as AreaName] ?? "#3CB88D";
+  const normalized = (area ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+
+  if (normalized.startsWith("ed")) return "var(--area-educacional, #203B73)";
+  if (normalized.startsWith("la") || normalized.startsWith("tr")) return "#C0392B";
+  if (normalized.startsWith("co") || normalized.startsWith("so")) {
+    return "var(--area-comunitaria, #7A3F9E)";
+  }
+  return "var(--area-clinica, #3CB88D)";
 }
 
 export function getAreaToneClass(area: string | null | undefined): string {

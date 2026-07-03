@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
     // Esto evita ruido y posible filtrado de datos en la consola del usuario
     // final sin tener que tocar manualmente cada llamada en el código.
     esbuild: {
-      pure: mode === "production" ? ["console.log", "console.info", "console.debug"] : [],
+      pure: [],
       drop: mode === "production" ? ["debugger"] : [],
     },
     resolve: {

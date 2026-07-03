@@ -9,6 +9,7 @@ import CriteriosPanel from "../components/student/CriteriosPanel";
 import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
 import FinalizacionForm from "../components/student/FinalizacionForm";
 import HomeView from "../components/student/HomeView";
+import PracticasTable from "../components/student/PracticasTable";
 import PrintableReport from "../components/student/PrintableReport";
 import ProfileView from "../components/student/ProfileView";
 import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
@@ -53,6 +54,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useModal } from "../contexts/ModalContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useStudentPanel } from "../contexts/StudentPanelContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { db } from "../lib/db";
 import type { Orientacion, Practica, TabId } from "../types";
 // import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
@@ -225,6 +227,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 }) => {
   const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
   const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
@@ -257,6 +260,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     updateOrientation,
     updateInternalNotes,
     updateNota,
+    updateFechaFin,
     deletePractica,
     enrollStudent,
     cancelEnrollment,
@@ -307,6 +311,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       updateNota.mutate({ practicaId, nota, convocatoriaId });
     },
     [updateNota]
+  );
+  const handleFechaFinChange = useCallback(
+    (practicaId: string, fecha: string) => {
+      updateFechaFin.mutate({ practicaId, fecha });
+    },
+    [updateFechaFin]
   );
   const handleRequestModificacion = useCallback((practica: Practica) => {
     logger.info("[DEBUG] StudentDashboard - Solicitar modificación para:", practica);
@@ -491,6 +501,31 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [studentDetails, isLoading, updateInternalNotes]
   );
 
+  // Versión mobile (editorial) de Prácticas — aro de horas + tabla nativa,
+  // layout propio pensado para el dedo (no es el widget de escritorio encogido).
+  const practicasContent = useMemo(
+    () => (
+      <ErrorBoundary>
+        <PracticasTable
+          practicas={practicas}
+          handleNotaChange={handleNotaChange}
+          handleFechaFinChange={handleFechaFinChange}
+          isLoading={isPracticasLoading}
+          onRequestModificacion={handleRequestModificacion}
+          onRequestNuevaPPS={handleRequestNuevaPPS}
+        />
+      </ErrorBoundary>
+    ),
+    [
+      practicas,
+      handleNotaChange,
+      handleFechaFinChange,
+      isPracticasLoading,
+      handleRequestModificacion,
+      handleRequestNuevaPPS,
+    ]
+  );
+
   // Versión Atlas (escritorio) de Prácticas — layout 2 columnas.
   const atlasPracticasContent = useMemo(
     () => (
@@ -581,9 +616,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     ]
   );
 
-  // Only block completely if CORE student data is missing.
-  // If practicals/requests are loading, we show partial skeletons inside tabs.
-  if (isStudentLoading) return <DashboardLoadingSkeleton />;
+  // Wait until all student data (including convocatorias) has loaded to prevent layout shift.
+  if (isLoading) return <DashboardLoadingSkeleton />;
   if (error) return <ErrorState error={error.message} onRetry={() => refetchAll()} />;
 
   // CASO DE BLOQUEO POR FINALIZACIÓN (Solo si NO es un Admin mirando)
@@ -686,12 +720,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       {/* Montamos solo el árbol del viewport actual (desktop ↔ mobile) para no
           renderizar el contenido del tab por duplicado en el DOM. */}
       {!isMobile && (
-        <div className="no-print animate-fade-in-up">
+        <div className="no-print">
           <AtlasTopbar
             activeTab={currentActiveTab}
             onTabChange={(id) => setCurrentActiveTab(id as TabId)}
           />
-          <div className="space-y-8 mt-6">
+          <div className="space-y-8 mt-6 animate-fade-in-up">
             {!["inicio", "solicitudes", "profile", "practicas"].includes(currentActiveTab) && (
               <WelcomeBanner
                 studentName={studentNameForPanel}
@@ -732,7 +766,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           )}
           {currentActiveTab === "convocatorias" && <StudentConvocatoriasView />}
           {currentActiveTab === "solicitudes" && <>{mobileSolicitudesContent}</>}
-          {currentActiveTab === "practicas" && <>{atlasPracticasContent}</>}
+          {currentActiveTab === "practicas" && (
+            <div className="ed" data-mode={resolvedTheme} data-accent="teal">
+              {!finalizacionRequest && (
+                <CriteriosPanel
+                  criterios={criterios}
+                  selectedOrientacion={selectedOrientacion}
+                  handleOrientacionChange={handleOrientacionChange}
+                  showSaveConfirmation={showSaveConfirmation}
+                  onRequestFinalization={handleOpenFinalization}
+                  informeTasks={informeTasks}
+                  showOrientationSelector={false}
+                />
+              )}
+              {practicasContent}
+            </div>
+          )}
           {currentActiveTab === "profile" && <>{atlasProfileContent}</>}
         </div>
       )}

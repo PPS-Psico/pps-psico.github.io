@@ -25,8 +25,10 @@ import {
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_DIRECCION_LANZAMIENTOS,
+  FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
+  FIELD_ARCHIVO_DESCARGABLE_URL,
 } from "../../constants";
-import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
+import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
 import { isEmbedded } from "../../utils/isEmbedded";
 import type { LanzamientoPPS } from "../../types";
 
@@ -158,7 +160,9 @@ const StudentConvocatoriaDetail: React.FC = () => {
         </span>
         <span className="h-9 w-9" aria-hidden />
       </header>
-      <div className="mx-auto w-full max-w-[560px] md:max-w-[1060px] flex-1">{children}</div>
+      <div className="mx-auto w-full max-w-[560px] md:max-w-[1180px] lg:max-w-[1280px] flex-1">
+        {children}
+      </div>
     </div>
   );
 
@@ -205,17 +209,14 @@ const StudentConvocatoriaDetail: React.FC = () => {
   const fullName = (lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Convocatoria";
   const shortName = fullName.split(" - ")[0].trim() || fullName;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   const status = normalizeStringForComparison(
     (lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || ""
   );
-  const startDate = lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS]
-    ? new Date(lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS] as string)
-    : null;
-  if (startDate) startDate.setHours(0, 0, 0, 0);
-  const isStarted = !!startDate && startDate <= today;
-  const isOpen = !isStarted && OPEN_STATES.includes(status);
+  const isOpen = OPEN_STATES.includes(status);
+  const ppsStartDate = parseToUTCDate(lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
+  const isStarted = !!ppsStartDate && ppsStartDate <= today;
 
   const horas = Number(lanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
   const cupos = Number(lanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
@@ -231,6 +232,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
   const descripcion =
     (lanzamiento[FIELD_DESCRIPCION_LANZAMIENTOS] as string) ||
     "Descripción de la propuesta no disponible.";
+  const archivoUrl = (lanzamiento[FIELD_ARCHIVO_DESCARGABLE_URL] as string) || "";
 
   const actividadesRaw = (lanzamiento as Record<string, unknown>).actividades_lista;
   const actividades: string[] = Array.isArray(actividadesRaw)
@@ -362,7 +364,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
   return (
     <>
       <Shell>
-        <div className="px-5 pt-1 pb-4 md:px-8 md:grid md:grid-cols-[minmax(0,1fr)_330px] md:gap-10 md:items-start">
+        <div className="px-5 pt-1 pb-4 md:px-8 md:grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-12 md:items-start">
           {/* ── Columna editorial ── */}
           <div className="min-w-0">
             {/* Título editorial */}
@@ -449,71 +451,144 @@ const StudentConvocatoriaDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* Ubicación — clickeable a Google Maps */}
-            {direccion ? (
-              <div className="detail-block">
-                <span className="eyebrow" style={{ fontSize: 10.5 }}>
-                  Ubicación
-                </span>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginTop: 10,
-                    padding: "12px 14px",
-                    borderRadius: 14,
-                    border: "1px solid var(--line)",
-                    background: "var(--bg-elevated)",
-                    textDecoration: "none",
-                  }}
-                >
-                  <span
-                    className="material-icons"
-                    style={{ color, fontSize: 22, flexShrink: 0 }}
-                    aria-hidden
-                  >
-                    place
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span
+            {/* Ubicación + Archivo adjunto — tarjetas emparejadas con alto igualado
+                en escritorio. Solo van lado a lado cuando existen ambas; si hay una
+                sola, ocupa el ancho completo (así nunca queda una columna a medias). */}
+            {direccion || archivoUrl ? (
+              <div
+                className={
+                  direccion && archivoUrl
+                    ? "md:grid md:grid-cols-2 md:gap-x-10 md:items-stretch"
+                    : undefined
+                }
+              >
+                {/* Ubicación — clickeable a Google Maps */}
+                {direccion ? (
+                  <div className="detail-block md:flex md:flex-col">
+                    <span className="eyebrow" style={{ fontSize: 10.5 }}>
+                      Ubicación
+                    </span>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group"
                       style={{
-                        display: "block",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "var(--ink)",
-                        lineHeight: 1.35,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        marginTop: 10,
+                        flex: "1 1 auto",
+                        padding: "12px 14px",
+                        borderRadius: 14,
+                        border: "1px solid var(--line)",
+                        background: "var(--bg-elevated)",
+                        textDecoration: "none",
                       }}
                     >
-                      {direccion}
+                      <span
+                        className="material-icons"
+                        style={{ color, fontSize: 22, flexShrink: 0 }}
+                        aria-hidden
+                      >
+                        place
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: "var(--ink)",
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {direccion}
+                        </span>
+                      </span>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color,
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                        }}
+                      >
+                        Ver mapa
+                        <Icon name="arrow" size={13} strokeWidth={2.4} />
+                      </span>
+                    </a>
+                  </div>
+                ) : null}
+
+                {/* Archivo adjunto — documento descargable del lanzamiento */}
+                {archivoUrl ? (
+                  <div className="detail-block md:flex md:flex-col">
+                    <span className="eyebrow" style={{ fontSize: 10.5 }}>
+                      Archivo adjunto
                     </span>
-                    <span
-                      className="mono"
-                      style={{ fontSize: 11, color: "var(--ink-subtle)", letterSpacing: ".02em" }}
+                    <a
+                      href={archivoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        marginTop: 10,
+                        flex: "1 1 auto",
+                        padding: "12px 14px",
+                        borderRadius: 14,
+                        border: "1px solid var(--line)",
+                        background: "var(--bg-elevated)",
+                        textDecoration: "none",
+                      }}
                     >
-                      Tocá para abrir en Google Maps
-                    </span>
-                  </span>
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color,
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    Ver mapa
-                    <Icon name="arrow" size={13} strokeWidth={2.4} />
-                  </span>
-                </a>
+                      <span
+                        className="material-icons"
+                        style={{ color, fontSize: 22, flexShrink: 0 }}
+                        aria-hidden
+                      >
+                        description
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: "block",
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: "var(--ink)",
+                            lineHeight: 1.35,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          Documento de la convocatoria
+                        </span>
+                      </span>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color,
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                        }}
+                      >
+                        Descargar
+                        <Icon name="arrow" size={13} strokeWidth={2.4} />
+                      </span>
+                    </a>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

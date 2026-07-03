@@ -61,7 +61,19 @@ export const useStudentPracticas = (legajo: string) => {
         await Promise.all(updates);
       }
 
+      try {
+        sessionStorage.setItem(`pps_cache_practicas_${legajo}`, JSON.stringify(data));
+      } catch (e) {}
+
       return data;
+    },
+    initialData: () => {
+      try {
+        const cached = sessionStorage.getItem(`pps_cache_practicas_${legajo}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch (e) {
+        return undefined;
+      }
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true, // Enable for testing reactivity

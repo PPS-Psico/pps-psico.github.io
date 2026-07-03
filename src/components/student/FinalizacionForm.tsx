@@ -25,7 +25,7 @@ import {
   type DetallePracticaItem,
   type DetallePracticas,
 } from "../../utils/acreditacion";
-import type { CriteriosCalculados, Practica } from "../../types";
+import { ALL_ORIENTACIONES, type CriteriosCalculados, type Practica } from "../../types";
 
 interface FinalizacionFormProps {
   isOpen: boolean;
@@ -51,6 +51,45 @@ const toDateInput = (value: string | null | undefined): string =>
   value ? String(value).slice(0, 10) : "";
 
 const DANGER = "#c0563f";
+const ROTACION_TARGET = 3;
+
+const joinAreaList = (items: string[], connector = "o") => {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} ${connector} ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} ${connector} ${items[items.length - 1]}`;
+};
+
+const canonicalArea = (area: string | null | undefined) => {
+  const raw = String(area ?? "").trim();
+  if (!raw) return "";
+  const normalized = normalizeStringForComparison(raw);
+  return (
+    ALL_ORIENTACIONES.find((candidate) => normalizeStringForComparison(candidate) === normalized) ??
+    raw
+  );
+};
+
+const uniqueAreas = (areas: Array<string | null | undefined>) => {
+  const seen = new Set<string>();
+  return areas.reduce<string[]>((acc, area) => {
+    const canonical = canonicalArea(area);
+    if (!canonical) return acc;
+    const key = normalizeStringForComparison(canonical);
+    if (seen.has(key)) return acc;
+    seen.add(key);
+    acc.push(canonical);
+    return acc;
+  }, []);
+};
+
+const areaColor = (area: string | null | undefined) => {
+  const normalized = normalizeStringForComparison(area);
+  if (normalized.includes("clinica")) return "var(--area-clinica)";
+  if (normalized.includes("educacional")) return "var(--area-educacional)";
+  if (normalized.includes("laboral")) return "var(--area-laboral)";
+  if (normalized.includes("comunitaria")) return "var(--area-comunitaria)";
+  return "var(--accent)";
+};
 
 // --- Subcomponentes UI (.ed) ---
 
@@ -393,10 +432,10 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
                 fontSize: 26,
                 marginTop: 2,
                 color: "var(--ink)",
-                fontFamily: '"Instrument Serif", ui-serif, Georgia, serif',
-                fontWeight: 400,
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
                 lineHeight: 1.05,
-                letterSpacing: "-0.01em",
+                letterSpacing: "-0.035em",
               }}
             >
               {headerTitle}
@@ -535,12 +574,12 @@ const RequisitosStep: React.FC<{
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <CriterioCard
           label="Carga horaria"
-          value={`${Math.round(criterios.horasTotales)} / 350 hs`}
+          value={`${Math.round(criterios.horasTotales)} / 250 hs`}
           ok={criterios.cumpleHorasTotales}
         />
         <CriterioCard
           label="Rotación"
-          value={`${criterios.orientacionesCursadasCount} / 2 áreas`}
+          value={`${criterios.orientacionesCursadasCount} / 3 áreas`}
           ok={criterios.cumpleRotacion}
         />
         <CriterioCard
@@ -584,15 +623,52 @@ const CompletarStep: React.FC<{
   finalizadas: Practica[];
   onAddPPS?: () => void;
 }> = ({ criterios, finalizadas, onAddPPS }) => {
-  const faltantes: string[] = [];
+  const areasRotadas = uniqueAreas(
+    criterios?.orientacionesUnicas?.length
+      ? criterios.orientacionesUnicas
+      : finalizadas.map((p) => p[FIELD_ESPECIALIDAD_PRACTICAS])
+  );
+  const areasRotadasKeys = new Set(areasRotadas.map((area) => normalizeStringForComparison(area)));
+  const areasDisponibles = ALL_ORIENTACIONES.filter(
+    (area) => !areasRotadasKeys.has(normalizeStringForComparison(area))
+  );
+  const areasFaltantesCount = Math.max(0, ROTACION_TARGET - areasRotadas.length);
+  const faltantes: Array<{ key: string; body: React.ReactNode }> = [];
+
   if (criterios) {
     if (!criterios.cumpleHorasTotales)
-      faltantes.push(`Faltan ${Math.max(0, Math.round(criterios.horasFaltantes250))} hs totales`);
-    if (!criterios.cumpleRotacion) faltantes.push("Falta rotación (2 áreas mínimo)");
+      faltantes.push({
+        key: "horas",
+        body: `Faltan ${Math.max(0, Math.round(criterios.horasFaltantes250))} hs totales`,
+      });
+    if (!criterios.cumpleRotacion)
+      faltantes.push({
+        key: "rotacion",
+        body: (
+          <div className="space-y-1">
+            <p>
+              {areasFaltantesCount === 1
+                ? "Falta rotar por 1 área"
+                : `Faltan ${areasFaltantesCount} áreas de rotación`}
+            </p>
+            {areasRotadas.length > 0 && (
+              <p className="text-xs font-medium" style={{ color: "var(--ink-muted)" }}>
+                Ya registraste {joinAreaList(areasRotadas, "y")}.
+              </p>
+            )}
+            {areasDisponibles.length > 0 && (
+              <p className="text-xs font-medium" style={{ color: "var(--ink-muted)" }}>
+                Podés completar con {joinAreaList(areasDisponibles)}.
+              </p>
+            )}
+          </div>
+        ),
+      });
     if (!criterios.cumpleHorasOrientacion)
-      faltantes.push(
-        `Faltan ${Math.max(0, Math.round(criterios.horasFaltantesOrientacion))} hs de especialidad`
-      );
+      faltantes.push({
+        key: "orientacion",
+        body: `Faltan ${Math.max(0, Math.round(criterios.horasFaltantesOrientacion))} hs de especialidad`,
+      });
   }
 
   return (
@@ -611,14 +687,16 @@ const CompletarStep: React.FC<{
             Lo que falta
           </span>
           <ul className="mt-2 space-y-1.5">
-            {faltantes.map((f, i) => (
+            {faltantes.map((f) => (
               <li
-                key={i}
-                className="flex items-center gap-2 text-sm font-medium"
+                key={f.key}
+                className="flex items-start gap-2 text-sm font-medium"
                 style={{ color: "var(--ink)" }}
               >
-                <Icon name="alert" size={14} color={DANGER} />
-                {f}
+                <span className="mt-0.5 flex-shrink-0">
+                  <Icon name="alert" size={14} color={DANGER} />
+                </span>
+                {f.body}
               </li>
             ))}
           </ul>
@@ -650,13 +728,31 @@ const CompletarStep: React.FC<{
             finalizadas.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between px-3 py-2.5 rounded-xl"
-                style={{ background: "var(--bg-sunken)", border: "1px solid var(--line)" }}
+                className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl"
+                style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
               >
-                <span className="text-sm font-bold truncate" style={{ color: "var(--ink)" }}>
-                  {p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]}
-                </span>
-                <span className="text-xs font-medium" style={{ color: "var(--ink-muted)" }}>
+                <div className="min-w-0">
+                  <span
+                    className="text-sm font-bold block truncate"
+                    style={{ color: "var(--ink)" }}
+                  >
+                    {p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]}
+                  </span>
+                  <span
+                    className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                    style={{ color: "var(--ink-muted)" }}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-[2px]"
+                      style={{ background: areaColor(p[FIELD_ESPECIALIDAD_PRACTICAS]) }}
+                    />
+                    {canonicalArea(p[FIELD_ESPECIALIDAD_PRACTICAS]) || "Sin área"}
+                  </span>
+                </div>
+                <span
+                  className="text-sm font-bold whitespace-nowrap"
+                  style={{ color: "var(--ink-soft)" }}
+                >
                   {Number(p[FIELD_HORAS_PRACTICAS]) || 0} hs
                 </span>
               </div>
@@ -854,8 +950,8 @@ const ConfirmarStep: React.FC<{
             className="text-2xl font-bold leading-none"
             style={{
               color: "var(--accent-text)",
-              fontFamily: '"Instrument Serif", ui-serif, Georgia, serif',
-              fontWeight: 400,
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
             }}
           >
             {s.value}

@@ -7,6 +7,7 @@ import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { useTheme } from "../contexts/ThemeContext";
 import { Icon, type IconName } from "./student/ds";
+import ConfirmModal from "./ConfirmModal";
 import "./student/home/atlas/atlasHome.css";
 
 // --- COMPONENTES UI INTERNOS (dirección editorial .ed) ---
@@ -17,25 +18,37 @@ const SelectionCard: React.FC<{
   title: string;
   subtitle?: string;
   icon?: IconName;
-}> = ({ selected, onClick, title, subtitle, icon }) => (
+  hideIcon?: boolean;
+}> = ({ selected, onClick, title, subtitle, icon, hideIcon }) => (
   <div
     onClick={onClick}
-    className="relative cursor-pointer rounded-2xl border px-4 py-3 sm:px-5 sm:py-4 transition duration-200 flex items-center gap-3 sm:gap-4 group select-none"
+    role="button"
+    tabIndex={0}
+    aria-pressed={selected}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick();
+      }
+    }}
+    className="relative cursor-pointer rounded-2xl border px-4 py-3 sm:px-5 sm:py-4 transition duration-200 flex items-center gap-3 sm:gap-4 group select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
     style={{
       borderColor: selected ? "var(--accent)" : "var(--line)",
-      background: selected ? "var(--tint)" : "var(--bg-elevated)",
+      background: "var(--bg-elevated)",
       boxShadow: selected ? "inset 0 0 0 1px var(--accent)" : "none",
     }}
   >
-    <div
-      className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition duration-200"
-      style={{
-        background: selected ? "var(--accent)" : "var(--bg-sunken)",
-        color: selected ? "var(--on-accent)" : "var(--ink-muted)",
-      }}
-    >
-      <Icon name={selected ? "check" : icon || "chev"} size={20} strokeWidth={2.2} />
-    </div>
+    {!hideIcon && (
+      <div
+        className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition duration-200"
+        style={{
+          background: selected ? "var(--accent)" : "var(--bg-sunken)",
+          color: selected ? "var(--on-accent)" : "var(--ink-muted)",
+        }}
+      >
+        <Icon name={selected ? "check" : icon || "chev"} size={20} strokeWidth={2.2} />
+      </div>
+    )}
 
     <div className="flex-1 min-w-0 flex flex-col justify-center">
       <h4
@@ -46,7 +59,7 @@ const SelectionCard: React.FC<{
       </h4>
       {subtitle && (
         <p
-          className="hidden sm:block text-xs truncate font-medium mt-0.5"
+          className="hidden sm:block text-xs font-medium mt-0.5 leading-snug"
           style={{ color: selected ? "var(--accent-text)" : "var(--ink-muted)" }}
         >
           {subtitle}
@@ -59,40 +72,6 @@ const SelectionCard: React.FC<{
         <Icon name="check" size={16} color="var(--accent)" strokeWidth={2.6} />
       </div>
     )}
-  </div>
-);
-
-const ToggleSwitch: React.FC<{
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-}> = ({ checked, onChange, label }) => (
-  <div
-    onClick={() => onChange(!checked)}
-    className="flex items-center justify-between cursor-pointer p-4 rounded-2xl border transition duration-200"
-    style={{
-      borderColor: checked ? "var(--accent)" : "var(--line)",
-      background: checked ? "var(--tint)" : "var(--bg-elevated)",
-    }}
-  >
-    <span
-      className="text-sm font-bold transition-colors"
-      style={{ color: checked ? "var(--accent-text)" : "var(--ink-soft)" }}
-    >
-      {label}
-    </span>
-    <div
-      className="relative w-12 h-7 rounded-full transition-colors duration-300 ease-in-out border-2"
-      style={{
-        background: checked ? "var(--accent)" : "var(--bg-sunken)",
-        borderColor: checked ? "var(--accent)" : "var(--line-strong)",
-      }}
-    >
-      <div
-        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-sm transform transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-        style={{ background: "#fff", transform: checked ? "translateX(20px)" : "translateX(0)" }}
-      />
-    </div>
   </div>
 );
 
@@ -161,6 +140,8 @@ interface EnrollmentFormProps {
   reqCertificadoTrabajo?: boolean;
   reqCv?: boolean;
   horariosFijos?: boolean;
+  /** Color de acento de la convocatoria (hex). Si no se pasa, queda el verde por defecto. */
+  accentColor?: string;
 }
 
 type FormData = {
@@ -201,11 +182,13 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   reqCertificadoTrabajo = true,
   reqCv = false,
   horariosFijos = false,
+  accentColor,
 }) => {
   const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData | "submit", string>>>({});
   const [fileUploadProgress, setFileUploadProgress] = useState(0);
+  const [pendingWorkOff, setPendingWorkOff] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
   const certFileInputRef = useRef<HTMLInputElement>(null);
@@ -219,6 +202,9 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
 
   const isSingleSchedule = horariosDisponibles.length === 1;
   const showHorariosSelection = horariosDisponibles.length > 1 && !horariosFijos;
+  // La columna izquierda (situación laboral + horarios) solo tiene sentido si
+  // hay algo que mostrar; si no, el formulario colapsa a una sola columna.
+  const hasLeftColumn = reqCertificadoTrabajo || showHorariosSelection;
 
   useEffect(() => {
     if (isOpen) {
@@ -319,24 +305,23 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   };
 
   const handleWorkStatusChange = (checked: boolean) => {
-    // Si el usuario intenta destildar "trabaja" y ya tiene un certificado guardado
+    // Si el usuario intenta destildar "trabaja" y ya tiene un certificado guardado,
+    // confirmamos con el modal propio (en vez del window.confirm nativo).
     if (!checked && formData.existingCertificadoTrabajo) {
-      const confirmDelete = window.confirm(
-        "⚠️ ¿Estás seguro de indicar que NO trabajas?\n\nAl hacerlo, se eliminará el certificado laboral que tenías guardado. Esta acción no se puede deshacer."
-      );
-
-      if (confirmDelete) {
-        setFormData((prev) => ({
-          ...prev,
-          trabaja: false,
-          existingCertificadoTrabajo: null,
-          certificadoTrabajoFile: null,
-        }));
-      }
-    } else {
-      // Comportamiento normal
-      setFormData((prev) => ({ ...prev, trabaja: checked }));
+      setPendingWorkOff(true);
+      return;
     }
+    setFormData((prev) => ({ ...prev, trabaja: checked }));
+  };
+
+  const confirmWorkOff = () => {
+    setFormData((prev) => ({
+      ...prev,
+      trabaja: false,
+      existingCertificadoTrabajo: null,
+      certificadoTrabajoFile: null,
+    }));
+    setPendingWorkOff(false);
   };
 
   const handleFileChange = (
@@ -439,506 +424,712 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
     color: "var(--ink)",
   };
 
+  // Sobreescribimos las variables de acento del scope .ed con el color de la
+  // convocatoria. --tint y --tint-strong se recalculan solos porque referencian
+  // var(--accent). --accent-text se deriva mezclando con --ink para mantener
+  // contraste legible tanto en claro como en oscuro.
+  const accentVars = accentColor
+    ? ({
+        "--accent": accentColor,
+        "--accent-soft": `color-mix(in oklab, ${accentColor} 32%, var(--bg))`,
+        "--accent-deep": `color-mix(in oklab, ${accentColor} 78%, black)`,
+        "--accent-text": `color-mix(in oklab, ${accentColor} 72%, var(--ink))`,
+        "--on-accent": "#ffffff",
+      } as React.CSSProperties)
+    : undefined;
+
   return (
-    <div
-      className="ed fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
-      data-mode={resolvedTheme}
-      data-accent="teal"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      {/* Ventana flotante: 95vw mobile · max-w-2xl desktop */}
+    <>
       <div
-        className="relative w-[95vw] max-h-[90dvh] sm:w-full sm:max-w-4xl sm:max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-transform duration-300 animate-scale-in"
-        style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
-        onClick={(e) => e.stopPropagation()}
+        className="ed fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+        data-mode={resolvedTheme}
+        data-accent="teal"
+        style={accentVars}
+        role="dialog"
+        aria-modal="true"
+        onClick={onClose}
       >
-        {/* Header */}
+        {/* Ventana flotante: 95vw mobile · max-w-2xl desktop */}
         <div
-          className="flex-shrink-0 px-5 py-4 sm:px-7 sm:py-5 z-10 flex items-center justify-between safe-area-top"
-          style={{ borderBottom: "1px solid var(--line)", background: "var(--bg-elevated)" }}
+          className="relative w-[95vw] max-h-[90dvh] sm:w-full sm:max-w-4xl sm:max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-transform duration-300 animate-scale-in"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <div className="min-w-0 pr-4">
-            <span className="eyebrow" style={{ color: "var(--accent-text)" }}>
-              Inscripción
-            </span>
-            <h2
-              className="truncate"
-              style={{
-                fontSize: 27,
-                marginTop: 4,
-                color: "var(--ink)",
-                fontFamily: '"Instrument Serif", ui-serif, Georgia, serif',
-                fontWeight: 400,
-                lineHeight: 1.05,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {convocatoriaName}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 -mr-1 rounded-full transition-colors hover:bg-[var(--bg-sunken)]"
-            style={{ color: "var(--ink-muted)" }}
-            aria-label="Cerrar"
-          >
-            <Icon name="x" size={20} />
-          </button>
-        </div>
-
-        {/* Banner Horario Único o Fijo */}
-        {(isSingleSchedule || (horariosFijos && horariosDisponibles.length > 0)) && (
+          {/* Header */}
           <div
-            className="px-5 sm:px-7 py-3 flex items-center gap-3"
-            style={{ background: "var(--tint)", borderBottom: "1px solid var(--line)" }}
+            className="enroll-head flex-shrink-0 z-10 flex items-center justify-between safe-area-top"
+            style={{ borderBottom: "1px solid var(--line)", background: "var(--bg-elevated)" }}
           >
-            <Icon name="clock" size={18} color="var(--accent-text)" />
-            <div>
-              <p className="eyebrow" style={{ color: "var(--accent-text)", fontSize: 10 }}>
-                {horariosFijos ? "Horarios (Obligatorios)" : "Horario de la Práctica"}
-              </p>
-              <p className="text-sm font-bold leading-tight" style={{ color: "var(--ink)" }}>
-                {horariosFijos ? horariosDisponibles.join("; ") : horariosDisponibles[0]}
-              </p>
+            <div className="min-w-0 pr-4">
+              <span
+                className="eyebrow inline-flex items-center gap-1.5"
+                style={{ color: "var(--accent-text)" }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: "var(--accent)",
+                    display: "inline-block",
+                  }}
+                />
+                Inscripción
+              </span>
+              <h2
+                className="enroll-title truncate"
+                style={{
+                  marginTop: 4,
+                  color: "var(--ink)",
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 700,
+                  lineHeight: 1.05,
+                  letterSpacing: 0,
+                }}
+              >
+                {convocatoriaName}
+              </h2>
             </div>
-          </div>
-        )}
-
-        {/* Body Scrollable */}
-        <form
-          ref={formRef}
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-7 sm:space-y-8 custom-scrollbar pb-safe"
-        >
-          {errors.submit && (
-            <div
-              className="p-4 rounded-xl text-sm font-semibold flex items-start gap-2"
-              style={{
-                background: "rgba(192,86,63,0.10)",
-                border: "1px solid rgba(192,86,63,0.35)",
-                color: "#c0563f",
-              }}
+            <button
+              onClick={onClose}
+              className="p-2 -mr-1 rounded-full transition-colors hover:bg-[var(--bg-sunken)]"
+              style={{ color: "var(--ink-muted)" }}
+              aria-label="Cerrar"
             >
-              <Icon name="x" size={18} />
-              <span>{errors.submit}</span>
+              <Icon name="x" size={20} />
+            </button>
+          </div>
+
+          {/* Banner Horario Único o Fijo */}
+          {(isSingleSchedule || (horariosFijos && horariosDisponibles.length > 0)) && (
+            <div
+              className="enroll-schedule flex items-start gap-3"
+              style={{ background: "var(--bg-elevated)", borderBottom: "1px solid var(--line)" }}
+            >
+              <span className="enroll-schedule__icon">
+                <Icon name="clock" size={16} color="var(--accent-text)" strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0">
+                <p className="eyebrow" style={{ color: "var(--accent-text)", fontSize: 10 }}>
+                  {horariosFijos ? "Horarios (Obligatorios)" : "Horario de la Práctica"}
+                </p>
+                <p className="enroll-schedule__text" style={{ color: "var(--ink)" }}>
+                  {horariosFijos ? horariosDisponibles.join("; ") : horariosDisponibles[0]}
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Disclaimer — compromiso */}
-          <div
-            className="flex gap-4 p-4 sm:p-5 rounded-2xl"
-            style={{
-              background: "color-mix(in oklab, var(--area-laboral) 9%, var(--bg-elevated))",
-              border: "1px solid color-mix(in oklab, var(--area-laboral) 26%, transparent)",
-            }}
+          {/* Body Scrollable */}
+          <form
+            ref={formRef}
+            onSubmit={handleSubmit}
+            className="enroll-body flex-1 overflow-y-auto custom-scrollbar pb-safe"
           >
-            <span style={{ color: "var(--area-laboral)", flexShrink: 0, marginTop: 2 }}>
-              <Icon name="shield" size={22} />
-            </span>
-            <div>
-              <h4 className="text-sm font-bold" style={{ color: "var(--ink)" }}>
-                Compromiso y Responsabilidad
-              </h4>
-              <p
-                className="text-xs mt-1 leading-relaxed font-medium block sm:hidden"
-                style={{ color: "var(--ink-muted)" }}
+            {errors.submit && (
+              <div
+                className="p-4 rounded-xl text-sm font-semibold flex items-start gap-2"
+                style={{
+                  background: "rgba(192,86,63,0.10)",
+                  border: "1px solid rgba(192,86,63,0.35)",
+                  color: "#c0563f",
+                }}
               >
-                Al inscribirte asumes un compromiso. La falta de responsabilidad afectará futuras
-                convocatorias.
-              </p>
-              <p
-                className="text-xs mt-1 leading-relaxed font-medium hidden sm:block"
-                style={{ color: "var(--ink-muted)" }}
-              >
-                Al inscribirte, asumes un compromiso con la institución y la facultad. Darse de baja
-                sobre la fecha, ausentarse sin aviso o cualquier otra decisión que demuestre falta
-                de responsabilidad, será tenido en cuenta en futuras convocatorias.
-              </p>
+                <Icon name="x" size={18} />
+                <span>{errors.submit}</span>
+              </div>
+            )}
+
+            {/* Disclaimer — compromiso */}
+            <div
+              className="enroll-commit flex gap-3 rounded-2xl"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid color-mix(in oklab, var(--accent) 24%, var(--line))",
+              }}
+            >
+              <span className="enroll-commit__icon" style={{ color: "var(--accent-text)" }}>
+                <Icon name="shield" size={18} strokeWidth={2.1} />
+              </span>
+              <div>
+                <h4 className="text-sm font-bold" style={{ color: "var(--ink)" }}>
+                  Compromiso responsable
+                </h4>
+                <p
+                  className="text-xs mt-1 leading-relaxed font-medium block sm:hidden"
+                  style={{ color: "var(--ink-muted)" }}
+                >
+                  Confirmá tu disponibilidad antes de inscribirte. Las bajas sin aviso afectan
+                  futuras convocatorias.
+                </p>
+                <p
+                  className="text-xs mt-1 leading-relaxed font-medium hidden sm:block"
+                  style={{ color: "var(--ink-muted)" }}
+                >
+                  Al inscribirte, asumís un compromiso con la institución y la facultad. Darse de
+                  baja sobre la fecha, ausentarse sin aviso o cualquier otra decisión que demuestre
+                  falta de responsabilidad, será tenido en cuenta en futuras convocatorias.
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* En escritorio, dos columnas; en mobile se apila en este mismo orden. */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-7 md:gap-8 items-start">
-            {/* ── Columna izquierda ── */}
-            <div className="space-y-7">
-              {/* Situación Laboral */}
-              {reqCertificadoTrabajo && (
-                <section>
-                  <SectionHead icon="bag">Situación Laboral</SectionHead>
+            {/* En escritorio, dos columnas; en mobile se apila en este mismo orden. */}
+            <div
+              className={
+                hasLeftColumn ? "grid grid-cols-1 md:grid-cols-2 gap-7 md:gap-8 items-start" : ""
+              }
+            >
+              {/* ── Columna izquierda (solo si hay contenido) ── */}
+              {hasLeftColumn && (
+                <div className="space-y-7">
+                  {/* Situación Laboral */}
+                  {reqCertificadoTrabajo && (
+                    <section>
+                      <SectionHead icon="bag">Situación Laboral</SectionHead>
 
-                  <div className="space-y-4">
-                    <ToggleSwitch
-                      label="¿Trabajas actualmente?"
-                      checked={formData.trabaja}
-                      onChange={handleWorkStatusChange}
-                    />
-
-                    {/* Revelado suave */}
-                    <div
-                      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
-                        formData.trabaja
-                          ? "grid-rows-[1fr] opacity-100"
-                          : "grid-rows-[0fr] opacity-0"
-                      }`}
-                    >
-                      <div className="overflow-hidden min-h-0">
-                        <div
-                          className="p-4 rounded-2xl"
-                          style={{
-                            background: "var(--bg-sunken)",
-                            border: "1px solid var(--line)",
-                          }}
-                        >
+                      <div className="enroll-workpanel space-y-4">
+                        <div>
                           <label
-                            className="label mb-3 block"
-                            style={{ color: "var(--ink-muted)", fontSize: 10 }}
+                            className="block text-sm font-bold mb-3"
+                            style={{ color: "var(--ink-soft)" }}
                           >
-                            Certificado Laboral (Obligatorio)
+                            ¿Trabajás actualmente?
                           </label>
+                          <div
+                            className="enroll-workseg"
+                            role="group"
+                            aria-label="Situación laboral"
+                          >
+                            {[
+                              { value: true, title: "Sí" },
+                              { value: false, title: "No" },
+                            ].map((option) => {
+                              const active = formData.trabaja === option.value;
+                              return (
+                                <button
+                                  key={String(option.value)}
+                                  type="button"
+                                  aria-pressed={active}
+                                  onClick={() => handleWorkStatusChange(option.value)}
+                                  className="enroll-workseg__btn"
+                                  style={{
+                                    background: active ? "var(--accent)" : "transparent",
+                                    color: active ? "var(--on-accent)" : "var(--ink-soft)",
+                                  }}
+                                >
+                                  {option.title}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="enroll-workgrid">
+                            {[
+                              {
+                                value: true,
+                                title: "Sí, trabajo",
+                                subtitle: "Adjunto certificado",
+                              },
+                              {
+                                value: false,
+                                title: "No trabajo",
+                                subtitle: "No requiere archivo",
+                              },
+                            ].map((option) => {
+                              const active = formData.trabaja === option.value;
+                              return (
+                                <button
+                                  key={String(option.value)}
+                                  type="button"
+                                  aria-pressed={active}
+                                  onClick={() => handleWorkStatusChange(option.value)}
+                                  className="enroll-workbtn"
+                                  style={{
+                                    borderColor: active ? "var(--accent)" : "var(--line)",
+                                    background: active
+                                      ? "color-mix(in oklab, var(--accent) 9%, var(--bg-elevated))"
+                                      : "var(--bg-elevated)",
+                                    boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
+                                  }}
+                                >
+                                  <span
+                                    className="enroll-workbtn__check"
+                                    style={{
+                                      background: active ? "var(--accent)" : "var(--bg-sunken)",
+                                      color: active ? "var(--on-accent)" : "var(--ink-subtle)",
+                                      borderColor: active ? "var(--accent)" : "var(--line-strong)",
+                                    }}
+                                  >
+                                    <Icon
+                                      name={active ? "check" : "chev"}
+                                      size={14}
+                                      strokeWidth={2.4}
+                                    />
+                                  </span>
+                                  <span className="min-w-0 text-left">
+                                    <span
+                                      className="block text-sm font-bold leading-tight"
+                                      style={{
+                                        color: active ? "var(--accent-text)" : "var(--ink)",
+                                      }}
+                                    >
+                                      {option.title}
+                                    </span>
+                                    <span
+                                      className="enroll-workbtn__sub"
+                                      style={{
+                                        color: active ? "var(--accent-text)" : "var(--ink-muted)",
+                                      }}
+                                    >
+                                      {option.subtitle}
+                                    </span>
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
 
-                          {formData.existingCertificadoTrabajo &&
-                            !formData.certificadoTrabajoFile && (
-                              <div
-                                className="flex items-center justify-between px-4 py-3 rounded-xl mb-3"
-                                style={{
-                                  background: "var(--tint)",
-                                  border: "1px solid var(--accent-soft)",
-                                }}
+                        {/* Revelado suave */}
+                        <div
+                          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                            formData.trabaja
+                              ? "grid-rows-[1fr] opacity-100"
+                              : "grid-rows-[0fr] opacity-0"
+                          }`}
+                        >
+                          <div className="overflow-hidden min-h-0">
+                            <div className="enroll-cert">
+                              <label
+                                className="enroll-cert__label label block"
+                                style={{ color: "var(--ink-muted)", fontSize: 10 }}
                               >
+                                Certificado Laboral
+                                {formData.existingCertificadoTrabajo &&
+                                !formData.certificadoTrabajoFile
+                                  ? ""
+                                  : " (Obligatorio)"}
+                              </label>
+
+                              {/* Input nativo siempre montado: lo dispara tanto el
+                              botón "Actualizar" del chip como el recuadro de subida. */}
+                              <input
+                                id="cert-file-upload"
+                                type="file"
+                                ref={certFileInputRef}
+                                className="sr-only"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif"
+                                onChange={(e) => handleFileChange(e, "certificadoTrabajoFile")}
+                              />
+
+                              {formData.existingCertificadoTrabajo &&
+                              !formData.certificadoTrabajoFile ? (
+                                // Ya hay certificado cargado: mostramos solo el chip
+                                // "vigente". El recuadro de subida no aparece hasta que
+                                // el estudiante toca "Actualizar".
                                 <div
-                                  className="flex items-center gap-2 text-xs font-bold"
-                                  style={{ color: "var(--accent-text)" }}
+                                  className="enroll-cert-card"
+                                  style={{
+                                    background: "var(--bg-elevated)",
+                                    border:
+                                      "1px solid color-mix(in oklab, var(--accent) 34%, var(--line))",
+                                  }}
                                 >
-                                  <Icon name="check" size={16} strokeWidth={2.4} />
-                                  <span>Certificado Vigente</span>
+                                  <a
+                                    href={formData.existingCertificadoTrabajo}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="group flex items-center gap-2 min-w-0"
+                                    style={{ color: "var(--accent-text)", textDecoration: "none" }}
+                                  >
+                                    <Icon name="check" size={16} strokeWidth={2.4} />
+                                    <span className="flex flex-col min-w-0 leading-tight">
+                                      <span className="text-xs font-bold">Certificado Vigente</span>
+                                      <span className="text-[10px] font-medium opacity-70 group-hover:underline">
+                                        Ver documento
+                                      </span>
+                                    </span>
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => openFilePicker(certFileInputRef)}
+                                    className="enroll-cert-action flex flex-shrink-0 items-center gap-1.5 rounded-lg text-xs font-bold transition hover:-translate-y-0.5"
+                                    style={{
+                                      background: "var(--accent)",
+                                      color: "var(--on-accent)",
+                                    }}
+                                  >
+                                    <Icon name="upload" size={13} strokeWidth={2.2} />
+                                    Actualizar
+                                  </button>
                                 </div>
-                                <a
-                                  href={formData.existingCertificadoTrabajo}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-xs font-bold hover:underline"
-                                  style={{ color: "var(--accent-text)" }}
+                              ) : (
+                                <>
+                                  <FileUploadButton
+                                    onClick={() => openFilePicker(certFileInputRef)}
+                                    label={
+                                      formData.certificadoTrabajoFile
+                                        ? "Cambiar Archivo"
+                                        : "Subir Certificado"
+                                    }
+                                    fileName={formData.certificadoTrabajoFile?.name}
+                                    hasError={!!errors.trabaja}
+                                  />
+                                  {formData.existingCertificadoTrabajo &&
+                                    formData.certificadoTrabajoFile && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setFormData((prev) => ({
+                                            ...prev,
+                                            certificadoTrabajoFile: null,
+                                          }))
+                                        }
+                                        className="mt-2 text-xs font-semibold hover:underline"
+                                        style={{ color: "var(--ink-muted)" }}
+                                      >
+                                        Cancelar y mantener el certificado actual
+                                      </button>
+                                    )}
+                                </>
+                              )}
+                              {errors.trabaja && (
+                                <p
+                                  className="text-xs font-semibold mt-2 flex items-center gap-1"
+                                  style={{ color: "#c0563f" }}
                                 >
-                                  Ver archivo
-                                </a>
-                              </div>
-                            )}
-
-                          <input
-                            id="cert-file-upload"
-                            type="file"
-                            ref={certFileInputRef}
-                            className="sr-only"
-                            accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif"
-                            onChange={(e) => handleFileChange(e, "certificadoTrabajoFile")}
-                          />
-
-                          <FileUploadButton
-                            onClick={() => openFilePicker(certFileInputRef)}
-                            label={
-                              formData.certificadoTrabajoFile
-                                ? "Cambiar Archivo"
-                                : formData.existingCertificadoTrabajo
-                                  ? "Actualizar Certificado"
-                                  : "Subir Certificado"
-                            }
-                            fileName={formData.certificadoTrabajoFile?.name}
-                            hasError={!!errors.trabaja}
-                          />
-                          {errors.trabaja && (
-                            <p
-                              className="text-xs font-semibold mt-2 flex items-center gap-1"
-                              style={{ color: "#c0563f" }}
-                            >
-                              <Icon name="x" size={12} /> {errors.trabaja}
-                            </p>
-                          )}
+                                  <Icon name="x" size={12} /> {errors.trabaja}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {/* Selección Horarios */}
-              {showHorariosSelection && (
-                <section data-error={!!errors.horarios}>
-                  <SectionHead icon="clock">Disponibilidad Horaria</SectionHead>
-                  <div className="grid grid-cols-1 gap-3">
-                    {horariosDisponibles.map((horario) => {
-                      const active = formData.horarios.includes(horario);
-                      return (
-                        <div
-                          key={horario}
-                          onClick={() => handleHorarioToggle(horario)}
-                          className="cursor-pointer px-5 py-4 rounded-2xl border transition flex items-center justify-between group select-none"
-                          style={{
-                            borderColor: active ? "var(--accent)" : "var(--line)",
-                            background: active ? "var(--tint)" : "var(--bg-elevated)",
-                            boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
-                          }}
-                        >
-                          <span
-                            className="text-sm font-bold"
-                            style={{ color: active ? "var(--accent-text)" : "var(--ink-soft)" }}
-                          >
-                            {horario}
-                          </span>
-                          {active && (
-                            <div
-                              className="w-6 h-6 rounded-full flex items-center justify-center animate-scale-in"
-                              style={{ background: "var(--accent)", color: "var(--on-accent)" }}
-                            >
-                              <Icon name="check" size={14} strokeWidth={2.6} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {errors.horarios && (
-                    <p className="text-xs font-semibold mt-2 ml-1" style={{ color: "#c0563f" }}>
-                      {errors.horarios}
-                    </p>
+                    </section>
                   )}
-                </section>
-              )}
-            </div>
-            {/* ── Columna derecha ── */}
-            <div className="space-y-7">
-              {/* Situación Académica */}
-              <section>
-                <SectionHead icon="book">Estado Académico</SectionHead>
 
-                <div className="space-y-6">
-                  <div data-error={!!errors.terminoDeCursar}>
-                    <label
-                      className="block text-sm font-bold mb-3"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      ¿Terminaste de cursar?
-                    </label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <SelectionCard
-                        title="Sí"
-                        subtitle="Solo debo finales o TIF"
-                        icon="book"
-                        selected={formData.terminoDeCursar === true}
-                        onClick={() =>
-                          setFormData((p) => ({
-                            ...p,
-                            terminoDeCursar: true,
-                            cursandoElectivas: null,
-                          }))
-                        }
-                      />
-                      <SelectionCard
-                        title="No"
-                        subtitle="Aún curso materias"
-                        icon="book"
-                        selected={formData.terminoDeCursar === false}
-                        onClick={() =>
-                          setFormData((p) => ({
-                            ...p,
-                            terminoDeCursar: false,
-                            finalesAdeudados: "",
-                          }))
-                        }
-                      />
-                    </div>
-                    {errors.terminoDeCursar && (
-                      <p className="text-xs font-semibold mt-2 ml-1" style={{ color: "#c0563f" }}>
-                        {errors.terminoDeCursar}
-                      </p>
-                    )}
-                  </div>
-
-                  {formData.terminoDeCursar === true && (
-                    <div className="animate-fade-in" data-error={!!errors.finalesAdeudados}>
-                      <label
-                        className="block text-sm font-bold mb-3"
-                        style={{ color: "var(--ink-soft)" }}
-                      >
-                        Finales Adeudados
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {[
-                          "Solo TIF/PPS",
-                          "1 Final",
-                          "2 Finales",
-                          "3 Finales",
-                          "4 Finales",
-                          "5+",
-                        ].map((opt) => {
-                          const active = formData.finalesAdeudados === opt;
+                  {/* Selección Horarios */}
+                  {showHorariosSelection && (
+                    <section data-error={!!errors.horarios}>
+                      <SectionHead icon="clock">Disponibilidad Horaria</SectionHead>
+                      <div className="grid grid-cols-1 gap-3">
+                        {horariosDisponibles.map((horario) => {
+                          const active = formData.horarios.includes(horario);
                           return (
                             <div
-                              key={opt}
-                              onClick={() => setFormData((p) => ({ ...p, finalesAdeudados: opt }))}
-                              className="cursor-pointer px-3 py-3 rounded-xl border text-xs font-bold text-center transition duration-200 select-none"
+                              key={horario}
+                              onClick={() => handleHorarioToggle(horario)}
+                              role="checkbox"
+                              tabIndex={0}
+                              aria-checked={active}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  handleHorarioToggle(horario);
+                                }
+                              }}
+                              className="cursor-pointer px-5 py-4 rounded-2xl border transition flex items-center justify-between group select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
                               style={{
                                 borderColor: active ? "var(--accent)" : "var(--line)",
-                                background: active ? "var(--tint)" : "var(--bg-elevated)",
-                                color: active ? "var(--accent-text)" : "var(--ink-muted)",
+                                background: "var(--bg-elevated)",
                                 boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
                               }}
                             >
-                              {opt}
+                              <span
+                                className="text-sm font-bold"
+                                style={{ color: active ? "var(--accent-text)" : "var(--ink-soft)" }}
+                              >
+                                {horario}
+                              </span>
+                              {active && (
+                                <div
+                                  className="w-6 h-6 rounded-full flex items-center justify-center animate-scale-in"
+                                  style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+                                >
+                                  <Icon name="check" size={14} strokeWidth={2.6} />
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                      {errors.finalesAdeudados && (
+                      {errors.horarios && (
                         <p className="text-xs font-semibold mt-2 ml-1" style={{ color: "#c0563f" }}>
-                          {errors.finalesAdeudados}
+                          {errors.horarios}
                         </p>
                       )}
-                    </div>
+                    </section>
                   )}
+                </div>
+              )}
+              {/* ── Columna derecha ── */}
+              <div className="space-y-7">
+                {/* Situación Académica */}
+                <section>
+                  <SectionHead icon="book">Estado Académico</SectionHead>
 
-                  {formData.terminoDeCursar === false && (
-                    <div className="animate-fade-in" data-error={!!errors.cursandoElectivas}>
+                  <div className="space-y-6">
+                    <div data-error={!!errors.terminoDeCursar}>
                       <label
                         className="block text-sm font-bold mb-3"
                         style={{ color: "var(--ink-soft)" }}
                       >
-                        ¿Cursas Electivas?
+                        ¿Terminaste de cursar?
                       </label>
                       <div className="grid grid-cols-2 gap-4">
                         <SelectionCard
                           title="Sí"
-                          selected={formData.cursandoElectivas === true}
-                          onClick={() => setFormData((p) => ({ ...p, cursandoElectivas: true }))}
+                          subtitle="Solo debo finales o TIF"
+                          hideIcon
+                          selected={formData.terminoDeCursar === true}
+                          onClick={() =>
+                            setFormData((p) => ({
+                              ...p,
+                              terminoDeCursar: true,
+                              cursandoElectivas: null,
+                            }))
+                          }
                         />
                         <SelectionCard
                           title="No"
-                          selected={formData.cursandoElectivas === false}
-                          onClick={() => setFormData((p) => ({ ...p, cursandoElectivas: false }))}
+                          subtitle="Aún curso materias"
+                          hideIcon
+                          selected={formData.terminoDeCursar === false}
+                          onClick={() =>
+                            setFormData((p) => ({
+                              ...p,
+                              terminoDeCursar: false,
+                              finalesAdeudados: "",
+                            }))
+                          }
                         />
                       </div>
-                      {errors.cursandoElectivas && (
+                      {errors.terminoDeCursar && (
                         <p className="text-xs font-semibold mt-2 ml-1" style={{ color: "#c0563f" }}>
-                          {errors.cursandoElectivas}
+                          {errors.terminoDeCursar}
                         </p>
                       )}
                     </div>
-                  )}
 
-                  <div data-error={!!errors.otraSituacionAcademica}>
-                    <label
-                      className="block text-sm font-bold mb-2"
-                      style={{ color: "var(--ink-soft)" }}
-                    >
-                      Comentarios (Opcional)
-                    </label>
-                    <textarea
-                      value={formData.otraSituacionAcademica}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, otraSituacionAcademica: e.target.value }))
-                      }
-                      className="w-full p-4 rounded-2xl text-sm outline-none resize-none transition placeholder:text-[var(--ink-subtle)] focus:border-[var(--accent)]"
-                      style={inputBase}
-                      placeholder="Ej: Estoy cursando el TIF..."
-                      rows={2}
+                    {formData.terminoDeCursar === true && (
+                      <div className="animate-fade-in" data-error={!!errors.finalesAdeudados}>
+                        <label
+                          className="block text-sm font-bold mb-3"
+                          style={{ color: "var(--ink-soft)" }}
+                        >
+                          Finales Adeudados
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {[
+                            "Solo TIF/PPS",
+                            "1 Final",
+                            "2 Finales",
+                            "3 Finales",
+                            "4 Finales",
+                            "5+",
+                          ].map((opt) => {
+                            const active = formData.finalesAdeudados === opt;
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() =>
+                                  setFormData((p) => ({ ...p, finalesAdeudados: opt }))
+                                }
+                                role="radio"
+                                tabIndex={0}
+                                aria-checked={active}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setFormData((p) => ({ ...p, finalesAdeudados: opt }));
+                                  }
+                                }}
+                                className="cursor-pointer px-3 py-3 rounded-xl border text-xs font-bold text-center transition duration-200 select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+                                style={{
+                                  borderColor: active ? "var(--accent)" : "var(--line)",
+                                  background: "var(--bg-elevated)",
+                                  color: active ? "var(--accent-text)" : "var(--ink-muted)",
+                                  boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
+                                }}
+                              >
+                                {opt}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {errors.finalesAdeudados && (
+                          <p
+                            className="text-xs font-semibold mt-2 ml-1"
+                            style={{ color: "#c0563f" }}
+                          >
+                            {errors.finalesAdeudados}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {formData.terminoDeCursar === false && (
+                      <div className="animate-fade-in" data-error={!!errors.cursandoElectivas}>
+                        <label
+                          className="block text-sm font-bold mb-3"
+                          style={{ color: "var(--ink-soft)" }}
+                        >
+                          ¿Cursas Electivas?
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <SelectionCard
+                            title="Sí"
+                            hideIcon
+                            selected={formData.cursandoElectivas === true}
+                            onClick={() => setFormData((p) => ({ ...p, cursandoElectivas: true }))}
+                          />
+                          <SelectionCard
+                            title="No"
+                            hideIcon
+                            selected={formData.cursandoElectivas === false}
+                            onClick={() => setFormData((p) => ({ ...p, cursandoElectivas: false }))}
+                          />
+                        </div>
+                        {errors.cursandoElectivas && (
+                          <p
+                            className="text-xs font-semibold mt-2 ml-1"
+                            style={{ color: "#c0563f" }}
+                          >
+                            {errors.cursandoElectivas}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div data-error={!!errors.otraSituacionAcademica}>
+                      <label
+                        className="block text-sm font-bold mb-2"
+                        style={{ color: "var(--ink-soft)" }}
+                      >
+                        Comentarios (Opcional)
+                      </label>
+                      <textarea
+                        value={formData.otraSituacionAcademica}
+                        onChange={(e) =>
+                          setFormData((p) => ({ ...p, otraSituacionAcademica: e.target.value }))
+                        }
+                        className="w-full p-4 rounded-2xl text-sm outline-none resize-none transition placeholder:text-[var(--ink-subtle)] focus:border-[var(--accent)]"
+                        style={inputBase}
+                        placeholder="Ej: Estoy cursando el TIF..."
+                        rows={2}
+                      />
+                      {errors.otraSituacionAcademica && (
+                        <p className="text-xs font-semibold mt-2 ml-1" style={{ color: "#c0563f" }}>
+                          {errors.otraSituacionAcademica}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </section>
+
+                {reqCv && (
+                  <section data-error={!!errors.cvFile}>
+                    <SectionHead icon="file">Curriculum Vitae</SectionHead>
+
+                    <input
+                      id="cv-file-upload"
+                      type="file"
+                      ref={cvFileInputRef}
+                      className="sr-only"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx"
+                      onChange={(e) => handleFileChange(e, "cvFile")}
                     />
-                    {errors.otraSituacionAcademica && (
-                      <p className="text-xs font-semibold mt-2 ml-1" style={{ color: "#c0563f" }}>
-                        {errors.otraSituacionAcademica}
+                    <FileUploadButton
+                      onClick={() => openFilePicker(cvFileInputRef)}
+                      label={
+                        formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF, Imagen o Word)"
+                      }
+                      fileName={formData.cvFile?.name}
+                      hasError={!!errors.cvFile}
+                    />
+                    {errors.cvFile && (
+                      <p
+                        className="text-xs font-semibold mt-2 flex items-center gap-1"
+                        style={{ color: "#c0563f" }}
+                      >
+                        <Icon name="x" size={12} /> {errors.cvFile}
                       </p>
                     )}
-                  </div>
-                </div>
-              </section>
-
-              {reqCv && (
-                <section data-error={!!errors.cvFile}>
-                  <SectionHead icon="file">Curriculum Vitae</SectionHead>
-
-                  <input
-                    id="cv-file-upload"
-                    type="file"
-                    ref={cvFileInputRef}
-                    className="sr-only"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx"
-                    onChange={(e) => handleFileChange(e, "cvFile")}
-                  />
-                  <FileUploadButton
-                    onClick={() => openFilePicker(cvFileInputRef)}
-                    label={formData.cvFile ? "CV Seleccionado" : "Adjuntar CV (PDF, Imagen o Word)"}
-                    fileName={formData.cvFile?.name}
-                    hasError={!!errors.cvFile}
-                  />
-                  {errors.cvFile && (
-                    <p
-                      className="text-xs font-semibold mt-2 flex items-center gap-1"
-                      style={{ color: "#c0563f" }}
-                    >
-                      <Icon name="x" size={12} /> {errors.cvFile}
-                    </p>
-                  )}
-                </section>
-              )}
+                  </section>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="h-6 sm:h-0"></div>
-        </form>
+            <div className="h-6 sm:h-0"></div>
+          </form>
 
-        {/* Footer */}
-        <div
-          className="flex-shrink-0 p-4 sm:p-6 flex flex-col sm:flex-row gap-3 relative z-20 safe-area-bottom"
-          style={{ background: "var(--bg-elevated)", borderTop: "1px solid var(--line)" }}
-        >
-          {fileUploadProgress > 0 && fileUploadProgress < 100 && (
-            <div
-              className="absolute top-0 left-0 w-full h-1"
-              style={{ background: "var(--bg-sunken)" }}
-            >
+          {/* Footer */}
+          <div
+            className="enroll-foot flex-shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 relative z-20 safe-area-bottom"
+            style={{ background: "var(--bg-elevated)", borderTop: "1px solid var(--line)" }}
+          >
+            {fileUploadProgress > 0 && fileUploadProgress < 100 && (
               <div
-                className="h-full transition-[width] duration-300"
-                style={{ width: `${fileUploadProgress}%`, background: "var(--accent)" }}
-              ></div>
-            </div>
-          )}
-
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="w-full sm:flex-1 py-3.5 rounded-xl font-bold text-sm transition-colors hover:bg-[var(--bg-sunken)]"
-            style={{ color: "var(--ink-soft)" }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={() => {
-              if (formRef.current) formRef.current.requestSubmit();
-            }}
-            disabled={isSubmitting}
-            className="w-full sm:flex-[2] py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:translate-y-0 text-sm"
-            style={{ background: "var(--accent)", color: "var(--on-accent)" }}
-          >
-            {isSubmitting ? (
-              <>
+                className="absolute top-0 left-0 w-full h-1"
+                style={{ background: "var(--bg-sunken)" }}
+              >
                 <div
-                  className="w-5 h-5 rounded-full animate-spin"
-                  style={{
-                    border: "2px solid color-mix(in oklab, var(--on-accent) 30%, transparent)",
-                    borderTopColor: "var(--on-accent)",
-                  }}
-                />
-                <span>Procesando...</span>
-              </>
-            ) : (
-              <>
-                <span>Confirmar Inscripción</span>
-                <Icon name="arrow" size={18} strokeWidth={2.4} />
-              </>
+                  className="h-full transition-[width] duration-300"
+                  style={{ width: `${fileUploadProgress}%`, background: "var(--accent)" }}
+                ></div>
+              </div>
             )}
-          </button>
+
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="enroll-cancel w-full sm:flex-1 rounded-xl font-bold text-sm transition-colors hover:bg-[var(--bg-sunken)]"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                if (formRef.current) formRef.current.requestSubmit();
+              }}
+              disabled={isSubmitting}
+              className="enroll-submit w-full sm:flex-[2] rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:translate-y-0 text-sm"
+              style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+            >
+              {isSubmitting ? (
+                <>
+                  <div
+                    className="w-5 h-5 rounded-full animate-spin"
+                    style={{
+                      border: "2px solid color-mix(in oklab, var(--on-accent) 30%, transparent)",
+                      borderTopColor: "var(--on-accent)",
+                    }}
+                  />
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <>
+                  <span>Confirmar Inscripción</span>
+                  <Icon name="arrow" size={18} strokeWidth={2.4} />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      <ConfirmModal
+        isOpen={pendingWorkOff}
+        title="¿Indicar que no trabajás?"
+        message={
+          "Al hacerlo se eliminará el certificado laboral que tenías guardado.\n\nEsta acción no se puede deshacer."
+        }
+        confirmText="Sí, no trabajo"
+        cancelText="Volver"
+        type="danger"
+        onConfirm={confirmWorkOff}
+        onClose={() => setPendingWorkOff(false)}
+      />
+    </>
   );
 };
