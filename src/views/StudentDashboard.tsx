@@ -616,9 +616,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     ]
   );
 
-  // Only block completely if CORE student data is missing.
-  // If practicals/requests are loading, we show partial skeletons inside tabs.
-  if (isStudentLoading) return <DashboardLoadingSkeleton />;
+  // Wait until all student data (including convocatorias) has loaded to prevent layout shift.
+  if (isLoading) return <DashboardLoadingSkeleton />;
   if (error) return <ErrorState error={error.message} onRetry={() => refetchAll()} />;
 
   // CASO DE BLOQUEO POR FINALIZACIÓN (Solo si NO es un Admin mirando)
