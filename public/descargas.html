@@ -142,6 +142,52 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   #pps-aula-2026 .pa-navlinks a:active{ transform:scale(.95); }
   #pps-aula-2026 .pa-dl-row:active{ transform:scale(.992); }
 }
+
+/* === Topbar integrada Campus / Mi Panel === */
+#pps-aula-2026 .pa-nav{
+  min-height:70px !important;
+  align-items:center !important;
+  flex-wrap:nowrap !important;
+  gap:24px !important;
+  padding:10px 40px 14px !important;
+}
+#pps-aula-2026 .pa-brand{ min-width:190px; }
+#pps-aula-2026 .pa-brand__mark{ font-size:24px; }
+#pps-aula-2026 .pa-brand__sep{ height:24px; }
+#pps-aula-2026 .pa-navlinks{
+  align-items:center;
+  gap:4px;
+  margin-left:auto;
+  flex-wrap:nowrap;
+}
+#pps-aula-2026 .pa-navlinks a{
+  padding:9px 15px !important;
+  border-radius:10px !important;
+  font-size:14.5px !important;
+  font-weight:500 !important;
+  transition:color var(--t-fast), background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+#pps-aula-2026 .pa-navlinks a.is-on{
+  color:var(--bg);
+  background:var(--ink);
+  font-weight:600 !important;
+}
+#pps-aula-2026 .pa-navlinks a.pa-bridge{
+  margin-left:6px;
+  border:1px solid var(--line);
+  background:var(--bg-elevated);
+  color:var(--ink);
+}
+#pps-aula-2026 .pa-navlinks a.pa-bridge:hover{
+  border-color:var(--line-strong);
+  background:var(--bg-sunken);
+}
+@media (max-width:760px){
+  #pps-aula-2026 .pa-nav{ flex-wrap:wrap !important; padding:14px 20px !important; }
+  #pps-aula-2026 .pa-brand{ min-width:0; }
+  #pps-aula-2026 .pa-navlinks{ order:3; width:100%; overflow-x:auto; padding-bottom:2px; }
+}
+
 </style>
 </head>
 <body>
@@ -159,7 +205,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
       <a href="descargas.html" class="is-on">Descargas</a>
       <a href="preguntas.html">Preguntas</a>
       <a href="entregas.html">Entregas</a>
-      <a href="https://pps-psico.github.io/">Mi panel</a>
+      <a href="/#/student" class="pa-bridge">Mi Panel</a>
     </nav>
     <button class="pa-themebtn" type="button" id="paThemeBtn" aria-label="Cambiar tema" title="Cambiar tema">
       <svg class="ic-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -249,6 +295,19 @@ window.DESCARGAS = [
   try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
   document.querySelectorAll('a[href^="'+PANEL_ORIGIN+'"]').forEach(function(a){
     try{ var url=new URL(a.getAttribute('href'),window.location.href); var p=url.pathname.replace(/\/+$/,''); if(p===''||p==='/'){ url.searchParams.set('v',PANEL_VER); if(email) url.searchParams.set('email',email); a.setAttribute('href',url.toString()); } }catch(e){}
+  });
+})();
+</script>
+<script>
+/* Mantiene el acceso integrado a Mi Panel con el email que inyecta Moodle. */
+(function(){
+  var PANEL_VER='21';
+  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
+  var email=getParam('email');
+  try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
+  document.querySelectorAll('a.pa-bridge[href^="/#/student"]').forEach(function(a){
+    var qs='?v='+encodeURIComponent(PANEL_VER)+(email?'&email='+encodeURIComponent(email):'');
+    a.setAttribute('href','/'+qs+'#/student');
   });
 })();
 </script>

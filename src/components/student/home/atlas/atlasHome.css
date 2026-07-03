@@ -2454,9 +2454,8 @@ html.dark .ah-root .ah-action__status--ok {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 12px 0;
-  /* Integrada con el campus: sin fondo, blur ni borde, para que no se sienta
-     como una página aparte dentro del iframe de Moodle. */
+  min-height: 70px;
+  padding: 10px 0 14px;
   border-bottom: 0;
   background: transparent;
   backdrop-filter: none;
@@ -2476,18 +2475,34 @@ html.dark .ah-root .ah-action__status--ok {
   gap: 11px;
 }
 .ah-topbar__mark {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-md);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: var(--neutral-900);
   color: var(--neutral-0);
-  display: grid;
-  place-items: center;
-  font: 600 13px/1 var(--font-sans);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 7px 7px;
+}
+.ah-topbar__mark span {
+  width: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.ah-topbar__mark span:nth-child(1) {
+  height: 8px;
+}
+.ah-topbar__mark span:nth-child(2) {
+  height: 14px;
+}
+.ah-topbar__mark span:nth-child(3) {
+  height: 5px;
 }
 html.dark .ah-root .ah-topbar__mark {
-  background: var(--primary-500);
-  color: var(--fg-on-brand);
+  background: var(--fg);
+  color: var(--bg);
 }
 .ah-topbar__name {
   font: 500 14px/1.2 var(--font-sans);
@@ -2501,23 +2516,28 @@ html.dark .ah-root .ah-topbar__mark {
 }
 .ah-nav {
   display: flex;
+  align-items: center;
   gap: 4px;
-  margin-left: 20px;
+  margin-left: 26px;
 }
 .ah-nav__item {
   border: 0;
   background: transparent;
   cursor: pointer;
-  font: 400 13.5px/1 var(--font-sans);
+  font: 500 14.5px/1 var(--font-sans);
   color: var(--fg-muted);
-  padding: 8px 13px;
-  border-radius: var(--radius-md);
+  padding: 9px 15px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  text-decoration: none;
+  white-space: nowrap;
   transition:
     background var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
+    color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
 }
 .ah-nav__item:hover {
   background: var(--bg-sunken);
@@ -2526,7 +2546,16 @@ html.dark .ah-root .ah-topbar__mark {
 .ah-nav__item.active {
   background: var(--bg-sunken);
   color: var(--fg);
-  font-weight: 500;
+  font-weight: 600;
+}
+.ah-nav__item--bridge {
+  margin-left: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--fg);
+}
+.ah-nav__item--bridge:hover {
+  border-color: var(--border-strong);
 }
 .ah-topbar__right {
   margin-left: auto;

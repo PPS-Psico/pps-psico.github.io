@@ -37,7 +37,11 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
       <header className="ah-topbar">
         <div className="ah-topbar__inner">
           <div className="ah-topbar__brand">
-            <div className="ah-topbar__mark">U</div>
+            <div className="ah-topbar__mark" aria-hidden>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
             <div>
               <div className="ah-topbar__name">Mi Panel</div>
               <div className="ah-topbar__sub">PPS · Psicología</div>
@@ -56,24 +60,15 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 {n.label}
               </button>
             ))}
+
+            <a className="ah-nav__item ah-nav__item--bridge" href="/aula.html">
+              Campus PPS
+            </a>
           </nav>
 
           <div className="ah-topbar__right">
             {embedded && (
               <>
-                <button
-                  type="button"
-                  className="ah-iconbtn"
-                  onClick={() => {
-                    window.location.href = "aula.html";
-                  }}
-                  title="Volver al campus"
-                  aria-label="Volver al campus"
-                >
-                  <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
-                    arrow_back
-                  </span>
-                </button>
                 <button
                   type="button"
                   className="ah-iconbtn"

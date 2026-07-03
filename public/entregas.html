@@ -53,21 +53,22 @@ html,body{ margin:0; background:transparent; overflow-x:hidden; }
 #pps-aula-2026 .pa-navlinks a.is-on{ color:var(--bg); background:var(--ink); }
 
 /* masthead editorial */
-#pps-aula-2026 .pa-mast{ position:relative; padding:44px 72px 0; max-width:1360px; margin:0 auto; }
-#pps-aula-2026 .pa-mast__eyebrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-muted); }
+#pps-aula-2026 .pa-mast{ position:relative; padding:30px 72px 0; max-width:1360px; margin:0 auto; }
+#pps-aula-2026 .pa-mast__eyebrow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-muted); }
 #pps-aula-2026 .pa-mast__eyebrow b{ color:var(--accent-deep); font-weight:600; }
-#pps-aula-2026 .pa-mast__eyebrow .sep{ width:4px; height:4px; border-radius:50%; background:var(--line-strong); }
-#pps-aula-2026 .pa-mast__title{ font-family:var(--font-display); font-weight:700; font-size:clamp(40px,5.4vw,68px); line-height:.96; letter-spacing:-.045em; color:var(--uflo-deep); margin:22px 0 0; max-width:760px; }
-#pps-aula-2026 .pa-mast__sub{ margin:22px 0 0; max-width:540px; font-size:18px; line-height:1.55; color:var(--ink-muted); }
+#pps-aula-2026 .pa-mast__eyebrow .pa-pill{ display:inline-flex; align-items:center; min-height:24px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--bg-elevated); color:var(--ink-muted); }
+#pps-aula-2026 .pa-mast__title{ font-family:var(--font-display); font-weight:700; font-size:clamp(38px,4.55vw,58px); line-height:.98; letter-spacing:-.045em; color:var(--ink); margin:18px 0 0; max-width:760px; }
+#pps-aula-2026 .pa-mast__title span{ color:var(--accent-deep); }
+#pps-aula-2026 .pa-mast__sub{ margin:16px 0 0; max-width:610px; font-size:17px; line-height:1.55; color:var(--ink-muted); }
 
 /* wrap */
-#pps-aula-2026 .pa-ent-wrap{ max-width:1360px; margin:0 auto; padding:40px 72px 80px; }
+#pps-aula-2026 .pa-ent-wrap{ max-width:1360px; margin:0 auto; padding:28px 72px 80px; }
 
 /* tabs de orientación */
-#pps-aula-2026 .pa-ent-tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:26px; }
+#pps-aula-2026 .pa-ent-tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
 #pps-aula-2026 .pa-ent-tab{
   position:relative; text-align:left; cursor:pointer; display:flex; align-items:center; gap:14px;
-  padding:16px 18px; border-radius:18px; background:var(--bg-elevated); border:1px solid var(--line);
+  padding:14px 16px; border-radius:16px; background:var(--bg-elevated); border:1px solid var(--line);
   font:inherit; color:var(--ink); transition:border-color var(--t-fast),background var(--t-fast),transform var(--t-fast);
 }
 #pps-aula-2026 .pa-ent-tab:hover{ transform:translateY(-1px); border-color:var(--line-strong); }
@@ -76,28 +77,29 @@ html,body{ margin:0; background:transparent; overflow-x:hidden; }
   background:color-mix(in oklab,var(--o) 7%,var(--bg-elevated));
   box-shadow:0 8px 22px -14px color-mix(in oklab,var(--o) 60%,transparent);
 }
-#pps-aula-2026 .pa-ent-tab__ic{ width:44px; height:44px; border-radius:13px; flex-shrink:0; display:grid; place-items:center; background:color-mix(in oklab,var(--o) 13%,var(--bg)); color:var(--o); }
+#pps-aula-2026 .pa-ent-tab__ic{ width:38px; height:38px; border-radius:12px; flex-shrink:0; display:grid; place-items:center; background:color-mix(in oklab,var(--o) 11%,var(--bg)); color:var(--o); }
 #pps-aula-2026 .pa-ent-tab.is-on .pa-ent-tab__ic{ background:var(--o); color:#fff; }
 #pps-aula-2026 .pa-ent-tab__t{ display:block; font-family:var(--font-display); font-weight:600; font-size:16.5px; letter-spacing:-.02em; line-height:1.1; }
 #pps-aula-2026 .pa-ent-tab__s{ display:block; font-size:12.5px; color:var(--ink-muted); margin-top:2px; }
 
 /* tarjetas por institución */
-#pps-aula-2026 .pa-ent-cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+#pps-aula-2026 .pa-ent-cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
 #pps-aula-2026 .pa-ent-card{
   position:relative; text-decoration:none; color:var(--ink); display:flex; flex-direction:column;
-  padding:22px; border-radius:18px; background:var(--bg-elevated); border:1px solid var(--line);
+  padding:20px; border-radius:16px; background:var(--bg-elevated); border:1px solid var(--line);
   transition:transform var(--t-fast),border-color var(--t-fast),box-shadow var(--t-fast);
 }
 #pps-aula-2026 .pa-ent-card:hover{ transform:translateY(-2px); border-color:color-mix(in oklab,var(--o) 40%,transparent); box-shadow:0 14px 30px -18px color-mix(in oklab,var(--o) 70%,transparent); }
-#pps-aula-2026 .pa-ent-card__top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-#pps-aula-2026 .pa-ent-card__ic{ width:44px; height:44px; border-radius:13px; display:grid; place-items:center; background:color-mix(in oklab,var(--o) 13%,var(--bg)); color:var(--o); }
+#pps-aula-2026 .pa-ent-card__top{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+#pps-aula-2026 .pa-ent-card__ic{ width:38px; height:38px; border-radius:12px; display:grid; place-items:center; background:color-mix(in oklab,var(--o) 11%,var(--bg)); color:var(--o); }
 #pps-aula-2026 .pa-ent-tag{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:999px; }
+#pps-aula-2026 .pa-ent-tag:empty{ display:none; }
 #pps-aula-2026 .pa-ent-tag.is-done{ color:#128B72; background:color-mix(in oklab,var(--uflo-teal) 14%,var(--bg)); }
 #pps-aula-2026 .pa-ent-tag.is-review{ color:#0E8E94; background:color-mix(in oklab,var(--uflo-aqua) 16%,var(--bg)); }
 #pps-aula-2026 .pa-ent-tag.is-open{ color:var(--ink-muted); background:var(--bg-sunken); }
-#pps-aula-2026 .pa-ent-card__name{ font-family:var(--font-display); font-weight:600; font-size:19px; letter-spacing:-.025em; color:var(--ink); line-height:1.1; }
+#pps-aula-2026 .pa-ent-card__name{ font-family:var(--font-display); font-weight:600; font-size:19px; letter-spacing:-.025em; color:var(--ink); line-height:1.12; min-height:2.22em; margin-top:2px; }
 #pps-aula-2026 .pa-ent-card__meta{ display:flex; align-items:center; gap:7px; margin-top:8px; font-size:12.5px; color:var(--ink-muted); }
-#pps-aula-2026 .pa-ent-card__foot{ margin-top:18px; padding-top:14px; border-top:1px solid var(--hairline); display:flex; align-items:center; justify-content:space-between; }
+#pps-aula-2026 .pa-ent-card__foot{ margin-top:18px; padding-top:14px; border-top:1px solid var(--hairline); display:flex; align-items:center; justify-content:space-between; gap:12px; }
 #pps-aula-2026 .pa-ent-card__go{ display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600; color:var(--o); letter-spacing:-.01em; }
 #pps-aula-2026 .pa-ent-card__mod{ font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-subtle); }
 
@@ -108,7 +110,7 @@ html,body{ margin:0; background:transparent; overflow-x:hidden; }
 @media (max-width:680px){
   #pps-aula-2026 .pa-ent-cards{ grid-template-columns:1fr; }
   #pps-aula-2026 .pa-nav{ padding:14px 20px; }
-  #pps-aula-2026 .pa-mast{ padding:48px 20px 0; }
+  #pps-aula-2026 .pa-mast{ padding:36px 20px 0; }
   #pps-aula-2026 .pa-ent-wrap{ padding:32px 20px 64px; }
 }
 
@@ -173,6 +175,52 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   #pps-aula-2026 .pa-ent-tab:active{ transform:scale(.975); }
   #pps-aula-2026 .pa-ent-card:active{ transform:scale(.985); }
 }
+
+/* === Topbar integrada Campus / Mi Panel === */
+#pps-aula-2026 .pa-nav{
+  min-height:70px !important;
+  align-items:center !important;
+  flex-wrap:nowrap !important;
+  gap:24px !important;
+  padding:10px 40px 14px !important;
+}
+#pps-aula-2026 .pa-brand{ min-width:190px; }
+#pps-aula-2026 .pa-brand__mark{ font-size:24px; }
+#pps-aula-2026 .pa-brand__sep{ height:24px; }
+#pps-aula-2026 .pa-navlinks{
+  align-items:center;
+  gap:4px;
+  margin-left:auto;
+  flex-wrap:nowrap;
+}
+#pps-aula-2026 .pa-navlinks a{
+  padding:9px 15px !important;
+  border-radius:10px !important;
+  font-size:14.5px !important;
+  font-weight:500 !important;
+  transition:color var(--t-fast), background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+#pps-aula-2026 .pa-navlinks a.is-on{
+  color:var(--bg);
+  background:var(--ink);
+  font-weight:600 !important;
+}
+#pps-aula-2026 .pa-navlinks a.pa-bridge{
+  margin-left:6px;
+  border:1px solid var(--line);
+  background:var(--bg-elevated);
+  color:var(--ink);
+}
+#pps-aula-2026 .pa-navlinks a.pa-bridge:hover{
+  border-color:var(--line-strong);
+  background:var(--bg-sunken);
+}
+@media (max-width:760px){
+  #pps-aula-2026 .pa-nav{ flex-wrap:wrap !important; padding:14px 20px !important; }
+  #pps-aula-2026 .pa-brand{ min-width:0; }
+  #pps-aula-2026 .pa-navlinks{ order:3; width:100%; overflow-x:auto; padding-bottom:2px; }
+}
+
 </style>
 </head>
 <body>
@@ -191,7 +239,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
       <a href="descargas.html">Descargas</a>
       <a href="preguntas.html">Preguntas</a>
       <a href="entregas.html" class="is-on">Entregas</a>
-      <a href="https://pps-psico.github.io/">Mi panel</a>
+      <a href="/#/student" class="pa-bridge">Mi Panel</a>
     </nav>
     <button class="pa-themebtn" type="button" id="paThemeBtn" aria-label="Cambiar tema" title="Cambiar tema">
       <svg class="ic-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -202,10 +250,10 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
   <!-- MASTHEAD -->
   <div class="pa-mast">
     <div class="pa-mast__eyebrow">
-      <b>Entrega de informes</b><span class="sep"></span>Ciclo 2026<span class="sep"></span>Buzón por institución
+      <b>Campus PPS</b><span class="pa-pill">Ciclo 2026</span><span class="pa-pill">Informes finales</span>
     </div>
-    <h1 class="pa-mast__title">Subí tu informe donde corresponde.</h1>
-    <p class="pa-mast__sub">Elegí tu orientación y la institución donde cursaste la práctica. Ahí cargás la planilla firmada y el informe final — y seguís su estado.</p>
+    <h1 class="pa-mast__title">Entregas de <span>informes.</span></h1>
+    <p class="pa-mast__sub">Elegí tu orientación y abrí la tarea de la institución donde cursaste. Ahí cargás la planilla firmada y el informe final.</p>
   </div>
 
   <div class="pa-ent-wrap" style="--o:#3CB88D;">
@@ -220,7 +268,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
      DATOS — EDITÁ ACÁ (y volvé a desplegar). No hace falta tocar Moodle.
      · color: color de marca de la orientación (tiñe tabs y tarjetas)
      · icon:  chat | users | school
-     · inst[].st:  "done" (Entregado) | "review" (En corrección) | "open"/"" (Buzón abierto)
+     · inst[].st:  "done" (Entregado) | "review" (En corrección) | "open"/"" (sin estado visible)
      · inst[].url: enlace a la Tarea de Moodle (mod_assign) de esa institución
      ============================================================================ -->
 <script id="entregas-data">
@@ -294,7 +342,7 @@ window.ENTREGAS = [
   var TAG = {
     done:   { c:"is-done",   t:"Entregado",     ic:"check"  },
     review: { c:"is-review", t:"En corrección", ic:"clock"  },
-    open:   { c:"is-open",   t:"Buzón abierto", ic:"folder" }
+    open:   null
   };
 
   var tabsEl = document.getElementById('entTabs');
@@ -323,16 +371,16 @@ window.ENTREGAS = [
     var o = DATA[active]; if(!o) return;
     wrap.style.setProperty('--o', o.color);
     cardsEl.innerHTML = o.inst.map(function(m,ci){
-      var tag = TAG[m.st] || TAG.open;
+      var tag = TAG[m.st] || null;
       var nm = (m.n||'').toString();
       var disp = nm.length>34 ? nm.slice(0,33).replace(/\s+\S*$/,'').trim()+'…' : nm;
       return '<a class="pa-ent-card" style="--i:'+(ci%8)+'" href="'+(m.url||'#')+'" target="_blank" rel="noopener">'
         + '<div class="pa-ent-card__top"><span class="pa-ent-card__ic">'+svg("folder",20)+'</span>'
-        + '<span class="pa-ent-tag '+tag.c+'">'+svg(tag.ic,12,2)+' '+tag.t+'</span></div>'
+        + (tag ? '<span class="pa-ent-tag '+tag.c+'">'+svg(tag.ic,12,2)+' '+tag.t+'</span>' : '') + '</div>'
         + '<div class="pa-ent-card__name" title="'+nm.replace(/"/g,'&quot;')+'">'+disp+'</div>'
-        + '<div class="pa-ent-card__meta">'+svg("cal",14)+' Fecha límite en la Tarea</div>'
+        + '<div class="pa-ent-card__meta">'+svg("folder",14)+' Tarea del campus</div>'
         + '<div class="pa-ent-card__foot"><span class="pa-ent-card__go">Abrir entrega '+svg("arrow",14)+'</span>'
-        + '<span class="pa-ent-card__mod">Tarea</span></div></a>';
+        + '<span class="pa-ent-card__mod">Moodle</span></div></a>';
     }).join('');
   }
   function render(){ renderTabs(); renderCards(); reportH(); }
@@ -413,6 +461,19 @@ window.ENTREGAS = [
   try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
   document.querySelectorAll('a[href^="'+PANEL_ORIGIN+'"]').forEach(function(a){
     try{ var url=new URL(a.getAttribute('href'),window.location.href); var p=url.pathname.replace(/\/+$/,''); if(p===''||p==='/'){ url.searchParams.set('v',PANEL_VER); if(email) url.searchParams.set('email',email); a.setAttribute('href',url.toString()); } }catch(e){}
+  });
+})();
+</script>
+<script>
+/* Mantiene el acceso integrado a Mi Panel con el email que inyecta Moodle. */
+(function(){
+  var PANEL_VER='21';
+  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
+  var email=getParam('email');
+  try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
+  document.querySelectorAll('a.pa-bridge[href^="/#/student"]').forEach(function(a){
+    var qs='?v='+encodeURIComponent(PANEL_VER)+(email?'&email='+encodeURIComponent(email):'');
+    a.setAttribute('href','/'+qs+'#/student');
   });
 })();
 </script>
