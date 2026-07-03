@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useModal } from "../contexts/ModalContext";
-import type { Convocatoria, Estudiante, LanzamientoPPS } from "../types";
+import type { Convocatoria, Estudiante, LanzamientoPPS, CompromisoPPS } from "../types";
 import {
   fetchStudentCompromisos,
   sendCompromisoAcceptanceEmail,
@@ -28,7 +28,19 @@ export const useStudentCommitments = (
     queryKey: ["compromisos", legajo, studentId],
     queryFn: async () => {
       if (!studentId || legajo === "99999") return [];
-      return fetchStudentCompromisos(studentId);
+      const data = await fetchStudentCompromisos(studentId);
+      try {
+        sessionStorage.setItem(`pps_cache_commitments_${legajo}`, JSON.stringify(data));
+      } catch (e) {}
+      return data;
+    },
+    initialData: () => {
+      try {
+        const cached = sessionStorage.getItem(`pps_cache_commitments_${legajo}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch (e) {
+        return undefined;
+      }
     },
     enabled: !!studentId,
     staleTime: 1000 * 60 * 5,
@@ -90,7 +102,9 @@ export const useStudentCommitments = (
     },
   });
 
-  const compromisoMap = new Map(compromisos.map((item) => [item.convocatoria_id, item]));
+  const compromisoMap = new Map(
+    compromisos.map((item: CompromisoPPS) => [item.convocatoria_id, item])
+  );
 
   return {
     compromisos,

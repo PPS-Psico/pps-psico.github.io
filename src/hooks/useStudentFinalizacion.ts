@@ -13,16 +13,27 @@ export const useStudentFinalizacion = (legajo: string, studentId: string | null)
   } = useQuery({
     queryKey: ["finalizacionRequest", legajo],
     queryFn: async () => {
-      // Modo testing (alumno de prueba): leemos del mockDb en vez de Supabase,
-      // alineado con useStudentSolicitudes. Evita un 400 por consultar la tabla
-      // real con el id mock "st_999" (no es un UUID válido).
+      let data;
       if (legajo === "99999") {
         const recs = (await mockDb.getAll("finalizacion_pps", {
           [FIELD_ESTUDIANTE_FINALIZACION]: "st_999",
         })) as FinalizacionPPS[];
-        return recs && recs.length ? recs[0] : null;
+        data = recs && recs.length ? recs[0] : null;
+      } else {
+        data = await fetchFinalizacionRequest(legajo, studentId);
       }
-      return fetchFinalizacionRequest(legajo, studentId);
+      try {
+        sessionStorage.setItem(`pps_cache_finalizacion_${legajo}`, JSON.stringify(data));
+      } catch (e) {}
+      return data;
+    },
+    initialData: () => {
+      try {
+        const cached = sessionStorage.getItem(`pps_cache_finalizacion_${legajo}`);
+        return cached ? JSON.parse(cached) : undefined;
+      } catch (e) {
+        return undefined;
+      }
     },
     enabled: !!studentId,
     staleTime: 1000 * 60 * 5, // 5 minutes

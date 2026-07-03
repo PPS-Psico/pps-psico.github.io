@@ -74,6 +74,7 @@ export const useConvocatorias = (
   } = useQuery({
     queryKey: ["convocatorias", legajo, studentId],
     queryFn: async () => {
+      let result: any;
       if (legajo === "99999") {
         const [myConvs, allLanz] = await Promise.all([
           mockDb.getAll("convocatorias", {
@@ -116,15 +117,47 @@ export const useConvocatorias = (
           const addr = l[FIELD_DIRECCION_LANZAMIENTOS] as string | undefined;
           if (name && addr) institutionAddressMap.set(normalizeStringForComparison(name), addr);
         });
-        return {
+        result = {
           lanzamientos: availableLaunches,
           myEnrollments: hydratedEnrollments,
           allLanzamientos: allLanz,
           institutionAddressMap,
           institutionLogoMap: new Map(),
         };
+      } else {
+        result = await fetchConvocatoriasData(studentId);
       }
-      return fetchConvocatoriasData(studentId);
+
+      try {
+        const serialized = {
+          lanzamientos: result.lanzamientos,
+          myEnrollments: result.myEnrollments,
+          allLanzamientos: result.allLanzamientos,
+          institutionAddressMap: Array.from(result.institutionAddressMap.entries()),
+          institutionLogoMap: result.institutionLogoMap
+            ? Array.from(result.institutionLogoMap.entries())
+            : [],
+        };
+        sessionStorage.setItem(`pps_cache_convs_${legajo}`, JSON.stringify(serialized));
+      } catch (e) {}
+
+      return result;
+    },
+    initialData: () => {
+      try {
+        const cached = sessionStorage.getItem(`pps_cache_convs_${legajo}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          return {
+            lanzamientos: parsed.lanzamientos,
+            myEnrollments: parsed.myEnrollments,
+            allLanzamientos: parsed.allLanzamientos,
+            institutionAddressMap: new Map(parsed.institutionAddressMap),
+            institutionLogoMap: new Map(parsed.institutionLogoMap),
+          };
+        }
+      } catch (e) {}
+      return undefined;
     },
     enabled: !!studentId || isSuperUserMode || legajo === "99999",
     staleTime: 1000 * 60 * 5,

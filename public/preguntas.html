@@ -235,6 +235,46 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 @keyframes ppsPageIn{ from{ opacity:0; transform:translateY(10px); filter:blur(3px); } to{ opacity:1; transform:translateY(0); filter:blur(0); } }
 @media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root),::view-transition-group(root),::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:1ms; } }
 
+
+/* === Masthead editorial unificado con Entregas === */
+#pps-aula-2026 .pa-mast{
+  padding-top:30px !important;
+  max-width:1360px !important;
+}
+#pps-aula-2026 .pa-mast__eyebrow{
+  gap:10px !important;
+  font-size:12px !important;
+  letter-spacing:.1em !important;
+}
+#pps-aula-2026 .pa-mast__eyebrow .sep{ display:none !important; }
+#pps-aula-2026 .pa-mast__eyebrow .pa-pill{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--bg-elevated);
+  color:var(--ink-muted);
+}
+#pps-aula-2026 .pa-mast__title{
+  font-size:clamp(38px,4.55vw,58px) !important;
+  line-height:.98 !important;
+  letter-spacing:-.045em !important;
+  color:var(--ink) !important;
+  margin:18px 0 0 !important;
+  max-width:760px !important;
+}
+#pps-aula-2026 .pa-mast__title span{ color:var(--accent-deep); }
+#pps-aula-2026 .pa-mast__sub{
+  margin:16px 0 0 !important;
+  max-width:610px !important;
+  font-size:17px !important;
+  line-height:1.55 !important;
+}
+@media (max-width:680px){
+  #pps-aula-2026 .pa-mast{ padding:36px 20px 0 !important; }
+}
 </style>
 </head>
 <body>
@@ -262,8 +302,8 @@ html[data-theme="dark"] #pps-aula-2026 .pa-nav{ background:rgba(10,14,26,.86); }
 
   <!-- MASTHEAD -->
   <div class="pa-mast">
-    <div class="pa-mast__eyebrow"><b>Centro de ayuda</b><span class="sep"></span>Ciclo 2026<span class="sep"></span>Facultad de Psicología</div>
-    <h1 class="pa-mast__title">Preguntas frecuentes.</h1>
+    <div class="pa-mast__eyebrow"><b>Campus PPS</b><span class="pa-pill">Ciclo 2026</span><span class="pa-pill">Centro de ayuda</span></div>
+    <h1 class="pa-mast__title">Preguntas <span>frecuentes.</span></h1>
     <p class="pa-mast__sub">Las consultas más habituales sobre las Prácticas Profesionales Supervisadas, resueltas. Si buscás el recorrido paso a paso, está en la <a href="guia.html" style="color:var(--accent-deep); text-decoration:underline;">Guía 2026</a>.</p>
   </div>
 
