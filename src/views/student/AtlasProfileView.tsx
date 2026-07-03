@@ -192,6 +192,7 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
           <h1>
             Mi <em>perfil</em>.
           </h1>
+          <p>Mantené tus datos de contacto actualizados.</p>
         </div>
 
         {/* Header */}

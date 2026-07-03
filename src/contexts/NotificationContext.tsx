@@ -32,6 +32,7 @@ import ReminderService, { Reminder } from "../services/reminderService";
 import { useAuth } from "./AuthContext";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
+import { badgeService } from "../utils/badgeService";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 /** Fila genérica de un payload de Supabase Realtime (acceso dinámico por columna). */
@@ -523,6 +524,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // Actualizar el Badge del icono de la PWA según las notificaciones no leídas
+  useEffect(() => {
+    if (unreadCount > 0) {
+      badgeService.set(unreadCount);
+    } else {
+      badgeService.clear();
+    }
+  }, [unreadCount]);
 
   const showToast = useCallback((message: string, type: "success" | "error" | "warning") => {
     setToast({ message, type });

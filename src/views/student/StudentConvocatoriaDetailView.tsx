@@ -114,7 +114,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
-    else navigate("/student/convocatorias");
+    else navigate("/student");
   };
 
   const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -189,7 +189,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
               action={
                 <button
                   type="button"
-                  onClick={() => navigate("/student/convocatorias")}
+                  onClick={() => navigate("/student")}
                   className="rounded-pill px-4 py-2 text-sm font-semibold text-white"
                   style={{ background: "var(--accent)" }}
                 >

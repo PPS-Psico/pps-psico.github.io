@@ -138,10 +138,7 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
               <h1>
                 Tus <em>solicitudes</em>.
               </h1>
-              <p>
-                Iniciá una PPS por tu cuenta o gestioná la acreditación final. Acá seguís el estado
-                de cada trámite a medida que avanza con coordinación.
-              </p>
+              <p>Acá seguís el estado de cada trámite a medida que avanza con coordinación.</p>
             </div>
 
             {(onCreateSolicitud || onRequestFinalization) && (

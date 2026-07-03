@@ -72,7 +72,62 @@ const StudentPanelContext = createContext<StudentPanelContextType | undefined>(u
  * Provides all data related to a specific student panel.
  * This component acts as a single data-fetching orchestrator for the student dashboard.
  */
-export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNode }> = ({
+const emptyContextValue: StudentPanelContextType = {
+  studentDetails: null,
+  studentId: null,
+  practicas: [],
+  solicitudes: [],
+  lanzamientos: [],
+  allLanzamientos: [],
+  enrollmentMap: new Map(),
+  completedLanzamientoIds: new Set(),
+  completedOrientationsByInstitution: new Map(),
+  informeTasks: [],
+  criterios: initialCriterios,
+  institutionAddressMap: new Map(),
+  finalizacionRequest: null,
+  compromisoMap: new Map(),
+  isLoading: false,
+  isStudentLoading: false,
+  isPracticasLoading: false,
+  isSolicitudesLoading: false,
+  isConvocatoriasLoading: false,
+  isFinalizationLoading: false,
+  isCommitmentsLoading: false,
+  error: null,
+  updateOrientation: { mutate: () => {}, isPending: false } as any,
+  updateInternalNotes: { mutate: () => {}, isPending: false } as any,
+  updateNota: { mutate: () => {}, isPending: false } as any,
+  updateFechaFin: { mutate: () => {}, isPending: false } as any,
+  deletePractica: { mutate: () => {}, isPending: false } as any,
+  enrollStudent: { mutate: () => {}, isPending: false },
+  cancelEnrollment: { mutate: () => {}, isPending: false },
+  confirmInforme: { mutate: () => {}, isPending: false } as any,
+  acceptCompromiso: { mutate: () => {}, isPending: false } as any,
+  refetchAll: () => {},
+  refetchPracticas: () => {},
+};
+
+export const StudentPanelProvider: React.FC<{ legajo?: string; children: ReactNode }> = ({
+  legajo,
+  children,
+}) => {
+  if (!legajo) {
+    return (
+      <StudentPanelContext.Provider value={emptyContextValue}>
+        {children}
+      </StudentPanelContext.Provider>
+    );
+  }
+
+  return (
+    <StudentPanelContextActiveProvider legajo={legajo}>
+      {children}
+    </StudentPanelContextActiveProvider>
+  );
+};
+
+const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: ReactNode }> = ({
   legajo,
   children,
 }) => {

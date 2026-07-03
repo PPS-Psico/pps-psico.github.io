@@ -4,12 +4,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Footer from "../components/layout/Footer";
 import AppModals from "../components/AppModals";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
+import Auth from "../components/Auth";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { StudentPanelProvider, useStudentPanel } from "../contexts/StudentPanelContext";
 import type { TabId } from "../types";
 import StudentDashboard from "./StudentDashboard";
-import { PullToRefresh, TabTransitionWrapper } from "../components/layout/MobileTransitions";
+import { PullToRefresh } from "../components/layout/MobileTransitions";
 import { useTabSwipe } from "../hooks/useSwipe";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { isEmbedded } from "../utils/isEmbedded";
@@ -26,11 +27,12 @@ const StudentLayout: React.FC = () => {
 
   // Determine active tab from URL
   let activeTab: TabId = "inicio";
-  if (location.pathname.includes("/convocatorias")) activeTab = "convocatorias";
-  else if (location.pathname.includes("/aula")) activeTab = "aula";
-  else if (location.pathname.includes("/entregas")) activeTab = "informes";
+  if (location.pathname.includes("/entregas")) activeTab = "entregas";
   else if (location.pathname.includes("/practicas")) activeTab = "practicas";
   else if (location.pathname.includes("/solicitudes")) activeTab = "solicitudes";
+  else if (location.pathname.includes("/guia")) activeTab = "guia";
+  else if (location.pathname.includes("/descargas")) activeTab = "descargas";
+  else if (location.pathname.includes("/preguntas")) activeTab = "preguntas";
   else if (location.pathname.includes("/perfil")) activeTab = "profile";
 
   const handleTabChange = (tabId: TabId) => {
@@ -41,28 +43,15 @@ const StudentLayout: React.FC = () => {
 
     if (tabId === "inicio") navigate("/student");
     else if (tabId === "profile") navigate("/student/perfil");
-    else if (tabId === "informes") navigate("/student/entregas");
     else navigate(`/student/${tabId}`);
   };
 
   const mobileNavTabs = [
-    { id: "inicio" as TabId, label: "Inicio", icon: "home", path: "/student" },
-    /* En mobile no va el Aula completa (es una superficie de escritorio):
-       queda solo Entregas, con una vista propia pensada para celular. */
-    { id: "informes" as TabId, label: "Entregas", icon: "upload", path: "/student/entregas" },
-    {
-      id: "practicas" as TabId,
-      label: "Prácticas",
-      icon: "work_history",
-      path: "/student/practicas",
-    },
-    {
-      id: "solicitudes" as TabId,
-      label: "Solicitudes",
-      icon: "list_alt",
-      path: "/student/solicitudes",
-    },
-    { id: "profile" as TabId, label: "Perfil", icon: "person", path: "/student/perfil" },
+    { id: "inicio" as TabId, label: "Inicio", path: "/student" },
+    { id: "entregas" as TabId, label: "Entregas", path: "/student/entregas" },
+    { id: "practicas" as TabId, label: "Prácticas", path: "/student/practicas" },
+    { id: "solicitudes" as TabId, label: "Solicitudes", path: "/student/solicitudes" },
+    { id: "profile" as TabId, label: "Perfil", path: "/student/perfil" },
   ];
 
   // Swipe gesture handling for mobile tab navigation
@@ -73,6 +62,10 @@ const StudentLayout: React.FC = () => {
     onTabChange: handleTabChange,
     enabled: isMobile,
   });
+
+  if (isMobile && !authenticatedUser) {
+    return <Auth />;
+  }
 
   return (
     <div
@@ -120,17 +113,18 @@ const StudentLayout: React.FC = () => {
       <AppModals />
 
       {/* Mobile Nav is also irrelevant if fully locked in finalization view, but for now we keep it or can hide it too */}
-      {!finalizacionRequest && <MobileBottomNav tabs={mobileNavTabs} activeTabId={activeTab} />}
+      {!finalizacionRequest && authenticatedUser && (
+        <MobileBottomNav tabs={mobileNavTabs} activeTabId={activeTab} />
+      )}
     </div>
   );
 };
 
 const StudentView: React.FC = () => {
   const { authenticatedUser } = useAuth();
-  if (!authenticatedUser) return null;
 
   return (
-    <StudentPanelProvider legajo={authenticatedUser.legajo}>
+    <StudentPanelProvider legajo={authenticatedUser?.legajo}>
       <StudentLayout />
     </StudentPanelProvider>
   );

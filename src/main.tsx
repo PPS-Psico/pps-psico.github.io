@@ -82,6 +82,29 @@ if (typeof Node === "function" && Node.prototype) {
 document.body.classList.add("notranslate");
 document.body.setAttribute("translate", "no");
 
+// Solicitar persistencia de almacenamiento en navegadores móviles (evita purga por inactividad en iOS)
+if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persist) {
+  navigator.storage
+    .persisted()
+    .then((persisted) => {
+      if (!persisted) {
+        navigator.storage
+          .persist()
+          .then((granted) => {
+            if (granted) {
+              logger.info("[Storage] Persistencia de almacenamiento concedida");
+            } else {
+              logger.warn("[Storage] Persistencia de almacenamiento denegada");
+            }
+          })
+          .catch((e) => logger.warn("[Storage] Error solicitando persistencia:", e));
+      } else {
+        logger.info("[Storage] El almacenamiento ya es persistente");
+      }
+    })
+    .catch((e) => logger.warn("[Storage] Error verificando persistencia:", e));
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

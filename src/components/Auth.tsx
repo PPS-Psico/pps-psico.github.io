@@ -169,7 +169,11 @@ const EdInput: React.FC<EdInputProps> = ({ icon, hasError, reveal, className = "
   </div>
 );
 
-const Auth: React.FC = () => {
+interface AuthProps {
+  inline?: boolean;
+}
+
+const Auth: React.FC<AuthProps> = ({ inline = false }) => {
   const { login } = useAuth();
   const { showModal } = useModal();
   const { resolvedTheme } = useTheme();
@@ -885,14 +889,75 @@ const Auth: React.FC = () => {
   if (autoLoginStatus === "checking") {
     return (
       <div
-        className="ed fixed inset-0 w-full h-[100dvh] flex flex-col items-center justify-center gap-5"
+        className={`ed flex flex-col items-center justify-center gap-5 p-8 ${inline ? "w-full border border-[var(--line)] bg-[var(--bg-elevated)] rounded-3xl" : "fixed inset-0 w-full h-[100dvh]"}`}
         data-mode={resolvedTheme}
         data-accent="teal"
-        style={{ background: "var(--bg)", color: "var(--ink)" }}
+        style={{ background: inline ? "transparent" : "var(--bg)", color: "var(--ink)" }}
       >
         {brandMark}
         <div className="w-9 h-9 border-2 border-current border-t-transparent rounded-full animate-spin opacity-70" />
         <p className="text-sm font-semibold text-[var(--ink-muted)]">Ingresando desde el campus…</p>
+      </div>
+    );
+  }
+
+  if (inline) {
+    /* Versión embebida bajo el topbar del panel: mismo dúo panel de marca +
+       formulario del login original, adaptado al flujo (sin fixed/100dvh). */
+    return (
+      <div
+        className="ed au-embed animate-fade-in-up"
+        data-mode={resolvedTheme}
+        data-accent="teal"
+        style={{ color: "var(--ink)" }}
+      >
+        <aside className="au-brand au-embed__brand">
+          <div className="relative z-10">{brandMark}</div>
+
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="au-eyebrow">Mi Panel · Estudiantes</span>
+              <span className="au-rule" />
+            </div>
+            <h2 className="au-title text-[clamp(38px,3.4vw,52px)]">
+              Tu práctica
+              <br />
+              empieza <span className="au-grad">acá.</span>
+            </h2>
+            <p className="au-sub mt-5 text-[15.5px] leading-relaxed max-w-sm">
+              Centralizá tus prácticas, inscripciones y acreditaciones en una sola plataforma —
+              clara, ordenada y siempre al día.
+            </p>
+          </div>
+
+          <div className="relative z-10 max-w-sm">
+            {features.map((item) => (
+              <div key={item.text} className="au-feat">
+                <span className="au-feat__ic">
+                  <AuthIcon name={item.icon} size={19} />
+                </span>
+                <div>
+                  <h4 className="au-feat__t">{item.text}</h4>
+                  <p className="au-feat__d">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <main className="au-embed__form">
+          <div className="w-full max-w-md mx-auto">
+            {renderContent()}
+
+            {errorAlert && (
+              <div aria-live="assertive" className="mt-6">
+                {errorAlert}
+              </div>
+            )}
+
+            {debugBlock}
+          </div>
+        </main>
       </div>
     );
   }

@@ -9,16 +9,15 @@ import CriteriosPanel from "../components/student/CriteriosPanel";
 import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
 import FinalizacionForm from "../components/student/FinalizacionForm";
 import HomeView from "../components/student/HomeView";
-import PracticasTable from "../components/student/PracticasTable";
 import PrintableReport from "../components/student/PrintableReport";
-import ProfileView from "../components/student/ProfileView";
+import PracticasTable from "../components/student/PracticasTable";
 import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
 import SolicitudNuevaPPSModal from "../components/student/SolicitudNuevaPPSModal";
 import SolicitudesList from "../components/student/SolicitudesList";
-import StudentConvocatoriasView from "./student/StudentConvocatoriasView";
 import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
 import AtlasProfileView from "./student/AtlasProfileView";
 import AtlasPracticasView from "./student/AtlasPracticasView";
+import Auth from "../components/Auth";
 // Aula (contenido estático pesado en JSX): lazy para sacarlo del bundle inicial.
 const StudentAulaView = React.lazy(() => import("./student/StudentAulaView"));
 const EntregasMobileView = React.lazy(() => import("./student/EntregasMobileView"));
@@ -491,21 +490,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   // Versión mobile (editorial) de Solicitudes.
   const mobileSolicitudesContent = atlasSolicitudesContent;
 
-  const profileContent = useMemo(
-    () => (
-      <ErrorBoundary>
-        <ProfileView
-          studentDetails={studentDetails}
-          isLoading={isLoading}
-          updateInternalNotes={updateInternalNotes}
-        />
-      </ErrorBoundary>
-    ),
-    [studentDetails, isLoading, updateInternalNotes]
-  );
-
-  // Versión mobile (editorial) de Prácticas — aro de horas + tabla nativa,
-  // layout propio pensado para el dedo (no es el widget de escritorio encogido).
+  // Versión mobile de Prácticas: aro grande de horas + lista táctil.
+  // No es la vista de escritorio responsiva; es una superficie propia para celular.
   const practicasContent = useMemo(
     () => (
       <ErrorBoundary>
@@ -571,43 +557,136 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const studentDataTabs = useMemo(
     () => [
-      { id: "inicio" as TabId, label: "Inicio", icon: "home", content: homeContent },
       {
-        id: "aula" as TabId,
-        label: "Aula",
-        icon: "book",
+        id: "inicio" as TabId,
+        label: "Inicio",
+        icon: "home",
+        /* Inicio = home personalizado: saludo, próximo paso, convocatorias
+           abiertas y resultados. La guía vive en su pestaña. */
+        content: homeContent,
+      },
+      {
+        id: "entregas" as TabId,
+        label: "Entregas",
+        icon: "upload",
+        /* Mobile: vista propia pensada para el celular; desktop: sección campus. */
         content: (
-          <React.Suspense fallback={null}>
-            <StudentAulaView />
-          </React.Suspense>
+          <ErrorBoundary>
+            <React.Suspense fallback={null}>
+              {isMobile ? <EntregasMobileView /> : <StudentAulaView section="entregas" />}
+            </React.Suspense>
+          </ErrorBoundary>
         ),
       },
       {
-        id: "convocatorias" as TabId,
-        label: "Convocatorias",
-        icon: "campaign",
-        content: (
-          <ErrorBoundary>
-            <StudentConvocatoriasView />
-          </ErrorBoundary>
+        id: "practicas" as TabId,
+        label: `Mis Prácticas`,
+        icon: "work_history",
+        content: isMobile ? (
+          <div className="ed" data-mode={resolvedTheme} data-accent="teal">
+            {!finalizacionRequest && (
+              <CriteriosPanel
+                criterios={criterios}
+                selectedOrientacion={selectedOrientacion}
+                handleOrientacionChange={handleOrientacionChange}
+                showSaveConfirmation={showSaveConfirmation}
+                onRequestFinalization={handleOpenFinalization}
+                informeTasks={informeTasks}
+                showOrientationSelector={false}
+              />
+            )}
+            {practicasContent}
+          </div>
+        ) : (
+          atlasPracticasContent
         ),
       },
       {
         id: "solicitudes" as TabId,
         label: `Mis Solicitudes`,
         icon: "list_alt",
-        content: atlasSolicitudesContent,
+        content: isMobile ? mobileSolicitudesContent : atlasSolicitudesContent,
       },
       {
-        id: "practicas" as TabId,
-        label: `Mis Prácticas`,
-        icon: "work_history",
-        content: atlasPracticasContent,
+        id: "guia" as TabId,
+        label: "Guía 2026",
+        icon: "book",
+        content: (
+          <ErrorBoundary>
+            <React.Suspense fallback={null}>
+              <StudentAulaView section="guia" />
+            </React.Suspense>
+          </ErrorBoundary>
+        ),
       },
-      { id: "profile" as TabId, label: "Mi Perfil", icon: "person", content: atlasProfileContent },
+      {
+        id: "descargas" as TabId,
+        label: "Descargas",
+        icon: "download",
+        content: (
+          <ErrorBoundary>
+            <React.Suspense fallback={null}>
+              <StudentAulaView section="descargas" />
+            </React.Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        id: "preguntas" as TabId,
+        label: "Preguntas",
+        icon: "help",
+        content: (
+          <ErrorBoundary>
+            <React.Suspense fallback={null}>
+              <StudentAulaView section="preguntas" />
+            </React.Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        id: "profile" as TabId,
+        label: "Mi Perfil",
+        icon: "person",
+        content: atlasProfileContent,
+      },
     ],
-    [homeContent, atlasSolicitudesContent, atlasPracticasContent, atlasProfileContent]
+    [
+      homeContent,
+      isMobile,
+      resolvedTheme,
+      finalizacionRequest,
+      criterios,
+      selectedOrientacion,
+      handleOrientacionChange,
+      showSaveConfirmation,
+      handleOpenFinalization,
+      informeTasks,
+      practicasContent,
+      atlasPracticasContent,
+      mobileSolicitudesContent,
+      atlasSolicitudesContent,
+      atlasProfileContent,
+      setCurrentActiveTab,
+    ]
   );
+
+  const renderTabContent = (tabId: TabId, isMobileLayout: boolean) => {
+    /* Secciones con datos del alumno piden sesión; Guía, Descargas y
+       Preguntas son material de consulta público. */
+    const isLocked = ["inicio", "entregas", "practicas", "solicitudes", "profile"].includes(tabId);
+    if (isLocked && !currentUser) {
+      /* Sin sesión: el login embebido (marca + formulario, mismo diseño que
+         la pantalla de login completa) reemplaza al contenido de la sección. */
+      return (
+        <div className={isMobileLayout ? "px-1 pt-2" : undefined}>
+          <Auth inline />
+        </div>
+      );
+    }
+
+    const tab = studentDataTabs.find((t) => t.id === tabId);
+    return tab ? tab.content : null;
+  };
 
   const showEmptyState = useMemo(
     () =>
@@ -739,15 +818,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             onTabChange={(id) => setCurrentActiveTab(id as TabId)}
           />
           <div className="space-y-8 mt-6 animate-fade-in-up">
-            {!["inicio", "aula", "solicitudes", "profile", "practicas"].includes(
-              currentActiveTab
-            ) && (
-              <WelcomeBanner
-                studentName={studentNameForPanel}
-                studentDetails={studentDetails}
-                isLoading={isLoading}
-              />
-            )}
+            {/* Las secciones del campus y las vistas Atlas traen su propio
+                encabezado de página. El banner solo acompaña vistas legacy
+                y nunca sin sesión (saludaría a un "Estudiante" anónimo). */}
+            {!!currentUser &&
+              ![
+                "inicio",
+                "aula",
+                "solicitudes",
+                "profile",
+                "practicas",
+                "entregas",
+                "guia",
+                "descargas",
+                "preguntas",
+              ].includes(currentActiveTab) && (
+                <WelcomeBanner
+                  studentName={studentNameForPanel}
+                  studentDetails={studentDetails}
+                  isLoading={isLoading}
+                />
+              )}
             {finalizacionRequest && (
               <FinalizationStatusCard
                 status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
@@ -758,51 +849,23 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 }
               />
             )}
-            {studentDataTabs.find((t) => t.id === currentActiveTab)?.content}
+            {renderTabContent(currentActiveTab, false)}
           </div>
         </div>
       )}
       {isMobile && (
         <div className="no-print space-y-8 animate-fade-in-up mt-4">
-          {currentActiveTab === "inicio" && (
-            <>
-              {finalizacionRequest && (
-                <FinalizationStatusCard
-                  status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
-                  requestDate={
-                    finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
-                    finalizacionRequest.created_at ||
-                    ""
-                  }
-                />
-              )}
-              {homeContent}
-            </>
+          {finalizacionRequest && currentUser && (
+            <FinalizationStatusCard
+              status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
+              requestDate={
+                finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
+                finalizacionRequest.created_at ||
+                ""
+              }
+            />
           )}
-          {currentActiveTab === "convocatorias" && <StudentConvocatoriasView />}
-          {currentActiveTab === "informes" && (
-            <React.Suspense fallback={null}>
-              <EntregasMobileView />
-            </React.Suspense>
-          )}
-          {currentActiveTab === "solicitudes" && <>{mobileSolicitudesContent}</>}
-          {currentActiveTab === "practicas" && (
-            <div className="ed" data-mode={resolvedTheme} data-accent="teal">
-              {!finalizacionRequest && (
-                <CriteriosPanel
-                  criterios={criterios}
-                  selectedOrientacion={selectedOrientacion}
-                  handleOrientacionChange={handleOrientacionChange}
-                  showSaveConfirmation={showSaveConfirmation}
-                  onRequestFinalization={handleOpenFinalization}
-                  informeTasks={informeTasks}
-                  showOrientationSelector={false}
-                />
-              )}
-              {practicasContent}
-            </div>
-          )}
-          {currentActiveTab === "profile" && <>{atlasProfileContent}</>}
+          {renderTabContent(currentActiveTab, true)}
         </div>
       )}
       {showExportButton && (

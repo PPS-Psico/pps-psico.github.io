@@ -15,7 +15,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { showModal } = useModal();
   const { resolvedTheme } = useTheme();
-  const { isAuthLoading } = useAuth();
+  const { authenticatedUser, isAuthLoading } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const isLoginPage = location.pathname === "/login";
@@ -119,10 +119,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         !isAuthLoading &&
         (isStudent ? (
           // En escritorio el estudiante usa la topbar Atlas (dentro del panel);
-          // el AppHeader legacy queda solo para mobile.
-          <div className="md:hidden">
-            <AppHeader />
-          </div>
+          // el AppHeader queda solo para mobile y solo cuando ya hay sesión.
+          authenticatedUser && (
+            <div className="md:hidden">
+              <AppHeader />
+            </div>
+          )
         ) : (
           <AppHeader />
         ))}

@@ -39,7 +39,6 @@ const StudentHome = lazy(() =>
 );
 const SolicitudesView = lazy(() => import("./views/student/SolicitudesView"));
 const StudentProfileView = lazy(() => import("./views/student/StudentProfileView"));
-const StudentConvocatoriasView = lazy(() => import("./views/student/StudentConvocatoriasView"));
 
 const AdminView = lazy(() => import("./views/AdminView"));
 const AdminDashboard = lazy(() => import("./components/admin/AdminDashboard"));
@@ -121,41 +120,43 @@ const AppRoutes = () => {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
-            {authenticatedUser?.role === "AdminTester" ? (
+          authenticatedUser ? (
+            authenticatedUser.role === "AdminTester" ? (
               <Navigate to="/testing" replace />
-            ) : authenticatedUser?.role === "SuperUser" ? (
+            ) : authenticatedUser.role === "SuperUser" ? (
               <Navigate to="/admin" replace />
-            ) : authenticatedUser?.role === "Jefe" ? (
+            ) : authenticatedUser.role === "Jefe" ? (
               <Navigate to="/jefe" replace />
-            ) : authenticatedUser?.role === "Directivo" ? (
+            ) : authenticatedUser.role === "Directivo" ? (
               <Navigate to="/directivo" replace />
-            ) : authenticatedUser?.role === "Reportero" ? (
+            ) : authenticatedUser.role === "Reportero" ? (
               <Navigate to="/reportero" replace />
             ) : (
               <Navigate to="/student" replace />
-            )}
-          </ProtectedRoute>
+            )
+          ) : (
+            <Navigate to="/student" replace />
+          )
         }
       />
 
       <Route
         path="/student"
         element={
-          <ProtectedRoute allowedRoles={["Student"]}>
-            <StudentWrapper>
-              <StudentView />
-            </StudentWrapper>
-          </ProtectedRoute>
+          <StudentWrapper>
+            <StudentView />
+          </StudentWrapper>
         }
       >
         <Route index element={<StudentHome />} />
-        <Route path="convocatorias" element={<StudentConvocatoriasView />} />
-        <Route path="aula" element={<StudentHome />} />
+        <Route path="convocatorias" element={<Navigate to="/student" replace />} />
         <Route path="entregas" element={<StudentHome />} />
-        <Route path="practicas" element={<PracticasView />} />
-        <Route path="solicitudes" element={<SolicitudesView />} />
-        <Route path="perfil" element={<StudentProfileView />} />
+        <Route path="practicas" element={<StudentHome />} />
+        <Route path="solicitudes" element={<StudentHome />} />
+        <Route path="guia" element={<StudentHome />} />
+        <Route path="descargas" element={<StudentHome />} />
+        <Route path="preguntas" element={<StudentHome />} />
+        <Route path="perfil" element={<StudentHome />} />
       </Route>
 
       <Route

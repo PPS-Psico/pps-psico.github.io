@@ -8,6 +8,7 @@ type AulaSectionId = "guia" | "descargas" | "preguntas" | "entregas";
 
 const SECTION_IDS: AulaSectionId[] = ["guia", "descargas", "preguntas", "entregas"];
 const SECTION_STORAGE_KEY = "pps_aula_sec";
+const COORDINATOR_MAIL = "blas.rivera@uflouniversidad.edu.ar";
 
 /* Sección inicial: 1) ?sec= de la URL (deep-link desde el campus o un mail),
    2) última sección visitada en esta pestaña, 3) guía. */
@@ -31,6 +32,11 @@ interface AulaSection {
   title: React.ReactNode;
   description: string;
   icon: IconName;
+  /* Encabezado de página cuando la sección vive como pestaña propia del panel
+     (misma articulación que .ah-pagehead de Prácticas/Solicitudes/Perfil). */
+  pageEyebrow: string;
+  pageTitle: React.ReactNode;
+  pageLead: string;
 }
 
 interface DownloadGroup {
@@ -44,6 +50,19 @@ interface FaqGroup {
   label: string;
   subtitle: string;
   items: { q: string; a: React.ReactNode }[];
+}
+
+/* Bloques de la guía: mismo recorrido en seis etapas que la versión editorial
+   del campus (guia.html), traducido al lenguaje visual del panel. */
+interface GuideBlock {
+  num: string;
+  kicker: string;
+  title: string;
+  summary: string;
+  bullets?: string[];
+  stat?: { value: string; unit: string; text: React.ReactNode };
+  note?: { tag: string; key?: boolean; text: React.ReactNode };
+  timeline?: { lead: string; title: string; detail: string }[];
 }
 
 const sections: AulaSection[] = [
@@ -61,6 +80,14 @@ const sections: AulaSection[] = [
     description:
       "Requisitos, rotaciones, horas, fechas y criterios de finalización reunidos en un recorrido único.",
     icon: "book",
+    pageEyebrow: "Campus PPS · Guía de cursada",
+    pageTitle: (
+      <>
+        Tu PPS, de principio a <em>fin.</em>
+      </>
+    ),
+    pageLead:
+      "El recorrido completo de la práctica en seis etapas: desde el primer acceso hasta la acreditación final, con los plazos y documentos que importan.",
   },
   {
     id: "descargas",
@@ -76,6 +103,14 @@ const sections: AulaSection[] = [
     description:
       "Planillas, modelos y archivos que se usan durante la cursada, junto a tu recorrido.",
     icon: "download",
+    pageEyebrow: "Campus PPS · Materiales",
+    pageTitle: (
+      <>
+        Descargas para <em>tener a mano.</em>
+      </>
+    ),
+    pageLead:
+      "Guías, plantillas y documentos oficiales de la práctica. Los mantenemos actualizados durante toda la cursada.",
   },
   {
     id: "preguntas",
@@ -91,6 +126,14 @@ const sections: AulaSection[] = [
     description:
       "Inscripción, horarios, solicitudes, consentimiento, entregas y cierre de práctica en lenguaje claro.",
     icon: "help",
+    pageEyebrow: "Campus PPS · Centro de ayuda",
+    pageTitle: (
+      <>
+        Preguntas <em>frecuentes.</em>
+      </>
+    ),
+    pageLead:
+      "Las consultas más habituales sobre las Prácticas Profesionales Supervisadas, resueltas y agrupadas por etapa. El recorrido paso a paso está en la Guía 2026.",
   },
   {
     id: "entregas",
@@ -106,67 +149,143 @@ const sections: AulaSection[] = [
     description:
       "Elegís tu área e institución desde acá; la carga del informe se abre directamente en Moodle.",
     icon: "upload",
+    pageEyebrow: "Campus PPS · Moodle",
+    pageTitle: (
+      <>
+        Entregas de <em>informes.</em>
+      </>
+    ),
+    pageLead:
+      "Elegí tu orientación y abrí la tarea de la institución donde cursaste. La carga del informe se hace en Moodle, con tu sesión del campus.",
   },
 ];
 
-const heroFacts = [
-  { value: "250 h", label: "totales para acreditar" },
-  { value: "70 h", label: "mínimas en tu especialidad" },
-  { value: "3 de 4", label: "orientaciones recorridas" },
-  { value: "30 días", label: "para entregar el informe" },
-];
-
-const guideBlocks = [
+const guideBlocks: GuideBlock[] = [
   {
     num: "01",
+    kicker: "Acceso",
     title: "Dónde empezar",
     summary:
       "Tu cuenta de Mi Panel es la llave para inscribirte, seguir tus estados y pedir la acreditación final.",
     bullets: [
       "Generá o usá tu usuario con número de legajo.",
-      "Revisá esta guía y las preguntas antes de escribir a coordinación.",
-      "Mantenete atento al grupo de difusión para novedades de convocatorias.",
+      "Ubicate primero: revisá esta guía y las preguntas frecuentes; casi todas las dudas se resuelven ahí.",
+      "Sumate al grupo de difusión para recibir cada convocatoria al instante.",
     ],
   },
   {
     num: "02",
-    title: "Inscripción y selección",
-    summary: "Las convocatorias se publican durante el ciclo y se gestionan desde Inicio.",
+    kicker: "Convocatorias",
+    title: "Inscribite",
+    summary: "Las convocatorias se publican durante todo el ciclo y se gestionan desde el panel.",
     bullets: [
-      "Postulate desde convocatorias abiertas.",
-      "Si quedás seleccionado/a, se actualiza tu estado y recibís aviso por correo.",
-      "Antes de comenzar, completá el consentimiento digital si el panel lo solicita.",
+      "Postulate desde convocatorias abiertas a las que te interesen.",
+      "Si quedás seleccionado/a, recibís un aviso por correo y tu estado se actualiza en el panel.",
     ],
+    note: {
+      tag: "Antes de comenzar",
+      key: true,
+      text: (
+        <>
+          Si quedaste seleccionado/a, realizá el <strong>consentimiento digital</strong> antes de
+          empezar la PPS. Sin ese paso no podés iniciar la práctica.
+        </>
+      ),
+    },
   },
   {
     num: "03",
-    title: "Asistencia y documentación",
-    summary: "La acreditación se sostiene con asistencia, planilla firmada e informes aprobados.",
-    bullets: [
-      "Justificá ausencias y avisá a la institución con anticipación.",
-      "La planilla firmada es el documento válido para prácticas presenciales.",
-      "En prácticas online o eventos especiales, el informe final aprobado acredita la realización.",
-    ],
+    kicker: "Compromiso",
+    title: "Asistencia",
+    summary: "El umbral que define si la práctica se acredita.",
+    stat: {
+      value: "80",
+      unit: "%",
+      text: (
+        <>
+          <strong>Asistencia mínima</strong> para aprobar la práctica. Por debajo de ese umbral, la
+          PPS no se acredita.
+        </>
+      ),
+    },
+    note: {
+      tag: "Atención",
+      key: true,
+      text: (
+        <>
+          Es obligatorio{" "}
+          <strong>justificar la ausencia y avisar a la institución con antelación</strong>. La falta
+          de aviso es el motivo más frecuente de suspensión de una PPS.
+        </>
+      ),
+    },
   },
   {
     num: "04",
-    title: "Entregas y plazos",
-    summary: "Los informes se cargan en Moodle, pero el acceso vive en el Aula integrada.",
+    kicker: "Seguimiento",
+    title: "Documentación",
+    summary: "Con qué llevás el registro de tu práctica y qué documento vale.",
     bullets: [
-      "Entregá el informe dentro de los 30 días corridos desde que finaliza la PPS.",
-      "El docente tiene 30 días hábiles para corregir.",
-      "Si necesitás prórroga, escribí antes del vencimiento.",
+      "Mi Panel concentra inscripción, solicitudes y avance de horas: tu referencia de gestión.",
+      "La planilla de seguimiento de horas (en Descargas) es tu control exacto, clase a clase.",
     ],
+    note: {
+      tag: "Documento válido",
+      text: (
+        <>
+          La <strong>planilla de asistencia firmada</strong> —o el{" "}
+          <strong>informe final aprobado</strong> en prácticas online y eventos especiales— son los
+          documentos que acreditan la realización de la PPS.
+        </>
+      ),
+    },
   },
   {
     num: "05",
+    kicker: "Cierre",
+    title: "Entregas y plazos",
+    summary: "Los plazos que corren cuando termina la práctica.",
+    timeline: [
+      {
+        lead: "30 días",
+        title: "Entregá el informe",
+        detail: "Corridos desde que finaliza la PPS, para subirlo desde la sección Entregas.",
+      },
+      {
+        lead: "30 días",
+        title: "Corrección docente",
+        detail: "Hábiles del docente para devolver tu informe corregido.",
+      },
+    ],
+    note: {
+      tag: "Prórroga",
+      text: (
+        <>
+          Si no llegás con la entrega, escribí a coordinación <strong>antes del vencimiento</strong>{" "}
+          para pedir una prórroga.
+        </>
+      ),
+    },
+  },
+  {
+    num: "06",
+    kicker: "Acreditación",
     title: "Finalización",
     summary: "Cuando completás los requisitos, pedís la acreditación desde Mi Panel.",
     bullets: [
-      "250 horas totales de práctica aprobada.",
-      "Mínimo 70 horas en tu orientación de especialidad.",
-      "Rotación por al menos 3 de las 4 orientaciones e informes aprobados.",
+      "Todos los informes de PPS corregidos y aprobados por el docente.",
+      "El pedido de acreditación se hace desde Mis Prácticas, con un clic.",
     ],
+    note: {
+      tag: "Último paso",
+      key: true,
+      text: (
+        <>
+          Con <strong>todos los requisitos</strong> cumplidos, pedí la{" "}
+          <strong>acreditación de tus PPS</strong> desde Mi Panel para cerrar tu recorrido.
+        </>
+      ),
+    },
   },
 ];
 
@@ -218,11 +337,13 @@ const downloads: DownloadGroup[] = [
   },
 ];
 
+/* Mismo cuerpo de respuestas que el centro de ayuda editorial del campus
+   (preguntas.html): 26 respuestas completas, agrupadas por etapa. */
 const faqGroups: FaqGroup[] = [
   {
     id: "inscripcion",
     label: "Inscripción",
-    subtitle: "Postulación, selección y consentimiento.",
+    subtitle: "Postulación, cupos y consentimiento.",
     items: [
       {
         q: "¿Cuál es la frecuencia de lanzamiento de convocatorias?",
@@ -230,15 +351,35 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cuáles son los criterios para la selección de estudiantes?",
-        a: "Cuando los inscriptos superan el cupo, se priorizan criterios académicos y de recorrido definidos por la coordinación.",
+        a: (
+          <>
+            Cuando los inscriptos superan el cupo, los criterios se aplican en este orden de
+            importancia:
+            <ol>
+              <li>
+                <strong>Cantidad de horas realizadas:</strong> es el criterio principal.
+              </li>
+              <li>
+                <strong>Situación académica:</strong> avance en la carrera.
+              </li>
+              <li>
+                <strong>Otros factores:</strong> orientación, disponibilidad, movilidad.
+              </li>
+              <li>
+                <strong>Criterios internos de la facultad,</strong> que pueden variar según
+                objetivos.
+              </li>
+            </ol>
+          </>
+        ),
       },
       {
         q: "¿Cómo sé si quedé seleccionado en una convocatoria?",
-        a: "Recibís una notificación por correo y tu estado se actualiza en Inicio, dentro de convocatorias cerradas y tus resultados.",
+        a: "Recibís una notificación por correo y tu estado se actualiza en la sección de convocatorias, dentro de convocatorias cerradas y tus resultados.",
       },
       {
         q: "¿Cuándo firmo el consentimiento digital?",
-        a: "Cuando quedás seleccionado/a y la PPS entra en etapa de confirmación, Mi Panel muestra el botón para realizar el consentimiento.",
+        a: "Cuando quedás seleccionado/a y la PPS entra en etapa de confirmación, Mi Panel muestra el botón para realizar el consentimiento. Sin ese paso no podés iniciar la práctica.",
       },
     ],
   },
@@ -249,7 +390,15 @@ const faqGroups: FaqGroup[] = [
     items: [
       {
         q: "¿Cuántas horas acredita mi PPS?",
-        a: "La mayoría de las convocatorias indica la cantidad exacta. Si dice según recorrido, depende de extensión y frecuencia, con máximo de 80 horas.",
+        a: (
+          <>
+            La mayoría de las convocatorias indica la cantidad exacta. Si dice{" "}
+            <em>"según recorrido"</em>, depende de la extensión y la frecuencia, con un{" "}
+            <strong>máximo de 80 horas</strong>. Las horas no se acreditan oficialmente hasta
+            completar las <strong>250</strong>; mientras tanto hay un registro interno en Mi Panel y
+            tu seguimiento con la planilla.
+          </>
+        ),
       },
       {
         q: "¿Puedo cambiar de orientación durante las PPS?",
@@ -257,15 +406,36 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué sucede si me ausento de la institución?",
-        a: "Es obligatorio justificar la ausencia y avisar con anticipación. Ausentarse sin aviso puede ser determinante en la desaprobación.",
+        a: (
+          <>
+            Es obligatorio <strong>justificar la ausencia</strong> y avisar al referente de la
+            institución con anticipación. Ausentarse sin aviso es una{" "}
+            <strong>falta grave de compromiso</strong> y puede ser determinante en la desaprobación
+            de la práctica.
+          </>
+        ),
       },
       {
         q: "¿Qué pasa si no completo las horas exactas por feriados o paros?",
-        a: "Pueden recuperarse extendiendo el período si la institución lo autoriza. Si no, se acreditan las horas tipificadas en la convocatoria.",
+        a: "Pueden recuperarse extendiendo el período de la PPS si la institución lo autoriza. Si no se recuperan y la práctica termina en fecha, se acreditan las horas tipificadas en la convocatoria, sin importar si las reales fueron menores o mayores.",
+      },
+      {
+        q: "¿Qué sucede si decido continuar más tiempo en mi PPS?",
+        a: (
+          <>
+            Hay que avisar a coordinación para actualizar el seguro. Tené en cuenta que{" "}
+            <strong>no se acreditan horas adicionales</strong> a las establecidas en la convocatoria
+            original.
+          </>
+        ),
       },
       {
         q: "¿Puedo repetir una PPS?",
-        a: "No se puede repetir en la misma institución y con la misma orientación. Cada práctica debe ser una experiencia nueva.",
+        a: "No se puede repetir en la misma institución y con la misma orientación. Cada práctica debe ser una experiencia nueva para explorar distintos campos y adquirir diversas habilidades.",
+      },
+      {
+        q: "¿Qué sucede si necesito dar de baja una PPS antes de finalizarla?",
+        a: "Comunicalo de inmediato a la institución y a coordinación. Se evalúa el caso en conjunto, pero en general la PPS se suspende y se pierden las horas realizadas.",
       },
     ],
   },
@@ -276,27 +446,56 @@ const faqGroups: FaqGroup[] = [
     items: [
       {
         q: "¿Hay alguna guía para elaborar informes?",
-        a: "Sí. La guía para la elaboración del informe está en Descargas, dentro de esta misma sección Aula.",
+        a: "Sí. La guía para la elaboración del informe está en Descargas, junto al reglamento de PPS.",
       },
       {
         q: "¿Cómo entrego un informe?",
-        a: "En Aula > Entregas, elegís tu orientación e institución. El botón abre la tarea de Moodle correspondiente.",
+        a: "En la sección Entregas, elegís tu orientación e institución: el botón abre la tarea de Moodle correspondiente. Si la PPS fue presencial, subí la planilla de asistencia firmada junto al informe.",
       },
       {
         q: "¿Qué hago si no encuentro un espacio de entrega?",
-        a: "Notificá a coordinación para que habilite el espacio manualmente en la sección que corresponda.",
+        a: "Notificá a coordinación para que habilite el espacio manualmente en la sección que corresponda a tu orientación.",
       },
       {
         q: "¿Debo firmar planilla en prácticas online o eventos especiales?",
-        a: "No. En esos casos, el informe final es el elemento oficial que acredita la realización de la PPS.",
+        a: (
+          <>
+            No. En esos casos, el <strong>informe final</strong> es el elemento oficial que acredita
+            la realización de la PPS.
+          </>
+        ),
       },
       {
         q: "¿Cuáles son las fechas de entrega de informe?",
-        a: "Tenés 30 días corridos desde que finaliza la PPS. El control de esa fecha queda de tu lado.",
+        a: (
+          <>
+            <strong>30 días corridos</strong> desde que finaliza la PPS. Registrá esa fecha: las
+            tareas del campus no traen vencimiento configurado, así que el control queda de tu lado.
+          </>
+        ),
       },
       {
         q: "¿Cuánto tiempo tiene el docente para corregir?",
-        a: "30 días hábiles desde la entrega. Cargar la nota en Mi Panel es opcional.",
+        a: (
+          <>
+            <strong>30 días hábiles</strong> desde la entrega. Cargar la nota en Mi Panel es
+            opcional.
+          </>
+        ),
+      },
+      {
+        q: "¿Qué hago si mi informe no fue corregido en el plazo?",
+        a: "Si lo cargaste en plazo y pasaron los 30 días hábiles, enviá un correo a coordinación para que notifique al jefe de área.",
+      },
+      {
+        q: "¿Qué hago si no llego a entregar el informe en el plazo?",
+        a: (
+          <>
+            Comunicate con coordinación <strong>antes del vencimiento</strong> para pedir una
+            prórroga. Si se aprueba, el docente corrige según disponibilidad (el plazo de 30 días no
+            aplica a entregas fuera de término).
+          </>
+        ),
       },
     ],
   },
@@ -307,19 +506,57 @@ const faqGroups: FaqGroup[] = [
     items: [
       {
         q: "¿Cuáles son los requisitos obligatorios para acreditar?",
-        a: "250 horas totales, mínimo 70 en tu especialidad, rotación por al menos 3 orientaciones e informes corregidos y aprobados.",
+        a: (
+          <>
+            <ol>
+              <li>
+                <strong>250 horas totales</strong> de práctica aprobada.
+              </li>
+              <li>
+                <strong>Mínimo 70 horas</strong> en tu orientación de especialidad.
+              </li>
+              <li>
+                <strong>Rotación</strong> por al menos 3 de las 4 orientaciones.
+              </li>
+              <li>
+                <strong>Todos los informes</strong> corregidos y aprobados.
+              </li>
+            </ol>
+            Usá la planilla de seguimiento para el control exacto de horas: Mi Panel es referencial.
+          </>
+        ),
       },
       {
         q: "¿Qué es Mi Panel?",
-        a: "Es la herramienta de gestión PPS para inscripción, solicitudes, seguimiento de horas, consentimiento y acreditación. La planilla sigue siendo tu respaldo oficial de asistencia.",
+        a: (
+          <>
+            Es la herramienta de gestión PPS para inscripción, solicitudes, seguimiento de horas,
+            consentimiento y acreditación. La <strong>planilla de asistencia</strong> sigue siendo
+            tu respaldo oficial.
+          </>
+        ),
       },
       {
         q: "¿Cómo se instala Mi Panel en el celular?",
-        a: "Desde el navegador, con Añadir a pantalla de inicio o desde el ícono de instalación cuando esté disponible.",
+        a: (
+          <>
+            Desde el navegador, con <strong>"Añadir a pantalla de inicio"</strong> (Chrome, Safari)
+            o desde el ícono de instalación cuando esté disponible.
+          </>
+        ),
+      },
+      {
+        q: "¿Qué pasa si no puedo acceder a Mi Panel?",
+        a: "Comunicate con coordinación. Si es tu primera inscripción, puede que el legajo todavía no esté cargado en el sistema.",
       },
       {
         q: "¿Cómo solicito una corrección en Mi Panel?",
-        a: "Desde Mis Prácticas. También podés editar fechas y solicitar modificaciones según corresponda.",
+        a: (
+          <>
+            Desde la sección <strong>Mis Prácticas</strong>. También podés editar fechas y solicitar
+            modificaciones según corresponda.
+          </>
+        ),
       },
     ],
   },
@@ -330,11 +567,31 @@ const faqGroups: FaqGroup[] = [
     items: [
       {
         q: "¿Cómo presento una propuesta de PPS con institución propia?",
-        a: "Completás el formulario de Mi Panel con datos de institución, referente, tutor, convenio y descripción de actividades.",
+        a: (
+          <>
+            Completás el formulario de Mi Panel con los datos de la institución. Requisitos:
+            <ol>
+              <li>La institución no debe tener un convenio activo.</li>
+              <li>
+                Debe contar con un <strong>profesional de la psicología</strong> que supervise
+                (excluyente).
+              </li>
+              <li>Se prioriza a quienes ofrecen varios cupos.</li>
+              <li>No es necesario un convenio previo con la universidad.</li>
+            </ol>
+            El estado de la propuesta se sigue desde Mis Solicitudes.
+          </>
+        ),
       },
       {
         q: "¿Qué sucede si envié un correo y no tuve respuesta?",
-        a: "El tiempo estimado es de 48 horas hábiles. Pasado ese plazo, reenviá con URGENTE en el asunto para priorizar el caso.",
+        a: (
+          <>
+            El tiempo estimado de respuesta es de <strong>48 horas hábiles</strong>. Pasado ese
+            plazo, reenviá el correo con <strong>"URGENTE"</strong> en el asunto para priorizar el
+            caso.
+          </>
+        ),
       },
     ],
   },
@@ -342,24 +599,29 @@ const faqGroups: FaqGroup[] = [
 
 interface StudentAulaViewProps {
   mode?: "panel" | "public";
+  section?: AulaSectionId;
 }
 
-const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel" }) => {
+const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", section }) => {
   const { authenticatedUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const isPublic = mode === "public";
   const { areas: deliveryAreas } = useAulaEntregas();
 
-  const [activeSection, setActiveSectionState] = useState<AulaSectionId>(() =>
+  const [activeSectionState, setActiveSectionState] = useState<AulaSectionId>(() =>
     resolveInitialSection(searchParams.get("sec"))
   );
   const [activeArea, setActiveArea] = useState<string | null>(null);
   const [activeFaq, setActiveFaq] = useState(faqGroups[0].id);
+  const [mailCopied, setMailCopied] = useState(false);
+
+  const activeSection = section || activeSectionState;
 
   /* Cambio de sección: persiste en sessionStorage y, en el modo público,
      también en la URL (?sec=) para que se pueda compartir/deep-linkear. */
   const setActiveSection = useCallback(
     (id: AulaSectionId) => {
+      if (section) return; // Sección fija (pestaña propia del panel): no cambia
       setActiveSectionState(id);
       try {
         sessionStorage.setItem(SECTION_STORAGE_KEY, id);
@@ -370,8 +632,20 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel" }) => 
         setSearchParams(id === "guia" ? {} : { sec: id }, { replace: true });
       }
     },
-    [isPublic, setSearchParams]
+    [isPublic, setSearchParams, section]
   );
+
+  const handleCopyMail = useCallback(() => {
+    const done = () => {
+      setMailCopied(true);
+      window.setTimeout(() => setMailCopied(false), 2600);
+    };
+    try {
+      navigator.clipboard.writeText(COORDINATOR_MAIL).then(done, done);
+    } catch {
+      done();
+    }
+  }, []);
 
   const selectedSection = sections.find((s) => s.id === activeSection) ?? sections[0];
   const selectedArea = useMemo(
@@ -384,8 +658,14 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel" }) => 
   );
 
   return (
-    <div className={"ah-root ah-unified ah-aula" + (isPublic ? " ah-aula--public" : "")}>
-      {isPublic && (
+    <div
+      className={
+        "ah-root ah-unified ah-aula" +
+        (isPublic ? " ah-aula--public" : "") +
+        (section ? " ah-aula--section-only" : "")
+      }
+    >
+      {isPublic && !section && (
         <header className="ah-aula-publicbar">
           <Link className="ah-aula-publicbar__brand" to="/aula">
             <span className="ah-aula-publicbar__mark">UFLO</span>
@@ -393,14 +673,14 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel" }) => 
             <span>PPS 2026</span>
           </Link>
           <nav className="ah-aula-publicbar__nav" aria-label="Accesos principales">
-            {sections.map((section) => (
+            {sections.map((secItem) => (
               <button
-                key={section.id}
+                key={secItem.id}
                 type="button"
-                className={section.id === activeSection ? "is-on" : undefined}
-                onClick={() => setActiveSection(section.id)}
+                className={secItem.id === activeSection ? "is-on" : undefined}
+                onClick={() => setActiveSection(secItem.id)}
               >
-                {section.label}
+                {secItem.label}
               </button>
             ))}
             <Link className="ah-aula-publicbar__cta" to={authenticatedUser ? "/student" : "/login"}>
@@ -410,221 +690,375 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel" }) => 
         </header>
       )}
       <main className="ah-main ah-aula__main">
-        <section className="ah-pagehead ah-aula__hero">
-          <div className="ah-aula__hero-copy">
-            <span className="eyebrow">
-              Campus PPS · Facultad de Psicología
-              {isPublic && <span className="ah-aula__hero-tag">Acceso público</span>}
-            </span>
-            <h1 className="ah-aula__title">
-              Aula <em>PPS 2026.</em>
-            </h1>
-            <p className="ah-aula__lead">
-              {isPublic
-                ? "Guía, preguntas, descargas y entregas para empezar la cursada aunque todavía no tengas cuenta en Mi Panel."
-                : "Guía, descargas, preguntas y entregas en el mismo lugar donde seguís tus convocatorias, prácticas y consentimiento."}
-            </p>
-          </div>
-          <aside className="ah-aula__note" aria-label="Datos clave de la cursada">
-            <span>Reglas de la cursada</span>
-            <div className="ah-aula__note-grid">
-              {heroFacts.map((fact) => (
-                <React.Fragment key={fact.label}>
-                  <b>{fact.value}</b>
-                  <small>{fact.label}</small>
-                </React.Fragment>
+        {section ? (
+          /* Pestaña propia del panel: encabezado de página con la misma
+             articulación que las vistas nativas (.ah-pagehead). */
+          <section className="ah-pagehead ah-aula__hero ah-aula__hero--solo">
+            <div className="ah-aula__hero-copy">
+              <span className="eyebrow">{selectedSection.pageEyebrow}</span>
+              <h1 className="ah-aula__title">{selectedSection.pageTitle}</h1>
+              <p className="ah-aula__lead">{selectedSection.pageLead}</p>
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className="ah-pagehead ah-aula__hero ah-aula__hero--solo">
+              <div className="ah-aula__hero-copy">
+                <span className="eyebrow">
+                  Campus PPS · Facultad de Psicología
+                  {isPublic && <span className="ah-aula__hero-tag">Acceso público</span>}
+                </span>
+                <h1 className="ah-aula__title">
+                  Aula <em>PPS 2026.</em>
+                </h1>
+                <p className="ah-aula__lead">
+                  {isPublic
+                    ? "Guía, preguntas, descargas y entregas para empezar la cursada aunque todavía no tengas cuenta en Mi Panel."
+                    : "Guía, descargas, preguntas y entregas en el mismo lugar donde seguís tus convocatorias, prácticas y consentimiento."}
+                </p>
+              </div>
+            </section>
+
+            <nav className="ah-aula__switcher" aria-label="Secciones del aula">
+              {sections.map((secItem) => (
+                <button
+                  key={secItem.id}
+                  type="button"
+                  className={"ah-aula__switch" + (secItem.id === activeSection ? " is-active" : "")}
+                  aria-current={secItem.id === activeSection ? "true" : undefined}
+                  onClick={() => setActiveSection(secItem.id)}
+                >
+                  <span className="ah-aula__switch-ic" aria-hidden>
+                    <Icon name={secItem.icon} size={17} />
+                  </span>
+                  <span className="ah-aula__switch-txt">
+                    <span className="ah-aula__switch-label">{secItem.label}</span>
+                    <small>{secItem.hint}</small>
+                  </span>
+                  <span className="ah-aula__switch-num" aria-hidden>
+                    {secItem.num}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </>
+        )}
+
+        {section && activeSection === "guia" ? (
+          /* Guía como pestaña del panel: layout editorial abierto (índice de
+             etapas + capítulos con número grande), el mismo lenguaje que la
+             guía del campus pero con los tokens del panel. */
+          <>
+            <nav className="ah-aula__gindex" aria-label="Etapas de la guía">
+              {guideBlocks.map((block) => (
+                <a key={block.num} href={`#aula-paso-${block.num}`}>
+                  <span className="ah-aula__gindex-num">{block.num}</span>
+                  <strong>{block.title}</strong>
+                  <small>{block.kicker}</small>
+                </a>
+              ))}
+            </nav>
+            <div className="ah-aula__gsteps">
+              {guideBlocks.map((block) => (
+                <article key={block.num} className="ah-aula__gstep" id={`aula-paso-${block.num}`}>
+                  <div className="ah-aula__gstep-side">
+                    <span className="ah-aula__gstep-num" aria-hidden>
+                      {block.num}
+                    </span>
+                    <span className="ah-aula__gstep-kick">{block.kicker}</span>
+                    <p className="ah-aula__gstep-sum">{block.summary}</p>
+                  </div>
+                  <div className="ah-aula__gstep-main">
+                    <h3>{block.title}</h3>
+                    {block.bullets && (
+                      <div className="ah-aula__gcards">
+                        {block.bullets.map((bullet) => (
+                          <p key={bullet} className="ah-aula__gcard">
+                            <i aria-hidden />
+                            {bullet}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {block.stat && (
+                      <div className="ah-aula__stat">
+                        <strong>
+                          {block.stat.value}
+                          <span>{block.stat.unit}</span>
+                        </strong>
+                        <p>{block.stat.text}</p>
+                      </div>
+                    )}
+                    {block.timeline && (
+                      <div className="ah-aula__timeline">
+                        {block.timeline.map((row) => (
+                          <div key={row.title} className="ah-aula__tl">
+                            <span className="ah-aula__tl-lead">{row.lead}</span>
+                            <div>
+                              <strong>{row.title}</strong>
+                              <small>{row.detail}</small>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {block.note && (
+                      <div
+                        className={"ah-aula__keynote" + (block.note.key ? " is-key" : "")}
+                        role="note"
+                      >
+                        <div>
+                          <span className="ah-aula__keynote-tag">{block.note.tag}</span>
+                          {block.note.text}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </article>
               ))}
             </div>
-          </aside>
-        </section>
-
-        <nav className="ah-aula__switcher" aria-label="Secciones del aula">
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              className={"ah-aula__switch" + (section.id === activeSection ? " is-active" : "")}
-              aria-current={section.id === activeSection ? "true" : undefined}
-              onClick={() => setActiveSection(section.id)}
+            <footer
+              className="ah-aula__accredit ah-aula__accredit--page"
+              aria-label="Requisitos de acreditación"
             >
-              <span className="ah-aula__switch-ic" aria-hidden>
-                <Icon name={section.icon} size={17} />
-              </span>
-              <span className="ah-aula__switch-txt">
-                <span className="ah-aula__switch-label">{section.label}</span>
-                <small>{section.hint}</small>
-              </span>
-              <span className="ah-aula__switch-num" aria-hidden>
-                {section.num}
-              </span>
-            </button>
-          ))}
-        </nav>
-
-        <section className="ah-aula__panel" key={selectedSection.id}>
-          <div className="ah-aula__panel-head">
-            <span className="eyebrow">{selectedSection.eyebrow}</span>
-            <h2>{selectedSection.title}</h2>
-            <p>{selectedSection.description}</p>
-          </div>
-
-          {activeSection === "guia" && (
-            <>
-              <div className="ah-aula__guide">
-                {guideBlocks.map((block) => (
-                  <article key={block.num} className="ah-aula__guide-block">
-                    <div className="ah-aula__guide-rail" aria-hidden>
-                      <span className="ah-aula__guide-num">{block.num}</span>
-                    </div>
-                    <div>
-                      <h3>{block.title}</h3>
-                      <p>{block.summary}</p>
-                      <ul>
-                        {block.bullets.map((bullet) => (
-                          <li key={bullet}>{bullet}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </article>
+              <span className="ah-aula__accredit-kicker">Para acreditar</span>
+              <div className="ah-aula__accredit-stats">
+                {accreditationStats.map((stat) => (
+                  <div key={stat.label} className="ah-aula__accredit-stat">
+                    <strong>
+                      {stat.value} <span>{stat.unit}</span>
+                    </strong>
+                    <small>{stat.label}</small>
+                  </div>
                 ))}
               </div>
-              <footer className="ah-aula__accredit" aria-label="Requisitos de acreditación">
-                <span className="ah-aula__accredit-kicker">Para acreditar</span>
-                <div className="ah-aula__accredit-stats">
-                  {accreditationStats.map((stat) => (
-                    <div key={stat.label} className="ah-aula__accredit-stat">
-                      <strong>
-                        {stat.value} <span>{stat.unit}</span>
-                      </strong>
-                      <small>{stat.label}</small>
-                    </div>
+            </footer>
+          </>
+        ) : (
+          <section className="ah-aula__panel" key={selectedSection.id}>
+            {!section && (
+              <div className="ah-aula__panel-head">
+                <span className="eyebrow">{selectedSection.eyebrow}</span>
+                <h2>{selectedSection.title}</h2>
+                <p>{selectedSection.description}</p>
+              </div>
+            )}
+
+            {activeSection === "guia" && (
+              <>
+                <div className="ah-aula__guide">
+                  {guideBlocks.map((block) => (
+                    <article key={block.num} className="ah-aula__guide-block">
+                      <div className="ah-aula__guide-rail" aria-hidden>
+                        <span className="ah-aula__guide-num">{block.num}</span>
+                      </div>
+                      <div>
+                        <span className="ah-aula__guide-eyebrow">{block.kicker}</span>
+                        <h3>{block.title}</h3>
+                        <p>{block.summary}</p>
+                        {block.bullets && (
+                          <ul>
+                            {block.bullets.map((bullet) => (
+                              <li key={bullet}>{bullet}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {block.stat && (
+                          <div className="ah-aula__stat">
+                            <strong>
+                              {block.stat.value}
+                              <span>{block.stat.unit}</span>
+                            </strong>
+                            <p>{block.stat.text}</p>
+                          </div>
+                        )}
+                        {block.timeline && (
+                          <div className="ah-aula__timeline">
+                            {block.timeline.map((row) => (
+                              <div key={row.title} className="ah-aula__tl">
+                                <span className="ah-aula__tl-lead">{row.lead}</span>
+                                <div>
+                                  <strong>{row.title}</strong>
+                                  <small>{row.detail}</small>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {block.note && (
+                          <div
+                            className={"ah-aula__keynote" + (block.note.key ? " is-key" : "")}
+                            role="note"
+                          >
+                            <div>
+                              <span className="ah-aula__keynote-tag">{block.note.tag}</span>
+                              {block.note.text}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </article>
                   ))}
                 </div>
-              </footer>
-            </>
-          )}
-
-          {activeSection === "descargas" && (
-            <div className="ah-aula__download-groups">
-              {downloads.map((group) => (
-                <section key={group.title} className="ah-aula__download-group">
-                  <div className="ah-aula__group-head">
-                    <h3>{group.title}</h3>
-                    <span>{group.kicker}</span>
-                  </div>
-                  <div className="ah-aula__downloads">
-                    {group.items.map((item) => (
-                      <a
-                        key={item.name}
-                        href={item.href}
-                        className={"ah-aula__download" + (item.featured ? " is-featured" : "")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <span className="ah-aula__ext" data-ext={item.ext}>
-                          {item.ext}
-                        </span>
-                        <span className="ah-aula__download-main">
-                          <strong>{item.name}</strong>
-                          <small>{item.detail}</small>
-                        </span>
-                        <span className="ah-aula__download-go" aria-hidden>
-                          <Icon name="download" size={17} />
-                        </span>
-                      </a>
+                <footer className="ah-aula__accredit" aria-label="Requisitos de acreditación">
+                  <span className="ah-aula__accredit-kicker">Para acreditar</span>
+                  <div className="ah-aula__accredit-stats">
+                    {accreditationStats.map((stat) => (
+                      <div key={stat.label} className="ah-aula__accredit-stat">
+                        <strong>
+                          {stat.value} <span>{stat.unit}</span>
+                        </strong>
+                        <small>{stat.label}</small>
+                      </div>
                     ))}
                   </div>
-                </section>
-              ))}
-            </div>
-          )}
+                </footer>
+              </>
+            )}
 
-          {activeSection === "preguntas" && (
-            <div className="ah-aula__faq-shell">
-              <div className="ah-aula__faq-tabs" aria-label="Categorías de preguntas">
-                {faqGroups.map((group) => (
-                  <button
-                    key={group.id}
-                    type="button"
-                    className={"ah-aula__faq-tab" + (group.id === activeFaq ? " is-active" : "")}
-                    onClick={() => setActiveFaq(group.id)}
-                  >
-                    <span>{group.label}</span>
-                    <small>{group.items.length} respuestas</small>
-                  </button>
+            {activeSection === "descargas" && (
+              <div className="ah-aula__download-groups">
+                {downloads.map((group) => (
+                  <section key={group.title} className="ah-aula__download-group">
+                    <div className="ah-aula__group-head">
+                      <h3>{group.title}</h3>
+                      <span>{group.kicker}</span>
+                    </div>
+                    <div className="ah-aula__downloads">
+                      {group.items.map((item) => (
+                        <a
+                          key={item.name}
+                          href={item.href}
+                          className={"ah-aula__download" + (item.featured ? " is-featured" : "")}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <span className="ah-aula__ext" data-ext={item.ext}>
+                            {item.ext}
+                          </span>
+                          <span className="ah-aula__download-main">
+                            <strong>{item.name}</strong>
+                            <small>{item.detail}</small>
+                          </span>
+                          <span className="ah-aula__download-go" aria-hidden>
+                            <Icon name="download" size={17} />
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
-              <div className="ah-aula__faq-list" key={selectedFaq.id}>
-                <div className="ah-aula__faq-title">
-                  <h3>{selectedFaq.label}</h3>
-                  <p>{selectedFaq.subtitle}</p>
+            )}
+
+            {activeSection === "preguntas" && (
+              <>
+                <div className="ah-aula__faq-shell">
+                  <div className="ah-aula__faq-tabs" aria-label="Categorías de preguntas">
+                    {faqGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        className={
+                          "ah-aula__faq-tab" + (group.id === activeFaq ? " is-active" : "")
+                        }
+                        onClick={() => setActiveFaq(group.id)}
+                      >
+                        <span>{group.label}</span>
+                        <small>{group.items.length} respuestas</small>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="ah-aula__faq-list" key={selectedFaq.id}>
+                    <div className="ah-aula__faq-title">
+                      <h3>{selectedFaq.label}</h3>
+                      <p>{selectedFaq.subtitle}</p>
+                    </div>
+                    {selectedFaq.items.map((item, idx) => (
+                      <details key={item.q} className="ah-aula__faq-row" open={idx === 0}>
+                        <summary>
+                          <span>{String(idx + 1).padStart(2, "0")}</span>
+                          {item.q}
+                          <i className="ah-aula__faq-chev" aria-hidden>
+                            <Icon name="chev" size={16} />
+                          </i>
+                        </summary>
+                        <div>{item.a}</div>
+                      </details>
+                    ))}
+                  </div>
                 </div>
-                {selectedFaq.items.map((item, idx) => (
-                  <details key={item.q} className="ah-aula__faq-row" open={idx === 0}>
-                    <summary>
-                      <span>{String(idx + 1).padStart(2, "0")}</span>
-                      {item.q}
-                      <i className="ah-aula__faq-chev" aria-hidden>
-                        <Icon name="chev" size={16} />
-                      </i>
-                    </summary>
-                    <div>{item.a}</div>
-                  </details>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeSection === "entregas" && (
-            <div className="ah-aula__deliveries">
-              <p className="ah-aula__deliveries-hint">
-                <Icon name="alert" size={15} />
-                Cada entrega abre la tarea de Moodle en una pestaña nueva, con tu sesión del campus.
-              </p>
-              <div className="ah-aula__areas" role="tablist" aria-label="Áreas de entrega">
-                {deliveryAreas.map((area) => (
-                  <button
-                    key={area.id}
-                    type="button"
-                    className={"ah-aula__area" + (area.id === selectedArea.id ? " is-active" : "")}
-                    style={{ ["--area" as string]: area.color }}
-                    onClick={() => setActiveArea(area.id)}
-                  >
-                    <span>
-                      <i className="ah-aula__area-dot" aria-hidden />
-                      {area.name}
-                    </span>
+                <footer className="ah-aula__faq-cta">
+                  <div>
+                    <strong>¿No encontraste tu respuesta?</strong>
                     <small>
-                      {area.institutions.length}{" "}
-                      {area.institutions.length === 1 ? "institución" : "instituciones"}
+                      El canal único de consultas es el correo. Coordinación responde en hasta 48 h
+                      hábiles.
                     </small>
+                  </div>
+                  <button type="button" className="ah-aula__mailbtn" onClick={handleCopyMail}>
+                    <Icon name={mailCopied ? "check" : "arrow"} size={15} />
+                    {mailCopied ? "Correo copiado" : "Escribir al coordinador"}
                   </button>
-                ))}
+                </footer>
+              </>
+            )}
+
+            {activeSection === "entregas" && (
+              <div className="ah-aula__deliveries">
+                <p className="ah-aula__deliveries-hint">
+                  <Icon name="alert" size={15} />
+                  Cada entrega abre la tarea de Moodle en una pestaña nueva, con tu sesión del
+                  campus. Si tu PPS fue presencial, subí la planilla de asistencia firmada junto al
+                  informe.
+                </p>
+                <div className="ah-aula__areas" role="tablist" aria-label="Áreas de entrega">
+                  {deliveryAreas.map((area) => (
+                    <button
+                      key={area.id}
+                      type="button"
+                      className={
+                        "ah-aula__area" + (area.id === selectedArea.id ? " is-active" : "")
+                      }
+                      style={{ ["--area" as string]: area.color }}
+                      onClick={() => setActiveArea(area.id)}
+                    >
+                      <span>
+                        <i className="ah-aula__area-dot" aria-hidden />
+                        {area.name}
+                      </span>
+                      <small>
+                        {area.institutions.length}{" "}
+                        {area.institutions.length === 1 ? "institución" : "instituciones"}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+                <div className="ah-aula__delivery-grid" key={selectedArea.id}>
+                  {selectedArea.institutions.map((institution) => (
+                    <a
+                      key={institution.name}
+                      className="ah-aula__delivery"
+                      href={`${MOODLE_ASSIGN}${institution.moodleId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ ["--area" as string]: selectedArea.color }}
+                    >
+                      <span className="ah-aula__folder" aria-hidden>
+                        <Icon name="upload" size={17} />
+                      </span>
+                      <strong>{institution.name}</strong>
+                      <small>Tarea de Moodle</small>
+                      <span className="ah-aula__open">
+                        Abrir entrega <Icon name="arrow" size={14} />
+                      </span>
+                    </a>
+                  ))}
+                </div>
               </div>
-              <div className="ah-aula__delivery-grid" key={selectedArea.id}>
-                {selectedArea.institutions.map((institution) => (
-                  <a
-                    key={institution.name}
-                    className="ah-aula__delivery"
-                    href={`${MOODLE_ASSIGN}${institution.moodleId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ ["--area" as string]: selectedArea.color }}
-                  >
-                    <span className="ah-aula__folder" aria-hidden>
-                      <Icon name="upload" size={17} />
-                    </span>
-                    <strong>{institution.name}</strong>
-                    <small>Tarea de Moodle</small>
-                    <span className="ah-aula__open">
-                      Abrir entrega <Icon name="arrow" size={14} />
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );

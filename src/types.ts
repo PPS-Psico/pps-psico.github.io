@@ -71,14 +71,17 @@ export type Orientacion = (typeof ALL_ORIENTACIONES)[number];
 
 export type TabId =
   | "inicio"
-  | "convocatorias"
-  | "aula"
-  | "solicitudes"
+  | "entregas"
   | "practicas"
+  | "solicitudes"
+  | "guia"
+  | "descargas"
+  | "preguntas"
   | "profile"
   | "calendario"
   | "finalizacion"
-  | "informes";
+  | "informes"
+  | "aula";
 
 export interface CriteriosCalculados {
   horasTotales: number;

@@ -2,7 +2,7 @@
 <html lang="es" translate="no" class="notranslate">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="google" content="notranslate" />
     <meta
       name="description"
@@ -48,7 +48,6 @@
       }
     </script>
 
-
     <script id="pps-entry-shell-script">
       (function () {
         var hash = window.location.hash || "";
@@ -70,18 +69,62 @@
       }
     </script>
 
-
     <style id="pps-entry-shell-style">
-      @view-transition { navigation: auto; }
-      ::view-transition-group(root){ animation-duration:360ms; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
-      ::view-transition-old(root){ animation:ppsPageOut 220ms cubic-bezier(.4,0,1,1) both; }
-      ::view-transition-new(root){ animation:ppsPageIn 360ms cubic-bezier(.16,1,.3,1) both; }
-      ::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:420ms; animation-timing-function:cubic-bezier(.16,1,.3,1); }
+      @view-transition {
+        navigation: auto;
+      }
+      ::view-transition-group(root) {
+        animation-duration: 360ms;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      ::view-transition-old(root) {
+        animation: ppsPageOut 220ms cubic-bezier(0.4, 0, 1, 1) both;
+      }
+      ::view-transition-new(root) {
+        animation: ppsPageIn 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      ::view-transition-group(pps-brand),
+      ::view-transition-group(pps-tabs),
+      ::view-transition-group(pps-actions) {
+        animation-duration: 420ms;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
 
-      @keyframes ppsPageOut{ from{ opacity:1; transform:translateY(0); filter:blur(0); } to{ opacity:0; transform:translateY(-6px); filter:blur(2px); } }
-      @keyframes ppsPageIn{ from{ opacity:0; transform:translateY(6px); filter:blur(2px); } to{ opacity:1; transform:translateY(0); filter:blur(0); } }
+      @keyframes ppsPageOut {
+        from {
+          opacity: 1;
+          transform: translateY(0);
+          filter: blur(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-6px);
+          filter: blur(2px);
+        }
+      }
+      @keyframes ppsPageIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+          filter: blur(2px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+          filter: blur(0);
+        }
+      }
 
-      @media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root),::view-transition-group(root),::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:1ms; } }
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-old(root),
+        ::view-transition-new(root),
+        ::view-transition-group(root),
+        ::view-transition-group(pps-brand),
+        ::view-transition-group(pps-tabs),
+        ::view-transition-group(pps-actions) {
+          animation-duration: 1ms;
+        }
+      }
 
       html.pps-has-entry-shell body,
       html.fonts-loading.pps-has-entry-shell body {
@@ -103,7 +146,12 @@
         min-height: 100vh;
         color: #0b0f19;
         background: #fafaf7;
-        font-family: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-family:
+          "Geist",
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
         -webkit-font-smoothing: antialiased;
       }
       html.dark.pps-has-entry-shell .pps-entry-shell {
@@ -148,9 +196,15 @@
         border-radius: 999px;
         background: currentColor;
       }
-      .pps-entry-mark span:nth-child(1) { height: 8px; }
-      .pps-entry-mark span:nth-child(2) { height: 14px; }
-      .pps-entry-mark span:nth-child(3) { height: 5px; }
+      .pps-entry-mark span:nth-child(1) {
+        height: 8px;
+      }
+      .pps-entry-mark span:nth-child(2) {
+        height: 14px;
+      }
+      .pps-entry-mark span:nth-child(3) {
+        height: 5px;
+      }
       .pps-entry-name {
         font-weight: 500;
         font-size: 14px;
@@ -163,7 +217,9 @@
         font-size: 11px;
         line-height: 1.2;
       }
-      html.dark .pps-entry-sub { color: #72798f; }
+      html.dark .pps-entry-sub {
+        color: #72798f;
+      }
       .pps-entry-tabs {
         display: flex;
         align-items: center;
@@ -177,11 +233,24 @@
         border-radius: 10px;
         background: #f1f0ea;
       }
-      html.dark .pps-entry-tab { background: #131829; }
-      .pps-entry-tab:nth-child(1) { width: 76px; }
-      .pps-entry-tab:nth-child(2) { width: 104px; opacity: .72; }
-      .pps-entry-tab:nth-child(3) { width: 90px; opacity: .72; }
-      .pps-entry-tab:nth-child(4) { width: 62px; opacity: .72; }
+      html.dark .pps-entry-tab {
+        background: #131829;
+      }
+      .pps-entry-tab:nth-child(1) {
+        width: 76px;
+      }
+      .pps-entry-tab:nth-child(2) {
+        width: 104px;
+        opacity: 0.72;
+      }
+      .pps-entry-tab:nth-child(3) {
+        width: 90px;
+        opacity: 0.72;
+      }
+      .pps-entry-tab:nth-child(4) {
+        width: 62px;
+        opacity: 0.72;
+      }
       .pps-entry-actions {
         margin-left: auto;
         display: flex;
@@ -196,7 +265,9 @@
         border-radius: 999px;
         background: #f1f0ea;
       }
-      html.dark .pps-entry-dot { background: #131829; }
+      html.dark .pps-entry-dot {
+        background: #131829;
+      }
       .pps-entry-main {
         max-width: 1200px;
         margin: 52px auto 0;
@@ -206,36 +277,88 @@
       .pps-entry-line,
       .pps-entry-card {
         border-radius: 999px;
-        background: linear-gradient(90deg, rgba(60,184,141,.22), rgba(31,59,115,.12), rgba(60,184,141,.08));
+        background: linear-gradient(
+          90deg,
+          rgba(60, 184, 141, 0.22),
+          rgba(31, 59, 115, 0.12),
+          rgba(60, 184, 141, 0.08)
+        );
         background-size: 180% 100%;
         animation: pps-entry-shimmer 1.25s ease-in-out infinite alternate;
       }
       html.dark .pps-entry-kicker,
       html.dark .pps-entry-line,
       html.dark .pps-entry-card {
-        background: linear-gradient(90deg, rgba(95,224,179,.18), rgba(123,145,222,.13), rgba(95,224,179,.08));
+        background: linear-gradient(
+          90deg,
+          rgba(95, 224, 179, 0.18),
+          rgba(123, 145, 222, 0.13),
+          rgba(95, 224, 179, 0.08)
+        );
         background-size: 180% 100%;
       }
-      .pps-entry-kicker { width: 146px; height: 12px; opacity: .9; }
-      .pps-entry-title { margin-top: 24px; max-width: 420px; }
-      .pps-entry-line { height: 44px; margin-top: 10px; border-radius: 16px; }
-      .pps-entry-line:nth-child(2) { width: 92%; }
-      .pps-entry-line:nth-child(3) { width: 64%; }
-      .pps-entry-card { margin-top: 40px; height: 148px; max-width: 430px; border-radius: 24px; opacity: .65; }
+      .pps-entry-kicker {
+        width: 146px;
+        height: 12px;
+        opacity: 0.9;
+      }
+      .pps-entry-title {
+        margin-top: 24px;
+        max-width: 420px;
+      }
+      .pps-entry-line {
+        height: 44px;
+        margin-top: 10px;
+        border-radius: 16px;
+      }
+      .pps-entry-line:nth-child(2) {
+        width: 92%;
+      }
+      .pps-entry-line:nth-child(3) {
+        width: 64%;
+      }
+      .pps-entry-card {
+        margin-top: 40px;
+        height: 148px;
+        max-width: 430px;
+        border-radius: 24px;
+        opacity: 0.65;
+      }
       @keyframes pps-entry-shimmer {
-        from { background-position: 0% 50%; opacity: .68; }
-        to { background-position: 100% 50%; opacity: 1; }
+        from {
+          background-position: 0% 50%;
+          opacity: 0.68;
+        }
+        to {
+          background-position: 100% 50%;
+          opacity: 1;
+        }
       }
       @media (prefers-reduced-motion: reduce) {
         .pps-entry-kicker,
         .pps-entry-line,
-        .pps-entry-card { animation: none; }
+        .pps-entry-card {
+          animation: none;
+        }
       }
       @media (max-width: 720px) {
-        .pps-entry-topbar { padding: 14px 20px; flex-wrap: wrap; }
-        .pps-entry-tabs { order: 3; width: 100%; margin-left: 0; overflow: hidden; }
-        .pps-entry-actions { margin-left: auto; }
-        .pps-entry-main { margin-top: 28px; padding: 0 24px; }
+        .pps-entry-topbar {
+          padding: 14px 20px;
+          flex-wrap: wrap;
+        }
+        .pps-entry-tabs {
+          order: 3;
+          width: 100%;
+          margin-left: 0;
+          overflow: hidden;
+        }
+        .pps-entry-actions {
+          margin-left: auto;
+        }
+        .pps-entry-main {
+          margin-top: 28px;
+          padding: 0 24px;
+        }
       }
     </style>
 
@@ -343,20 +466,33 @@
     </script>
   </head>
   <body class="notranslate">
-
     <div id="root">
       <div class="pps-entry-shell" data-pps-entry-shell>
         <header class="pps-entry-topbar">
           <div class="pps-entry-brand">
-            <div class="pps-entry-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-            <div><div class="pps-entry-name">Mi Panel</div><div class="pps-entry-sub">PPS - Psicologia</div></div>
+            <div class="pps-entry-mark" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <div>
+              <div class="pps-entry-name">Mi Panel</div>
+              <div class="pps-entry-sub">PPS - Psicologia</div>
+            </div>
           </div>
-          <div class="pps-entry-tabs" aria-hidden="true"><span class="pps-entry-tab"></span><span class="pps-entry-tab"></span><span class="pps-entry-tab"></span><span class="pps-entry-tab"></span></div>
-          <div class="pps-entry-actions" aria-hidden="true"><span class="pps-entry-dot"></span><span class="pps-entry-dot"></span><span class="pps-entry-dot"></span></div>
+          <div class="pps-entry-tabs" aria-hidden="true">
+            <span class="pps-entry-tab"></span><span class="pps-entry-tab"></span
+            ><span class="pps-entry-tab"></span><span class="pps-entry-tab"></span>
+          </div>
+          <div class="pps-entry-actions" aria-hidden="true">
+            <span class="pps-entry-dot"></span><span class="pps-entry-dot"></span
+            ><span class="pps-entry-dot"></span>
+          </div>
         </header>
         <main class="pps-entry-main" aria-hidden="true">
           <div class="pps-entry-kicker"></div>
-          <div class="pps-entry-title"><div class="pps-entry-line"></div><div class="pps-entry-line"></div></div>
+          <div class="pps-entry-title">
+            <div class="pps-entry-line"></div>
+            <div class="pps-entry-line"></div>
+          </div>
           <div class="pps-entry-card"></div>
         </main>
       </div>

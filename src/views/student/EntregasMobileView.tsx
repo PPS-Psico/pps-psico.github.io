@@ -5,28 +5,19 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { haptics } from "../../utils/haptics";
 import { MOODLE_ASSIGN, useAulaEntregas } from "../../hooks/useAulaEntregas";
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Entregas · vista MOBILE-FIRST (no es la versión PC responsive).
-   Pensada para una sola tarea: subir el informe desde el celular.
-   - Chips de área con scroll horizontal (pulgar, sin grids).
-   - Filas táctiles de 64px que abren la tarea de Moodle en pestaña nueva.
-   Tokens del scope `.ed` (los mismos del resto del panel mobile).
-   ──────────────────────────────────────────────────────────────────────────── */
-
 const EntregasMobileView: React.FC = () => {
   const { resolvedTheme } = useTheme();
   const { areas } = useAulaEntregas();
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
 
   const selectedArea = useMemo(
-    () => areas.find((a) => a.id === activeAreaId) ?? areas[0],
+    () => areas.find((area) => area.id === activeAreaId) ?? areas[0],
     [areas, activeAreaId]
   );
 
   return (
     <div className="ed" data-mode={resolvedTheme} data-accent="teal" style={{ paddingBottom: 8 }}>
-      {/* Cabecera */}
-      <header style={{ padding: "4px 4px 18px" }}>
+      <header style={{ padding: "0 4px 18px" }}>
         <span
           style={{
             fontFamily: "var(--font-mono, ui-monospace)",
@@ -50,7 +41,7 @@ const EntregasMobileView: React.FC = () => {
             color: "var(--ink)",
           }}
         >
-          Entregá <em style={{ fontStyle: "normal", color: "var(--accent)" }}>tu informe.</em>
+          Entregá <em style={{ fontStyle: "normal", color: "var(--accent-text)" }}>tu informe.</em>
         </h1>
         <p
           style={{
@@ -61,12 +52,11 @@ const EntregasMobileView: React.FC = () => {
             maxWidth: "40ch",
           }}
         >
-          Elegí tu área y la institución donde cursaste. La tarea de Moodle se abre en una pestaña
-          nueva.
+          Elegí tu área y la institución donde cursaste. Subí el informe y la planilla de
+          asistencia.
         </p>
       </header>
 
-      {/* Chips de área — scroll horizontal, targets de pulgar */}
       <div
         role="tablist"
         aria-label="Áreas de entrega"
@@ -134,7 +124,6 @@ const EntregasMobileView: React.FC = () => {
         })}
       </div>
 
-      {/* Lista de instituciones — filas táctiles */}
       <div
         style={{
           border: "1px solid var(--line, var(--hairline))",
@@ -209,7 +198,6 @@ const EntregasMobileView: React.FC = () => {
         ))}
       </div>
 
-      {/* Recordatorio de plazo */}
       <p
         style={{
           display: "flex",

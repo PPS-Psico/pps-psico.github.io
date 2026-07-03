@@ -20,11 +20,11 @@ interface MobileBottomNavProps {
 
 const ICON_MAP: Partial<Record<TabId, IconName>> = {
   inicio: "home",
-  convocatorias: "search",
-  aula: "book",
-  informes: "upload",
+  entregas: "upload",
   practicas: "bag",
   solicitudes: "file",
+  descargas: "download",
+  preguntas: "help",
   profile: "user",
 };
 

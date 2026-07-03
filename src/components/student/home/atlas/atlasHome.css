@@ -2557,6 +2557,23 @@ html.dark .ah-root .ah-topbar__mark {
 .ah-nav__item--bridge:hover {
   border-color: var(--border-strong);
 }
+/* Bloque de consulta (Guía, Descargas, Preguntas): separado y en tono más
+   suave que la herramienta personal; recupera peso al pasar o activarse. */
+.ah-nav__sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 18px;
+  margin: 0 8px;
+  background: var(--border-strong);
+}
+.ah-nav__item--campus {
+  color: var(--fg-subtle);
+  font-size: 14px;
+}
+.ah-nav__item--campus:hover,
+.ah-nav__item--campus.active {
+  color: var(--fg);
+}
 
 /* View Transitions: conserva la barra entre Campus y Mi Panel. */
 .ah-topbar__brand {
@@ -2729,7 +2746,22 @@ html.dark .ah-root .ah-avatar {
    le damos aire lateral para que las cards no toquen los bordes. */
 @media (max-width: 767px) {
   .ah-root.ah-unified .ah-main {
-    padding: 8px 16px 20px;
+    padding: 0 4px 20px;
+  }
+  .ah-root.ah-unified .ah-pagehead {
+    margin-bottom: 22px;
+  }
+  .ah-root.ah-unified .ah-pagehead h1 {
+    margin-top: 8px;
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+  .ah-root.ah-unified .ah-pagehead p {
+    margin-top: 10px;
+    max-width: 40ch;
+    font-size: 14.5px;
+    line-height: 1.5;
   }
 }
 
@@ -2891,6 +2923,9 @@ html.dark .ah-root .ah-avatar {
   align-items: start;
   padding: 0;
   overflow: visible;
+}
+.ah-aula__hero--solo {
+  grid-template-columns: minmax(0, 1fr);
 }
 .ah-aula--public .ah-aula__hero {
   align-items: center;
@@ -3241,6 +3276,137 @@ html.dark .ah-aula__guide-num {
   background: var(--primary-500);
 }
 
+/* Etiqueta de etapa sobre el título del paso (Acceso, Convocatorias…) */
+.ah-aula__guide-eyebrow {
+  display: block;
+  margin-top: 4px;
+  font: 600 10px/1.2 var(--font-mono);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+.ah-aula__guide-block .ah-aula__guide-eyebrow + h3 {
+  margin-top: 6px;
+}
+
+/* Cifra protagonista dentro de un paso (80% de asistencia mínima) */
+.ah-aula__stat {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  max-width: 620px;
+  margin-top: 16px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+.ah-aula__stat > strong {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 54px;
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+  color: var(--display-accent);
+}
+.ah-aula__stat > strong span {
+  font-size: 26px;
+}
+.ah-aula__stat > p {
+  margin: 0;
+  font-size: 14px;
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+}
+.ah-aula__stat > p strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* Nota clave de un paso (consentimiento, documento válido, prórroga…) */
+.ah-aula__keynote {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  max-width: 620px;
+  margin-top: 14px;
+  padding: 13px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--info-500);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--bg-sunken) 70%, transparent);
+  font-size: 13.5px;
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+}
+.ah-aula__keynote.is-key {
+  border-left-color: var(--primary-500);
+}
+.ah-aula__keynote strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.ah-aula__keynote-tag {
+  display: block;
+  margin-bottom: 4px;
+  font: 600 10px/1.2 var(--font-mono);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--info-500);
+}
+.ah-aula__keynote.is-key .ah-aula__keynote-tag {
+  color: var(--primary-600);
+}
+html.dark .ah-aula__keynote.is-key .ah-aula__keynote-tag {
+  color: var(--primary-300);
+}
+
+/* Línea de plazos de un paso (30 días corridos / 30 días hábiles…) */
+.ah-aula__timeline {
+  max-width: 620px;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  overflow: hidden;
+}
+.ah-aula__tl {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 18px;
+  align-items: baseline;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__tl:last-child {
+  border-bottom: 0;
+}
+.ah-aula__tl:hover {
+  background: color-mix(in oklab, var(--bg-sunken) 60%, transparent);
+}
+.ah-aula__tl-lead {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--display-accent);
+}
+.ah-aula__tl strong {
+  display: block;
+  font-size: 14.5px;
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-aula__tl small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: var(--lh-snug);
+  color: var(--fg-muted);
+}
+
 /* Tira final: requisitos de acreditación */
 .ah-aula__accredit {
   margin-top: 26px;
@@ -3557,6 +3723,57 @@ html.dark .ah-aula__faq-row summary span {
   max-width: 78ch;
 }
 
+/* Cierre del centro de ayuda: canal único de consultas */
+.ah-aula__faq-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+.ah-aula__faq-cta strong {
+  display: block;
+  font-size: 15px;
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-aula__faq-cta small {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: var(--lh-snug);
+  color: var(--fg-muted);
+}
+.ah-aula__mailbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 11px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: var(--tracking-snug);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__mailbtn:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+.ah-aula__mailbtn:active {
+  transform: scale(0.97);
+}
+
 /* ── Entregas ── */
 .ah-aula__deliveries {
   padding-top: 18px;
@@ -3703,6 +3920,181 @@ html.dark .ah-aula__faq-row summary span {
   transform: translateX(3px);
 }
 
+/* ── Guía editorial (pestaña Inicio/Guía): índice de etapas + capítulos
+   abiertos con número grande, sin card contenedora. ── */
+.ah-aula__gindex {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-top: 30px;
+  border-top: 1px solid var(--border);
+}
+.ah-aula__gindex a {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 20px 18px 20px 0;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 2px solid transparent;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__gindex a + a {
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
+}
+.ah-aula__gindex a:hover {
+  border-bottom-color: var(--primary-500);
+}
+.ah-aula__gindex-num {
+  font: 600 11.5px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--primary-600);
+}
+html.dark .ah-aula__gindex-num {
+  color: var(--primary-300);
+}
+.ah-aula__gindex strong {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 15px;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__gindex a:hover strong {
+  color: var(--primary-600);
+}
+html.dark .ah-aula__gindex a:hover strong {
+  color: var(--primary-300);
+}
+.ah-aula__gindex small {
+  font-size: 11.5px;
+  color: var(--fg-subtle);
+}
+.ah-aula__gsteps {
+  display: grid;
+}
+.ah-aula__gstep {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 48px;
+  padding: 44px 0;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 90px;
+}
+.ah-aula__gstep:first-child {
+  border-top: 0;
+  padding-top: 34px;
+}
+.ah-aula__gstep-num {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 68px;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: var(--fg);
+}
+.ah-aula__gstep-kick {
+  display: block;
+  margin-top: 8px;
+  font: 600 10.5px/1.3 var(--font-mono);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--primary-600);
+}
+html.dark .ah-aula__gstep-kick {
+  color: var(--primary-300);
+}
+.ah-aula__gstep-sum {
+  margin: 14px 0 0;
+  max-width: 180px;
+  font-size: 13px;
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+}
+.ah-aula__gstep-main h3 {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 27px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--fg);
+}
+.ah-aula__gcards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 720px;
+  margin-top: 18px;
+}
+.ah-aula__gcard {
+  position: relative;
+  margin: 0;
+  padding: 15px 17px 15px 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  font-size: 14px;
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__gcard:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.ah-aula__gcard i {
+  position: absolute;
+  left: 17px;
+  top: 21px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--primary-500);
+}
+/* En la guía editorial el stat/timeline/nota respiran más anchos. */
+.ah-aula__gstep-main .ah-aula__stat,
+.ah-aula__gstep-main .ah-aula__timeline,
+.ah-aula__gstep-main .ah-aula__keynote {
+  max-width: 720px;
+}
+.ah-aula__accredit--page {
+  margin-top: 0;
+}
+
+/* ── Modo sección fija: cada sección del aula como pestaña propia del panel.
+   El encabezado usa la misma articulación que .ah-pagehead de las vistas
+   nativas; el hero pierde la columna de datos salvo en la guía. ── */
+.ah-aula--section-only .ah-aula__hero--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ah-aula--section-only .ah-aula__hero--solo::after {
+  right: 6%;
+}
+.ah-aula--section-only .ah-aula__panel {
+  margin-top: 26px;
+}
+.ah-aula--section-only .ah-aula__guide {
+  padding-top: 0;
+}
+.ah-aula--section-only .ah-aula__guide-block:first-child {
+  padding-top: 6px;
+}
+.ah-aula--section-only .ah-aula__download-groups,
+.ah-aula--section-only .ah-aula__faq-shell {
+  padding-top: 0;
+}
+.ah-aula--section-only .ah-aula__deliveries {
+  padding-top: 2px;
+}
+
 /* ── Responsive (mismos breakpoints que la versión anterior) ── */
 @media (max-width: 1100px) {
   .ah-aula__hero,
@@ -3732,12 +4124,31 @@ html.dark .ah-aula__faq-row summary span {
     gap: 16px;
   }
 }
+@media (max-width: 1100px) {
+  .ah-aula__gindex {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ah-aula__gindex a:nth-child(3n + 1) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
 @media (max-width: 900px) {
   .ah-aula__faq-shell {
     grid-template-columns: 1fr;
   }
   .ah-aula__faq-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ah-aula__gstep {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .ah-aula__gstep-sum {
+    max-width: 52ch;
+  }
+  .ah-aula__gcards {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 760px) {
@@ -3813,6 +4224,19 @@ html.dark .ah-aula__faq-row summary span {
   }
   .ah-aula__guide-block h3 {
     margin-top: 6px;
+  }
+  .ah-aula__stat {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .ah-aula__tl {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .ah-aula__faq-cta {
+    flex-direction: column;
+    align-items: flex-start;
   }
   .ah-aula__accredit-stats {
     grid-template-columns: 1fr;

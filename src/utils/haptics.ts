@@ -26,12 +26,73 @@ function canVibrate(): boolean {
   );
 }
 
+function isIos(): boolean {
+  if (typeof window === "undefined" || !window.navigator) return false;
+  const ua = window.navigator.userAgent.toLowerCase();
+  return (
+    ua.includes("iphone") ||
+    ua.includes("ipad") ||
+    ua.includes("ipod") ||
+    (ua.includes("macintosh") && "ontouchend" in document)
+  );
+}
+
+let iosHapticCheckbox: HTMLInputElement | null = null;
+let iosHapticLabel: HTMLLabelElement | null = null;
+
+function initIosHapticElements(): void {
+  if (typeof document === "undefined") return;
+
+  iosHapticCheckbox = document.getElementById("pps-ios-haptic-trigger") as HTMLInputElement;
+  iosHapticLabel = document.getElementById("pps-ios-haptic-label") as HTMLLabelElement;
+
+  if (!iosHapticCheckbox) {
+    iosHapticCheckbox = document.createElement("input");
+    iosHapticCheckbox.type = "checkbox";
+    iosHapticCheckbox.id = "pps-ios-haptic-trigger";
+    iosHapticCheckbox.setAttribute("switch", "");
+    iosHapticCheckbox.style.position = "absolute";
+    iosHapticCheckbox.style.opacity = "0";
+    iosHapticCheckbox.style.pointerEvents = "none";
+    iosHapticCheckbox.style.width = "1px";
+    iosHapticCheckbox.style.height = "1px";
+    iosHapticCheckbox.style.overflow = "hidden";
+
+    iosHapticLabel = document.createElement("label");
+    iosHapticLabel.htmlFor = "pps-ios-haptic-trigger";
+    iosHapticLabel.id = "pps-ios-haptic-label";
+    iosHapticLabel.style.display = "none";
+
+    document.body.appendChild(iosHapticCheckbox);
+    document.body.appendChild(iosHapticLabel);
+  }
+}
+
+function fireIosHaptic(): void {
+  if (typeof document === "undefined") return;
+  if (!iosHapticLabel) {
+    initIosHapticElements();
+  }
+  if (iosHapticLabel) {
+    iosHapticLabel.click();
+  }
+}
+
 function fire(pattern: number | number[]): void {
-  if (!canVibrate()) return;
-  try {
-    navigator.vibrate(pattern);
-  } catch {
-    /* noop — algunos navegadores lanzan si está bloqueado */
+  if (prefersReducedMotion()) return;
+
+  if (canVibrate()) {
+    try {
+      navigator.vibrate(pattern);
+    } catch {
+      /* noop — algunos navegadores lanzan si está bloqueado */
+    }
+  } else if (isIos()) {
+    try {
+      fireIosHaptic();
+    } catch {
+      /* noop */
+    }
   }
 }
 

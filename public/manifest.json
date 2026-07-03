@@ -24,5 +24,21 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["education", "productivity"]
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Inicio",
+      "short_name": "Inicio",
+      "description": "Ir a la página de inicio de Mi Panel",
+      "url": "./#/student",
+      "icons": [{ "src": "./icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mis prácticas",
+      "short_name": "Prácticas",
+      "description": "Ver el avance de horas y tus prácticas",
+      "url": "./#/student/practicas",
+      "icons": [{ "src": "./icons/icon-megaphone.png", "sizes": "192x192" }]
+    }
+  ]
 }

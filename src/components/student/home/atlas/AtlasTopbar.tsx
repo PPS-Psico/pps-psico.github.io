@@ -13,13 +13,18 @@ interface AtlasTopbarProps {
   onTabChange: (tab: TabId) => void;
 }
 
-// Convocatorias no es un ítem: las abiertas ya viven en Inicio.
-const NAV: { id: TabId; label: string }[] = [
+/* Barra unificada en dos bloques: primero la herramienta personal (datos
+   vivos del alumno), después —tras un separador y en tono más suave— el
+   material de consulta del campus (Guía, Descargas, Preguntas). */
+const NAV: { id: TabId; label: string; campus?: boolean }[] = [
   { id: "inicio", label: "Inicio" },
-  { id: "aula", label: "Aula" },
-  { id: "solicitudes", label: "Solicitudes" },
+  { id: "entregas", label: "Entregas" },
   { id: "practicas", label: "Prácticas" },
+  { id: "solicitudes", label: "Solicitudes" },
   { id: "profile", label: "Perfil" },
+  { id: "guia", label: "Guía 2026", campus: true },
+  { id: "descargas", label: "Descargas", campus: true },
+  { id: "preguntas", label: "Preguntas", campus: true },
 ];
 
 const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => {
@@ -36,7 +41,19 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
       return;
     }
 
-    startViewTransition.call(document, update);
+    /* Si el usuario cambia de pestaña antes de que termine la animación, el
+       navegador aborta la transición y rechaza sus promesas ("Transition was
+       aborted..."): las silenciamos para que no salte el modal global. */
+    const transition = startViewTransition.call(document, update) as
+      | {
+          finished?: Promise<void>;
+          ready?: Promise<void>;
+          updateCallbackDone?: Promise<void>;
+        }
+      | undefined;
+    transition?.finished?.catch(() => {});
+    transition?.ready?.catch(() => {});
+    transition?.updateCallbackDone?.catch(() => {});
   };
 
   const handleTabChange = (tab: TabId) => {
@@ -71,17 +88,40 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
           </div>
 
           <nav className="ah-nav" aria-label="Secciones del panel">
-            {NAV.map((n) => (
-              <button
-                key={n.id}
-                type="button"
-                className={"ah-nav__item" + (activeTab === n.id ? " active" : "")}
-                aria-current={activeTab === n.id ? "page" : undefined}
-                onClick={() => handleTabChange(n.id)}
-              >
-                {n.label}
-              </button>
-            ))}
+            {NAV.map((n, idx) => {
+              const isLocked = [
+                "inicio",
+                "entregas",
+                "practicas",
+                "solicitudes",
+                "profile",
+              ].includes(n.id);
+              const showLock = isLocked && !authenticatedUser;
+              const isFirstCampus = n.campus && !NAV[idx - 1]?.campus;
+              return (
+                <React.Fragment key={n.id}>
+                  {isFirstCampus && <span className="ah-nav__sep" aria-hidden />}
+                  <button
+                    type="button"
+                    className={
+                      "ah-nav__item" +
+                      (n.campus ? " ah-nav__item--campus" : "") +
+                      (activeTab === n.id ? " active" : "") +
+                      (showLock ? " opacity-60 cursor-pointer" : "")
+                    }
+                    aria-current={activeTab === n.id ? "page" : undefined}
+                    onClick={() => handleTabChange(n.id)}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {n.label}
+                      {showLock && (
+                        <span className="material-icons !text-xs text-slate-400">lock</span>
+                      )}
+                    </span>
+                  </button>
+                </React.Fragment>
+              );
+            })}
           </nav>
 
           <div className="ah-topbar__right">
