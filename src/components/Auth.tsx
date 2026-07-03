@@ -934,7 +934,7 @@ const Auth: React.FC = () => {
       </div>
 
       {/* ============ DESKTOP ============ */}
-      <div className={`${embedded ? "grid" : "hidden lg:grid"} h-full grid-cols-[1.04fr_0.96fr]`}>
+      <div className={`${embedded ? "grid" : "hidden lg:grid"} h-full grid-cols-[1.2fr_0.8fr]`}>
         {/* ===== PANEL DE MARCA (desktop) — gradiente UFLO inmersivo ===== */}
         <aside className="au-brand relative flex flex-col justify-between p-12 xl:p-16">
           <div className="relative z-10">{brandMark}</div>
@@ -980,21 +980,22 @@ const Auth: React.FC = () => {
         </aside>
 
         {/* ===== PANEL DE FORMULARIO ===== */}
-        <main className="relative flex flex-col h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
-          {/* topbar */}
-          <header className="flex-none h-20 px-10 flex items-center justify-between">
-            <span />
+        <main className="relative flex flex-col h-full overflow-y-auto lg:overflow-hidden overflow-x-hidden custom-scrollbar">
+          {/* Absolute theme toggle to save vertical space */}
+          <div className="absolute top-6 right-8 z-20">
             <ThemeToggle />
-          </header>
+          </div>
 
           {/* FORM */}
-          <div className="flex-1 flex flex-col justify-center px-14 xl:px-20 py-12">
+          <div className="flex-1 flex flex-col justify-center px-10 xl:px-16 py-8">
             <div className="w-full max-w-md mx-auto">
               {renderContent()}
 
-              <div aria-live="assertive" className="mt-8 min-h-[60px]">
-                {errorAlert}
-              </div>
+              {errorAlert && (
+                <div aria-live="assertive" className="mt-6">
+                  {errorAlert}
+                </div>
+              )}
 
               {debugBlock}
             </div>
