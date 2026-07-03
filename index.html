@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es" translate="no" class="notranslate">
   <head>
     <meta charset="UTF-8" />
@@ -74,6 +74,16 @@
 
     <style id="pps-entry-shell-style">
       @view-transition { navigation: auto; }
+      ::view-transition-group(root){ animation-duration:360ms; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+      ::view-transition-old(root){ animation:ppsPageOut 220ms cubic-bezier(.4,0,1,1) both; }
+      ::view-transition-new(root){ animation:ppsPageIn 360ms cubic-bezier(.16,1,.3,1) both; }
+      ::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:420ms; animation-timing-function:cubic-bezier(.16,1,.3,1); }
+
+      @keyframes ppsPageOut{ from{ opacity:1; transform:translateY(0); filter:blur(0); } to{ opacity:0; transform:translateY(-6px); filter:blur(2px); } }
+      @keyframes ppsPageIn{ from{ opacity:0; transform:translateY(6px); filter:blur(2px); } to{ opacity:1; transform:translateY(0); filter:blur(0); } }
+
+      @media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root),::view-transition-group(root),::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:1ms; } }
+
       html.pps-has-entry-shell body,
       html.fonts-loading.pps-has-entry-shell body {
         visibility: visible !important;
