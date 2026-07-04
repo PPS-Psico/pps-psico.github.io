@@ -41,7 +41,8 @@ const EntregasMobileView: React.FC = () => {
             color: "var(--ink)",
           }}
         >
-          Entregá <em style={{ fontStyle: "normal", color: "var(--accent-text)" }}>tu informe.</em>
+          Entregas de{" "}
+          <em style={{ fontStyle: "normal", color: "var(--accent-text)" }}>informes.</em>
         </h1>
         <p
           style={{
@@ -52,8 +53,8 @@ const EntregasMobileView: React.FC = () => {
             maxWidth: "40ch",
           }}
         >
-          Elegí tu área y la institución donde cursaste. Subí el informe y la planilla de
-          asistencia.
+          Elegí tu orientación y abrí la tarea de la institución donde cursaste. Subí la planilla
+          firmada y el informe final.
         </p>
       </header>
 

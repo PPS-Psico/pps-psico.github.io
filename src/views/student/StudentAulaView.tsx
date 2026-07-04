@@ -156,7 +156,7 @@ const sections: AulaSection[] = [
       </>
     ),
     pageLead:
-      "Elegí tu orientación y abrí la tarea de la institución donde cursaste. La carga del informe se hace en Moodle, con tu sesión del campus.",
+      "Elegí tu orientación y abrí la tarea de la institución donde cursaste. Ahí subís la planilla firmada y el informe final.",
   },
 ];
 
@@ -294,6 +294,12 @@ const accreditationStats = [
   { value: "70", unit: "horas", label: "mínimas en tu orientación de especialidad" },
   { value: "3", unit: "de 4", label: "orientaciones recorridas, con informes aprobados" },
 ];
+
+const deliveryAreaIcons: Partial<Record<string, IconName>> = {
+  clinica: "help",
+  laboral: "user",
+  educacional: "book",
+};
 
 /* Archivos reales servidos desde public/descargas/ — nombres canónicos
    documentados en public/descargas/README.md. */
@@ -835,7 +841,12 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
             </footer>
           </>
         ) : (
-          <section className="ah-aula__panel" key={selectedSection.id}>
+          <section
+            className={
+              "ah-aula__panel" + (activeSection === "entregas" ? " ah-aula__panel--deliveries" : "")
+            }
+            key={selectedSection.id}
+          >
             {!section && (
               <div className="ah-aula__panel-head">
                 <span className="eyebrow">{selectedSection.eyebrow}</span>
@@ -1006,12 +1017,6 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
 
             {activeSection === "entregas" && (
               <div className="ah-aula__deliveries">
-                <p className="ah-aula__deliveries-hint">
-                  <Icon name="alert" size={15} />
-                  Cada entrega abre la tarea de Moodle en una pestaña nueva, con tu sesión del
-                  campus. Si tu PPS fue presencial, subí la planilla de asistencia firmada junto al
-                  informe.
-                </p>
                 <div className="ah-aula__areas" role="tablist" aria-label="Áreas de entrega">
                   {deliveryAreas.map((area) => (
                     <button
@@ -1023,14 +1028,16 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                       style={{ ["--area" as string]: area.color }}
                       onClick={() => setActiveArea(area.id)}
                     >
-                      <span>
-                        <i className="ah-aula__area-dot" aria-hidden />
-                        {area.name}
+                      <span className="ah-aula__area-ic" aria-hidden>
+                        <Icon name={deliveryAreaIcons[area.id] ?? "upload"} size={18} />
                       </span>
-                      <small>
-                        {area.institutions.length}{" "}
-                        {area.institutions.length === 1 ? "institución" : "instituciones"}
-                      </small>
+                      <span className="ah-aula__area-copy">
+                        <strong>{area.name}</strong>
+                        <small>
+                          {area.institutions.length}{" "}
+                          {area.institutions.length === 1 ? "institución" : "instituciones"}
+                        </small>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1048,13 +1055,20 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                         <Icon name="upload" size={17} />
                       </span>
                       <strong>{institution.name}</strong>
-                      <small>Tarea de Moodle</small>
-                      <span className="ah-aula__open">
-                        Abrir entrega <Icon name="arrow" size={14} />
+                      <span className="ah-aula__delivery-meta">Tarea de Moodle</span>
+                      <span className="ah-aula__delivery-foot">
+                        <span className="ah-aula__open">
+                          Abrir entrega <Icon name="arrow" size={14} />
+                        </span>
+                        <span className="ah-aula__module">Moodle</span>
                       </span>
                     </a>
                   ))}
                 </div>
+                <p className="ah-aula__deliveries-note">
+                  Cada tarjeta abre la tarea de esa institución en Moodle, donde subís el informe
+                  final y, si corresponde, la planilla firmada.
+                </p>
               </div>
             )}
           </section>

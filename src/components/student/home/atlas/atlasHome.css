@@ -3778,89 +3778,90 @@ html.dark .ah-aula__faq-row summary span {
 .ah-aula__deliveries {
   padding-top: 18px;
 }
-.ah-aula__deliveries-hint {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 0 0 14px;
-  padding: 10px 14px;
-  border: 1px dashed color-mix(in oklab, var(--border-strong) 80%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in oklab, var(--bg-sunken) 70%, transparent);
-  color: var(--fg-muted);
-  font-size: 13px;
-  line-height: var(--lh-snug);
-}
-.ah-aula__deliveries-hint svg {
-  flex: 0 0 auto;
-  color: var(--fg-subtle);
-}
 .ah-aula__areas {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 14px;
+  margin-bottom: 22px;
 }
 .ah-aula__area {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   text-align: left;
-  padding: 12px 14px;
+  min-height: 76px;
+  padding: 14px 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg);
+  border-radius: 16px;
+  background: var(--surface);
   color: var(--fg);
   cursor: pointer;
   transition:
     border-color var(--duration-fast) var(--ease-standard),
     background var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-standard);
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 .ah-aula__area:hover {
   transform: translateY(-1px);
-  border-color: var(--border-strong);
+  border-color: color-mix(in oklab, var(--area) 38%, var(--border));
 }
 .ah-aula__area.is-active {
-  border-color: color-mix(in oklab, var(--area) 46%, var(--border));
+  border-color: color-mix(in oklab, var(--area) 48%, var(--border));
   background: color-mix(in oklab, var(--area) 8%, var(--surface));
+  box-shadow: 0 18px 40px -32px color-mix(in oklab, var(--area) 64%, transparent);
 }
-.ah-aula__area span,
-.ah-aula__area small {
+.ah-aula__area-ic {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: color-mix(in oklab, var(--area) 12%, var(--surface));
+  color: var(--area);
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__area.is-active .ah-aula__area-ic {
+  background: var(--area);
+  color: #fff;
+  transform: scale(1.02);
+}
+.ah-aula__area-copy {
   display: block;
+  min-width: 0;
 }
-.ah-aula__area span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
+.ah-aula__area-copy strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 18px;
+  line-height: 1.08;
   letter-spacing: var(--tracking-snug);
 }
-.ah-aula__area-dot {
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--area);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--area) 18%, transparent);
-}
-.ah-aula__area small {
+.ah-aula__area-copy small {
+  display: block;
   margin-top: 4px;
-  padding-left: 16px;
   color: var(--fg-muted);
   font-size: 12.5px;
 }
 .ah-aula__delivery-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
   animation: ahAulaPanelIn 0.3s var(--ease-out) both;
 }
 .ah-aula__delivery {
-  min-height: 142px;
+  min-height: 214px;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 24px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg);
+  border-radius: 18px;
+  background: var(--surface);
   color: inherit;
   text-decoration: none;
   transition:
@@ -3877,11 +3878,11 @@ html.dark .ah-aula__faq-row summary span {
   transform: scale(0.99);
 }
 .ah-aula__folder {
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 13px;
   background: color-mix(in oklab, var(--area) 12%, var(--surface));
   color: var(--area);
   transition: transform var(--duration-fast) var(--ease-standard);
@@ -3890,34 +3891,56 @@ html.dark .ah-aula__faq-row summary span {
   transform: scale(1.08) rotate(-3deg);
 }
 .ah-aula__delivery strong {
-  margin-top: 14px;
+  margin-top: 20px;
   font-family: var(--font-display);
   font-weight: var(--display-weight);
-  font-size: 19px;
+  font-size: 22px;
   line-height: 1.08;
   letter-spacing: -0.02em;
   color: var(--fg);
 }
-.ah-aula__delivery small {
-  margin-top: 6px;
-  font-size: 13px;
+.ah-aula__delivery-meta {
+  margin-top: 12px;
+  font-size: 13.5px;
   color: var(--fg-muted);
+}
+.ah-aula__delivery-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
 }
 .ah-aula__open {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-top: auto;
-  padding-top: 14px;
   color: var(--area);
   font-weight: 700;
   font-size: 13.5px;
+}
+.ah-aula__module {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
 }
 .ah-aula__open svg {
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 .ah-aula__delivery:hover .ah-aula__open svg {
   transform: translateX(3px);
+}
+.ah-aula__deliveries-note {
+  max-width: 680px;
+  margin: 18px 0 0;
+  color: var(--fg-muted);
+  font-size: 13.5px;
+  line-height: var(--lh-relaxed);
 }
 
 /* ── Guía editorial (pestaña Inicio/Guía): índice de etapas + capítulos
@@ -4081,6 +4104,13 @@ html.dark .ah-aula__gstep-kick {
 .ah-aula--section-only .ah-aula__panel {
   margin-top: 26px;
 }
+.ah-aula--section-only .ah-aula__panel--deliveries {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
 .ah-aula--section-only .ah-aula__guide {
   padding-top: 0;
 }
@@ -4201,6 +4231,21 @@ html.dark .ah-aula__gstep-kick {
   }
   .ah-aula__delivery-grid {
     grid-template-columns: 1fr;
+  }
+  .ah-aula__area {
+    min-height: 64px;
+    padding: 12px 14px;
+  }
+  .ah-aula__area-ic {
+    width: 36px;
+    height: 36px;
+  }
+  .ah-aula__delivery {
+    min-height: 168px;
+    padding: 18px;
+  }
+  .ah-aula__delivery strong {
+    font-size: 20px;
   }
   .ah-aula__switcher {
     gap: 8px;

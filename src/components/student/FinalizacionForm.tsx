@@ -405,18 +405,19 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
       aria-modal="true"
       onClick={onClose}
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
-        onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
-      />
       <div
         className="relative w-full sm:w-full sm:max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-scale-in"
         style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
         onClick={(e) => e.stopPropagation()}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+          onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
+          onClick={(e) => e.stopPropagation()}
+        />
         {/* Header */}
         <div
           className="flex-shrink-0 px-5 py-4 sm:px-7 sm:py-5 flex items-center justify-between safe-area-top"
