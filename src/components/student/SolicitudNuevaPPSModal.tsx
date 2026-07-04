@@ -122,6 +122,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   useEffect(() => {
     if (!institucionSeleccionada || !isOpen) return;
 
+    let orientacionAutocompletada = "";
+
     if (lanzamientosDeInstitucion.length > 0) {
       // Ordenar por fecha para obtener el más reciente
       const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
@@ -131,7 +133,9 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
 
       // Autocompletar orientación
       if (ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]) {
-        setOrientacion(ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string);
+        const val = ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string;
+        setOrientacion(val);
+        orientacionAutocompletada = val;
       }
 
       // Autocompletar horas
@@ -146,6 +150,24 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         (ultimoLanzamiento as Record<string, unknown>).modalidad === "Online" ||
         (ultimoLanzamiento as Record<string, unknown>).es_online === true;
       setEsOnline(modalidad);
+    }
+
+    // Si no se pudo obtener orientación del lanzamiento, intentar desde los metadatos de la institución
+    if (!orientacionAutocompletada && institucionSeleccionada.orientaciones) {
+      const parsedOri = String(institucionSeleccionada.orientaciones).trim();
+      const validOrientations = ["Clínica", "Educacional", "Laboral", "Comunitaria"];
+
+      const exactMatch = validOrientations.find((o) => o.toLowerCase() === parsedOri.toLowerCase());
+      if (exactMatch) {
+        setOrientacion(exactMatch);
+      } else {
+        const found = validOrientations.find((o) =>
+          parsedOri.toLowerCase().includes(o.toLowerCase())
+        );
+        if (found) {
+          setOrientacion(found);
+        }
+      }
     }
   }, [institucionSeleccionada, lanzamientosDeInstitucion, isOpen]);
 
