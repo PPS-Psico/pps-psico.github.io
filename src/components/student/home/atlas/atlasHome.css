@@ -1049,7 +1049,7 @@ html.dark .ah-btn--area {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 372px;
   gap: 20px;
-  margin-top: 28px;
+  margin-top: 22px;
   align-items: start;
 }
 .ah-estado__seeall {
@@ -1592,7 +1592,7 @@ html.dark .ah-root .ah-accr-hero__hint .material-icons {
   top: 80px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 .ah-prog {
   height: 8px;
@@ -2845,7 +2845,7 @@ html.dark .ah-root .ah-avatar {
   white-space: nowrap;
 }
 .ah-aula-publicbar__mark {
-  font-size: 25px;
+  font-size: 22px;
   letter-spacing: 0;
 }
 .ah-aula-publicbar__sep {
@@ -3243,6 +3243,10 @@ html.dark .ah-aula__guide-num {
   letter-spacing: -0.02em;
   color: var(--fg);
 }
+.ah-aula__guide-block h3 em {
+  font-style: normal;
+  color: var(--display-accent);
+}
 .ah-aula__guide-block p {
   max-width: 68ch;
   margin: 8px 0 0;
@@ -3407,48 +3411,105 @@ html.dark .ah-aula__keynote.is-key .ah-aula__keynote-tag {
   color: var(--fg-muted);
 }
 
-/* Tira final: requisitos de acreditación */
-.ah-aula__accredit {
+/* Tira final: equipo de acompañamiento */
+.ah-aula__team {
   margin-top: 26px;
-  padding: 22px 24px;
-  border: 1px solid color-mix(in oklab, var(--primary-500) 22%, var(--border));
+  padding: 24px;
+  border: 1px solid color-mix(in oklab, var(--primary-500) 18%, var(--border));
   border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--primary-500) 6%, var(--surface));
+  background: color-mix(in oklab, var(--primary-500) 5%, var(--surface));
 }
-.ah-aula__accredit-kicker {
+.ah-aula__team-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.ah-aula__team-kicker {
+  display: block;
   font: 500 11px/1.2 var(--font-mono);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--primary-600);
 }
-html.dark .ah-aula__accredit-kicker {
+html.dark .ah-aula__team-kicker {
   color: var(--primary-300);
 }
-.ah-aula__accredit-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
-  margin-top: 16px;
-}
-.ah-aula__accredit-stat strong {
-  display: block;
+.ah-aula__team-head h3 {
+  margin: 4px 0 0;
   font-family: var(--font-display);
   font-weight: var(--display-weight);
-  font-size: 34px;
+  font-size: 28px;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--fg);
 }
-.ah-aula__accredit-stat strong span {
-  font-size: 17px;
-  color: var(--fg-muted);
+.ah-aula__team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
-.ah-aula__accredit-stat small {
+.ah-aula__person {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 104px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.ah-aula__person-avatar {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary-500) 14%, var(--surface));
+  color: var(--primary-700);
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 18px;
+  letter-spacing: 0.01em;
+}
+html.dark .ah-aula__person-avatar {
+  color: var(--primary-200);
+}
+.ah-aula__person strong,
+.ah-aula__person small,
+.ah-aula__person span:not(.ah-aula__person-avatar) {
   display: block;
-  margin-top: 6px;
-  font-size: 13px;
+}
+.ah-aula__person strong {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 18px;
+  line-height: 1.05;
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg);
+}
+.ah-aula__person small {
+  margin-top: 4px;
+  font-size: 13.5px;
   line-height: var(--lh-snug);
   color: var(--fg-muted);
+}
+.ah-aula__person span:not(.ah-aula__person-avatar) {
+  margin-top: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary-500) 9%, transparent);
+  color: var(--primary-700);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+}
+html.dark .ah-aula__person span:not(.ah-aula__person-avatar) {
+  color: var(--primary-200);
 }
 
 /* ── Descargas ── */
@@ -3947,7 +4008,7 @@ html.dark .ah-aula__faq-row summary span {
    abiertos con número grande, sin card contenedora. ── */
 .ah-aula__gindex {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   margin-top: 30px;
   border-top: 1px solid var(--border);
 }
@@ -4037,6 +4098,12 @@ html.dark .ah-aula__gstep-kick {
   line-height: var(--lh-normal);
   color: var(--fg-muted);
 }
+.ah-aula__gstep-titleline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
 .ah-aula__gstep-main h3 {
   margin: 2px 0 0;
   font-family: var(--font-display);
@@ -4045,6 +4112,10 @@ html.dark .ah-aula__gstep-kick {
   line-height: 1.05;
   letter-spacing: -0.025em;
   color: var(--fg);
+}
+.ah-aula__gstep-main h3 em {
+  font-style: normal;
+  color: var(--display-accent);
 }
 .ah-aula__gcards {
   display: grid;
@@ -4082,13 +4153,165 @@ html.dark .ah-aula__gstep-kick {
   border-radius: 2px;
   background: var(--primary-500);
 }
+
+/* Paso 01: equipo de gestión, más editorial y cercano al inicio viejo. */
+.ah-aula__gstep--team {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 48px 0 54px;
+}
+.ah-aula__gstep--team .ah-aula__gstep-side {
+  display: none;
+}
+.ah-aula__gstep--team .ah-aula__gstep-titleline {
+  align-items: flex-start;
+  margin-bottom: 26px;
+}
+.ah-aula__gstep--team .ah-aula__gstep-titleline h3 {
+  margin: 0;
+  max-width: 760px;
+  font-size: clamp(42px, 5vw, 64px);
+  line-height: 0.96;
+  letter-spacing: -0.055em;
+}
+.ah-aula__gstep--team .ah-aula__gstep-titleline h3::before {
+  content: "Equipo";
+  display: block;
+  margin: 0 0 12px 2px;
+  font: 600 11px/1.2 var(--font-mono);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.ah-aula__team-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 42px;
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.ah-aula__team-contact svg {
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__team-contact:hover svg {
+  transform: translateX(3px);
+}
+.ah-aula__teamshow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.ah-aula__teamshow--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+.ah-aula__teamshow--compact .ah-aula__teamcard {
+  min-height: 176px;
+  padding: 22px;
+}
+.ah-aula__teamshow--compact .ah-aula__teamcard-avatar {
+  width: 58px;
+  height: 58px;
+  font-size: 22px;
+}
+.ah-aula__teamcard {
+  min-height: 188px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.ah-aula__teamcard:first-child {
+  border-color: color-mix(in oklab, var(--primary-500) 36%, var(--border));
+  background: color-mix(in oklab, var(--primary-500) 5%, var(--surface));
+}
+.ah-aula__teamcard:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: 0 20px 44px -34px rgba(20, 19, 16, 0.34);
+}
+.ah-aula__teamcard-avatar {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #dfe4f5;
+  color: #1b2d5a;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 25px;
+  letter-spacing: -0.01em;
+}
+.ah-aula__teamcard-avatar[data-person="1"] {
+  background: color-mix(in oklab, var(--primary-500) 24%, white);
+  color: var(--primary-700);
+}
+.ah-aula__teamcard-avatar[data-person="2"] {
+  background: #eadde7;
+  color: #5f3153;
+}
+.ah-aula__teamcard-avatar[data-person="3"] {
+  background: #f9e9c8;
+  color: #7a4b09;
+}
+.ah-aula__teamcard strong {
+  margin-top: 28px;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 20px;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+.ah-aula__teamcard small {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: var(--lh-snug);
+  color: var(--fg-muted);
+}
+.ah-aula__teamcard span:not(.ah-aula__teamcard-avatar) {
+  margin-top: auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary-500) 10%, transparent);
+  color: var(--primary-700);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+}
+html.dark .ah-aula__teamcard:first-child {
+  background: color-mix(in oklab, var(--primary-500) 8%, var(--surface));
+}
+html.dark .ah-aula__teamcard:hover {
+  box-shadow: 0 20px 44px -34px rgba(0, 0, 0, 0.75);
+}
+html.dark .ah-aula__teamcard-avatar[data-person="1"] {
+  background: color-mix(in oklab, var(--primary-500) 22%, var(--surface));
+  color: var(--primary-200);
+}
+html.dark .ah-aula__teamcard span:not(.ah-aula__teamcard-avatar) {
+  color: var(--primary-200);
+}
+
 /* En la guía editorial el stat/timeline/nota respiran más anchos. */
 .ah-aula__gstep-main .ah-aula__stat,
 .ah-aula__gstep-main .ah-aula__timeline,
 .ah-aula__gstep-main .ah-aula__keynote {
   max-width: 720px;
 }
-.ah-aula__accredit--page {
+.ah-aula__team--page {
   margin-top: 0;
 }
 
@@ -4150,17 +4373,21 @@ html.dark .ah-aula__gstep-kick {
   .ah-aula__delivery-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .ah-aula__accredit-stats {
-    gap: 16px;
+  .ah-aula__team-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 @media (max-width: 1100px) {
   .ah-aula__gindex {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .ah-aula__gindex a:nth-child(3n + 1) {
+  .ah-aula__gindex a:nth-child(4n + 1) {
     padding-left: 0;
     border-left: 0;
+  }
+  .ah-aula__teamshow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 900px) {
@@ -4177,8 +4404,15 @@ html.dark .ah-aula__gstep-kick {
   .ah-aula__gstep-sum {
     max-width: 52ch;
   }
-  .ah-aula__gcards {
+  .ah-aula__gcards,
+  .ah-aula__teamshow {
     grid-template-columns: 1fr;
+  }
+  .ah-aula__gstep--team .ah-aula__gstep-titleline {
+    display: block;
+  }
+  .ah-aula__team-contact {
+    margin-top: 16px;
   }
 }
 @media (max-width: 760px) {
@@ -4247,12 +4481,36 @@ html.dark .ah-aula__gstep-kick {
   .ah-aula__delivery strong {
     font-size: 20px;
   }
+  .ah-aula__area {
+    min-height: 64px;
+    padding: 12px 14px;
+  }
+  .ah-aula__area-ic {
+    width: 36px;
+    height: 36px;
+  }
+  .ah-aula__delivery {
+    min-height: 168px;
+    padding: 18px;
+  }
+  .ah-aula__delivery strong {
+    font-size: 20px;
+  }
   .ah-aula__switcher {
     gap: 8px;
   }
   .ah-aula__panel {
     padding: 18px;
     border-radius: 16px;
+  }
+  .ah-aula__teamcard {
+    min-height: 168px;
+    padding: 18px;
+  }
+  .ah-aula__teamcard-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
   }
   .ah-aula__panel-head {
     gap: 12px;
@@ -4283,9 +4541,22 @@ html.dark .ah-aula__gstep-kick {
     flex-direction: column;
     align-items: flex-start;
   }
-  .ah-aula__accredit-stats {
+  .ah-aula__team {
+    padding: 18px;
+  }
+  .ah-aula__team-head {
+    display: block;
+  }
+  .ah-aula__team-head h3 {
+    font-size: 24px;
+  }
+  .ah-aula__team-grid {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 10px;
+  }
+  .ah-aula__person {
+    min-height: 88px;
+    padding: 14px;
   }
   .ah-aula__download {
     grid-template-columns: 50px minmax(0, 1fr) 32px;
@@ -4295,5 +4566,186 @@ html.dark .ah-aula__gstep-kick {
   }
   .ah-aula__faq-row > div {
     padding: 0 18px 18px 18px;
+  }
+}
+
+/* Campus dentro de Moodle en celular: el contenido publico debe adaptarse al
+   ancho real del iframe y nunca comportarse como layout desktop recortado. */
+@media (max-width: 760px) {
+  .pps-embedded .ah-root.ah-aula,
+  .pps-embedded .ah-aula--public,
+  .pps-embedded .ah-aula--section-only {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .pps-embedded .ah-aula--public .ah-aula__main,
+  .pps-embedded .ah-aula--section-only .ah-main {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 20px;
+  }
+
+  .pps-embedded .ah-aula-publicbar {
+    padding-inline: 20px;
+    gap: 12px;
+  }
+
+  .pps-embedded .ah-aula-publicbar__brand {
+    font-size: 18px;
+  }
+
+  .pps-embedded .ah-aula-publicbar__sep {
+    display: none;
+  }
+
+  .pps-embedded .ah-aula-publicbar__nav {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .pps-embedded .ah-aula-publicbar__nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ah-aula__gindex {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin-top: 22px;
+  }
+
+  .ah-aula__gindex a,
+  .ah-aula__gindex a + a,
+  .ah-aula__gindex a:nth-child(4n + 1) {
+    min-width: 0;
+    padding: 14px 12px 14px 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ah-aula__gindex strong {
+    font-size: 14px;
+  }
+
+  .ah-aula__gstep {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 34px 0;
+  }
+
+  .ah-aula__gstep:first-child {
+    padding-top: 24px;
+  }
+
+  .ah-aula__gstep-num {
+    font-size: 52px;
+  }
+
+  .ah-aula__gstep-sum {
+    max-width: 100%;
+  }
+
+  .ah-aula__gcards {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .ah-aula__gstep--team {
+    padding: 34px 0 38px;
+  }
+
+  .ah-aula__gstep--team .ah-aula__gstep-titleline h3 {
+    font-size: clamp(38px, 13vw, 52px);
+    line-height: 0.98;
+  }
+
+  .ah-aula__teamshow,
+  .ah-aula__teamshow--compact {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .ah-aula__teamcard,
+  .ah-aula__teamshow--compact .ah-aula__teamcard {
+    min-height: 0;
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .ah-aula__download {
+    grid-template-columns: 44px minmax(0, 1fr) 28px;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .ah-aula__download-main strong,
+  .ah-aula__download-main small,
+  .ah-aula__faq-row summary,
+  .ah-aula__faq-row > div,
+  .ah-aula__deliveries-note {
+    overflow-wrap: anywhere;
+  }
+
+  .ah-aula__panel--deliveries .ah-aula__panel-head h2,
+  .ah-aula__panel-head h2 {
+    font-size: 28px;
+  }
+}
+
+/* Aula publica: separa claramente secciones privadas bloqueadas de material abierto. */
+.ah-aula-publicbar__panel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fg-muted);
+  font: 600 14px/1 var(--font-sans);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+.ah-aula-publicbar__panel:hover {
+  color: var(--fg);
+  background: var(--bg-sunken);
+}
+.ah-aula-publicbar__panel.is-locked {
+  color: color-mix(in oklab, var(--fg-muted) 72%, transparent);
+  cursor: default;
+}
+.ah-aula-publicbar__panel.is-locked:hover {
+  color: color-mix(in oklab, var(--fg-muted) 72%, transparent);
+  background: transparent;
+}
+.ah-aula-publicbar__panel .material-icons {
+  font-size: 13px;
+  color: color-mix(in oklab, var(--fg-subtle) 74%, transparent);
+}
+.ah-aula-publicbar__navsep {
+  width: 1px;
+  height: 24px;
+  margin: 0 6px;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+@media (max-width: 900px) {
+  .ah-aula-publicbar__navsep {
+    display: none;
+  }
+  .ah-aula-publicbar__panel {
+    padding: 0 10px;
   }
 }

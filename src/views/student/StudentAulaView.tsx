@@ -8,6 +8,13 @@ type AulaSectionId = "guia" | "descargas" | "preguntas" | "entregas";
 
 const SECTION_IDS: AulaSectionId[] = ["guia", "descargas", "preguntas", "entregas"];
 const SECTION_STORAGE_KEY = "pps_aula_sec";
+const PANEL_LOCKED_SECTIONS = [
+  { label: "Inicio", path: "/student" },
+  { label: "Entregas", path: "/student/entregas" },
+  { label: "Prácticas", path: "/student/practicas" },
+  { label: "Solicitudes", path: "/student/solicitudes" },
+  { label: "Perfil", path: "/student/perfil" },
+];
 const COORDINATOR_MAIL = "blas.rivera@uflouniversidad.edu.ar";
 
 /* Sección inicial: 1) ?sec= de la URL (deep-link desde el campus o un mail),
@@ -63,6 +70,7 @@ interface GuideBlock {
   stat?: { value: string; unit: string; text: React.ReactNode };
   note?: { tag: string; key?: boolean; text: React.ReactNode };
   timeline?: { lead: string; title: string; detail: string }[];
+  team?: boolean;
 }
 
 const sections: AulaSection[] = [
@@ -87,7 +95,7 @@ const sections: AulaSection[] = [
       </>
     ),
     pageLead:
-      "El recorrido completo de la práctica en seis etapas: desde el primer acceso hasta la acreditación final, con los plazos y documentos que importan.",
+      "El recorrido completo de la práctica en siete pasos: equipo, acceso, inscripción, cursada, entregas y acreditación final.",
   },
   {
     id: "descargas",
@@ -163,6 +171,14 @@ const sections: AulaSection[] = [
 const guideBlocks: GuideBlock[] = [
   {
     num: "01",
+    kicker: "Equipo",
+    title: "Quiénes te acompañan",
+    summary:
+      "Antes de empezar el recorrido, ubicá al equipo de gestión PPS y el canal de consulta.",
+    team: true,
+  },
+  {
+    num: "02",
     kicker: "Acceso",
     title: "Dónde empezar",
     summary:
@@ -174,7 +190,7 @@ const guideBlocks: GuideBlock[] = [
     ],
   },
   {
-    num: "02",
+    num: "03",
     kicker: "Convocatorias",
     title: "Inscribite",
     summary: "Las convocatorias se publican durante todo el ciclo y se gestionan desde el panel.",
@@ -194,7 +210,7 @@ const guideBlocks: GuideBlock[] = [
     },
   },
   {
-    num: "03",
+    num: "04",
     kicker: "Compromiso",
     title: "Asistencia",
     summary: "El umbral que define si la práctica se acredita.",
@@ -221,7 +237,7 @@ const guideBlocks: GuideBlock[] = [
     },
   },
   {
-    num: "04",
+    num: "05",
     kicker: "Seguimiento",
     title: "Documentación",
     summary: "Con qué llevás el registro de tu práctica y qué documento vale.",
@@ -241,7 +257,7 @@ const guideBlocks: GuideBlock[] = [
     },
   },
   {
-    num: "05",
+    num: "06",
     kicker: "Cierre",
     title: "Entregas y plazos",
     summary: "Los plazos que corren cuando termina la práctica.",
@@ -268,7 +284,7 @@ const guideBlocks: GuideBlock[] = [
     },
   },
   {
-    num: "06",
+    num: "07",
     kicker: "Acreditación",
     title: "Finalización",
     summary: "Cuando completás los requisitos, pedís la acreditación desde Mi Panel.",
@@ -289,10 +305,21 @@ const guideBlocks: GuideBlock[] = [
   },
 ];
 
-const accreditationStats = [
-  { value: "250", unit: "horas", label: "de práctica aprobada en total" },
-  { value: "70", unit: "horas", label: "mínimas en tu orientación de especialidad" },
-  { value: "3", unit: "de 4", label: "orientaciones recorridas, con informes aprobados" },
+const campusTeam = [
+  { initials: "BR", name: "Blas Rivera", role: "Coord. general", tag: "Coordinación" },
+  { initials: "SE", name: "Selva Estrella", role: "Jefa de área Clínica", tag: "Área clínica" },
+  {
+    initials: "FP",
+    name: "Franco Pedraza",
+    role: "Jefe de área Educacional",
+    tag: "Área educacional",
+  },
+  {
+    initials: "CR",
+    name: "Cynthia Rossi",
+    role: "Jefa de área Laboral y Comunitaria",
+    tag: "Área laboral y comunitaria",
+  },
 ];
 
 const deliveryAreaIcons: Partial<Record<string, IconName>> = {
@@ -679,6 +706,27 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
             <span>PPS 2026</span>
           </Link>
           <nav className="ah-aula-publicbar__nav" aria-label="Accesos principales">
+            {PANEL_LOCKED_SECTIONS.map((item) =>
+              authenticatedUser ? (
+                <Link key={item.path} className="ah-aula-publicbar__panel" to={item.path}>
+                  {item.label}
+                </Link>
+              ) : (
+                <button
+                  key={item.path}
+                  type="button"
+                  className="ah-aula-publicbar__panel is-locked"
+                  aria-disabled="true"
+                  title="Disponible al ingresar a Mi Panel"
+                >
+                  <span>{item.label}</span>
+                  <span className="material-icons" aria-hidden>
+                    lock
+                  </span>
+                </button>
+              )
+            )}
+            <span className="ah-aula-publicbar__navsep" aria-hidden />
             {sections.map((secItem) => (
               <button
                 key={secItem.id}
@@ -689,9 +737,6 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                 {secItem.label}
               </button>
             ))}
-            <Link className="ah-aula-publicbar__cta" to={authenticatedUser ? "/student" : "/login"}>
-              {authenticatedUser ? "Ir a Mi Panel" : "Entrar / crear cuenta"}
-            </Link>
           </nav>
         </header>
       )}
@@ -766,7 +811,11 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
             </nav>
             <div className="ah-aula__gsteps">
               {guideBlocks.map((block) => (
-                <article key={block.num} className="ah-aula__gstep" id={`aula-paso-${block.num}`}>
+                <article
+                  key={block.num}
+                  className={"ah-aula__gstep" + (block.team ? " ah-aula__gstep--team" : "")}
+                  id={`aula-paso-${block.num}`}
+                >
                   <div className="ah-aula__gstep-side">
                     <span className="ah-aula__gstep-num" aria-hidden>
                       {block.num}
@@ -775,7 +824,47 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                     <p className="ah-aula__gstep-sum">{block.summary}</p>
                   </div>
                   <div className="ah-aula__gstep-main">
-                    <h3>{block.title}</h3>
+                    <div className="ah-aula__gstep-titleline">
+                      {block.team ? (
+                        <h3>
+                          Quiénes te <em>acompañan.</em>
+                        </h3>
+                      ) : (
+                        <h3>{block.title}</h3>
+                      )}
+                      {block.team && (
+                        <Link
+                          className="ah-aula__team-contact"
+                          to={
+                            section
+                              ? "/student/preguntas"
+                              : isPublic
+                                ? "/aula?sec=preguntas"
+                                : "/student/preguntas"
+                          }
+                        >
+                          Cómo nos escribís <Icon name="arrow" size={15} />
+                        </Link>
+                      )}
+                    </div>
+                    {block.team && (
+                      <div className="ah-aula__teamshow" aria-label="Equipo de gestión PPS">
+                        {campusTeam.map((person, index) => (
+                          <article key={person.initials} className="ah-aula__teamcard">
+                            <span
+                              className="ah-aula__teamcard-avatar"
+                              data-person={index}
+                              aria-hidden
+                            >
+                              {person.initials}
+                            </span>
+                            <strong>{person.name}</strong>
+                            <small>{person.role}</small>
+                            {person.tag === "Coordinación" && <span>{person.tag}</span>}
+                          </article>
+                        ))}
+                      </div>
+                    )}
                     {block.bullets && (
                       <div className="ah-aula__gcards">
                         {block.bullets.map((bullet) => (
@@ -823,22 +912,6 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                 </article>
               ))}
             </div>
-            <footer
-              className="ah-aula__accredit ah-aula__accredit--page"
-              aria-label="Requisitos de acreditación"
-            >
-              <span className="ah-aula__accredit-kicker">Para acreditar</span>
-              <div className="ah-aula__accredit-stats">
-                {accreditationStats.map((stat) => (
-                  <div key={stat.label} className="ah-aula__accredit-stat">
-                    <strong>
-                      {stat.value} <span>{stat.unit}</span>
-                    </strong>
-                    <small>{stat.label}</small>
-                  </div>
-                ))}
-              </div>
-            </footer>
           </>
         ) : (
           <section
@@ -865,8 +938,35 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                       </div>
                       <div>
                         <span className="ah-aula__guide-eyebrow">{block.kicker}</span>
-                        <h3>{block.title}</h3>
+                        {block.team ? (
+                          <h3>
+                            Quiénes te <em>acompañan.</em>
+                          </h3>
+                        ) : (
+                          <h3>{block.title}</h3>
+                        )}
                         <p>{block.summary}</p>
+                        {block.team && (
+                          <div
+                            className="ah-aula__teamshow ah-aula__teamshow--compact"
+                            aria-label="Equipo de gestión PPS"
+                          >
+                            {campusTeam.map((person, index) => (
+                              <article key={person.initials} className="ah-aula__teamcard">
+                                <span
+                                  className="ah-aula__teamcard-avatar"
+                                  data-person={index}
+                                  aria-hidden
+                                >
+                                  {person.initials}
+                                </span>
+                                <strong>{person.name}</strong>
+                                <small>{person.role}</small>
+                                {person.tag === "Coordinación" && <span>{person.tag}</span>}
+                              </article>
+                            ))}
+                          </div>
+                        )}
                         {block.bullets && (
                           <ul>
                             {block.bullets.map((bullet) => (
@@ -911,19 +1011,6 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                     </article>
                   ))}
                 </div>
-                <footer className="ah-aula__accredit" aria-label="Requisitos de acreditación">
-                  <span className="ah-aula__accredit-kicker">Para acreditar</span>
-                  <div className="ah-aula__accredit-stats">
-                    {accreditationStats.map((stat) => (
-                      <div key={stat.label} className="ah-aula__accredit-stat">
-                        <strong>
-                          {stat.value} <span>{stat.unit}</span>
-                        </strong>
-                        <small>{stat.label}</small>
-                      </div>
-                    ))}
-                  </div>
-                </footer>
               </>
             )}
 
