@@ -78,6 +78,7 @@ html.pps-embedded body,
 html.pps-embedded #root {
   min-height: 0 !important;
   height: auto !important;
+  overscroll-behavior-y: auto !important;
 }
 html.pps-embedded .min-h-screen {
   min-height: 0 !important;
