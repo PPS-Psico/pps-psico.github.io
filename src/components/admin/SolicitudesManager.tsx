@@ -681,6 +681,7 @@ UFLO Universidad`,
           onToggle={handleToggleCard}
           onToast={showToast}
           onReject={setRejecting}
+          isTestingMode={isTestingMode}
           onUpdateCounts={(count) => {
             // Count can trigger React update if needed, handled inside
           }}

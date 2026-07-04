@@ -468,6 +468,8 @@ class MockDatabase {
     whatsapp_mensajes: [...INITIAL_WHATSAPP_MENSAJES, ...INITIAL_WHATSAPP_MENSAJES_CONTEXT],
     gmail_hilos: [...INITIAL_GMAIL_HILOS],
     agent_suggestions: [...INITIAL_AGENT_SUGGESTIONS],
+    solicitudes_nueva_pps: [],
+    solicitudes_modificacion_pps: [],
   };
 
   // Resetear a estado inicial (útil para tests o logout si quisiéramos)
@@ -485,6 +487,8 @@ class MockDatabase {
       whatsapp_mensajes: [...INITIAL_WHATSAPP_MENSAJES, ...INITIAL_WHATSAPP_MENSAJES_CONTEXT],
       gmail_hilos: [...INITIAL_GMAIL_HILOS],
       agent_suggestions: [...INITIAL_AGENT_SUGGESTIONS],
+      solicitudes_nueva_pps: [],
+      solicitudes_modificacion_pps: [],
     };
   }
 

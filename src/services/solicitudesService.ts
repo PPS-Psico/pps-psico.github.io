@@ -51,12 +51,17 @@ export const fetchSolicitudes = async (
   return mappedRecords.filter((r) => r[C.FIELD_ESTADO_PPS] !== "Archivado") as SolicitudPPS[];
 };
 
+import { mockDb } from "./mockDb";
+
 export const uploadSolicitudFile = async (
   file: File,
   studentId: string,
   type: "modificacion" | "nueva_pps",
   category: string
 ): Promise<string> => {
+  if (studentId === "st_999") {
+    return `https://example.com/mock-documents/${category}_${Date.now()}.pdf`;
+  }
   if (!studentId) throw new Error("No student ID");
   const fileExt = file.name.split(".").pop();
   const fileName = `${studentId}/${type}/${category}_${Date.now()}.${fileExt}`;
@@ -75,16 +80,19 @@ export const submitSolicitudModificacion = async (
   horasNuevas: number | null,
   planillaAsistenciaUrl: string | null
 ) => {
-  const record: Database["public"]["Tables"]["solicitudes_modificacion_pps"]["Insert"] = {
+  const record = {
     estudiante_id: studentId,
     practica_id: practicaId,
     tipo_modificacion: tipoModificacion,
     horas_nuevas: horasNuevas,
     planilla_asistencia_url: planillaAsistenciaUrl,
-    estado: "pendiente",
+    estado: "pendiente" as const,
     comentario_rechazo: null,
     notas_admin: null,
   };
+  if (studentId === "st_999") {
+    return await mockDb.create("solicitudes_modificacion_pps", record);
+  }
   const { data, error } = await supabase
     .from("solicitudes_modificacion_pps")
     .insert(record)
@@ -108,7 +116,7 @@ export const submitSolicitudNuevaPPS = async (
     esOnline: boolean;
   }
 ) => {
-  const record: Database["public"]["Tables"]["solicitudes_nueva_pps"]["Insert"] = {
+  const record = {
     estudiante_id: studentId,
     institucion_id: data.institucionId,
     nombre_institucion_manual: data.nombreInstitucionManual,
@@ -119,10 +127,13 @@ export const submitSolicitudNuevaPPS = async (
     planilla_asistencia_url: data.planillaAsistenciaUrl,
     informe_final_url: data.informeFinalUrl ?? "",
     es_online: data.esOnline,
-    estado: "pendiente",
+    estado: "pendiente" as const,
     comentario_rechazo: null,
     notas_admin: null,
   };
+  if (studentId === "st_999") {
+    return await mockDb.create("solicitudes_nueva_pps", record);
+  }
   const { data: inserted, error } = await supabase
     .from("solicitudes_nueva_pps")
     .insert(record)
@@ -133,6 +144,9 @@ export const submitSolicitudNuevaPPS = async (
 };
 
 export const fetchSolicitudesModificacionByStudent = async (studentId: string) => {
+  if (studentId === "st_999") {
+    return await mockDb.getAll("solicitudes_modificacion_pps", { estudiante_id: studentId });
+  }
   const { data, error } = await supabase
     .from("solicitudes_modificacion_pps")
     .select(
@@ -148,6 +162,18 @@ export const fetchSolicitudesModificacionByStudent = async (studentId: string) =
 };
 
 export const fetchSolicitudesNuevaPPSByStudent = async (studentId: string) => {
+  if (studentId === "st_999") {
+    const list = await mockDb.getAll("solicitudes_nueva_pps", { estudiante_id: studentId });
+    for (const item of list) {
+      if (item.institucion_id) {
+        const insts = await mockDb.getAll("instituciones", { id: item.institucion_id });
+        if (insts.length > 0) {
+          item.institucion = { id: insts[0].id, nombre: insts[0].nombre };
+        }
+      }
+    }
+    return list;
+  }
   const { data, error } = await supabase
     .from("solicitudes_nueva_pps")
     .select(
@@ -162,7 +188,29 @@ export const fetchSolicitudesNuevaPPSByStudent = async (studentId: string) => {
   return data || [];
 };
 
-export const fetchAllSolicitudesModificacion = async (estado?: string) => {
+export const fetchAllSolicitudesModificacion = async (estado?: string, isTestingMode = false) => {
+  if (isTestingMode) {
+    let list = await mockDb.getAll("solicitudes_modificacion_pps");
+    if (estado) {
+      list = list.filter((r: any) => r.estado === estado);
+    }
+    for (const item of list) {
+      const studs = await mockDb.getAll("estudiantes", { id: item.estudiante_id });
+      if (studs.length > 0) {
+        item.estudiante = {
+          id: studs[0].id,
+          nombre: studs[0].nombre,
+          legajo: studs[0].legajo,
+          correo: studs[0].correo,
+        };
+      }
+      const practs = await mockDb.getAll("practicas", { id: item.practica_id });
+      if (practs.length > 0) {
+        item.practica = practs[0];
+      }
+    }
+    return list;
+  }
   let query = supabase
     .from("solicitudes_modificacion_pps")
     .select(
@@ -183,7 +231,31 @@ export const fetchAllSolicitudesModificacion = async (estado?: string) => {
   return data || [];
 };
 
-export const fetchAllSolicitudesNuevaPPS = async (estado?: string) => {
+export const fetchAllSolicitudesNuevaPPS = async (estado?: string, isTestingMode = false) => {
+  if (isTestingMode) {
+    let list = await mockDb.getAll("solicitudes_nueva_pps");
+    if (estado) {
+      list = list.filter((r: any) => r.estado === estado);
+    }
+    for (const item of list) {
+      const studs = await mockDb.getAll("estudiantes", { id: item.estudiante_id });
+      if (studs.length > 0) {
+        item.estudiante = {
+          id: studs[0].id,
+          nombre: studs[0].nombre,
+          legajo: studs[0].legajo,
+          correo: studs[0].correo,
+        };
+      }
+      if (item.institucion_id) {
+        const insts = await mockDb.getAll("instituciones", { id: item.institucion_id });
+        if (insts.length > 0) {
+          item.institucion = { id: insts[0].id, nombre: insts[0].nombre };
+        }
+      }
+    }
+    return list;
+  }
   let query = supabase
     .from("solicitudes_nueva_pps")
     .select(
@@ -205,6 +277,18 @@ export const fetchAllSolicitudesNuevaPPS = async (estado?: string) => {
 };
 
 export const approveSolicitudModificacion = async (solicitudId: string, notasAdmin?: string) => {
+  if (solicitudId.startsWith("mock_")) {
+    const solicitud = (await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
+      estado: "aprobada",
+      notas_admin: notasAdmin,
+    })) as any;
+    if (solicitud.tipo_modificacion === "horas" && solicitud.horas_nuevas) {
+      await mockDb.update("practicas", solicitud.practica_id, {
+        horas_realizadas: solicitud.horas_nuevas,
+      });
+    }
+    return solicitud;
+  }
   const { data: solicitud, error: fetchError } = await supabase
     .from("solicitudes_modificacion_pps")
     .select("*, practica:practicas(*)")
@@ -239,6 +323,14 @@ export const rejectSolicitudModificacion = async (
   comentarioRechazo: string,
   notasAdmin?: string
 ) => {
+  if (solicitudId.startsWith("mock_")) {
+    await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
+      estado: "rechazada",
+      comentario_rechazo: comentarioRechazo,
+      notas_admin: notasAdmin,
+    });
+    return;
+  }
   const { error } = await supabase
     .from("solicitudes_modificacion_pps")
     .update({
@@ -252,6 +344,33 @@ export const rejectSolicitudModificacion = async (
 };
 
 export const approveSolicitudNuevaPPS = async (solicitudId: string, notasAdmin?: string) => {
+  if (solicitudId.startsWith("mock_")) {
+    const solicitud = (await mockDb.update("solicitudes_nueva_pps", solicitudId, {
+      estado: "aprobada",
+      notas_admin: notasAdmin,
+    })) as any;
+    let nombreInstitucion = solicitud.nombre_institucion_manual || "Institución desconocida";
+    if (solicitud.institucion_id) {
+      const insts = await mockDb.getAll("instituciones", { id: solicitud.institucion_id });
+      if (insts.length > 0) {
+        nombreInstitucion = insts[0].nombre;
+      }
+    }
+    const practicaRecord = {
+      estudiante_id: solicitud.estudiante_id,
+      especialidad: solicitud.orientacion,
+      fecha_inicio: solicitud.fecha_inicio,
+      fecha_finalizacion: solicitud.fecha_finalizacion,
+      horas_realizadas: solicitud.horas_estimadas,
+      estado: "Finalizada",
+      nota: null,
+      lanzamiento_id: null,
+      nombre_institucion: nombreInstitucion,
+      es_online: solicitud.es_online ?? false,
+    };
+    const practica = await mockDb.create("practicas", practicaRecord);
+    return { solicitud, practica };
+  }
   const { data: solicitud, error: fetchError } = await supabase
     .from("solicitudes_nueva_pps")
     .select(
@@ -311,6 +430,14 @@ export const rejectSolicitudNuevaPPS = async (
   comentarioRechazo: string,
   notasAdmin?: string
 ) => {
+  if (solicitudId.startsWith("mock_")) {
+    await mockDb.update("solicitudes_nueva_pps", solicitudId, {
+      estado: "rechazada",
+      comentario_rechazo: comentarioRechazo,
+      notas_admin: notasAdmin,
+    });
+    return;
+  }
   const { error } = await supabase
     .from("solicitudes_nueva_pps")
     .update({

@@ -43,6 +43,7 @@ interface CorreccionesTabViewProps {
   onToast: (msg: string, type?: "success" | "error" | "warning") => void;
   onReject: (sol: CorreccionItem) => void;
   onUpdateCounts: (counts: number) => void;
+  isTestingMode?: boolean;
 }
 
 const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
@@ -53,6 +54,7 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
   onToast,
   onReject,
   onUpdateCounts,
+  isTestingMode = false,
 }) => {
   const [subtab, setSubtab] = useState<"modificaciones" | "nuevas">("modificaciones");
 
@@ -60,19 +62,21 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
 
   // Fetch modificaciones
   const { data: solicitudesModificacion = [], isLoading: loadingMod } = useQuery<CorreccionItem[]>({
-    queryKey: ["solicitudes_modificacion", filter],
+    queryKey: ["solicitudes_modificacion", filter, isTestingMode],
     queryFn: async () =>
       (await fetchAllSolicitudesModificacion(
-        filter === "all" ? undefined : filter
+        filter === "all" ? undefined : filter,
+        isTestingMode
       )) as unknown as CorreccionItem[],
   });
 
   // Fetch nuevas pps
   const { data: solicitudesNuevas = [], isLoading: loadingNuevas } = useQuery<CorreccionItem[]>({
-    queryKey: ["solicitudes_nueva_pps", filter],
+    queryKey: ["solicitudes_nueva_pps", filter, isTestingMode],
     queryFn: async () =>
       (await fetchAllSolicitudesNuevaPPS(
-        filter === "all" ? undefined : filter
+        filter === "all" ? undefined : filter,
+        isTestingMode
       )) as unknown as CorreccionItem[],
   });
 
