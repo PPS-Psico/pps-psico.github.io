@@ -7,6 +7,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import Auth from "./components/Auth";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -89,7 +90,7 @@ const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
   const isStudent = !role || role === "Alumno";
 
   if (!authenticatedUser) {
-    return <Navigate to="/login" replace />;
+    return <>{children}</>;
   }
 
   // Redirigir coordinadores/admins que intentan entrar directamente a la ruta de estudiantes
@@ -114,21 +115,27 @@ const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const publicAulaSections = ["guia", "descargas", "preguntas", "entregas"] as const;
+type PublicAulaSection = (typeof publicAulaSections)[number];
+
+const PublicAulaRoute: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const fromUrl = searchParams.get("sec");
+  const section = publicAulaSections.includes(fromUrl as PublicAulaSection)
+    ? (fromUrl as PublicAulaSection)
+    : "guia";
+
+  return <StudentAulaView mode="public" section={section} />;
+};
+
 const AppRoutes = () => {
   const { authenticatedUser } = useAuth();
   const navigate = useNavigate();
 
   return (
     <Routes>
-      <Route path="/login" element={!authenticatedUser ? <Auth /> : <Navigate to="/" />} />
-      <Route
-        path="/aula"
-        element={
-          <React.Suspense fallback={null}>
-            <StudentAulaView mode="public" />
-          </React.Suspense>
-        }
-      />
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/aula" element={<Navigate to="/" replace />} />
 
       <Route
         path="/"
