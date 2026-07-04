@@ -88,7 +88,20 @@ const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
   const role = authenticatedUser?.role as string | undefined;
   const isStudent = !role || role === "Alumno";
 
-  if (authenticatedUser?.needsDataCompletion && !dataCompleted && isStudent) {
+  if (!authenticatedUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Redirigir coordinadores/admins que intentan entrar directamente a la ruta de estudiantes
+  if (!isStudent) {
+    if (role === "AdminTester") return <Navigate to="/testing" replace />;
+    if (role === "SuperUser") return <Navigate to="/admin" replace />;
+    if (role === "Jefe") return <Navigate to="/jefe" replace />;
+    if (role === "Directivo") return <Navigate to="/directivo" replace />;
+    if (role === "Reportero") return <Navigate to="/reportero" replace />;
+  }
+
+  if (authenticatedUser.needsDataCompletion && !dataCompleted && isStudent) {
     return (
       <DataCompletionModal
         studentId={authenticatedUser.studentId || ""}
