@@ -457,7 +457,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
 (function(){
   var PANEL_ORIGIN='https://pps-psico.github.io/';
   function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
-  var PANEL_VER='21';
+  var PANEL_VER='28';
   var email=getParam('email');
   try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
   document.querySelectorAll('a[href^="'+PANEL_ORIGIN+'"]').forEach(function(a){
@@ -468,7 +468,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
 <script>
 /* Mantiene el acceso integrado a Mi Panel con el email que inyecta Moodle. */
 (function(){
-  var PANEL_VER='21';
+  var PANEL_VER='28';
   function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
   var email=getParam('email');
   try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
@@ -490,7 +490,7 @@ html[data-theme="dark"] #pps-aula-2026 .pa-channel__ic svg{ stroke:var(--accent-
       try {
         email = new URLSearchParams(window.location.search).get('email') || sessionStorage.getItem('pps_email') || '';
       } catch(e) {}
-      var qs = '?v=21&preload=true' + (email ? '&email=' + encodeURIComponent(email.trim()) : '');
+      var qs = '?v=28&preload=true' + (email ? '&email=' + encodeURIComponent(email.trim()) : '');
 
       console.log('[Preheat] Iniciando precarga de Mi Panel en iframe invisible...');
       var iframe = document.createElement('iframe');
