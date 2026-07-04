@@ -796,6 +796,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         onClose={() => setIsFinalizationModalOpen(false)}
         practicas={practicas}
         criterios={criterios}
+        solicitudes={solicitudes}
         onAddPPS={() => setShowNuevaPPSModal(true)}
         onDeletePractica={async (id) => {
           await deletePractica.mutateAsync(id);

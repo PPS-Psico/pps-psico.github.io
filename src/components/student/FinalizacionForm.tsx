@@ -15,6 +15,9 @@ import {
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
+  FIELD_EMPRESA_PPS_SOLICITUD,
+  FIELD_SOLICITUD_ORIENTACION_SUGERIDA,
+  FIELD_ESTADO_PPS,
 } from "../../constants";
 import { normalizeStringForComparison } from "../../utils/formatters";
 import {
@@ -33,6 +36,7 @@ interface FinalizacionFormProps {
   onClose?: () => void;
   practicas?: Practica[];
   criterios?: CriteriosCalculados;
+  solicitudes?: any[];
   onAddPPS?: () => void;
   onDeletePractica?: (practicaId: string) => Promise<void> | void;
   isDeletingPractica?: boolean;
@@ -201,12 +205,28 @@ const RowFileButton: React.FC<{
   );
 };
 
+const getStatusVisuals = (status: string) => {
+  const normalized = normalizeStringForComparison(status);
+  if (normalized.includes("aprob") || normalized.includes("complet")) {
+    return { bg: "rgba(16,185,129,0.1)", text: "#10b981", label: "Aprobada" };
+  }
+  if (
+    normalized.includes("rechaz") ||
+    normalized.includes("cancel") ||
+    normalized.includes("no se pudo")
+  ) {
+    return { bg: "rgba(244,63,94,0.1)", text: "#f43f5e", label: "Rechazada" };
+  }
+  return { bg: "rgba(245,158,11,0.1)", text: "#f59e0b", label: "Pendiente" };
+};
+
 const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
   isOpen,
   studentId,
   onClose,
   practicas = [],
   criterios,
+  solicitudes = [],
   onAddPPS,
   onDeletePractica,
   isDeletingPractica = false,
@@ -395,6 +415,142 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
           : step === "confirmar"
             ? "Revisá y enviá"
             : "Solicitud enviada";
+
+  if (!cumpleTodo) {
+    return createPortal(
+      <div
+        className="ed fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4"
+        data-mode={resolvedTheme}
+        data-accent="teal"
+        role="dialog"
+        aria-modal="true"
+        onClick={onClose}
+      >
+        <div
+          className="relative w-full sm:w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-scale-in"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div
+            className="flex-shrink-0 px-5 py-4 sm:px-7 sm:py-5 flex items-center justify-between safe-area-top"
+            style={{ borderBottom: "1px solid var(--line)" }}
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(192,86,63,0.1)", color: DANGER }}
+              >
+                <span className="material-icons">lock</span>
+              </span>
+              <h2
+                style={{
+                  fontSize: 22,
+                  color: "var(--ink)",
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 800,
+                  lineHeight: 1.05,
+                  letterSpacing: "-0.035em",
+                }}
+              >
+                Requisitos pendientes
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-1 rounded-full transition-colors hover:bg-[var(--bg-sunken)]"
+              style={{ color: "var(--ink-muted)" }}
+              aria-label="Cerrar"
+            >
+              <Icon name="x" size={20} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-5 sm:p-7 custom-scrollbar space-y-6">
+            <div
+              className="p-4 rounded-2xl flex items-start gap-3"
+              style={{
+                background: "rgba(192,86,63,0.08)",
+                border: "1px solid rgba(192,86,63,0.20)",
+              }}
+            >
+              <Icon name="alert" size={18} color={DANGER} />
+              <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
+                No cumplís con todos los requisitos para la acreditación. Para poder avanzar con el
+                trámite, primero debés registrar las PPS que te faltan. Solicitá agregar las
+                prácticas adjuntando la documentación que las respalde para que coordinación las
+                apruebe.
+              </p>
+            </div>
+
+            <CompletarStep criterios={criterios} finalizadas={finalizadas} onAddPPS={onAddPPS} />
+
+            {solicitudes && solicitudes.length > 0 && (
+              <div>
+                <span className="eyebrow" style={{ color: "var(--ink-muted)", fontSize: 10 }}>
+                  Tus solicitudes de agregación ({solicitudes.length})
+                </span>
+                <div className="mt-2 space-y-2">
+                  {solicitudes.map((sol) => {
+                    const statusVal = sol[FIELD_ESTADO_PPS] || "Pendiente";
+                    const visuals = getStatusVisuals(statusVal);
+                    return (
+                      <div
+                        key={sol.id}
+                        className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          border: "1px solid var(--line)",
+                        }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className="text-sm font-bold block truncate"
+                            style={{ color: "var(--ink)" }}
+                          >
+                            {sol[FIELD_EMPRESA_PPS_SOLICITUD]}
+                          </span>
+                          <span
+                            className="text-[11px] block truncate"
+                            style={{ color: "var(--ink-muted)" }}
+                          >
+                            {sol[FIELD_SOLICITUD_ORIENTACION_SUGERIDA] || "Sin orientación"}
+                          </span>
+                        </div>
+                        <span
+                          className="px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                          style={{ background: visuals.bg, color: visuals.text }}
+                        >
+                          {visuals.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div
+            className="flex-shrink-0 px-5 py-4 sm:px-7 sm:py-4 flex items-center justify-end gap-3 safe-area-bottom"
+            style={{ borderTop: "1px solid var(--line)", background: "var(--bg-elevated)" }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5"
+              style={{ background: "var(--accent)" }}
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div
