@@ -76,7 +76,9 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     queryFn: async () => {
       const { data } = await supabase
         .from("lanzamientos_pps")
-        .select("id, institucion_id, cupos_disponibles")
+        .select(
+          "id, institucion_id, cupos_disponibles, horas_acreditadas, orientacion, es_online, created_at"
+        )
         .order("created_at", { ascending: false });
       return (data as unknown as LanzamientoLite[]) || [];
     },
@@ -118,6 +120,19 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     if (!institucionSeleccionada) return [];
     return lanzamientos.filter((l) => l.institucion_id === institucionSeleccionada.id);
   }, [lanzamientos, institucionSeleccionada]);
+
+  const maxHorasPermitidas = useMemo(() => {
+    if (lanzamientosDeInstitucion.length > 0) {
+      const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
+        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      );
+      const ultimoLanzamiento = sortedLanzamientos[0];
+      if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) {
+        return Number(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) || 80;
+      }
+    }
+    return 80;
+  }, [lanzamientosDeInstitucion]);
 
   // Auto-completar datos cuando se selecciona institución del listado
   useEffect(() => {
@@ -263,8 +278,8 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       showToast("Ingresá las horas estimadas", "error");
       return false;
     }
-    if (parseInt(horasEstimadas) > 120) {
-      showToast("El máximo permitido es 120 horas", "error");
+    if (parseInt(horasEstimadas) > maxHorasPermitidas) {
+      showToast(`El máximo permitido es ${maxHorasPermitidas} horas`, "error");
       return false;
     }
     // Si es online, solo informe es obligatorio
@@ -630,12 +645,12 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 onChange={(e) => setHorasEstimadas(e.target.value)}
                 placeholder="Ej: 80"
                 min="1"
-                max="120"
+                max={maxHorasPermitidas}
                 className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 transition"
                 style={fieldStyle}
               />
               <p className="text-xs mt-1" style={{ color: "var(--ink-subtle)" }}>
-                Máximo 120 horas
+                Máximo {maxHorasPermitidas} horas
               </p>
             </div>
 
