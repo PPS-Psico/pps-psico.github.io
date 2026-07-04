@@ -320,7 +320,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                   <span className="material-icons" style={{ fontSize: 18 }}>
                     add
                   </span>
-                  Solicitar agregar una PPS
+                  Cargar una PPS realizada
                 </button>
               ) : null}
             </div>

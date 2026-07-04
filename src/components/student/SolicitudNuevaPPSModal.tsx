@@ -96,24 +96,18 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     return map;
   }, [lanzamientos]);
 
-  // Filtrar lanzamientos que coincidan con el nombre ingresado, deshabilitando las de cupos=1
+  // Filtrar instituciones que coincidan con el nombre ingresado (sin restricciones de cupos ni grupos)
   const institucionesCoincidentes = useMemo(() => {
     const busquedaNormalizada = searchTerm.toLowerCase().trim();
     if (!busquedaNormalizada) return [];
 
     return instituciones
       .filter((inst) => inst.nombre?.toLowerCase().includes(busquedaNormalizada))
-      .map((inst) => {
-        const instLanzamientos = lanzamientosPorInstitucion.get(inst.id) || [];
-        const cuposMax = Math.max(0, ...instLanzamientos.map((l) => l.cupos_disponibles || 0));
-        const hasCuposGrupales = cuposMax >= 3;
-        return {
-          ...inst,
-          disabled: !hasCuposGrupales,
-          cuposInfo: cuposMax,
-        };
-      });
-  }, [searchTerm, instituciones, lanzamientosPorInstitucion]);
+      .map((inst) => ({
+        ...inst,
+        disabled: false,
+      }));
+  }, [searchTerm, instituciones]);
 
   // Filtrar lanzamientos que coincidan con la institución seleccionada
   const lanzamientosDeInstitucion = useMemo(() => {
@@ -468,7 +462,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
         >
           <div className="min-w-0 pr-4">
             <span className="eyebrow" style={{ color: "var(--accent-text)" }}>
-              Nueva solicitud
+              Carga de PPS
             </span>
             <h2
               style={{
@@ -481,7 +475,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 letterSpacing: "-0.01em",
               }}
             >
-              Solicitar una PPS
+              Cargar una PPS realizada
             </h2>
           </div>
           <button

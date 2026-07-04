@@ -478,9 +478,9 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
               <Icon name="alert" size={18} color={DANGER} />
               <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
                 No cumplís con todos los requisitos para la acreditación. Para poder avanzar con el
-                trámite, primero debés registrar las PPS que te faltan. Solicitá agregar las
-                prácticas adjuntando la documentación que las respalde para que coordinación las
-                apruebe.
+                trámite, primero debés registrar las PPS que te faltan. Cargá las prácticas
+                realizadas adjuntando los informes correspondientes para que sean validadas por
+                coordinación.
               </p>
             </div>
 
@@ -656,7 +656,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
                   style={{ borderColor: "var(--line-strong)", color: "var(--accent-text)" }}
                 >
                   <Icon name="plus" size={16} strokeWidth={2.2} />
-                  ¿Hiciste una PPS que no figura? Agregala
+                  ¿Realizaste otra PPS que no figura? Cargar aquí
                 </button>
               )}
             </div>
@@ -831,8 +831,8 @@ const CompletarStep: React.FC<{
   return (
     <div className="space-y-5">
       <p className="text-sm leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-        A veces la página no tiene cargadas todas tus PPS. Si hiciste prácticas que no figuran,
-        agregalas acá (se cargan como una solicitud que revisa coordinación).
+        A veces la página no tiene cargadas todas tus PPS. Si realizaste prácticas que no figuran,
+        cargalas acá adjuntando los informes para que sean validadas por coordinación.
       </p>
 
       {faltantes.length > 0 && (
@@ -868,7 +868,7 @@ const CompletarStep: React.FC<{
           style={{ background: "var(--accent)" }}
         >
           <Icon name="plus" size={18} strokeWidth={2.4} color="var(--on-accent)" />
-          Agregar una PPS
+          Cargar una PPS realizada
         </button>
       )}
 
@@ -1177,7 +1177,8 @@ const EmptyPps: React.FC<{ onAddPPS?: () => void }> = ({ onAddPPS }) => (
       <Icon name="file" size={22} />
     </div>
     <p className="text-sm font-medium px-6" style={{ color: "var(--ink-soft)" }}>
-      No encontramos PPS finalizadas. Si hiciste prácticas que no figuran, agregalas para continuar.
+      No encontramos PPS finalizadas. Si realizaste prácticas que no figuran, cargalas para
+      continuar.
     </p>
     {onAddPPS && (
       <button
@@ -1186,7 +1187,7 @@ const EmptyPps: React.FC<{ onAddPPS?: () => void }> = ({ onAddPPS }) => (
         className="px-4 py-2 rounded-xl text-sm font-bold text-white"
         style={{ background: "var(--accent)" }}
       >
-        Agregar una PPS
+        Cargar una PPS realizada
       </button>
     )}
   </div>
