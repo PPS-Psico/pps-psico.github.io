@@ -22,6 +22,7 @@ import type {
   Orientacion,
   Practica,
   SolicitudPPS,
+  SolicitudNuevaPPS,
 } from "../types";
 
 interface StudentPanelContextType {
@@ -30,6 +31,7 @@ interface StudentPanelContextType {
   studentId: string | null;
   practicas: Practica[];
   solicitudes: SolicitudPPS[];
+  solicitudesNueva: SolicitudNuevaPPS[];
   lanzamientos: LanzamientoPPS[];
   allLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
@@ -77,6 +79,7 @@ const emptyContextValue: StudentPanelContextType = {
   studentId: null,
   practicas: [],
   solicitudes: [],
+  solicitudesNueva: [],
   lanzamientos: [],
   allLanzamientos: [],
   enrollmentMap: new Map(),
@@ -153,8 +156,14 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     deletePractica,
     refetchPracticas,
   } = useStudentPracticas(legajo);
-  const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
-    useStudentSolicitudes(legajo, studentId);
+  const {
+    solicitudes,
+    isSolicitudesLoading,
+    solicitudesError,
+    refetchSolicitudes,
+    solicitudesNueva,
+    refetchSolicitudesNueva,
+  } = useStudentSolicitudes(legajo, studentId);
   const {
     lanzamientos,
     myEnrollments,
@@ -248,6 +257,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     studentId,
     practicas,
     solicitudes,
+    solicitudesNueva,
     lanzamientos,
     allLanzamientos,
     institutionAddressMap,

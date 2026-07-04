@@ -18,6 +18,7 @@ import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
 import AtlasProfileView from "./student/AtlasProfileView";
 import AtlasPracticasView from "./student/AtlasPracticasView";
 import Auth from "../components/Auth";
+import { isEmbedded } from "../utils/isEmbedded";
 // Aula (contenido estático pesado en JSX): lazy para sacarlo del bundle inicial.
 const StudentAulaView = React.lazy(() => import("./student/StudentAulaView"));
 const EntregasMobileView = React.lazy(() => import("./student/EntregasMobileView"));
@@ -251,6 +252,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     studentId,
     practicas,
     solicitudes,
+    solicitudesNueva,
     lanzamientos,
     allLanzamientos,
     institutionAddressMap,
@@ -333,6 +335,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const handleRefetchPracticas = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["practicas"] });
+    queryClient.invalidateQueries({ queryKey: ["solicitudes_nueva_pps_student"] });
   }, [queryClient]);
 
   const handleOpenFinalization = useCallback(() => {
@@ -796,7 +799,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         onClose={() => setIsFinalizationModalOpen(false)}
         practicas={practicas}
         criterios={criterios}
-        solicitudes={solicitudes}
+        solicitudes={solicitudesNueva}
         onAddPPS={() => setShowNuevaPPSModal(true)}
         onDeletePractica={async (id) => {
           await deletePractica.mutateAsync(id);
@@ -855,7 +858,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </div>
       )}
       {isMobile && (
-        <div className="no-print space-y-8 animate-fade-in-up mt-4">
+        <div className="no-print space-y-6 animate-fade-in-up mt-4">
+          {isEmbedded() && !finalizacionRequest && (
+            <div
+              className="flex gap-2 overflow-x-auto py-2.5 px-4 scrollbar-none sticky top-0 z-30 backdrop-blur-md"
+              style={{
+                background: "color-mix(in oklab, var(--bg-elevated) 85%, transparent)",
+                borderBottom: "1px solid var(--line)",
+              }}
+            >
+              {studentDataTabs.map((tab) => {
+                const on = tab.id === currentActiveTab;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setCurrentActiveTab(tab.id)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1.5"
+                    style={{
+                      background: on ? "var(--accent)" : "var(--bg-sunken)",
+                      color: on ? "var(--on-accent)" : "var(--ink-soft)",
+                      border: on ? "none" : "1px solid var(--line)",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {finalizacionRequest && currentUser && (
             <FinalizationStatusCard
               status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
@@ -895,7 +926,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <SolicitudNuevaPPSModal
         isOpen={showNuevaPPSModal}
         onClose={() => setShowNuevaPPSModal(false)}
-        studentId={studentDetails?.id || null}
+        studentId={getStudentId()}
         onSuccess={handleRefetchPracticas}
       />
     </>

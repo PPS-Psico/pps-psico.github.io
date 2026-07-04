@@ -12,27 +12,10 @@ import { useEffect, useState } from "react";
 export function useIsMobile(breakpoint = 768): boolean {
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === "undefined") return false;
-    // Embebido en el campus ⇒ forzamos layout de escritorio (no mobile).
-    try {
-      if (window.self !== window.top) return false;
-    } catch {
-      return false; // cross-origin ⇒ embebidos ⇒ escritorio
-    }
     return window.innerWidth < breakpoint;
   });
 
   useEffect(() => {
-    let embedded = false;
-    try {
-      embedded = window.self !== window.top;
-    } catch {
-      embedded = true; // cross-origin ⇒ embebidos
-    }
-    if (embedded) {
-      setIsMobile(false);
-      return;
-    }
-
     const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     setIsMobile(mql.matches);

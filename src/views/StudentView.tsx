@@ -113,7 +113,7 @@ const StudentLayout: React.FC = () => {
       <AppModals />
 
       {/* Mobile Nav is also irrelevant if fully locked in finalization view, but for now we keep it or can hide it too */}
-      {!finalizacionRequest && authenticatedUser && (
+      {!finalizacionRequest && authenticatedUser && !isEmbedded() && (
         <MobileBottomNav tabs={mobileNavTabs} activeTabId={activeTab} />
       )}
     </div>

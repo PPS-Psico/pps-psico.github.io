@@ -144,7 +144,7 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         {[
           { id: "modificaciones" as const, lbl: "Modificaciones", ic: "edit" },
-          { id: "nuevas" as const, lbl: "Nuevas PPS", ic: "add_circle" },
+          { id: "nuevas" as const, lbl: "Carga de PPS", ic: "add_circle" },
         ].map((item) => {
           const on = subtab === item.id;
           return (
@@ -255,7 +255,7 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
   };
 
   const getTipoModTitle = () => {
-    if (!isMod) return "Nueva PPS";
+    if (!isMod) return "Carga de PPS";
     const mapping: Record<string, string> = {
       horas: "Horas de la práctica",
       fechas: "Período y cronograma",
