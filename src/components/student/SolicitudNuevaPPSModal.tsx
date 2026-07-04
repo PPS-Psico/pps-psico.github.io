@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
@@ -56,6 +56,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const [dragActive, setDragActive] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const lastAutocompletedInstId = useRef<string | null>(null);
 
   // Fetch instituciones y lanzamientos
   const { data: instituciones = [] } = useQuery({
@@ -120,7 +121,13 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
 
   // Auto-completar datos cuando se selecciona institución del listado
   useEffect(() => {
-    if (!institucionSeleccionada || !isOpen) return;
+    if (!institucionSeleccionada || !isOpen) {
+      lastAutocompletedInstId.current = null;
+      return;
+    }
+
+    if (lastAutocompletedInstId.current === institucionSeleccionada.id) return;
+    lastAutocompletedInstId.current = institucionSeleccionada.id;
 
     let orientacionAutocompletada = "";
 
