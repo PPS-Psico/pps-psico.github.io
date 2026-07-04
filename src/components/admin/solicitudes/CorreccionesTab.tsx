@@ -36,8 +36,8 @@ interface CorreccionItem {
 
 // ─── TABS CONTENT: CORRECCIONES ─────────────────────────────────────
 interface CorreccionesTabViewProps {
-  filter: string;
-  setFilter: (f: string) => void;
+  filter?: string;
+  setFilter?: (f: string) => void;
   expandedId: string | null;
   onToggle: (id: string) => void;
   onToast: (msg: string, type?: "success" | "error" | "warning") => void;
@@ -47,8 +47,8 @@ interface CorreccionesTabViewProps {
 }
 
 const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
-  filter,
-  setFilter,
+  filter: _filter,
+  setFilter: _setFilter,
   expandedId,
   onToggle,
   onToast,
@@ -56,34 +56,36 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
   onUpdateCounts,
   isTestingMode = false,
 }) => {
-  const [subtab, setSubtab] = useState<"modificaciones" | "nuevas">("modificaciones");
-
   const queryClient = useQueryClient();
 
   // Fetch modificaciones
   const { data: solicitudesModificacion = [], isLoading: loadingMod } = useQuery<CorreccionItem[]>({
-    queryKey: ["solicitudes_modificacion", filter, isTestingMode],
+    queryKey: ["solicitudes_modificacion", isTestingMode],
     queryFn: async () =>
       (await fetchAllSolicitudesModificacion(
-        filter === "all" ? undefined : filter,
+        undefined,
         isTestingMode
       )) as unknown as CorreccionItem[],
   });
 
   // Fetch nuevas pps
   const { data: solicitudesNuevas = [], isLoading: loadingNuevas } = useQuery<CorreccionItem[]>({
-    queryKey: ["solicitudes_nueva_pps", filter, isTestingMode],
+    queryKey: ["solicitudes_nueva_pps", isTestingMode],
     queryFn: async () =>
-      (await fetchAllSolicitudesNuevaPPS(
-        filter === "all" ? undefined : filter,
-        isTestingMode
-      )) as unknown as CorreccionItem[],
+      (await fetchAllSolicitudesNuevaPPS(undefined, isTestingMode)) as unknown as CorreccionItem[],
   });
 
-  const allList = useMemo(
-    () => buildCorreccionesList(solicitudesModificacion, solicitudesNuevas, subtab),
-    [solicitudesModificacion, solicitudesNuevas, subtab]
-  );
+  const allList = useMemo(() => {
+    const mods = solicitudesModificacion.map((s) => ({
+      ...s,
+      tipo_solicitud: "modificacion" as const,
+    }));
+    const news = solicitudesNuevas.map((s) => ({ ...s, tipo_solicitud: "nueva" as const }));
+    const combined = [...mods, ...news];
+    return combined.sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
+  }, [solicitudesModificacion, solicitudesNuevas]);
 
   // Update count bubble in parent tabs
   useEffect(() => {
@@ -115,25 +117,6 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
     onError: (e) => onToast(getErrorMessage(e, "Error al aprobar"), "error"),
   });
 
-  const opts = [
-    { value: "all", label: "Todas", count: allList.length },
-    {
-      value: "pendiente",
-      label: "Pendiente",
-      count: allList.filter((s) => s.estado === "pendiente").length,
-    },
-    {
-      value: "aprobada",
-      label: "Aprobada",
-      count: allList.filter((s) => s.estado === "aprobada").length,
-    },
-    {
-      value: "rechazada",
-      label: "Rechazada",
-      count: allList.filter((s) => s.estado === "rechazada").length,
-    },
-  ];
-
   if (loadingMod || loadingNuevas) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
@@ -144,54 +127,11 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
 
   return (
     <div>
-      {/* inner subtabs */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        {[
-          { id: "modificaciones" as const, lbl: "Modificaciones", ic: "edit" },
-          { id: "nuevas" as const, lbl: "Carga de PPS", ic: "add_circle" },
-        ].map((item) => {
-          const on = subtab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                setSubtab(item.id);
-                setFilter("all");
-              }}
-              className="press"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 14px",
-                borderRadius: 9,
-                border: `1px solid ${on ? "var(--ink)" : "var(--rule-2)"}`,
-                background: on ? "var(--ink)" : "transparent",
-                color: on ? "var(--paper)" : "var(--ink-2)",
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <span className="material-icons" style={{ fontSize: 15 }}>
-                {item.ic}
-              </span>
-              {item.lbl}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <FilterTabs options={opts} value={filter} onChange={setFilter} />
-      </div>
-
       {allList.length === 0 ? (
         <EmptyState
           icon="inbox"
           title="Sin solicitudes"
-          msg="No hay solicitudes con los filtros aplicados."
+          msg="No hay solicitudes de modificaciones ni de cargas de PPS."
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -268,10 +208,16 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
     return `Modificación · ${mapping[sol.tipo_modificacion ?? ""] || "Práctica"}`;
   };
 
-  const docsList = useMemo(
-    () => normalizeAttachments(sol.planilla_asistencia_url || sol.informe_final_url),
-    [sol.planilla_asistencia_url, sol.informe_final_url]
-  );
+  const docsList = useMemo(() => {
+    const list: { url: string; filename: string }[] = [];
+    if (sol.planilla_asistencia_url) {
+      list.push({ url: sol.planilla_asistencia_url, filename: "Planilla de asistencia" });
+    }
+    if (sol.informe_final_url) {
+      list.push({ url: sol.informe_final_url, filename: "Informe" });
+    }
+    return list;
+  }, [sol.planilla_asistencia_url, sol.informe_final_url]);
 
   return (
     <div

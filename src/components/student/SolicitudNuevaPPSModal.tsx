@@ -44,7 +44,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const [orientacion, setOrientacion] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState<string>("");
   const [fechaFinalizacion, setFechaFinalizacion] = useState<string>("");
-  const [horasEstimadas, setHorasEstimadas] = useState<string>("");
+  const [horasEstimadas, setHorasEstimadas] = useState<string>("80");
   const [esOnline, setEsOnline] = useState(false);
   const [planillaFile, setPlanillaFile] = useState<File | null>(null);
   const [informeFile, setInformeFile] = useState<File | null>(null);
@@ -192,7 +192,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     setOrientacion("");
     setFechaInicio("");
     setFechaFinalizacion("");
-    setHorasEstimadas("");
+    setHorasEstimadas("80");
     setEsOnline(false);
     setPlanillaFile(null);
     setInformeFile(null);
