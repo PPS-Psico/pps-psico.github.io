@@ -81,25 +81,43 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
   const hasRun = useRef(false);
 
   useEffect(() => {
+    const email = getEmailFromUrl();
+    const isTrusted = isTrustedContext();
+    const shouldRun = shouldAttempt();
+
+    logger.info("[MoodleAutoLogin] Diagnóstico de auto-login:", {
+      email,
+      isTrustedContext: isTrusted,
+      shouldAttempt: shouldRun,
+      isIframe: window.self !== window.top,
+      referrer: document.referrer,
+      locationHref: window.location.href,
+    });
+
     if (hasRun.current) return;
     hasRun.current = true;
 
     const run = async () => {
       try {
-        if (!shouldAttempt()) {
+        if (!shouldRun) {
+          logger.info(
+            "[MoodleAutoLogin] No se cumplen las condiciones para auto-login (falta email o no es contexto confiable)."
+          );
           setStatus("done");
           return;
         }
 
-        const email = getEmailFromUrl();
+        logger.info("[MoodleAutoLogin] Intentando auto-login para:", email);
 
         // Si ya hay sesión activa, no hacemos nada.
         const { data: sessionData } = await supabase.auth.getSession();
+        logger.info("[MoodleAutoLogin] Sesión activa actual:", sessionData?.session ? "Sí" : "No");
         if (sessionData?.session) {
           setStatus("done");
           return;
         }
 
+        logger.info("[MoodleAutoLogin] Invocando Edge Function moodle-autologin...");
         // Pedimos a la Edge Function un token de auto-login para este email.
         const response = await fetch(`${SUPABASE_URL}/functions/v1/moodle-autologin`, {
           method: "POST",
@@ -112,14 +130,20 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
         });
 
         if (!response.ok) {
-          logger.warn("[MoodleAutoLogin] Función respondió con error:", response.status);
+          logger.warn("[MoodleAutoLogin] Función respondió con error HTTP:", response.status);
           setStatus("done");
           return;
         }
 
-        const result = (await response.json()) as { matched?: boolean; token_hash?: string };
+        const result = (await response.json()) as {
+          matched?: boolean;
+          token_hash?: string;
+          reason?: string;
+        };
+        logger.info("[MoodleAutoLogin] Respuesta de la Edge Function:", result);
 
         if (result?.matched && result.token_hash) {
+          logger.info("[MoodleAutoLogin] Token recibido. Canjeando verifyOtp...");
           const { error } = await supabase.auth.verifyOtp({
             type: "magiclink",
             token_hash: result.token_hash,
@@ -127,11 +151,16 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
           if (error) {
             logger.warn("[MoodleAutoLogin] verifyOtp falló:", error.message);
           } else {
-            logger.info("[MoodleAutoLogin] Sesión iniciada automáticamente desde el campus.");
+            logger.info(
+              "[MoodleAutoLogin] Sesión iniciada automáticamente desde el campus con éxito."
+            );
             // AuthContext detecta el SIGNED_IN y carga el perfil.
           }
         } else {
-          logger.info("[MoodleAutoLogin] Email no registrado, se usa login normal.");
+          logger.info(
+            "[MoodleAutoLogin] Email no registrado o error en Edge Function. Razón:",
+            result?.reason
+          );
         }
       } catch (err) {
         logger.warn("[MoodleAutoLogin] Error inesperado:", err);
