@@ -208,9 +208,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }, 50); // Small delay to decouple from event loop
           } else {
             logger.warn(
-              "Profile not found for authenticated user. Posible Admin o Error de Integridad."
+              `Profile not found for authenticated user (email: ${session.user.email}, id: ${session.user.id}). Posible Admin o Error de Integridad.`
             );
-            if (session.user.email !== "admin@uflo.edu.ar") {
+            if (session.user.email === "admin@uflo.edu.ar") {
+              setAuthenticatedUser({
+                id: session.user.id,
+                legajo: "admin",
+                nombre: "Administrador UFLO",
+                role: "SuperUser",
+              });
+              setIsAuthLoading(false);
+            } else {
               // Permitir reintento: este user_id no quedó resuelto.
               processedUserIdRef.current = null;
               setAuthenticatedUser(null);
