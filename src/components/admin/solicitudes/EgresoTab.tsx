@@ -8,6 +8,11 @@ import { FilePreview } from "../preview";
 import { normalizeAttachments, filterEgresoFinalizaciones, isHistoryFinalizacion } from "./helpers";
 import { CollapsibleHistory, EmptyState, SearchBar } from "./primitives";
 import type { FinalizacionWithStudent } from "./types";
+import {
+  computeNotaPromedio,
+  computeTotalHoras,
+  type DetallePracticas,
+} from "../../../utils/acreditacion";
 
 // ─── TABS CONTENT: EGRESO ───────────────────────────────────────────
 interface EgresoTabViewProps {
@@ -117,6 +122,23 @@ const EgresoTabView: React.FC<EgresoTabViewProps> = ({
   );
 };
 
+// Parsea el snapshot por-PPS (registros nuevos). Devuelve null para registros viejos.
+const parseDetalle = (raw: unknown): DetallePracticas | null => {
+  if (!raw) return null;
+  let data = raw;
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  if (!data || typeof data !== "object") return null;
+  const obj = data as { items?: unknown };
+  if (!Array.isArray(obj.items) || obj.items.length === 0) return null;
+  return data as DetallePracticas;
+};
+
 // ─── EGRESO CARD ITEM ───────────────────────────────────────────────
 interface EgresoCardItemProps {
   sol: FinalizacionWithStudent;
@@ -141,6 +163,21 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
   const [previewFiles, setPreviewFiles] = useState<Attachment[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
 
+  const detalle = useMemo(() => {
+    const raw = (sol as any).detalle_practicas;
+    return parseDetalle(raw);
+  }, [sol]);
+
+  const totalHoras = useMemo(() => {
+    if (!detalle) return null;
+    return detalle.totalHoras ?? computeTotalHoras(detalle.items.map((i) => i.horas));
+  }, [detalle]);
+
+  const notaPromedio = useMemo(() => {
+    if (!detalle) return null;
+    return detalle.notaPromedio ?? computeNotaPromedio(detalle.items.map((i) => i.nota));
+  }, [detalle]);
+
   const planillaFiles = useMemo(
     () => normalizeAttachments(sol.planilla_horas_url),
     [sol.planilla_horas_url]
@@ -153,10 +190,30 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
     () => normalizeAttachments(sol.planilla_asistencia_url),
     [sol.planilla_asistencia_url]
   );
-  const allFiles = useMemo(
-    () => [...planillaFiles, ...informeFiles, ...asistenciaFiles],
-    [planillaFiles, informeFiles, asistenciaFiles]
-  );
+
+  const allFiles = useMemo(() => {
+    if (detalle) {
+      const files: Attachment[] = [];
+      detalle.items.forEach((item) => {
+        if (item.informe) {
+          files.push({
+            url: item.informe.url,
+            filename: item.informe.filename,
+            type: "informe",
+          });
+        }
+        if (item.asistencia) {
+          files.push({
+            url: item.asistencia.url,
+            filename: item.asistencia.filename,
+            type: "asistencia",
+          });
+        }
+      });
+      return files;
+    }
+    return [...planillaFiles, ...informeFiles, ...asistenciaFiles];
+  }, [detalle, planillaFiles, informeFiles, asistenciaFiles]);
 
   const docCount = allFiles.length;
 
@@ -271,35 +328,16 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
     return { hermesEstado: state, checks: checksList, issues: issuesList };
   }, [planillaFiles, informeFiles, asistenciaFiles, sol.sugerencias_mejoras, practice]);
 
-  const hMeta = {
-    aprobado: {
-      icon: "verified",
-      c: "var(--ok)",
-      s: "var(--ok-soft)",
-      lbl: "Verificado por Hermes",
-    },
-    atencion: {
-      icon: "warning",
-      c: "var(--warn)",
-      s: "var(--warn-soft)",
-      lbl: "Hermes detectó observaciones",
-    },
-    critico: {
-      icon: "error",
-      c: "var(--crit)",
-      s: "var(--crit-soft)",
-      lbl: "Faltan documentos indispensables",
-    },
-  }[hermesEstado];
-
   const handleCopyExcel = (e: React.MouseEvent) => {
     e.stopPropagation();
     const dateStr = new Date(sol.createdTime).toLocaleDateString("es-AR");
     const legajo = sol.studentLegajo;
     const name = sol.studentName;
-    const text = `${dateStr}\t${legajo}\t${name}`;
+    const horasCol = totalHoras != null ? String(totalHoras) : "";
+    const notaCol = notaPromedio != null ? String(notaPromedio) : "";
+    const text = `${dateStr}\t${legajo}\t${name}\t${horasCol}\t${notaCol}`;
     navigator.clipboard.writeText(text);
-    onToast("Copiado fila Excel (Fecha, Legajo, Nombre).");
+    onToast("Copiado fila Excel (Fecha, Legajo, Nombre, Horas, Promedio).");
   };
 
   const handlePreview = async (files: Attachment[], index: number = 0) => {
@@ -379,25 +417,6 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {/* verification state dot */}
-              <span
-                title={hMeta.lbl}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 20,
-                  height: 20,
-                  borderRadius: 999,
-                  background: hMeta.s,
-                  color: hMeta.c,
-                  flexShrink: 0,
-                }}
-              >
-                <span className="material-icons" style={{ fontSize: 13 }}>
-                  {hMeta.icon}
-                </span>
-              </span>
               <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>
                 {sol.studentName}
               </h4>
@@ -491,172 +510,267 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
             gap: 16,
           }}
         >
-          {/* Hermes Verification Panel */}
-          <div
-            style={{
-              border: `1px solid ${hMeta.c}33`,
-              borderRadius: 14,
-              overflow: "hidden",
-              background: "var(--paper)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "12px 16px",
-                background: hMeta.s,
-              }}
-            >
-              <span className="material-icons" style={{ fontSize: 18, color: hMeta.c }}>
-                {hMeta.icon}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
-                  {hMeta.lbl}
+          {detalle ? (
+            <>
+              {/* Summary Row */}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  alignItems: "center",
+                  padding: "12px 16px",
+                  borderRadius: 12,
+                  background: "var(--paper)",
+                  border: "1px solid var(--rule-2)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className="material-icons" style={{ fontSize: 16, color: "var(--accent)" }}>
+                    playlist_add_check
+                  </span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
+                    {detalle.items.length}{" "}
+                    {detalle.items.length === 1 ? "PPS realizada" : "PPS realizadas"}
+                  </span>
+                </div>
+                <span style={{ color: "var(--rule-3)", fontSize: 12 }}>|</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className="material-icons" style={{ fontSize: 16, color: "var(--accent)" }}>
+                    schedule
+                  </span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
+                    {totalHoras ?? 0} hs totales
+                  </span>
+                </div>
+                <span style={{ color: "var(--rule-3)", fontSize: 12 }}>|</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className="material-icons" style={{ fontSize: 16, color: "var(--accent)" }}>
+                    grade
+                  </span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
+                    Nota promedio: {notaPromedio != null ? notaPromedio : "—"}
+                  </span>
                 </div>
               </div>
-              <span className="label" style={{ color: hMeta.c, fontSize: 9 }}>
-                Hermes
-              </span>
-            </div>
-            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-              {checks.map((c, i) => (
-                <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-                  <span
-                    className="material-icons"
-                    style={{ fontSize: 16, color: "var(--ok)", flexShrink: 0, marginTop: 1 }}
-                  >
-                    check_circle
-                  </span>
-                  <span style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45 }}>
-                    {c.label}
-                  </span>
-                </div>
-              ))}
-              {issues.map((iss, i) => (
-                <div
-                  key={i}
-                  style={{
-                    borderRadius: 10,
-                    background: iss.sev === "crit" ? "var(--crit-soft)" : "var(--warn-soft)",
-                    padding: "10px 12px",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-                    <span
-                      className="material-icons"
+
+              {/* Detail List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {detalle.items.map((item, i) => {
+                  const informeIdx = allFiles.findIndex(
+                    (f) => f.url === item.informe?.url && f.type === "informe"
+                  );
+                  const asistenciaIdx = allFiles.findIndex(
+                    (f) => f.url === item.asistencia?.url && f.type === "asistencia"
+                  );
+
+                  return (
+                    <div
+                      key={item.practicaId || i}
                       style={{
-                        fontSize: 16,
-                        color: iss.sev === "crit" ? "var(--crit)" : "var(--warn)",
-                        flexShrink: 0,
-                        marginTop: 1,
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        background: "var(--paper)",
+                        border: "1px solid var(--rule-2)",
                       }}
                     >
-                      {iss.sev === "crit" ? "cancel" : "warning"}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>
-                        {iss.label}
-                      </div>
-                      {iss.ref && (
-                        <div
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p
                           style={{
-                            marginTop: 4,
-                            display: "flex",
-                            gap: 7,
-                            padding: "6px 8px",
-                            borderRadius: 6,
-                            background: "var(--paper)",
-                            border: "1px solid var(--rule-2)",
-                            fontSize: 11.5,
-                            color: "var(--ink-3)",
+                            margin: 0,
+                            fontSize: 13.5,
+                            fontWeight: 700,
+                            color: "var(--ink)",
                           }}
                         >
-                          <span className="material-icons" style={{ fontSize: 12, marginTop: 2 }}>
-                            link
+                          {item.nombre}
+                        </p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--ink-3)" }}>
+                          {item.especialidad || "Sin orientación"} · {item.horas || 0} hs
+                          {item.esOnline && " · Online"}
+                        </p>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: "3px 7px",
+                            borderRadius: 6,
+                            background: "var(--paper-2)",
+                            color: "var(--ink-2)",
+                            border: "1px solid var(--rule-2)",
+                          }}
+                        >
+                          NOTA: {item.nota || "—"}
+                        </span>
+
+                        {item.informe ? (
+                          <button
+                            onClick={() => handlePreview(allFiles, informeIdx)}
+                            className="press"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid var(--rule-2)",
+                              background: "var(--paper)",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: "var(--ink-2)",
+                            }}
+                          >
+                            <span
+                              className="material-icons"
+                              style={{ fontSize: 14, color: "var(--ink-4)" }}
+                            >
+                              description
+                            </span>
+                            Informe
+                          </button>
+                        ) : (
+                          <span
+                            style={{ fontSize: 11, color: "var(--ink-4)", fontStyle: "italic" }}
+                          >
+                            Sin informe
                           </span>
-                          <span>{iss.ref}</span>
-                        </div>
+                        )}
+
+                        {item.esOnline ? (
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontStyle: "italic",
+                              color: "var(--ink-4)",
+                              padding: "6px 8px",
+                            }}
+                          >
+                            Sin asistencia (Online)
+                          </span>
+                        ) : item.asistencia ? (
+                          <button
+                            onClick={() => handlePreview(allFiles, asistenciaIdx)}
+                            className="press"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid var(--rule-2)",
+                              background: "var(--paper)",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: "var(--ink-2)",
+                            }}
+                          >
+                            <span
+                              className="material-icons"
+                              style={{ fontSize: 14, color: "var(--ink-4)" }}
+                            >
+                              assignment_turned_in
+                            </span>
+                            Asistencia
+                          </button>
+                        ) : (
+                          <span
+                            style={{ fontSize: 11, color: "var(--ink-4)", fontStyle: "italic" }}
+                          >
+                            Sin asistencia
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Files grid (legacy fallback) */}
+              <div>
+                <div className="label" style={{ marginBottom: 8 }}>
+                  Documentos del alumno (Legacy)
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  {[
+                    { l: "Planilla de Horas", files: planillaFiles, i: "table_view" },
+                    { l: "Informe Final", files: informeFiles, i: "description" },
+                    { l: "Asistencias firmadas", files: asistenciaFiles, i: "fact_check" },
+                  ].map((sec, idx) => (
+                    <div key={idx}>
+                      <div className="label" style={{ fontSize: 9.5, marginBottom: 6 }}>
+                        {sec.l}
+                      </div>
+                      {sec.files.length > 0 ? (
+                        sec.files.map((f, fi) => (
+                          <button
+                            key={fi}
+                            onClick={() => handlePreview(allFiles, allFiles.indexOf(f))}
+                            className="press"
+                            style={{
+                              width: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 7,
+                              padding: "8px 10px",
+                              borderRadius: 8,
+                              border: "1px solid var(--rule-2)",
+                              background: "var(--paper)",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              textAlign: "left",
+                            }}
+                          >
+                            <span
+                              className="material-icons"
+                              style={{ fontSize: 16, color: "var(--ink-4)" }}
+                            >
+                              {sec.i}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11.5,
+                                color: "var(--ink-2)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                flex: 1,
+                              }}
+                            >
+                              {f.filename}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <span className="meta" style={{ fontSize: 11, fontStyle: "italic" }}>
+                          No cargado
+                        </span>
                       )}
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Files grid */}
-          <div>
-            <div className="label" style={{ marginBottom: 8 }}>
-              Documentos del alumno
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 10,
-              }}
-            >
-              {[
-                { l: "Planilla de Horas", files: planillaFiles, i: "table_view" },
-                { l: "Informe Final", files: informeFiles, i: "description" },
-                { l: "Asistencias firmadas", files: asistenciaFiles, i: "fact_check" },
-              ].map((sec, idx) => (
-                <div key={idx}>
-                  <div className="label" style={{ fontSize: 9.5, marginBottom: 6 }}>
-                    {sec.l}
-                  </div>
-                  {sec.files.length > 0 ? (
-                    sec.files.map((f, fi) => (
-                      <button
-                        key={fi}
-                        onClick={() => handlePreview(allFiles, allFiles.indexOf(f))}
-                        className="press"
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 7,
-                          padding: "8px 10px",
-                          borderRadius: 8,
-                          border: "1px solid var(--rule-2)",
-                          background: "var(--paper)",
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                          textAlign: "left",
-                        }}
-                      >
-                        <span
-                          className="material-icons"
-                          style={{ fontSize: 16, color: "var(--ink-4)" }}
-                        >
-                          {sec.i}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11.5,
-                            color: "var(--ink-2)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            flex: 1,
-                          }}
-                        >
-                          {f.filename}
-                        </span>
-                      </button>
-                    ))
-                  ) : (
-                    <span className="meta" style={{ fontSize: 11, fontStyle: "italic" }}>
-                      No cargado
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
 
           {/* Sugerencias del alumno */}
           {sol.sugerencias_mejoras && (
