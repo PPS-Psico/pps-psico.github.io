@@ -1,6 +1,6 @@
 /**
- * InformeCampusLinker — Vincular el espacio de entrega de informe (Campus / Moodle)
- * a una PPS ya lanzada y sincronizarlo con la tabla aula_entregas.
+ * InformeCampusLinker — Administrar los espacios de entrega de informes (tareas de Moodle)
+ * sincronizando de forma bidireccional la tabla aula_entregas y lanzamientos_pps.
  */
 import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,8 +22,17 @@ interface InformeCampusLinkerProps {
 }
 
 type LaunchRow = Record<string, unknown> & { id: string };
+type EntregaRow = {
+  id: string;
+  area: "clinica" | "laboral" | "educacional" | "comunitaria";
+  institucion: string;
+  moodle_id: string;
+  orden?: number | null;
+  activo: boolean;
+};
 
 const PLACEHOLDER = "https://campus.uflo.edu.ar/mod/assign/view.php?id=…";
+const MOODLE_PREFIX = "https://campus.uflo.edu.ar/mod/assign/view.php?id=";
 
 /** Devuelve true si la URL parece un buzón de Tarea de Moodle (mod/assign). */
 const looksLikeMoodleAssign = (url: string): boolean => /\/mod\/assign\//i.test(url);
@@ -53,26 +62,47 @@ const getMoodleTaskId = (url: string): string | null => {
   return match ? match[1] : null;
 };
 
-const formatFecha = (value: unknown): string => {
-  if (!value || typeof value !== "string") return "Sin fecha";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
+const areaNames: Record<string, string> = {
+  clinica: "Clínica",
+  laboral: "Laboral",
+  educacional: "Educacional",
+  comunitaria: "Comunitaria",
+};
+
+const areaColors: Record<string, string> = {
+  clinica:
+    "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30",
+  laboral:
+    "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/30",
+  educacional:
+    "bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30",
+  comunitaria:
+    "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30",
 };
 
 const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode = false }) => {
   const queryClient = useQueryClient();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "missing" | "linked">("all");
+  const [filterType, setFilterType] = useState<"all" | "active" | "inactive">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Estados del editor / creador
   const [linkInput, setLinkInput] = useState("");
+  const [selectedLaunchId, setSelectedLaunchId] = useState("");
+  const [editArea, setEditArea] = useState<"clinica" | "laboral" | "educacional" | "comunitaria">(
+    "clinica"
+  );
+  const [editInstitucion, setEditInstitucion] = useState("");
+  const [editActivo, setEditActivo] = useState(true);
+
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "warning";
   } | null>(null);
 
-  // 1. Cargar lanzamientos de PPS
+  // 1. Cargar lanzamientos de PPS (para vincular o contrastar)
   const {
     data: launches = [],
     isLoading: isLaunchesLoading,
@@ -96,10 +126,11 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     error: entregasError,
   } = useQuery({
     queryKey: ["aula_entregas_list", isTestingMode],
-    queryFn: async () => {
+    queryFn: async (): Promise<EntregaRow[]> => {
       if (isTestingMode) return [];
       try {
-        return await db.aula_entregas.getAll();
+        const records = await db.aula_entregas.getAll();
+        return records as unknown as EntregaRow[];
       } catch (err) {
         console.error("Error al cargar aula_entregas:", err);
         return [];
@@ -111,194 +142,254 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   const isLoading = isLaunchesLoading || isEntregasLoading;
   const error = launchesError || entregasError;
 
-  const getLink = (row: LaunchRow): string =>
-    (row[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string | null | undefined)?.toString().trim() || "";
-
-  // Determinar la relación de cada lanzamiento con el campus real (aula_entregas)
-  const getCampusStatus = (row: LaunchRow) => {
-    const link = getLink(row);
-    if (!link) return { hasLink: false, active: false, exists: false, moodleId: null };
-    const taskId = getMoodleTaskId(link);
-    if (!taskId) return { hasLink: true, active: false, exists: false, moodleId: null };
-
-    const match = entregas.find((e: any) => String(e.moodle_id) === String(taskId));
-    return {
-      hasLink: true,
-      active: match ? !!match.activo : false,
-      exists: !!match,
-      moodleId: taskId,
-    };
+  // Mapeo: Buscar si un espacio de entrega está vinculado a alguna PPS
+  const getLinkedLaunch = (entrega: EntregaRow) => {
+    return launches.find((l) => {
+      const link = ((l[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
+      const taskId = getMoodleTaskId(link);
+      return taskId && String(taskId) === String(entrega.moodle_id);
+    });
   };
 
-  // Mutación para guardar/actualizar el vínculo en lanzamientos_pps Y en aula_entregas
-  const saveMutation = useMutation({
-    mutationFn: async ({
-      id,
-      link,
-      launchRow,
-    }: {
-      id: string;
-      link: string | null;
-      launchRow: LaunchRow;
-    }) => {
-      const cleanLink = link ? link.trim() : null;
-      const taskId = cleanLink ? getMoodleTaskId(cleanLink) : null;
-      const oldLink = getLink(launchRow);
-      const oldTaskId = oldLink ? getMoodleTaskId(oldLink) : null;
+  // Listado de lanzamientos activos que no tienen ningún link cargado todavía
+  const unlinkedLaunches = useMemo(() => {
+    return launches.filter((l) => {
+      const link = ((l[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
+      return !link;
+    });
+  }, [launches]);
 
-      // A. Actualizar lanzamientos_pps.codigo_tarjeta_campus
-      await db.lanzamientos.update(id, {
+  // Filtrado de la lista de entregas del campus
+  const filtered = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return entregas.filter((row) => {
+      if (filterType === "active" && !row.activo) return false;
+      if (filterType === "inactive" && row.activo) return false;
+      if (term) {
+        const inst = String(row.institucion || "").toLowerCase();
+        const area = String(row.area || "").toLowerCase();
+        if (!inst.includes(term) && !area.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [entregas, searchTerm, filterType]);
+
+  const activeCount = useMemo(() => entregas.filter((e) => e.activo).length, [entregas]);
+  const inactiveCount = useMemo(() => entregas.filter((e) => !e.activo).length, [entregas]);
+
+  const selected = useMemo(
+    () => entregas.find((e) => e.id === selectedId) || null,
+    [entregas, selectedId]
+  );
+
+  const handleSelect = (row: EntregaRow) => {
+    setIsCreating(false);
+    setSelectedId(row.id);
+    setLinkInput(`${MOODLE_PREFIX}${row.moodle_id}`);
+    setEditArea(row.area);
+    setEditInstitucion(row.institucion);
+    setEditActivo(row.activo);
+  };
+
+  const handleStartCreate = () => {
+    setIsCreating(true);
+    setSelectedId(null);
+    setLinkInput("");
+    setSelectedLaunchId(unlinkedLaunches[0]?.id || "");
+  };
+
+  // Mutación: Crear y Vincular nueva entrega al campus
+  const createMutation = useMutation({
+    mutationFn: async ({ launchId, link }: { launchId: string; link: string }) => {
+      const cleanLink = link.trim();
+      const taskId = getMoodleTaskId(cleanLink);
+      if (!taskId) throw new Error("No se pudo detectar el ID de la tarea Moodle.");
+
+      const launchRow = launches.find((l) => l.id === launchId);
+      if (!launchRow) throw new Error("Lanzamiento de PPS no encontrado.");
+
+      // 1. Guardar link en lanzamientos_pps
+      await db.lanzamientos.update(launchId, {
         [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: cleanLink,
       } as Record<string, unknown>);
 
       if (isTestingMode) return;
 
-      // B. Sincronizar con la tabla aula_entregas
-      if (cleanLink && taskId) {
-        // Mapear orientación de la PPS al enum de área de entrega
-        const orient = String(launchRow[FIELD_ORIENTACION_LANZAMIENTOS] || "").toLowerCase();
-        let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
-        if (orient.includes("clin")) area = "clinica";
-        else if (orient.includes("lab") || orient.includes("comun")) {
-          area = orient.includes("comun") ? "comunitaria" : "laboral";
-        } else if (orient.includes("educ")) area = "educacional";
+      // 2. Mapear orientación y nombre de institución
+      const orient = String(launchRow[FIELD_ORIENTACION_LANZAMIENTOS] || "").toLowerCase();
+      let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
+      if (orient.includes("clin")) area = "clinica";
+      else if (orient.includes("lab") || orient.includes("comun")) {
+        area = orient.includes("comun") ? "comunitaria" : "laboral";
+      } else if (orient.includes("educ")) area = "educacional";
 
-        // Limpiar el nombre de la institución (descartar fechas/detalles de cohorte del nombre de lanzamiento)
-        const name = String(launchRow[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-          .split("-")[0]
-          .trim();
+      const name = String(launchRow[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
+        .split("-")[0]
+        .trim();
 
-        // Buscar si ya existe este buzón de entrega
-        const existing = entregas.find(
-          (e: any) =>
-            String(e.moodle_id) === String(taskId) ||
-            (oldTaskId && String(e.moodle_id) === String(oldTaskId))
-        );
-
-        if (existing) {
-          // Actualizar el existente
-          await db.aula_entregas.update(String(existing.id), {
-            moodle_id: taskId,
-            institucion: name,
-            area,
-            activo: true,
-          } as any);
-        } else {
-          // Crear un registro nuevo
-          await db.aula_entregas.create({
-            moodle_id: taskId,
-            institucion: name,
-            area,
-            activo: true,
-          } as any);
-        }
+      // 3. Crear o reactivar fila en aula_entregas
+      const existing = entregas.find((e) => String(e.moodle_id) === String(taskId));
+      if (existing) {
+        await db.aula_entregas.update(String(existing.id), {
+          activo: true,
+          institucion: name,
+          area,
+        } as any);
       } else {
-        // Si se quita el link, desactivar la entrega en el campus virtual
-        if (oldTaskId) {
-          const existing = entregas.find((e: any) => String(e.moodle_id) === String(oldTaskId));
-          if (existing) {
-            await db.aula_entregas.update(String(existing.id), {
-              activo: false,
-            } as any);
-          }
+        await db.aula_entregas.create({
+          moodle_id: taskId,
+          institucion: name,
+          area,
+          activo: true,
+        } as any);
+      }
+    },
+    onSuccess: () => {
+      setToast({
+        message: "Espacio de entrega vinculado y habilitado exitosamente.",
+        type: "success",
+      });
+      setIsCreating(false);
+      queryClient.invalidateQueries({ queryKey: ["informeCampusLinker"] });
+      queryClient.invalidateQueries({ queryKey: ["aula_entregas_list"] });
+      queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
+      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
+    },
+    onError: (err: any) =>
+      setToast({ message: `Error al crear vínculo: ${err.message}`, type: "error" }),
+  });
+
+  // Mutación: Guardar cambios de una entrega existente
+  const updateMutation = useMutation({
+    mutationFn: async ({
+      id,
+      moodleId,
+      area,
+      institucion,
+      activo,
+      link,
+    }: {
+      id: string;
+      moodleId: string;
+      area: "clinica" | "laboral" | "educacional" | "comunitaria";
+      institucion: string;
+      activo: boolean;
+      link: string;
+    }) => {
+      // 1. Guardar en aula_entregas
+      await db.aula_entregas.update(id, {
+        moodle_id: moodleId,
+        area,
+        institucion,
+        activo,
+      } as any);
+
+      if (isTestingMode) return;
+
+      // 2. Actualizar el link en la PPS lanzada que esté asociada
+      if (selected) {
+        const linkedLaunch = getLinkedLaunch(selected);
+        if (linkedLaunch) {
+          await db.lanzamientos.update(linkedLaunch.id, {
+            [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: link.trim() || null,
+          } as any);
         }
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       setToast({
-        message: variables.link
-          ? "Vínculo guardado y espacio de entrega habilitado en el campus virtual."
-          : "PPS desvinculada y espacio de entrega ocultado en el campus.",
+        message: "Cambios en el espacio de entregas guardados con éxito.",
         type: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["informeCampusLinker"] });
       queryClient.invalidateQueries({ queryKey: ["aula_entregas_list"] });
-      queryClient.invalidateQueries({ queryKey: ["aula_entregas"] }); // Hook de panel estudiantil
+      queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
       queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
-      queryClient.invalidateQueries({ queryKey: ["correctionPanelData"] });
     },
-    onError: (e: any) => setToast({ message: `Error al guardar: ${e.message}`, type: "error" }),
+    onError: (err: any) => setToast({ message: `Error al guardar: ${err.message}`, type: "error" }),
   });
 
-  const filtered = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    return launches.filter((row) => {
-      const { hasLink } = getCampusStatus(row);
-      if (filterType === "missing" && hasLink) return false;
-      if (filterType === "linked" && !hasLink) return false;
-      if (term) {
-        const name = String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").toLowerCase();
-        if (!name.includes(term)) return false;
+  // Mutación: Quitar (desactivar) entrega del campus
+  const deleteMutation = useMutation({
+    mutationFn: async (entrega: EntregaRow) => {
+      // 1. Poner inactivo en aula_entregas
+      await db.aula_entregas.update(entrega.id, {
+        activo: false,
+      } as any);
+
+      if (isTestingMode) return;
+
+      // 2. Limpiar el link en la PPS asociada
+      const linkedLaunch = getLinkedLaunch(entrega);
+      if (linkedLaunch) {
+        await db.lanzamientos.update(linkedLaunch.id, {
+          [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: null,
+        } as any);
       }
-      return true;
-    });
-  }, [launches, searchTerm, filterType, entregas]);
-
-  const missingCount = useMemo(() => launches.filter((row) => !getLink(row)).length, [launches]);
-  const linkedCount = useMemo(() => launches.filter((row) => getLink(row)).length, [launches]);
-
-  const selected = useMemo(
-    () => launches.find((row) => row.id === selectedId) || null,
-    [launches, selectedId]
-  );
-
-  const handleSelect = (row: LaunchRow) => {
-    setSelectedId(row.id);
-    setLinkInput(getLink(row));
-  };
-
-  const handleSave = () => {
-    if (!selected) return;
-    const trimmed = linkInput.trim();
-    if (trimmed && !isValidHttpUrl(trimmed)) {
+    },
+    onSuccess: () => {
       setToast({
-        message: "El link no es una URL válida (debe empezar con https://).",
-        type: "error",
+        message: "Espacio de entregas quitado/ocultado del campus virtual.",
+        type: "success",
       });
+      setSelectedId(null);
+      queryClient.invalidateQueries({ queryKey: ["informeCampusLinker"] });
+      queryClient.invalidateQueries({ queryKey: ["aula_entregas_list"] });
+      queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
+      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
+    },
+    onError: (err: any) => setToast({ message: `Error al quitar: ${err.message}`, type: "error" }),
+  });
+
+  const handleCreateSubmit = () => {
+    if (!selectedLaunchId) {
+      setToast({ message: "Elegí una PPS para vincular.", type: "error" });
       return;
     }
-    if (trimmed && !looksLikeMoodleAssign(trimmed)) {
-      setToast({
-        message: "Ojo: el link no parece una Tarea de Moodle (mod/assign). Se guardó igual.",
-        type: "warning",
-      });
+    const trimmed = linkInput.trim();
+    if (!trimmed) {
+      setToast({ message: "Pegá el link de Moodle.", type: "error" });
+      return;
     }
-    saveMutation.mutate({ id: selected.id, link: trimmed, launchRow: selected });
+    if (!isValidHttpUrl(trimmed)) {
+      setToast({ message: "El link no es una URL válida.", type: "error" });
+      return;
+    }
+    createMutation.mutate({ launchId: selectedLaunchId, link: trimmed });
   };
 
-  const handleRemoveLink = () => {
+  const handleUpdateSubmit = () => {
+    if (!selected) return;
+    const cleanLink = linkInput.trim();
+    const taskId = getMoodleTaskId(cleanLink);
+    if (!taskId) {
+      setToast({ message: "No se detectó un ID de tarea válido.", type: "error" });
+      return;
+    }
+    if (!editInstitucion.trim()) {
+      setToast({ message: "El nombre de la institución no puede estar vacío.", type: "error" });
+      return;
+    }
+    updateMutation.mutate({
+      id: selected.id,
+      moodleId: taskId,
+      area: editArea,
+      institucion: editInstitucion.trim(),
+      activo: editActivo,
+      link: cleanLink,
+    });
+  };
+
+  const handleConfirmRemove = () => {
     if (!selected) return;
     if (
       window.confirm(
-        "¿Estás seguro de que querés desvincular el espacio del campus? Se eliminará el link de Moodle de esta PPS y se ocultará en el campus."
+        "¿Estás seguro de que querés quitar este espacio del campus? Se ocultará de la lista de entregas del estudiante y se limpiará el link en la PPS vinculada."
       )
     ) {
-      saveMutation.mutate({ id: selected.id, link: null, launchRow: selected });
-      setLinkInput("");
+      deleteMutation.mutate(selected);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="py-12">
-        <Loader />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        icon="error"
-        title="Error"
-        message="No se pudieron cargar los datos del campus."
-      />
-    );
-  }
-
-  const { hasLink, active, exists, moodleId } = selected
-    ? getCampusStatus(selected)
-    : { hasLink: false, active: false, exists: false, moodleId: null };
 
   const moodleTaskId = linkInput ? getMoodleTaskId(linkInput) : null;
 
@@ -307,16 +398,26 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Cabecera de Sección */}
-      <div className="bg-slate-50 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-200/50 dark:border-slate-700/40">
-        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-          <span className="material-icons text-blue-500">dns</span>
-          Espacios de Informes en Campus (Moodle)
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-          Las PPS creadas antes de la integración del campus quedan sin espacio de entrega de
-          informe. Vinculá el enlace de la Tarea de Moodle para que el campus genere automáticamente
-          el buzón en el perfil de los estudiantes, o desvinculalo cuando sea necesario.
-        </p>
+      <div className="bg-slate-50 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <span className="material-icons text-blue-500">dns</span>
+            Espacios de Informes en Campus (Moodle)
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed max-w-2xl">
+            Acá gestionás la lista de entregas que ven los alumnos en el aula. Podés vincular una
+            nueva PPS para habilitarle el espacio, modificar los buzones existentes o quitarlos
+            fácilmente del campus.
+          </p>
+        </div>
+
+        <button
+          onClick={handleStartCreate}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition"
+        >
+          <span className="material-icons !text-base">add_link</span>
+          Vincular nueva PPS
+        </button>
       </div>
 
       {/* Controles de Búsqueda y Filtros */}
@@ -328,7 +429,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           </span>
           <input
             type="text"
-            placeholder="Buscar PPS por nombre..."
+            placeholder="Buscar por institución o área..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
@@ -345,7 +446,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
           >
-            <span>Todas</span>
+            <span>Todos</span>
             <span
               className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
                 filterType === "all"
@@ -353,58 +454,54 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                   : "bg-slate-200/60 dark:bg-slate-800 text-slate-500"
               }`}
             >
-              {launches.length}
+              {entregas.length}
             </span>
           </button>
 
           <button
-            onClick={() => setFilterType("missing")}
+            onClick={() => setFilterType("active")}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-              filterType === "missing"
+              filterType === "active"
                 ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
           >
-            <span>Sin vincular</span>
-            {missingCount > 0 && (
-              <span
-                className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
-                  filterType === "missing"
-                    ? "bg-amber-50 dark:bg-amber-900/40 text-amber-600 animate-pulse"
-                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                }`}
-              >
-                {missingCount}
-              </span>
-            )}
+            <span>Activos</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                filterType === "active"
+                  ? "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600"
+                  : "bg-slate-200/60 dark:bg-slate-800 text-slate-500"
+              }`}
+            >
+              {activeCount}
+            </span>
           </button>
 
           <button
-            onClick={() => setFilterType("linked")}
+            onClick={() => setFilterType("inactive")}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-              filterType === "linked"
+              filterType === "inactive"
                 ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
           >
-            <span>Vinculadas</span>
-            {linkedCount > 0 && (
-              <span
-                className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
-                  filterType === "linked"
-                    ? "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600"
-                    : "bg-slate-200/60 dark:bg-slate-800 text-slate-500"
-                }`}
-              >
-                {linkedCount}
-              </span>
-            )}
+            <span>Ocultos</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                filterType === "inactive"
+                  ? "bg-amber-50 dark:bg-amber-900/40 text-amber-600"
+                  : "bg-slate-200/60 dark:bg-slate-800 text-slate-500"
+              }`}
+            >
+              {inactiveCount}
+            </span>
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Lista de PPS */}
+        {/* Lista de Espacios Campus */}
         <div className="lg:col-span-5 space-y-2.5 max-h-[580px] overflow-y-auto pr-1 scrollbar-thin">
           <AnimatePresence mode="popLayout">
             {filtered.length === 0 ? (
@@ -414,23 +511,19 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                 exit={{ opacity: 0 }}
               >
                 <EmptyState
-                  icon="task_alt"
-                  title={filterType === "missing" ? "Todo vinculado" : "Sin resultados"}
-                  message={
-                    filterType === "missing"
-                      ? "Todas las PPS activas ya tienen su espacio de informe vinculado correctamente."
-                      : "No encontramos lanzamientos que coincidan con los filtros seleccionados."
-                  }
+                  icon="inventory_2"
+                  title="Sin resultados"
+                  message="No encontramos espacios de entrega cargados en el campus virtual que coincidan."
                 />
               </motion.div>
             ) : (
               filtered.map((row) => {
-                const status = getCampusStatus(row);
+                const linkedLaunch = getLinkedLaunch(row);
                 const isActive = row.id === selectedId;
                 return (
                   <motion.button
                     key={row.id}
-                    layoutId={`launch-card-${row.id}`}
+                    layoutId={`delivery-card-${row.id}`}
                     onClick={() => handleSelect(row)}
                     className={`w-full text-left p-4 rounded-xl border transition-all duration-200 relative overflow-hidden ${
                       isActive
@@ -444,33 +537,35 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-snug truncate">
-                          {String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre")}
+                          {row.institucion}
                         </p>
-                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
-                          <span>{String(row[FIELD_ORIENTACION_LANZAMIENTOS] || "—")}</span>
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
-                          <span>{formatFecha(row[FIELD_FECHA_INICIO_LANZAMIENTOS])}</span>
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
-                          <span className="capitalize">
-                            {String(
-                              row[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] || "—"
-                            ).toLowerCase()}
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-normal">
+                          {linkedLaunch ? (
+                            <span className="text-blue-600 dark:text-blue-400">
+                              Vinculado a: {String(linkedLaunch[FIELD_NOMBRE_PPS_LANZAMIENTOS])}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              ⚠️ Espacio de entrega huérfano (sin PPS asociada)
+                            </span>
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-slate-400 mt-1.5 font-bold uppercase tracking-wide">
+                          <span className={`px-2 py-0.5 rounded ${areaColors[row.area]}`}>
+                            {areaNames[row.area]}
                           </span>
+                          <span className="text-slate-300 dark:text-slate-700 self-center">•</span>
+                          <span className="self-center">ID: {row.moodle_id}</span>
                         </div>
                       </div>
                       <span
                         className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          !status.hasLink
-                            ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/30 dark:border-slate-750"
-                            : status.active
-                              ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30"
-                              : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30 animate-pulse"
+                          row.activo
+                            ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/30 dark:border-slate-750"
                         }`}
                       >
-                        <span className="material-icons !text-[11px]">
-                          {!status.hasLink ? "link_off" : status.active ? "check" : "warning"}
-                        </span>
-                        {!status.hasLink ? "Sin link" : status.active ? "Abierto" : "Cerrado"}
+                        {row.activo ? "Activo" : "Oculto"}
                       </span>
                     </div>
                   </motion.button>
@@ -480,67 +575,120 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           </AnimatePresence>
         </div>
 
-        {/* Editor */}
+        {/* Editor o Creador */}
         <div className="lg:col-span-7 lg:sticky lg:top-4 h-fit">
-          {!selected ? (
-            <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/40 dark:bg-slate-900/20 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center min-h-[300px]">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-3">
-                <span className="material-icons !text-2xl">ads_click</span>
-              </div>
-              <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
-                Ninguna PPS seleccionada
-              </h3>
-              <p className="mt-1 text-xs max-w-xs mx-auto leading-relaxed">
-                Selecciona un lanzamiento de la lista para ver, vincular o remover su espacio de
-                entregas de Moodle.
-              </p>
-            </div>
-          ) : (
-            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-6">
-              {/* Encabezado Editor */}
+          {/* CREADOR DE VÍNCULO */}
+          {isCreating && (
+            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-6 animate-fade-in">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded">
-                  Editor de Vínculo
+                  Vincular Nueva PPS
                 </span>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 mt-2 text-base leading-snug">
-                  {String(selected[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre")}
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mt-2 text-base">
+                  Habilitar entrega en el campus
                 </h3>
               </div>
 
-              {/* Advertencia Discrepancia del Campus */}
-              {getLink(selected) && !active && moodleId && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 rounded-xl space-y-3">
-                  <div className="flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300 leading-normal">
-                    <span className="material-icons !text-lg text-amber-600 dark:text-amber-400 shrink-0">
-                      warning
-                    </span>
-                    <div className="space-y-1">
-                      <p className="font-bold text-amber-900 dark:text-amber-200">
-                        Buzón de entrega inactivo en el Campus
-                      </p>
-                      <p>
-                        El enlace de Moodle está guardado en la PPS, pero el espacio de entregas no
-                        está activo en el campus virtual (los alumnos no podrán entregar sus
-                        informes).
-                      </p>
-                    </div>
-                  </div>
+              {unlinkedLaunches.length === 0 ? (
+                <div className="p-6 rounded-xl bg-slate-50 dark:bg-slate-950 text-center text-slate-500">
+                  <span className="material-icons !text-3xl text-slate-300">task_alt</span>
+                  <p className="mt-2 text-xs font-semibold">Todas las PPS ya están vinculadas</p>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                    No quedan lanzamientos activos sin espacio de entregas en el campus virtual.
+                  </p>
                   <button
-                    onClick={() => {
-                      saveMutation.mutate({
-                        id: selected.id,
-                        link: getLink(selected),
-                        launchRow: selected,
-                      });
-                    }}
-                    disabled={saveMutation.isPending}
-                    className="w-full py-2 bg-amber-600 hover:bg-amber-755 disabled:opacity-60 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                    onClick={() => setIsCreating(false)}
+                    className="mt-4 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                   >
-                    <span className="material-icons !text-base">autorenew</span>
-                    Abrir/Habilitar espacio en campus
+                    Cerrar formulario
                   </button>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Selector de PPS sin link */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                      Seleccionar lanzamiento de PPS
+                    </label>
+                    <select
+                      value={selectedLaunchId}
+                      onChange={(e) => setSelectedLaunchId(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                    >
+                      {unlinkedLaunches.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {String(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])} (
+                          {String(l[FIELD_ORIENTACION_LANZAMIENTOS])})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Input link Moodle */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                      Enlace de la Tarea (Moodle)
+                    </label>
+                    <input
+                      type="url"
+                      value={linkInput}
+                      onChange={(e) => setLinkInput(e.target.value)}
+                      placeholder={PLACEHOLDER}
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                    />
+
+                    {moodleTaskId && (
+                      <div className="mt-2.5 p-2 bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-lg flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                        <span className="material-icons !text-base text-orange-500">school</span>
+                        <span>
+                          ID de Tarea Detectado: <strong>{moodleTaskId}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botones */}
+                  <div className="flex items-center gap-2 pt-4 border-t border-slate-150 dark:border-slate-800">
+                    <button
+                      onClick={handleCreateSubmit}
+                      disabled={createMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-semibold transition"
+                    >
+                      <span className="material-icons !text-base">save</span>
+                      Vincular y habilitar
+                    </button>
+                    <button
+                      onClick={() => setIsCreating(false)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold transition"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               )}
+            </div>
+          )}
+
+          {/* EDITOR DE VÍNCULO EXISTENTE */}
+          {!isCreating && selected && (
+            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-6">
+              {/* Encabezado Editor */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded">
+                    Editor de Entrega
+                  </span>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 mt-2 text-base leading-snug">
+                    {selected.institucion}
+                  </h3>
+                </div>
+
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${areaColors[editArea]}`}
+                >
+                  {areaNames[editArea]}
+                </span>
+              </div>
 
               {/* Diagrama de Conexión */}
               <div className="flex items-center justify-center gap-6 py-4 px-3 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-900/50">
@@ -559,31 +707,27 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
                 <div className="flex-grow flex items-center justify-center relative">
                   <div
-                    className={`h-[2px] w-full border-t-2 border-dashed transition-colors duration-350 ${
-                      getLink(selected) && active
-                        ? "border-emerald-500"
-                        : "border-slate-350 dark:border-slate-800"
+                    className={`h-[2px] w-full border-t-2 border-dashed transition-colors duration-300 ${
+                      editActivo ? "border-emerald-500" : "border-slate-350 dark:border-slate-800"
                     }`}
                   />
                   <div
-                    className={`absolute w-7 h-7 rounded-full flex items-center justify-center shadow-sm border transition-all duration-350 ${
-                      getLink(selected)
-                        ? active
-                          ? "bg-emerald-500 border-emerald-600 text-white"
-                          : "bg-amber-500 border-amber-600 text-white animate-pulse"
-                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                    className={`absolute w-7 h-7 rounded-full flex items-center justify-center shadow-sm border transition-all duration-300 ${
+                      editActivo
+                        ? "bg-emerald-500 border-emerald-600 text-white"
+                        : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-400"
                     }`}
                   >
                     <span className="material-icons !text-xs">
-                      {getLink(selected) ? (active ? "link" : "warning") : "link_off"}
+                      {editActivo ? "link" : "link_off"}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-1.5">
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border transition-all duration-350 ${
-                      getLink(selected) && active
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border transition-all duration-300 ${
+                      editActivo
                         ? "bg-orange-500 border-orange-600 text-white"
                         : "bg-slate-100 dark:bg-slate-800 border-slate-200/60 dark:border-slate-850 text-slate-400"
                     }`}
@@ -598,6 +742,69 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
               {/* Formulario */}
               <div className="space-y-4">
+                {/* Institución */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    Institución (se muestra en Campus)
+                  </label>
+                  <input
+                    type="text"
+                    value={editInstitucion}
+                    onChange={(e) => setEditInstitucion(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                  />
+                </div>
+
+                {/* Área y Estado */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                      Área académica
+                    </label>
+                    <select
+                      value={editArea}
+                      onChange={(e) => setEditArea(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                    >
+                      <option value="clinica">Clínica</option>
+                      <option value="laboral">Laboral</option>
+                      <option value="educacional">Educacional</option>
+                      <option value="comunitaria">Comunitaria</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                      Estado en Campus
+                    </label>
+                    <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl border border-slate-200/40 dark:border-slate-800/60 w-fit">
+                      <button
+                        type="button"
+                        onClick={() => setEditActivo(true)}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                          editActivo
+                            ? "bg-white dark:bg-slate-800 text-emerald-600 shadow-sm"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        Activo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditActivo(false)}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                          !editActivo
+                            ? "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-sm"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        Oculto
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Input link Moodle */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
                     Enlace de la Tarea (Moodle)
@@ -621,7 +828,6 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                     )}
                   </div>
 
-                  {/* Informador de ID de Tarea */}
                   {moodleTaskId && (
                     <div className="mt-2.5 p-2 bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-lg flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                       <span className="material-icons !text-base text-orange-500">school</span>
@@ -630,50 +836,57 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                       </span>
                     </div>
                   )}
-
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-                    Ingresá la URL del buzón de entrega de Moodle. Los estudiantes de esta PPS verán
-                    un botón de entrega directo en su panel.
-                  </p>
                 </div>
               </div>
 
               {/* Botones de Acción */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-slate-150 dark:border-slate-800">
                 <button
-                  onClick={handleSave}
-                  disabled={saveMutation.isPending}
+                  onClick={handleUpdateSubmit}
+                  disabled={updateMutation.isPending}
                   className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-semibold shadow-sm transition"
                 >
                   <span className="material-icons !text-base">
-                    {saveMutation.isPending ? "hourglass_top" : "save"}
+                    {updateMutation.isPending ? "hourglass_top" : "save"}
                   </span>
-                  {saveMutation.isPending ? "Guardando..." : "Guardar vínculo"}
+                  {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
                 </button>
 
-                {getLink(selected) && (
-                  <>
-                    <a
-                      href={getLink(selected)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition"
-                    >
-                      <span className="material-icons !text-base">open_in_new</span>
-                      Ver en Moodle
-                    </a>
+                <a
+                  href={linkInput}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition"
+                >
+                  <span className="material-icons !text-base">open_in_new</span>
+                  Ver en Moodle
+                </a>
 
-                    <button
-                      onClick={handleRemoveLink}
-                      disabled={saveMutation.isPending}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/30 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition"
-                    >
-                      <span className="material-icons !text-base">link_off</span>
-                      Quitar vínculo
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={handleConfirmRemove}
+                  disabled={deleteMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/30 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition"
+                >
+                  <span className="material-icons !text-base">link_off</span>
+                  Quitar del Campus
+                </button>
               </div>
+            </div>
+          )}
+
+          {/* VISTA VACÍA INICIAL */}
+          {!isCreating && !selected && (
+            <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/40 dark:bg-slate-900/20 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center min-h-[300px]">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-3">
+                <span className="material-icons !text-2xl">ads_click</span>
+              </div>
+              <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                Ninguna entrega seleccionada
+              </h3>
+              <p className="mt-1 text-xs max-w-xs mx-auto leading-relaxed">
+                Elegí una entrega del campus virtual en la lista de la izquierda para editarla,
+                deshabilitarla o desvincularla por completo.
+              </p>
             </div>
           )}
         </div>
