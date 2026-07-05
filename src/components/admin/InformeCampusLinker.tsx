@@ -47,15 +47,20 @@ const isValidHttpUrl = (value: string): boolean => {
   }
 };
 
-/** Extrae el ID de la tarea de Moodle del enlace si está presente. */
+/** Extrae el ID de la tarea de Moodle del enlace si está presente de forma robusta. */
 const getMoodleTaskId = (url: string): string | null => {
+  if (!url) return null;
   try {
-    const params = new URL(url).searchParams;
-    return params.get("id");
+    // Si no tiene protocolo, se lo agregamos temporalmente para parsear
+    const cleanUrl = url.includes("://") ? url : `https://${url}`;
+    const params = new URL(cleanUrl).searchParams;
+    const id = params.get("id");
+    if (id && /^\d+$/.test(id)) return id;
   } catch {
-    const match = url.match(/[?&]id=(\d+)/);
-    return match ? match[1] : null;
+    // Fallback regex
   }
+  const match = url.match(/[?&]id=(\d+)/);
+  return match ? match[1] : null;
 };
 
 const formatFecha = (value: unknown): string => {
@@ -69,7 +74,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   const queryClient = useQueryClient();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [onlyMissing, setOnlyMissing] = useState(true);
+  const [filterType, setFilterType] = useState<"all" | "missing" | "linked">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [linkInput, setLinkInput] = useState("");
   const [toast, setToast] = useState<{
@@ -121,16 +126,18 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     const term = searchTerm.trim().toLowerCase();
     return launches.filter((row) => {
       const hasLink = !!getLink(row);
-      if (onlyMissing && hasLink) return false;
+      if (filterType === "missing" && hasLink) return false;
+      if (filterType === "linked" && !hasLink) return false;
       if (term) {
         const name = String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").toLowerCase();
         if (!name.includes(term)) return false;
       }
       return true;
     });
-  }, [launches, searchTerm, onlyMissing]);
+  }, [launches, searchTerm, filterType]);
 
   const missingCount = useMemo(() => launches.filter((row) => !getLink(row)).length, [launches]);
+  const linkedCount = useMemo(() => launches.filter((row) => getLink(row)).length, [launches]);
 
   const selected = useMemo(
     () => launches.find((row) => row.id === selectedId) || null,
@@ -207,9 +214,10 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
         </p>
       </div>
 
-      {/* Controles */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
-        <div className="relative w-full sm:w-80 group">
+      {/* Controles de Búsqueda y Filtros */}
+      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
+        {/* Barra de Búsqueda */}
+        <div className="relative w-full md:w-80 group">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors !text-lg">
             search
           </span>
@@ -218,24 +226,76 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
             placeholder="Buscar PPS por nombre..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition shadow-sm"
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
           />
         </div>
 
-        <label className="inline-flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={onlyMissing}
-            onChange={(e) => setOnlyMissing(e.target.checked)}
-            className="h-4.5 w-4.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-          />
-          <span className="font-medium">Sólo sin espacio de informe</span>
-          {missingCount > 0 && (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 animate-pulse">
-              {missingCount}
+        {/* Filtros Segmentados */}
+        <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/40 dark:border-slate-800/60 self-start md:self-auto">
+          <button
+            onClick={() => setFilterType("all")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              filterType === "all"
+                ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+            }`}
+          >
+            <span>Todas</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                filterType === "all"
+                  ? "bg-blue-50 dark:bg-blue-900/40 text-blue-600"
+                  : "bg-slate-200/60 dark:bg-slate-800 text-slate-500"
+              }`}
+            >
+              {launches.length}
             </span>
-          )}
-        </label>
+          </button>
+
+          <button
+            onClick={() => setFilterType("missing")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              filterType === "missing"
+                ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+            }`}
+          >
+            <span>Sin vincular</span>
+            {missingCount > 0 && (
+              <span
+                className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                  filterType === "missing"
+                    ? "bg-amber-50 dark:bg-amber-900/40 text-amber-600 animate-pulse"
+                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                }`}
+              >
+                {missingCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setFilterType("linked")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              filterType === "linked"
+                ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+            }`}
+          >
+            <span>Vinculadas</span>
+            {linkedCount > 0 && (
+              <span
+                className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                  filterType === "linked"
+                    ? "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600"
+                    : "bg-slate-200/60 dark:bg-slate-800 text-slate-500"
+                }`}
+              >
+                {linkedCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -250,11 +310,11 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
               >
                 <EmptyState
                   icon="task_alt"
-                  title={onlyMissing ? "Todo vinculado" : "Sin resultados"}
+                  title={filterType === "missing" ? "Todo vinculado" : "Sin resultados"}
                   message={
-                    onlyMissing
+                    filterType === "missing"
                       ? "Todas las PPS activas ya tienen su espacio de informe vinculado correctamente."
-                      : "No encontramos lanzamientos que coincidan con la búsqueda."
+                      : "No encontramos lanzamientos que coincidan con los filtros seleccionados."
                   }
                 />
               </motion.div>
