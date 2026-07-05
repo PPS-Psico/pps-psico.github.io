@@ -22,7 +22,7 @@ const messaging = firebase.messaging();
 
 // --- PWA CACHING ---
 
-const CACHE_NAME = "mi-panel-academico-cache-v50";
+const CACHE_NAME = "mi-panel-academico-cache-v51";
 const FILES_TO_CACHE = ["./index.html", "./manifest.json"];
 
 // Install and precache the minimal shell
