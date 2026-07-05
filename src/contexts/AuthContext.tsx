@@ -144,16 +144,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           `Buscando estudiante (user_id=${session.user.id}, evento #${fetchNum})`
         );
         const endTimer = logger.time(`Auth · query estudiantes #${fetchNum}`);
-        const { data: profile, error } = await supabase
+        let profile: any = null;
+        let queryError = null;
+
+        const { data, error } = await supabase
           .from("estudiantes")
           .select(
-            `id, ${FIELD_LEGAJO_ESTUDIANTES}, ${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES}, ${FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES}, ${FIELD_ROLE_ESTUDIANTES}, ${FIELD_DNI_ESTUDIANTES}, ${FIELD_CORREO_ESTUDIANTES}, ${FIELD_TELEFONO_ESTUDIANTES}, estado`
+            `id, ${FIELD_LEGAJO_ESTUDIANTES}, ${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES}, ${FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES}, ${FIELD_ROLE_ESTUDIANTES}, ${FIELD_DNI_ESTUDIANTES}, ${FIELD_CORREO_ESTUDIANTES}, ${FIELD_TELEFONO_ESTUDIANTES}, estado, ${FIELD_USER_ID_ESTUDIANTES}`
           )
           .eq(FIELD_USER_ID_ESTUDIANTES, session.user.id)
           .maybeSingle();
+
+        if (!data && !error && session.user.email) {
+          logger.info(
+            `[Auth] No se encontró perfil por user_id. Buscando por email fallback: ${session.user.email}`
+          );
+          const { data: emailData, error: emailError } = await supabase
+            .from("estudiantes")
+            .select(
+              `id, ${FIELD_LEGAJO_ESTUDIANTES}, ${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES}, ${FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES}, ${FIELD_ROLE_ESTUDIANTES}, ${FIELD_DNI_ESTUDIANTES}, ${FIELD_CORREO_ESTUDIANTES}, ${FIELD_TELEFONO_ESTUDIANTES}, estado, ${FIELD_USER_ID_ESTUDIANTES}`
+            )
+            .ilike(FIELD_CORREO_ESTUDIANTES, session.user.email)
+            .maybeSingle();
+
+          if (emailData && !emailError) {
+            logger.info(
+              `[Auth] Encontrado perfil por email. Actualizando user_id a: ${session.user.id}`
+            );
+            const { error: updateError } = await supabase
+              .from("estudiantes")
+              .update({ [FIELD_USER_ID_ESTUDIANTES]: session.user.id })
+              .eq("id", emailData.id);
+
+            if (updateError) {
+              logger.error("[Auth] Error vinculando user_id:", updateError.message);
+            }
+            profile = {
+              ...emailData,
+              [FIELD_USER_ID_ESTUDIANTES]: session.user.id,
+            };
+          } else {
+            queryError = emailError;
+          }
+        } else {
+          profile = data;
+          queryError = error;
+        }
         endTimer();
 
-        logger.scoped("Auth", "Profile encontrado:", profile, "error:", error);
+        logger.scoped("Auth", "Profile encontrado:", profile, "error:", queryError);
 
         if (isMounted) {
           if (profile && !error) {
