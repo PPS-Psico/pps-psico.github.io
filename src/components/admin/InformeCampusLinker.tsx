@@ -155,14 +155,51 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   const isLoading = isLaunchesLoading || isEntregasLoading;
   const error = launchesError || entregasError;
 
-  // Filtrar lanzamientos de este año
+  // Filtrar lanzamientos de este año y deduplicar por (Institución, Área) quedándonos con la primera (más antigua)
   const launchesThisYear = useMemo(() => {
-    return launches.filter((row) => {
+    const list = launches.filter((row) => {
       const dateStr = row[FIELD_FECHA_INICIO_LANZAMIENTOS] as string;
       if (!dateStr) return false;
       const d = new Date(dateStr);
       return d.getFullYear() === currentYear;
     });
+
+    // Ordenar de más antiguos a más nuevos
+    const sorted = [...list].sort((a, b) => {
+      const dA = new Date(a[FIELD_FECHA_INICIO_LANZAMIENTOS] as string).getTime();
+      const dB = new Date(b[FIELD_FECHA_INICIO_LANZAMIENTOS] as string).getTime();
+      return dA - dB;
+    });
+
+    // Conservar sólo la primera aparición de cada (Institución, Área)
+    const seen = new Set<string>();
+    const deduplicated: LaunchRow[] = [];
+
+    sorted.forEach((row) => {
+      const name = String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
+        .split("-")[0]
+        .trim()
+        .toLowerCase();
+      const orient = String(row[FIELD_ORIENTACION_LANZAMIENTOS] || "").toLowerCase();
+      let area = "clinica";
+      if (orient.includes("clin")) area = "clinica";
+      else if (orient.includes("lab") || orient.includes("comun")) {
+        area = orient.includes("comun") ? "comunitaria" : "laboral";
+      } else if (orient.includes("educ")) area = "educacional";
+
+      const key = `${name}_${area}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicated.push(row);
+      }
+    });
+
+    // Devolver ordenados por nombre para facilitar búsqueda visual
+    return deduplicated.sort((a, b) =>
+      String(a[FIELD_NOMBRE_PPS_LANZAMIENTOS]).localeCompare(
+        String(b[FIELD_NOMBRE_PPS_LANZAMIENTOS])
+      )
+    );
   }, [launches, currentYear]);
 
   // Encontrar el espacio de entrega de campus correspondiente a una PPS
