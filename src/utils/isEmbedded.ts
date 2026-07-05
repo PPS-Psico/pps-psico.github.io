@@ -6,7 +6,15 @@
 export function isEmbedded(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.self !== window.top;
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isWebView =
+      ua.includes("webview") ||
+      ua.includes("moodle") ||
+      ua.includes("campus") ||
+      ((ua.includes("ipad") || ua.includes("iphone") || ua.includes("ipod")) &&
+        !ua.includes("safari"));
+
+    return window.self !== window.top || isWebView;
   } catch {
     return true; // cross-origin ⇒ embebidos
   }

@@ -175,6 +175,10 @@ Pipeline visible en el sidebar/pipeline del Lanzador (definido en `src/services/
 | Estudiante no ve nombres de otros         | RLS de estudiantes solo permite perfil propio. Usar RPC `get_seleccionados_for_launch`. |
 | `now() - interval` en supabase-js filters | No funciona. Calcular fechas en JS y pasar ISO strings.                                 |
 
+### Actualización de Preguntas Frecuentes (FAQ) del Estudiante
+
+Cuando se realicen cambios de lógica, flujos o agregado de nuevas características que impacten la experiencia del estudiante (ej. cambios en el formulario de inscripción, flujos de acreditación, método de instalación PWA, etc.), **es obligatorio proponer o realizar las correspondientes actualizaciones o incorporaciones en las Preguntas Frecuentes (FAQ) del estudiante** en [StudentAulaView.tsx](file:///c:/Users/Blas_/Downloads/Mi%20Panel%20Antigravity/consulta-pps-uflo/src/views/student/StudentAulaView.tsx) para mantener al alumno informado de manera autónoma y evitar sobrecargar el soporte de coordinación.
+
 ## Antes de commitear
 
 1. `npm run type-check` - debe pasar sin errores

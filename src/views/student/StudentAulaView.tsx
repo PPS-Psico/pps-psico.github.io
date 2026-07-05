@@ -570,11 +570,39 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Cómo se instala Mi Panel en el celular?",
+        q: "¿Cómo se instala Mi Panel en el celular o computadora?",
         a: (
           <>
-            Desde el navegador, con <strong>"Añadir a pantalla de inicio"</strong> (Chrome, Safari)
-            o desde el ícono de instalación cuando esté disponible.
+            Al ingresar a{" "}
+            <a
+              href="https://pps-psico.github.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold underline text-emerald-600 dark:text-emerald-400"
+            >
+              pps-psico.github.io
+            </a>{" "}
+            desde tu navegador móvil o de PC:
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>
+                <strong>Android (Chrome):</strong> Toca los tres puntos arriba a la derecha y
+                selecciona <em>"Instalar aplicación"</em> o{" "}
+                <em>"Agregar a la pantalla principal"</em>.
+              </li>
+              <li>
+                <strong>iOS (Safari):</strong> Toca el botón <em>"Compartir"</em> (flecha hacia
+                arriba) en Safari y selecciona <em>"Agregar a Inicio"</em>.
+              </li>
+              <li>
+                <strong>Computadora (Chrome/Edge):</strong> Haz clic en el ícono de{" "}
+                <em>instalación</em> en la barra de direcciones superior de la URL.
+              </li>
+            </ul>
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              <strong>Nota importante:</strong> Si estás navegando dentro de <strong>Moodle</strong>
+              , la instalación automática está bloqueada. Abre la dirección directa en el navegador
+              de tu celular para poder realizarla.
+            </p>
           </>
         ),
       },
