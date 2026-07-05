@@ -63,6 +63,35 @@ const getMoodleTaskId = (url: string): string | null => {
   return match ? match[1] : null;
 };
 
+/** Compara el nombre de una convocatoria con el del espacio del campus de forma flexible. */
+const matchInstitutions = (launchName: string, spaceName: string): boolean => {
+  const lName = launchName.toLowerCase();
+  const sName = spaceName.toLowerCase();
+
+  // Mapeos específicos para diferencias conocidas
+  if (lName.includes("ulloa") && sName.includes("ulloa")) {
+    if (lName.includes("ateneo") && sName.includes("ateneo")) return true;
+    if (lName.includes("entrevista") && sName.includes("entrevista")) return true;
+    return false;
+  }
+  if (lName.includes("barriletes") && sName.includes("barriletes")) return true;
+  if (lName.includes("aser") && sName.includes("aser")) return true;
+  if (lName.includes("camioneros") && sName.includes("camioneros")) return true;
+  if (lName.includes("sensus") && sName.includes("sensus")) return true;
+  if (lName.includes("dige") && sName.includes("dige")) return true;
+  if (lName.includes("kano") && sName.includes("kano")) return true;
+  if (lName.includes("tiempo") && sName.includes("tiempo")) return true;
+  if (lName.includes("human") && sName.includes("human")) return true;
+  if (lName.includes("randstad") && sName.includes("randstad")) return true;
+  if (lName.includes("colonias") && sName.includes("colonias")) return true;
+  if (lName.includes("cita") && sName.includes("cita")) return true;
+
+  const cleanLaunch = lName.split("-")[0].trim();
+  const cleanSpace = sName.trim();
+
+  return cleanLaunch.includes(cleanSpace) || cleanSpace.includes(cleanLaunch);
+};
+
 const areaNames: Record<string, string> = {
   clinica: "Clínica",
   laboral: "Laboral",
@@ -217,19 +246,12 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       area = orient.includes("comun") ? "comunitaria" : "laboral";
     } else if (orient.includes("educ")) area = "educacional";
 
-    const cleanLaunchInst = launchName.split("-")[0].trim();
-
     return (
       entregas.find((e) => {
         if (!e.activo) return false;
         if (e.area !== area) return false;
 
-        const spaceInst = e.institucion.toLowerCase().trim();
-        return (
-          cleanLaunchInst.includes(spaceInst) ||
-          spaceInst.includes(cleanLaunchInst) ||
-          launchName.includes(spaceInst)
-        );
+        return matchInstitutions(launchName, e.institucion);
       }) || null
     );
   };
