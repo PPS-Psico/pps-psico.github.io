@@ -234,6 +234,20 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     );
   };
 
+  // Espacios Activos en el campus correspondientes a las PPS lanzadas este año (deduplicadas por institución)
+  const activeSpaces2026 = useMemo(() => {
+    const spaces: EntregaRow[] = [];
+    launchesThisYear.forEach((l) => {
+      const s = getSpaceForLaunch(l);
+      if (s && s.activo) {
+        if (!spaces.some((existing) => existing.id === s.id)) {
+          spaces.push(s);
+        }
+      }
+    });
+    return spaces.sort((a, b) => a.institucion.localeCompare(b.institucion));
+  }, [launchesThisYear, entregas]);
+
   // PPS pendientes de espacio de entrega (de este año, que no están en activas)
   const pendingLaunches = useMemo(() => {
     return launchesThisYear.filter((l) => {
@@ -245,10 +259,18 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   // Listas filtradas según la pestaña
   const filteredList = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (activeTab === "active_spaces" || activeTab === "inactive_spaces") {
-      const isActive = activeTab === "active_spaces";
+    if (activeTab === "active_spaces") {
+      return activeSpaces2026.filter((e) => {
+        if (term) {
+          const inst = e.institucion.toLowerCase();
+          const area = e.area.toLowerCase();
+          if (!inst.includes(term) && !area.includes(term)) return false;
+        }
+        return true;
+      });
+    } else if (activeTab === "inactive_spaces") {
       return entregas.filter((e) => {
-        if (e.activo !== isActive) return false;
+        if (e.activo) return false;
         if (term) {
           const inst = e.institucion.toLowerCase();
           const area = e.area.toLowerCase();
@@ -266,7 +288,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
         return true;
       });
     }
-  }, [activeTab, entregas, pendingLaunches, launchesThisYear, searchTerm]);
+  }, [activeTab, entregas, activeSpaces2026, pendingLaunches, launchesThisYear, searchTerm]);
 
   // Limpiar selección al cambiar de pestaña
   useEffect(() => {
@@ -533,7 +555,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           >
             <span>Espacios Activos</span>
             <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 text-[10px] font-bold">
-              {entregas.filter((e) => e.activo).length}
+              {activeSpaces2026.length}
             </span>
           </button>
 
