@@ -636,6 +636,88 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         )}
       </motion.div>
 
+      {/* PWA Installation Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.75 }}
+        className="pt-6 border-t border-slate-200 dark:border-slate-800"
+      >
+        <h3 className="font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+          <span className="material-icons text-slate-400">install_mobile</span>
+          Instalación de la aplicación
+        </h3>
+
+        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-700/60 p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Instalá <strong>Mi Panel</strong> en tu celular o computadora para acceder más rápido,
+            usarlo a pantalla completa y asegurar la correcta recepción de notificaciones en tiempo
+            real.
+          </p>
+
+          {window.self !== window.top && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+              <span className="material-icons !text-base text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5">
+                info
+              </span>
+              <div>
+                Al estar navegando dentro de <strong>Moodle</strong>, el navegador bloquea la
+                instalación de aplicaciones. Abre el panel directamente ingresando a{" "}
+                <a
+                  href="https://pps-psico.github.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold underline text-blue-600 dark:text-blue-400"
+                >
+                  pps-psico.github.io
+                </a>{" "}
+                en tu celular para poder instalarlo.
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/50">
+              <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200 mb-2">
+                <span className="material-icons !text-base text-emerald-500">android</span>
+                Android (Chrome)
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                Toca los <strong>tres puntos</strong> en la esquina superior derecha y selecciona{" "}
+                <strong>"Instalar aplicación"</strong> o{" "}
+                <strong>"Agregar a la pantalla principal"</strong>.
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/50">
+              <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200 mb-2">
+                <span className="material-icons !text-base text-blue-500">phone_iphone</span>
+                iOS (Safari)
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                Toca el botón <strong>"Compartir"</strong>{" "}
+                <span className="material-icons !text-[11px] relative top-0.5">ios_share</span> en
+                Safari y selecciona <strong>"Agregar a Inicio"</strong>.
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/50">
+              <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200 mb-2">
+                <span className="material-icons !text-base text-purple-500">laptop</span>
+                Computadora
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                Haz clic en el ícono de <strong>instalación</strong>{" "}
+                <span className="material-icons !text-[13px] relative top-0.5">
+                  install_desktop
+                </span>{" "}
+                en la barra de direcciones de tu navegador Chrome/Edge.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Notas de seguimiento interno */}
       {(isSuperUserMode || isJefeMode) && (
         <motion.div

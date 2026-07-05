@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ThemeToggle from "./layout/ThemeToggle";
 import { useAuth } from "../contexts/AuthContext";
@@ -208,9 +208,6 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
   // Ingreso automático desde el campus Moodle (si el email matchea un estudiante).
   const autoLoginStatus = useMoodleAutoLogin();
 
-  // Embebido en el campus: forzamos el layout de escritorio (ajustado al ancho
-  // de la columna) en vez del mobile, aunque el iframe sea más angosto que el
-  // breakpoint normal.
   const [embedded] = useState(() => {
     try {
       return window.self !== window.top;
@@ -218,6 +215,13 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
       return true; // cross-origin ⇒ embebidos
     }
   });
+
+  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsNarrow(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const copyLogsToClipboard = () => {
     const logsText = debugLogs.join("\n");
@@ -971,7 +975,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
     >
       {/* ============ MOBILE ============ */}
       <div
-        className={`${embedded ? "hidden" : "lg:hidden"} h-full overflow-y-auto overflow-x-hidden custom-scrollbar`}
+        className={`${embedded && !isNarrow ? "hidden" : "lg:hidden"} h-full overflow-y-auto overflow-x-hidden custom-scrollbar`}
       >
         {mode === "login" ? (
           renderMobileLogin()
@@ -1000,7 +1004,9 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
       </div>
 
       {/* ============ DESKTOP ============ */}
-      <div className={`${embedded ? "grid" : "hidden lg:grid"} h-full grid-cols-[1.2fr_0.8fr]`}>
+      <div
+        className={`${embedded && !isNarrow ? "grid" : "hidden lg:grid"} h-full grid-cols-[1.2fr_0.8fr]`}
+      >
         {/* ===== PANEL DE MARCA (desktop) — gradiente UFLO inmersivo ===== */}
         <aside className="au-brand relative flex flex-col justify-between p-12 xl:p-16">
           <div className="relative z-10">{brandMark}</div>

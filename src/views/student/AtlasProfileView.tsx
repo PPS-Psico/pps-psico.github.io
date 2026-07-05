@@ -342,6 +342,145 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
           </div>
         </div>
 
+        {/* Aplicación */}
+        <div className="ah-sechead" style={{ marginTop: 36 }}>
+          <h6>Aplicación</h6>
+        </div>
+        <div className="ah-card" style={{ padding: 20 }}>
+          <p className="ah-action__d" style={{ marginBottom: 16, fontSize: 13.5, lineHeight: 1.5 }}>
+            Instalá <strong>Mi Panel</strong> para acceder directamente desde tu celular o
+            computadora. Al estar en la pantalla de inicio, se abrirá a pantalla completa y
+            facilitará recibir notificaciones importantes sobre tus PPS.
+          </p>
+
+          {window.self !== window.top && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: "12px 14px",
+                background: "rgba(245, 158, 11, 0.08)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                borderRadius: 10,
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-start",
+                fontSize: 12.5,
+                color: "var(--fg-muted)",
+              }}
+            >
+              <span
+                className="material-icons"
+                style={{ fontSize: 18, color: "var(--warn)", marginTop: 1 }}
+              >
+                info
+              </span>
+              <div>
+                Al estar dentro de <strong>Moodle</strong>, el navegador bloquea la instalación de
+                aplicaciones. Abre el panel directamente ingresando a{" "}
+                <a
+                  href="https://pps-psico.github.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold underline"
+                  style={{ color: "var(--primary-700)" }}
+                >
+                  pps-psico.github.io
+                </a>{" "}
+                en tu celular para poder instalarlo.
+              </div>
+            </div>
+          )}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: 12,
+            }}
+          >
+            <div style={{ padding: 12, background: "var(--bg-sunken)", borderRadius: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: "var(--fg)",
+                  marginBottom: 6,
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: 16, color: "#10b981" }}>
+                  android
+                </span>
+                Android (Chrome)
+              </div>
+              <p style={{ margin: 0, fontSize: 11.5, color: "var(--fg-muted)", lineHeight: 1.45 }}>
+                Toca los <strong>tres puntos</strong> arriba a la derecha y selecciona{" "}
+                <strong>"Instalar"</strong> o <strong>"Agregar a la pantalla principal"</strong>.
+              </p>
+            </div>
+
+            <div style={{ padding: 12, background: "var(--bg-sunken)", borderRadius: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: "var(--fg)",
+                  marginBottom: 6,
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: 16, color: "#3b82f6" }}>
+                  phone_iphone
+                </span>
+                iOS (Safari)
+              </div>
+              <p style={{ margin: 0, fontSize: 11.5, color: "var(--fg-muted)", lineHeight: 1.45 }}>
+                Toca <strong>"Compartir"</strong>{" "}
+                <span
+                  className="material-icons"
+                  style={{ fontSize: 13, position: "relative", top: 1.5 }}
+                >
+                  ios_share
+                </span>{" "}
+                en Safari y selecciona <strong>"Agregar a Inicio"</strong>.
+              </p>
+            </div>
+
+            <div style={{ padding: 12, background: "var(--bg-sunken)", borderRadius: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: "var(--fg)",
+                  marginBottom: 6,
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: 16, color: "#8b5cf6" }}>
+                  laptop
+                </span>
+                Computadora
+              </div>
+              <p style={{ margin: 0, fontSize: 11.5, color: "var(--fg-muted)", lineHeight: 1.45 }}>
+                Haz clic en el ícono de <strong>instalación</strong>{" "}
+                <span
+                  className="material-icons"
+                  style={{ fontSize: 13, position: "relative", top: 1.5 }}
+                >
+                  install_desktop
+                </span>{" "}
+                en la barra de URL.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Cerrar sesión (paridad con la vista mobile) */}
         <div className="ah-sechead" style={{ marginTop: 36 }}>
           <h6>Sesión</h6>
