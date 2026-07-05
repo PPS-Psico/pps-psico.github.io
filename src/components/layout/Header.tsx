@@ -8,6 +8,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { usePwaInstall } from "../../contexts/PwaInstallContext";
 import { useNotifications } from "../../contexts/NotificationContext";
 import { formatDate } from "../../utils/formatters";
+import { isEmbedded } from "../../utils/isEmbedded";
 
 const NotificationDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } =
@@ -298,6 +299,19 @@ const AppHeader: React.FC = () => {
             )}
 
             <ThemeToggle />
+
+            {isEmbedded() && (
+              <a
+                href="https://pps-psico.github.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 p-2.5 rounded-full transition duration-200 shadow-sm border border-slate-200/80 dark:border-slate-700 flex items-center justify-center"
+                aria-label="Abrir en pestaña nueva"
+                title="Abrir en pestaña nueva"
+              >
+                <span className="material-icons !text-xl sm:!text-2xl">open_in_new</span>
+              </a>
+            )}
 
             {canInstall && (
               <button

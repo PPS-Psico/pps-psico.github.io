@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import "./atlasHome.css";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
+import { isEmbedded } from "../../../../utils/isEmbedded";
 import type { TabId } from "../../../../types";
 
 type ViewTransitionDocument = Document & {
@@ -151,6 +152,26 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 {resolvedTheme === "dark" ? "light_mode" : "dark_mode"}
               </span>
             </button>
+            {isEmbedded() && (
+              <a
+                href="https://pps-psico.github.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ah-iconbtn"
+                title="Abrir en pestaña nueva"
+                aria-label="Abrir en pestaña nueva"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textDecoration: "none",
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
+                  open_in_new
+                </span>
+              </a>
+            )}
             <button
               type="button"
               className="ah-iconbtn"
