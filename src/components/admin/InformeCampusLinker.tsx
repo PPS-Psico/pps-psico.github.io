@@ -167,11 +167,41 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
   // Encontrar el espacio de entrega de campus correspondiente a una PPS
   const getSpaceForLaunch = (launch: LaunchRow) => {
+    // 1. Intentar por link explícito
     const link = ((launch[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
-    if (!link) return null;
-    const taskId = getMoodleTaskId(link);
-    if (!taskId) return null;
-    return entregas.find((e) => String(e.moodle_id) === String(taskId) && e.activo) || null;
+    if (link) {
+      const taskId = getMoodleTaskId(link);
+      if (taskId) {
+        const match = entregas.find((e) => String(e.moodle_id) === String(taskId) && e.activo);
+        if (match) return match;
+      }
+    }
+
+    // 2. Por coincidencia de nombre de institución y área (case-insensitive)
+    const launchName = String(launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").toLowerCase();
+    const orient = String(launch[FIELD_ORIENTACION_LANZAMIENTOS] || "").toLowerCase();
+
+    let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
+    if (orient.includes("clin")) area = "clinica";
+    else if (orient.includes("lab") || orient.includes("comun")) {
+      area = orient.includes("comun") ? "comunitaria" : "laboral";
+    } else if (orient.includes("educ")) area = "educacional";
+
+    const cleanLaunchInst = launchName.split("-")[0].trim();
+
+    return (
+      entregas.find((e) => {
+        if (!e.activo) return false;
+        if (e.area !== area) return false;
+
+        const spaceInst = e.institucion.toLowerCase().trim();
+        return (
+          cleanLaunchInst.includes(spaceInst) ||
+          spaceInst.includes(cleanLaunchInst) ||
+          launchName.includes(spaceInst)
+        );
+      }) || null
+    );
   };
 
   // PPS pendientes de espacio de entrega (de este año, que no están en activas)
@@ -231,7 +261,17 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     const link = ((row[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
     setLinkInput(link);
     const taskId = getMoodleTaskId(link);
-    setSelectedSpaceIdForLink(taskId || "");
+    if (taskId) {
+      setSelectedSpaceIdForLink(taskId);
+    } else {
+      const autoMatch = getSpaceForLaunch(row);
+      if (autoMatch) {
+        setSelectedSpaceIdForLink(autoMatch.moodle_id);
+        setLinkInput(`${MOODLE_PREFIX}${autoMatch.moodle_id}`);
+      } else {
+        setSelectedSpaceIdForLink("");
+      }
+    }
   };
 
   // Mutación: Guardar vínculo de una PPS (ya sea vinculándola a un espacio existente o creando uno nuevo)
