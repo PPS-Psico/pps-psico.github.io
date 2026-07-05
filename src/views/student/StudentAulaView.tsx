@@ -630,17 +630,26 @@ const faqGroups: FaqGroup[] = [
         q: "¿Cómo presento una propuesta de PPS con institución propia?",
         a: (
           <>
-            Completás el formulario de Mi Panel con los datos de la institución. Requisitos:
+            Completás el formulario de Mi Panel con los datos de la institución. En línea con la
+            <strong> filosofía integral y cooperativa de las PPS</strong>, las propuestas
+            individuales deben aportar al conjunto de la comunidad académica. Requisitos:
             <ol>
-              <li>La institución no debe tener un convenio activo.</li>
               <li>
-                Debe contar con un <strong>profesional de la psicología</strong> que supervise
-                (excluyente).
+                <strong>Aporte al conjunto:</strong> La institución propuesta debe ofrecer al menos
+                <strong> 3 cupos (vacantes) o más</strong> para que también puedan postularse otros
+                estudiantes de la universidad.
               </li>
-              <li>Se prioriza a quienes ofrecen varios cupos.</li>
-              <li>No es necesario un convenio previo con la universidad.</li>
+              <li>
+                Debe contar con un <strong>profesional de la psicología supervisando</strong> en la
+                institución (excluyente).
+              </li>
+              <li>La institución no debe tener ya un convenio activo con la universidad.</li>
+              <li>
+                No es necesario un convenio previo; el trámite de firma de convenio se inicia tras
+                la aprobación académica de la propuesta.
+              </li>
             </ol>
-            El estado de la propuesta se sigue desde Mis Solicitudes.
+            El estado de la propuesta se sigue desde la sección <strong>Mis Solicitudes</strong>.
           </>
         ),
       },

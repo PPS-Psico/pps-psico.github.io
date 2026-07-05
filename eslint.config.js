@@ -29,6 +29,8 @@ export default [
       'temp_skills/**',
       'testsprite_tests/**',
       'scratch/**',
+      '.preview-site/**',
+      '.preview-pages/**',
       '*.cjs'
     ]
   },
