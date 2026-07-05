@@ -168,6 +168,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      aula_entregas: {
+        Row: {
+          activo: boolean;
+          area: string;
+          created_at: string;
+          id: number;
+          institucion: string;
+          moodle_id: string;
+          orden: number | null;
+        };
+        Insert: {
+          activo?: boolean;
+          area: string;
+          created_at?: string;
+          id?: never;
+          institucion: string;
+          moodle_id: string;
+          orden?: number | null;
+        };
+        Update: {
+          activo?: boolean;
+          area?: string;
+          created_at?: string;
+          id?: never;
+          institucion?: string;
+          moodle_id?: string;
+          orden?: number | null;
+        };
+        Relationships: [];
+      };
       backup_config: {
         Row: {
           backup_time: string | null;
@@ -1496,6 +1526,7 @@ export type Database = {
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined };
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
       get_activos_list: { Args: { p_year: number }; Returns: Json };
+      get_activos_list_impl: { Args: { p_year: number }; Returns: Json };
       get_admin_metrics_kpis: { Args: { p_year: number }; Returns: Json };
       get_all_fcm_tokens: {
         Args: never;
@@ -1510,6 +1541,15 @@ export type Database = {
       };
       get_convenios_kpis: { Args: { p_year: number }; Returns: Json };
       get_convenios_list: {
+        Args: { p_kind: string; p_year: number };
+        Returns: {
+          fecha_firma: string;
+          fecha_vencimiento: string;
+          nombre: string;
+          tipo: string;
+        }[];
+      };
+      get_convenios_list_impl: {
         Args: { p_kind: string; p_year: number };
         Returns: {
           fecha_firma: string;
@@ -1536,7 +1576,19 @@ export type Database = {
       };
       get_dashboard_metrics: { Args: { target_year: number }; Returns: Json };
       get_estudiantes_en_pps_list: { Args: { p_year: number }; Returns: Json };
+      get_estudiantes_en_pps_list_impl: {
+        Args: { p_year: number };
+        Returns: Json;
+      };
       get_finalizados_list: {
+        Args: { p_year: number };
+        Returns: {
+          id: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_finalizados_list_impl: {
         Args: { p_year: number };
         Returns: {
           id: string;
@@ -1552,9 +1604,19 @@ export type Database = {
           nombre: string;
         }[];
       };
+      get_haciendo_pps_list_impl: {
+        Args: { p_year: number };
+        Returns: {
+          id: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
       get_heredados_count: { Args: { p_year: number }; Returns: number };
       get_heredados_list: { Args: { p_year: number }; Returns: Json };
+      get_heredados_list_impl: { Args: { p_year: number }; Returns: Json };
       get_ingresantes_list: { Args: { p_year: number }; Returns: Json };
+      get_ingresantes_list_impl: { Args: { p_year: number }; Returns: Json };
       get_metrics_years: { Args: never; Returns: Json };
       get_my_role: { Args: never; Returns: string };
       get_postulantes_seleccionados: {
@@ -1565,7 +1627,24 @@ export type Database = {
           nombre: string;
         }[];
       };
+      get_postulantes_seleccionados_impl: {
+        Args: { lanzamiento_uuid: string };
+        Returns: {
+          horario: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
       get_proximos_finalizar_list: {
+        Args: { p_year: number };
+        Returns: {
+          horas_total: number;
+          id: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_proximos_finalizar_list_impl: {
         Args: { p_year: number };
         Returns: {
           horas_total: number;
@@ -1585,15 +1664,32 @@ export type Database = {
       get_seleccionados_for_launch: {
         Args: { p_lanzamiento_id: string };
         Returns: {
+          accepted_at: string;
           convocatoria_id: string;
+          firmo: boolean;
           horario: string;
           legajo: string;
           nombre: string;
-          firmo: boolean;
-          accepted_at: string | null;
+        }[];
+      };
+      get_seleccionados_impl: {
+        Args: { lanzamiento_id_input: string };
+        Returns: {
+          horario: string;
+          legajo: string;
+          nombre: string;
         }[];
       };
       get_sin_pps_list: {
+        Args: { p_year: number };
+        Returns: {
+          correo: string;
+          id: string;
+          legajo: string;
+          nombre: string;
+        }[];
+      };
+      get_sin_pps_list_impl: {
         Args: { p_year: number };
         Returns: {
           correo: string;
@@ -1660,6 +1756,7 @@ export type Database = {
       };
       increment_snooze_count: { Args: { reminder_id: string }; Returns: number };
       is_admin: { Args: never; Returns: boolean };
+      is_staff: { Args: never; Returns: boolean };
       mark_password_changed: { Args: never; Returns: undefined };
       process_consentimiento_timeouts: { Args: never; Returns: undefined };
       register_new_student: {

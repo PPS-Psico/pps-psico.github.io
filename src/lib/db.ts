@@ -151,4 +151,5 @@ export const db = {
   finalizacion: createTableInterface("finalizacion_pps", mapFinalizacion),
   compromisos: createTableInterface("compromisos_pps", mapCompromiso),
   convenios: createTableInterface("convenios", mapConvenio),
+  aula_entregas: createTableInterface("aula_entregas", (row) => row),
 };
