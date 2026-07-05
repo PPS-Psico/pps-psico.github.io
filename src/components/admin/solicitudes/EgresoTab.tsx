@@ -36,7 +36,12 @@ const EgresoTabView: React.FC<EgresoTabViewProps> = ({
   onDelete,
   onToast,
 }) => {
-  const filtered = useMemo(() => filterEgresoFinalizaciones(list, search), [list, search]);
+  const filtered = useMemo(() => {
+    const res = filterEgresoFinalizaciones(list, search);
+    return res.sort(
+      (a, b) => new Date(b.createdTime || 0).getTime() - new Date(a.createdTime || 0).getTime()
+    );
+  }, [list, search]);
 
   const active = filtered.filter((s) => !isHistoryFinalizacion(s));
   const history = filtered.filter(isHistoryFinalizacion);
