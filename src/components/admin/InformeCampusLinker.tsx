@@ -171,7 +171,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       return dA - dB;
     });
 
-    // Conservar sólo la primera aparición de cada (Institución, Área)
+    // Conservar sólo la primera aparición de cada Institución
     const seen = new Set<string>();
     const deduplicated: LaunchRow[] = [];
 
@@ -180,16 +180,9 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
         .split("-")[0]
         .trim()
         .toLowerCase();
-      const orient = String(row[FIELD_ORIENTACION_LANZAMIENTOS] || "").toLowerCase();
-      let area = "clinica";
-      if (orient.includes("clin")) area = "clinica";
-      else if (orient.includes("lab") || orient.includes("comun")) {
-        area = orient.includes("comun") ? "comunitaria" : "laboral";
-      } else if (orient.includes("educ")) area = "educacional";
 
-      const key = `${name}_${area}`;
-      if (!seen.has(key)) {
-        seen.add(key);
+      if (!seen.has(name)) {
+        seen.add(name);
         deduplicated.push(row);
       }
     });
