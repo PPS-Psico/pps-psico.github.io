@@ -29,8 +29,8 @@ export interface DetallePracticas {
 }
 
 // Opciones de nota para el select del estudiante.
-export const NOTA_NUMERICA_OPTIONS = ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1"] as const;
-export const NOTA_TEXTO_OPTIONS = ["Aprobado", "Desaprobado", "No entregado"] as const;
+export const NOTA_NUMERICA_OPTIONS = ["10", "9", "8", "7", "6", "5", "4"] as const;
+export const NOTA_TEXTO_OPTIONS = ["Aprobado"] as const;
 
 /** Devuelve el valor numérico de una nota (1-10) o null si es texto / vacío. */
 export const parseNotaNumeric = (nota: string | null | undefined): number | null => {

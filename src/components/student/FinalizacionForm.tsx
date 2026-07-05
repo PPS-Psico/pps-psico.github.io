@@ -647,18 +647,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
                   />
                 ))
               )}
-
-              {onAddPPS && finalizadas.length > 0 && (
-                <button
-                  type="button"
-                  onClick={onAddPPS}
-                  className="w-full rounded-2xl border-2 border-dashed py-3 flex items-center justify-center gap-2 text-sm font-bold transition-colors hover:bg-[var(--bg-sunken)]"
-                  style={{ borderColor: "var(--line-strong)", color: "var(--accent-text)" }}
-                >
-                  <Icon name="plus" size={16} strokeWidth={2.2} />
-                  ¿Realizaste otra PPS que no figura? Cargar aquí
-                </button>
-              )}
             </div>
           )}
 
