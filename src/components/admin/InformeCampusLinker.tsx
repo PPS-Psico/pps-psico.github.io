@@ -13,6 +13,7 @@
  */
 import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../../lib/db";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
@@ -43,6 +44,17 @@ const isValidHttpUrl = (value: string): boolean => {
     return u.protocol === "http:" || u.protocol === "https:";
   } catch {
     return false;
+  }
+};
+
+/** Extrae el ID de la tarea de Moodle del enlace si está presente. */
+const getMoodleTaskId = (url: string): string | null => {
+  try {
+    const params = new URL(url).searchParams;
+    return params.get("id");
+  } catch {
+    const match = url.match(/[?&]id=(\d+)/);
+    return match ? match[1] : null;
   }
 };
 
@@ -82,17 +94,17 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   });
 
   const saveMutation = useMutation({
-    mutationFn: async ({ id, link }: { id: string; link: string }) => {
-      const value = link.trim() || null;
+    mutationFn: async ({ id, link }: { id: string; link: string | null }) => {
+      const value = link ? link.trim() : null;
       return db.lanzamientos.update(id, {
         [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: value,
       } as Record<string, unknown>);
     },
     onSuccess: (_data, variables) => {
       setToast({
-        message: variables.link.trim()
+        message: variables.link
           ? "Espacio de informe vinculado. El campus generará la tarjeta de entrega."
-          : "Se quitó el link de la tarea.",
+          : "Se desvinculó el espacio de informes de la PPS.",
         type: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["informeCampusLinker"] });
@@ -149,6 +161,18 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     saveMutation.mutate({ id: selected.id, link: trimmed });
   };
 
+  const handleRemoveLink = () => {
+    if (!selected) return;
+    if (
+      window.confirm(
+        "¿Estás seguro de que querés desvincular el espacio del campus? Se eliminará el link de Moodle de esta PPS."
+      )
+    ) {
+      saveMutation.mutate({ id: selected.id, link: null });
+      setLinkInput("");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="py-12">
@@ -163,13 +187,29 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     );
   }
 
+  const hasSavedLink = selected ? !!getLink(selected) : false;
+  const moodleTaskId = linkInput ? getMoodleTaskId(linkInput) : null;
+
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
+      {/* Cabecera de Sección */}
+      <div className="bg-slate-50 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-200/50 dark:border-slate-700/40">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <span className="material-icons text-blue-500">dns</span>
+          Espacios de Informes en Campus (Moodle)
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+          Las PPS creadas antes de la integración del campus quedan sin espacio de entrega de
+          informe. Vinculá el enlace de la Tarea de Moodle para que el campus genere automáticamente
+          el buzón en el perfil de los estudiantes, o desvinculalo cuando sea necesario.
+        </p>
+      </div>
+
       {/* Controles */}
-      <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-        <div className="relative w-full md:w-80 group">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
+        <div className="relative w-full sm:w-80 group">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-slate-400 group-focus-within:text-blue-500 transition-colors !text-lg">
             search
           </span>
@@ -178,125 +218,226 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
             placeholder="Buscar PPS por nombre..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition shadow-sm"
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition shadow-sm"
           />
         </div>
 
-        <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+        <label className="inline-flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={onlyMissing}
             onChange={(e) => setOnlyMissing(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            className="h-4.5 w-4.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
           />
-          Sólo sin espacio de informe
+          <span className="font-medium">Sólo sin espacio de informe</span>
           {missingCount > 0 && (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 animate-pulse">
               {missingCount}
             </span>
           )}
         </label>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Lista de PPS */}
-        <div className="space-y-2">
-          {filtered.length === 0 ? (
-            <EmptyState
-              icon="task_alt"
-              title={onlyMissing ? "Todo vinculado" : "Sin resultados"}
-              message={
-                onlyMissing
-                  ? "Todas las PPS (según el filtro) ya tienen su espacio de informe."
-                  : "No hay PPS que coincidan con la búsqueda."
-              }
-            />
-          ) : (
-            filtered.map((row) => {
-              const hasLink = !!getLink(row);
-              const isActive = row.id === selectedId;
-              return (
-                <button
-                  key={row.id}
-                  onClick={() => handleSelect(row)}
-                  className={`w-full text-left p-4 rounded-xl border transition ${
-                    isActive
-                      ? "border-blue-500 ring-4 ring-blue-100 dark:ring-blue-900/30 bg-blue-50/50 dark:bg-blue-900/10"
-                      : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-                        {String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre")}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {String(row[FIELD_ORIENTACION_LANZAMIENTOS] || "—")} ·{" "}
-                        {formatFecha(row[FIELD_FECHA_INICIO_LANZAMIENTOS])} ·{" "}
-                        {String(row[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] || "—")}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        hasLink
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                      }`}
-                    >
-                      <span className="material-icons !text-sm">
-                        {hasLink ? "check_circle" : "link_off"}
+        <div className="lg:col-span-5 space-y-2.5 max-h-[580px] overflow-y-auto pr-1 scrollbar-thin">
+          <AnimatePresence mode="popLayout">
+            {filtered.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <EmptyState
+                  icon="task_alt"
+                  title={onlyMissing ? "Todo vinculado" : "Sin resultados"}
+                  message={
+                    onlyMissing
+                      ? "Todas las PPS activas ya tienen su espacio de informe vinculado correctamente."
+                      : "No encontramos lanzamientos que coincidan con la búsqueda."
+                  }
+                />
+              </motion.div>
+            ) : (
+              filtered.map((row) => {
+                const hasLink = !!getLink(row);
+                const isActive = row.id === selectedId;
+                return (
+                  <motion.button
+                    key={row.id}
+                    layoutId={`launch-card-${row.id}`}
+                    onClick={() => handleSelect(row)}
+                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 relative overflow-hidden ${
+                      isActive
+                        ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/40 dark:bg-blue-900/10 shadow-sm"
+                        : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
+                    }`}
+                    whileHover={{ x: isActive ? 0 : 2 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm leading-snug truncate">
+                          {String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre")}
+                        </p>
+                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
+                          <span>{String(row[FIELD_ORIENTACION_LANZAMIENTOS] || "—")}</span>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <span>{formatFecha(row[FIELD_FECHA_INICIO_LANZAMIENTOS])}</span>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <span className="capitalize">
+                            {String(
+                              row[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] || "—"
+                            ).toLowerCase()}
+                          </span>
+                        </div>
+                      </div>
+                      <span
+                        className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          hasLink
+                            ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30"
+                            : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30"
+                        }`}
+                      >
+                        <span className="material-icons !text-[11px]">
+                          {hasLink ? "link" : "link_off"}
+                        </span>
+                        {hasLink ? "Conectada" : "Falta"}
                       </span>
-                      {hasLink ? "Vinculada" : "Sin vincular"}
-                    </span>
-                  </div>
-                </button>
-              );
-            })
-          )}
+                    </div>
+                  </motion.button>
+                );
+              })
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Editor */}
-        <div className="lg:sticky lg:top-4 h-fit">
+        <div className="lg:col-span-7 lg:sticky lg:top-4 h-fit">
           {!selected ? (
-            <div className="p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-center text-slate-500 dark:text-slate-400">
-              <span className="material-icons !text-4xl text-slate-300 dark:text-slate-600">
-                ads_click
-              </span>
-              <p className="mt-2 text-sm">Elegí una PPS de la lista para vincular su tarea.</p>
+            <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/40 dark:bg-slate-900/20 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center min-h-[300px]">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-3">
+                <span className="material-icons !text-2xl">ads_click</span>
+              </div>
+              <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                Ninguna PPS seleccionada
+              </h3>
+              <p className="mt-1 text-xs max-w-xs mx-auto leading-relaxed">
+                Selecciona un lanzamiento de la lista para ver, vincular o remover su espacio de
+                entregas de Moodle.
+              </p>
             </div>
           ) : (
-            <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-4">
+            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-6">
+              {/* Encabezado Editor */}
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400 font-semibold">
-                  PPS seleccionada
-                </p>
-                <p className="font-semibold text-slate-800 dark:text-slate-100">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded">
+                  Editor de Vínculo
+                </span>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mt-2 text-base leading-snug">
                   {String(selected[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre")}
-                </p>
+                </h3>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  Link de la Tarea (Campus / Moodle)
-                </label>
-                <input
-                  type="url"
-                  value={linkInput}
-                  onChange={(e) => setLinkInput(e.target.value)}
-                  placeholder={PLACEHOLDER}
-                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                  Pegá el enlace de la Tarea (buzón de entrega) que creaste en Moodle. El campus
-                  generará sola la tarjeta de entrega de informe en la orientación correspondiente.
-                </p>
+              {/* Diagrama de Conexión */}
+              <div className="flex items-center justify-center gap-6 py-4 px-3 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-900/50">
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-10 h-10 rounded-xl bg-slate-950 text-white flex items-center justify-center shadow-sm">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                      <rect x="3" y="10" width="4" height="11" rx="1" fill="currentColor" />
+                      <rect x="10" y="4" width="4" height="17" rx="1" fill="currentColor" />
+                      <rect x="17" y="14" width="4" height="7" rx="1" fill="currentColor" />
+                    </svg>
+                  </div>
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                    Mi Panel
+                  </span>
+                </div>
+
+                <div className="flex-grow flex items-center justify-center relative">
+                  <div
+                    className={`h-[2px] w-full border-t-2 border-dashed transition-colors duration-300 ${
+                      hasSavedLink ? "border-emerald-500" : "border-slate-300 dark:border-slate-700"
+                    }`}
+                  />
+                  <div
+                    className={`absolute w-7 h-7 rounded-full flex items-center justify-center shadow-sm border transition-all duration-300 ${
+                      hasSavedLink
+                        ? "bg-emerald-500 border-emerald-600 text-white"
+                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400"
+                    }`}
+                  >
+                    <span className="material-icons !text-xs">
+                      {hasSavedLink ? "link" : "link_off"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border transition-all duration-300 ${
+                      hasSavedLink
+                        ? "bg-orange-500 border-orange-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 border-slate-200/60 dark:border-slate-850 text-slate-400"
+                    }`}
+                  >
+                    <span className="material-icons !text-xl">school</span>
+                  </div>
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                    Moodle
+                  </span>
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 pt-1">
+              {/* Formulario */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    Enlace de la Tarea (Moodle)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={linkInput}
+                      onChange={(e) => setLinkInput(e.target.value)}
+                      placeholder={PLACEHOLDER}
+                      className="w-full px-3 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                    />
+                    {linkInput && (
+                      <button
+                        onClick={() => setLinkInput("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition-colors"
+                        title="Limpiar campo"
+                      >
+                        <span className="material-icons !text-lg">cancel</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Informador de ID de Tarea */}
+                  {moodleTaskId && (
+                    <div className="mt-2.5 p-2 bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-lg flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                      <span className="material-icons !text-base text-orange-500">school</span>
+                      <span>
+                        ID de Tarea Detectado: <strong>{moodleTaskId}</strong>
+                      </span>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                    Ingresá la URL del buzón de entrega de Moodle. Los estudiantes de esta PPS verán
+                    un botón de entrega directo en su panel.
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={handleSave}
                   disabled={saveMutation.isPending}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-semibold shadow-sm transition"
                 >
                   <span className="material-icons !text-base">
                     {saveMutation.isPending ? "hourglass_top" : "save"}
@@ -304,26 +445,27 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                   {saveMutation.isPending ? "Guardando..." : "Guardar vínculo"}
                 </button>
 
-                {getLink(selected) && (
-                  <a
-                    href={getLink(selected)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors"
-                  >
-                    <span className="material-icons !text-base">open_in_new</span>
-                    Abrir tarea
-                  </a>
-                )}
+                {hasSavedLink && (
+                  <>
+                    <a
+                      href={getLink(selected)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition"
+                    >
+                      <span className="material-icons !text-base">open_in_new</span>
+                      Ver en Moodle
+                    </a>
 
-                {linkInput.trim() && (
-                  <button
-                    onClick={() => setLinkInput("")}
-                    className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-slate-500 hover:text-rose-600 text-sm font-medium transition-colors"
-                  >
-                    <span className="material-icons !text-base">backspace</span>
-                    Vaciar
-                  </button>
+                    <button
+                      onClick={handleRemoveLink}
+                      disabled={saveMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/30 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition"
+                    >
+                      <span className="material-icons !text-base">link_off</span>
+                      Quitar vínculo
+                    </button>
+                  </>
                 )}
               </div>
             </div>
