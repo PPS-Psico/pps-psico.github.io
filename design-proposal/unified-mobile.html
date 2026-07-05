@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Propuesta · Identidad unificada (Mobile + Campus)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+<style>
+/* ============================================================
+   TOKENS UNIFICADOS — "Expresión cálida" (Mobile + Campus)
+   Fuente única de verdad. Derivado del ADN del Campus:
+   neutros slate + acento UFLO teal + radios grandes + sombras suaves.
+   Estos mismos tokens los heredaría Atlas (desktop) re-pintado.
+   ============================================================ */
+:root {
+  /* Marca */
+  --brand:        #3CB88D;   /* UFLO teal oficial (canónico) */
+  --brand-ink:    #2E9B76;   /* texto teal sobre claro */
+  --brand-soft:   #EBF3F1;   /* fondo teal tenue */
+  --brand-deep:   #203B73;   /* navy UFLO (secundario) */
+  --brand-purple: #46253D;   /* purple UFLO (terciario) */
+
+  /* Neutros (slate, base del Campus) */
+  --bg:           linear-gradient(180deg,#ffffff 0%,#fafcfd 55%,#f4f7fb 100%);
+  --surface:      #ffffff;
+  --surface-2:    #fbfcfd;
+  --ink:          #0F172A;
+  --ink-2:        #1E293B;
+  --ink-muted:    #64748B;
+  --ink-subtle:   #94A3B8;
+  --line:         #E2E8F0;
+  --line-soft:    #F1F5F9;
+
+  /* Áreas PPS (color coding institucional) */
+  --area-clinica:      #3CB88D;
+  --area-educacional:  #2563EB;
+  --area-laboral:      #DC2626;
+  --area-comunitaria:  #7C3AED;
+
+  /* Semántica de estado */
+  --ok:    #10B981;  --ok-soft:   #ECFDF5;
+  --warn:  #B45309;  --warn-soft: #FEF3C7;
+  --danger:#DC2626;  --danger-soft:#FEE2E2;
+  --info:  #0EA5E9;  --info-soft: #E0F2FE;
+
+  /* Forma */
+  --r-xl: 28px; --r-lg: 22px; --r-md: 16px; --r-sm: 12px; --r-pill: 999px;
+
+  /* Sombra (suave, en capas — sello del Campus) */
+  --shadow-card: 0 22px 46px -18px rgba(15,23,42,.10);
+  --shadow-soft: 0 6px 20px -8px rgba(15,23,42,.08);
+  --shadow-pop:  0 25px 50px -12px rgba(15,23,42,.12);
+
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg:         linear-gradient(180deg,#0b1120 0%,#0c1424 60%,#0a0f1c 100%);
+  --surface:    #121b2e;
+  --surface-2:  #0f1827;
+  --ink:        #F8FAFC;
+  --ink-2:      #E2E8F0;
+  --ink-muted:  #94A3B8;
+  --ink-subtle: #64748B;
+  --line:       rgba(148,163,184,.16);
+  --line-soft:  rgba(148,163,184,.10);
+  --brand-ink:  #4FD1A8;
+  --brand-soft: rgba(60,184,141,.14);
+  --ok-soft:    rgba(16,185,129,.14);
+  --warn-soft:  rgba(180,83,9,.18);
+  --danger-soft:rgba(220,38,38,.16);
+  --info-soft:  rgba(14,165,233,.14);
+  --shadow-card: 0 22px 46px -18px rgba(0,0,0,.5);
+  --shadow-soft: 0 6px 20px -8px rgba(0,0,0,.45);
+  --shadow-pop:  0 25px 50px -12px rgba(0,0,0,.55);
+}
+
+* { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+body {
+  margin: 0; font-family: var(--font); background: #e9edf3; color: var(--ink-2);
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  gap: 18px; padding: 28px 12px 60px;
+}
+html.dark body { background: #060a13; }
+
+.stage-label {
+  font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+  color: #64748b; display: flex; align-items: center; gap: 12px;
+}
+.stage-label button {
+  font: inherit; font-size: 11px; letter-spacing: .08em; cursor: pointer;
+  border: 1px solid #cbd5e1; background: #fff; color: #334155;
+  padding: 7px 12px; border-radius: 999px; font-weight: 800;
+}
+html.dark .stage-label, html.dark .stage-label button { color: #94a3b8; }
+html.dark .stage-label button { background:#121b2e; border-color: rgba(148,163,184,.25); }
+
+/* ── Marco de teléfono ───────────────────────────────────── */
+.phone {
+  width: 412px; max-width: 100%; border-radius: 44px; overflow: hidden;
+  background: var(--bg); box-shadow: 0 40px 80px -24px rgba(15,23,42,.4), 0 0 0 10px #11161f;
+  position: relative; height: 880px; display: flex; flex-direction: column;
+}
+.material-symbols-rounded { font-family: 'Material Symbols Rounded'; font-variation-settings: 'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24; line-height: 1; user-select: none; }
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center;
+  justify-content: space-between; padding: 16px 18px 12px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+  color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 18px;
+  box-shadow: 0 6px 14px -4px rgba(60,184,141,.5);
+}
+.brand-name { font-weight: 800; font-size: 15px; color: var(--ink); letter-spacing: -.02em; line-height: 1; }
+.brand-sub  { font-size: 10.5px; font-weight: 700; color: var(--ink-subtle); text-transform: uppercase; letter-spacing: .08em; margin-top: 3px; }
+.tb-actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink-muted); display: grid; place-items: center;
+  cursor: pointer; transition: .2s;
+}
+.icon-btn:active { transform: scale(.94); }
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-ink);
+  display: grid; place-items: center; font-weight: 800; font-size: 14px; border: 1px solid var(--line);
+}
+
+/* ── Scroll body ─────────────────────────────────────────── */
+.scroll { flex: 1; overflow-y: auto; padding: 18px 16px 100px; }
+.scroll::-webkit-scrollbar { width: 0; }
+
+/* ── Saludo ──────────────────────────────────────────────── */
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-subtle); }
+.greet { font-size: 30px; font-weight: 900; letter-spacing: -.03em; line-height: 1.05; margin: 6px 0 0; color: var(--ink); }
+.greet em { font-style: normal; color: var(--brand-ink); }
+
+/* ── Tarjeta de progreso (hero) ──────────────────────────── */
+.hero {
+  margin-top: 18px; border-radius: var(--r-xl); padding: 22px;
+  background:
+    radial-gradient(circle at top right, var(--brand-soft), transparent 55%),
+    var(--surface);
+  border: 1px solid var(--line); box-shadow: var(--shadow-card); position: relative; overflow: hidden;
+}
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+.hero-kicker { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--brand-ink); }
+.hero-hours { font-size: 42px; font-weight: 900; letter-spacing: -.04em; color: var(--ink); line-height: 1; margin-top: 8px; }
+.hero-hours small { font-size: 16px; font-weight: 700; color: var(--ink-muted); letter-spacing: 0; }
+.ring { width: 74px; height: 74px; flex-shrink: 0; }
+.ring-pct { font-size: 16px; font-weight: 900; fill: var(--ink); }
+.bar { height: 9px; border-radius: 999px; background: var(--line-soft); margin-top: 16px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 75%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--brand-deep)); }
+.hero-foot { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .02em; background: var(--line-soft); color: var(--ink-muted);
+}
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* ── Section title ───────────────────────────────────────── */
+.sec-title { display: flex; align-items: center; justify-content: space-between; margin: 26px 4px 12px; }
+.sec-title h3 { font-size: 15px; font-weight: 800; color: var(--ink); margin: 0; letter-spacing: -.01em; }
+.sec-title a { font-size: 12.5px; font-weight: 800; color: var(--brand-ink); text-decoration: none; }
+
+/* ── Next-step card ──────────────────────────────────────── */
+.next {
+  display: flex; gap: 14px; align-items: center; padding: 16px; border-radius: var(--r-lg);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-soft);
+  border-left: 4px solid var(--warn); cursor: pointer; transition: .25s;
+}
+.next:active { transform: scale(.99); }
+.next-ic { width: 46px; height: 46px; border-radius: 14px; background: var(--warn-soft); color: var(--warn); display: grid; place-items: center; flex-shrink: 0; }
+html.dark .next-ic { color: #fbbf24; }
+.next-body { flex: 1; min-width: 0; }
+.next-k { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--warn); }
+html.dark .next-k { color: #fbbf24; }
+.next-t { font-size: 15px; font-weight: 800; color: var(--ink); margin: 3px 0 2px; }
+.next-d { font-size: 12.5px; color: var(--ink-muted); line-height: 1.45; }
+
+/* ── Convocatoria card ───────────────────────────────────── */
+.conv {
+  border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft); padding: 18px; transition: .25s; cursor: pointer; margin-bottom: 12px;
+}
+.conv:active { transform: scale(.99); }
+.conv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.area-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.state { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ok); display: inline-flex; align-items: center; gap: 5px; }
+.state .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(16,185,129,.5); animation: pulse 2s infinite; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.45)} 70%{box-shadow:0 0 0 6px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
+.conv-title { font-size: 17px; font-weight: 800; color: var(--ink); margin: 12px 0 4px; letter-spacing: -.02em; }
+.conv-meta { font-size: 12.5px; color: var(--ink-muted); display: flex; gap: 14px; flex-wrap: wrap; }
+.conv-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.conv-meta .material-symbols-rounded { font-size: 16px; }
+.btn {
+  margin-top: 16px; width: 100%; min-height: 46px; border: none; border-radius: 14px;
+  background: var(--ink); color: var(--surface); font: inherit; font-weight: 800; font-size: 14px;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: .2s;
+}
+.btn:active { transform: scale(.98); }
+.btn.brand { background: var(--brand); color: #fff; }
+
+/* ── Práctica rows ───────────────────────────────────────── */
+.prac { display: flex; align-items: center; gap: 13px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); margin-bottom: 9px; }
+.prac-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; font-weight: 800; font-size: 15px; }
+.prac-body { flex: 1; min-width: 0; }
+.prac-name { font-size: 14px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prac-sub { font-size: 11.5px; color: var(--ink-muted); margin-top: 2px; }
+.prac-hs { font-size: 13px; font-weight: 800; color: var(--ink); text-align: right; }
+.prac-hs small { display: block; font-size: 10px; font-weight: 700; color: var(--ink-subtle); text-transform: uppercase; letter-spacing: .05em; }
+
+/* ── Bottom nav ──────────────────────────────────────────── */
+.botnav {
+  position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-around;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--line); padding: 9px 6px 14px;
+}
+.nav-i { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; border: none; background: none; color: var(--ink-subtle); cursor: pointer; padding: 4px 0; }
+.nav-i.active { color: var(--brand-ink); }
+.nav-i span.material-symbols-rounded { font-size: 25px; }
+.nav-i.active span.material-symbols-rounded { font-variation-settings: 'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24; }
+.nav-i small { font-size: 10px; font-weight: 800; letter-spacing: .02em; }
+</style>
+</head>
+<body>
+
+<div class="stage-label">
+  Propuesta · Inicio estudiante (mobile) — identidad cálida unificada
+  <button onclick="document.documentElement.classList.toggle('dark')">◐ Light / Dark</button>
+</div>
+
+<div class="phone">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">ψ</div>
+      <div>
+        <div class="brand-name">Mi Panel</div>
+        <div class="brand-sub">PPS · Psicología</div>
+      </div>
+    </div>
+    <div class="tb-actions">
+      <button class="icon-btn" onclick="document.documentElement.classList.toggle('dark')" aria-label="Tema"><span class="material-symbols-rounded">dark_mode</span></button>
+      <div class="avatar">B</div>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <!-- Saludo -->
+    <span class="eyebrow">Martes, 30 de junio</span>
+    <h1 class="greet">Buenas tardes,<br><em>Blas.</em></h1>
+
+    <!-- Hero progreso -->
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-kicker">Horas acreditadas</div>
+          <div class="hero-hours">187<small> / 250 hs</small></div>
+        </div>
+        <svg class="ring" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--line-soft)" stroke-width="3.4"/>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--brand)" stroke-width="3.4"
+            stroke-dasharray="75 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+          <text x="18" y="19.5" text-anchor="middle" class="ring-pct">75%</text>
+        </svg>
+      </div>
+      <div class="bar"><i></i></div>
+      <div class="hero-foot">
+        <span class="chip"><span class="dot" style="background:var(--area-clinica)"></span>Clínica · 2</span>
+        <span class="chip"><span class="dot" style="background:var(--area-educacional)"></span>Educacional · 1</span>
+        <span class="chip"><span class="dot" style="background:var(--area-laboral)"></span>Laboral · 1</span>
+      </div>
+    </div>
+
+    <!-- Próximo paso -->
+    <div class="sec-title"><h3>Tu próximo paso</h3></div>
+    <div class="next">
+      <div class="next-ic"><span class="material-symbols-rounded">draw</span></div>
+      <div class="next-body">
+        <div class="next-k">Consentimiento pendiente</div>
+        <div class="next-t">Firmá el compromiso digital</div>
+        <div class="next-d">Quedaste seleccionado/a en Hospital Álvarez. Firmá para confirmar tu lugar.</div>
+      </div>
+      <span class="material-symbols-rounded" style="color:var(--ink-subtle)">chevron_right</span>
+    </div>
+
+    <!-- Convocatorias abiertas -->
+    <div class="sec-title"><h3>Convocatorias abiertas</h3><a href="#">Ver todas</a></div>
+    <div class="conv">
+      <div class="conv-head">
+        <span class="area-pill" style="background:var(--brand-soft);color:var(--brand-ink)">
+          <span class="material-symbols-rounded" style="font-size:14px">psychology</span>Clínica</span>
+        <span class="state"><span class="dot"></span>Abierta</span>
+      </div>
+      <div class="conv-title">Hospital Italiano — Salud Mental</div>
+      <div class="conv-meta">
+        <span><span class="material-symbols-rounded">schedule</span>Lun y Mié · 9–13h</span>
+        <span><span class="material-symbols-rounded">event</span>Cierra 5 jul</span>
+      </div>
+      <button class="btn brand">Inscribirme</button>
+    </div>
+    <div class="conv">
+      <div class="conv-head">
+        <span class="area-pill" style="background:var(--info-soft);color:var(--area-educacional)">
+          <span class="material-symbols-rounded" style="font-size:14px">school</span>Educacional</span>
+        <span class="state"><span class="dot"></span>Abierta</span>
+      </div>
+      <div class="conv-title">Escuela N°12 — Gabinete</div>
+      <div class="conv-meta">
+        <span><span class="material-symbols-rounded">schedule</span>Vie · 8–12h</span>
+        <span><span class="material-symbols-rounded">event</span>Cierra 8 jul</span>
+      </div>
+      <button class="btn">Ver detalle</button>
+    </div>
+
+    <!-- Mis prácticas -->
+    <div class="sec-title"><h3>Mis prácticas</h3><a href="#">Ver todas</a></div>
+    <div class="prac">
+      <div class="prac-ic" style="background:var(--brand-soft);color:var(--brand-ink)">HA</div>
+      <div class="prac-body">
+        <div class="prac-name">Hospital Álvarez</div>
+        <div class="prac-sub">Clínica · En curso</div>
+      </div>
+      <div class="prac-hs">64<small>hs</small></div>
+    </div>
+    <div class="prac">
+      <div class="prac-ic" style="background:var(--info-soft);color:var(--area-educacional)">E12</div>
+      <div class="prac-body">
+        <div class="prac-name">Escuela N°12</div>
+        <div class="prac-sub">Educacional · Finalizada · Nota 9</div>
+      </div>
+      <div class="prac-hs">48<small>hs</small></div>
+    </div>
+    <div class="prac">
+      <div class="prac-ic" style="background:var(--danger-soft);color:var(--area-laboral)">RR</div>
+      <div class="prac-body">
+        <div class="prac-name">RRHH Techint</div>
+        <div class="prac-sub">Laboral · Finalizada · Nota 8</div>
+      </div>
+      <div class="prac-hs">75<small>hs</small></div>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="botnav">
+    <button class="nav-i active"><span class="material-symbols-rounded">home</span><small>Inicio</small></button>
+    <button class="nav-i"><span class="material-symbols-rounded">work_history</span><small>Prácticas</small></button>
+    <button class="nav-i"><span class="material-symbols-rounded">list_alt</span><small>Solicitudes</small></button>
+    <button class="nav-i"><span class="material-symbols-rounded">person</span><small>Perfil</small></button>
+  </div>
+</div>
+
+</body>
+</html>

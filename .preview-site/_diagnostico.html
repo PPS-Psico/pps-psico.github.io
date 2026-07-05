@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Diagnóstico panel embebido</title>
+<style>
+  /* Fondo AZUL bien visible: si el panel es transparente (versión nueva),
+     vas a ver este azul "respirar" por detrás/costados. Si ves CREMA, es
+     bundle viejo cacheado. */
+  html, body { margin:0; background:#bfe0ff; font-family:system-ui, sans-serif; }
+  .banner { padding:14px 18px; background:#0a2540; color:#fff; font-size:14px; line-height:1.4; }
+  .banner b { color:#bfe0ff; }
+  #wrap { width:100%; max-width:1100px; margin:0 auto; background:transparent; }
+  #panel { width:100%; border:0; display:block; background:transparent; min-height:400px; border-radius:16px; }
+</style>
+</head>
+<body>
+  <div class="banner">
+    <b>Diagnóstico.</b> Si detrás y a los costados del panel ves <b>AZUL</b> = versión nueva OK (transparente).
+    Si ves un recuadro <b>CREMA</b> = todavía carga caché viejo.
+    El alto se ajusta solo (no debería haber scroll interno).
+  </div>
+  <div id="wrap">
+    <iframe id="panel"
+      src="https://pps-psico.github.io/?v=diag1"
+      title="Mi Panel (diagnóstico)"
+      allowtransparency="true"
+      allow="clipboard-write; fullscreen"></iframe>
+  </div>
+  <script>
+    (function(){
+      var f = document.getElementById('panel');
+      // Reenvía ?email= de ESTA url al iframe para que auto-loguee y llegue al
+      // dashboard (donde se aplica la transparencia). Abrí esta página como:
+      //   _diagnostico.html?email=TU_MAIL
+      try {
+        var em = new URLSearchParams(location.search).get('email');
+        if (em) {
+          f.src = 'https://pps-psico.github.io/?v=diag1&email=' + encodeURIComponent(em.trim());
+        }
+      } catch(e){}
+      function fallbackH(){ return Math.max(500, Math.round(window.innerHeight * 0.9)); }
+      window.addEventListener('message', function(e){
+        var d = e.data; if(!d) return;
+        if (d.ppsPanel || d.ppsAula){
+          var h = (typeof d.height === 'number' && d.height > 200) ? d.height : fallbackH();
+          f.style.height = (h + 2) + 'px';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

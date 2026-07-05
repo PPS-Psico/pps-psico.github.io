@@ -1,4 +1,5 @@
 import React from "react";
+import "./home/atlas/atlasHome.css";
 import { addBusinessDays, getBusinessDaysCount } from "../../utils/businessDays";
 import { formatDate } from "../../utils/formatters";
 
@@ -8,350 +9,239 @@ interface FinalizationStatusCardProps {
   studentName?: string;
 }
 
+const normalizeStatus = (value: string) =>
+  value
+    ?.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim() || "";
+
 const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
   status,
   requestDate,
   studentName,
 }) => {
-  const startDate = new Date(requestDate);
-  // 1. Calculamos la fecha meta real usando el utilitario de días hábiles (salta fines de semana, feriados, enero y receso invernal)
+  const startDate = requestDate ? new Date(requestDate) : new Date();
   const targetDate = addBusinessDays(startDate, 14);
-
   const now = new Date();
   const currentMonth = now.getMonth();
   const dayOfMonth = now.getDate();
-
   const isJanuary = currentMonth === 0;
   const isWinterBreak =
     (currentMonth === 6 && dayOfMonth >= 21) || (currentMonth === 7 && dayOfMonth <= 1);
-
-  // Estado de Pausa Visual
   const isPaused = isJanuary || isWinterBreak;
-  const pauseReason = isJanuary ? "Receso de Verano" : "Receso de Invierno";
+  const pauseReason = isJanuary ? "Receso de verano" : "Receso de invierno";
   const pauseDescription = isJanuary
     ? "Enero no computa plazos administrativos."
     : "El receso invernal no computa plazos administrativos.";
-
-  // Normalización de estado
-  const normalizeString = (str: string) =>
-    str
-      ?.toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim() || "";
-  const normalizedStatus = normalizeString(status);
+  const normalizedStatus = normalizeStatus(status);
   const isFinished = normalizedStatus === "cargado" || normalizedStatus === "finalizada";
   const isEnProceso = normalizedStatus === "en proceso";
-
-  // 2. Calculamos los días restantes usando el utilitario unificado
   const daysDisplay = getBusinessDaysCount(now, targetDate);
-
   const totalDuration = targetDate.getTime() - startDate.getTime();
   const elapsed = now.getTime() - startDate.getTime();
+  let percentage =
+    totalDuration > 0 ? Math.min(100, Math.max(6, (elapsed / totalDuration) * 100)) : 100;
 
-  // Barra de progreso visual (basada en tiempo real para fluidez, topeada si está en receso)
-  let percentage = Math.min(100, Math.max(5, (elapsed / totalDuration) * 100));
-
-  // Si estamos en receso, congelamos la barra visualmente al 95% o donde haya quedado, para indicar "espera"
   if (isPaused) percentage = Math.min(percentage, 95);
-
-  // Si ya pasó la fecha, lleno total
   if (daysDisplay < 0) percentage = 100;
 
   const firstName = studentName?.split(" ")[0] || "Estudiante";
   const isOverdue = daysDisplay < 0 && !isFinished && !isPaused;
 
-  const gradientName = (
-    <span className="text-transparent bg-clip-text bg-gradient-to-r from-uflo-purple via-uflo-navy to-uflo-teal dark:from-[#c9a2bd] dark:via-[#8fb1ff] dark:to-[#5EE6B7]">
-      {firstName}
-    </span>
-  );
-
-  // --- VISTA DE ÉXITO (YA CARGADO) ---
   if (isFinished) {
     return (
-      <div className="w-full animate-fade-in-up mb-8">
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800 p-10 sm:p-16 shadow-2xl shadow-emerald-100/50 dark:shadow-none text-center backdrop-blur-xl">
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-emerald-100/40 dark:bg-emerald-900/10 blur-3xl pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-64 w-64 rounded-full bg-teal-100/40 dark:bg-teal-900/10 blur-3xl pointer-events-none"></div>
-
-          <div className="relative z-10 flex flex-col items-center gap-8">
-            <div className="h-24 w-24 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-lg animate-bounce-slow text-emerald-500 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50">
-              <span className="material-icons !text-5xl">verified</span>
-            </div>
-
-            <div className="space-y-4 max-w-3xl">
-              <h1 className="text-5xl sm:text-6xl font-black tracking-tighter text-slate-900 dark:text-white drop-shadow-sm leading-tight">
-                ¡Todo listo, {gradientName}!
-              </h1>
-              <p className="text-xl text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                Tu acreditación ha sido completada exitosamente. <br className="hidden sm:block" />
-                Tus horas de PPS ya se encuentran cargadas en el sistema académico SAC.
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                Este panel funciona como apoyo de seguimiento interno. La confirmacion oficial de
-                acreditacion siempre corresponde a SAC y a la documentacion institucional validada
-                por la facultad.
-              </p>
-            </div>
-
-            <div className="mt-6">
-              <a
-                href="https://alumno.uflo.edu.ar"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center gap-3 px-10 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-uflo-teal/20 hover:-translate-y-1 transition duration-300"
-              >
-                <span>Verificar en SAC</span>
-                <span className="material-icons !text-2xl group-hover:translate-x-1 transition-transform">
-                  open_in_new
-                </span>
-              </a>
-            </div>
+      <section
+        className="ah-finalization ah-finalization--done"
+        aria-labelledby="finalizacion-title"
+      >
+        <div className="ah-finalization__hero">
+          <div className="ah-finalization__seal ah-finalization__seal--done">
+            <span className="material-icons" aria-hidden>
+              verified
+            </span>
           </div>
+          <div className="ah-finalization__copy">
+            <span className="ah-finalization__kicker">Acreditacion finalizada</span>
+            <h1 id="finalizacion-title">
+              Todo listo, <em>{firstName}</em>.
+            </h1>
+            <p>
+              Tu acreditacion fue completada y tus horas ya figuran cargadas en el sistema academico
+              SAC.
+            </p>
+          </div>
+          <a
+            href="https://alumno.uflo.edu.ar"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ah-finalization__button"
+          >
+            Verificar en SAC
+            <span className="material-icons" aria-hidden>
+              open_in_new
+            </span>
+          </a>
         </div>
-      </div>
+        <p className="ah-finalization__fineprint">
+          Mi Panel funciona como seguimiento interno. La confirmacion oficial siempre corresponde a
+          SAC y a la documentacion validada por la facultad.
+        </p>
+      </section>
     );
   }
 
-  // --- CONFIGURACIÓN DE ESTADOS PENDIENTES ---
-  let renderTitle = () => (
-    <span className="text-slate-900 dark:text-white">¡Solicitud Recibida!</span>
+  const currentStepIndex = isEnProceso ? 1 : 0;
+  const title = isEnProceso ? (
+    <>
+      Todo marcha bien, <em>{firstName}</em>.
+    </>
+  ) : (
+    <>Solicitud recibida.</>
   );
-  let bannerText =
-    "Estamos evaluando tu solicitud y validando la documentación presentada. Este proceso es manual y requiere revisión por parte de coordinación.";
-  let bannerStatus = "Solicitud Enviada";
-  let bannerColorClass =
-    "text-uflo-navy bg-uflo-navy/10 dark:text-[#8fb1ff] dark:bg-uflo-navy/30 border-uflo-navy/20 dark:border-uflo-navy/50";
-  let currentStepIndex = 0;
-
-  if (isEnProceso) {
-    renderTitle = () => <>Todo marcha bien, {gradientName}.</>;
-    bannerText =
-      "Tus documentos fueron validados correctamente y el expediente se encuentra en el circuito de acreditación interna.";
-    bannerStatus = "En Proceso";
-    bannerColorClass =
-      "text-uflo-teal bg-uflo-teal/10 dark:text-[#5EE6B7] dark:bg-uflo-teal/20 border-uflo-teal/20 dark:border-uflo-teal/40";
-    currentStepIndex = 1;
-  }
-
-  if (isEnProceso) {
-    bannerText =
-      "Tus documentos fueron validados correctamente y el expediente se encuentra en el circuito de acreditacion interna. La acreditacion oficial sigue dependiendo de la carga institucional final en SAC.";
-  }
-
+  const bannerText = isEnProceso
+    ? "Tus documentos fueron validados correctamente y el expediente ya esta en el circuito de acreditacion interna."
+    : "Coordinacion esta revisando tu solicitud y validando la documentacion presentada.";
+  const bannerStatus = isEnProceso ? "En proceso" : "Solicitud enviada";
   const steps = [
     {
-      title: "Validación Documental",
-      desc: "Revisión de firmas y planillas.",
+      title: "Validacion documental",
+      desc: "Revision de firmas, planillas y datos cargados.",
       icon: "inventory_2",
     },
     {
-      title: "Circuito Administrativo",
-      desc: "Aprobación final por áreas UFLO.",
+      title: "Circuito administrativo",
+      desc: "Control interno con las areas correspondientes.",
       icon: "settings_suggest",
     },
-    { title: "Acreditación Final", desc: "Carga definitiva en sistema SAC.", icon: "school" },
+    { title: "Acreditacion final", desc: "Carga definitiva en SAC.", icon: "school" },
   ];
 
   return (
-    <div className="w-full animate-fade-in-up pb-12 space-y-8">
-      {/* HERO BANNER */}
-      <div className="relative overflow-hidden glass-panel rounded-[3rem] shadow-xl p-8 sm:p-14 mb-8">
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-uflo-teal/10 to-transparent dark:from-uflo-teal/10 rounded-full blur-[120px] -mr-60 -mt-60 pointer-events-none"></div>
-        <div className="relative z-10">
-          <div
-            className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-6 border shadow-sm ${bannerColorClass}`}
-          >
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-current"></span>
-            </span>
-            {bannerStatus}
-          </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6 tracking-tighter">
-            {renderTitle()}
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400 text-lg sm:text-xl leading-relaxed max-w-4xl font-medium">
-            {bannerText}
-          </p>
+    <section className="ah-finalization" aria-labelledby="finalizacion-title">
+      <div className="ah-finalization__hero">
+        <div className="ah-finalization__seal">
+          <span className="material-icons" aria-hidden>
+            fact_check
+          </span>
+        </div>
+        <div className="ah-finalization__copy">
+          <span className="ah-finalization__kicker">{bannerStatus}</span>
+          <h1 id="finalizacion-title">{title}</h1>
+          <p>{bannerText}</p>
+        </div>
+        <div className="ah-finalization__date">
+          <span>Enviado</span>
+          <strong>{formatDate(startDate.toISOString())}</strong>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* TIMELINE (IZQUIERDA - ANCHO) - OCULTO EN MOBILE */}
-        <div className="hidden lg:flex lg:col-span-8">
-          <div className="w-full bg-white/80 dark:bg-[#0F172A]/80 rounded-[3rem] border border-slate-200/80 dark:border-slate-800 p-10 sm:p-12 backdrop-blur-xl h-full flex flex-col shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-uflo-purple via-uflo-navy to-uflo-teal opacity-20"></div>
-
-            <div className="flex items-center gap-4 mb-8 flex-shrink-0">
-              <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-300 shadow-sm">
-                <span className="material-icons !text-3xl">timeline</span>
-              </div>
-              <h3 className="font-black text-slate-800 dark:text-white text-2xl tracking-tight">
-                Etapas del Proceso
-              </h3>
-            </div>
-
-            {/* Contenedor flexible para distribuir el espacio verticalmente */}
-            <div className="flex-grow flex flex-col justify-between pl-4 py-4 relative">
-              {/* Línea de fondo */}
-              <div className="absolute left-[30px] top-8 bottom-8 w-1 bg-slate-100 dark:bg-slate-800 -z-10 rounded-full"></div>
-              {/* Barra de progreso animada */}
-              <div
-                className="absolute left-[30px] top-8 w-1 bg-gradient-to-b from-uflo-teal to-uflo-navy -z-10 rounded-full transition-[height] duration-1000"
-                style={{ height: `${(currentStepIndex / (steps.length - 1)) * 85}%` }}
-              ></div>
-
-              {steps.map((step, idx) => {
-                const isCompleted = idx < currentStepIndex;
-                const isActive = idx === currentStepIndex;
-                const isPending = idx > currentStepIndex;
-
-                return (
-                  <div
-                    key={idx}
-                    className={`relative flex items-center gap-8 ${isPending ? "opacity-50 grayscale" : "opacity-100"}`}
-                  >
-                    <div
-                      className={`flex-shrink-0 w-16 h-16 rounded-full border-[6px] flex items-center justify-center z-10 transition duration-500
-                                            ${
-                                              isCompleted
-                                                ? "bg-emerald-500 border-white dark:border-slate-900 text-white shadow-xl shadow-emerald-500/30"
-                                                : isActive
-                                                  ? "bg-white dark:bg-slate-900 border-uflo-teal text-uflo-teal shadow-2xl ring-4 ring-uflo-teal/10 dark:ring-uflo-teal/20 scale-110"
-                                                  : "bg-slate-100 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400"
-                                            }
-                                        `}
-                    >
-                      <span
-                        className={`material-icons !text-2xl ${isActive ? "animate-pulse" : ""}`}
-                      >
-                        {isCompleted ? "check" : step.icon}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h4
-                          className={`text-xl font-black tracking-tight ${isActive ? "text-uflo-teal dark:text-[#5EE6B7]" : isCompleted ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}`}
-                        >
-                          {step.title}
-                        </h4>
-                        {isCompleted && (
-                          <span className="text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-black uppercase tracking-widest">
-                            OK
-                          </span>
-                        )}
-                        {isActive && (
-                          <span className="text-[9px] bg-uflo-teal/10 text-uflo-teal dark:text-[#5EE6B7] px-2 py-0.5 rounded-md font-black uppercase tracking-widest animate-pulse">
-                            EN CURSO
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-slate-500 dark:text-slate-400 text-base font-medium leading-relaxed max-w-md">
-                        {step.desc}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+      <div className="ah-finalization__grid">
+        <div className="ah-finalization__panel ah-finalization__panel--steps">
+          <div className="ah-finalization__panelhead">
+            <span className="material-icons" aria-hidden>
+              timeline
+            </span>
+            <div>
+              <h2>Etapas del proceso</h2>
+              <p>Seguimiento interno hasta la carga final.</p>
             </div>
           </div>
+
+          <ol className="ah-finalization__steps">
+            {steps.map((step, idx) => {
+              const isCompleted = idx < currentStepIndex;
+              const isActive = idx === currentStepIndex;
+
+              return (
+                <li
+                  key={step.title}
+                  className={
+                    "ah-finalization__step" +
+                    (isCompleted ? " is-complete" : "") +
+                    (isActive ? " is-active" : "")
+                  }
+                >
+                  <span className="ah-finalization__stepicon">
+                    <span className="material-icons" aria-hidden>
+                      {isCompleted ? "check" : step.icon}
+                    </span>
+                  </span>
+                  <div>
+                    <div className="ah-finalization__steptop">
+                      <h3>{step.title}</h3>
+                      {isActive ? <span>En curso</span> : null}
+                      {isCompleted ? <span>Listo</span> : null}
+                    </div>
+                    <p>{step.desc}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
         </div>
 
-        {/* SIDEBAR STATUS (DERECHA) */}
-        <div className="col-span-1 lg:col-span-4 flex flex-col gap-6">
-          {/* Tarjeta de Tiempos */}
-          <div className="glass-panel rounded-[3rem] shadow-xl overflow-hidden flex flex-col p-10">
-            <h3 className="font-bold text-slate-500 text-xs uppercase tracking-widest mb-6">
-              Tiempo de Resolución
-            </h3>
-
-            {isPaused && (
-              <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-2xl flex items-start gap-3">
-                <span className="material-icons text-amber-500 mt-0.5 !text-xl">
+        <aside className="ah-finalization__rail">
+          <div className="ah-finalization__panel ah-finalization__clock">
+            <span className="ah-finalization__label">Tiempo estimado</span>
+            {isPaused ? (
+              <div className="ah-finalization__pause">
+                <span className="material-icons" aria-hidden>
                   {isJanuary ? "beach_access" : "ac_unit"}
                 </span>
                 <div>
-                  <p className="text-[10px] font-black text-amber-800 dark:text-amber-200 uppercase mb-1">
-                    {pauseReason}
-                  </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 leading-tight">
-                    {pauseDescription}
-                  </p>
+                  <strong>{pauseReason}</strong>
+                  <p>{pauseDescription}</p>
                 </div>
               </div>
-            )}
-
-            <div className="flex flex-col items-center justify-center mb-8">
-              <span
-                className={`text-8xl font-black tracking-tighter leading-none ${daysDisplay < 0 && !isFinished && !isPaused ? "text-rose-500" : isPaused ? "text-amber-500" : "text-slate-900 dark:text-white"}`}
-              >
-                {isPaused ? "~" : Math.max(0, daysDisplay)}
-              </span>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-3">
-                {isPaused ? "En Pausa" : "Días Hábiles"}
-              </span>
+            ) : null}
+            <div className={"ah-finalization__days" + (isOverdue ? " is-overdue" : "")}>
+              <strong>{isPaused ? "~" : Math.max(0, daysDisplay)}</strong>
+              <span>{isPaused ? "En pausa" : "dias habiles"}</span>
             </div>
-
-            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 mb-8 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-[width] duration-1000 ${isPaused ? "bg-amber-400 striped-bar" : daysDisplay < 0 && !isFinished && !isPaused ? "bg-rose-500" : "bg-uflo-teal"}`}
+            <div className="ah-finalization__meter" aria-hidden>
+              <i
+                className={isPaused ? "is-paused" : isOverdue ? "is-overdue" : ""}
                 style={{ width: `${percentage}%` }}
-              ></div>
+              />
             </div>
-            <div className="flex justify-between items-center text-center">
-              <div className="flex-1 border-r border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Enviado</p>
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">
-                  {formatDate(startDate.toISOString())}
-                </p>
-              </div>
-              <div className="flex-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Estimado</p>
-                <p
-                  className={`text-sm font-bold font-mono ${daysDisplay < 0 && !isFinished && !isPaused ? "text-rose-500" : "text-slate-700 dark:text-slate-300"}`}
-                >
-                  {formatDate(targetDate.toISOString())}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tarjeta de Soporte - Adaptada a Modo Claro y Oscuro */}
-          <div className="glass-panel rounded-[3rem] p-10 shadow-xl border border-slate-200 dark:border-slate-700 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-uflo-teal/10 dark:bg-uflo-teal/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-
-            <h3 className="font-bold text-slate-400 dark:text-slate-500 text-[10px] uppercase tracking-[0.2em] mb-4">
-              Soporte y Consultas
-            </h3>
-
-            <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 leading-relaxed font-medium">
-              Si el plazo de resolución ya venció y no visualizas tus horas, contacta a
-              coordinación.
-            </p>
-
-            <a
-              href={
-                daysDisplay < 0 && !isFinished && !isPaused
-                  ? `mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditación - ${firstName}`
-                  : undefined
-              }
-              className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition ${daysDisplay < 0 && !isFinished && !isPaused ? "bg-uflo-teal hover:bg-[#2e9b76] text-white shadow-lg shadow-uflo-teal/20" : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600 cursor-not-allowed"}`}
-            >
-              <span className="material-icons">
-                {daysDisplay < 0 && !isFinished && !isPaused ? "mail" : "lock_clock"}
+            <div className="ah-finalization__dates">
+              <span>
+                <small>Enviado</small>
+                {formatDate(startDate.toISOString())}
               </span>
               <span>
-                {daysDisplay < 0 && !isFinished && !isPaused
-                  ? "Contactar Coordinación"
-                  : "Consulta Bloqueada"}
+                <small>Estimado</small>
+                {formatDate(targetDate.toISOString())}
               </span>
-            </a>
+            </div>
           </div>
-        </div>
+
+          <div className="ah-finalization__panel ah-finalization__support">
+            <span className="ah-finalization__label">Soporte</span>
+            <p>Si el plazo vencio y todavia no ves tus horas, escribi a coordinacion.</p>
+            {isOverdue ? (
+              <a
+                href={`mailto:blas.rivera@uflouniversidad.edu.ar?subject=Consulta Acreditacion - ${firstName}`}
+                className="ah-finalization__button ah-finalization__button--full"
+              >
+                Contactar coordinacion
+                <span className="material-icons" aria-hidden>
+                  mail
+                </span>
+              </a>
+            ) : (
+              <span className="ah-finalization__locked">
+                <span className="material-icons" aria-hidden>
+                  lock_clock
+                </span>
+                Consulta habilitada al vencer el plazo
+              </span>
+            )}
+          </div>
+        </aside>
       </div>
-    </div>
+    </section>
   );
 };
 

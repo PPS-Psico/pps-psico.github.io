@@ -1,0 +1,4614 @@
+﻿diff --git a/src/components/AcreditacionPreflightModal.tsx b/src/components/AcreditacionPreflightModal.tsx
+index b81b271..7ca6267 100644
+--- a/src/components/AcreditacionPreflightModal.tsx
++++ b/src/components/AcreditacionPreflightModal.tsx
+@@ -86,12 +86,12 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
+                 >
+                   {Math.round(criterios.horasTotales)}
+                 </span>
+-                <span className="text-xs font-bold text-slate-400">/ 350 hs</span>
++                <span className="text-xs font-bold text-slate-400">/ 250 hs</span>
+               </div>
+               <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
+                 <div
+                   className={`h-full rounded-full ${criterios.cumpleHorasTotales ? "bg-emerald-500" : "bg-blue-500"}`}
+-                  style={{ width: `${Math.min(100, (criterios.horasTotales / 350) * 100)}%` }}
++                  style={{ width: `${Math.min(100, (criterios.horasTotales / 250) * 100)}%` }}
+                 ></div>
+               </div>
+             </div>
+@@ -116,7 +116,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
+                 >
+                   {criterios.orientacionesCursadasCount}
+                 </span>
+-                <span className="text-xs font-bold text-slate-400">/ 2 áreas</span>
++                <span className="text-xs font-bold text-slate-400">/ 3 áreas</span>
+               </div>
+               <p className="text-[10px] text-slate-500 font-medium leading-tight">
+                 Áreas clínicas, educacionales, laborales, etc.
+diff --git a/src/components/AppModals.tsx b/src/components/AppModals.tsx
+index 729f6c9..d73578f 100644
+--- a/src/components/AppModals.tsx
++++ b/src/components/AppModals.tsx
+@@ -11,7 +11,9 @@ import {
+   FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
+   FIELD_REQ_CV_LANZAMIENTOS,
+   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
++  FIELD_ORIENTACION_LANZAMIENTOS,
+ } from "../constants";
++import { getAreaColor } from "./student/ds";
+ 
+ const AppModals: React.FC = () => {
+   const isStudentView = typeof window !== "undefined" && window.location.hash.includes("/student");
+@@ -66,6 +68,12 @@ const AppModals: React.FC = () => {
+   const convocatoriaName =
+     selectedLanzamientoForEnrollment?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Convocatoria";
+ 
++  // Color de acento de la convocatoria (mismo criterio que la vista de detalle):
++  // tomamos la primera orientación y la mapeamos al color del área.
++  const orientacion =
++    (selectedLanzamientoForEnrollment?.[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "";
++  const accentColor = getAreaColor(orientacion.split(/[,/]/)[0].trim());
++
+   return (
+     <>
+       <Modal
+@@ -87,6 +95,7 @@ const AppModals: React.FC = () => {
+         reqCertificadoTrabajo={reqCertificadoTrabajo}
+         reqCv={reqCv}
+         horariosFijos={horariosFijos}
++        accentColor={accentColor}
+       />
+ 
+       <SeleccionadosModal
+diff --git a/src/components/EnrollmentForm.tsx b/src/components/EnrollmentForm.tsx
+index cf440a1..981bb0a 100644
+--- a/src/components/EnrollmentForm.tsx
++++ b/src/components/EnrollmentForm.tsx
+@@ -7,6 +7,7 @@ import { logger } from "../utils/logger";
+ import { getErrorMessage } from "../utils/getErrorMessage";
+ import { useTheme } from "../contexts/ThemeContext";
+ import { Icon, type IconName } from "./student/ds";
++import ConfirmModal from "./ConfirmModal";
+ import "./student/home/atlas/atlasHome.css";
+ 
+ // --- COMPONENTES UI INTERNOS (dirección editorial .ed) ---
+@@ -17,25 +18,37 @@ const SelectionCard: React.FC<{
+   title: string;
+   subtitle?: string;
+   icon?: IconName;
+-}> = ({ selected, onClick, title, subtitle, icon }) => (
++  hideIcon?: boolean;
++}> = ({ selected, onClick, title, subtitle, icon, hideIcon }) => (
+   <div
+     onClick={onClick}
+-    className="relative cursor-pointer rounded-2xl border px-4 py-3 sm:px-5 sm:py-4 transition duration-200 flex items-center gap-3 sm:gap-4 group select-none"
++    role="button"
++    tabIndex={0}
++    aria-pressed={selected}
++    onKeyDown={(e) => {
++      if (e.key === "Enter" || e.key === " ") {
++        e.preventDefault();
++        onClick();
++      }
++    }}
++    className="relative cursor-pointer rounded-2xl border px-4 py-3 sm:px-5 sm:py-4 transition duration-200 flex items-center gap-3 sm:gap-4 group select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+     style={{
+       borderColor: selected ? "var(--accent)" : "var(--line)",
+-      background: selected ? "var(--tint)" : "var(--bg-elevated)",
++      background: "var(--bg-elevated)",
+       boxShadow: selected ? "inset 0 0 0 1px var(--accent)" : "none",
+     }}
+   >
+-    <div
+-      className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition duration-200"
+-      style={{
+-        background: selected ? "var(--accent)" : "var(--bg-sunken)",
+-        color: selected ? "var(--on-accent)" : "var(--ink-muted)",
+-      }}
+-    >
+-      <Icon name={selected ? "check" : icon || "chev"} size={20} strokeWidth={2.2} />
+-    </div>
++    {!hideIcon && (
++      <div
++        className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition duration-200"
++        style={{
++          background: selected ? "var(--accent)" : "var(--bg-sunken)",
++          color: selected ? "var(--on-accent)" : "var(--ink-muted)",
++        }}
++      >
++        <Icon name={selected ? "check" : icon || "chev"} size={20} strokeWidth={2.2} />
++      </div>
++    )}
+ 
+     <div className="flex-1 min-w-0 flex flex-col justify-center">
+       <h4
+@@ -46,7 +59,7 @@ const SelectionCard: React.FC<{
+       </h4>
+       {subtitle && (
+         <p
+-          className="hidden sm:block text-xs truncate font-medium mt-0.5"
++          className="hidden sm:block text-xs font-medium mt-0.5 leading-snug"
+           style={{ color: selected ? "var(--accent-text)" : "var(--ink-muted)" }}
+         >
+           {subtitle}
+@@ -62,40 +75,6 @@ const SelectionCard: React.FC<{
+   </div>
+ );
+ 
+-const ToggleSwitch: React.FC<{
+-  checked: boolean;
+-  onChange: (checked: boolean) => void;
+-  label: string;
+-}> = ({ checked, onChange, label }) => (
+-  <div
+-    onClick={() => onChange(!checked)}
+-    className="flex items-center justify-between cursor-pointer p-4 rounded-2xl border transition duration-200"
+-    style={{
+-      borderColor: checked ? "var(--accent)" : "var(--line)",
+-      background: checked ? "var(--tint)" : "var(--bg-elevated)",
+-    }}
+-  >
+-    <span
+-      className="text-sm font-bold transition-colors"
+-      style={{ color: checked ? "var(--accent-text)" : "var(--ink-soft)" }}
+-    >
+-      {label}
+-    </span>
+-    <div
+-      className="relative w-12 h-7 rounded-full transition-colors duration-300 ease-in-out border-2"
+-      style={{
+-        background: checked ? "var(--accent)" : "var(--bg-sunken)",
+-        borderColor: checked ? "var(--accent)" : "var(--line-strong)",
+-      }}
+-    >
+-      <div
+-        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-sm transform transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+-        style={{ background: "#fff", transform: checked ? "translateX(20px)" : "translateX(0)" }}
+-      />
+-    </div>
+-  </div>
+-);
+-
+ const FileUploadButton: React.FC<{
+   onClick: () => void;
+   fileName?: string | null;
+@@ -161,6 +140,8 @@ interface EnrollmentFormProps {
+   reqCertificadoTrabajo?: boolean;
+   reqCv?: boolean;
+   horariosFijos?: boolean;
++  /** Color de acento de la convocatoria (hex). Si no se pasa, queda el verde por defecto. */
++  accentColor?: string;
+ }
+ 
+ type FormData = {
+@@ -201,11 +182,13 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+   reqCertificadoTrabajo = true,
+   reqCv = false,
+   horariosFijos = false,
++  accentColor,
+ }) => {
+   const { resolvedTheme } = useTheme();
+   const [formData, setFormData] = useState<FormData>(initialFormData);
+   const [errors, setErrors] = useState<Partial<Record<keyof FormData | "submit", string>>>({});
+   const [fileUploadProgress, setFileUploadProgress] = useState(0);
++  const [pendingWorkOff, setPendingWorkOff] = useState(false);
+ 
+   const formRef = useRef<HTMLFormElement>(null);
+   const certFileInputRef = useRef<HTMLInputElement>(null);
+@@ -219,6 +202,9 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+ 
+   const isSingleSchedule = horariosDisponibles.length === 1;
+   const showHorariosSelection = horariosDisponibles.length > 1 && !horariosFijos;
++  // La columna izquierda (situación laboral + horarios) solo tiene sentido si
++  // hay algo que mostrar; si no, el formulario colapsa a una sola columna.
++  const hasLeftColumn = reqCertificadoTrabajo || showHorariosSelection;
+ 
+   useEffect(() => {
+     if (isOpen) {
+@@ -319,24 +305,23 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+   };
+ 
+   const handleWorkStatusChange = (checked: boolean) => {
+-    // Si el usuario intenta destildar "trabaja" y ya tiene un certificado guardado
++    // Si el usuario intenta destildar "trabaja" y ya tiene un certificado guardado,
++    // confirmamos con el modal propio (en vez del window.confirm nativo).
+     if (!checked && formData.existingCertificadoTrabajo) {
+-      const confirmDelete = window.confirm(
+-        "⚠️ ¿Estás seguro de indicar que NO trabajas?\n\nAl hacerlo, se eliminará el certificado laboral que tenías guardado. Esta acción no se puede deshacer."
+-      );
+-
+-      if (confirmDelete) {
+-        setFormData((prev) => ({
+-          ...prev,
+-          trabaja: false,
+-          existingCertificadoTrabajo: null,
+-          certificadoTrabajoFile: null,
+-        }));
+-      }
+-    } else {
+-      // Comportamiento normal
+-      setFormData((prev) => ({ ...prev, trabaja: checked }));
++      setPendingWorkOff(true);
++      return;
+     }
++    setFormData((prev) => ({ ...prev, trabaja: checked }));
++  };
++
++  const confirmWorkOff = () => {
++    setFormData((prev) => ({
++      ...prev,
++      trabaja: false,
++      existingCertificadoTrabajo: null,
++      certificadoTrabajoFile: null,
++    }));
++    setPendingWorkOff(false);
+   };
+ 
+   const handleFileChange = (
+@@ -439,11 +424,27 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+     color: "var(--ink)",
+   };
+ 
++  // Sobreescribimos las variables de acento del scope .ed con el color de la
++  // convocatoria. --tint y --tint-strong se recalculan solos porque referencian
++  // var(--accent). --accent-text se deriva mezclando con --ink para mantener
++  // contraste legible tanto en claro como en oscuro.
++  const accentVars = accentColor
++    ? ({
++        "--accent": accentColor,
++        "--accent-soft": `color-mix(in oklab, ${accentColor} 32%, var(--bg))`,
++        "--accent-deep": `color-mix(in oklab, ${accentColor} 78%, black)`,
++        "--accent-text": `color-mix(in oklab, ${accentColor} 72%, var(--ink))`,
++        "--on-accent": "#ffffff",
++      } as React.CSSProperties)
++    : undefined;
++
+   return (
++    <>
+     <div
+       className="ed fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+       data-mode={resolvedTheme}
+       data-accent="teal"
++      style={accentVars}
+       role="dialog"
+       aria-modal="true"
+       onClick={onClose}
+@@ -456,23 +457,35 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+       >
+         {/* Header */}
+         <div
+-          className="flex-shrink-0 px-5 py-4 sm:px-7 sm:py-5 z-10 flex items-center justify-between safe-area-top"
++          className="enroll-head flex-shrink-0 z-10 flex items-center justify-between safe-area-top"
+           style={{ borderBottom: "1px solid var(--line)", background: "var(--bg-elevated)" }}
+         >
+           <div className="min-w-0 pr-4">
+-            <span className="eyebrow" style={{ color: "var(--accent-text)" }}>
++            <span
++              className="eyebrow inline-flex items-center gap-1.5"
++              style={{ color: "var(--accent-text)" }}
++            >
++              <span
++                aria-hidden
++                style={{
++                  width: 6,
++                  height: 6,
++                  borderRadius: 999,
++                  background: "var(--accent)",
++                  display: "inline-block",
++                }}
++              />
+               Inscripción
+             </span>
+             <h2
+-              className="truncate"
++              className="enroll-title truncate"
+               style={{
+-                fontSize: 27,
+                 marginTop: 4,
+                 color: "var(--ink)",
+-                fontFamily: '"Instrument Serif", ui-serif, Georgia, serif',
+-                fontWeight: 400,
++                fontFamily: "var(--font-display)",
++                fontWeight: 700,
+                 lineHeight: 1.05,
+-                letterSpacing: "-0.01em",
++                letterSpacing: 0,
+               }}
+             >
+               {convocatoriaName}
+@@ -491,15 +504,17 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+         {/* Banner Horario Único o Fijo */}
+         {(isSingleSchedule || (horariosFijos && horariosDisponibles.length > 0)) && (
+           <div
+-            className="px-5 sm:px-7 py-3 flex items-center gap-3"
+-            style={{ background: "var(--tint)", borderBottom: "1px solid var(--line)" }}
++            className="enroll-schedule flex items-start gap-3"
++            style={{ background: "var(--bg-elevated)", borderBottom: "1px solid var(--line)" }}
+           >
+-            <Icon name="clock" size={18} color="var(--accent-text)" />
+-            <div>
++            <span className="enroll-schedule__icon">
++              <Icon name="clock" size={16} color="var(--accent-text)" strokeWidth={2.2} />
++            </span>
++            <div className="min-w-0">
+               <p className="eyebrow" style={{ color: "var(--accent-text)", fontSize: 10 }}>
+                 {horariosFijos ? "Horarios (Obligatorios)" : "Horario de la Práctica"}
+               </p>
+-              <p className="text-sm font-bold leading-tight" style={{ color: "var(--ink)" }}>
++              <p className="enroll-schedule__text" style={{ color: "var(--ink)" }}>
+                 {horariosFijos ? horariosDisponibles.join("; ") : horariosDisponibles[0]}
+               </p>
+             </div>
+@@ -510,7 +525,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+         <form
+           ref={formRef}
+           onSubmit={handleSubmit}
+-          className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-7 sm:space-y-8 custom-scrollbar pb-safe"
++          className="enroll-body flex-1 overflow-y-auto custom-scrollbar pb-safe"
+         >
+           {errors.submit && (
+             <div
+@@ -528,31 +543,31 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+ 
+           {/* Disclaimer — compromiso */}
+           <div
+-            className="flex gap-4 p-4 sm:p-5 rounded-2xl"
++            className="enroll-commit flex gap-3 rounded-2xl"
+             style={{
+-              background: "color-mix(in oklab, var(--area-laboral) 9%, var(--bg-elevated))",
+-              border: "1px solid color-mix(in oklab, var(--area-laboral) 26%, transparent)",
++              background: "var(--bg-elevated)",
++              border: "1px solid color-mix(in oklab, var(--accent) 24%, var(--line))",
+             }}
+           >
+-            <span style={{ color: "var(--area-laboral)", flexShrink: 0, marginTop: 2 }}>
+-              <Icon name="shield" size={22} />
++            <span className="enroll-commit__icon" style={{ color: "var(--accent-text)" }}>
++              <Icon name="shield" size={18} strokeWidth={2.1} />
+             </span>
+             <div>
+               <h4 className="text-sm font-bold" style={{ color: "var(--ink)" }}>
+-                Compromiso y Responsabilidad
++                Compromiso responsable
+               </h4>
+               <p
+                 className="text-xs mt-1 leading-relaxed font-medium block sm:hidden"
+                 style={{ color: "var(--ink-muted)" }}
+               >
+-                Al inscribirte asumes un compromiso. La falta de responsabilidad afectará futuras
++                Confirmá tu disponibilidad antes de inscribirte. Las bajas sin aviso afectan futuras
+                 convocatorias.
+               </p>
+               <p
+                 className="text-xs mt-1 leading-relaxed font-medium hidden sm:block"
+                 style={{ color: "var(--ink-muted)" }}
+               >
+-                Al inscribirte, asumes un compromiso con la institución y la facultad. Darse de baja
++                Al inscribirte, asumís un compromiso con la institución y la facultad. Darse de baja
+                 sobre la fecha, ausentarse sin aviso o cualquier otra decisión que demuestre falta
+                 de responsabilidad, será tenido en cuenta en futuras convocatorias.
+               </p>
+@@ -560,20 +575,104 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+           </div>
+ 
+           {/* En escritorio, dos columnas; en mobile se apila en este mismo orden. */}
+-          <div className="grid grid-cols-1 md:grid-cols-2 gap-7 md:gap-8 items-start">
+-            {/* ── Columna izquierda ── */}
++          <div
++            className={
++              hasLeftColumn
++                ? "grid grid-cols-1 md:grid-cols-2 gap-7 md:gap-8 items-start"
++                : ""
++            }
++          >
++            {/* ── Columna izquierda (solo si hay contenido) ── */}
++            {hasLeftColumn && (
+             <div className="space-y-7">
+               {/* Situación Laboral */}
+               {reqCertificadoTrabajo && (
+                 <section>
+                   <SectionHead icon="bag">Situación Laboral</SectionHead>
+ 
+-                  <div className="space-y-4">
+-                    <ToggleSwitch
+-                      label="¿Trabajas actualmente?"
+-                      checked={formData.trabaja}
+-                      onChange={handleWorkStatusChange}
+-                    />
++                  <div className="enroll-workpanel space-y-4">
++                    <div>
++                      <label
++                        className="block text-sm font-bold mb-3"
++                        style={{ color: "var(--ink-soft)" }}
++                      >
++                        ¿Trabajás actualmente?
++                      </label>
++                      <div className="enroll-workseg" role="group" aria-label="Situación laboral">
++                        {[
++                          { value: true, title: "Sí" },
++                          { value: false, title: "No" },
++                        ].map((option) => {
++                          const active = formData.trabaja === option.value;
++                          return (
++                            <button
++                              key={String(option.value)}
++                              type="button"
++                              aria-pressed={active}
++                              onClick={() => handleWorkStatusChange(option.value)}
++                              className="enroll-workseg__btn"
++                              style={{
++                                background: active ? "var(--accent)" : "transparent",
++                                color: active ? "var(--on-accent)" : "var(--ink-soft)",
++                              }}
++                            >
++                              {option.title}
++                            </button>
++                          );
++                        })}
++                      </div>
++                      <div className="enroll-workgrid">
++                        {[
++                          { value: true, title: "Sí, trabajo", subtitle: "Adjunto certificado" },
++                          { value: false, title: "No trabajo", subtitle: "No requiere archivo" },
++                        ].map((option) => {
++                          const active = formData.trabaja === option.value;
++                          return (
++                            <button
++                              key={String(option.value)}
++                              type="button"
++                              aria-pressed={active}
++                              onClick={() => handleWorkStatusChange(option.value)}
++                              className="enroll-workbtn"
++                              style={{
++                                borderColor: active ? "var(--accent)" : "var(--line)",
++                                background: active
++                                  ? "color-mix(in oklab, var(--accent) 9%, var(--bg-elevated))"
++                                  : "var(--bg-elevated)",
++                                boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
++                              }}
++                            >
++                              <span
++                                className="enroll-workbtn__check"
++                                style={{
++                                  background: active ? "var(--accent)" : "var(--bg-sunken)",
++                                  color: active ? "var(--on-accent)" : "var(--ink-subtle)",
++                                  borderColor: active ? "var(--accent)" : "var(--line-strong)",
++                                }}
++                              >
++                                <Icon name={active ? "check" : "chev"} size={14} strokeWidth={2.4} />
++                              </span>
++                              <span className="min-w-0 text-left">
++                                <span
++                                  className="block text-sm font-bold leading-tight"
++                                  style={{ color: active ? "var(--accent-text)" : "var(--ink)" }}
++                                >
++                                  {option.title}
++                                </span>
++                                <span
++                                  className="enroll-workbtn__sub"
++                                  style={{
++                                    color: active ? "var(--accent-text)" : "var(--ink-muted)",
++                                  }}
++                                >
++                                  {option.subtitle}
++                                </span>
++                              </span>
++                            </button>
++                          );
++                        })}
++                      </div>
++                    </div>
+ 
+                     {/* Revelado suave */}
+                     <div
+@@ -584,48 +683,19 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                       }`}
+                     >
+                       <div className="overflow-hidden min-h-0">
+-                        <div
+-                          className="p-4 rounded-2xl"
+-                          style={{
+-                            background: "var(--bg-sunken)",
+-                            border: "1px solid var(--line)",
+-                          }}
+-                        >
++                        <div className="enroll-cert">
+                           <label
+-                            className="label mb-3 block"
++                            className="enroll-cert__label label block"
+                             style={{ color: "var(--ink-muted)", fontSize: 10 }}
+                           >
+-                            Certificado Laboral (Obligatorio)
++                            Certificado Laboral
++                            {formData.existingCertificadoTrabajo && !formData.certificadoTrabajoFile
++                              ? ""
++                              : " (Obligatorio)"}
+                           </label>
+ 
+-                          {formData.existingCertificadoTrabajo &&
+-                            !formData.certificadoTrabajoFile && (
+-                              <div
+-                                className="flex items-center justify-between px-4 py-3 rounded-xl mb-3"
+-                                style={{
+-                                  background: "var(--tint)",
+-                                  border: "1px solid var(--accent-soft)",
+-                                }}
+-                              >
+-                                <div
+-                                  className="flex items-center gap-2 text-xs font-bold"
+-                                  style={{ color: "var(--accent-text)" }}
+-                                >
+-                                  <Icon name="check" size={16} strokeWidth={2.4} />
+-                                  <span>Certificado Vigente</span>
+-                                </div>
+-                                <a
+-                                  href={formData.existingCertificadoTrabajo}
+-                                  target="_blank"
+-                                  rel="noreferrer"
+-                                  className="text-xs font-bold hover:underline"
+-                                  style={{ color: "var(--accent-text)" }}
+-                                >
+-                                  Ver archivo
+-                                </a>
+-                              </div>
+-                            )}
+-
++                          {/* Input nativo siempre montado: lo dispara tanto el
++                              botón "Actualizar" del chip como el recuadro de subida. */}
+                           <input
+                             id="cert-file-upload"
+                             type="file"
+@@ -635,18 +705,73 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                             onChange={(e) => handleFileChange(e, "certificadoTrabajoFile")}
+                           />
+ 
+-                          <FileUploadButton
+-                            onClick={() => openFilePicker(certFileInputRef)}
+-                            label={
+-                              formData.certificadoTrabajoFile
+-                                ? "Cambiar Archivo"
+-                                : formData.existingCertificadoTrabajo
+-                                  ? "Actualizar Certificado"
+-                                  : "Subir Certificado"
+-                            }
+-                            fileName={formData.certificadoTrabajoFile?.name}
+-                            hasError={!!errors.trabaja}
+-                          />
++                          {formData.existingCertificadoTrabajo &&
++                          !formData.certificadoTrabajoFile ? (
++                            // Ya hay certificado cargado: mostramos solo el chip
++                            // "vigente". El recuadro de subida no aparece hasta que
++                            // el estudiante toca "Actualizar".
++                            <div
++                              className="enroll-cert-card"
++                              style={{
++                                background: "var(--bg-elevated)",
++                                border: "1px solid color-mix(in oklab, var(--accent) 34%, var(--line))",
++                              }}
++                            >
++                              <a
++                                href={formData.existingCertificadoTrabajo}
++                                target="_blank"
++                                rel="noreferrer"
++                                className="group flex items-center gap-2 min-w-0"
++                                style={{ color: "var(--accent-text)", textDecoration: "none" }}
++                              >
++                                <Icon name="check" size={16} strokeWidth={2.4} />
++                                <span className="flex flex-col min-w-0 leading-tight">
++                                  <span className="text-xs font-bold">Certificado Vigente</span>
++                                  <span className="text-[10px] font-medium opacity-70 group-hover:underline">
++                                    Ver documento
++                                  </span>
++                                </span>
++                              </a>
++                              <button
++                                type="button"
++                                onClick={() => openFilePicker(certFileInputRef)}
++                                className="enroll-cert-action flex flex-shrink-0 items-center gap-1.5 rounded-lg text-xs font-bold transition hover:-translate-y-0.5"
++                                style={{ background: "var(--accent)", color: "var(--on-accent)" }}
++                              >
++                                <Icon name="upload" size={13} strokeWidth={2.2} />
++                                Actualizar
++                              </button>
++                            </div>
++                          ) : (
++                            <>
++                              <FileUploadButton
++                                onClick={() => openFilePicker(certFileInputRef)}
++                                label={
++                                  formData.certificadoTrabajoFile
++                                    ? "Cambiar Archivo"
++                                    : "Subir Certificado"
++                                }
++                                fileName={formData.certificadoTrabajoFile?.name}
++                                hasError={!!errors.trabaja}
++                              />
++                              {formData.existingCertificadoTrabajo &&
++                                formData.certificadoTrabajoFile && (
++                                  <button
++                                    type="button"
++                                    onClick={() =>
++                                      setFormData((prev) => ({
++                                        ...prev,
++                                        certificadoTrabajoFile: null,
++                                      }))
++                                    }
++                                    className="mt-2 text-xs font-semibold hover:underline"
++                                    style={{ color: "var(--ink-muted)" }}
++                                  >
++                                    Cancelar y mantener el certificado actual
++                                  </button>
++                                )}
++                            </>
++                          )}
+                           {errors.trabaja && (
+                             <p
+                               className="text-xs font-semibold mt-2 flex items-center gap-1"
+@@ -673,10 +798,19 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                         <div
+                           key={horario}
+                           onClick={() => handleHorarioToggle(horario)}
+-                          className="cursor-pointer px-5 py-4 rounded-2xl border transition flex items-center justify-between group select-none"
++                          role="checkbox"
++                          tabIndex={0}
++                          aria-checked={active}
++                          onKeyDown={(e) => {
++                            if (e.key === "Enter" || e.key === " ") {
++                              e.preventDefault();
++                              handleHorarioToggle(horario);
++                            }
++                          }}
++                          className="cursor-pointer px-5 py-4 rounded-2xl border transition flex items-center justify-between group select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+                           style={{
+                             borderColor: active ? "var(--accent)" : "var(--line)",
+-                            background: active ? "var(--tint)" : "var(--bg-elevated)",
++                            background: "var(--bg-elevated)",
+                             boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
+                           }}
+                         >
+@@ -706,6 +840,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                 </section>
+               )}
+             </div>
++            )}
+             {/* ── Columna derecha ── */}
+             <div className="space-y-7">
+               {/* Situación Académica */}
+@@ -724,7 +859,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                       <SelectionCard
+                         title="Sí"
+                         subtitle="Solo debo finales o TIF"
+-                        icon="book"
++                        hideIcon
+                         selected={formData.terminoDeCursar === true}
+                         onClick={() =>
+                           setFormData((p) => ({
+@@ -737,7 +872,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                       <SelectionCard
+                         title="No"
+                         subtitle="Aún curso materias"
+-                        icon="book"
++                        hideIcon
+                         selected={formData.terminoDeCursar === false}
+                         onClick={() =>
+                           setFormData((p) => ({
+@@ -777,10 +912,19 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                             <div
+                               key={opt}
+                               onClick={() => setFormData((p) => ({ ...p, finalesAdeudados: opt }))}
+-                              className="cursor-pointer px-3 py-3 rounded-xl border text-xs font-bold text-center transition duration-200 select-none"
++                              role="radio"
++                              tabIndex={0}
++                              aria-checked={active}
++                              onKeyDown={(e) => {
++                                if (e.key === "Enter" || e.key === " ") {
++                                  e.preventDefault();
++                                  setFormData((p) => ({ ...p, finalesAdeudados: opt }));
++                                }
++                              }}
++                              className="cursor-pointer px-3 py-3 rounded-xl border text-xs font-bold text-center transition duration-200 select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+                               style={{
+                                 borderColor: active ? "var(--accent)" : "var(--line)",
+-                                background: active ? "var(--tint)" : "var(--bg-elevated)",
++                                background: "var(--bg-elevated)",
+                                 color: active ? "var(--accent-text)" : "var(--ink-muted)",
+                                 boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
+                               }}
+@@ -809,11 +953,13 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+                       <div className="grid grid-cols-2 gap-4">
+                         <SelectionCard
+                           title="Sí"
++                          hideIcon
+                           selected={formData.cursandoElectivas === true}
+                           onClick={() => setFormData((p) => ({ ...p, cursandoElectivas: true }))}
+                         />
+                         <SelectionCard
+                           title="No"
++                          hideIcon
+                           selected={formData.cursandoElectivas === false}
+                           onClick={() => setFormData((p) => ({ ...p, cursandoElectivas: false }))}
+                         />
+@@ -888,7 +1034,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+ 
+         {/* Footer */}
+         <div
+-          className="flex-shrink-0 p-4 sm:p-6 flex flex-col sm:flex-row gap-3 relative z-20 safe-area-bottom"
++          className="enroll-foot flex-shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 relative z-20 safe-area-bottom"
+           style={{ background: "var(--bg-elevated)", borderTop: "1px solid var(--line)" }}
+         >
+           {fileUploadProgress > 0 && fileUploadProgress < 100 && (
+@@ -906,7 +1052,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+           <button
+             onClick={onClose}
+             disabled={isSubmitting}
+-            className="w-full sm:flex-1 py-3.5 rounded-xl font-bold text-sm transition-colors hover:bg-[var(--bg-sunken)]"
++            className="enroll-cancel w-full sm:flex-1 rounded-xl font-bold text-sm transition-colors hover:bg-[var(--bg-sunken)]"
+             style={{ color: "var(--ink-soft)" }}
+           >
+             Cancelar
+@@ -916,7 +1062,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+               if (formRef.current) formRef.current.requestSubmit();
+             }}
+             disabled={isSubmitting}
+-            className="w-full sm:flex-[2] py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:translate-y-0 text-sm"
++            className="enroll-submit w-full sm:flex-[2] rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:translate-y-0 text-sm"
+             style={{ background: "var(--accent)", color: "var(--on-accent)" }}
+           >
+             {isSubmitting ? (
+@@ -939,6 +1085,20 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
+           </button>
+         </div>
+       </div>
+-    </div>
++      </div>
++
++      <ConfirmModal
++        isOpen={pendingWorkOff}
++        title="¿Indicar que no trabajás?"
++        message={
++          "Al hacerlo se eliminará el certificado laboral que tenías guardado.\n\nEsta acción no se puede deshacer."
++        }
++        confirmText="Sí, no trabajo"
++        cancelText="Volver"
++        type="danger"
++        onConfirm={confirmWorkOff}
++        onClose={() => setPendingWorkOff(false)}
++      />
++    </>
+   );
+ };
+diff --git a/src/components/PreSolicitudCheckModal.tsx b/src/components/PreSolicitudCheckModal.tsx
+index 7e65737..c3e054c 100644
+--- a/src/components/PreSolicitudCheckModal.tsx
++++ b/src/components/PreSolicitudCheckModal.tsx
+@@ -1,7 +1,6 @@
+-import React, { useState, useMemo } from "react";
++import React, { useMemo, useState } from "react";
+ import { createPortal } from "react-dom";
+-import Input from "./ui/Input";
+-import Button from "./ui/Button";
++import "./student/home/atlas/atlasHome.css";
+ import { normalizeStringForComparison } from "../utils/formatters";
+ 
+ interface PreSolicitudCheckModalProps {
+@@ -20,9 +19,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
+   const [searchTerm, setSearchTerm] = useState("");
+ 
+   const filteredInstitutions = useMemo(() => {
+-    // Return all if no search term, otherwise filter
+     if (!searchTerm) return existingInstitutions;
+-
+     const lowerSearch = normalizeStringForComparison(searchTerm);
+     return existingInstitutions.filter((inst) =>
+       normalizeStringForComparison(inst).includes(lowerSearch)
+@@ -32,130 +29,130 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
+   if (!isOpen) return null;
+ 
+   const handleBackdropClick = (e: React.MouseEvent) => {
+-    if (e.target === e.currentTarget) {
+-      onClose();
+-    }
++    if (e.target === e.currentTarget) onClose();
+   };
+ 
+   return createPortal(
+-    <div
+-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in"
+-      onClick={handleBackdropClick}
+-    >
+-      <div
+-        onClick={(e) => e.stopPropagation()}
+-        className="relative w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-in"
+-      >
+-        {/* Header */}
+-        <div className="flex-shrink-0 p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+-          <div className="flex items-center gap-3 mb-2">
+-            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl">
+-              <span className="material-icons !text-2xl">warning_amber</span>
+-            </div>
+-            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+-              Requisitos Previos
+-            </h2>
+-          </div>
+-          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+-            Antes de iniciar una solicitud de autogestión, por favor verifica lo siguiente:
+-          </p>
+-        </div>
+-
+-        {/* Content */}
+-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar space-y-4 sm:space-y-6 bg-white dark:bg-slate-900">
+-          {/* Requisito 1: Psicólogo */}
+-          <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl items-start">
+-            <span className="material-icons text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5">
+-              psychology
+-            </span>
++    <div className="ah-root ah-unified" data-accent="teal">
++      <div className="ah-cmodal-overlay" onClick={handleBackdropClick}>
++        <div
++          className="ah-cmodal ah-cmodal--precheck"
++          onClick={(e) => e.stopPropagation()}
++          role="dialog"
++          aria-modal="true"
++          aria-labelledby="pre-solicitud-title"
++        >
++          <div className="ah-cmodal__head">
+             <div>
+-              <h3 className="font-bold text-blue-900 dark:text-blue-100 text-sm">
+-                Supervisión Profesional
+-              </h3>
+-              <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 mt-1 leading-relaxed">
+-                Es requisito indispensable que la institución cuente con un{" "}
+-                <strong>Licenciado/a en Psicología</strong> en planta que pueda ejercer el rol de
+-                tutor/a y supervisar tu práctica.
++              <span className="eyebrow">Antes de continuar</span>
++              <h2 id="pre-solicitud-title" className="ah-cmodal__title">
++                Requisitos previos
++              </h2>
++              <p className="ah-cmodal__sub">
++                Verifica estas condiciones antes de iniciar una solicitud de autogestion.
+               </p>
+             </div>
++            <button type="button" className="ah-iconbtn" aria-label="Cerrar" onClick={onClose}>
++              <span className="material-icons" aria-hidden>
++                close
++              </span>
++            </button>
+           </div>
+ 
+-          {/* Requisito 2: Espacios Nuevos */}
+-          <div className="space-y-2 sm:space-y-3">
+-            <div>
+-              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
+-                <span className="material-icons text-emerald-500 !text-lg">new_releases</span>
+-                Solo para Nuevos Espacios
+-              </h3>
+-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+-                El objetivo de este trámite es la apertura de convenios en instituciones donde{" "}
+-                <strong>no tenemos oferta actual</strong>. Por favor, verifica que la institución
+-                que propones <strong>NO</strong> esté en el siguiente listado.
+-              </p>
+-            </div>
++          <div className="ah-cmodal__body">
++            <div className="ah-precheck">
++              <section className="ah-precheck__item">
++                <span className="ah-precheck__ic">
++                  <span className="material-icons" aria-hidden>
++                    psychology
++                  </span>
++                </span>
++                <div>
++                  <h3>Supervision profesional</h3>
++                  <p>
++                    La institucion debe contar con un <b>Licenciado/a en Psicologia</b> en planta
++                    que pueda ejercer el rol de tutor/a y supervisar la practica.
++                  </p>
++                </div>
++              </section>
+ 
+-            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col h-64 sm:h-72 md:h-80">
+-              <div className="p-2 sm:p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+-                <Input
+-                  placeholder="Buscar institución..."
+-                  icon="search"
+-                  value={searchTerm}
+-                  onChange={(e) => setSearchTerm(e.target.value)}
+-                  className="bg-white dark:bg-slate-900"
+-                />
+-              </div>
+-              <div className="overflow-y-auto p-2 bg-slate-50/30 dark:bg-slate-900/30 custom-scrollbar flex-1">
+-                {filteredInstitutions && filteredInstitutions.length > 0 ? (
+-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+-                    {filteredInstitutions.map((inst, idx) => (
+-                      <li
+-                        key={idx}
+-                        className="text-xs px-2 sm:px-3 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-2"
+-                        title={inst}
+-                      >
+-                        <span className="material-icons !text-sm text-slate-400 shrink-0">
+-                          apartment
+-                        </span>
+-                        <span className="truncate font-medium">{inst}</span>
+-                      </li>
+-                    ))}
+-                  </ul>
+-                ) : (
+-                  <p className="text-center text-xs sm:text-sm text-slate-500 py-6 sm:py-10 italic font-medium">
+-                    {existingInstitutions.length === 0
+-                      ? "Cargando lista de instituciones..."
+-                      : "No se encontraron instituciones con ese nombre en el listado actual."}
++              <section className="ah-precheck__item ah-precheck__item--important">
++                <span className="ah-precheck__ic">
++                  <span className="material-icons" aria-hidden>
++                    groups
++                  </span>
++                </span>
++                <div>
++                  <h3>Minimo 3 cupos</h3>
++                  <p>
++                    La institucion debe ofrecer <b>3 cupos como minimo</b>: tu cupo y al menos{" "}
++                    <b>2 cupos adicionales</b>. Si no puede ofrecerlos, no se inicia la gestion.
+                   </p>
+-                )}
+-              </div>
++                </div>
++              </section>
++
++              <section className="ah-precheck__section">
++                <div className="ah-precheck__sectionhead">
++                  <span className="material-icons" aria-hidden>
++                    new_releases
++                  </span>
++                  <div>
++                    <h3>Solo para nuevos espacios</h3>
++                    <p>
++                      Este tramite abre convenios en instituciones donde{" "}
++                      <b>no tenemos oferta actual</b>. Verifica que la institucion que propones no
++                      este en el listado.
++                    </p>
++                  </div>
++                </div>
++
++                <div className="ah-precheck__list">
++                  <label className="ah-precheck__search">
++                    <span className="material-icons" aria-hidden>
++                      search
++                    </span>
++                    <input
++                      placeholder="Buscar institucion..."
++                      value={searchTerm}
++                      onChange={(e) => setSearchTerm(e.target.value)}
++                    />
++                  </label>
++                  <div className="ah-precheck__institutions">
++                    {filteredInstitutions.length > 0 ? (
++                      <ul>
++                        {filteredInstitutions.map((inst, idx) => (
++                          <li key={idx} title={inst}>
++                            <span className="material-icons" aria-hidden>
++                              apartment
++                            </span>
++                            <span>{inst}</span>
++                          </li>
++                        ))}
++                      </ul>
++                    ) : (
++                      <p className="ah-precheck__empty">
++                        {existingInstitutions.length === 0
++                          ? "Cargando lista de instituciones..."
++                          : "No se encontraron instituciones con ese nombre en el listado actual."}
++                      </p>
++                    )}
++                  </div>
++                </div>
++              </section>
+             </div>
+           </div>
+-        </div>
+ 
+-        {/* Footer */}
+-        <div className="flex-shrink-0 p-4 sm:p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 safe-area-bottom">
+-          <Button
+-            variant="secondary"
+-            onClick={(e) => {
+-              e.preventDefault();
+-              e.stopPropagation();
+-              onClose();
+-            }}
+-            className="w-full sm:w-auto"
+-          >
+-            Cancelar
+-          </Button>
+-          <Button
+-            onClick={(e) => {
+-              e.preventDefault();
+-              e.stopPropagation();
+-              onContinue();
+-            }}
+-            icon="arrow_forward"
+-            className="w-full sm:w-auto"
+-          >
+-            Comprendido, Continuar
+-          </Button>
++          <div className="ah-cmodal__foot">
++            <button type="button" className="ah-btn ah-btn--secondary" onClick={onClose}>
++              Cancelar
++            </button>
++            <button type="button" className="ah-btn ah-btn--primary" onClick={onContinue}>
++              Entendido, continuar
++              <span className="material-icons" style={{ fontSize: 17 }} aria-hidden>
++                arrow_forward
++              </span>
++            </button>
++          </div>
+         </div>
+       </div>
+     </div>,
+diff --git a/src/components/SeleccionadosModal.tsx b/src/components/SeleccionadosModal.tsx
+index 897f624..24616a6 100644
+--- a/src/components/SeleccionadosModal.tsx
++++ b/src/components/SeleccionadosModal.tsx
+@@ -85,7 +85,7 @@ interface SeleccionadosModalProps {
+ 
+ /* ── Helpers ── */
+ const AREA_COLOR: Record<string, string> = {
+-  Clínica: "var(--area-clinica)",
++  ["Cl\u00ednica"]: "var(--area-clinica)",
+   Educacional: "var(--area-educacional)",
+   Laboral: "var(--area-laboral)",
+   Comunitaria: "var(--area-comunitaria)",
+@@ -219,7 +219,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
+           <button type="button" className="sel-iconbtn" onClick={onClose} aria-label="Cerrar">
+             <SelIcon name="close" size={18} />
+           </button>
+-          <span className="sel-header__label">Convocados</span>
++          <span className="sel-header__label">Resultados</span>
+           {onDescargar ? (
+             <button
+               type="button"
+@@ -237,7 +237,7 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
+         {/* Body scrollable */}
+         <div className="sel-body">
+           {/* Title block — editorial */}
+-          <span className="sel-kicker" style={{ color: areaColor }}>
++          <span className="sel-kicker">
+             <span
+               style={{
+                 width: 7,
+@@ -247,7 +247,11 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
+                 display: "inline-block",
+               }}
+             />
+-            {orientacionLabel} · CERRADA
++            <span className="sel-kicker__area" style={{ color: areaColor }}>
++              {orientacionLabel}
++            </span>
++            <span className="sel-kicker__sep" aria-hidden="true">{"\u00b7"}</span>
++            <span className="sel-closed-pill">Cerrada</span>
+           </span>
+           <div style={{ marginTop: 8 }}>
+             <span className="ed-eyebrow" style={{ fontSize: 10.5 }}>
+@@ -272,14 +276,14 @@ const SeleccionadosModal: React.FC<SeleccionadosModalProps> = ({
+                 </div>
+                 <div className="sel-stat">
+                   <div className="sel-stat__lbl">Confirmados</div>
+-                  <div className="sel-stat__val" style={{ color: "var(--area-clinica)" }}>
++                  <div className="sel-stat__val" data-tone="ok">
+                     {confirmados}
+                   </div>
+                   <div className="sel-stat__sub">firmaron</div>
+                 </div>
+                 <div className="sel-stat">
+                   <div className="sel-stat__lbl">Pendientes</div>
+-                  <div className="sel-stat__val" style={{ color: "var(--area-laboral)" }}>
++                  <div className="sel-stat__val" data-tone="warn">
+                     {pendientes}
+                   </div>
+                   <div className="sel-stat__sub">sin firmar</div>
+diff --git a/src/components/SolicitudPPSForm.tsx b/src/components/SolicitudPPSForm.tsx
+index 26b7525..bd29590 100644
+--- a/src/components/SolicitudPPSForm.tsx
++++ b/src/components/SolicitudPPSForm.tsx
+@@ -46,7 +46,7 @@ const solicitudSchema = z
+     nombreTutor: z.string().min(3, "El nombre del Lic. en Psicología es requerido"),
+ 
+     alcance: z.enum(["Individual", "Grupal"]),
+-    cantidadEstudiantes: z.string().optional(),
++    cantidadEstudiantes: z.string().min(1, "Indica la cantidad total de cupos ofrecidos"),
+ 
+     descripcion: z.string().min(10, "Por favor describe brevemente las actividades"),
+   })
+@@ -58,9 +58,20 @@ const solicitudSchema = z
+       ctx.addIssue({
+         code: z.ZodIssueCode.custom,
+         path: ["cantidadEstudiantes"],
+-        message: "Por favor indica la cantidad aproximada",
++        message: "Indica la cantidad total de cupos ofrecidos",
+       });
+     }
++    if (data.alcance === "Grupal" && data.cantidadEstudiantes) {
++    const cupos = data.cantidadEstudiantes === "7+" ? 7 : Number(data.cantidadEstudiantes);
++    if (!Number.isFinite(cupos) || cupos < 3) {
++        ctx.addIssue({
++          code: z.ZodIssueCode.custom,
++          path: ["cantidadEstudiantes"],
++          message:
++            "La institución debe ofrecer al menos 3 cupos en total: el tuyo y 2 adicionales.",
++        });
++      }
++    }
+   });
+ 
+ type FormData = z.infer<typeof solicitudSchema>;
+@@ -74,7 +85,7 @@ const initialData: FormData = {
+   referente: "",
+   tieneConvenio: "No sé",
+   nombreTutor: "",
+-  alcance: "Individual",
++  alcance: "Grupal",
+   cantidadEstudiantes: "",
+   descripcion: "",
+ };
+@@ -139,11 +150,10 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
+         ...result.data,
+         // Map 'nombreTutor' to the existing 'contactoTutor' field
+         contactoTutor: result.data.nombreTutor,
+-        // Map 'alcance' + 'cantidad' to the existing 'tipoPractica' field
+-        tipoPractica:
+-          result.data.alcance === "Individual"
+-            ? "Individual"
+-            : `Grupal (${result.data.cantidadEstudiantes} estudiantes)`,
++        // Map cupos to the existing 'tipoPractica' field
++        tipoPractica: `Convocatoria institucional (${
++          result.data.cantidadEstudiantes === "7+" ? "7 o más" : result.data.cantidadEstudiantes
++        } cupos)`,
+         // Set hardcoded 'Sí' for 'tieneTutor' since it's now a prerequisite
+         tieneTutor: "Sí",
+       };
+@@ -178,7 +188,9 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
+             <div>
+               <span className="eyebrow">Autogestión</span>
+               <h2 className="ah-cmodal__title">Solicitar una nueva PPS</h2>
+-              <p className="ah-cmodal__sub">Proponé una institución para gestionar tu práctica.</p>
++              <p className="ah-cmodal__sub">
++                Proponé una institución nueva que pueda abrir al menos 3 cupos de PPS.
++              </p>
+             </div>
+             <button
+               type="button"
+@@ -323,33 +335,36 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
+               {/* Sección 3: sobre la práctica */}
+               <section className="ah-formsec">
+                 <span className="eyebrow ah-formsec__head">Sobre la práctica</span>
++                <div className="ah-formnotice" role="note">
++                  <span className="material-icons" aria-hidden>
++                    groups
++                  </span>
++                  <p>
++                    Esta gestión solo avanza si la institución puede ofrecer <b>3 cupos o más</b>:
++                    tu cupo y al menos 2 cupos adicionales.
++                  </p>
++                </div>
+                 <div className="ah-formgrid">
+-                  <FormField label="Alcance de la práctica">
++                  <FormField
++                    label="Cupos totales que ofrece"
++                    required
++                    error={errors.cantidadEstudiantes}
++                    hint="Mínimo 3 cupos en total: tu cupo + 2 adicionales."
++                  >
+                     <select
+                       className="ah-selectctrl"
+-                      name="alcance"
+-                      value={formData.alcance}
++                      name="cantidadEstudiantes"
++                      value={formData.cantidadEstudiantes}
+                       onChange={handleChange}
+                     >
+-                      <option value="Individual">Solo para mí</option>
+-                      <option value="Grupal">Para varios estudiantes</option>
++                      <option value="">Seleccionar cupos...</option>
++                      <option value="3">3 cupos</option>
++                      <option value="4">4 cupos</option>
++                      <option value="5">5 cupos</option>
++                      <option value="6">6 cupos</option>
++                      <option value="7+">7 o más</option>
+                     </select>
+                   </FormField>
+-                  {formData.alcance === "Grupal" ? (
+-                    <FormField
+-                      label="Cantidad aprox. de estudiantes"
+-                      required
+-                      error={errors.cantidadEstudiantes}
+-                    >
+-                      <input
+-                        className="ah-textinput"
+-                        name="cantidadEstudiantes"
+-                        value={formData.cantidadEstudiantes}
+-                        onChange={handleChange}
+-                        placeholder="Ej: 3 o 4"
+-                      />
+-                    </FormField>
+-                  ) : null}
+                   <FormField
+                     label="Descripción de actividades"
+                     required
+diff --git a/src/components/layout/Footer.tsx b/src/components/layout/Footer.tsx
+index f09c72b..ffb1d1f 100644
+--- a/src/components/layout/Footer.tsx
++++ b/src/components/layout/Footer.tsx
+@@ -19,14 +19,14 @@ interface NoticeConfig {
+ // muestra ninguna (lo decide StudentView).
+ const noticeConfig: Partial<Record<TabId, NoticeConfig>> = {
+   solicitudes: {
+-    text: "El estado se actualiza con cada gestión y te avisamos por mail; la articulación con las instituciones puede llevar tiempo.",
++    text: "El estado se actualiza con cada gestión. Te avisamos por mail cuando haya novedades.",
+     mailToSubject: "Consulta sobre Estado de Solicitud de PPS - Mi Panel Académico",
+     mailToBody:
+       "Hola,\n\nTengo una consulta sobre el estado de mi solicitud de PPS.\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n- Institución Solicitada: [Escribe el nombre de la institución]\n\nGracias.",
+     buttonText: "Consultar una solicitud",
+   },
+   practicas: {
+-    text: "Seguimiento interno: no es un registro académico oficial y puede contener diferencias. La validación final depende de las planillas docentes y la carga en SAC.",
++    text: "Seguimiento interno: no es un registro académico oficial y puede contener diferencias. La validación final depende de las planillas de asistencia y los informes realizados.",
+     mailToSubject: "Solicitud de Corrección de Datos - Mi Panel Académico",
+     mailToBody:
+       "Hola,\n\nSolicito una corrección en mis datos. Adjunto la documentación respaldatoria (ej. planilla de asistencia).\n\n- Nombre Completo: [Escribe tu nombre]\n- Legajo: [Escribe tu legajo]\n\nGracias.",
+diff --git a/src/components/student/CriteriosPanel.tsx b/src/components/student/CriteriosPanel.tsx
+index d28c360..6e6a510 100644
+--- a/src/components/student/CriteriosPanel.tsx
++++ b/src/components/student/CriteriosPanel.tsx
+@@ -52,37 +52,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
+     [criterios, hasPendingCorrections]
+   );
+ 
+-  // "Qué te falta para acreditar": lista textual y explícita de lo pendiente.
+-  // Complementa los anillos/contadores (que muestran el cuánto) diciendo el qué,
+-  // e integra informes pendientes y correcciones, que antes no se veían acá.
+-  const pendingInformesCount = useMemo(
+-    () => informeTasks.filter((t) => !t.informeSubido).length,
+-    [informeTasks]
+-  );
+-  const faltantes = useMemo(() => {
+-    const out: string[] = [];
+-    if (!criterios.cumpleHorasTotales && criterios.horasFaltantes250 > 0)
+-      out.push(`${Math.round(criterios.horasFaltantes250)} h totales`);
+-    if (!criterios.cumpleHorasOrientacion && criterios.horasFaltantesOrientacion > 0)
+-      out.push(`${Math.round(criterios.horasFaltantesOrientacion)} h de tu orientación`);
+-    if (!criterios.cumpleRotacion) {
+-      const faltanRot = Math.max(
+-        0,
+-        ROTACION_OBJETIVO_ORIENTACIONES - criterios.orientacionesCursadasCount
+-      );
+-      if (faltanRot > 0) out.push(`${faltanRot} ${faltanRot === 1 ? "rotación" : "rotaciones"}`);
+-    }
+-    if (pendingInformesCount > 0)
+-      out.push(`${pendingInformesCount} ${pendingInformesCount === 1 ? "informe" : "informes"}`);
+-    if (criterios.tienePracticasPendientes) out.push("prácticas en curso");
+-    if (hasPendingCorrections) out.push("correcciones de informe");
+-    return out;
+-  }, [criterios, pendingInformesCount, hasPendingCorrections]);
+-
+-  const progressPercent = Math.min(
+-    100,
+-    Math.round((criterios.horasTotales / HORAS_OBJETIVO_TOTAL) * 100)
+-  );
++  const horasFaltantes = Math.max(0, Math.round(criterios.horasFaltantes250));
+ 
+   // Celebración: confetti UFLO una sola vez por sesión cuando se cumplen todos
+   // los criterios de acreditación. Respeta prefers-reduced-motion (canvas-confetti
+@@ -114,7 +84,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
+   }
+ 
+   return (
+-    <div className="relative w-full max-w-2xl mx-auto mb-8 bg-white dark:bg-[#131829] rounded-3xl border border-slate-200/80 dark:border-slate-800/60 p-6 md:p-8 pb-2 md:pb-3 shadow-sm">
++    <div className="relative w-full max-w-2xl mx-auto mb-8 bg-white dark:bg-[#131829] rounded-3xl border border-slate-200/80 dark:border-slate-800/60 p-5 md:p-8 shadow-sm">
+       {/* Background glow effects */}
+       <div className="absolute -top-10 -right-10 w-32 h-32 bg-uflo-teal/5 rounded-full blur-[40px] pointer-events-none" />
+       <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-uflo-navy/5 rounded-full blur-[40px] pointer-events-none" />
+@@ -124,14 +94,24 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
+         <span className="eyebrow text-[11px] tracking-[0.12em] block mb-3 text-slate-400">
+           Horas acumuladas
+         </span>
+-        <RingMeter value={criterios.horasTotales} total={HORAS_OBJETIVO_TOTAL} size={196} />
++        <RingMeter value={criterios.horasTotales} total={HORAS_OBJETIVO_TOTAL} size={172} />
+       </div>
+ 
+-      <div className="text-center mb-6">
++      <div className="text-center mb-5">
+         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+-          Llevás el{" "}
+-          <b className="text-uflo-teal dark:text-[#5EE6B7] font-semibold">{progressPercent}%</b> de
+-          lo que necesitás para acreditar.
++          {horasFaltantes > 0 ? (
++            <>
++              Te faltan{" "}
++              <b className="text-uflo-teal dark:text-[#5EE6B7] font-semibold">
++                {horasFaltantes} hs
++              </b>{" "}
++              para acreditar.
++            </>
++          ) : (
++            <b className="text-uflo-teal dark:text-[#5EE6B7] font-semibold">
++              Ya alcanzaste las horas requeridas.
++            </b>
++          )}
+         </span>
+       </div>
+ 
+@@ -153,7 +133,7 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
+           rotación de áreas y horas en la especialidad. Las horas totales ya
+           viven en el ring de arriba; el conteo de prácticas vive en la lista. */}
+       <div
+-        className="inline-stats grid mt-6"
++        className="inline-stats grid mt-5"
+         style={{ gridTemplateColumns: "1fr 1fr", borderBottom: "none", marginBottom: 0 }}
+       >
+         {/* Rotación */}
+@@ -175,16 +155,18 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
+             </span>
+           </div>
+           <div className="mono inline-stat__sub text-[9px] text-slate-400 dark:text-slate-500 tracking-wide uppercase mt-1">
+-            {criterios.cumpleRotacion ? "completo ✓" : "áreas"}
++            {criterios.cumpleRotacion ? (
++              <span className="text-uflo-teal dark:text-[#5EE6B7]">Completo ✓</span>
++            ) : (
++              "áreas"
++            )}
+           </div>
+         </div>
+ 
+         {/* Especialidad — horas en la orientación elegida (objetivo 70) */}
+         <div className="inline-stat text-center py-4 relative border-l border-slate-100 dark:border-slate-800/80">
+           <div className="mono inline-stat__lbl text-[10px] text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">
+-            {selectedOrientacion
+-              ? selectedOrientacion.slice(0, 11) + (selectedOrientacion.length > 11 ? "..." : "")
+-              : "Especialidad"}
++            Orientación
+           </div>
+           <div
+             className={
+@@ -200,37 +182,15 @@ const CriteriosPanel: React.FC<CriteriosPanelProps> = ({
+             </span>
+           </div>
+           <div className="mono inline-stat__sub text-[9px] text-slate-400 dark:text-slate-500 tracking-wide uppercase mt-1">
+-            {criterios.cumpleHorasOrientacion ? "completo ✓" : "horas"}
++            {criterios.cumpleHorasOrientacion ? (
++              <span className="text-uflo-teal dark:text-[#5EE6B7]">Completo ✓</span>
++            ) : (
++              selectedOrientacion || "horas"
++            )}
+           </div>
+         </div>
+       </div>
+ 
+-      {/* Qué te falta — checklist textual cuando aún no acreditás */}
+-      {!todosLosCriteriosCumplidos && faltantes.length > 0 && (
+-        <div
+-          className="mt-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30 px-4 py-3"
+-          role="status"
+-          aria-live="polite"
+-        >
+-          <p className="mono text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 text-center">
+-            Te falta para acreditar
+-          </p>
+-          <div className="flex flex-wrap justify-center gap-1.5">
+-            {faltantes.map((f) => (
+-              <span
+-                key={f}
+-                className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[11.5px] font-medium text-slate-600 dark:text-slate-300"
+-              >
+-                <span className="material-icons text-[13px] text-amber-500" aria-hidden="true">
+-                  radio_button_unchecked
+-                </span>
+-                {f}
+-              </span>
+-            ))}
+-          </div>
+-        </div>
+-      )}
+-
+       {/* Acreditar — visible cuando se cumplen todos los criterios */}
+       {todosLosCriteriosCumplidos && (
+         <div className="flex justify-center mt-5 mb-1">
+diff --git a/src/components/student/FinalizacionForm.tsx b/src/components/student/FinalizacionForm.tsx
+index ac7475f..ff61e31 100644
+--- a/src/components/student/FinalizacionForm.tsx
++++ b/src/components/student/FinalizacionForm.tsx
+@@ -25,7 +25,7 @@ import {
+   type DetallePracticaItem,
+   type DetallePracticas,
+ } from "../../utils/acreditacion";
+-import type { CriteriosCalculados, Practica } from "../../types";
++import { ALL_ORIENTACIONES, type CriteriosCalculados, type Practica } from "../../types";
+ 
+ interface FinalizacionFormProps {
+   isOpen: boolean;
+@@ -51,6 +51,46 @@ const toDateInput = (value: string | null | undefined): string =>
+   value ? String(value).slice(0, 10) : "";
+ 
+ const DANGER = "#c0563f";
++const ROTACION_TARGET = 3;
++
++const joinAreaList = (items: string[], connector = "o") => {
++  if (items.length <= 1) return items[0] ?? "";
++  if (items.length === 2) return `${items[0]} ${connector} ${items[1]}`;
++  return `${items.slice(0, -1).join(", ")} ${connector} ${items[items.length - 1]}`;
++};
++
++const canonicalArea = (area: string | null | undefined) => {
++  const raw = String(area ?? "").trim();
++  if (!raw) return "";
++  const normalized = normalizeStringForComparison(raw);
++  return (
++    ALL_ORIENTACIONES.find(
++      (candidate) => normalizeStringForComparison(candidate) === normalized
++    ) ?? raw
++  );
++};
++
++const uniqueAreas = (areas: Array<string | null | undefined>) => {
++  const seen = new Set<string>();
++  return areas.reduce<string[]>((acc, area) => {
++    const canonical = canonicalArea(area);
++    if (!canonical) return acc;
++    const key = normalizeStringForComparison(canonical);
++    if (seen.has(key)) return acc;
++    seen.add(key);
++    acc.push(canonical);
++    return acc;
++  }, []);
++};
++
++const areaColor = (area: string | null | undefined) => {
++  const normalized = normalizeStringForComparison(area);
++  if (normalized.includes("clinica")) return "var(--area-clinica)";
++  if (normalized.includes("educacional")) return "var(--area-educacional)";
++  if (normalized.includes("laboral")) return "var(--area-laboral)";
++  if (normalized.includes("comunitaria")) return "var(--area-comunitaria)";
++  return "var(--accent)";
++};
+ 
+ // --- Subcomponentes UI (.ed) ---
+ 
+@@ -393,10 +433,10 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
+                 fontSize: 26,
+                 marginTop: 2,
+                 color: "var(--ink)",
+-                fontFamily: '"Instrument Serif", ui-serif, Georgia, serif',
+-                fontWeight: 400,
++                fontFamily: "var(--font-display)",
++                fontWeight: 800,
+                 lineHeight: 1.05,
+-                letterSpacing: "-0.01em",
++                letterSpacing: "-0.035em",
+               }}
+             >
+               {headerTitle}
+@@ -535,12 +575,12 @@ const RequisitosStep: React.FC<{
+       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+         <CriterioCard
+           label="Carga horaria"
+-          value={`${Math.round(criterios.horasTotales)} / 350 hs`}
++          value={`${Math.round(criterios.horasTotales)} / 250 hs`}
+           ok={criterios.cumpleHorasTotales}
+         />
+         <CriterioCard
+           label="Rotación"
+-          value={`${criterios.orientacionesCursadasCount} / 2 áreas`}
++          value={`${criterios.orientacionesCursadasCount} / 3 áreas`}
+           ok={criterios.cumpleRotacion}
+         />
+         <CriterioCard
+@@ -584,14 +624,53 @@ const CompletarStep: React.FC<{
+   finalizadas: Practica[];
+   onAddPPS?: () => void;
+ }> = ({ criterios, finalizadas, onAddPPS }) => {
+-  const faltantes: string[] = [];
++  const areasRotadas = uniqueAreas(
++    criterios?.orientacionesUnicas?.length
++      ? criterios.orientacionesUnicas
++      : finalizadas.map((p) => p[FIELD_ESPECIALIDAD_PRACTICAS])
++  );
++  const areasRotadasKeys = new Set(areasRotadas.map((area) => normalizeStringForComparison(area)));
++  const areasDisponibles = ALL_ORIENTACIONES.filter(
++    (area) => !areasRotadasKeys.has(normalizeStringForComparison(area))
++  );
++  const areasFaltantesCount = Math.max(0, ROTACION_TARGET - areasRotadas.length);
++  const faltantes: Array<{ key: string; body: React.ReactNode }> = [];
++
+   if (criterios) {
+     if (!criterios.cumpleHorasTotales)
+-      faltantes.push(`Faltan ${Math.max(0, Math.round(criterios.horasFaltantes250))} hs totales`);
+-    if (!criterios.cumpleRotacion) faltantes.push("Falta rotación (2 áreas mínimo)");
++      faltantes.push({
++        key: "horas",
++        body: `Faltan ${Math.max(0, Math.round(criterios.horasFaltantes250))} hs totales`,
++      });
++    if (!criterios.cumpleRotacion)
++      faltantes.push({
++        key: "rotacion",
++        body: (
++          <div className="space-y-1">
++            <p>
++              {areasFaltantesCount === 1
++                ? "Falta rotar por 1 área"
++                : `Faltan ${areasFaltantesCount} áreas de rotación`}
++            </p>
++            {areasRotadas.length > 0 && (
++              <p className="text-xs font-medium" style={{ color: "var(--ink-muted)" }}>
++                Ya registraste {joinAreaList(areasRotadas, "y")}.
++              </p>
++            )}
++            {areasDisponibles.length > 0 && (
++              <p className="text-xs font-medium" style={{ color: "var(--ink-muted)" }}>
++                Podés completar con {joinAreaList(areasDisponibles)}.
++              </p>
++            )}
++          </div>
++        ),
++      });
+     if (!criterios.cumpleHorasOrientacion)
+       faltantes.push(
+-        `Faltan ${Math.max(0, Math.round(criterios.horasFaltantesOrientacion))} hs de especialidad`
++        {
++          key: "orientacion",
++          body: `Faltan ${Math.max(0, Math.round(criterios.horasFaltantesOrientacion))} hs de especialidad`,
++        }
+       );
+   }
+ 
+@@ -611,14 +690,16 @@ const CompletarStep: React.FC<{
+             Lo que falta
+           </span>
+           <ul className="mt-2 space-y-1.5">
+-            {faltantes.map((f, i) => (
++            {faltantes.map((f) => (
+               <li
+-                key={i}
+-                className="flex items-center gap-2 text-sm font-medium"
++                key={f.key}
++                className="flex items-start gap-2 text-sm font-medium"
+                 style={{ color: "var(--ink)" }}
+               >
+-                <Icon name="alert" size={14} color={DANGER} />
+-                {f}
++                <span className="mt-0.5 flex-shrink-0">
++                  <Icon name="alert" size={14} color={DANGER} />
++                </span>
++                {f.body}
+               </li>
+             ))}
+           </ul>
+@@ -650,13 +731,28 @@ const CompletarStep: React.FC<{
+             finalizadas.map((p) => (
+               <div
+                 key={p.id}
+-                className="flex items-center justify-between px-3 py-2.5 rounded-xl"
+-                style={{ background: "var(--bg-sunken)", border: "1px solid var(--line)" }}
++                className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl"
++                style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
+               >
+-                <span className="text-sm font-bold truncate" style={{ color: "var(--ink)" }}>
+-                  {p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]}
+-                </span>
+-                <span className="text-xs font-medium" style={{ color: "var(--ink-muted)" }}>
++                <div className="min-w-0">
++                  <span className="text-sm font-bold block truncate" style={{ color: "var(--ink)" }}>
++                    {p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]}
++                  </span>
++                  <span
++                    className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
++                    style={{ color: "var(--ink-muted)" }}
++                  >
++                    <span
++                      className="h-2 w-2 rounded-[2px]"
++                      style={{ background: areaColor(p[FIELD_ESPECIALIDAD_PRACTICAS]) }}
++                    />
++                    {canonicalArea(p[FIELD_ESPECIALIDAD_PRACTICAS]) || "Sin área"}
++                  </span>
++                </div>
++                <span
++                  className="text-sm font-bold whitespace-nowrap"
++                  style={{ color: "var(--ink-soft)" }}
++                >
+                   {Number(p[FIELD_HORAS_PRACTICAS]) || 0} hs
+                 </span>
+               </div>
+@@ -854,8 +950,8 @@ const ConfirmarStep: React.FC<{
+             className="text-2xl font-bold leading-none"
+             style={{
+               color: "var(--accent-text)",
+-              fontFamily: '"Instrument Serif", ui-serif, Georgia, serif',
+-              fontWeight: 400,
++              fontFamily: "var(--font-display)",
++              fontWeight: 800,
+             }}
+           >
+             {s.value}
+diff --git a/src/components/student/HomeView.tsx b/src/components/student/HomeView.tsx
+index 1bbcb84..1607853 100644
+--- a/src/components/student/HomeView.tsx
++++ b/src/components/student/HomeView.tsx
+@@ -199,16 +199,6 @@ const HomeView: React.FC<HomeViewProps> = ({
+   const nowLocal = new Date();
+   const today = new Date(Date.UTC(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate()));
+ 
+-  const startedLanzamientoIds = new Set(
+-    lanzamientos
+-      .filter((l) => {
+-        const startDate = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
+-        if (!startDate) return false;
+-        return startDate <= today;
+-      })
+-      .map((l) => l.id)
+-  );
+-
+   // Un lanzamiento archivado no debe verse en el inicio del estudiante, ni como
+   // abierto ni como cerrado. Cubre ambas fuentes de "archivado":
+   //   · estado_gestion = 'Archivado' / 'No se Relanza' (auto-archivado o admin)
+@@ -222,8 +212,7 @@ const HomeView: React.FC<HomeViewProps> = ({
+   const openLanzamientos = lanzamientos.filter((l) => {
+     if (isArchivedLaunch(l)) return false;
+     const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
+-    const isStarted = startedLanzamientoIds.has(l.id);
+-    return !isStarted && (status === "abierta" || status === "abierto");
++    return status === "abierta" || status === "abierto";
+   });
+ 
+   // Cerradas en el Home: SOLO las que todavía no comenzaron (su fecha de inicio
+@@ -452,6 +441,9 @@ const HomeView: React.FC<HomeViewProps> = ({
+ 
+   const renderConv = (lanzamiento: LanzamientoPPS, keySuffix: string, isOpen: boolean) => {
+     const enrollment = enrollmentMap.get(lanzamiento.id);
++    const isPendingConsentLaunch =
++      !isOpen && pendingConsent?.lanzamiento?.id === lanzamiento.id && !!pendingConsent.enrollment;
++
+     return (
+       <StudentConvCard
+         key={`${lanzamiento.id}-${keySuffix}`}
+@@ -461,6 +453,16 @@ const HomeView: React.FC<HomeViewProps> = ({
+         onOpen={() => openDetalle(lanzamiento)}
+         onVerConvocados={() => seleccionadosMutation.mutate(lanzamiento)}
+         onInscribirse={() => openDetalle(lanzamiento)}
++        pendingConsentCta={isPendingConsentLaunch}
++        onFirmarConsentimiento={
++          isPendingConsentLaunch
++            ? () =>
++                setPendingCompromiso({
++                  lanzamiento: pendingConsent.lanzamiento,
++                  enrollment: pendingConsent.enrollment,
++                })
++            : undefined
++        }
+         onCancelarInscripcion={() =>
+           enrollment &&
+           handleCancelarInscripcion(
+@@ -493,7 +495,13 @@ const HomeView: React.FC<HomeViewProps> = ({
+           informeTasks={informeTasks ?? []}
+           consent={
+             pendingConsent
+-              ? { ppsName: pendingConsent.ppsName, lanzamientoId: pendingConsent.lanzamiento.id }
++              ? {
++                  ppsName: pendingConsent.ppsName,
++                  lanzamientoId: pendingConsent.lanzamiento.id,
++                  area: pendingConsent.lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as
++                    | string
++                    | undefined,
++                }
+               : null
+           }
+           upcomingStart={upcomingStart}
+@@ -512,23 +520,18 @@ const HomeView: React.FC<HomeViewProps> = ({
+       </div>
+ 
+       {/* ── Mobile: layout editorial existente ── */}
+-      <div className="md:hidden mx-auto w-full max-w-[460px] px-1 pb-6">
++      <div className="md:hidden mx-auto w-full max-w-[430px] px-1 pb-6">
+         {/* Saludo editorial (mobile · en desktop lo provee WelcomeBanner) */}
+-        <div className="md:hidden mb-4">
+-          <span className="eyebrow">{currentDate}</span>
+-          <div
+-            className="display"
+-            style={{ fontSize: 28, lineHeight: 0.98, letterSpacing: "-.04em", marginTop: 6 }}
+-          >
+-            {greeting},{" "}
+-            <span
+-              style={{
+-                color: resolvedTheme === "dark" ? "#c9a2bd" : "#9d3f86",
+-              }}
+-            >
+-              {firstName}.
+-            </span>
++        <div className="mobile-hero-head md:hidden">
++          <span className="eyebrow mobile-hero-head__date">{currentDate}</span>
++          <div className="display mobile-hero-head__title">
++            {greeting}, <span>{firstName}.</span>
+           </div>
++          <p className="mobile-hero-head__copy">
++            {hasOpen
++              ? "Hay una convocatoria abierta para sumar horas."
++              : "Las próximas oportunidades van a aparecer acá."}
++          </p>
+         </div>
+ 
+         {/* Consentimiento digital (mobile) — la convocatoria seleccionada
+diff --git a/src/components/student/PracticasTable.tsx b/src/components/student/PracticasTable.tsx
+index 3b9fc8a..07259de 100644
+--- a/src/components/student/PracticasTable.tsx
++++ b/src/components/student/PracticasTable.tsx
+@@ -48,7 +48,7 @@ const FlatGrade: React.FC<{
+       : num >= 4
+         ? "#B7770B" // ámbar · aprobado justo
+         : "#C0392B"; // rojo · desaprobado
+-  const displayText = hasGrade ? String(num) : "—";
++  const displayText = hasGrade ? String(num) : "Pend.";
+ 
+   return (
+     <button
+@@ -61,7 +61,14 @@ const FlatGrade: React.FC<{
+       className={`prow__nota cursor-pointer leading-none transition-opacity hover:opacity-60 ${
+         isOpen ? "opacity-100 underline underline-offset-4 decoration-2" : ""
+       }`}
+-      style={{ color }}
++      style={{
++        color,
++        fontFamily: hasGrade ? undefined : "var(--font-sans)",
++        fontSize: hasGrade ? undefined : 12,
++        fontWeight: hasGrade ? undefined : 700,
++        letterSpacing: hasGrade ? undefined : 0,
++        minWidth: hasGrade ? undefined : 38,
++      }}
+     >
+       {isSaving ? (
+         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle" />
+@@ -173,13 +180,13 @@ const PracticaRow: React.FC<{
+ 
+   const getAreaColor = (area: string) => {
+     const norm = normalizeStringForComparison(area);
+-    if (norm.includes("clinica")) return "var(--orient-clinica, #3CB88D)";
++    if (norm.includes("clinica")) return "var(--area-clinica, #3CB88D)";
+     if (norm.includes("educacion") || norm.includes("educacional"))
+-      return "var(--orient-educacional, #203B73)";
++      return "var(--area-educacional, #203B73)";
+     if (norm.includes("laboral") || norm.includes("trabajo"))
+-      return "var(--orient-laboral, #B7770B)";
++      return "#B7770B";
+     if (norm.includes("comunitaria") || norm.includes("social"))
+-      return "var(--orient-comunitaria, #7A3F9E)";
++      return "var(--area-comunitaria, #7A3F9E)";
+     return "var(--accent, #1f3a8a)";
+   };
+ 
+@@ -227,7 +234,7 @@ const PracticaRow: React.FC<{
+ 
+   return (
+     <div
+-      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-100 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
++      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-200/80 dark:border-slate-800/40 rounded-2xl p-4 shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
+       onPointerDown={lpStartPress}
+       onPointerUp={lpCancel}
+       onPointerCancel={lpCancel}
+@@ -252,7 +259,7 @@ const PracticaRow: React.FC<{
+             {areaText}
+           </span>
+           <span className="prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider text-slate-400">
+-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
++            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 inline-block" />
+             {status}
+           </span>
+         </div>
+@@ -396,10 +403,13 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
+ 
+   return (
+     <div className="flex flex-col gap-4">
+-      <div className="flex justify-between items-end px-2 mb-1">
+-        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+-          Total: {sortedPracticas.length} Prácticas
++      <div className="flex justify-between items-baseline px-2 mb-1">
++        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-normal">
++          Mis prácticas
+         </h3>
++        <span className="mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
++          {sortedPracticas.length} {sortedPracticas.length === 1 ? "práctica" : "prácticas"}
++        </span>
+       </div>
+ 
+       {sortedPracticas.map((practica, index) => (
+diff --git a/src/components/student/ds/AreaBadge.tsx b/src/components/student/ds/AreaBadge.tsx
+index bb5ce6a..3338bf6 100644
+--- a/src/components/student/ds/AreaBadge.tsx
++++ b/src/components/student/ds/AreaBadge.tsx
+@@ -2,16 +2,19 @@ import React from "react";
+ 
+ export type AreaName = "Clínica" | "Educacional" | "Laboral" | "Comunitaria";
+ 
+-const AREA_HEX: Record<AreaName, string> = {
+-  Clínica: "#3CB88D",
+-  Educacional: "#203B73",
+-  Laboral: "#C0392B",
+-  Comunitaria: "#7A3F9E",
+-};
+-
+ export function getAreaColor(area: string | null | undefined): string {
+-  if (!area) return "#3CB88D";
+-  return AREA_HEX[area as AreaName] ?? "#3CB88D";
++  const normalized = (area ?? "")
++    .normalize("NFD")
++    .replace(/\p{Diacritic}/gu, "")
++    .toLowerCase()
++    .trim();
++
++  if (normalized.startsWith("ed")) return "var(--area-educacional, #203B73)";
++  if (normalized.startsWith("la") || normalized.startsWith("tr")) return "#C0392B";
++  if (normalized.startsWith("co") || normalized.startsWith("so")) {
++    return "var(--area-comunitaria, #7A3F9E)";
++  }
++  return "var(--area-clinica, #3CB88D)";
+ }
+ 
+ export function getAreaToneClass(area: string | null | undefined): string {
+diff --git a/src/components/student/home/StudentConvCard.tsx b/src/components/student/home/StudentConvCard.tsx
+index 45a7854..ef8acb2 100644
+--- a/src/components/student/home/StudentConvCard.tsx
++++ b/src/components/student/home/StudentConvCard.tsx
+@@ -115,9 +115,18 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
+     enrollmentStatus === "adjudicado" ||
+     enrollmentStatus === "en curso";
+ 
++  const statusText = needsConsent ? "Seleccionado/a" : isSelected ? "Seleccionado" : "Inscripto";
++  const isClosed = !isOpen && !needsConsent;
++  const isClosedSelected = isClosed && isSelected;
++
+   return (
+     <div
+-      className={"cc" + (needsConsent ? " cc--consent" : "")}
++      className={
++        "cc" +
++        (needsConsent ? " cc--consent" : "") +
++        (isClosed ? " cc--closed" : "") +
++        (isClosedSelected ? " cc--selected" : "")
++      }
+       onClick={onOpen}
+       role={onOpen ? "button" : undefined}
+       tabIndex={onOpen ? 0 : undefined}
+@@ -146,24 +155,24 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
+           />
+           {area}
+         </span>
+-        <span
+-          className="cc__status"
+-          style={
+-            isSelected || needsConsent
+-              ? { color: "var(--accent, #3CB88D)", fontWeight: 600 }
+-              : undefined
+-          }
+-        >
+-          {needsConsent
+-            ? "Seleccionado/a"
+-            : isSelected
+-              ? "Seleccionado"
+-              : isEnrolled && !isOpen
+-                ? "Inscripto"
+-                : isOpen
+-                  ? "Abierta"
+-                  : "Cerrada"}
+-        </span>
++        {needsConsent || isSelected || (isEnrolled && !isOpen) ? (
++          <span
++            className="cc__status"
++            style={{
++              color,
++              background: "transparent",
++              border: `1px solid ${color}`,
++              fontWeight: 600,
++            }}
++          >
++            {statusText}
++          </span>
++        ) : (
++          // En mobile alcanza con el ícono (ya queda claro por el subtítulo
++          // de la sección si son convocatorias abiertas o cerradas); el texto
++          // completo ("Cierra hoy", etc.) sólo se muestra en desktop.
++          <Icon name={isOpen ? "clock" : "lock"} size={16} color={color} />
++        )}
+       </div>
+ 
+       <div className="cc__name">{shortName}</div>
+@@ -254,7 +263,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
+                 haptics.success();
+                 onFirmarConsentimiento();
+               }}
+-              className="cc__cta"
++              className="cc__cta cc__cta--priority"
+               style={{ background: color }}
+             >
+               Firmar consentimiento
+@@ -268,12 +277,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
+                 onVerConvocados?.();
+               }}
+               className="cc__cta"
+-              style={{
+-                background: "transparent",
+-                color: "var(--ink-soft)",
+-                border: "1px solid var(--line-strong)",
+-                boxShadow: "none",
+-              }}
++              style={{ background: color }}
+             >
+               Ver convocados
+               <Icon name="arrow" size={15} strokeWidth={2.4} />
+diff --git a/src/components/student/home/StudentSummaryCard.tsx b/src/components/student/home/StudentSummaryCard.tsx
+index 33f1938..914979c 100644
+--- a/src/components/student/home/StudentSummaryCard.tsx
++++ b/src/components/student/home/StudentSummaryCard.tsx
+@@ -22,23 +22,29 @@ export const StudentSummaryCard: React.FC<StudentSummaryCardProps> = ({
+   progressPct,
+   hoursAcc,
+ }) => {
++  const remainingHours = Math.max(totalTarget - hoursAcc, 0);
++
+   return (
+     <div className="home-hero">
+       <div className="home-hero__grad" aria-hidden />
+-      <div className="home-hero__row">
++      <div className="home-hero__top">
+         <div className="min-w-0">
+-          <div className="mono home-hero__lbl">Tu recorrido hasta ahora</div>
++          <div className="mono home-hero__lbl">Avance PPS</div>
+           <div className="home-hero__val display">
+             {hoursAcc}
+-            <span className="home-hero__u">
+-              /{totalTarget} hs · {progressPct}%
+-            </span>
++            <span className="home-hero__u">/{totalTarget} hs</span>
+           </div>
+         </div>
++        <span className="home-hero__pct">{progressPct}%</span>
+       </div>
+       <div className="home-hero__bar">
+         <span style={{ width: `${progressPct}%` }} />
+       </div>
++      <p className="home-hero__hint">
++        {remainingHours > 0
++          ? `Te faltan ${remainingHours} hs para completar el recorrido.`
++          : "Completaste las horas requeridas."}
++      </p>
+     </div>
+   );
+ };
+diff --git a/src/components/student/home/atlas/StudentHomeAtlas.tsx b/src/components/student/home/atlas/StudentHomeAtlas.tsx
+index 2a683b4..c51c03c 100644
+--- a/src/components/student/home/atlas/StudentHomeAtlas.tsx
++++ b/src/components/student/home/atlas/StudentHomeAtlas.tsx
+@@ -26,7 +26,12 @@ import {
+   FIELD_ULTIMA_ACTUALIZACION_PPS,
+   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+ } from "../../../../constants";
+-import { formatDate, normalizeStringForComparison } from "../../../../utils/formatters";
++import {
++  formatDate,
++  normalizeStringForComparison,
++  closesLabel,
++  daysUntil,
++} from "../../../../utils/formatters";
+ 
+ interface StudentHomeAtlasProps {
+   student: EstudianteFields | null;
+@@ -38,7 +43,7 @@ interface StudentHomeAtlasProps {
+   informeTasks: InformeTask[];
+   closedLanzamientos: LanzamientoPPS[];
+   enrollmentMap: Map<string, Convocatoria>;
+-  consent: { ppsName: string; lanzamientoId: string } | null;
++  consent: { ppsName: string; lanzamientoId: string; area?: string } | null;
+   upcomingStart: { ppsName: string; startDate: string } | null;
+   onStartConsent: () => void;
+   onOpenDetalle: (l: LanzamientoPPS) => void;
+@@ -56,10 +61,10 @@ const fmtShort = (raw?: unknown): string => {
+   return `${parseInt(m[1], 10)} ${MESES[parseInt(m[2], 10) - 1] ?? ""}`.trim();
+ };
+ 
+-const AhIcon: React.FC<{ name: "bell" | "cal" | "clock" | "arrow" | "timer"; size?: number }> = ({
+-  name,
+-  size = 18,
+-}) => {
++const AhIcon: React.FC<{
++  name: "bell" | "cal" | "clock" | "arrow" | "timer" | "lock";
++  size?: number;
++}> = ({ name, size = 18 }) => {
+   const paths: Record<string, React.ReactNode> = {
+     bell: (
+       <>
+@@ -92,6 +97,12 @@ const AhIcon: React.FC<{ name: "bell" | "cal" | "clock" | "arrow" | "timer"; siz
+         <circle cx="12" cy="14" r="8" />
+       </>
+     ),
++    lock: (
++      <>
++        <rect x="3" y="11" width="18" height="11" rx="2" />
++        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
++      </>
++    ),
+   };
+   return (
+     <svg
+@@ -121,23 +132,6 @@ function areaVar(area: string): string {
+   return "var(--primary-500)";
+ }
+ 
+-function daysUntil(raw?: unknown): number | null {
+-  if (!raw) return null;
+-  const d = new Date(raw as string);
+-  if (isNaN(d.getTime())) return null;
+-  d.setHours(0, 0, 0, 0);
+-  const today = new Date();
+-  today.setHours(0, 0, 0, 0);
+-  return Math.round((d.getTime() - today.getTime()) / 86400000);
+-}
+-function closesLabel(raw?: unknown): { text: string; soft: boolean } {
+-  const n = daysUntil(raw);
+-  if (n == null) return { text: "Abierta", soft: true };
+-  if (n < 0) return { text: "Cerró", soft: true };
+-  if (n === 0) return { text: "Cierra hoy", soft: false };
+-  if (n === 1) return { text: "Cierra mañana", soft: false };
+-  return { text: `Cierra en ${n} días`, soft: n > 4 };
+-}
+ 
+ // Estados de solicitud "completados/cerrados" que ya no requieren acción en el
+ // home (constante de módulo: estable entre renders).
+@@ -249,7 +243,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+   const nConvs = openLanzamientos.length;
+ 
+   return (
+-    <div className="ah-root">
++    <div className="ah-root ah-unified">
+       <main className="ah-main">
+         {/* Hero: saludo + próximo paso */}
+         <div className="ah-hero">
+@@ -330,8 +324,13 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+                 </div>
+                 <button
+                   type="button"
+-                  className="ah-btn ah-btn--primary"
+-                  style={{ marginTop: 14, width: "100%", justifyContent: "center" }}
++                  className="ah-btn ah-btn--primary ah-btn--area"
++                  style={{
++                    marginTop: 14,
++                    width: "100%",
++                    justifyContent: "center",
++                    background: areaVar(consent.area || ""),
++                  }}
+                   onClick={onStartConsent}
+                 >
+                   Firmar consentimiento
+@@ -449,7 +448,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+                       <span className="dot" />
+                       <span className="ah-areabadge__mark">{areaPrimary}</span>
+                     </span>
+-                    <span className={"ah-closes" + (closes.soft ? " ah-closes--soft" : "")}>
++                    <span className="ah-closes">
+                       {closes.soft ? (
+                         <AhIcon name="timer" size={13} />
+                       ) : (
+@@ -557,7 +556,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+ 
+                   <button
+                     type="button"
+-                    className="ah-btn ah-btn--primary ah-feat__cta"
++                    className="ah-btn ah-btn--primary ah-btn--area ah-feat__cta"
++                    style={{ background: areaVar(areaPrimary) }}
+                     onClick={() => onInscribir(l)}
+                   >
+                     Inscribirme{cupos ? ` · ${cupos} ${cupos === 1 ? "cupo" : "cupos"}` : ""}
+@@ -603,7 +603,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+                       <span className="dot" />
+                       <span className="ah-areabadge__mark">{areaPrimary}</span>
+                     </span>
+-                    <span className={"ah-closes" + (closes.soft ? " ah-closes--soft" : "")}>
++                    <span className="ah-closes">
+                       <AhIcon name="timer" size={13} />
+                       {closes.text}
+                     </span>
+@@ -630,7 +630,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+                   <div className="ah-conv__foot">
+                     <button
+                       type="button"
+-                      className="ah-btn ah-btn--secondary"
++                      className="ah-btn ah-btn--primary ah-btn--area"
++                      style={{ background: areaVar(areaPrimary) }}
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         onOpenDetalle(l);
+@@ -697,17 +698,15 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+                         <span className="ah-areabadge__mark">{areaPrimary}</span>
+                       </span>
+                       {isSelected ? (
+-                        <span
+-                          className="ah-closes"
+-                          style={{
+-                            color: "var(--ac)",
+-                            background: "color-mix(in oklab, var(--ac) 12%, transparent)",
+-                          }}
+-                        >
++                        <span className="ah-closes">
++                          <AhIcon name="lock" size={13} />
+                           Seleccionado/a
+                         </span>
+                       ) : (
+-                        <span className="ah-closes ah-closes--soft">Cerrada</span>
++                        <span className="ah-closes">
++                          <AhIcon name="lock" size={13} />
++                          Cerrada
++                        </span>
+                       )}
+                     </div>
+                     <h2 className="ah-conv__name">{name}</h2>
+@@ -733,7 +732,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+                       {isConsentCard ? (
+                         <button
+                           type="button"
+-                          className="ah-btn ah-btn--primary"
++                          className="ah-btn ah-btn--primary ah-btn--area"
+                           style={{ background: areaVar(areaPrimary) }}
+                           onClick={(e) => {
+                             e.stopPropagation();
+@@ -746,7 +745,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
+                       ) : (
+                         <button
+                           type="button"
+-                          className="ah-btn ah-btn--secondary"
++                          className="ah-btn ah-btn--primary ah-btn--area"
++                          style={{ background: areaVar(areaPrimary) }}
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             onVerConvocados(l);
+diff --git a/src/components/student/home/atlas/atlasHome.css b/src/components/student/home/atlas/atlasHome.css
+index 17fd6b8..ccae348 100644
+--- a/src/components/student/home/atlas/atlasHome.css
++++ b/src/components/student/home/atlas/atlasHome.css
+@@ -17,7 +17,7 @@
+      ninguna sección. La migración por sección irá apuntando los títulos
+      display a --font-display (Bricolage, la misma del campus) y las superficies
+      a los alias --surface/--ink/--line/--accent. Fuente única de verdad. */
+-  --font-display: "Bricolage Grotesque", var(--font-sans);
++  --font-display: var(--student-display-font);
+   --display-weight: 700;
+   --display-tracking: -0.04em;
+   --surface: var(--bg-elevated);
+@@ -79,7 +79,7 @@
+   --area-clinica: #3cb88d;
+   --area-educacional: #203b73;
+   --area-comunitaria: #7a3f9e;
+-  --display-accent: var(--uflo-purple);
++  --display-accent: var(--student-accent-color);
+ 
+   /* Semantic surfaces */
+   --bg: var(--neutral-50);
+@@ -123,14 +123,13 @@ html.dark .ah-root {
+   --bg-elevated: #131829;
+   --bg-sunken: #060812;
+   --fg: #f2f3f7;
+-  --fg-muted: #8c92a4;
+-  --fg-subtle: #5c6275;
++  --fg-muted: #a1a7b8;
++  --fg-subtle: #72798f;
+   --border: #1f2438;
+   --border-strong: #2d344e;
+   --area-clinica: #4fd49e;
+   --area-educacional: #7b91de;
+   --area-comunitaria: #bc85dc;
+-  --display-accent: #c9a2bd;
+   --link: var(--primary-300);
+   --link-hover: var(--primary-100);
+   --neutral-100: #1a1f32;
+@@ -206,9 +205,8 @@ html.dark .ah-root {
+   display: block;
+   margin-bottom: 14px;
+ }
+-/* Saludo del Inicio (solo desktop · StudentHomeAtlas): firma serif Atlas,
+-   igual que los títulos de Solicitudes/Perfil (Instrument Serif + em itálica
+-   con --display-accent). En mobile el saludo es otro componente (Bricolage). */
++/* Saludo del Inicio en StudentHomeAtlas (desktop). El saludo de mobile vive
++   en otro componente (HomeView, rama `md:hidden`) y usa Bricolage directo. */
+ .ah-hero__greet {
+   font-family: var(--font-serif);
+   font-weight: 400;
+@@ -220,11 +218,6 @@ html.dark .ah-root {
+ }
+ .ah-hero__greet em {
+   font-style: italic;
+-  /* Claro: púrpura vivo (eco del lavanda del dark, con contraste para fondo claro). */
+-  color: #9d3f86;
+-}
+-/* Oscuro: lavanda sólido (queda mejor sobre el navy). */
+-html.dark .ah-root .ah-hero__greet em {
+   color: var(--display-accent);
+ }
+ .ah-hero__line {
+@@ -244,7 +237,9 @@ html.dark .ah-root .ah-hero__greet em {
+    se controla con --mc; en dark se sube la opacidad para que siga visible. */
+ .ah-root .ah-mark {
+   --mc: var(--primary-500);
+-  --ma: 22%;
++  --ma: 18%;
++  --mark-fg: var(--fg);
++  color: var(--mark-fg);
+   background-image: linear-gradient(
+     100deg,
+     transparent 0.4%,
+@@ -253,22 +248,32 @@ html.dark .ah-root .ah-hero__greet em {
+     transparent 99.6%
+   );
+   background-repeat: no-repeat;
+-  background-size: 100% 56%;
+-  background-position: 0 64%;
++  background-size: 100% 48%;
++  background-position: 0 70%;
+   padding: 0 0.12em;
+   border-radius: 0.08em;
+   -webkit-box-decoration-break: clone;
+   box-decoration-break: clone;
+ }
+ html.dark .ah-root .ah-mark {
+-  --ma: 34%;
++  --ma: 17%;
++  background-size: 100% 44%;
++  background-position: 0 72%;
+ }
+ .ah-root .ah-mark--teal {
+   --mc: var(--primary-500);
+ }
++html.dark .ah-root .ah-mark--teal {
++  --mc: #5eead4;
++  --mark-fg: #b7f4e6;
++}
+ .ah-root .ah-mark--amber {
+   --mc: var(--warning-500);
+ }
++html.dark .ah-root .ah-mark--amber {
++  --mc: #f7c65f;
++  --mark-fg: #f7d99a;
++}
+ .ah-root .ah-mark--purple {
+   --mc: var(--uflo-purple);
+ }
+@@ -347,8 +352,14 @@ html.dark .ah-root .ah-next__date .m {
+   display: flex;
+   align-items: baseline;
+   gap: 12px;
++  justify-content: space-between;
+   margin: 52px 0 18px;
+ }
++.ah-sechead__title {
++  display: flex;
++  align-items: baseline;
++  gap: 12px;
++}
+ .ah-sechead .n {
+   font: 400 12px/1 var(--font-mono);
+   color: var(--fg-subtle);
+@@ -363,6 +374,9 @@ html.dark .ah-root .ah-next__date .m {
+ .ah-sechead a:hover {
+   text-decoration: underline;
+ }
++.ah-practices-section .ah-sechead {
++  margin-top: 38px;
++}
+ 
+ /* ---------- convocatorias ---------- */
+ .ah-convs {
+@@ -422,19 +436,19 @@ html.dark .ah-root .ah-next__date .m {
+ .ah-feat .ah-areabadge__mark {
+   color: color-mix(in oklab, var(--ac, var(--primary-500)) 88%, var(--fg));
+ }
++/* Siempre el color de la convocatoria (--ac) — se probó con ámbar de urgencia
++   para "Cierra hoy/mañana" pero no convenció; un solo criterio de color para
++   todos los estados (Abierta / Cierra pronto / Cerró / Cerrada / Seleccionado/a). */
+ .ah-closes {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   font: 500 11.5px/1 var(--font-mono);
+-  color: var(--warning-500);
+-  background: var(--warning-50);
++  color: var(--ac, var(--fg-muted));
++  background: transparent;
++  border: 1px solid var(--ac, var(--border-strong));
+   border-radius: var(--radius-pill);
+-  padding: 5px 11px;
+-}
+-.ah-closes--soft {
+-  color: var(--fg-muted);
+-  background: var(--bg-sunken);
++  padding: 4px 10px;
+ }
+ .ah-conv__name {
+   font-family: var(--font-serif);
+@@ -549,6 +563,10 @@ html.dark .ah-root .ah-next__date .m {
+   color: var(--fg-muted);
+   max-width: 62ch;
+ }
++html.dark .ah-root .ah-feat__desc,
++html.dark .ah-root .ah-conv__desc {
++  color: color-mix(in oklab, var(--fg-muted) 88%, var(--fg));
++}
+ 
+ /* horarios + ubicación */
+ .ah-feat__meta {
+@@ -690,25 +708,18 @@ html.dark .ah-root .ah-next__date .m {
+ .ah-feat__side {
+   position: relative;
+   padding: 26px 26px 24px;
+-  border-left: 1px solid var(--border);
+-  background: var(--bg-sunken);
++  border-left: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
++  background: color-mix(in oklab, var(--bg-sunken) 70%, var(--bg-elevated));
+   display: flex;
+   flex-direction: column;
+ }
+-/* halo sutil de acento en el panel */
+-.ah-feat__side::before {
+-  content: "";
+-  position: absolute;
+-  top: 0;
+-  right: 0;
+-  width: 180px;
+-  height: 180px;
+-  background: radial-gradient(
+-    120px 120px at 100% 0%,
+-    color-mix(in oklab, var(--ac, var(--primary-500)) 12%, transparent),
+-    transparent 70%
++html.dark .ah-root .ah-feat__side {
++  border-left-color: color-mix(in oklab, var(--border) 64%, transparent);
++  background: linear-gradient(
++    90deg,
++    color-mix(in oklab, var(--bg-elevated) 94%, var(--ac, var(--primary-500))) 0%,
++    color-mix(in oklab, var(--bg-sunken) 62%, var(--bg-elevated)) 100%
+   );
+-  pointer-events: none;
+ }
+ .ah-feat__side > * {
+   position: relative;
+@@ -987,11 +998,50 @@ html.dark .ah-root .ah-next__date .m {
+ .ah-btn--secondary:hover {
+   background: var(--bg-sunken);
+ }
+-/* En la card de convocatoria, el "Ver detalle" toma el color del área al hover. */
+-.ah-conv__foot .ah-btn--secondary:hover {
+-  color: color-mix(in oklab, var(--ac, var(--primary-500)) 82%, var(--fg));
+-  border-color: color-mix(in oklab, var(--ac, var(--primary-500)) 50%, var(--border-strong));
+-  background: color-mix(in oklab, var(--ac, var(--primary-500)) 7%, var(--bg-elevated));
++.ah-btn--compact {
++  min-height: 36px;
++  padding: 9px 15px 9px 11px;
++  font-size: 12.5px;
++  font-weight: 500;
++  color: var(--fg);
++  border-color: var(--border-strong);
++  background: var(--bg-elevated);
++  box-shadow: none;
++}
++.ah-btn--compact .material-icons {
++  display: grid;
++  place-items: center;
++  width: 20px;
++  height: 20px;
++  border-radius: 999px;
++  background: transparent;
++  color: var(--primary-700);
++  font-weight: 700;
++}
++.ah-btn--compact:hover {
++  color: var(--fg);
++  border-color: color-mix(in oklab, var(--primary-500) 28%, var(--border-strong));
++  background: var(--bg-elevated);
++  transform: none;
++}
++html.dark .ah-root .ah-btn--compact {
++  color: var(--fg);
++  background: var(--bg-elevated);
++  border-color: var(--border-strong);
++}
++html.dark .ah-root .ah-btn--compact .material-icons {
++  color: var(--primary-300);
++}
++/* CTA relleno con el color de área (--ac), igual que .cc__cta en mobile: texto
++   blanco en claro, oscuro en dark (los rellenos de área se aclaran solo). */
++.ah-btn--area {
++  color: #fff;
++}
++html.dark .ah-btn--area {
++  color: #08160f;
++}
++.ah-btn--area:hover {
++  filter: brightness(1.06);
+ }
+ 
+ /* ---------- estado de tus PPS ---------- */
+@@ -1087,6 +1137,15 @@ html.dark .ah-root .ah-accr__pct {
+   background:
+     repeating-linear-gradient(-45deg, transparent 0 5px, var(--border) 5px 6px), var(--bg-sunken);
+ }
++html.dark .ah-root .ah-bar__seg.rest {
++  background:
++    repeating-linear-gradient(
++      -45deg,
++      transparent 0 6px,
++      color-mix(in oklab, var(--border) 55%, transparent) 6px 7px
++    ),
++    color-mix(in oklab, var(--bg-sunken) 72%, var(--bg-elevated));
++}
+ .ah-bar__seg .tip {
+   position: absolute;
+   inset: 0;
+@@ -1144,6 +1203,16 @@ html.dark .ah-root .ah-accr__pct {
+   width: 100%;
+   border-collapse: collapse;
+ }
++.ah-practices-table-card {
++  border-color: color-mix(in oklab, var(--border) 82%, var(--fg-subtle));
++  box-shadow:
++    0 1px 2px rgba(20, 19, 16, 0.05),
++    0 14px 34px -30px rgba(20, 19, 16, 0.32);
++}
++html.dark .ah-root .ah-practices-table-card {
++  border-color: var(--border);
++  box-shadow: none;
++}
+ .ah-table th,
+ .ah-table td {
+   text-align: left;
+@@ -1169,6 +1238,15 @@ html.dark .ah-root .ah-accr__pct {
+ .ah-table tbody tr:hover {
+   background: var(--bg-sunken);
+ }
++.ah-table__actions .ah-iconbtn--sm {
++  opacity: 0;
++  transform: translateX(3px);
++}
++.ah-table tbody tr:hover .ah-table__actions .ah-iconbtn--sm,
++.ah-table__actions .ah-iconbtn--sm:focus-visible {
++  opacity: 1;
++  transform: translateX(0);
++}
+ .ah-table .name {
+   font-weight: 500;
+   letter-spacing: var(--tracking-snug);
+@@ -1178,7 +1256,8 @@ html.dark .ah-root .ah-accr__pct {
+   color: var(--fg-muted);
+ }
+ .ah-table .nota {
+-  font: 500 13px/1 var(--font-mono);
++  font: 600 13px/1 var(--font-display);
++  letter-spacing: 0;
+ }
+ 
+ /* solicitudes */
+@@ -1350,6 +1429,19 @@ html.dark .ah-root .ah-profilehdr__av {
+ .ah-field__select:focus {
+   border-color: var(--primary-500);
+ }
++.ah-orient-readonly {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++  font: 600 15px/1 var(--font-sans);
++  color: var(--fg);
++}
++.ah-orient-readonly__sw {
++  width: 9px;
++  height: 9px;
++  border-radius: 3px;
++  background: var(--ori, var(--area-educacional));
++}
+ .ah-rowcard {
+   display: flex;
+   align-items: center;
+@@ -1397,21 +1489,21 @@ html.dark .ah-root .ah-profilehdr__av {
+   margin-bottom: 28px;
+ }
+ .ah-accr-hero__main {
+-  padding: 22px 24px;
++  padding: 20px 24px;
+ }
+ .ah-accr-hero__side {
+-  padding: 20px 24px;
++  padding: 20px 24px 18px;
+   border-left: 1px solid var(--border);
+   display: flex;
+   flex-direction: column;
+ }
+ .ah-accr-hero__orient {
+-  display: flex;
++  display: inline-flex;
+   align-items: center;
+   gap: 14px;
++  width: fit-content;
+   margin-top: 18px;
+-  padding-top: 16px;
+-  border-top: 1px solid var(--border);
++  padding-top: 2px;
+ }
+ .ah-accr-hero__orient .ah-field__lbl {
+   margin: 0;
+@@ -1443,26 +1535,36 @@ html.dark .ah-root .ah-req__count.is-done {
+ }
+ /* Nota al pie del panel (reemplaza el CTA; apunta a Solicitudes) */
+ .ah-accr-hero__hint {
+-  margin: 16px 0 0;
+-  margin-top: auto;
+-  padding-top: 16px;
++  grid-column: 1 / -1;
++  margin: 0;
++  padding: 11px 24px;
+   border-top: 1px solid var(--border);
+   display: flex;
+-  align-items: flex-start;
++  align-items: center;
++  justify-content: center;
+   gap: 9px;
+-  font: 400 12.5px/1.5 var(--font-sans);
+-  color: var(--fg-subtle);
++  text-align: center;
++  font: 400 12px/1.35 var(--font-sans);
++  color: color-mix(in oklab, var(--fg-subtle) 88%, var(--bg-elevated));
++}
++.ah-accr-hero__hint > span:last-child {
++  max-width: 860px;
+ }
+ .ah-accr-hero__hint .material-icons {
+-  font-size: 17px;
++  font-size: 16px;
+   flex-shrink: 0;
+-  margin-top: 1px;
+-  color: var(--fg-muted);
++  color: color-mix(in oklab, var(--fg-muted) 84%, var(--bg-elevated));
+ }
+ .ah-accr-hero__hint b {
+   font-weight: 600;
+   color: var(--fg-muted);
+ }
++html.dark .ah-root .ah-accr-hero__hint {
++  color: color-mix(in oklab, var(--fg-subtle) 82%, var(--fg-muted));
++}
++html.dark .ah-root .ah-accr-hero__hint .material-icons {
++  color: color-mix(in oklab, var(--fg-muted) 88%, var(--fg));
++}
+ @media (max-width: 880px) {
+   .ah-accr-hero {
+     grid-template-columns: 1fr;
+@@ -1471,6 +1573,11 @@ html.dark .ah-root .ah-req__count.is-done {
+     border-left: 0;
+     border-top: 1px solid var(--border);
+   }
++  .ah-accr-hero__hint {
++    grid-column: auto;
++    justify-content: flex-start;
++    text-align: left;
++  }
+ }
+ 
+ /* ---------- prácticas (2 columnas) ---------- */
+@@ -1537,14 +1644,24 @@ html.dark .ah-root .ah-req__count.is-done {
+   margin-top: 2px;
+ }
+ .ah-nota {
+-  font: 700 22px/1 var(--font-serif);
+-  letter-spacing: var(--tracking-tight);
++  font: 700 20px/1 var(--font-display);
++  letter-spacing: 0;
+   background: transparent;
+   border: 0;
+   cursor: pointer;
+   padding: 0;
+   transition: opacity var(--duration-fast) var(--ease-standard);
+ }
++.ah-nota__pending {
++  display: inline-block;
++  min-width: 42px;
++  font-family: var(--font-sans);
++  font-size: 12.5px;
++  font-weight: 700;
++  letter-spacing: 0;
++  color: var(--fg-subtle);
++  transform: translateY(-1px);
++}
+ .ah-nota:hover {
+   opacity: 0.6;
+ }
+@@ -1596,7 +1713,12 @@ html.dark .ah-root .ah-req__count.is-done {
+ .ah-cmodal__head {
+   padding: 22px 28px;
+   border-bottom: 1px solid var(--border);
+-  background: var(--bg-sunken);
++  background:
++    linear-gradient(
++      90deg,
++      color-mix(in oklab, var(--primary-500) 8%, var(--bg-sunken)),
++      var(--bg-sunken) 42%
++    );
+   display: flex;
+   align-items: flex-start;
+   justify-content: space-between;
+@@ -1619,6 +1741,35 @@ html.dark .ah-root .ah-req__count.is-done {
+ .ah-cmodal__body {
+   padding: 24px 28px;
+ }
++html.dark .ah-root .ah-cmodal--form {
++  background: #151a2c;
++}
++html.dark .ah-root .ah-cmodal--form .ah-cmodal__head {
++  background:
++    linear-gradient(90deg, rgba(60, 184, 141, 0.13), #0b0f1b 46%);
++}
++html.dark .ah-root .ah-cmodal--form .ah-cmodal__body {
++  background: #151a2c;
++}
++html.dark .ah-root .ah-cmodal--form .ah-field__lbl,
++html.dark .ah-root .ah-cmodal--form .ah-formsec__head {
++  color: #aeb6c8;
++}
++html.dark .ah-root .ah-cmodal--form .ah-cmodal__sub,
++html.dark .ah-root .ah-cmodal--form .ah-formhint {
++  color: #a5adbf;
++}
++html.dark .ah-root .ah-cmodal--form .ah-textinput,
++html.dark .ah-root .ah-cmodal--form .ah-textarea,
++html.dark .ah-root .ah-cmodal--form .ah-selectctrl {
++  background-color: #111629;
++  border-color: #2b334c;
++  color: #f4f6fb;
++}
++html.dark .ah-root .ah-cmodal--form .ah-textinput::placeholder,
++html.dark .ah-root .ah-cmodal--form .ah-textarea::placeholder {
++  color: #8f98ad;
++}
+ .ah-cmodal__steptop {
+   display: flex;
+   align-items: flex-start;
+@@ -1778,24 +1929,231 @@ html.dark .ah-root .ah-hl {
+   flex-wrap: wrap;
+ }
+ 
++/* ---------- pre-check de solicitud PPS (Atlas) ---------- */
++.ah-cmodal--precheck {
++  max-width: 760px;
++  max-height: calc(100dvh - 32px);
++  display: flex;
++  flex-direction: column;
++}
++.ah-cmodal--precheck .ah-cmodal__body {
++  overflow-y: auto;
++}
++.ah-cmodal--precheck .ah-cmodal__foot {
++  margin-top: 0;
++  padding: 18px 28px;
++  justify-content: flex-end;
++  background: var(--bg-elevated);
++}
++.ah-cmodal--precheck .ah-cmodal__foot .ah-btn {
++  min-height: 40px;
++}
++.ah-precheck {
++  display: grid;
++  gap: 14px;
++}
++.ah-precheck__item,
++.ah-precheck__section {
++  border: 1px solid var(--border);
++  border-radius: var(--radius-lg);
++  background: var(--bg-elevated);
++}
++.ah-precheck__item {
++  display: flex;
++  align-items: flex-start;
++  gap: 13px;
++  padding: 16px;
++}
++.ah-precheck__item--important {
++  border-color: color-mix(in oklab, var(--primary-500) 28%, var(--border));
++  background: color-mix(in oklab, var(--primary-500) 7%, var(--bg-elevated));
++}
++.ah-precheck__ic {
++  width: 36px;
++  height: 36px;
++  border-radius: var(--radius-md);
++  display: grid;
++  place-items: center;
++  flex-shrink: 0;
++  color: var(--primary-700);
++  background: var(--primary-50);
++}
++.ah-precheck__ic .material-icons {
++  font-size: 20px;
++}
++.ah-precheck h3 {
++  margin: 0;
++  font: 700 14px/1.25 var(--font-sans);
++  color: var(--fg);
++  letter-spacing: var(--tracking-snug);
++}
++.ah-precheck p {
++  margin: 6px 0 0;
++  font: 400 13px/1.55 var(--font-sans);
++  color: var(--fg-muted);
++}
++.ah-precheck b {
++  color: var(--fg);
++  font-weight: 700;
++}
++.ah-precheck__section {
++  overflow: hidden;
++}
++.ah-precheck__sectionhead {
++  display: flex;
++  align-items: flex-start;
++  gap: 11px;
++  padding: 16px;
++  border-bottom: 1px solid var(--border);
++}
++.ah-precheck__sectionhead > .material-icons {
++  margin-top: 1px;
++  color: var(--primary-600);
++  font-size: 20px;
++}
++.ah-precheck__list {
++  background: var(--bg-sunken);
++  padding: 14px;
++}
++.ah-precheck__search {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  border: 1px solid var(--border);
++  border-radius: var(--radius-md);
++  background: var(--bg-elevated);
++  padding: 11px 12px;
++}
++.ah-precheck__search .material-icons {
++  font-size: 19px;
++  color: var(--fg-subtle);
++}
++.ah-precheck__search input {
++  width: 100%;
++  border: 0;
++  outline: 0;
++  background: transparent;
++  color: var(--fg);
++  font: 500 13px/1.3 var(--font-sans);
++}
++.ah-precheck__search input::placeholder {
++  color: var(--fg-subtle);
++}
++.ah-precheck__institutions {
++  max-height: 210px;
++  overflow-y: auto;
++  margin-top: 10px;
++}
++.ah-precheck__institutions ul {
++  list-style: none;
++  padding: 0;
++  margin: 0;
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 8px;
++}
++.ah-precheck__institutions li {
++  min-width: 0;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  border: 1px solid var(--border);
++  border-radius: var(--radius-md);
++  background: var(--bg-elevated);
++  padding: 9px 10px;
++  color: var(--fg-muted);
++  font: 500 12px/1.2 var(--font-sans);
++}
++.ah-precheck__institutions li span:last-child {
++  min-width: 0;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.ah-precheck__institutions li .material-icons {
++  color: var(--fg-subtle);
++  font-size: 16px;
++  flex-shrink: 0;
++}
++.ah-precheck__empty {
++  text-align: center;
++  padding: 22px 12px;
++}
++html.dark .ah-root .ah-precheck__ic {
++  color: var(--primary-300);
++  background: rgba(60, 184, 141, 0.14);
++}
++html.dark .ah-root .ah-precheck__item--important {
++  background: color-mix(in oklab, var(--primary-500) 10%, var(--bg-elevated));
++}
++
+ /* ---------- formularios en modal (Atlas) ---------- */
+ .ah-cmodal--form {
+-  max-width: 640px;
++  max-width: 760px;
++  max-height: calc(100dvh - 32px);
++  display: flex;
++  flex-direction: column;
++}
++.ah-cmodal--form .ah-cmodal__body {
++  overflow-y: auto;
+ }
+ .ah-formsec + .ah-formsec {
+   margin-top: 26px;
+ }
+ .ah-formsec__head {
+-  display: block;
++  display: flex;
++  align-items: center;
++  gap: 9px;
+   padding-bottom: 11px;
+   margin-bottom: 16px;
+   border-bottom: 1px solid var(--border);
+ }
++.ah-formsec__head::before {
++  content: "";
++  width: 8px;
++  height: 8px;
++  border-radius: 3px;
++  background: var(--primary-500);
++  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary-500) 12%, transparent);
++}
+ .ah-formgrid {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: 16px;
+ }
++.ah-formnotice {
++  display: flex;
++  align-items: flex-start;
++  gap: 11px;
++  margin: 0 0 16px;
++  padding: 13px 14px;
++  border: 1px solid color-mix(in oklab, var(--warning-500) 26%, var(--border));
++  border-radius: var(--radius-md);
++  background: color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated));
++  color: var(--fg-muted);
++}
++html.dark .ah-root .ah-formnotice {
++  background: rgba(201, 138, 27, 0.11);
++  border-color: rgba(224, 178, 78, 0.32);
++  color: #c6ccda;
++}
++html.dark .ah-root .ah-formnotice b {
++  color: #f4f6fb;
++}
++.ah-formnotice .material-icons {
++  margin-top: 1px;
++  font-size: 19px;
++  color: var(--warning-500);
++  flex-shrink: 0;
++}
++.ah-formnotice p {
++  margin: 0;
++  font: 400 12.5px/1.5 var(--font-sans);
++}
++.ah-formnotice b {
++  color: var(--fg);
++  font-weight: 600;
++}
+ .ah-formfield {
+   min-width: 0;
+ }
+@@ -1826,6 +2184,11 @@ html.dark .ah-root .ah-hl {
+   border-color: var(--primary-500);
+   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-500) 14%, transparent);
+ }
++.ah-cmodal--form .ah-textinput:hover,
++.ah-cmodal--form .ah-textarea:hover,
++.ah-cmodal--form .ah-selectctrl:hover {
++  border-color: color-mix(in oklab, var(--primary-500) 28%, var(--border));
++}
+ .ah-textinput::placeholder,
+ .ah-textarea::placeholder {
+   color: var(--fg-subtle);
+@@ -1865,9 +2228,22 @@ html.dark .ah-root .ah-hl {
+   flex-shrink: 0;
+ }
+ @media (max-width: 560px) {
++  .ah-precheck__institutions ul {
++    grid-template-columns: 1fr;
++  }
+   .ah-formgrid {
+     grid-template-columns: 1fr;
+   }
++  .ah-cmodal--precheck .ah-cmodal__foot,
++  .ah-cmodal--form .ah-cmodal__foot {
++    flex-direction: column-reverse;
++    align-items: stretch;
++  }
++  .ah-cmodal--precheck .ah-cmodal__foot .ah-btn,
++  .ah-cmodal--form .ah-cmodal__foot .ah-btn {
++    justify-content: center;
++    width: 100%;
++  }
+ }
+ 
+ /* ---------- header de página (Solicitudes / Perfil) ---------- */
+@@ -1885,11 +2261,6 @@ html.dark .ah-root .ah-hl {
+ }
+ .ah-pagehead h1 em {
+   font-style: italic;
+-  /* Claro: mismo púrpura vivo del saludo (.ah-hero__greet em) para unificar. */
+-  color: #9d3f86;
+-}
+-html.dark .ah-pagehead h1 em {
+-  /* Oscuro: lavanda sólido, igual que el saludo (ya estaba unificado). */
+   color: var(--display-accent);
+ }
+ .ah-pagehead p {
+@@ -1905,7 +2276,7 @@ html.dark .ah-pagehead h1 em {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: 16px;
+-  margin-bottom: 32px;
++  margin-bottom: 26px;
+ }
+ .ah-action {
+   display: flex;
+@@ -1929,6 +2300,22 @@ html.dark .ah-pagehead h1 em {
+   box-shadow: var(--shadow-md);
+   border-color: var(--border-strong);
+ }
++.ah-action--primary {
++  border-color: color-mix(in oklab, var(--primary-500) 20%, var(--border));
++}
++.ah-action--primary:hover {
++  border-color: color-mix(in oklab, var(--primary-500) 42%, var(--border-strong));
++}
++.ah-action--secondary {
++  background: color-mix(in oklab, var(--bg-elevated) 82%, var(--bg-sunken));
++  box-shadow: none;
++}
++.ah-action--secondary.is-locked .ah-action__arrow {
++  opacity: 0.7;
++}
++html.dark .ah-root .ah-action--secondary {
++  background: color-mix(in oklab, var(--bg-elevated) 78%, var(--bg-sunken));
++}
+ .ah-action:active {
+   transform: scale(0.99);
+ }
+@@ -1945,6 +2332,36 @@ html.dark .ah-pagehead h1 em {
+   letter-spacing: var(--tracking-snug);
+   color: var(--fg);
+ }
++.ah-action__top {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++  flex-wrap: wrap;
++}
++.ah-action__status {
++  display: inline-flex;
++  align-items: center;
++  min-height: 20px;
++  padding: 3px 8px;
++  border-radius: var(--radius-pill);
++  background: var(--bg-sunken);
++  color: var(--fg-muted);
++  font: 600 10.5px/1 var(--font-sans);
++  letter-spacing: 0.01em;
++  white-space: nowrap;
++}
++.ah-action__status--ok {
++  background: var(--success-50);
++  color: var(--success-600, var(--success-500));
++}
++html.dark .ah-root .ah-action__status {
++  background: color-mix(in oklab, var(--bg-sunken) 70%, var(--border));
++  color: var(--fg-muted);
++}
++html.dark .ah-root .ah-action__status--ok {
++  background: rgba(60, 184, 141, 0.16);
++  color: var(--primary-300);
++}
+ .ah-action__d {
+   font: 400 13px/1.4 var(--font-sans);
+   color: var(--fg-muted);
+@@ -1987,6 +2404,12 @@ html.dark .ah-pagehead h1 em {
+   transition: transform var(--duration-fast) var(--ease-standard);
+   font-size: 18px;
+ }
++.ah-details--solicitudes summary {
++  margin-top: 14px;
++}
++.ah-details--solicitudes[open] summary {
++  color: var(--fg);
++}
+ 
+ /* ---------- nota al pie por sección (contacto + descargo, slim) ---------- */
+ .ah-footnote {
+@@ -2205,7 +2628,7 @@ html.dark .ah-root .ah-avatar {
+ @media (max-width: 767px) {
+   /* Flip de TODA la tipografía serif del scope Atlas a Bricolage. */
+   .ah-root {
+-    --font-serif: "Bricolage Grotesque", var(--font-sans);
++    --font-serif: var(--student-display-font);
+   }
+   /* Cabecera de página (Solicitudes / Perfil): peso display + tracking
+      editorial, y el acento deja de ser itálica-serif para pasar a
+@@ -2242,14 +2665,18 @@ html.dark .ah-root .ah-avatar {
+    ============================================================ */
+ .ah-root.ah-unified .ah-pagehead h1,
+ .ah-root.ah-unified .ah-profilehdr__name,
+-.ah-root.ah-unified .ah-profilehdr__av {
++.ah-root.ah-unified .ah-profilehdr__av,
++.ah-root.ah-unified .ah-hero__greet,
++.ah-root.ah-unified .ah-feat__name,
++.ah-root.ah-unified .ah-conv__name {
+   font-family: var(--font-display);
+   font-weight: var(--display-weight);
+   letter-spacing: var(--display-tracking);
+ }
+ /* El acento del título deja de ser itálica-serif / degradé y pasa a
+    color de acento sólido pastel, coherente en claro y oscuro. */
+-.ah-root.ah-unified .ah-pagehead h1 em {
++.ah-root.ah-unified .ah-pagehead h1 em,
++.ah-root.ah-unified .ah-hero__greet em {
+   font-style: normal;
+   background: none;
+   color: var(--display-accent);
+@@ -2264,71 +2691,6 @@ html.dark .ah-root .ah-avatar {
+   }
+ }
+ 
+-/* ── Prácticas · historial responsive (Fase 3) ───────────────────────────────
+-   En desktop se ve la tabla (.ah-hist-table); en <768px se oculta y aparece la
+-   lista de tarjetas (.ah-hist-list) para no desbordar horizontalmente en el
+-   celular. Reusa el patrón de filas del panel editorial. */
+-.ah-hist-list {
+-  display: none;
+-}
+-@media (max-width: 767px) {
+-  .ah-hist-table {
+-    display: none;
+-  }
+-  .ah-hist-list {
+-    display: grid;
+-    gap: 10px;
+-    margin-top: 4px;
+-  }
+-}
+-.ah-prow {
+-  border: 1px solid var(--line);
+-  border-radius: var(--radius-lg);
+-  background: var(--surface);
+-  padding: 14px 15px;
+-}
+-.ah-prow__top {
+-  display: flex;
+-  align-items: flex-start;
+-  justify-content: space-between;
+-  gap: 10px;
+-}
+-.ah-prow__name {
+-  font-family: var(--font-display);
+-  font-weight: 600;
+-  font-size: 16px;
+-  letter-spacing: -0.02em;
+-  line-height: 1.2;
+-  color: var(--ink);
+-  min-width: 0;
+-}
+-.ah-prow__meta {
+-  display: flex;
+-  align-items: center;
+-  gap: 7px;
+-  margin-top: 8px;
+-  font-size: 12px;
+-  color: var(--ink-muted);
+-}
+-.ah-prow__foot {
+-  display: flex;
+-  align-items: center;
+-  gap: 10px;
+-  margin-top: 12px;
+-  padding-top: 11px;
+-  border-top: 1px solid var(--line);
+-}
+-.ah-prow__notalbl {
+-  font: 500 10.5px/1 var(--font-sans);
+-  letter-spacing: var(--tracking-caps);
+-  text-transform: uppercase;
+-  color: var(--ink-muted);
+-}
+-.ah-prow__notaval {
+-  display: inline-flex;
+-  align-items: center;
+-}
+-
+ /* ── Modales full-screen en mobile (Fase 6) ──────────────────────────────────
+    SolicitudPPSForm y CompromisoPPSModal usan .ah-cmodal (card centrada). En
+    <768px pasan a sheet full-screen: ocupan todo el alto/ancho, header sticky y
+diff --git a/src/index.css b/src/index.css
+index 2b8b27c..0d940fc 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -48,6 +48,14 @@ html.pps-embedded .ed {
+   /* Tokens unificados (Fase 0): pesos/tracking display centralizados. Aditivos. */
+   --display-weight: 700;
+   --display-tracking: -0.04em;
++  /* Fuente display única del panel de estudiante (todas las superficies: .ed
++     y .ah-root). Un solo lugar para probar tipografías distintas — no tocar
++     --font-display de arriba, ese es el default de Admin (Manrope). */
++  --student-display-font: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
++  /* Acento de texto único del panel de estudiante (nombre del saludo, <em> de
++     los títulos display en .ed y .ah-root). Mismo valor que --accent-text
++     (ya probado en toda la app para texto legible sobre el fondo claro). */
++  --student-accent-color: #1f6f54;
+ 
+   /* Student Panel Semantic Tokens - Light Mode */
+   --student-bg: #fafaf7;
+@@ -114,6 +122,7 @@ html.dark {
+   --glass-border: rgba(255, 255, 255, 0.08);
+   --glass-bg: rgba(15, 23, 42, 0.6);
+   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
++  --student-accent-color: #5fe0b3;
+ 
+   /* PPS INICIO · Dark tokens */
+   --paper: #0e0e0c;
+@@ -260,7 +269,7 @@ p {
+   align-items: center;
+   gap: 8px;
+   font-size: 13px;
+-  font-weight: 500;
++  font-weight: 600;
+   padding: 8px 14px;
+   border-radius: 8px;
+   border: 1px solid var(--rule-2);
+@@ -1149,7 +1158,7 @@ html.dark {
+ .mp-brand {
+   font-family: var(--font-display);
+   font-size: 16px;
+-  font-weight: 500;
++  font-weight: 600;
+   letter-spacing: -0.02em;
+   color: var(--ink);
+ }
+@@ -1213,7 +1222,7 @@ html.dark {
+ .inline-stat__u {
+   font-size: 14px;
+   color: var(--ink-muted);
+-  font-weight: 500;
++  font-weight: 600;
+   margin-left: 1px;
+ }
+ .inline-stat__sub {
+@@ -1253,7 +1262,7 @@ html.dark {
+   gap: 5px;
+   font-family: var(--font-mono);
+   font-size: 9.5px;
+-  font-weight: 500;
++  font-weight: 600;
+   letter-spacing: 0.06em;
+   text-transform: uppercase;
+   color: var(--ink-subtle);
+@@ -1342,15 +1351,46 @@ html.dark {
+   color: #161335;
+ }
+ 
++/* ---------- Mobile hero head ---------- */
++.mobile-hero-head {
++  margin-bottom: 10px;
++}
++.mobile-hero-head__date {
++  display: block;
++}
++.mobile-hero-head__title {
++  margin-top: 8px;
++  font-size: 29px;
++  font-weight: 800;
++  line-height: 1;
++  letter-spacing: 0;
++  color: var(--ink);
++}
++.mobile-hero-head__title span {
++  color: #1f6f54;
++}
++[data-mode="dark"] .mobile-hero-head__title span {
++  color: #5fe0b3;
++}
++.mobile-hero-head__copy {
++  margin: 9px 0 0;
++  max-width: 30ch;
++  font-size: 14px;
++  line-height: 1.45;
++  color: var(--ink-muted);
++}
++[data-mode="dark"] .mobile-hero-head__copy {
++  color: rgba(255, 255, 255, 0.68);
++}
++
+ /* ---------- Home hero (resumen de tu PPS) ----------
+-   Claro  → tarjeta limpia y aireada; el color vive en el anillo + barra.
+-   Oscuro → bloque con degradé UFLO (queda natural sobre fondo oscuro).
++   Claro/oscuro → progreso semántico en teal; la marca queda en el saludo.
+ */
+ .home-hero {
+   position: relative;
+   border-radius: 18px;
+   overflow: hidden;
+-  padding: 16px 18px;
++  padding: 17px 18px 16px;
+   isolation: isolate;
+   background: var(--bg-elevated);
+   border: 1px solid var(--line);
+@@ -1377,10 +1417,12 @@ html.dark {
+     radial-gradient(120% 130% at 100% 0%, rgba(60, 184, 141, 0.1) 0%, transparent 46%),
+     radial-gradient(120% 130% at 0% 100%, rgba(32, 59, 115, 0.14) 0%, transparent 52%);
+ }
++.home-hero__top,
+ .home-hero__row {
+   display: flex;
+-  align-items: center;
++  align-items: flex-start;
+   justify-content: space-between;
++  gap: 14px;
+ }
+ .home-hero__lbl {
+   font-size: 10px;
+@@ -1395,39 +1437,66 @@ html.dark {
+ .home-hero__val {
+   font-size: 34px;
+   font-weight: 800;
+-  letter-spacing: -0.04em;
+-  line-height: 0.9;
++  letter-spacing: 0;
++  line-height: 0.95;
+   font-variant-numeric: tabular-nums;
+ }
+ .home-hero__u {
+-  font-size: 15px;
++  font-size: 16px;
+   color: var(--ink-muted);
+-  font-weight: 500;
++  font-weight: 600;
+   margin-left: 2px;
+ }
+ [data-mode="dark"] .home-hero__u {
+   color: rgba(255, 255, 255, 0.6);
+ }
++.home-hero__pct {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  min-width: 48px;
++  padding: 6px 9px;
++  border-radius: 999px;
++  background: color-mix(in oklab, #3cb88d 12%, var(--bg-elevated));
++  border: 1px solid color-mix(in oklab, #3cb88d 22%, var(--line));
++  color: #1f6f54;
++  font: 700 13px/1 var(--font-mono);
++  font-variant-numeric: tabular-nums;
++}
++[data-mode="dark"] .home-hero__pct {
++  background: rgba(94, 230, 183, 0.12);
++  border-color: rgba(94, 230, 183, 0.22);
++  color: #9df2d0;
++}
+ .home-hero__bar {
+-  height: 6px;
++  height: 7px;
+   border-radius: 999px;
+-  background: var(--bg-sunken);
++  background: #ebe8df;
+   overflow: hidden;
+-  margin-top: 16px;
++  margin-top: 15px;
+ }
+ [data-mode="dark"] .home-hero__bar {
+-  background: rgba(255, 255, 255, 0.18);
++  background: rgba(255, 255, 255, 0.14);
+ }
+ .home-hero__bar > span {
+   display: block;
+   height: 100%;
+   border-radius: 999px;
+-  background: linear-gradient(90deg, #46253d 0%, #203b73 48%, #3cb88d 100%);
++  background: linear-gradient(90deg, #2f8f72 0%, #45c395 100%);
+   transition: width 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+ }
+ [data-mode="dark"] .home-hero__bar > span {
+   background: linear-gradient(90deg, #5ee6b7, #3cb88d);
+ }
++.home-hero__hint {
++  margin: 10px 0 0;
++  font-size: 12.5px;
++  line-height: 1.35;
++  color: var(--ink-muted);
++}
++[data-mode="dark"] .home-hero__hint {
++  color: rgba(255, 255, 255, 0.62);
++}
+ 
+ /* mini ring (claro = trazo degradé UFLO; oscuro = teal brillante) */
+ .mini-ring__track {
+@@ -1474,12 +1543,10 @@ html.dark {
+ .cc__status {
+   font-family: var(--font-mono);
+   font-size: 9.5px;
+-  font-weight: 500;
++  font-weight: 600;
+   letter-spacing: 0.08em;
+   text-transform: uppercase;
+-  color: var(--ink-subtle);
+   padding: 3px 8px;
+-  border: 1px solid var(--line);
+   border-radius: 999px;
+ }
+ .cc__name {
+@@ -1496,7 +1563,7 @@ html.dark {
+   gap: 6px;
+   margin-top: 8px;
+   font-size: 11.5px;
+-  font-weight: 500;
++  font-weight: 600;
+   color: var(--ink-muted);
+   letter-spacing: -0.005em;
+ }
+@@ -1516,6 +1583,40 @@ html.dark {
+   color: var(--ink-muted);
+   letter-spacing: 0.04em;
+ }
++.cc--closed .cc__name {
++  color: color-mix(in oklab, var(--ink) 90%, var(--ink-muted));
++}
++.cc--closed .cc__when,
++.cc--closed .cc__meta {
++  color: color-mix(in oklab, var(--ink-muted) 74%, var(--ink));
++}
++.cc--closed.cc--selected {
++  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
++}
++.cc--closed.cc--selected .cc__name {
++  color: var(--ink);
++}
++.cc--closed.cc--selected .cc__when,
++.cc--closed.cc--selected .cc__meta {
++  color: var(--ink-muted);
++}
++[data-mode="dark"] .cc--closed .cc__name {
++  color: rgba(242, 243, 247, 0.9);
++}
++[data-mode="dark"] .cc--closed .cc__when,
++[data-mode="dark"] .cc--closed .cc__meta {
++  color: rgba(199, 202, 212, 0.82);
++}
++[data-mode="dark"] .cc--closed.cc--selected {
++  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
++}
++[data-mode="dark"] .cc--closed.cc--selected .cc__name {
++  color: var(--ink);
++}
++[data-mode="dark"] .cc--closed.cc--selected .cc__when,
++[data-mode="dark"] .cc--closed.cc--selected .cc__meta {
++  color: rgba(199, 202, 212, 0.9);
++}
+ .cc__cta {
+   display: inline-flex;
+   align-items: center;
+@@ -1602,6 +1703,223 @@ html.dark {
+   background: var(--bg-sunken);
+ }
+ 
++/* ---------- Enrollment form modal ---------- */
++.enroll-head {
++  padding: 14px 20px;
++}
++.enroll-title {
++  font-size: 22px;
++  letter-spacing: 0;
++}
++.enroll-schedule {
++  padding: 12px 20px 13px;
++}
++.enroll-schedule__icon {
++  display: grid;
++  place-items: center;
++  flex-shrink: 0;
++  width: 28px;
++  height: 28px;
++  margin-top: 2px;
++  border-radius: 10px;
++  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated));
++  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--line));
++}
++.enroll-schedule__text {
++  display: -webkit-box;
++  margin-top: 4px;
++  overflow: hidden;
++  -webkit-box-orient: vertical;
++  -webkit-line-clamp: 3;
++  font-size: 13px;
++  font-weight: 650;
++  line-height: 1.32;
++}
++.enroll-body {
++  padding: 18px 20px 104px;
++}
++.enroll-body > * + * {
++  margin-top: 22px;
++}
++.enroll-commit {
++  padding: 14px;
++}
++.enroll-commit__icon {
++  display: grid;
++  place-items: center;
++  flex-shrink: 0;
++  width: 34px;
++  height: 34px;
++  border-radius: 12px;
++  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated));
++}
++.enroll-workpanel {
++  padding: 10px;
++  border: 1px solid color-mix(in oklab, var(--accent) 14%, var(--line));
++  border-radius: 18px;
++  background: color-mix(in oklab, var(--accent) 2%, var(--bg-elevated));
++}
++.enroll-workgrid {
++  display: none;
++  grid-template-columns: 1fr 1fr;
++  gap: 10px;
++}
++.enroll-workseg {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  padding: 3px;
++  border: 1px solid color-mix(in oklab, var(--accent) 8%, var(--line));
++  border-radius: 16px;
++  background: color-mix(in oklab, var(--bg-sunken) 88%, var(--bg-elevated));
++}
++.enroll-workseg__btn {
++  min-height: 44px;
++  border-radius: 12px;
++  font-size: 14px;
++  font-weight: 750;
++  transition:
++    background 160ms ease,
++    color 160ms ease,
++    transform 160ms ease;
++}
++.enroll-workseg__btn:active {
++  transform: scale(0.98);
++}
++.enroll-workbtn {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  min-width: 0;
++  min-height: 66px;
++  padding: 12px;
++  border: 1px solid var(--line);
++  border-radius: 16px;
++  transition:
++    background 160ms ease,
++    border-color 160ms ease,
++    transform 160ms ease;
++}
++.enroll-workbtn:hover {
++  transform: translateY(-1px);
++}
++.enroll-workbtn__check {
++  display: grid;
++  place-items: center;
++  flex-shrink: 0;
++  width: 24px;
++  height: 24px;
++  border: 1px solid var(--line-strong);
++  border-radius: 999px;
++}
++.enroll-workbtn__sub {
++  display: block;
++  margin-top: 3px;
++  overflow: hidden;
++  font-size: 11px;
++  font-weight: 600;
++  line-height: 1.2;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.enroll-cert {
++  position: relative;
++  padding: 13px 0 0;
++  border-radius: 0;
++  background: transparent;
++}
++.enroll-cert::before {
++  content: "";
++  display: block;
++  width: calc(100% - 8px);
++  height: 1px;
++  margin: 0 4px 13px;
++  background: color-mix(in oklab, var(--accent) 10%, var(--line));
++}
++.enroll-cert__label {
++  margin: 0 0 10px;
++  padding: 0 1px;
++}
++.enroll-cert-card {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++  padding: 12px 12px 12px 14px;
++  border-radius: 14px;
++}
++.enroll-cert-action {
++  padding: 9px 12px;
++}
++.enroll-foot {
++  padding: 12px 20px 16px;
++}
++.enroll-cancel {
++  padding: 9px 12px;
++  order: 2;
++}
++.enroll-submit {
++  padding: 13px 18px;
++  order: 1;
++}
++@media (min-width: 640px) {
++  .enroll-head {
++    padding: 18px 28px;
++  }
++  .enroll-title {
++    font-size: 27px;
++  }
++  .enroll-schedule {
++    padding: 14px 28px;
++  }
++  .enroll-body {
++    padding: 28px;
++  }
++  .enroll-body > * + * {
++    margin-top: 28px;
++  }
++  .enroll-commit {
++    padding: 20px;
++  }
++  .enroll-workpanel {
++    padding: 0;
++    border: 0;
++    border-radius: 0;
++    background: transparent;
++  }
++  .enroll-workseg {
++    display: none;
++  }
++  .enroll-workgrid {
++    display: grid;
++  }
++  .enroll-cert {
++    padding: 18px;
++    border: 1px solid var(--line);
++    border-radius: 16px;
++    background: var(--bg-sunken);
++  }
++  .enroll-cert::before {
++    display: none;
++  }
++  .enroll-cert__label {
++    margin-bottom: 14px;
++  }
++  .enroll-cert-card {
++    padding: 14px 16px;
++  }
++  .enroll-cert-action {
++    padding: 10px 14px;
++  }
++  .enroll-foot {
++    padding: 18px 24px;
++  }
++  .enroll-cancel,
++  .enroll-submit {
++    order: 0;
++    padding: 14px 18px;
++  }
++}
++
+ /* Tarjeta "Seleccionado → consentimiento": glow de acento que respira,
+    para llamar la atención sobre la acción urgente sin distraer. */
+ .cc--consent {
+@@ -1672,7 +1990,7 @@ html.dark {
+ .detail-stat__u {
+   font-size: 12px;
+   color: var(--ink-muted);
+-  font-weight: 500;
++  font-weight: 600;
+   margin-left: 1px;
+ }
+ 
+@@ -1803,7 +2121,7 @@ html.dark {
+ .login2__brand {
+   font-family: var(--font-display);
+   font-size: 17px;
+-  font-weight: 500;
++  font-weight: 600;
+   letter-spacing: -0.02em;
+   color: rgba(255, 255, 255, 0.92);
+ }
+@@ -1886,7 +2204,7 @@ html.dark {
+   padding: 0;
+   font: inherit;
+   font-size: 16px;
+-  font-weight: 500;
++  font-weight: 600;
+   color: var(--ink);
+   letter-spacing: -0.01em;
+ }
+@@ -1921,7 +2239,7 @@ html.dark {
+   font-size: 13.5px;
+   color: var(--ink-soft);
+   cursor: pointer;
+-  font-weight: 500;
++  font-weight: 600;
+ }
+ .login-check {
+   width: 20px;
+@@ -2189,7 +2507,7 @@ html.dark {
+   --t-base: 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+   --t-slow: 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+   --sh-md: 0 10px 24px -10px rgba(15, 27, 98, 0.18);
+-  --font-display: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
++  --font-display: var(--student-display-font);
+   --font-sans: "Geist", "Inter", system-ui, sans-serif;
+   --font-mono: "Geist Mono", ui-monospace, monospace;
+   /* Tokens unificados (Fase 0): alias de superficie + pesos display. Aditivos,
+@@ -2243,10 +2561,7 @@ html.dark {
+ /* Titular serif editorial (Instrument Serif) — firma del rediseño Atlas */
+ .ed {
+   --font-serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+-  --display-accent: #46253d;
+-}
+-.ed[data-mode="dark"] {
+-  --display-accent: #c9a2bd;
++  --display-accent: var(--student-accent-color);
+ }
+ /* Titular unificado a Bricolage (antes Instrument Serif).
+    El acento (<em>) deja de ser italic-serif y pasa a gradiente UFLO. */
+@@ -2272,7 +2587,7 @@ html.dark {
+ }
+ .ed-eyebrow {
+   font-size: 12px;
+-  font-weight: 500;
++  font-weight: 600;
+   letter-spacing: 0.08em;
+   text-transform: uppercase;
+   color: var(--ink-muted);
+@@ -2376,7 +2691,7 @@ html.dark {
+   padding: 0 16px 0 44px;
+   font-family: var(--font-sans);
+   font-size: 15px;
+-  font-weight: 500;
++  font-weight: 600;
+   color: var(--ink);
+   transition: all var(--t-base);
+ }
+@@ -2712,7 +3027,7 @@ html.dark {
+ /* wordmark "Mi Panel" (marca del panel; no usamos UFLO por no ser oficial) */
+ .au-wordmark {
+   font-family: var(--font-display);
+-  font-weight: 500;
++  font-weight: 600;
+   font-size: 19px;
+   letter-spacing: -0.02em;
+   color: var(--ink);
+@@ -2759,7 +3074,7 @@ html.dark {
+   padding: 0 18px;
+   font-family: var(--font-sans);
+   font-size: 16.5px;
+-  font-weight: 500;
++  font-weight: 600;
+   color: var(--ink);
+   transition: all var(--t-base);
+ }
+@@ -2918,7 +3233,7 @@ html.dark {
+ @media (min-width: 640px) {
+   .sel-sheet {
+     max-width: min(92vw, 720px);
+-    height: min(88dvh, 760px);
++    height: min(86dvh, 720px);
+     border-radius: 28px;
+     box-shadow: 0 30px 80px -30px rgba(11, 15, 25, 0.5);
+   }
+@@ -2943,24 +3258,29 @@ html.dark {
+   align-items: center;
+   justify-content: space-between;
+   gap: 12px;
+-  padding: 12px 16px 10px;
++  padding: 12px 18px 8px;
+   flex-shrink: 0;
+ }
+ .sel-iconbtn {
+-  width: 36px;
+-  height: 36px;
++  width: 34px;
++  height: 34px;
+   display: grid;
+   place-items: center;
+   border-radius: 50%;
+-  border: 1px solid var(--line);
+-  background: var(--bg-elevated);
+-  color: var(--ink);
++  border: 1px solid transparent;
++  background: transparent;
++  color: var(--ink-muted);
+   cursor: pointer;
+   flex-shrink: 0;
+-  transition: background var(--t-fast);
++  transition:
++    background var(--t-fast),
++    color var(--t-fast),
++    border-color var(--t-fast);
+ }
+ .sel-iconbtn:hover {
++  border-color: var(--line);
+   background: var(--bg-sunken);
++  color: var(--ink);
+ }
+ .sel-header__label {
+   font-family: var(--font-mono);
+@@ -2974,7 +3294,7 @@ html.dark {
+ .sel-body {
+   flex: 1;
+   overflow-y: auto;
+-  padding: 4px 20px 28px;
++  padding: 6px 20px 30px;
+ }
+ 
+ /* kicker (área · cerrada) + titular editorial */
+@@ -2988,6 +3308,26 @@ html.dark {
+   align-items: center;
+   gap: 7px;
+ }
++.sel-kicker__area {
++  font-weight: 700;
++}
++.sel-kicker__sep {
++  color: var(--ink-subtle);
++}
++.sel-closed-pill {
++  display: inline-flex;
++  align-items: center;
++  height: 20px;
++  padding: 0 8px;
++  border-radius: 999px;
++  border: 1px solid var(--line);
++  background: var(--bg-sunken);
++  color: var(--ink-muted);
++  font-size: 10px;
++  font-weight: 700;
++  letter-spacing: 0.06em;
++}
++
+ .sel-title {
+   font-family: var(--font-display);
+   font-weight: 700;
+@@ -3048,13 +3388,19 @@ html.dark {
+ }
+ .sel-stat__val {
+   font-family: var(--font-display);
+-  font-size: 28px;
+-  font-weight: 700;
++  font-size: 26px;
++  font-weight: 750;
+   letter-spacing: -0.03em;
+   line-height: 1;
+   font-variant-numeric: tabular-nums;
+   color: var(--ink);
+ }
++.sel-stat__val[data-tone="ok"] {
++  color: var(--accent-text);
++}
++.sel-stat__val[data-tone="warn"] {
++  color: var(--area-laboral);
++}
+ .sel-stat__sub {
+   font-family: var(--font-mono);
+   font-size: 10px;
+@@ -3145,9 +3491,9 @@ html.dark {
+   transition: all var(--t-fast);
+ }
+ .sel-chip[data-on="true"] {
+-  border-color: var(--ink);
+-  background: var(--ink);
+-  color: var(--bg);
++  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
++  background: color-mix(in oklab, var(--accent) 13%, var(--bg-elevated));
++  color: var(--accent-text);
+ }
+ .sel-chip__n {
+   font-size: 10px;
+@@ -3159,8 +3505,8 @@ html.dark {
+   color: var(--ink-muted);
+ }
+ .sel-chip[data-on="true"] .sel-chip__n {
+-  background: rgba(255, 255, 255, 0.22);
+-  color: var(--bg);
++  background: color-mix(in oklab, var(--accent) 16%, var(--bg-sunken));
++  color: var(--accent-text);
+ }
+ 
+ /* grupos por horario */
+@@ -3201,7 +3547,7 @@ html.dark {
+   display: flex;
+   align-items: center;
+   gap: 12px;
+-  padding: 11px 2px;
++  padding: 12px 2px;
+   border-bottom: 1px solid var(--hairline);
+ }
+ .sel-av {
+@@ -3248,7 +3594,7 @@ html.dark {
+ }
+ .sel-row__name {
+   font-size: 14.5px;
+-  font-weight: 500;
++  font-weight: 600;
+   color: var(--ink);
+   white-space: nowrap;
+   overflow: hidden;
+@@ -3257,21 +3603,21 @@ html.dark {
+ .sel-row__legajo {
+   font-family: var(--font-mono);
+   font-size: 11px;
+-  color: var(--ink-subtle);
+-  margin-top: 1px;
++  color: var(--ink-muted);
++  margin-top: 3px;
+   letter-spacing: 0.02em;
+ }
+ .sel-status {
+-  padding: 4px 10px;
++  padding: 4px 9px;
+   border-radius: 999px;
+   font-size: 10.5px;
+-  font-weight: 600;
++  font-weight: 700;
+   white-space: nowrap;
+   flex-shrink: 0;
+ }
+ .sel-status[data-ok="true"] {
+-  background: rgba(60, 184, 141, 0.14);
+-  color: var(--area-clinica);
++  background: color-mix(in oklab, var(--accent) 13%, transparent);
++  color: var(--accent-text);
+ }
+ .sel-status[data-ok="false"] {
+   background: rgba(183, 119, 11, 0.13);
+diff --git a/src/utils/formatters.ts b/src/utils/formatters.ts
+index 184aeeb..c595d8d 100644
+--- a/src/utils/formatters.ts
++++ b/src/utils/formatters.ts
+@@ -177,6 +177,31 @@ export function parseToUTCDate(dateStr?: string | null): Date | null {
+   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+ }
+ 
++/** Días de diferencia entre hoy y `raw` (negativo = ya pasó). Fuente única de
++    verdad para "¿cuánto falta para que cierre la inscripción?" — la usan
++    tanto el card de convocatoria mobile como el desktop (Atlas), para que el
++    estado ("Abierta" / "Cierra hoy" / "Cerró") no diverja entre viewports. */
++export function daysUntil(raw?: unknown): number | null {
++  if (!raw) return null;
++  const d = parseToUTCDate(raw as string);
++  if (!d) return null;
++  const now = new Date();
++  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
++  return Math.round((d.getTime() - today.getTime()) / 86400000);
++}
++
++/** Etiqueta de cierre de inscripción a partir de la fecha fin. `soft` indica
++    si el estado es "tranquilo" (sin urgencia) o necesita el tratamiento de
++    alerta (cierra hoy/mañana/pronto). */
++export function closesLabel(raw?: unknown): { text: string; soft: boolean } {
++  const n = daysUntil(raw);
++  if (n == null) return { text: "Abierta", soft: true };
++  if (n < 0) return { text: "Cerró", soft: true };
++  if (n === 0) return { text: "Cierra hoy", soft: false };
++  if (n === 1) return { text: "Cierra mañana", soft: false };
++  return { text: `Cierra en ${n} días`, soft: n > 4 };
++}
++
+ export function toTitleCase(str: string): string {
+   if (!str) return "";
+   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+diff --git a/src/views/StudentDashboard.tsx b/src/views/StudentDashboard.tsx
+index 88d2a9e..8e8d241 100644
+--- a/src/views/StudentDashboard.tsx
++++ b/src/views/StudentDashboard.tsx
+@@ -9,6 +9,7 @@ import CriteriosPanel from "../components/student/CriteriosPanel";
+ import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
+ import FinalizacionForm from "../components/student/FinalizacionForm";
+ import HomeView from "../components/student/HomeView";
++import PracticasTable from "../components/student/PracticasTable";
+ import PrintableReport from "../components/student/PrintableReport";
+ import ProfileView from "../components/student/ProfileView";
+ import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
+@@ -53,6 +54,7 @@ import { useAuth } from "../contexts/AuthContext";
+ import { useModal } from "../contexts/ModalContext";
+ import { useNotifications } from "../contexts/NotificationContext";
+ import { useStudentPanel } from "../contexts/StudentPanelContext";
++import { useTheme } from "../contexts/ThemeContext";
+ import { db } from "../lib/db";
+ import type { Orientacion, Practica, TabId } from "../types";
+ // import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
+@@ -225,6 +227,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
+ }) => {
+   const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
+   const isMobile = useIsMobile();
++  const { resolvedTheme } = useTheme();
+   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
+   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
+@@ -257,6 +260,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
+     updateOrientation,
+     updateInternalNotes,
+     updateNota,
++    updateFechaFin,
+     deletePractica,
+     enrollStudent,
+     cancelEnrollment,
+@@ -308,6 +312,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
+     },
+     [updateNota]
+   );
++  const handleFechaFinChange = useCallback(
++    (practicaId: string, fecha: string) => {
++      updateFechaFin.mutate({ practicaId, fecha });
++    },
++    [updateFechaFin]
++  );
+   const handleRequestModificacion = useCallback((practica: Practica) => {
+     logger.info("[DEBUG] StudentDashboard - Solicitar modificación para:", practica);
+     setSelectedPractica(practica);
+@@ -491,6 +501,31 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
+     [studentDetails, isLoading, updateInternalNotes]
+   );
+ 
++  // Versión mobile (editorial) de Prácticas — aro de horas + tabla nativa,
++  // layout propio pensado para el dedo (no es el widget de escritorio encogido).
++  const practicasContent = useMemo(
++    () => (
++      <ErrorBoundary>
++        <PracticasTable
++          practicas={practicas}
++          handleNotaChange={handleNotaChange}
++          handleFechaFinChange={handleFechaFinChange}
++          isLoading={isPracticasLoading}
++          onRequestModificacion={handleRequestModificacion}
++          onRequestNuevaPPS={handleRequestNuevaPPS}
++        />
++      </ErrorBoundary>
++    ),
++    [
++      practicas,
++      handleNotaChange,
++      handleFechaFinChange,
++      isPracticasLoading,
++      handleRequestModificacion,
++      handleRequestNuevaPPS,
++    ]
++  );
++
+   // Versión Atlas (escritorio) de Prácticas — layout 2 columnas.
+   const atlasPracticasContent = useMemo(
+     () => (
+@@ -732,7 +767,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
+           )}
+           {currentActiveTab === "convocatorias" && <StudentConvocatoriasView />}
+           {currentActiveTab === "solicitudes" && <>{mobileSolicitudesContent}</>}
+-          {currentActiveTab === "practicas" && <>{atlasPracticasContent}</>}
++          {currentActiveTab === "practicas" && (
++            <div className="ed" data-mode={resolvedTheme} data-accent="teal">
++              {!finalizacionRequest && (
++                <CriteriosPanel
++                  criterios={criterios}
++                  selectedOrientacion={selectedOrientacion}
++                  handleOrientacionChange={handleOrientacionChange}
++                  showSaveConfirmation={showSaveConfirmation}
++                  onRequestFinalization={handleOpenFinalization}
++                  informeTasks={informeTasks}
++                  showOrientationSelector={false}
++                />
++              )}
++              {practicasContent}
++            </div>
++          )}
+           {currentActiveTab === "profile" && <>{atlasProfileContent}</>}
+         </div>
+       )}
+diff --git a/src/views/student/AtlasPracticasView.tsx b/src/views/student/AtlasPracticasView.tsx
+index d95d8ce..8d2d052 100644
+--- a/src/views/student/AtlasPracticasView.tsx
++++ b/src/views/student/AtlasPracticasView.tsx
+@@ -11,7 +11,6 @@ import {
+   FIELD_NOTA_PRACTICAS,
+ } from "../../constants";
+ import type { CriteriosCalculados, InformeTask, Orientacion, Practica } from "../../types";
+-import { ALL_ORIENTACIONES } from "../../types";
+ import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
+ import NotaSelector from "../../components/NotaSelector";
+ 
+@@ -49,7 +48,6 @@ const ROTACION_OBJETIVO = 3;
+ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+   criterios,
+   selectedOrientacion,
+-  handleOrientacionChange,
+   practicas,
+   handleNotaChange,
+   onRequestModificacion,
+@@ -134,7 +132,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+     const estado = normalizeStringForComparison((p[FIELD_ESTADO_PRACTICA] as string) || "");
+     const raw = p[FIELD_NOTA_PRACTICAS];
+     const num = raw != null && String(raw).trim() !== "" ? Number(raw) : NaN;
+-    let text = "—";
++    let text = "Pend.";
+     let color = "var(--fg-subtle)";
+     if (estado.includes("curso")) {
+       text = "en curso";
+@@ -174,7 +172,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+           setMenu({ id: p.id, rect, current: text });
+         }}
+       >
+-        {text}
++        {Number.isFinite(num) ? text : <span className="ah-nota__pending">{text}</span>}
+       </button>
+     );
+   };
+@@ -187,10 +185,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+           <h1>
+             Tus <em>prácticas</em>.
+           </h1>
+-          <p>
+-            Todo tu historial y tu avance hacia la acreditación, en un solo lugar. Tocá una nota
+-            para editarla.
+-          </p>
++          <p>Historial de PPS y avance hacia la acreditación.</p>
+         </div>
+ 
+         {/* ── Tu acreditación: una sola tarjeta (progreso + requisitos + CTA) ── */}
+@@ -258,21 +253,15 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+               )}
+             </p>
+ 
+-            <div className="ah-accr-hero__orient">
++            <div
++              className="ah-accr-hero__orient"
++              style={{ ["--ori" as string]: areaVar(selectedOrientacion || "") }}
++            >
+               <span className="ah-field__lbl">Tu orientación</span>
+-              <select
+-                className="ah-field__select"
+-                style={{ maxWidth: 240 }}
+-                value={selectedOrientacion}
+-                onChange={(e) => handleOrientacionChange(e.target.value as Orientacion | "")}
+-              >
+-                <option value="">Seleccionar…</option>
+-                {ALL_ORIENTACIONES.map((o) => (
+-                  <option key={o} value={o}>
+-                    {o}
+-                  </option>
+-                ))}
+-              </select>
++              <span className="ah-orient-readonly">
++                <span className="ah-orient-readonly__sw" aria-hidden />
++                {selectedOrientacion || "Definir en Mi Perfil"}
++              </span>
+             </div>
+           </div>
+ 
+@@ -302,34 +291,41 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+                   : `Faltan ${Math.round(criterios.horasFaltantesOrientacion || 0)} hs`
+               }
+             />
+-            <p className="ah-accr-hero__hint">
+-              <span className="material-icons" aria-hidden>
+-                {reqsCumplidos === reqsTotal ? "verified" : "info"}
+-              </span>
+-              {reqsCumplidos === reqsTotal ? (
+-                <span>
+-                  Cumplís los requisitos de cursada. El trámite de acreditación se inicia desde{" "}
+-                  <b>Solicitudes</b>.
+-                </span>
+-              ) : (
+-                <span>
+-                  Cuando completes los requisitos vas a poder iniciar la acreditación desde{" "}
+-                  <b>Solicitudes</b>.
+-                </span>
+-              )}
+-            </p>
+           </div>
++          <p className="ah-accr-hero__hint">
++            <span className="material-icons" aria-hidden>
++              {reqsCumplidos === reqsTotal ? "verified" : "info"}
++            </span>
++            <span>
++              Cuando completes todos los criterios y tus informes estén corregidos, vas a poder
++              iniciar la acreditación desde <b>Solicitudes</b>.
++            </span>
++          </p>
+         </div>
+ 
+-        {/* ── Tu historial: protagonista, ancho completo ── */}
+-        <div>
++        {/* ── Mis prácticas: protagonista, ancho completo ── */}
++        <div className="ah-practices-section">
+           <div>
+             <div className="ah-sechead">
+-              <h6>Tu historial</h6>
+-              <span className="n">{String(rows.length).padStart(2, "0")}</span>
++              <div className="ah-sechead__title">
++                <h6>Mis prácticas</h6>
++                <span className="n">{String(rows.length).padStart(2, "0")}</span>
++              </div>
++              {onRequestNuevaPPS ? (
++                <button
++                  type="button"
++                  className="ah-btn ah-btn--secondary ah-btn--compact"
++                  onClick={onRequestNuevaPPS}
++                >
++                  <span className="material-icons" style={{ fontSize: 18 }}>
++                    add
++                  </span>
++                  Solicitar agregar una PPS
++                </button>
++              ) : null}
+             </div>
+             {rows.length > 0 ? (
+-              <div className="ah-card ah-hist-table">
++              <div className="ah-card ah-practices-table-card">
+                 <table className="ah-table">
+                   <thead>
+                     <tr>
+@@ -369,7 +365,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+                           </td>
+                           <td className="mono">{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</td>
+                           <td className="nota">{notaCell(p)}</td>
+-                          <td style={{ width: 40, textAlign: "right" }}>
++                          <td className="ah-table__actions" style={{ width: 40, textAlign: "right" }}>
+                             {onRequestModificacion ? (
+                               <button
+                                 type="button"
+@@ -403,74 +399,6 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
+               </div>
+             )}
+ 
+-            {/* Historial en tarjetas — versión mobile (<768px) de la tabla. */}
+-            {rows.length > 0 && (
+-              <div className="ah-hist-list">
+-                {rows.map((p) => {
+-                  const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
+-                  const period = [
+-                    fmtShort(p[FIELD_FECHA_INICIO_PRACTICAS]),
+-                    fmtShort(p[FIELD_FECHA_FIN_PRACTICAS]),
+-                  ]
+-                    .filter(Boolean)
+-                    .join(" — ");
+-                  return (
+-                    <div className="ah-prow" key={`m-${p.id}`}>
+-                      <div className="ah-prow__top">
+-                        <div className="ah-prow__name">
+-                          {cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
+-                            "Institución"}
+-                        </div>
+-                        <span
+-                          className="ah-areabadge"
+-                          style={{ ["--ac" as string]: areaVar(area) }}
+-                        >
+-                          <span className="dot" />
+-                          {area}
+-                        </span>
+-                      </div>
+-                      <div className="ah-prow__meta mono">
+-                        <span>{period || "Sin fechas"}</span>
+-                        <span>·</span>
+-                        <span>{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</span>
+-                      </div>
+-                      <div className="ah-prow__foot">
+-                        <span className="ah-prow__notalbl">Nota</span>
+-                        <span className="ah-prow__notaval">{notaCell(p)}</span>
+-                        {onRequestModificacion ? (
+-                          <button
+-                            type="button"
+-                            className="ah-iconbtn--sm"
+-                            title="Solicitar corrección"
+-                            style={{ marginLeft: "auto" }}
+-                            onClick={() => onRequestModificacion(p)}
+-                          >
+-                            <span className="material-icons" style={{ fontSize: 17 }}>
+-                              edit
+-                            </span>
+-                          </button>
+-                        ) : null}
+-                      </div>
+-                    </div>
+-                  );
+-                })}
+-              </div>
+-            )}
+-
+-            {onRequestNuevaPPS ? (
+-              <div style={{ marginTop: 14 }}>
+-                <button
+-                  type="button"
+-                  className="ah-btn ah-btn--secondary"
+-                  onClick={onRequestNuevaPPS}
+-                >
+-                  <span className="material-icons" style={{ fontSize: 18 }}>
+-                    add
+-                  </span>
+-                  Solicitar agregar una PPS
+-                </button>
+-              </div>
+-            ) : null}
+           </div>
+         </div>
+ 
+diff --git a/src/views/student/AtlasSolicitudesView.tsx b/src/views/student/AtlasSolicitudesView.tsx
+index 22dc76c..cbd1109 100644
+--- a/src/views/student/AtlasSolicitudesView.tsx
++++ b/src/views/student/AtlasSolicitudesView.tsx
+@@ -86,6 +86,15 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
+       !criterios.tienePracticasPendientes &&
+       !hasPendingCorrections
+     : false;
++  const missingAccreditationItems = criterios
++    ? [
++        !criterios.cumpleHorasTotales,
++        !criterios.cumpleRotacion,
++        !criterios.cumpleHorasOrientacion,
++        criterios.tienePracticasPendientes,
++        hasPendingCorrections,
++      ].filter(Boolean).length
++    : 0;
+ 
+   const { active, history } = useMemo(() => {
+     const a: SolicitudPPS[] = [];
+@@ -138,7 +147,11 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
+             {(onCreateSolicitud || onRequestFinalization) && (
+               <div className="ah-actions">
+                 {onCreateSolicitud && (
+-                  <button type="button" className="ah-action" onClick={onCreateSolicitud}>
++                  <button
++                    type="button"
++                    className="ah-action ah-action--primary"
++                    onClick={onCreateSolicitud}
++                  >
+                     <span
+                       className="ah-action__ic"
+                       style={{ background: "var(--primary-50)", color: "var(--primary-700)" }}
+@@ -157,7 +170,10 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
+                 {onRequestFinalization && (
+                   <button
+                     type="button"
+-                    className="ah-action"
++                    className={
++                      "ah-action ah-action--secondary" +
++                      (isAccreditationReady ? " is-ready" : " is-locked")
++                    }
+                     onClick={() => onRequestFinalization && onRequestFinalization()}
+                   >
+                     <span
+@@ -172,7 +188,23 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
+                       </span>
+                     </span>
+                     <div>
+-                      <div className="ah-action__t">Trámite de acreditación</div>
++                      <div className="ah-action__top">
++                        <div className="ah-action__t">Trámite de acreditación</div>
++                        <span
++                          className={
++                            "ah-action__status" +
++                            (isAccreditationReady ? " ah-action__status--ok" : "")
++                          }
++                        >
++                          {isAccreditationReady
++                            ? "Listo para iniciar"
++                            : missingAccreditationItems > 0
++                              ? `${missingAccreditationItems} pendiente${
++                                  missingAccreditationItems === 1 ? "" : "s"
++                                }`
++                              : "Faltan requisitos"}
++                        </span>
++                      </div>
+                       <div className="ah-action__d">
+                         {isAccreditationReady
+                           ? "Requisitos cumplidos · iniciar cierre"
+@@ -202,10 +234,10 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
+             )}
+ 
+             {history.length > 0 && (
+-              <details className="ah-details">
++              <details className="ah-details ah-details--solicitudes" open>
+                 <summary>
+                   <span className="material-icons">chevron_right</span>
+-                  Ver historial ({history.length})
++                  Historial ({history.length})
+                 </summary>
+                 <div className="ah-card" style={{ marginTop: 12 }}>
+                   <div className="ah-sols">
+diff --git a/src/views/student/StudentConvocatoriaDetailView.tsx b/src/views/student/StudentConvocatoriaDetailView.tsx
+index 3de217b..424a33e 100644
+--- a/src/views/student/StudentConvocatoriaDetailView.tsx
++++ b/src/views/student/StudentConvocatoriaDetailView.tsx
+@@ -25,8 +25,10 @@ import {
+   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+   FIELD_DESCRIPCION_LANZAMIENTOS,
+   FIELD_DIRECCION_LANZAMIENTOS,
++  FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
++  FIELD_ARCHIVO_DESCARGABLE_URL,
+ } from "../../constants";
+-import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
++import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
+ import { isEmbedded } from "../../utils/isEmbedded";
+ import type { LanzamientoPPS } from "../../types";
+ 
+@@ -158,7 +160,9 @@ const StudentConvocatoriaDetail: React.FC = () => {
+         </span>
+         <span className="h-9 w-9" aria-hidden />
+       </header>
+-      <div className="mx-auto w-full max-w-[560px] md:max-w-[1060px] flex-1">{children}</div>
++      <div className="mx-auto w-full max-w-[560px] md:max-w-[1180px] lg:max-w-[1280px] flex-1">
++        {children}
++      </div>
+     </div>
+   );
+ 
+@@ -205,17 +209,14 @@ const StudentConvocatoriaDetail: React.FC = () => {
+   const fullName = (lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Convocatoria";
+   const shortName = fullName.split(" - ")[0].trim() || fullName;
+ 
+-  const today = new Date();
+-  today.setHours(0, 0, 0, 0);
++  const now = new Date();
++  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+   const status = normalizeStringForComparison(
+     (lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || ""
+   );
+-  const startDate = lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS]
+-    ? new Date(lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS] as string)
+-    : null;
+-  if (startDate) startDate.setHours(0, 0, 0, 0);
+-  const isStarted = !!startDate && startDate <= today;
+-  const isOpen = !isStarted && OPEN_STATES.includes(status);
++  const isOpen = OPEN_STATES.includes(status);
++  const ppsStartDate = parseToUTCDate(lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
++  const isStarted = !!ppsStartDate && ppsStartDate <= today;
+ 
+   const horas = Number(lanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
+   const cupos = Number(lanzamiento[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
+@@ -231,6 +232,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
+   const descripcion =
+     (lanzamiento[FIELD_DESCRIPCION_LANZAMIENTOS] as string) ||
+     "Descripción de la propuesta no disponible.";
++  const archivoUrl = (lanzamiento[FIELD_ARCHIVO_DESCARGABLE_URL] as string) || "";
+ 
+   const actividadesRaw = (lanzamiento as Record<string, unknown>).actividades_lista;
+   const actividades: string[] = Array.isArray(actividadesRaw)
+@@ -362,7 +364,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
+   return (
+     <>
+       <Shell>
+-        <div className="px-5 pt-1 pb-4 md:px-8 md:grid md:grid-cols-[minmax(0,1fr)_330px] md:gap-10 md:items-start">
++        <div className="px-5 pt-1 pb-4 md:px-8 md:grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-12 md:items-start">
+           {/* ── Columna editorial ── */}
+           <div className="min-w-0">
+             {/* Título editorial */}
+@@ -449,71 +451,144 @@ const StudentConvocatoriaDetail: React.FC = () => {
+               </div>
+             </div>
+ 
+-            {/* Ubicación — clickeable a Google Maps */}
+-            {direccion ? (
+-              <div className="detail-block">
+-                <span className="eyebrow" style={{ fontSize: 10.5 }}>
+-                  Ubicación
+-                </span>
+-                <a
+-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
+-                  target="_blank"
+-                  rel="noopener noreferrer"
+-                  className="group"
+-                  style={{
+-                    display: "flex",
+-                    alignItems: "center",
+-                    gap: 12,
+-                    marginTop: 10,
+-                    padding: "12px 14px",
+-                    borderRadius: 14,
+-                    border: "1px solid var(--line)",
+-                    background: "var(--bg-elevated)",
+-                    textDecoration: "none",
+-                  }}
+-                >
+-                  <span
+-                    className="material-icons"
+-                    style={{ color, fontSize: 22, flexShrink: 0 }}
+-                    aria-hidden
+-                  >
+-                    place
+-                  </span>
+-                  <span style={{ flex: 1, minWidth: 0 }}>
+-                    <span
++            {/* Ubicación + Archivo adjunto — tarjetas emparejadas con alto igualado
++                en escritorio. Solo van lado a lado cuando existen ambas; si hay una
++                sola, ocupa el ancho completo (así nunca queda una columna a medias). */}
++            {direccion || archivoUrl ? (
++              <div
++                className={
++                  direccion && archivoUrl
++                    ? "md:grid md:grid-cols-2 md:gap-x-10 md:items-stretch"
++                    : undefined
++                }
++              >
++                {/* Ubicación — clickeable a Google Maps */}
++                {direccion ? (
++                  <div className="detail-block md:flex md:flex-col">
++                    <span className="eyebrow" style={{ fontSize: 10.5 }}>
++                      Ubicación
++                    </span>
++                    <a
++                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
++                      target="_blank"
++                      rel="noopener noreferrer"
++                      className="group"
+                       style={{
+-                        display: "block",
+-                        fontSize: 14,
+-                        fontWeight: 600,
+-                        color: "var(--ink)",
+-                        lineHeight: 1.35,
++                        display: "flex",
++                        alignItems: "center",
++                        gap: 12,
++                        marginTop: 10,
++                        flex: "1 1 auto",
++                        padding: "12px 14px",
++                        borderRadius: 14,
++                        border: "1px solid var(--line)",
++                        background: "var(--bg-elevated)",
++                        textDecoration: "none",
+                       }}
+                     >
+-                      {direccion}
++                      <span
++                        className="material-icons"
++                        style={{ color, fontSize: 22, flexShrink: 0 }}
++                        aria-hidden
++                      >
++                        place
++                      </span>
++                      <span style={{ flex: 1, minWidth: 0 }}>
++                        <span
++                          style={{
++                            display: "block",
++                            fontSize: 14,
++                            fontWeight: 600,
++                            color: "var(--ink)",
++                            lineHeight: 1.35,
++                          }}
++                        >
++                          {direccion}
++                        </span>
++                      </span>
++                      <span
++                        style={{
++                          display: "inline-flex",
++                          alignItems: "center",
++                          gap: 4,
++                          fontSize: 12,
++                          fontWeight: 600,
++                          color,
++                          whiteSpace: "nowrap",
++                          flexShrink: 0,
++                        }}
++                      >
++                        Ver mapa
++                        <Icon name="arrow" size={13} strokeWidth={2.4} />
++                      </span>
++                    </a>
++                  </div>
++                ) : null}
++
++                {/* Archivo adjunto — documento descargable del lanzamiento */}
++                {archivoUrl ? (
++                  <div className="detail-block md:flex md:flex-col">
++                    <span className="eyebrow" style={{ fontSize: 10.5 }}>
++                      Archivo adjunto
+                     </span>
+-                    <span
+-                      className="mono"
+-                      style={{ fontSize: 11, color: "var(--ink-subtle)", letterSpacing: ".02em" }}
++                    <a
++                      href={archivoUrl}
++                      target="_blank"
++                      rel="noopener noreferrer"
++                      className="group"
++                      style={{
++                        display: "flex",
++                        alignItems: "center",
++                        gap: 12,
++                        marginTop: 10,
++                        flex: "1 1 auto",
++                        padding: "12px 14px",
++                        borderRadius: 14,
++                        border: "1px solid var(--line)",
++                        background: "var(--bg-elevated)",
++                        textDecoration: "none",
++                      }}
+                     >
+-                      Tocá para abrir en Google Maps
+-                    </span>
+-                  </span>
+-                  <span
+-                    style={{
+-                      display: "inline-flex",
+-                      alignItems: "center",
+-                      gap: 4,
+-                      fontSize: 12,
+-                      fontWeight: 600,
+-                      color,
+-                      whiteSpace: "nowrap",
+-                      flexShrink: 0,
+-                    }}
+-                  >
+-                    Ver mapa
+-                    <Icon name="arrow" size={13} strokeWidth={2.4} />
+-                  </span>
+-                </a>
++                      <span
++                        className="material-icons"
++                        style={{ color, fontSize: 22, flexShrink: 0 }}
++                        aria-hidden
++                      >
++                        description
++                      </span>
++                      <span style={{ flex: 1, minWidth: 0 }}>
++                        <span
++                          style={{
++                            display: "block",
++                            fontSize: 14,
++                            fontWeight: 600,
++                            color: "var(--ink)",
++                            lineHeight: 1.35,
++                            overflow: "hidden",
++                            textOverflow: "ellipsis",
++                          }}
++                        >
++                          Documento de la convocatoria
++                        </span>
++                      </span>
++                      <span
++                        style={{
++                          display: "inline-flex",
++                          alignItems: "center",
++                          gap: 4,
++                          fontSize: 12,
++                          fontWeight: 600,
++                          color,
++                          whiteSpace: "nowrap",
++                          flexShrink: 0,
++                        }}
++                      >
++                        Descargar
++                        <Icon name="arrow" size={13} strokeWidth={2.4} />
++                      </span>
++                    </a>
++                  </div>
++                ) : null}
+               </div>
+             ) : null}
+ 

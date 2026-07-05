@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="es" translate="no" class="notranslate">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google" content="notranslate" />
+    <meta
+      name="description"
+      content="Portal de autogestiÃ³n para PrÃ¡cticas Profesionales Supervisadas - UFLO"
+    />
+
+    <!-- Security Headers -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.sh;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: https:;
+      connect-src 'self' https://esm.sh https://*.supabase.co wss://*.supabase.co https://fonts.googleapis.com https://*.googleapis.com https://generativelanguage.googleapis.com https://pps-hermes.n8n-blas.com.ar https://n8n-blas.com.ar;
+      frame-src 'self' https://esm.sh https://view.officeapps.live.com https://*.officeapps.live.com;
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+      block-all-mixed-content;
+    "
+    />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+
+    <title>Consulta de PPS y PrÃ¡cticas</title>
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%232563eb%22%3E%3Cpath%20d%3D%22M5%2013.18v4L12%2021l7-3.82v-4L12%2017l-7-3.82zM12%203L1%209l11%206%209-4.91V17h2V9L12%203z%22/%3E%3C/svg%3E"
+    />
+    <link rel="manifest" href="./manifest.json?v=3" />
+    <meta name="theme-color" content="#2563eb" />
+
+    <!-- Tailwind Config for Development/Preview (Removed in Prod by prep-github script) -->
+    <!-- Tailwind CDN removed for production build -->
+    <script>
+      if (typeof tailwind !== "undefined") {
+        tailwind.config = { darkMode: "class" };
+      }
+    </script>
+
+
+    <script id="pps-entry-shell-script">
+      (function () {
+        var hash = window.location.hash || "";
+        var isStudent = hash === "#/student" || hash.indexOf("#/student/") === 0;
+        if (!isStudent) return;
+        document.documentElement.classList.add("pps-has-entry-shell");
+        window.__PPS_ENTRY_SHELL__ = true;
+      })();
+    </script>
+
+    <!-- Dark mode init -->
+    <script>
+      if (
+        localStorage.getItem("theme") === "dark" ||
+        (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    </script>
+
+
+    <style id="pps-entry-shell-style">
+      @view-transition { navigation: auto; }
+      ::view-transition-group(root){ animation-duration:360ms; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+      ::view-transition-old(root){ animation:ppsPageOut 220ms cubic-bezier(.4,0,1,1) both; }
+      ::view-transition-new(root){ animation:ppsPageIn 360ms cubic-bezier(.16,1,.3,1) both; }
+      ::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:420ms; animation-timing-function:cubic-bezier(.16,1,.3,1); }
+
+      @keyframes ppsPageOut{ from{ opacity:1; transform:translateY(0); filter:blur(0); } to{ opacity:0; transform:translateY(-6px); filter:blur(2px); } }
+      @keyframes ppsPageIn{ from{ opacity:0; transform:translateY(6px); filter:blur(2px); } to{ opacity:1; transform:translateY(0); filter:blur(0); } }
+
+      @media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root),::view-transition-group(root),::view-transition-group(pps-brand),::view-transition-group(pps-tabs),::view-transition-group(pps-actions){ animation-duration:1ms; } }
+
+      html.pps-has-entry-shell body,
+      html.fonts-loading.pps-has-entry-shell body {
+        visibility: visible !important;
+      }
+      html.pps-has-entry-shell,
+      html.pps-has-entry-shell body {
+        background: #fafaf7;
+      }
+      html.dark.pps-has-entry-shell,
+      html.dark.pps-has-entry-shell body {
+        background: #0a0e1a;
+      }
+      .pps-entry-shell {
+        display: none;
+      }
+      html.pps-has-entry-shell .pps-entry-shell {
+        display: block;
+        min-height: 100vh;
+        color: #0b0f19;
+        background: #fafaf7;
+        font-family: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      html.dark.pps-has-entry-shell .pps-entry-shell {
+        color: #f8fafc;
+        background: #0a0e1a;
+      }
+      .pps-entry-topbar {
+        min-height: 70px;
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 10px 40px 14px;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+      .pps-entry-brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        view-transition-name: pps-brand;
+        contain: layout;
+      }
+      .pps-entry-mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: #141310;
+        color: #fff;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 3px;
+        padding: 8px 7px 7px;
+        box-sizing: border-box;
+      }
+      html.dark .pps-entry-mark {
+        background: #f8fafc;
+        color: #0a0e1a;
+      }
+      .pps-entry-mark span {
+        width: 3px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+      .pps-entry-mark span:nth-child(1) { height: 8px; }
+      .pps-entry-mark span:nth-child(2) { height: 14px; }
+      .pps-entry-mark span:nth-child(3) { height: 5px; }
+      .pps-entry-name {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+      }
+      .pps-entry-sub {
+        margin-top: 2px;
+        color: #a0a4b0;
+        font-size: 11px;
+        line-height: 1.2;
+      }
+      html.dark .pps-entry-sub { color: #72798f; }
+      .pps-entry-tabs {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 26px;
+        view-transition-name: pps-tabs;
+        contain: layout;
+      }
+      .pps-entry-tab {
+        height: 32px;
+        border-radius: 10px;
+        background: #f1f0ea;
+      }
+      html.dark .pps-entry-tab { background: #131829; }
+      .pps-entry-tab:nth-child(1) { width: 76px; }
+      .pps-entry-tab:nth-child(2) { width: 104px; opacity: .72; }
+      .pps-entry-tab:nth-child(3) { width: 90px; opacity: .72; }
+      .pps-entry-tab:nth-child(4) { width: 62px; opacity: .72; }
+      .pps-entry-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        view-transition-name: pps-actions;
+        contain: layout;
+      }
+      .pps-entry-dot {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background: #f1f0ea;
+      }
+      html.dark .pps-entry-dot { background: #131829; }
+      .pps-entry-main {
+        max-width: 1200px;
+        margin: 52px auto 0;
+        padding: 0 40px;
+      }
+      .pps-entry-kicker,
+      .pps-entry-line,
+      .pps-entry-card {
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(60,184,141,.22), rgba(31,59,115,.12), rgba(60,184,141,.08));
+        background-size: 180% 100%;
+        animation: pps-entry-shimmer 1.25s ease-in-out infinite alternate;
+      }
+      html.dark .pps-entry-kicker,
+      html.dark .pps-entry-line,
+      html.dark .pps-entry-card {
+        background: linear-gradient(90deg, rgba(95,224,179,.18), rgba(123,145,222,.13), rgba(95,224,179,.08));
+        background-size: 180% 100%;
+      }
+      .pps-entry-kicker { width: 146px; height: 12px; opacity: .9; }
+      .pps-entry-title { margin-top: 24px; max-width: 420px; }
+      .pps-entry-line { height: 44px; margin-top: 10px; border-radius: 16px; }
+      .pps-entry-line:nth-child(2) { width: 92%; }
+      .pps-entry-line:nth-child(3) { width: 64%; }
+      .pps-entry-card { margin-top: 40px; height: 148px; max-width: 430px; border-radius: 24px; opacity: .65; }
+      @keyframes pps-entry-shimmer {
+        from { background-position: 0% 50%; opacity: .68; }
+        to { background-position: 100% 50%; opacity: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pps-entry-kicker,
+        .pps-entry-line,
+        .pps-entry-card { animation: none; }
+      }
+      @media (max-width: 720px) {
+        .pps-entry-topbar { padding: 14px 20px; flex-wrap: wrap; }
+        .pps-entry-tabs { order: 3; width: 100%; margin-left: 0; overflow: hidden; }
+        .pps-entry-actions { margin-left: auto; }
+        .pps-entry-main { margin-top: 28px; padding: 0 24px; }
+      }
+    </style>
+
+    <!-- Anti-FOUC: evita el "flash" de estilo viejo mientras cargan las fuentes
+         de marca (Bricolage Grotesque / Manrope / Geist). Mantenemos el contenido
+         oculto sobre un fondo neutro acorde al tema hasta que las tipografÃ­as estÃ©n
+         listas (o tras un mÃ¡ximo de seguridad), y reciÃ©n ahÃ­ se revela ya con el
+         estilo final. AsÃ­ el usuario nunca ve el render con la fuente del sistema. -->
+    <style id="pps-anti-fouc">
+      html.fonts-loading body {
+        visibility: hidden;
+      }
+      html.fonts-loading {
+        background-color: #fafaf7;
+      }
+      html.fonts-loading.dark {
+        background-color: #0e0e0c;
+      }
+    </style>
+    <script>
+      (function () {
+        var docEl = document.documentElement;
+        docEl.classList.add("fonts-loading");
+        var revealed = false;
+        function reveal() {
+          if (revealed) return;
+          revealed = true;
+          docEl.classList.remove("fonts-loading");
+        }
+        // Failsafe: nunca dejar la pÃ¡gina oculta mÃ¡s de 1.2s, pase lo que pase.
+        var failsafe = setTimeout(reveal, 1200);
+        function done() {
+          clearTimeout(failsafe);
+          reveal();
+        }
+        if (document.fonts && document.fonts.load) {
+          Promise.all([
+            document.fonts.load("600 1em 'Bricolage Grotesque'"),
+            document.fonts.load("500 1em 'Geist'"),
+            document.fonts.load("700 1em 'Manrope'"),
+          ]).then(done, done);
+        } else {
+          window.addEventListener("load", done);
+        }
+      })();
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- PPS v3 Â· Paper & Ink typography -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Editorial-Data UI Fonts (Geist, Geist Mono, Manrope) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- PPS Estudiante Â· Bricolage Grotesque (display UFLO brand) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap"
+      rel="stylesheet"
+    />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet" />
+
+    <script type="importmap">
+      {
+        "imports": {
+          "vite": "https://esm.sh/vite@^7.3.0",
+          "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+          "react": "https://esm.sh/react@^19.2.3",
+          "react/": "https://esm.sh/react@^19.2.3/",
+          "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@^5.90.14",
+          "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
+          "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+          "zod": "https://esm.sh/zod@^4.2.1",
+          "date-fns": "https://esm.sh/date-fns@^4.1.0",
+          "exceljs": "https://esm.sh/exceljs@^4.4.0",
+          "react-dom": "https://esm.sh/react-dom@^19.2.3",
+          "jest": "https://esm.sh/jest@^30.2.0",
+          "@testing-library/jest-dom": "https://esm.sh/@testing-library/jest-dom@^6.9.1",
+          "@jest/globals": "https://esm.sh/@jest/globals@^30.2.0",
+          "@testing-library/react": "https://esm.sh/@testing-library/react@^16.3.1",
+          "@storybook/react": "https://esm.sh/@storybook/react@^10.1.10",
+          "dompurify": "https://esm.sh/dompurify@^3.3.1",
+          "@testing-library/user-event": "https://esm.sh/@testing-library/user-event@^14.6.1",
+          "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
+          "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+          "jszip": "https://esm.sh/jszip@^3.10.1",
+          "file-saver": "https://esm.sh/file-saver@^2.0.5",
+          "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+          "@tanstack/react-query-devtools": "https://esm.sh/@tanstack/react-query-devtools@^5.91.2",
+          "fs": "https://esm.sh/fs@^0.0.1-security",
+          "path": "https://esm.sh/path@^0.12.7",
+          "url": "https://esm.sh/url@^0.11.4",
+          "date-fns/": "https://esm.sh/date-fns@^4.1.0/",
+          "recharts": "https://esm.sh/recharts@^3.6.0"
+        }
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-Bf63COEH.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CTZWBAWr.css">
+  </head>
+  <body class="notranslate">
+
+    <div id="root">
+      <div class="pps-entry-shell" data-pps-entry-shell>
+        <header class="pps-entry-topbar">
+          <div class="pps-entry-brand">
+            <div class="pps-entry-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div><div class="pps-entry-name">Mi Panel</div><div class="pps-entry-sub">PPS - Psicologia</div></div>
+          </div>
+          <div class="pps-entry-tabs" aria-hidden="true"><span class="pps-entry-tab"></span><span class="pps-entry-tab"></span><span class="pps-entry-tab"></span><span class="pps-entry-tab"></span></div>
+          <div class="pps-entry-actions" aria-hidden="true"><span class="pps-entry-dot"></span><span class="pps-entry-dot"></span><span class="pps-entry-dot"></span></div>
+        </header>
+        <main class="pps-entry-main" aria-hidden="true">
+          <div class="pps-entry-kicker"></div>
+          <div class="pps-entry-title"><div class="pps-entry-line"></div><div class="pps-entry-line"></div></div>
+          <div class="pps-entry-card"></div>
+        </main>
+      </div>
+    </div>
+    <!-- Entry point Ãºnico: src/main.tsx -->
+  </body>
+</html>

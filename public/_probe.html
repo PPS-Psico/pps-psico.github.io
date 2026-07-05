@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probe · Recorrido del Aula embebida</title>
+<style>
+  html,body{ margin:0; background:#e8e8ef; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#222; }
+  .bar{ position:sticky; top:0; z-index:2; display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:12px 16px; background:#fff; border-bottom:1px solid #ddd; box-shadow:0 6px 20px -16px rgba(0,0,0,.4); }
+  .bar b{ font-size:13px; color:#0B0F19; margin-right:6px; }
+  .bar button{ font:inherit; font-size:13px; padding:7px 13px; border-radius:999px; border:1px solid #ccd; background:#f4f4f8; color:#333; cursor:pointer; transition:.15s; }
+  .bar button:hover{ border-color:#3CB88D; }
+  .bar button.on{ background:#0B0F19; color:#fff; border-color:#0B0F19; }
+  .meta{ margin-left:auto; font-size:12px; color:#777; }
+  .wrap{ max-width:830px; margin:18px auto; background:#fff; box-shadow:0 12px 40px -20px rgba(20,30,60,.35); }
+  #f{ width:100%; border:0; display:block; min-height:300px; background:#FAFAF7; }
+  .note{ max-width:830px; margin:10px auto 36px; font-size:13px; color:#555; line-height:1.6; }
+</style></head>
+<body>
+  <div class="bar">
+    <b>PROBE · 830px (ancho tipo Moodle)</b>
+    <button data-p="aula.html" class="on">Inicio</button>
+    <button data-p="guia.html">Guía 2026</button>
+    <button data-p="descargas.html">Descargas</button>
+    <button data-p="preguntas.html">Preguntas</button>
+    <button data-p="entregas.html">Entregas</button>
+    <span class="meta" id="meta">—</span>
+  </div>
+  <div class="wrap"><iframe id="f" scrolling="no" title="Aula embebida"></iframe></div>
+  <p class="note">Cada sección se sirve igual que en producción y reporta su alto vía <code>postMessage</code> (sin scroll interno). Si ves scroll dentro del marco, recargá en incógnito (caché). Cambiá de sección con los botones de arriba.</p>
+<script>
+  var f = document.getElementById('f');
+  var meta = document.getElementById('meta');
+  var btns = [].slice.call(document.querySelectorAll('.bar button'));
+  function load(p){
+    f.style.height = '320px';
+    f.src = '/' + p + '?probe=' + Date.now();
+    meta.textContent = p;
+    btns.forEach(function(b){ b.classList.toggle('on', b.dataset.p === p); });
+  }
+  btns.forEach(function(b){ b.addEventListener('click', function(){ load(b.dataset.p); }); });
+  window.addEventListener('message', function(e){
+    var d = e.data;
+    if (d && d.ppsAula && typeof d.height === 'number' && d.height > 200){
+      f.style.height = (d.height + 2) + 'px';
+    } else if (d && d.ppsPanel){
+      f.style.height = Math.max(620, Math.round(window.innerHeight * 0.92)) + 'px';
+    }
+  });
+  load('aula.html');
+</script>
+</body></html>
