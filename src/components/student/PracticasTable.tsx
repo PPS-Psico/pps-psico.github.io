@@ -183,7 +183,7 @@ const PracticaRow: React.FC<{
     if (norm.includes("clinica")) return "var(--area-clinica, #3CB88D)";
     if (norm.includes("educacion") || norm.includes("educacional"))
       return "var(--area-educacional, #203B73)";
-    if (norm.includes("laboral") || norm.includes("trabajo")) return "#B7770B";
+    if (norm.includes("laboral") || norm.includes("trabajo")) return "var(--area-laboral, #C0392B)";
     if (norm.includes("comunitaria") || norm.includes("social"))
       return "var(--area-comunitaria, #7A3F9E)";
     return "var(--accent, #1f3a8a)";
@@ -233,7 +233,7 @@ const PracticaRow: React.FC<{
 
   return (
     <div
-      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-200/80 dark:border-slate-800/40 rounded-2xl p-4 shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
+      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-200/80 dark:border-slate-800/40 rounded-2xl py-3.5 pl-5 pr-4 shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
       onPointerDown={lpStartPress}
       onPointerUp={lpCancel}
       onPointerCancel={lpCancel}
@@ -251,7 +251,6 @@ const PracticaRow: React.FC<{
       }}
       style={onRequestModificacion ? { WebkitTouchCallout: "none" } : undefined}
     >
-      <div className="prow__bar" style={{ background: color }} />
       <div className="flex-1 min-w-0 pr-2">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="prow__area font-semibold text-xs" style={{ color }}>
@@ -296,8 +295,8 @@ const PracticaRow: React.FC<{
           </button>
         )}
 
-        <div className="prow__hs flex flex-col items-center justify-center min-w-[3rem] text-center">
-          <span className="display text-xl font-bold font-display text-slate-800 dark:text-slate-200">
+        <div className="prow__hs flex flex-col items-center justify-center text-center">
+          <span className="display text-[22px] font-bold font-display text-slate-800 dark:text-slate-200">
             {practica[FIELD_HORAS_PRACTICAS] || 0}
           </span>
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400">
@@ -305,9 +304,7 @@ const PracticaRow: React.FC<{
           </span>
         </div>
 
-        <div className="w-px h-8 bg-slate-100 dark:bg-slate-800" />
-
-        <div className="relative flex flex-col items-center min-w-[2rem]" ref={triggerRef}>
+        <div className="relative flex flex-col items-center" ref={triggerRef}>
           <FlatGrade
             nota={notaActual}
             onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}

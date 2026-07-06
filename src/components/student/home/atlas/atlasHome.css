@@ -78,6 +78,7 @@
   /* Áreas */
   --area-clinica: #3cb88d;
   --area-educacional: #203b73;
+  --area-laboral: #c0392b;
   --area-comunitaria: #7a3f9e;
   --display-accent: var(--student-accent-color);
 
@@ -129,6 +130,7 @@ html.dark .ah-root {
   --border-strong: #2d344e;
   --area-clinica: #4fd49e;
   --area-educacional: #7b91de;
+  --area-laboral: #f87171;
   --area-comunitaria: #bc85dc;
   --link: var(--primary-300);
   --link-hover: var(--primary-100);
