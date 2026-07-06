@@ -1,19 +1,19 @@
-﻿import react from '@vitejs/plugin-react';
-import { dirname } from 'node:path';
-import { fileURLToPath, URL } from 'node:url';
-import ts from 'typescript';
-import { defineConfig, loadEnv } from 'vite';
+﻿import react from "@vitejs/plugin-react";
+import { dirname } from "node:path";
+import { fileURLToPath, URL } from "node:url";
+import ts from "typescript";
+import { defineConfig, loadEnv } from "vite";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 function sandboxTypeScriptTransform() {
   return {
-    name: 'sandbox-typescript-transform',
-    enforce: 'pre',
+    name: "sandbox-typescript-transform",
+    enforce: "pre",
     transform(code, id) {
-      const [filename] = id.split('?');
-      if (!filename || filename.includes('/node_modules/') || !/\.[cm]?[tj]sx?$/.test(filename)) {
+      const [filename] = id.split("?");
+      if (!filename || filename.includes("/node_modules/") || !/\.[cm]?[tj]sx?$/.test(filename)) {
         return null;
       }
 
@@ -38,43 +38,40 @@ function sandboxTypeScriptTransform() {
   };
 }
 export default defineConfig(({ mode }) => {
-  loadEnv(mode, process.cwd(), '');
+  loadEnv(mode, process.cwd(), "");
   return {
-    base: './',
-    plugins: [sandboxTypeScriptTransform(), react(mode === 'production' ? { babel: { plugins: [['babel-plugin-react-compiler', {}]] } } : undefined)],
+    base: "./",
+    plugins: [
+      sandboxTypeScriptTransform(),
+      react(
+        mode === "production"
+          ? { babel: { plugins: [["babel-plugin-react-compiler", {}]] } }
+          : undefined
+      ),
+    ],
     esbuild: false,
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
       },
-      dedupe: ['react', 'react-dom', 'react-router-dom'],
+      dedupe: ["react", "react-dom", "react-router-dom"],
     },
-    optimizeDeps: {      noDiscovery: true,
-      include: [],
-    },
+    optimizeDeps: { noDiscovery: true, include: [] },
     build: {
       minify: false,
       cssMinify: false,
-      outDir: 'dist',
-      assetsDir: 'assets',
+      outDir: "dist",
+      assetsDir: "assets",
       emptyOutDir: true,
       rollupOptions: {
         output: {
-          entryFileNames: 'assets/[name]-[hash].js',
-          chunkFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash].[ext]',
+          entryFileNames: "assets/[name]-[hash].js",
+          chunkFileNames: "assets/[name]-[hash].js",
+          assetFileNames: "assets/[name]-[hash].[ext]",
         },
       },
       copyPublicDir: true,
     },
-    publicDir: 'public',
+    publicDir: "public",
   };
 });
-
-
-
-
-
-
-
-
