@@ -156,7 +156,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .maybeSingle();
 
         if (!data && !error && session.user.email) {
-          logger.info(
+          logger.warn(
             `[Auth] No se encontró perfil por user_id. Buscando por email fallback: ${session.user.email}`
           );
           const { data: emailData, error: emailError } = await supabase
@@ -168,7 +168,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             .maybeSingle();
 
           if (emailData && !emailError) {
-            logger.info(
+            logger.warn(
               `[Auth] Encontrado perfil por email. Actualizando user_id a: ${session.user.id}`
             );
             const { error: updateError } = await supabase
