@@ -676,10 +676,12 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     useState<EnrichedStudent | null>(null);
 
   // Lista efectivamente visible. En la sala de Confirmación (hideConfirmed)
-  // ocultamos a los que ya firmaron el compromiso: quedan los inscriptos sin
-  // seleccionar + los seleccionados que todavía no confirmaron.
+  // ocultamos a los que ya firmaron el compromiso en la lista de la mesa (selection)
+  // para que solo aparezcan como reemplazos los pendientes.
+  // Pero en la lista de seleccionados (review) mostramos a todos los seleccionados
+  // (tanto confirmados como pendientes) para poder auditarlos o dar de baja.
   const visibleCandidates = React.useMemo(() => {
-    if (!hideConfirmed) return displayedCandidates;
+    if (!hideConfirmed || viewMode === "review") return displayedCandidates;
     return displayedCandidates.filter(
       (s) =>
         !(
@@ -687,7 +689,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
           isCommitmentAccepted(s.compromisoEstado)
         )
     );
-  }, [displayedCandidates, hideConfirmed]);
+  }, [displayedCandidates, hideConfirmed, viewMode]);
 
   const commitmentStats = React.useMemo(() => {
     const confirmed = selectedCandidates.filter((student) =>
@@ -957,9 +959,11 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
             <div className="lv4-empty">
               <span className="material-icons">group_off</span>
               <p>
-                {hideConfirmed
-                  ? "No hay estudiantes pendientes ni inscriptos disponibles para cubrir vacantes."
-                  : "No hay estudiantes inscriptos en esta convocatoria."}
+                {viewMode === "review"
+                  ? "No hay estudiantes seleccionados en esta convocatoria."
+                  : hideConfirmed
+                    ? "No hay estudiantes pendientes ni inscriptos disponibles para cubrir vacantes."
+                    : "No hay estudiantes inscriptos en esta convocatoria."}
               </p>
             </div>
           )}
