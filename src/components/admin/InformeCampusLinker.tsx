@@ -139,7 +139,7 @@ const getSpacesForLaunch = (launch: LaunchRow, entregas: EntregaRow[]): EntregaR
     const oLower = orient.toLowerCase();
     if (oLower.includes("clin")) area = "clinica";
     else if (oLower.includes("lab") || oLower.includes("comun")) {
-      area = oLower.includes("comun") ? "comunitaria" : "laboral";
+      area = "laboral";
     } else if (oLower.includes("educ")) area = "educacional";
 
     const match = entregas.find((e) => {
@@ -409,9 +409,9 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
             const oMatch = orientations.find((o: string) => {
               const oLower = o.toLowerCase();
               if (space.area === "clinica" && oLower.includes("clin")) return true;
-              if (space.area === "laboral" && oLower.includes("lab")) return true;
+              if (space.area === "laboral" && (oLower.includes("lab") || oLower.includes("comun")))
+                return true;
               if (space.area === "educacional" && oLower.includes("educ")) return true;
-              if (space.area === "comunitaria" && oLower.includes("comun")) return true;
               return false;
             });
             if (oMatch) matchedOrient = oMatch;
@@ -434,7 +434,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
         const oLower = o.toLowerCase();
         if (oLower.includes("clin")) area = "clinica";
         else if (oLower.includes("lab") || oLower.includes("comun")) {
-          area = oLower.includes("comun") ? "comunitaria" : "laboral";
+          area = "laboral";
         } else if (oLower.includes("educ")) area = "educacional";
 
         const autoMatch = entregas.find(
@@ -505,14 +505,14 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           const oLower = o.toLowerCase();
           if (oLower.includes("clin")) area = "clinica";
           else if (oLower.includes("lab") || oLower.includes("comun")) {
-            area = oLower.includes("comun") ? "comunitaria" : "laboral";
+            area = "laboral";
           } else if (oLower.includes("educ")) area = "educacional";
 
           const baseName = String(launchRow[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
             .split("-")[0]
             .trim();
 
-          const name = orientations.length > 1 ? `${baseName} - ${o}` : baseName;
+          const name = baseName;
 
           const existing = entregas.find((e: EntregaRow) => String(e.moodle_id) === String(taskId));
           if (existing) {
