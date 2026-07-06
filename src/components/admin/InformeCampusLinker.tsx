@@ -92,6 +92,67 @@ const matchInstitutions = (launchName: string, spaceName: string): boolean => {
   return cleanLaunch.includes(cleanSpace) || cleanSpace.includes(cleanLaunch);
 };
 
+const getOrientations = (orientString: string): string[] => {
+  if (!orientString) return [];
+  return orientString
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+};
+
+const getSpacesForLaunch = (launch: LaunchRow, entregas: EntregaRow[]): EntregaRow[] => {
+  const spaces: EntregaRow[] = [];
+  const link = ((launch[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
+
+  if (link) {
+    if (link.startsWith("{")) {
+      try {
+        const map = JSON.parse(link) as Record<string, string>;
+        Object.values(map).forEach((url) => {
+          const taskId = getMoodleTaskId(url);
+          if (taskId) {
+            const match = entregas.find((e) => String(e.moodle_id) === String(taskId) && e.activo);
+            if (match) spaces.push(match);
+          }
+        });
+      } catch {
+        // Ignore
+      }
+    } else {
+      const taskId = getMoodleTaskId(link);
+      if (taskId) {
+        const match = entregas.find((e) => String(e.moodle_id) === String(taskId) && e.activo);
+        if (match) spaces.push(match);
+      }
+    }
+  }
+
+  if (spaces.length > 0) return spaces;
+
+  // Coincidencia de nombre de institución y área (case-insensitive)
+  const launchName = String(launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").toLowerCase();
+  const orientString = String(launch[FIELD_ORIENTACION_LANZAMIENTOS] || "");
+  const orientations = getOrientations(orientString);
+
+  orientations.forEach((orient) => {
+    let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
+    const oLower = orient.toLowerCase();
+    if (oLower.includes("clin")) area = "clinica";
+    else if (oLower.includes("lab") || oLower.includes("comun")) {
+      area = oLower.includes("comun") ? "comunitaria" : "laboral";
+    } else if (oLower.includes("educ")) area = "educacional";
+
+    const match = entregas.find((e) => {
+      if (!e.activo) return false;
+      if (e.area !== area) return false;
+      return matchInstitutions(launchName, e.institucion);
+    });
+    if (match) spaces.push(match);
+  });
+
+  return spaces;
+};
+
 const areaNames: Record<string, string> = {
   clinica: "Clínica",
   laboral: "Laboral",
@@ -133,6 +194,8 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   // Estados del editor
   const [linkInput, setLinkInput] = useState("");
   const [selectedSpaceIdForLink, setSelectedSpaceIdForLink] = useState("");
+  const [multiLinkInputs, setMultiLinkInputs] = useState<Record<string, string>>({});
+  const [multiSelectedSpaceIds, setMultiSelectedSpaceIds] = useState<Record<string, string>>({});
   const [editArea, setEditArea] = useState<"clinica" | "laboral" | "educacional" | "comunitaria">(
     "clinica"
   );
@@ -224,48 +287,24 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     );
   }, [launches, currentYear]);
 
-  // Encontrar el espacio de entrega de campus correspondiente a una PPS
+  // Encontrar el primer espacio de entrega de campus correspondiente a una PPS (para compatibilidad de display simple)
   const getSpaceForLaunch = (launch: LaunchRow) => {
-    // 1. Intentar por link explícito
-    const link = ((launch[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
-    if (link) {
-      const taskId = getMoodleTaskId(link);
-      if (taskId) {
-        const match = entregas.find((e) => String(e.moodle_id) === String(taskId) && e.activo);
-        if (match) return match;
-      }
-    }
-
-    // 2. Por coincidencia de nombre de institución y área (case-insensitive)
-    const launchName = String(launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "").toLowerCase();
-    const orient = String(launch[FIELD_ORIENTACION_LANZAMIENTOS] || "").toLowerCase();
-
-    let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
-    if (orient.includes("clin")) area = "clinica";
-    else if (orient.includes("lab") || orient.includes("comun")) {
-      area = orient.includes("comun") ? "comunitaria" : "laboral";
-    } else if (orient.includes("educ")) area = "educacional";
-
-    return (
-      entregas.find((e) => {
-        if (!e.activo) return false;
-        if (e.area !== area) return false;
-
-        return matchInstitutions(launchName, e.institucion);
-      }) || null
-    );
+    const list = getSpacesForLaunch(launch, entregas);
+    return list.length > 0 ? list[0] : null;
   };
 
   // Espacios Activos en el campus correspondientes a las PPS lanzadas este año (deduplicadas por institución)
   const activeSpaces2026 = useMemo(() => {
     const spaces: EntregaRow[] = [];
     launchesThisYear.forEach((l) => {
-      const s = getSpaceForLaunch(l);
-      if (s && s.activo) {
-        if (!spaces.some((existing) => existing.id === s.id)) {
-          spaces.push(s);
+      const matchedSpaces = getSpacesForLaunch(l, entregas);
+      matchedSpaces.forEach((s) => {
+        if (s.activo) {
+          if (!spaces.some((existing) => existing.id === s.id)) {
+            spaces.push(s);
+          }
         }
-      }
+      });
     });
     return spaces.sort((a, b) => a.institucion.localeCompare(b.institucion));
   }, [launchesThisYear, entregas]);
@@ -273,8 +312,9 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   // PPS pendientes de espacio de entrega (de este año, que no están en activas)
   const pendingLaunches = useMemo(() => {
     return launchesThisYear.filter((l) => {
-      const space = getSpaceForLaunch(l);
-      return !space;
+      const orients = getOrientations(l[FIELD_ORIENTACION_LANZAMIENTOS] as string);
+      const spaces = getSpacesForLaunch(l, entregas);
+      return spaces.length < orients.length;
     });
   }, [launchesThisYear, entregas]);
 
@@ -318,6 +358,8 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     setSelectedLaunchId(null);
     setLinkInput("");
     setSelectedSpaceIdForLink("");
+    setMultiLinkInputs({});
+    setMultiSelectedSpaceIds({});
   }, [activeTab]);
 
   const handleSelectSpace = (row: EntregaRow) => {
@@ -332,74 +374,161 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   const handleSelectLaunch = (row: LaunchRow) => {
     setSelectedLaunchId(row.id);
     setSelectedSpaceId(null);
+
+    const orientString = String(row[FIELD_ORIENTACION_LANZAMIENTOS] || "");
+    const orientations = getOrientations(orientString);
     const link = ((row[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
-    setLinkInput(link);
-    const taskId = getMoodleTaskId(link);
-    if (taskId) {
-      setSelectedSpaceIdForLink(taskId);
-    } else {
-      const autoMatch = getSpaceForLaunch(row);
-      if (autoMatch) {
-        setSelectedSpaceIdForLink(autoMatch.moodle_id);
-        setLinkInput(`${MOODLE_PREFIX}${autoMatch.moodle_id}`);
+
+    const inputs: Record<string, string> = {};
+    const spaceIds: Record<string, string> = {};
+
+    if (link) {
+      if (link.startsWith("{")) {
+        try {
+          const parsedMap = JSON.parse(link) as Record<string, string>;
+          orientations.forEach((o: string) => {
+            const url = parsedMap[o] || "";
+            inputs[o] = url;
+            spaceIds[o] = getMoodleTaskId(url) || "";
+          });
+        } catch {
+          // Fallback if JSON parse fails
+        }
       } else {
-        setSelectedSpaceIdForLink("");
+        const taskId = getMoodleTaskId(link);
+        if (orientations.length === 1) {
+          inputs[orientations[0]] = link;
+          spaceIds[orientations[0]] = taskId || "";
+        } else {
+          // Mapear el link único a la orientación correspondiente basándonos en el área de entregas
+          const space = entregas.find(
+            (e: EntregaRow) => String(e.moodle_id) === String(taskId) && e.activo
+          );
+          let matchedOrient = orientations[0];
+          if (space) {
+            const oMatch = orientations.find((o: string) => {
+              const oLower = o.toLowerCase();
+              if (space.area === "clinica" && oLower.includes("clin")) return true;
+              if (space.area === "laboral" && oLower.includes("lab")) return true;
+              if (space.area === "educacional" && oLower.includes("educ")) return true;
+              if (space.area === "comunitaria" && oLower.includes("comun")) return true;
+              return false;
+            });
+            if (oMatch) matchedOrient = oMatch;
+          }
+          orientations.forEach((o: string) => {
+            if (o === matchedOrient) {
+              inputs[o] = link;
+              spaceIds[o] = taskId || "";
+            } else {
+              inputs[o] = "";
+              spaceIds[o] = "";
+            }
+          });
+        }
       }
+    } else {
+      // Buscar coincidencias automáticas
+      orientations.forEach((o: string) => {
+        let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
+        const oLower = o.toLowerCase();
+        if (oLower.includes("clin")) area = "clinica";
+        else if (oLower.includes("lab") || oLower.includes("comun")) {
+          area = oLower.includes("comun") ? "comunitaria" : "laboral";
+        } else if (oLower.includes("educ")) area = "educacional";
+
+        const autoMatch = entregas.find(
+          (e: EntregaRow) =>
+            e.activo &&
+            e.area === area &&
+            matchInstitutions(String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS]), e.institucion)
+        );
+        if (autoMatch) {
+          inputs[o] = `${MOODLE_PREFIX}${autoMatch.moodle_id}`;
+          spaceIds[o] = autoMatch.moodle_id;
+        } else {
+          inputs[o] = "";
+          spaceIds[o] = "";
+        }
+      });
     }
+
+    setMultiLinkInputs(inputs);
+    setMultiSelectedSpaceIds(spaceIds);
   };
 
   // Mutación: Guardar vínculo de una PPS (ya sea vinculándola a un espacio existente o creando uno nuevo)
   const saveLaunchLinkMutation = useMutation({
     mutationFn: async ({
       launchId,
-      link,
-      existingTaskId,
+      linkMap,
     }: {
       launchId: string;
-      link: string | null;
-      existingTaskId?: string;
+      linkMap: Record<string, string | null>;
     }) => {
-      const cleanLink = link ? link.trim() : null;
-      const taskId = existingTaskId || (cleanLink ? getMoodleTaskId(cleanLink) : null);
-      const finalLink = existingTaskId ? `${MOODLE_PREFIX}${existingTaskId}` : cleanLink;
+      const launchRow = launches.find((l: LaunchRow) => l.id === launchId);
+      if (!launchRow) return;
+
+      const orientString = String(launchRow[FIELD_ORIENTACION_LANZAMIENTOS] || "");
+      const orientations = getOrientations(orientString);
+
+      let finalLinkValue: string | null = null;
+
+      if (orientations.length === 1) {
+        const o = orientations[0];
+        const rawLink = linkMap[o];
+        finalLinkValue = rawLink ? rawLink.trim() : null;
+      } else {
+        const cleanMap: Record<string, string> = {};
+        Object.entries(linkMap).forEach(([o, val]) => {
+          if (val && val.trim()) {
+            cleanMap[o] = val.trim();
+          }
+        });
+        finalLinkValue = Object.keys(cleanMap).length > 0 ? JSON.stringify(cleanMap) : null;
+      }
 
       // 1. Actualizar el link en lanzamientos_pps
       await db.lanzamientos.update(launchId, {
-        [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: finalLink,
+        [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: finalLinkValue,
       } as Record<string, unknown>);
 
       if (isTestingMode) return;
 
       // 2. Si hay un ID de tarea y no se seleccionó una ya existente, creamos/activamos en aula_entregas
-      if (taskId && !existingTaskId) {
-        const launchRow = launches.find((l) => l.id === launchId);
-        if (!launchRow) return;
+      for (const o of orientations) {
+        const rawLink = linkMap[o];
+        const taskId = rawLink ? getMoodleTaskId(rawLink) : null;
 
-        const orient = String(launchRow[FIELD_ORIENTACION_LANZAMIENTOS] || "").toLowerCase();
-        let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
-        if (orient.includes("clin")) area = "clinica";
-        else if (orient.includes("lab") || orient.includes("comun")) {
-          area = orient.includes("comun") ? "comunitaria" : "laboral";
-        } else if (orient.includes("educ")) area = "educacional";
+        if (taskId) {
+          let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
+          const oLower = o.toLowerCase();
+          if (oLower.includes("clin")) area = "clinica";
+          else if (oLower.includes("lab") || oLower.includes("comun")) {
+            area = oLower.includes("comun") ? "comunitaria" : "laboral";
+          } else if (oLower.includes("educ")) area = "educacional";
 
-        const name = String(launchRow[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
-          .split("-")[0]
-          .trim();
+          const baseName = String(launchRow[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
+            .split("-")[0]
+            .trim();
 
-        const existing = entregas.find((e) => String(e.moodle_id) === String(taskId));
-        if (existing) {
-          await db.aula_entregas.update(String(existing.id), {
-            activo: true,
-            institucion: name,
-            area,
-          } as any);
-        } else {
-          await db.aula_entregas.create({
-            moodle_id: taskId,
-            institucion: name,
-            area,
-            activo: true,
-          } as any);
+          const name = orientations.length > 1 ? `${baseName} - ${o}` : baseName;
+
+          const existing = entregas.find((e: EntregaRow) => String(e.moodle_id) === String(taskId));
+          if (existing) {
+            await db.aula_entregas.update(String(existing.id), {
+              activo: true,
+              institucion: name,
+              area,
+            } as any);
+          } else {
+            await db.aula_entregas.create({
+              moodle_id: taskId,
+              institucion: name,
+              area,
+              activo: true,
+            } as any);
+          }
         }
       }
     },
@@ -440,20 +569,40 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
       if (isTestingMode) return;
 
-      // 2. Si se cambia el moodle_id, también debemos propagar ese link en las PPS asociadas
-      const oldSpace = entregas.find((e) => e.id === id);
+      // 2. Si se cambia el moodle_id, también debemos propagar ese link en las PPS asociadas (planos o JSON)
+      const oldSpace = entregas.find((e: EntregaRow) => e.id === id);
       if (oldSpace && oldSpace.moodle_id !== moodleId) {
-        const oldLink = `${MOODLE_PREFIX}${oldSpace.moodle_id}`;
         const newLink = `${MOODLE_PREFIX}${moodleId}`;
-        const affected = launches.filter(
-          (l) =>
-            getMoodleTaskId(String(l[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] || "")) ===
-            oldSpace.moodle_id
-        );
-        for (const l of affected) {
-          await db.lanzamientos.update(l.id, {
-            [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: newLink,
-          } as any);
+
+        for (const l of launches) {
+          const link = ((l[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
+          if (!link) continue;
+
+          if (link.startsWith("{")) {
+            try {
+              const map = JSON.parse(link) as Record<string, string>;
+              let updated = false;
+              Object.entries(map).forEach(([key, val]) => {
+                if (getMoodleTaskId(val) === oldSpace.moodle_id) {
+                  map[key] = newLink;
+                  updated = true;
+                }
+              });
+              if (updated) {
+                await db.lanzamientos.update(l.id, {
+                  [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: JSON.stringify(map),
+                } as any);
+              }
+            } catch {
+              // Ignore
+            }
+          } else {
+            if (getMoodleTaskId(link) === oldSpace.moodle_id) {
+              await db.lanzamientos.update(l.id, {
+                [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: newLink,
+              } as any);
+            }
+          }
         }
       }
     },
@@ -649,8 +798,19 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                   // Fila es un espacio de entrega de campus (EntregaRow)
                   const e = row as EntregaRow;
                   const isActive = e.id === selectedSpaceId;
-                  const countLinked = launchesThisYear.filter((l) => {
+                  const countLinked = launchesThisYear.filter((l: LaunchRow) => {
                     const link = ((l[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] as string) || "").trim();
+                    if (!link) return false;
+                    if (link.startsWith("{")) {
+                      try {
+                        const map = JSON.parse(link) as Record<string, string>;
+                        return Object.values(map).some(
+                          (val: string) => getMoodleTaskId(val) === e.moodle_id
+                        );
+                      } catch {
+                        return false;
+                      }
+                    }
                     return getMoodleTaskId(link) === e.moodle_id;
                   }).length;
 
@@ -696,7 +856,29 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                   // Fila es un lanzamiento (LaunchRow)
                   const l = row as LaunchRow;
                   const isActive = l.id === selectedLaunchId;
-                  const space = getSpaceForLaunch(l);
+
+                  const orients = getOrientations(l[FIELD_ORIENTACION_LANZAMIENTOS] as string);
+                  const linkedSpaces = getSpacesForLaunch(l, entregas);
+                  const isFullyLinked = linkedSpaces.length >= orients.length && orients.length > 0;
+                  const isPartiallyLinked =
+                    linkedSpaces.length > 0 && linkedSpaces.length < orients.length;
+
+                  let badgeText = "Sin espacio";
+                  let badgeClass =
+                    "bg-amber-50 dark:bg-amber-950/20 text-amber-600 border border-amber-250/20";
+                  let badgeIcon = "link_off";
+
+                  if (isFullyLinked) {
+                    badgeText = "Con espacio";
+                    badgeClass =
+                      "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-250/20";
+                    badgeIcon = "check";
+                  } else if (isPartiallyLinked) {
+                    badgeText = `${linkedSpaces.length} de ${orients.length}`;
+                    badgeClass =
+                      "bg-blue-50 dark:bg-blue-950/20 text-blue-600 border border-blue-250/20";
+                    badgeIcon = "link";
+                  }
 
                   return (
                     <motion.button
@@ -724,16 +906,10 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                           </div>
                         </div>
                         <span
-                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            space
-                              ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-250/20"
-                              : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 border border-amber-250/20"
-                          }`}
+                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}
                         >
-                          <span className="material-icons !text-[11px]">
-                            {space ? "check" : "link_off"}
-                          </span>
-                          {space ? "Con espacio" : "Sin espacio"}
+                          <span className="material-icons !text-[11px]">{badgeIcon}</span>
+                          {badgeText}
                         </span>
                       </div>
                     </motion.button>
@@ -930,56 +1106,86 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                 </p>
               </div>
 
-              {/* Formulario de vínculo */}
-              <div className="space-y-4">
-                {/* Selector de Espacio Activo Existente */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                    Vincular a espacio de entrega existente
-                  </label>
-                  <select
-                    value={selectedSpaceIdForLink}
-                    onChange={(e) => {
-                      setSelectedSpaceIdForLink(e.target.value);
-                      if (e.target.value) {
-                        setLinkInput(`${MOODLE_PREFIX}${e.target.value}`);
-                      } else {
-                        setLinkInput("");
-                      }
-                    }}
-                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
-                  >
-                    <option value="">-- Ingresar nueva URL de Moodle en su lugar --</option>
-                    {entregas
-                      .filter((e) => e.activo)
-                      .map((e) => (
-                        <option key={e.id} value={e.moodle_id}>
-                          [{areaNames[e.area]}] {e.institucion} (ID: {e.moodle_id})
-                        </option>
-                      ))}
-                  </select>
-                </div>
+              {/* Formulario de vínculo por orientación */}
+              <div className="space-y-6">
+                {getOrientations(String(selectedLaunch[FIELD_ORIENTACION_LANZAMIENTOS] || "")).map(
+                  (o: string) => {
+                    const selectedSpaceIdForO = multiSelectedSpaceIds[o] || "";
+                    const linkInputForO = multiLinkInputs[o] || "";
+                    const moodleTaskIdForO = getMoodleTaskId(linkInputForO);
 
-                {/* Input URL Directa */}
-                {!selectedSpaceIdForLink && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
-                      Ingresar nueva URL de Tarea (Moodle)
-                    </label>
-                    <input
-                      type="url"
-                      value={linkInput}
-                      onChange={(e) => setLinkInput(e.target.value)}
-                      placeholder={PLACEHOLDER}
-                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
-                    />
-                    {moodleTaskId && (
-                      <span className="text-[11px] text-slate-450 block mt-1.5">
-                        ID de Tarea Detectado: <strong>{moodleTaskId}</strong> (Creará un nuevo
-                        espacio en el Campus al guardar).
-                      </span>
-                    )}
-                  </div>
+                    return (
+                      <div
+                        key={o}
+                        className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 space-y-4"
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 pb-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                            Orientación: {o}
+                          </span>
+                        </div>
+
+                        {/* Selector de Espacio Activo Existente */}
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                            Vincular a espacio de entrega existente
+                          </label>
+                          <select
+                            value={selectedSpaceIdForO}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setMultiSelectedSpaceIds((prev: Record<string, string>) => ({
+                                ...prev,
+                                [o]: val,
+                              }));
+                              setMultiLinkInputs((prev: Record<string, string>) => ({
+                                ...prev,
+                                [o]: val ? `${MOODLE_PREFIX}${val}` : "",
+                              }));
+                            }}
+                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-xs focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                          >
+                            <option value="">-- Ingresar nueva URL de Moodle en su lugar --</option>
+                            {entregas
+                              .filter((e) => e.activo)
+                              .map((e) => (
+                                <option key={e.id} value={e.moodle_id}>
+                                  [{areaNames[e.area]}] {e.institucion} (ID: {e.moodle_id})
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+
+                        {/* Input URL Directa */}
+                        {!selectedSpaceIdForO && (
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                              Ingresar nueva URL de Tarea (Moodle)
+                            </label>
+                            <input
+                              type="url"
+                              value={linkInputForO}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setMultiLinkInputs((prev: Record<string, string>) => ({
+                                  ...prev,
+                                  [o]: val,
+                                }));
+                              }}
+                              placeholder={PLACEHOLDER}
+                              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-xs focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                            />
+                            {moodleTaskIdForO && (
+                              <span className="text-[10px] text-slate-450 block mt-1">
+                                ID de Tarea Detectado: <strong>{moodleTaskIdForO}</strong> (Creará
+                                un nuevo espacio al guardar).
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
                 )}
               </div>
 
@@ -987,22 +1193,45 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
               <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-slate-150 dark:border-slate-800">
                 <button
                   onClick={() => {
-                    const trimmed = linkInput.trim();
-                    if (!trimmed) {
+                    const orients = getOrientations(
+                      String(selectedLaunch[FIELD_ORIENTACION_LANZAMIENTOS] || "")
+                    );
+                    const mapToSave: Record<string, string | null> = {};
+
+                    let hasEmpty = false;
+                    for (const o of orients) {
+                      const link = (multiLinkInputs[o] || "").trim();
+                      if (!link) {
+                        hasEmpty = true;
+                      } else if (!isValidHttpUrl(link)) {
+                        setToast({
+                          message: `El link para la orientación ${o} no es una URL válida.`,
+                          type: "error",
+                        });
+                        return;
+                      }
+                      mapToSave[o] = link || null;
+                    }
+
+                    if (hasEmpty && orients.length > 1) {
+                      if (
+                        !window.confirm(
+                          "Hay orientaciones sin link. ¿Deseás guardar el vínculo de todas formas?"
+                        )
+                      ) {
+                        return;
+                      }
+                    } else if (hasEmpty && orients.length === 1) {
                       setToast({
                         message: "Ingresá o seleccioná un link de Moodle.",
                         type: "error",
                       });
                       return;
                     }
-                    if (!isValidHttpUrl(trimmed)) {
-                      setToast({ message: "El link no es una URL válida.", type: "error" });
-                      return;
-                    }
+
                     saveLaunchLinkMutation.mutate({
                       launchId: selectedLaunch.id,
-                      link: trimmed,
-                      existingTaskId: selectedSpaceIdForLink || undefined,
+                      linkMap: mapToSave,
                     });
                   }}
                   disabled={saveLaunchLinkMutation.isPending}
@@ -1015,12 +1244,18 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                   <button
                     onClick={() => {
                       if (window.confirm("¿Desvincular esta PPS del espacio del campus?")) {
+                        const emptyMap: Record<string, string | null> = {};
+                        getOrientations(
+                          String(selectedLaunch[FIELD_ORIENTACION_LANZAMIENTOS] || "")
+                        ).forEach((o: string) => {
+                          emptyMap[o] = null;
+                        });
                         saveLaunchLinkMutation.mutate({
                           launchId: selectedLaunch.id,
-                          link: null,
+                          linkMap: emptyMap,
                         });
-                        setLinkInput("");
-                        setSelectedSpaceIdForLink("");
+                        setMultiLinkInputs({});
+                        setMultiSelectedSpaceIds({});
                       }
                     }}
                     disabled={saveLaunchLinkMutation.isPending}
