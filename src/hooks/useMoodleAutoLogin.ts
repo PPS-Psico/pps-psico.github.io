@@ -69,14 +69,33 @@ const isTrustedContext = (): boolean => {
 const shouldAttempt = (): boolean => getEmailFromUrl() !== "" && isTrustedContext();
 
 /**
+ * Guard a nivel de MÓDULO (no por-montaje): el auto-login del campus se intenta
+ * UNA sola vez por carga de página. Es clave que sea una variable en memoria:
+ *  - sobrevive a los re-montajes de React (iframe que re-mide alto, StrictMode,
+ *    cambios de sesión) que si no dispararían varios intentos en paralelo y
+ *    pisarían los magic-link tokens entre sí (Supabase invalida el anterior al
+ *    generar uno nuevo) → verifyOtp respondía 403 "link invalid or expired";
+ *  - se resetea SOLO en una recarga real (F5), que es justo cuando SÍ queremos
+ *    volver a auto-loguear.
+ * `logout()` lo activa a propósito: así cerrar sesión NO dispara un re-login
+ * automático; el alumno queda en el login hasta la próxima recarga de la página.
+ */
+let autoLoginConsumed = false;
+export const suppressMoodleAutoLogin = (): void => {
+  autoLoginConsumed = true;
+};
+
+/**
  * Intenta iniciar sesión automáticamente a partir del email del estudiante que
  * provee el campus Moodle. Si matchea con un estudiante registrado, lo loguea
  * sin fricción; si no, no hace nada y el usuario ve el login normal.
  */
 export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
   // Inicializa en "checking" solo si corresponde, para evitar el flash del login.
+  // Si el único intento de esta carga ya se consumió (o hubo logout), arrancamos
+  // en "done" directamente: sin loader ni re-intento.
   const [status, setStatus] = useState<MoodleAutoLoginStatus>(() =>
-    shouldAttempt() ? "checking" : "done"
+    !autoLoginConsumed && shouldAttempt() ? "checking" : "done"
   );
   const hasRun = useRef(false);
 
@@ -99,6 +118,13 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
 
     const run = async () => {
       try {
+        // Ya se intentó en esta carga de página (o se cerró sesión): no reintentar.
+        if (autoLoginConsumed) {
+          logger.warn("[MoodleAutoLogin] Intento ya consumido en esta carga. Omitido.");
+          setStatus("done");
+          return;
+        }
+
         if (!shouldRun) {
           logger.warn(
             "[MoodleAutoLogin] No se cumplen las condiciones para auto-login (falta email o no es contexto confiable)."
@@ -106,6 +132,11 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
           setStatus("done");
           return;
         }
+
+        // Comprometemos el ÚNICO intento de esta carga ANTES de cualquier await,
+        // para que montajes concurrentes no disparen auto-logins en paralelo (lo
+        // que pisaría los tokens entre sí y haría fallar verifyOtp con 403).
+        autoLoginConsumed = true;
 
         logger.warn("[MoodleAutoLogin] Intentando auto-login para:", email);
 

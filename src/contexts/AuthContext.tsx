@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient";
 import type { Session } from "@supabase/supabase-js";
 import { logger } from "../utils/logger";
+import { suppressMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
 import {
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
@@ -80,6 +81,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = useCallback(async () => {
     try {
       logger.info("🚪 Cerrando sesión...");
+
+      // Evita que el auto-login del campus Moodle nos vuelva a loguear apenas
+      // cerramos sesión: el guard se limpia solo con una recarga real de la
+      // página (F5). Ver useMoodleAutoLogin / suppressMoodleAutoLogin.
+      suppressMoodleAutoLogin();
 
       // 1. Cancel React Query fetching
       queryClient.cancelQueries();

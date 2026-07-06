@@ -75,15 +75,38 @@ Deno.serve(async (req) => {
       return json({ matched: false, reason: "not_registered" });
     }
 
-    // Buscar en Supabase Auth si existe un usuario con este correo
+    // Buscar en Supabase Auth si existe un usuario con este correo.
+    // OJO: supabase-js NO tiene `getUserByEmail` (solo `listUsers` y
+    // `getUserById`). Primero intentamos por el user_id vinculado (rápido y
+    // directo); si no coincide o está vacío, caemos a un scan paginado por email.
     let authUserId: string | null = null;
-    try {
-      const { data: authUser } = await admin.auth.admin.getUserByEmail(email);
-      if (authUser?.user) {
-        authUserId = authUser.user.id;
+
+    if (estudiante.user_id) {
+      const { data: byId, error: byIdError } = await admin.auth.admin.getUserById(
+        estudiante.user_id
+      );
+      if (byIdError) {
+        console.error("[moodle-autologin] Error getUserById:", byIdError.message);
+      } else if (byId?.user && byId.user.email?.toLowerCase() === email) {
+        authUserId = byId.user.id;
       }
-    } catch (e) {
-      console.error("[moodle-autologin] Error obteniendo usuario de Auth:", e);
+    }
+
+    if (!authUserId) {
+      const perPage = 1000;
+      for (let page = 1; page <= 20 && !authUserId; page++) {
+        const { data: list, error: listError } = await admin.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+        if (listError) {
+          console.error("[moodle-autologin] Error listando usuarios de Auth:", listError.message);
+          break;
+        }
+        const found = list.users.find((u) => u.email?.toLowerCase() === email);
+        if (found) authUserId = found.id;
+        if (list.users.length < perPage) break; // última página
+      }
     }
 
     if (!authUserId) {
