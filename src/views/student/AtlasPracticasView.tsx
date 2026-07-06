@@ -27,6 +27,7 @@ interface AtlasPracticasViewProps {
 }
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const MIN_HOURS_TARGET = 250;
 const fmtShort = (raw?: unknown): string => {
   if (!raw) return "";
   const f = formatDate(raw as string);
@@ -58,7 +59,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   const [menu, setMenu] = useState<{ id: string; rect: DOMRect; current: string } | null>(null);
 
   const hoursAcc = Math.round(criterios?.horasTotales || 0);
-  const totalTarget = (criterios?.horasTotales || 0) + (criterios?.horasFaltantes250 || 0) || 250;
+  const totalTarget = MIN_HOURS_TARGET;
   const pct = totalTarget > 0 ? Math.min(100, Math.round((hoursAcc / totalTarget) * 100)) : 0;
   const restHs = Math.max(0, totalTarget - hoursAcc);
   const areasCursadas = criterios?.orientacionesCursadasCount ?? 0;
@@ -139,7 +140,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
       color = "var(--info-500)";
     } else if (Number.isFinite(num)) {
       text = String(raw).trim();
-      color = num >= 7 ? "var(--area-clinica)" : "#c98a1b";
+      color = num >= 7 ? "var(--area-clinica)" : "var(--grade-caution, #b7791f)";
     }
     if (savingId === p.id) {
       return (
@@ -327,6 +328,14 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
             {rows.length > 0 ? (
               <div className="ah-card ah-practices-table-card">
                 <table className="ah-table">
+                  <colgroup>
+                    <col className="ah-table__col-name" />
+                    <col className="ah-table__col-area" />
+                    <col className="ah-table__col-period" />
+                    <col className="ah-table__col-hours" />
+                    <col className="ah-table__col-grade" />
+                    <col className="ah-table__col-actions" />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>Institución</th>
@@ -346,7 +355,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                             {cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
                               "Institución"}
                           </td>
-                          <td>
+                          <td className="area">
                             <span
                               className="ah-areabadge"
                               style={{ ["--ac" as string]: areaVar(area) }}
@@ -355,7 +364,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                               {area}
                             </span>
                           </td>
-                          <td className="mono">
+                          <td className="mono period">
                             {[
                               fmtShort(p[FIELD_FECHA_INICIO_PRACTICAS]),
                               fmtShort(p[FIELD_FECHA_FIN_PRACTICAS]),
@@ -363,7 +372,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                               .filter(Boolean)
                               .join(" — ")}
                           </td>
-                          <td className="mono">{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</td>
+                          <td className="mono hours">{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</td>
                           <td className="nota">{notaCell(p)}</td>
                           <td
                             className="ah-table__actions"

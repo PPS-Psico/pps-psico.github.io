@@ -53,6 +53,7 @@ interface StudentHomeAtlasProps {
 }
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const MIN_HOURS_TARGET = 250;
 const fmtShort = (raw?: unknown): string => {
   if (!raw) return "";
   const f = formatDate(raw as string);
@@ -177,7 +178,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   });
   const currentDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-  const totalTarget = (criterios?.horasTotales || 0) + (criterios?.horasFaltantes250 || 0) || 248;
+  const totalTarget = MIN_HOURS_TARGET;
   const hoursAcc = Math.round(criterios?.horasTotales || 0);
   // ── Próximo paso ──────────────────────────────────────────────
   // El "Próximo paso" sigue el onboarding de la PPS: si quedó seleccionado y

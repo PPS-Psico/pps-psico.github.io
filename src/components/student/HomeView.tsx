@@ -257,7 +257,7 @@ const HomeView: React.FC<HomeViewProps> = ({
     : "";
   const activePpsShort = activePpsName ? activePpsName.split(" - ")[0].trim() : "";
 
-  const totalTarget = (criterios?.horasTotales || 0) + (criterios?.horasFaltantes250 || 0) || 250;
+  const totalTarget = 250;
   const hoursAcc = Math.round(criterios?.horasTotales || 0);
   const progressPct =
     totalTarget > 0 ? Math.min(100, Math.round((hoursAcc / totalTarget) * 100)) : 0;
