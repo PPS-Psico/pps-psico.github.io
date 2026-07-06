@@ -69,10 +69,41 @@ Deno.serve(async (req) => {
       return json({ matched: false, reason: "lookup_error" });
     }
 
-    // No está registrado, o nunca creó su cuenta (sin user_id vinculado).
-    if (!estudiante || !estudiante.user_id) {
-      console.log("[moodle-autologin] Sin match para:", email);
+    // No está registrado.
+    if (!estudiante) {
+      console.log("[moodle-autologin] Sin match en estudiantes para:", email);
       return json({ matched: false, reason: "not_registered" });
+    }
+
+    // Buscar en Supabase Auth si existe un usuario con este correo
+    let authUserId: string | null = null;
+    try {
+      const { data: authUser } = await admin.auth.admin.getUserByEmail(email);
+      if (authUser?.user) {
+        authUserId = authUser.user.id;
+      }
+    } catch (e) {
+      console.error("[moodle-autologin] Error obteniendo usuario de Auth:", e);
+    }
+
+    if (!authUserId) {
+      console.log("[moodle-autologin] Usuario no existe en Supabase Auth:", email);
+      return json({ matched: false, reason: "auth_user_not_found" });
+    }
+
+    // Si el user_id no coincide o es nulo, lo corregimos
+    if (estudiante.user_id !== authUserId) {
+      console.log(
+        `[moodle-autologin] Sincronizando user_id de ${email} de ${estudiante.user_id} a ${authUserId}`
+      );
+      const { error: updateError } = await admin
+        .from("estudiantes")
+        .update({ user_id: authUserId })
+        .eq("id", estudiante.id);
+
+      if (updateError) {
+        console.error("[moodle-autologin] Error actualizando user_id:", updateError.message);
+      }
     }
 
     // 2. Generar magic link interno (no se envía por correo; lo canjea la app).
