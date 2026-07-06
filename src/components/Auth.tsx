@@ -6,6 +6,7 @@ import { useModal } from "../contexts/ModalContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuthLogic } from "../hooks/useAuthLogic";
 import { useMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
+import CampusEntryLoader from "./CampusEntryLoader";
 import {
   FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
   FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
@@ -889,20 +890,11 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
   );
 
   // Mientras se intenta el ingreso automático desde el campus Moodle, mostramos
-  // un loader en vez del formulario para evitar el parpadeo del login.
+  // un loader en vez del formulario para evitar el parpadeo del login. Es el
+  // MISMO loader (CampusEntryLoader) que muestra StudentDashboard durante la
+  // carga de sesión, para que se vea un solo spinner continuo.
   if (autoLoginStatus === "checking") {
-    return (
-      <div
-        className={`ed flex flex-col items-center justify-center gap-5 p-8 ${inline ? "w-full border border-[var(--line)] bg-[var(--bg-elevated)] rounded-3xl" : "fixed inset-0 w-full h-[100dvh]"}`}
-        data-mode={resolvedTheme}
-        data-accent="teal"
-        style={{ background: inline ? "transparent" : "var(--bg)", color: "var(--ink)" }}
-      >
-        {brandMark}
-        <div className="w-9 h-9 border-2 border-current border-t-transparent rounded-full animate-spin opacity-70" />
-        <p className="text-sm font-semibold text-[var(--ink-muted)]">Ingresando desde el campus…</p>
-      </div>
-    );
+    return <CampusEntryLoader inline={inline} resolvedTheme={resolvedTheme} />;
   }
 
   if (inline) {

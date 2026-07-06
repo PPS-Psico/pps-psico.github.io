@@ -18,6 +18,7 @@ import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
 import AtlasProfileView from "./student/AtlasProfileView";
 import AtlasPracticasView from "./student/AtlasPracticasView";
 import Auth from "../components/Auth";
+import CampusEntryLoader from "../components/CampusEntryLoader";
 import { isEmbedded } from "../utils/isEmbedded";
 // Aula (contenido estático pesado en JSX): lazy para sacarlo del bundle inicial.
 const StudentAulaView = React.lazy(() => import("./student/StudentAulaView"));
@@ -228,7 +229,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onTabChange,
   showExportButton = false,
 }) => {
-  const { isSuperUserMode, isJefeMode, authenticatedUser } = useAuth();
+  const { isSuperUserMode, isJefeMode, authenticatedUser, isAuthLoading } = useAuth();
   const isMobile = useIsMobile();
   const { resolvedTheme } = useTheme();
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -678,6 +679,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
        Preguntas son material de consulta público. */
     const isLocked = ["inicio", "entregas", "practicas", "solicitudes", "profile"].includes(tabId);
     if (isLocked && !currentUser) {
+      /* Mientras se resuelve la sesión (restauración + posible auto-login desde
+         el campus) mostramos el MISMO loader branded que usa <Auth> en su estado
+         "checking", para que se vea un solo spinner continuo y el login no
+         parpadee antes de que el panel monte. */
+      if (isAuthLoading) {
+        return (
+          <div className={isMobileLayout ? "px-1 pt-2" : undefined}>
+            <CampusEntryLoader inline resolvedTheme={resolvedTheme} />
+          </div>
+        );
+      }
       /* Sin sesión: el login embebido (marca + formulario, mismo diseño que
          la pantalla de login completa) reemplaza al contenido de la sección. */
       return (

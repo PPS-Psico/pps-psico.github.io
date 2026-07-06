@@ -98,6 +98,10 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
     !autoLoginConsumed && shouldAttempt() ? "checking" : "done"
   );
   const hasRun = useRef(false);
+  // Red de seguridad: si mantenemos el loader esperando que el panel monte la
+  // sesión y por algún motivo no llega, liberamos el loader para no dejar un
+  // spinner infinito.
+  const safetyDoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const email = getEmailFromUrl();
@@ -117,6 +121,10 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
     hasRun.current = true;
 
     const run = async () => {
+      // `true` cuando el resultado es que el panel va a montar la sesión (sesión
+      // activa que coincide, o verifyOtp exitoso). En ese caso NO mostramos el
+      // login: mantenemos el loader hasta que AuthContext renderice el panel.
+      let landingOnDashboard = false;
       try {
         // Ya se intentó en esta carga de página (o se cerró sesión): no reintentar.
         if (autoLoginConsumed) {
@@ -151,8 +159,10 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
             );
             await supabase.auth.signOut();
           } else {
-            logger.warn("[MoodleAutoLogin] Sesión activa coincide con la URL. Auto-login omitido.");
-            setStatus("done");
+            logger.warn(
+              "[MoodleAutoLogin] Sesión activa coincide con la URL. El panel cargará la sesión; mantenemos el loader."
+            );
+            landingOnDashboard = true;
             return;
           }
         }
@@ -194,7 +204,9 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
             logger.warn(
               "[MoodleAutoLogin] Sesión iniciada automáticamente desde el campus con éxito."
             );
-            // AuthContext detecta el SIGNED_IN y carga el perfil.
+            // AuthContext detecta el SIGNED_IN y carga el perfil: mantenemos el
+            // loader hasta que el panel monte (no mostrar el login en el medio).
+            landingOnDashboard = true;
           }
         } else {
           logger.warn(
@@ -205,11 +217,22 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
       } catch (err) {
         logger.warn("[MoodleAutoLogin] Error inesperado:", err);
       } finally {
-        setStatus("done");
+        if (landingOnDashboard) {
+          // El panel está por montar la sesión; mantener el loader. Red de
+          // seguridad por si el perfil no llega a cargar.
+          if (safetyDoneTimer.current) clearTimeout(safetyDoneTimer.current);
+          safetyDoneTimer.current = setTimeout(() => setStatus("done"), 7000);
+        } else {
+          setStatus("done");
+        }
       }
     };
 
     void run();
+
+    return () => {
+      if (safetyDoneTimer.current) clearTimeout(safetyDoneTimer.current);
+    };
   }, []);
 
   return status;
