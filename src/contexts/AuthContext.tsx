@@ -258,10 +258,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               });
               setIsAuthLoading(false);
             } else {
-              // Permitir reintento: este user_id no quedó resuelto.
+              // Permitir reintento: este user_id no quedó resuelto y la sesión es inválida.
+              logger.warn("[Auth] Cerrando sesión de Supabase por perfil no encontrado.");
               processedUserIdRef.current = null;
               setAuthenticatedUser(null);
               setIsAuthLoading(false);
+              supabase.auth
+                .signOut()
+                .catch((e) => logger.warn("Error signing out mismatched user:", e));
             }
           }
         }

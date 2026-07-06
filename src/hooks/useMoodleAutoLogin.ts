@@ -109,12 +109,21 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
 
         logger.info("[MoodleAutoLogin] Intentando auto-login para:", email);
 
-        // Si ya hay sesión activa, no hacemos nada.
+        // Si ya hay sesión activa, verificamos si es para la misma cuenta
         const { data: sessionData } = await supabase.auth.getSession();
         logger.info("[MoodleAutoLogin] Sesión activa actual:", sessionData?.session ? "Sí" : "No");
         if (sessionData?.session) {
-          setStatus("done");
-          return;
+          const sessionEmail = sessionData.session.user.email?.toLowerCase();
+          if (sessionEmail && sessionEmail !== email) {
+            logger.info(
+              `[MoodleAutoLogin] La sesión activa (${sessionEmail}) es diferente de la URL (${email}). Cerrando sesión actual...`
+            );
+            await supabase.auth.signOut();
+          } else {
+            logger.info("[MoodleAutoLogin] Sesión activa coincide con la URL. Auto-login omitido.");
+            setStatus("done");
+            return;
+          }
         }
 
         logger.info("[MoodleAutoLogin] Invocando Edge Function moodle-autologin...");
