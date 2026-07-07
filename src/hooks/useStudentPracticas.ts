@@ -13,7 +13,7 @@ import { mockDb } from "../services/mockDb";
 import type { Practica } from "../types";
 import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
 
-export const useStudentPracticas = (legajo: string) => {
+export const useStudentPracticas = (legajo: string, studentId: string | null) => {
   const queryClient = useQueryClient();
   const { showModal } = useModal();
 
@@ -31,8 +31,8 @@ export const useStudentPracticas = (legajo: string) => {
         // Testing Mode
         await new Promise((resolve) => setTimeout(resolve, 600));
         data = await mockDb.getAll("practicas", { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: "st_999" });
-      } else {
-        data = await fetchPracticas(legajo);
+      } else if (studentId) {
+        data = await fetchPracticas(studentId);
       }
 
       // --- AUTO-FIX LOGIC (Same for Mock and Prod) ---
@@ -75,6 +75,7 @@ export const useStudentPracticas = (legajo: string) => {
         return undefined;
       }
     },
+    enabled: legajo === "99999" || !!studentId,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true, // Enable for testing reactivity
   });

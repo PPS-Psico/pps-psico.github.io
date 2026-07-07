@@ -155,7 +155,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     updateFechaFin,
     deletePractica,
     refetchPracticas,
-  } = useStudentPracticas(legajo);
+  } = useStudentPracticas(legajo, studentId);
   const {
     solicitudes,
     isSolicitudesLoading,

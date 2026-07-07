@@ -10,26 +10,56 @@ export type MoodleAutoLoginStatus = "checking" | "done";
  * Soporta tanto el query normal (?email=...) como el embebido en el hash
  * de HashRouter (#/login?email=...).
  */
-const getEmailFromUrl = (): string => {
+const getUrlParam = (name: string): string => {
   if (typeof window === "undefined") return "";
   try {
     const candidates: string[] = [];
 
     const search = new URLSearchParams(window.location.search);
-    candidates.push(search.get("email") || "");
+    candidates.push(search.get(name) || "");
 
     const hash = window.location.hash || "";
     const queryIndex = hash.indexOf("?");
     if (queryIndex !== -1) {
       const hashParams = new URLSearchParams(hash.slice(queryIndex + 1));
-      candidates.push(hashParams.get("email") || "");
+      candidates.push(hashParams.get(name) || "");
     }
 
-    return (candidates.find((value) => value.trim() !== "") || "").trim().toLowerCase();
+    const value = (candidates.find((v) => v.trim() !== "") || "").trim();
+    // Tag de FilterCodes sin interpolar (ej. "{idnumber}") ⇒ tratar como vacío.
+    return value.includes("{") ? "" : value;
   } catch {
     return "";
   }
 };
+
+const getEmailFromUrl = (): string => getUrlParam("email").toLowerCase();
+
+/**
+ * Perfil extra que el campus inyecta junto al email (FilterCodes):
+ * nombre/apellido separados y, si el Moodle lo tiene cargado, el idnumber
+ * (potencialmente el legajo). Hoy se usa como sonda diagnóstica — la Edge
+ * Function los loguea para medir qué % de estudiantes los trae — y a futuro
+ * precargará el alta de estudiantes nuevos.
+ */
+export const getMoodleProfileFromUrl = (): {
+  firstname: string;
+  lastname: string;
+  idnumber: string;
+  username: string;
+  phone1: string;
+  phone2: string;
+} => ({
+  firstname: getUrlParam("firstname"),
+  lastname: getUrlParam("lastname"),
+  // idnumber = campo "Número de ID" (opcional en Moodle, potencial legajo).
+  idnumber: getUrlParam("idnumber"),
+  // username = "Nombre de usuario" de Moodle: en UFLO parece ser el DNI —
+  // si la sonda lo confirma, es la clave de match que no depende del correo.
+  username: getUrlParam("username"),
+  phone1: getUrlParam("phone1"),
+  phone2: getUrlParam("phone2"),
+});
 
 /**
  * `true` si la app fue abierta desde un origen de confianza:
@@ -169,6 +199,8 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
 
         logger.warn("[MoodleAutoLogin] Invocando Edge Function moodle-autologin...");
         // Pedimos a la Edge Function un token de auto-login para este email.
+        // El perfil extra (firstname/lastname/idnumber) viaja como sonda: la
+        // función lo loguea para medir qué datos inyecta el Moodle real.
         const response = await fetch(`${SUPABASE_URL}/functions/v1/moodle-autologin`, {
           method: "POST",
           headers: {
@@ -176,7 +208,7 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
             apikey: SUPABASE_ANON_KEY,
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, profile: getMoodleProfileFromUrl() }),
         });
 
         if (!response.ok) {

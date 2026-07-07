@@ -80,7 +80,7 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     updateNota,
     updateFechaFin,
     refetchPracticas,
-  } = useStudentPracticas(legajo);
+  } = useStudentPracticas(legajo, studentId);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
     useStudentSolicitudes(legajo, studentId);
   const {

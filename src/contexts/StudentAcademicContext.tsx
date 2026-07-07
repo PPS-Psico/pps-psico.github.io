@@ -60,7 +60,7 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     updateNota,
     updateFechaFin,
     refetchPracticas,
-  } = useStudentPracticas(legajo);
+  } = useStudentPracticas(legajo, studentId);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
     useStudentSolicitudes(legajo, studentId);
   const {

@@ -19,6 +19,77 @@ const json = (body: unknown, status = 200) =>
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 /**
+ * SONDA (temporal): guarda en `moodle_probe` los campos de perfil que inyectó
+ * Moodle (FilterCodes) en esta entrada, cruzados contra `estudiantes`:
+ *  - ¿username coincide con un DNI? (hipótesis: username de UFLO = DNI)
+ *  - ¿idnumber coincide con un legajo?
+ *  - ¿email existe en `correo`?
+ * Con esos datos se decide el diseño del alta de estudiantes nuevos.
+ * Nunca debe romper el auto-login: todo va en try/catch y sin await del caller.
+ */
+const recordProbe = async (
+  email: string,
+  profile: Record<string, unknown> | null,
+  autologinResult: string
+): Promise<void> => {
+  try {
+    const p = profile ?? {};
+    const clip = (v: unknown) =>
+      String(v ?? "")
+        .trim()
+        .slice(0, 120) || null;
+    const username = clip(p.username);
+    const idnumber = clip(p.idnumber);
+
+    let emailMatch = false;
+    let usernameDniMatch = false;
+    let idnumberLegajoMatch = false;
+
+    if (email) {
+      const { count } = await admin
+        .from("estudiantes")
+        .select("id", { count: "exact", head: true })
+        .ilike("correo", email);
+      emailMatch = (count ?? 0) > 0;
+    }
+
+    const usernameDigits = username?.replace(/\D/g, "") ?? "";
+    if (usernameDigits.length >= 6) {
+      const { count } = await admin
+        .from("estudiantes")
+        .select("id", { count: "exact", head: true })
+        .eq("dni", Number(usernameDigits));
+      usernameDniMatch = (count ?? 0) > 0;
+    }
+
+    if (idnumber) {
+      const { count } = await admin
+        .from("estudiantes")
+        .select("id", { count: "exact", head: true })
+        .eq("legajo", idnumber);
+      idnumberLegajoMatch = (count ?? 0) > 0;
+    }
+
+    const { error } = await admin.from("moodle_probe").insert({
+      email: email || null,
+      firstname: clip(p.firstname),
+      lastname: clip(p.lastname),
+      idnumber,
+      username,
+      phone1: clip(p.phone1),
+      phone2: clip(p.phone2),
+      email_match: emailMatch,
+      username_dni_match: usernameDniMatch,
+      idnumber_legajo_match: idnumberLegajoMatch,
+      autologin_result: autologinResult,
+    });
+    if (error) console.error("[moodle-autologin][probe] insert error:", error.message);
+  } catch (e) {
+    console.error("[moodle-autologin][probe] error:", (e as Error).message);
+  }
+};
+
+/**
  * moodle-autologin
  *
  * Recibe el email que el campus Moodle inyecta en el iframe (vía FilterCodes).
@@ -47,7 +118,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email: rawEmail } = await req.json().catch(() => ({ email: "" }));
+    const { email: rawEmail, profile } = await req
+      .json()
+      .catch(() => ({ email: "", profile: null }));
     const email = String(rawEmail ?? "")
       .trim()
       .toLowerCase();
@@ -56,6 +129,10 @@ Deno.serve(async (req) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return json({ matched: false, reason: "invalid_email" });
     }
+
+    // SONDA: registrar esta entrada con el perfil que inyectó Moodle y el
+    // cruce contra `estudiantes`. Consultar: select * from moodle_probe.
+    await recordProbe(email, (profile ?? null) as Record<string, unknown> | null, "entry");
 
     // 1. ¿Es un estudiante registrado? (match exacto, case-insensitive)
     const { data: estudiante, error: lookupError } = await admin

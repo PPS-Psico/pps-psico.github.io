@@ -3,13 +3,9 @@ import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { Practica } from "../types";
 import { cleanDbValue } from "../utils/formatters";
-import { fetchStudentData } from "./estudiantesService";
 import { logger } from "../utils/logger";
 
-export const fetchPracticas = async (legajo: string): Promise<Practica[]> => {
-  const { studentId } = await fetchStudentData(legajo);
-  if (!studentId) return [];
-
+export const fetchPracticas = async (studentId: string): Promise<Practica[]> => {
   const { data, error } = await supabase
     .from("practicas")
     .select(

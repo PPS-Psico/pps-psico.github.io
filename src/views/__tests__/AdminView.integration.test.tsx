@@ -35,7 +35,7 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
   });
 
   it("carga las prácticas del alumno seleccionado", async () => {
-    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO), {
+    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO, null), {
       wrapper: createWrapper(),
     });
 
@@ -47,7 +47,7 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
   });
 
   it("permite editar la nota de una práctica y la persiste", async () => {
-    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO), {
+    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO, null), {
       wrapper: createWrapper(),
     });
 
@@ -69,7 +69,7 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
   });
 
   it("refleja la nota actualizada al refrescar las prácticas", async () => {
-    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO), {
+    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO, null), {
       wrapper: createWrapper(),
     });
 

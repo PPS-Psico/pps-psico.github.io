@@ -339,28 +339,30 @@ window.DESCARGAS = [
 })();
 </script>
 <script>
-/* Propaga el email (Moodle: aula.html?email=) por el campus vía sessionStorage
-   y lo suma a los enlaces de "Mi panel" para el auto-login del panel. */
+/* Propaga el perfil (Moodle: aula.html?email=&firstname=&lastname=&idnumber=)
+   por el campus vía sessionStorage y lo suma a los enlaces de "Mi panel" para
+   el auto-login / alta del panel. Tags sin interpolar ("{email}") se descartan. */
 (function(){
   var PANEL_ORIGIN='https://pps-psico.github.io/';
-  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
-  var PANEL_VER='28';
-  var email=getParam('email');
-  try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
+  var KEYS=['email','firstname','lastname','idnumber','username','phone1','phone2'];
+  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); v=v?v.trim():''; return v.indexOf('{')===-1?v:''; }catch(e){ return ''; } }
+  var PANEL_VER='29';
+  var profile={};
+  KEYS.forEach(function(k){ var v=getParam(k); try{ if(v) sessionStorage.setItem('pps_'+k,v); else v=sessionStorage.getItem('pps_'+k)||''; }catch(e){} profile[k]=v; });
   document.querySelectorAll('a[href^="'+PANEL_ORIGIN+'"]').forEach(function(a){
-    try{ var url=new URL(a.getAttribute('href'),window.location.href); var p=url.pathname.replace(/\/+$/,''); if(p===''||p==='/'){ url.searchParams.set('v',PANEL_VER); if(email) url.searchParams.set('email',email); a.setAttribute('href',url.toString()); } }catch(e){}
+    try{ var url=new URL(a.getAttribute('href'),window.location.href); var p=url.pathname.replace(/\/+$/,''); if(p===''||p==='/'){ url.searchParams.set('v',PANEL_VER); KEYS.forEach(function(k){ if(profile[k]) url.searchParams.set(k,profile[k]); }); a.setAttribute('href',url.toString()); } }catch(e){}
   });
 })();
 </script>
 <script>
-/* Mantiene el acceso integrado a Mi Panel con el email que inyecta Moodle. */
+/* Mantiene el acceso integrado a Mi Panel con el perfil que inyecta Moodle. */
 (function(){
-  var PANEL_VER='28';
-  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); return v?v.trim():''; }catch(e){ return ''; } }
-  var email=getParam('email');
-  try{ if(email) sessionStorage.setItem('pps_email',email); else email=sessionStorage.getItem('pps_email')||''; }catch(e){}
+  var PANEL_VER='29';
+  var KEYS=['email','firstname','lastname','idnumber','username','phone1','phone2'];
+  function getParam(n){ try{ var v=new URLSearchParams(window.location.search).get(n); v=v?v.trim():''; return v.indexOf('{')===-1?v:''; }catch(e){ return ''; } }
+  var qs='?v='+encodeURIComponent(PANEL_VER);
+  KEYS.forEach(function(k){ var v=getParam(k); try{ if(v) sessionStorage.setItem('pps_'+k,v); else v=sessionStorage.getItem('pps_'+k)||''; }catch(e){} if(v) qs+='&'+k+'='+encodeURIComponent(v); });
   document.querySelectorAll('a.pa-bridge[href^="/#/student"]').forEach(function(a){
-    var qs='?v='+encodeURIComponent(PANEL_VER)+(email?'&email='+encodeURIComponent(email):'');
     a.setAttribute('href','/'+qs+'#/student');
   });
 })();
@@ -373,11 +375,15 @@ window.DESCARGAS = [
     if(warmed) return;
     warmed=true;
     try{
-      var email = '';
-      try {
-        email = new URLSearchParams(window.location.search).get('email') || sessionStorage.getItem('pps_email') || '';
-      } catch(e) {}
-      var qs = '?v=28&preload=true' + (email ? '&email=' + encodeURIComponent(email.trim()) : '');
+      var qs = '?v=29&preload=true';
+      ['email','firstname','lastname','idnumber','username','phone1','phone2'].forEach(function(k){
+        var v = '';
+        try {
+          v = new URLSearchParams(window.location.search).get(k) || sessionStorage.getItem('pps_' + k) || '';
+        } catch(e) {}
+        v = v.trim();
+        if (v && v.indexOf('{') === -1) qs += '&' + k + '=' + encodeURIComponent(v);
+      });
 
       console.log('[Preheat] Iniciando precarga de Mi Panel en iframe invisible...');
       var iframe = document.createElement('iframe');
