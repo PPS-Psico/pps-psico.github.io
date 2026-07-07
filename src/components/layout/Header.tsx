@@ -145,6 +145,20 @@ const AppHeader: React.FC = () => {
   // Rutas que deben ocupar todo el ancho de la pantalla
   const fullWidthRoutes = ["/admin", "/jefe", "/directivo", "/reportero", "/testing"];
   const isFullWidth = fullWidthRoutes.some((route) => location.pathname.startsWith(route));
+  const showOpenInNew = (() => {
+    try {
+      const referrer = document.referrer.toLowerCase();
+      const search = new URLSearchParams(window.location.search);
+      return (
+        isEmbedded() ||
+        referrer.includes("campus.uflo.edu.ar") ||
+        search.has("embedded") ||
+        search.get("from") === "campus"
+      );
+    } catch {
+      return isEmbedded();
+    }
+  })();
 
   // Mostrar notificaciones solo a roles admin/gestión
   const showNotifications = isLoggedIn && (isSuperUserMode || isJefeMode || isDirectivoMode);
@@ -219,6 +233,20 @@ const AppHeader: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {showOpenInNew && (
+                <a
+                  href="https://pps-psico.github.io/#/student"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mp-iconbtn"
+                  aria-label="Abrir en pestaña nueva"
+                  title="Abrir en pestaña nueva"
+                >
+                  <span className="material-icons" style={{ fontSize: 19 }} aria-hidden="true">
+                    open_in_new
+                  </span>
+                </a>
+              )}
               <button
                 type="button"
                 className="mp-iconbtn"
