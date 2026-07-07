@@ -6,7 +6,6 @@ import ErrorState from "../components/ErrorState";
 import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
 import AtlasTopbar from "../components/student/home/atlas/AtlasTopbar";
 import CriteriosPanel from "../components/student/CriteriosPanel";
-import DashboardLoadingSkeleton from "../components/student/DashboardLoadingSkeleton";
 import FinalizacionForm from "../components/student/FinalizacionForm";
 import HomeView from "../components/student/HomeView";
 import PrintableReport from "../components/student/PrintableReport";
@@ -724,7 +723,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   );
 
   // Wait until all student data (including convocatorias) has loaded to prevent layout shift.
-  if (isLoading) return <DashboardLoadingSkeleton />;
+  if (isLoading)
+    return <CampusEntryLoader resolvedTheme={resolvedTheme} message="Cargando Mi Panel..." />;
   if (error) return <ErrorState error={error.message} onRetry={() => refetchAll()} />;
 
   // CASO DE BLOQUEO POR FINALIZACIÓN (Solo si NO es un Admin mirando)

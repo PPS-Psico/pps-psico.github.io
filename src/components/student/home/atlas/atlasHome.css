@@ -974,6 +974,15 @@ html.dark .ah-root .ah-feat__side {
   margin-left: 52px;
   margin-top: 2px;
 }
+.ah-empty--campus-mobile {
+  min-height: 230px;
+  padding: 34px 22px;
+  background: var(--bg-elevated);
+}
+.ah-empty--campus-mobile .ah-empty__ic {
+  width: 42px;
+  height: 42px;
+}
 
 /* botones */
 .ah-btn {

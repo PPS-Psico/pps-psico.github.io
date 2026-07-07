@@ -14,9 +14,6 @@ interface AtlasTopbarProps {
   onTabChange: (tab: TabId) => void;
 }
 
-/* Barra unificada en dos bloques: primero la herramienta personal (datos
-   vivos del alumno), después —tras un separador y en tono más suave— el
-   material de consulta del campus (Guía, Descargas, Preguntas). */
 const NAV: { id: TabId; label: string; campus?: boolean }[] = [
   { id: "inicio", label: "Inicio" },
   { id: "entregas", label: "Entregas" },
@@ -32,6 +29,7 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
   const { authenticatedUser, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const initial = (authenticatedUser?.nombre || "E").trim().charAt(0).toUpperCase() || "E";
+  const panelUrl = "https://pps-psico.github.io/#/student";
 
   const runPanelTransition = (update: () => void) => {
     const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -42,9 +40,6 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
       return;
     }
 
-    /* Si el usuario cambia de pestaña antes de que termine la animación, el
-       navegador aborta la transición y rechaza sus promesas ("Transition was
-       aborted..."): las silenciamos para que no salte el modal global. */
     const transition = startViewTransition.call(document, update) as
       | {
           finished?: Promise<void>;
@@ -62,13 +57,27 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
     runPanelTransition(() => onTabChange(tab));
   };
 
-  // Embebido en el campus: mostramos los accesos "Volver al campus" y
-  // "Pantalla completa" dentro de esta misma barra (no como franja aparte).
   const [embedded] = useState(() => {
     try {
       return window.self !== window.top;
     } catch {
       return true;
+    }
+  });
+
+  const [showOpenInNew] = useState(() => {
+    try {
+      const referrer = document.referrer.toLowerCase();
+      const search = new URLSearchParams(window.location.search);
+      return (
+        embedded ||
+        isEmbedded() ||
+        referrer.includes("campus.uflo.edu.ar") ||
+        search.has("embedded") ||
+        search.get("from") === "campus"
+      );
+    } catch {
+      return embedded;
     }
   });
 
@@ -126,20 +135,19 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
           </nav>
 
           <div className="ah-topbar__right">
-            {embedded && (
-              <>
-                <button
-                  type="button"
-                  className="ah-iconbtn"
-                  onClick={() => window.open(window.location.href, "_blank", "noopener")}
-                  title="Abrir en pantalla completa"
-                  aria-label="Abrir en pantalla completa"
-                >
-                  <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
-                    open_in_full
-                  </span>
-                </button>
-              </>
+            {showOpenInNew && (
+              <a
+                href={panelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ah-iconbtn"
+                title="Abrir en pestaña nueva"
+                aria-label="Abrir en pestaña nueva"
+              >
+                <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
+                  open_in_new
+                </span>
+              </a>
             )}
             <button
               type="button"
@@ -152,26 +160,6 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 {resolvedTheme === "dark" ? "light_mode" : "dark_mode"}
               </span>
             </button>
-            {isEmbedded() && (
-              <a
-                href="https://pps-psico.github.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ah-iconbtn"
-                title="Abrir en pestaña nueva"
-                aria-label="Abrir en pestaña nueva"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textDecoration: "none",
-                }}
-              >
-                <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
-                  open_in_new
-                </span>
-              </a>
-            )}
             <button
               type="button"
               className="ah-iconbtn"

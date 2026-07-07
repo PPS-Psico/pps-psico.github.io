@@ -59,6 +59,7 @@ import StudentSolicitudItem, { type StudentSolicitudItemData } from "./home/Stud
 import StudentHomeAtlas from "./home/atlas/StudentHomeAtlas";
 import StudentOnboardingCard from "./StudentOnboardingCard";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
+import { isEmbedded } from "../../utils/isEmbedded";
 
 interface HomeViewProps {
   myEnrollments: Convocatoria[];
@@ -111,6 +112,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   const { practicas, solicitudes } = useStudentPanel();
   const navigate = useNavigate();
   const openDetalle = (l: LanzamientoPPS) => navigate(`/student/convocatoria/${l.id}`);
+  const embeddedPanel = isEmbedded();
   const isTesting = authenticatedUser?.legajo === "99999";
   const [pendingCancel, setPendingCancel] = useState<{ id: string; nombre: string } | null>(null);
   const [pendingCompromiso, setPendingCompromiso] = useState<{
@@ -650,6 +652,18 @@ const HomeView: React.FC<HomeViewProps> = ({
                     studentName={studentName}
                     onNavigate={(tab) => onNavigate(tab as TabId)}
                   />
+                ) : embeddedPanel ? (
+                  <div className="ah-convs">
+                    <div className="ah-empty ah-empty--campus-mobile">
+                      <div className="ah-empty__ic">
+                        <span className="material-icons">notifications_none</span>
+                      </div>
+                      <div className="ah-empty__t">No hay convocatorias abiertas</div>
+                      <p className="ah-empty__s">
+                        Estate atento al grupo de WhatsApp para no perderte novedades.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <EmptyState
                     type="no-convocatorias"

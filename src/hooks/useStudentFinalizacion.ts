@@ -11,7 +11,7 @@ export const useStudentFinalizacion = (legajo: string, studentId: string | null)
     error: finalizationError,
     refetch: refetchFinalizacion,
   } = useQuery({
-    queryKey: ["finalizacionRequest", legajo],
+    queryKey: ["finalizacionRequest", studentId ?? legajo],
     queryFn: async () => {
       let data;
       if (legajo === "99999") {
@@ -22,21 +22,12 @@ export const useStudentFinalizacion = (legajo: string, studentId: string | null)
       } else {
         data = await fetchFinalizacionRequest(legajo, studentId);
       }
-      try {
-        sessionStorage.setItem(`pps_cache_finalizacion_${legajo}`, JSON.stringify(data));
-      } catch (e) {}
       return data;
     },
-    initialData: () => {
-      try {
-        const cached = sessionStorage.getItem(`pps_cache_finalizacion_${legajo}`);
-        return cached ? JSON.parse(cached) : undefined;
-      } catch (e) {
-        return undefined;
-      }
-    },
     enabled: !!studentId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   return {
