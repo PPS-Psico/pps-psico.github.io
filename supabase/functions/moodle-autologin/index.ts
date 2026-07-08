@@ -18,26 +18,37 @@ const json = (body: unknown, status = 200) =>
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+type MoodleProfile = Record<string, unknown> | null;
+
+type AutologinResult = {
+  matched: boolean;
+  reason?: string;
+  token_hash?: string;
+  /** Email de la cuenta real del panel (puede diferir del email de Moodle
+   *  cuando el match fue por DNI y el alumno se registró con correo personal). */
+  account_email?: string;
+};
+
+const clip = (v: unknown) =>
+  String(v ?? "")
+    .trim()
+    .slice(0, 120) || null;
+
 /**
  * SONDA (temporal): guarda en `moodle_probe` los campos de perfil que inyectó
  * Moodle (FilterCodes) en esta entrada, cruzados contra `estudiantes`:
- *  - ¿username coincide con un DNI? (hipótesis: username de UFLO = DNI)
- *  - ¿idnumber coincide con un legajo?
+ *  - ¿username coincide con un DNI? (confirmado: username de UFLO = DNI)
+ *  - ¿idnumber coincide con un legajo? (hasta ahora viene vacío)
  *  - ¿email existe en `correo`?
- * Con esos datos se decide el diseño del alta de estudiantes nuevos.
- * Nunca debe romper el auto-login: todo va en try/catch y sin await del caller.
+ * Nunca debe romper el auto-login: todo va en try/catch.
  */
 const recordProbe = async (
   email: string,
-  profile: Record<string, unknown> | null,
+  profile: MoodleProfile,
   autologinResult: string
 ): Promise<void> => {
   try {
     const p = profile ?? {};
-    const clip = (v: unknown) =>
-      String(v ?? "")
-        .trim()
-        .slice(0, 120) || null;
     const username = clip(p.username);
     const idnumber = clip(p.idnumber);
 
@@ -90,23 +101,159 @@ const recordProbe = async (
 };
 
 /**
+ * Resuelve el auto-login para un email + perfil de Moodle.
+ *
+ * Orden de match contra `estudiantes` (el DNI es el identificador robusto:
+ * no depende de qué correo puso el alumno al registrarse ni del dominio
+ * doble @uflo.edu.ar / @uflouniversidad.edu.ar):
+ *  1. por correo (histórico, exacto case-insensitive)
+ *  2. por DNI = username de Moodle (confirmado por la sonda)
+ *
+ * Razones cuando no hay login:
+ *  - not_registered:      no hay fila en estudiantes → candidato a alta.
+ *  - no_account:          hay fila pero nunca creó cuenta → alta con vinculación.
+ *  - auth_user_not_found: fila con user_id que no existe en Auth (integridad).
+ */
+const resolveAutologin = async (
+  email: string,
+  profile: MoodleProfile
+): Promise<AutologinResult> => {
+  // 1. Match por correo.
+  let matchedBy = "email";
+  let { data: estudiante, error: lookupError } = await admin
+    .from("estudiantes")
+    .select("id, correo, user_id")
+    .ilike("correo", email)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("[moodle-autologin] Error buscando estudiante:", lookupError.message);
+    return { matched: false, reason: "lookup_error" };
+  }
+
+  // 2. Fallback: match por DNI (username de Moodle).
+  if (!estudiante) {
+    const usernameDigits = String((profile ?? {}).username ?? "").replace(/\D/g, "");
+    if (usernameDigits.length >= 6) {
+      const { data: byDni, error: dniError } = await admin
+        .from("estudiantes")
+        .select("id, correo, user_id")
+        .eq("dni", Number(usernameDigits))
+        .maybeSingle();
+      if (dniError) {
+        console.error("[moodle-autologin] Error buscando por DNI:", dniError.message);
+      } else if (byDni) {
+        estudiante = byDni;
+        matchedBy = "dni";
+      }
+    }
+  }
+
+  if (!estudiante) {
+    console.log("[moodle-autologin] Sin match en estudiantes para:", email);
+    return { matched: false, reason: "not_registered" };
+  }
+
+  // 3. Resolver el usuario de Auth de esa fila.
+  let authUser: { id: string; email?: string } | null = null;
+
+  if (estudiante.user_id) {
+    const { data: byId, error: byIdError } = await admin.auth.admin.getUserById(estudiante.user_id);
+    if (byIdError) {
+      console.error("[moodle-autologin] Error getUserById:", byIdError.message);
+    } else if (byId?.user) {
+      authUser = byId.user;
+    }
+  }
+
+  // Cuentas viejas sin user_id vinculado: scan paginado por el email de la URL
+  // (supabase-js no tiene getUserByEmail).
+  if (!authUser) {
+    const perPage = 1000;
+    for (let page = 1; page <= 20 && !authUser; page++) {
+      const { data: list, error: listError } = await admin.auth.admin.listUsers({
+        page,
+        perPage,
+      });
+      if (listError) {
+        console.error("[moodle-autologin] Error listando usuarios de Auth:", listError.message);
+        break;
+      }
+      const found = list.users.find((u) => u.email?.toLowerCase() === email);
+      if (found) authUser = found;
+      if (list.users.length < perPage) break; // última página
+    }
+  }
+
+  if (!authUser?.email) {
+    console.log(
+      `[moodle-autologin] Estudiante matcheado por ${matchedBy} pero sin cuenta en Auth:`,
+      email
+    );
+    return {
+      matched: false,
+      reason: estudiante.user_id ? "auth_user_not_found" : "no_account",
+    };
+  }
+
+  // 4. Sanear el vínculo user_id si quedó desactualizado.
+  if (estudiante.user_id !== authUser.id) {
+    console.log(
+      `[moodle-autologin] Sincronizando user_id de ${email} de ${estudiante.user_id} a ${authUser.id}`
+    );
+    const { error: updateError } = await admin
+      .from("estudiantes")
+      .update({ user_id: authUser.id })
+      .eq("id", estudiante.id);
+
+    if (updateError) {
+      console.error("[moodle-autologin] Error actualizando user_id:", updateError.message);
+    }
+  }
+
+  // 5. Magic link interno para el email de la CUENTA (no el de la URL: con
+  // match por DNI pueden diferir). La app lo canjea con verifyOtp.
+  const accountEmail = authUser.email.toLowerCase();
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: accountEmail,
+  });
+
+  if (linkError || !linkData?.properties?.hashed_token) {
+    console.error(
+      "[moodle-autologin] Error generando link:",
+      linkError?.message ?? "sin hashed_token"
+    );
+    return { matched: false, reason: "link_error" };
+  }
+
+  console.log(`[moodle-autologin] Auto-login emitido para: ${email} (match: ${matchedBy})`);
+  return {
+    matched: true,
+    reason: `matched_${matchedBy}`,
+    token_hash: linkData.properties.hashed_token,
+    account_email: accountEmail,
+  };
+};
+
+/**
  * moodle-autologin
  *
- * Recibe el email que el campus Moodle inyecta en el iframe (vía FilterCodes).
- * Si ese email corresponde a un estudiante registrado, devuelve un `token_hash`
- * de magic link que la app canjea con `verifyOtp` para iniciar sesión sin que el
- * alumno escriba nada.
+ * Recibe el email + perfil (firstname/lastname/username=DNI/...) que el campus
+ * Moodle inyecta en el iframe vía FilterCodes. Si corresponde a un estudiante
+ * registrado (por correo o por DNI), devuelve un `token_hash` de magic link que
+ * la app canjea con `verifyOtp` para iniciar sesión sin que el alumno escriba
+ * nada. Si no, devuelve la razón para que la app decida (login normal o alta).
  *
  * SEGURIDAD — leer antes de tocar:
- * - El email que llega NO está criptográficamente verificado (viaja por la URL).
- *   La protección real es del lado del cliente: la app solo llama a esta función
- *   cuando corre embebida en un iframe, y la CSP `frame-ancestors` de nginx solo
- *   permite que el campus la embeba. Eso bloquea el caso casual de copiar la URL
- *   con el email de otra persona en una pestaña nueva.
+ * - El email/perfil que llega NO está criptográficamente verificado (viaja por
+ *   la URL). La protección real es del lado del cliente: la app solo llama a
+ *   esta función cuando corre embebida en un iframe del campus. Eso bloquea el
+ *   caso casual de copiar la URL con los datos de otra persona.
  * - Esto NO sustituye a un SSO/LTI real. Si algún día se habilita LTI (requiere
  *   admin de Moodle), migrar a identidad firmada y retirar este atajo.
- * - Solo se emite token para emails que ya existen como estudiante. Nunca se
- *   crean usuarios desde acá.
+ * - Solo se emite token para estudiantes que ya existen. Nunca se crean
+ *   usuarios desde acá (el alta va por register_campus_student, autenticado).
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -130,101 +277,16 @@ Deno.serve(async (req) => {
       return json({ matched: false, reason: "invalid_email" });
     }
 
-    // SONDA: registrar esta entrada con el perfil que inyectó Moodle y el
-    // cruce contra `estudiantes`. Consultar: select * from moodle_probe.
-    await recordProbe(email, (profile ?? null) as Record<string, unknown> | null, "entry");
+    const result = await resolveAutologin(email, (profile ?? null) as MoodleProfile);
 
-    // 1. ¿Es un estudiante registrado? (match exacto, case-insensitive)
-    const { data: estudiante, error: lookupError } = await admin
-      .from("estudiantes")
-      .select("id, correo, user_id")
-      .ilike("correo", email)
-      .maybeSingle();
-
-    if (lookupError) {
-      console.error("[moodle-autologin] Error buscando estudiante:", lookupError.message);
-      return json({ matched: false, reason: "lookup_error" });
-    }
-
-    // No está registrado.
-    if (!estudiante) {
-      console.log("[moodle-autologin] Sin match en estudiantes para:", email);
-      return json({ matched: false, reason: "not_registered" });
-    }
-
-    // Buscar en Supabase Auth si existe un usuario con este correo.
-    // OJO: supabase-js NO tiene `getUserByEmail` (solo `listUsers` y
-    // `getUserById`). Primero intentamos por el user_id vinculado (rápido y
-    // directo); si no coincide o está vacío, caemos a un scan paginado por email.
-    let authUserId: string | null = null;
-
-    if (estudiante.user_id) {
-      const { data: byId, error: byIdError } = await admin.auth.admin.getUserById(
-        estudiante.user_id
-      );
-      if (byIdError) {
-        console.error("[moodle-autologin] Error getUserById:", byIdError.message);
-      } else if (byId?.user && byId.user.email?.toLowerCase() === email) {
-        authUserId = byId.user.id;
-      }
-    }
-
-    if (!authUserId) {
-      const perPage = 1000;
-      for (let page = 1; page <= 20 && !authUserId; page++) {
-        const { data: list, error: listError } = await admin.auth.admin.listUsers({
-          page,
-          perPage,
-        });
-        if (listError) {
-          console.error("[moodle-autologin] Error listando usuarios de Auth:", listError.message);
-          break;
-        }
-        const found = list.users.find((u) => u.email?.toLowerCase() === email);
-        if (found) authUserId = found.id;
-        if (list.users.length < perPage) break; // última página
-      }
-    }
-
-    if (!authUserId) {
-      console.log("[moodle-autologin] Usuario no existe en Supabase Auth:", email);
-      return json({ matched: false, reason: "auth_user_not_found" });
-    }
-
-    // Si el user_id no coincide o es nulo, lo corregimos
-    if (estudiante.user_id !== authUserId) {
-      console.log(
-        `[moodle-autologin] Sincronizando user_id de ${email} de ${estudiante.user_id} a ${authUserId}`
-      );
-      const { error: updateError } = await admin
-        .from("estudiantes")
-        .update({ user_id: authUserId })
-        .eq("id", estudiante.id);
-
-      if (updateError) {
-        console.error("[moodle-autologin] Error actualizando user_id:", updateError.message);
-      }
-    }
-
-    // 2. Generar magic link interno (no se envía por correo; lo canjea la app).
-    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "magiclink",
+    // SONDA: registrar la entrada con el resultado real.
+    await recordProbe(
       email,
-    });
+      (profile ?? null) as MoodleProfile,
+      result.reason ?? (result.matched ? "matched" : "unknown")
+    );
 
-    if (linkError || !linkData?.properties?.hashed_token) {
-      console.error(
-        "[moodle-autologin] Error generando link:",
-        linkError?.message ?? "sin hashed_token"
-      );
-      return json({ matched: false, reason: "link_error" });
-    }
-
-    console.log("[moodle-autologin] Auto-login emitido para:", email);
-    return json({
-      matched: true,
-      token_hash: linkData.properties.hashed_token,
-    });
+    return json(result);
   } catch (error) {
     console.error("[moodle-autologin] Error global:", (error as Error).message);
     return json({ matched: false, reason: "server_error" }, 500);

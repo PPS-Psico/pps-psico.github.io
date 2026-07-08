@@ -6,6 +6,8 @@ import { useModal } from "../contexts/ModalContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuthLogic } from "../hooks/useAuthLogic";
 import { useMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
+import type { MoodleOnboardingProfile } from "../hooks/useMoodleAutoLogin";
+import { useCampusOnboarding } from "../hooks/useCampusOnboarding";
 import CampusEntryLoader from "./CampusEntryLoader";
 import {
   FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
@@ -170,6 +172,148 @@ const EdInput: React.FC<EdInputProps> = ({ icon, hasError, reveal, className = "
   </div>
 );
 
+/* ── Bienvenida / alta desde el campus Moodle ──
+   Se muestra cuando el alumno entró embebido desde Moodle y su perfil del
+   campus no matchea ninguna cuenta del panel (ver useMoodleAutoLogin).
+   Nombre, apellido, correo y DNI vienen de Moodle; completa legajo, celular
+   y contraseña. Componente propio (no un render-fn de Auth) para que
+   useCampusOnboarding capture el perfil al montarse. */
+const CampusWelcome: React.FC<{
+  profile: MoodleOnboardingProfile;
+  onGoToLogin: () => void;
+}> = ({ profile, onGoToLogin }) => {
+  const ob = useCampusOnboarding(profile);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const firstName = toTitleCase(profile.firstname.trim()) || "";
+  const fullName = toTitleCase(`${profile.firstname} ${profile.lastname}`.trim());
+
+  return (
+    <form onSubmit={ob.submit} className="space-y-6 animate-fade-in-up">
+      <div className="text-left mb-6">
+        <span className="ed-eyebrow block mb-3">Primer ingreso · Campus UFLO</span>
+        <h2 className="au-h text-[40px]">
+          ¡Hola{firstName ? ", " : ""}
+          <em>{firstName || "bienvenido/a"}!</em>
+        </h2>
+        <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
+          Es tu primera vez en Mi Panel. Ya tomamos tus datos del campus — completá lo que falta y
+          en un minuto estás adentro.
+        </p>
+      </div>
+
+      {/* Datos que llegaron del campus (solo lectura) */}
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg-sunken)] px-4 py-3 space-y-1.5">
+        {fullName && (
+          <p className="text-sm text-[var(--ink)] font-semibold flex items-center gap-2">
+            <AuthIcon name="idcard" size={16} /> {fullName}
+          </p>
+        )}
+        <p className="text-sm text-[var(--ink-muted)] flex items-center gap-2 break-all">
+          <AuthIcon name="mail" size={16} /> {profile.email}
+        </p>
+        {ob.dniLocked && (
+          <p className="text-sm text-[var(--ink-muted)] flex items-center gap-2">
+            <AuthIcon name="fingerprint" size={16} /> DNI {ob.dni}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <EdInput
+          id="campus-legajo"
+          type="text"
+          value={ob.legajo}
+          onChange={(e) => ob.setLegajo(e.target.value)}
+          placeholder="Número de Legajo"
+          icon="idcard"
+          disabled={ob.isLoading}
+          inputMode="numeric"
+          autoFocus
+        />
+        {!ob.dniLocked && (
+          <EdInput
+            id="campus-dni"
+            type="text"
+            value={ob.dni}
+            onChange={(e) => ob.setDni(e.target.value)}
+            placeholder="DNI (sin puntos)"
+            icon="fingerprint"
+            disabled={ob.isLoading}
+            inputMode="numeric"
+          />
+        )}
+        <EdInput
+          id="campus-telefono"
+          type="tel"
+          value={ob.telefono}
+          onChange={(e) => ob.setTelefono(e.target.value)}
+          placeholder="Número de Celular"
+          icon="phone"
+          disabled={ob.isLoading}
+        />
+        <EdInput
+          id="campus-password"
+          type={showPassword ? "text" : "password"}
+          value={ob.password}
+          onChange={(e) => ob.setPassword(e.target.value)}
+          placeholder="Nueva Contraseña (mín. 6 caracteres)"
+          icon="lock"
+          disabled={ob.isLoading}
+          reveal={{ shown: showPassword, toggle: () => setShowPassword(!showPassword) }}
+        />
+        <EdInput
+          id="campus-confirm"
+          type="password"
+          value={ob.confirmPassword}
+          onChange={(e) => ob.setConfirmPassword(e.target.value)}
+          placeholder="Confirmar Contraseña"
+          icon="lock"
+          disabled={ob.isLoading}
+        />
+      </div>
+
+      {ob.error && (
+        <div
+          aria-live="assertive"
+          className="flex items-start gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl animate-shake"
+        >
+          <span className="text-rose-500 dark:text-rose-400 flex-shrink-0 mt-0.5">
+            <AuthIcon name="alert" size={18} />
+          </span>
+          <p className="text-sm text-rose-600 dark:text-rose-300 leading-snug font-medium">
+            {ob.error}
+          </p>
+        </div>
+      )}
+
+      <div className="pt-1">
+        <button type="submit" disabled={ob.isLoading} className="ed-btn-primary">
+          {ob.isLoading ? (
+            <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <span>Crear mi cuenta</span>
+          )}
+        </button>
+      </div>
+
+      <div className="text-center pt-1">
+        <button
+          type="button"
+          onClick={onGoToLogin}
+          className={`w-full text-center text-sm font-semibold transition-colors p-2 ${
+            ob.hasExistingAccount
+              ? "text-[var(--ink)] underline underline-offset-4"
+              : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+          }`}
+        >
+          Ya tengo cuenta — iniciar sesión
+        </button>
+      </div>
+    </form>
+  );
+};
+
 interface AuthProps {
   inline?: boolean;
 }
@@ -206,8 +350,13 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
 
   const [showPassword, setShowPassword] = useState(false);
 
-  // Ingreso automático desde el campus Moodle (si el email matchea un estudiante).
-  const autoLoginStatus = useMoodleAutoLogin();
+  // Ingreso automático desde el campus Moodle (si el email/DNI matchea un
+  // estudiante) u onboarding (si es un alumno del campus sin cuenta).
+  const { status: autoLoginStatus, onboarding } = useMoodleAutoLogin();
+  // El alumno puede salir de la bienvenida hacia el login normal (p. ej. si ya
+  // tiene cuenta con otro correo).
+  const [campusWelcomeDismissed, setCampusWelcomeDismissed] = useState(false);
+  const campusOnboardingActive = !!onboarding && !campusWelcomeDismissed && mode === "login";
 
   const [embedded] = useState(() => {
     try {
@@ -632,6 +781,11 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
   );
 
   const renderContent = () => {
+    if (campusOnboardingActive && onboarding) {
+      return (
+        <CampusWelcome profile={onboarding} onGoToLogin={() => setCampusWelcomeDismissed(true)} />
+      );
+    }
     switch (mode) {
       case "login":
         return renderLogin();
@@ -969,7 +1123,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
       <div
         className={`${embedded && !isNarrow ? "hidden" : "lg:hidden"} h-full overflow-y-auto overflow-x-hidden custom-scrollbar`}
       >
-        {mode === "login" ? (
+        {mode === "login" && !campusOnboardingActive ? (
           renderMobileLogin()
         ) : (
           <div className="au-mlogin">

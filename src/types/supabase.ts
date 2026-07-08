@@ -1759,6 +1759,18 @@ export type Database = {
       is_staff: { Args: never; Returns: boolean };
       mark_password_changed: { Args: never; Returns: undefined };
       process_consentimiento_timeouts: { Args: never; Returns: undefined };
+      register_campus_student: {
+        Args: {
+          apellido_input?: string;
+          correo_input: string;
+          dni_input: number;
+          legajo_input: string;
+          nombre_input?: string;
+          telefono_input?: string;
+          userid_input: string;
+        };
+        Returns: undefined;
+      };
       register_new_student: {
         Args: {
           correo_input?: string;

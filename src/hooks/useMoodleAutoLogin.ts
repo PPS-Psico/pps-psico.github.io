@@ -6,6 +6,33 @@ import { logger } from "../utils/logger";
 export type MoodleAutoLoginStatus = "checking" | "done";
 
 /**
+ * Perfil de Moodle para el alta de un estudiante que todavía no existe en el
+ * panel (o existe sin cuenta). `dni` viene del username de Moodle (confirmado
+ * por la sonda moodle_probe); puede venir vacío si el label del campus es viejo.
+ */
+export type MoodleOnboardingProfile = {
+  email: string;
+  firstname: string;
+  lastname: string;
+  dni: string;
+};
+
+export type MoodleAutoLoginResult = {
+  status: MoodleAutoLoginStatus;
+  /** Presente cuando la Edge Function determinó que este alumno del campus
+   *  no tiene cuenta en el panel: dispara la pantalla de bienvenida/alta. */
+  onboarding: MoodleOnboardingProfile | null;
+};
+
+/** Razones de la Edge Function que habilitan el alta desde el campus. */
+const ONBOARDING_REASONS = new Set(["not_registered", "no_account", "auth_user_not_found"]);
+
+/** Clave de localStorage que vincula el email de Moodle con el email real de
+ *  la cuenta cuando difieren (match por DNI): evita que la próxima entrada
+ *  cierre una sesión válida por "no coincidir" con el email de la URL. */
+const linkedAccountKey = (moodleEmail: string) => `pps_account_email_for_${moodleEmail}`;
+
+/**
  * Lee el email que el campus Moodle inyecta en la URL del iframe.
  * Soporta tanto el query normal (?email=...) como el embebido en el hash
  * de HashRouter (#/login?email=...).
@@ -115,18 +142,23 @@ export const suppressMoodleAutoLogin = (): void => {
   autoLoginConsumed = true;
 };
 
+// Onboarding a nivel módulo: sobrevive a los re-montajes de <Auth> (cambios de
+// pestaña del panel embebido) igual que el guard de arriba.
+let onboardingResult: MoodleOnboardingProfile | null = null;
+
 /**
  * Intenta iniciar sesión automáticamente a partir del email del estudiante que
  * provee el campus Moodle. Si matchea con un estudiante registrado, lo loguea
  * sin fricción; si no, no hace nada y el usuario ve el login normal.
  */
-export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
+export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
   // Inicializa en "checking" solo si corresponde, para evitar el flash del login.
   // Si el único intento de esta carga ya se consumió (o hubo logout), arrancamos
   // en "done" directamente: sin loader ni re-intento.
   const [status, setStatus] = useState<MoodleAutoLoginStatus>(() =>
     !autoLoginConsumed && shouldAttempt() ? "checking" : "done"
   );
+  const [onboarding, setOnboarding] = useState<MoodleOnboardingProfile | null>(onboardingResult);
   const hasRun = useRef(false);
   // Red de seguridad: si mantenemos el loader esperando que el panel monte la
   // sesión y por algún motivo no llega, liberamos el loader para no dejar un
@@ -183,7 +215,15 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
         logger.warn("[MoodleAutoLogin] Sesión activa actual:", sessionData?.session ? "Sí" : "No");
         if (sessionData?.session) {
           const sessionEmail = sessionData.session.user.email?.toLowerCase();
-          if (sessionEmail && sessionEmail !== email) {
+          // Cuenta vinculada por DNI en una entrada anterior: su email difiere
+          // del de Moodle pero la sesión es del mismo alumno. No cerrarla.
+          let linkedEmail = "";
+          try {
+            linkedEmail = (localStorage.getItem(linkedAccountKey(email)) || "").toLowerCase();
+          } catch {
+            /* sin localStorage */
+          }
+          if (sessionEmail && sessionEmail !== email && sessionEmail !== linkedEmail) {
             logger.warn(
               `[MoodleAutoLogin] La sesión activa (${sessionEmail}) es diferente de la URL (${email}). Cerrando sesión actual...`
             );
@@ -221,6 +261,7 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
           matched?: boolean;
           token_hash?: string;
           reason?: string;
+          account_email?: string;
         };
         logger.warn("[MoodleAutoLogin] Respuesta de la Edge Function:", result);
 
@@ -236,10 +277,36 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
             logger.warn(
               "[MoodleAutoLogin] Sesión iniciada automáticamente desde el campus con éxito."
             );
+            // Match por DNI con correo de cuenta distinto al de Moodle:
+            // recordarlo para que futuras entradas no cierren esta sesión.
+            const accountEmail = (result.account_email || "").toLowerCase();
+            if (accountEmail && accountEmail !== email) {
+              try {
+                localStorage.setItem(linkedAccountKey(email), accountEmail);
+              } catch {
+                /* sin localStorage */
+              }
+            }
             // AuthContext detecta el SIGNED_IN y carga el perfil: mantenemos el
             // loader hasta que el panel monte (no mostrar el login en el medio).
             landingOnDashboard = true;
           }
+        } else if (result?.reason && ONBOARDING_REASONS.has(result.reason)) {
+          // Estudiante del campus sin cuenta en el panel: habilitar el alta
+          // guiada con los datos que inyectó Moodle.
+          const p = getMoodleProfileFromUrl();
+          onboardingResult = {
+            email,
+            firstname: p.firstname,
+            lastname: p.lastname,
+            dni: p.username.replace(/\D/g, ""),
+          };
+          setOnboarding(onboardingResult);
+          logger.warn(
+            "[MoodleAutoLogin] Sin cuenta en el panel (razón:",
+            result.reason,
+            ") → pantalla de alta."
+          );
         } else {
           logger.warn(
             "[MoodleAutoLogin] Email no registrado o error en Edge Function. Razón:",
@@ -267,5 +334,5 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginStatus => {
     };
   }, []);
 
-  return status;
+  return { status, onboarding };
 };
