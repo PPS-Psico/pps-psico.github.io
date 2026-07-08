@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
 import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
 import AtlasTopbar from "../components/student/home/atlas/AtlasTopbar";
@@ -24,8 +23,6 @@ const StudentAulaView = React.lazy(() => import("./student/StudentAulaView"));
 const EntregasMobileView = React.lazy(() => import("./student/EntregasMobileView"));
 import WelcomeBanner from "../components/student/WelcomeBanner";
 import WhatsAppExportButton from "../components/student/WhatsAppExportButton";
-import Button from "../components/ui/Button";
-import Card from "../components/ui/Card";
 import {
   FIELD_CORREO_ESTUDIANTES,
   FIELD_EMPRESA_PPS_SOLICITUD,
@@ -234,7 +231,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
-  const [forceInteractiveMode, setForceInteractiveMode] = useState(false);
 
   // Estado para modales de corrección de prácticas
   const [showModificacionModal, setShowModificacionModal] = useState(false);
@@ -702,26 +698,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     return tab ? tab.content : null;
   };
 
-  const showEmptyState = useMemo(
-    () =>
-      !isLoading &&
-      practicas.length === 0 &&
-      solicitudes.length === 0 &&
-      lanzamientos.length === 0 &&
-      informeTasks.length === 0 &&
-      isAdminViewing &&
-      !forceInteractiveMode,
-    [
-      isLoading,
-      practicas.length,
-      solicitudes.length,
-      lanzamientos.length,
-      informeTasks.length,
-      isAdminViewing,
-      forceInteractiveMode,
-    ]
-  );
-
   // Wait until all student data (including convocatorias) has loaded to prevent layout shift.
   if (isLoading)
     return <CampusEntryLoader resolvedTheme={resolvedTheme} message="Cargando Mi Panel..." />;
@@ -745,52 +721,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         practicas={practicas}
         informeTasks={informeTasks}
       />
-    );
-  }
-
-  if (showEmptyState) {
-    return (
-      <>
-        {isAdminViewing && <SimulationBanner />}
-        <div className="print-only">
-          <PrintableReport
-            studentDetails={studentDetails}
-            criterios={criterios}
-            practicas={practicas}
-          />
-        </div>
-        <div className="no-print space-y-8 animate-fade-in-up mt-6">
-          <WelcomeBanner
-            studentName={studentNameForPanel}
-            studentDetails={studentDetails}
-            isLoading={false}
-          />
-          <CriteriosPanel
-            criterios={criterios}
-            selectedOrientacion={selectedOrientacion}
-            handleOrientacionChange={handleOrientacionChange}
-            showSaveConfirmation={showSaveConfirmation}
-            onRequestFinalization={handleOpenFinalization}
-            informeTasks={informeTasks}
-          />
-          <Card className="border-slate-300/50 bg-slate-50/30">
-            <EmptyState
-              icon="search_off"
-              title="Sin Resultados"
-              message="No se encontró información para este estudiante."
-              action={
-                <Button
-                  onClick={() => setForceInteractiveMode(true)}
-                  icon="input"
-                  variant="secondary"
-                >
-                  Gestionar / Inscribir
-                </Button>
-              }
-            />
-          </Card>
-        </div>
-      </>
     );
   }
 
