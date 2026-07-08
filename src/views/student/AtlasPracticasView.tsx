@@ -40,7 +40,7 @@ function areaVar(area: string): string {
   if (a.startsWith("cl")) return "var(--area-clinica)";
   if (a.startsWith("ed")) return "var(--area-educacional)";
   if (a.startsWith("co") || a.startsWith("so")) return "var(--area-comunitaria)";
-  if (a.startsWith("la") || a.startsWith("tr")) return "var(--area-laboral, #c0392b)";
+  if (a.startsWith("la") || a.startsWith("tr")) return "var(--area-laboral, #b4502a)";
   return "var(--primary-500)";
 }
 

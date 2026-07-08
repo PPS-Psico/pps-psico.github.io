@@ -11,7 +11,7 @@ export function getAreaColor(area: string | null | undefined): string {
 
   if (normalized.startsWith("ed")) return "var(--area-educacional, #203B73)";
   if (normalized.startsWith("la") || normalized.startsWith("tr"))
-    return "var(--area-laboral, #C0392B)";
+    return "var(--area-laboral, #b4502a)";
   if (normalized.startsWith("co") || normalized.startsWith("so")) {
     return "var(--area-comunitaria, #7A3F9E)";
   }

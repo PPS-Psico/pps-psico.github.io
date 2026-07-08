@@ -94,7 +94,9 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId }) 
                 fontSize: 10.5,
                 fontWeight: 500,
                 letterSpacing: ".01em",
-                color: on ? "var(--accent)" : "var(--ink-subtle)",
+                /* ink-muted y no ink-subtle: a 10.5px las etiquetas inactivas
+                   quedaban por debajo de AA (≈4:1 en dark). */
+                color: on ? "var(--accent)" : "var(--ink-muted)",
                 transition: "color var(--t-fast)",
                 WebkitTapHighlightColor: "transparent",
               }}

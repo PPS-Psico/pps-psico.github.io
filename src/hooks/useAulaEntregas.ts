@@ -31,7 +31,7 @@ export interface DeliveryArea {
    lleguen de la tabla con un id no mapeado caen al acento primario. */
 const AREA_COLORS: Record<string, string> = {
   clinica: "var(--area-clinica)",
-  laboral: "#C0392B",
+  laboral: "var(--area-laboral, #b4502a)",
   educacional: "var(--area-educacional)",
   comunitaria: "var(--area-comunitaria)",
 };

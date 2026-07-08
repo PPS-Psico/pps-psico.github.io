@@ -125,7 +125,9 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                     <span className="flex items-center gap-1.5">
                       {n.label}
                       {showLock && (
-                        <span className="material-icons !text-xs text-slate-400">lock</span>
+                        <span className="material-icons !text-xs text-slate-400" aria-hidden>
+                          lock
+                        </span>
                       )}
                     </span>
                   </button>

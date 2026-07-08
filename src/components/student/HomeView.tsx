@@ -55,7 +55,7 @@ import StudentNextStepCard, { type NextStepData } from "./home/StudentNextStepCa
 import StudentAcreditacionCard from "./home/StudentAcreditacionCard";
 import StudentPracRow, { type StudentPracRowData } from "./home/StudentPracRow";
 import StudentSolicitudItem, { type StudentSolicitudItemData } from "./home/StudentSolicitudItem";
-import StudentHomeAtlas from "./home/atlas/StudentHomeAtlas";
+import StudentHomeAtlas, { AhIcon } from "./home/atlas/StudentHomeAtlas";
 import StudentOnboardingCard from "./StudentOnboardingCard";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 
@@ -650,16 +650,14 @@ const HomeView: React.FC<HomeViewProps> = ({
                     onNavigate={(tab) => onNavigate(tab as TabId)}
                   />
                 ) : (
-                  <div className="ah-convs">
-                    <div className="ah-empty ah-empty--home-mobile">
-                      <div className="ah-empty__ic">
-                        <span className="material-icons">notifications_none</span>
-                      </div>
-                      <div className="ah-empty__t">No hay convocatorias abiertas</div>
-                      <p className="ah-empty__s">
-                        Estate atento al grupo de WhatsApp para no perderte novedades.
-                      </p>
+                  <div className="ah-empty ah-empty--home-mobile">
+                    <div className="ah-empty__ic">
+                      <AhIcon name="bell" size={20} />
                     </div>
+                    <div className="ah-empty__t">No hay convocatorias abiertas</div>
+                    <p className="ah-empty__s">
+                      Estate atento al grupo de WhatsApp para no perderte novedades.
+                    </p>
                   </div>
                 )}
               </div>
