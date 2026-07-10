@@ -731,7 +731,9 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     const fallback = `📢 *NUEVA CONVOCATORIA DE PRÁCTICAS*\n\n🏥 *PPS:* ${
       launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS"
     }\n📚 *Orientación:* ${launch[FIELD_ORIENTACION_LANZAMIENTOS] || ""}\n⏱️ *Horas:* ${
-      launch[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0
+      launch[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] === 0
+        ? "Según recorrido"
+        : `${launch[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0} hs`
     }\n👥 *Cupos:* ${launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0}${
       launch[FIELD_FECHA_INICIO_LANZAMIENTOS]
         ? `\n\n📅 *Período:* ${formatDate(launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string)}`

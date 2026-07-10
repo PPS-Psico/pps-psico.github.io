@@ -294,7 +294,9 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
             {!isExpanded && (
               <span className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
                 <span className="material-icons !text-xs md:!text-sm">schedule</span>
-                {horasAcreditadas}hs
+                {horasAcreditadas === "0" || horasAcreditadas === "Según recorrido"
+                  ? "Según recorrido"
+                  : `${horasAcreditadas}hs`}
               </span>
             )}
 
@@ -427,7 +429,11 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               <MetricItem
                 icon="schedule"
                 label="ACREDITA"
-                value={`${horasAcreditadas}hs ${orientationsArray.join(", ")}`}
+                value={
+                  horasAcreditadas === "0" || horasAcreditadas === "Según recorrido"
+                    ? `Según recorrido (${orientationsArray.join(", ")})`
+                    : `${horasAcreditadas}hs ${orientationsArray.join(", ")}`
+                }
                 theme="indigo"
               />
 
@@ -503,7 +509,11 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               <MetricItem
                 icon="schedule"
                 label="ACREDITA"
-                value={`${horasAcreditadas} horas de ${orientationsArray.join(" o ")}`}
+                value={
+                  horasAcreditadas === "0" || horasAcreditadas === "Según recorrido"
+                    ? `Según recorrido (${orientationsArray.join(" o ")})`
+                    : `${horasAcreditadas} horas de ${orientationsArray.join(" o ")}`
+                }
                 theme="indigo"
               />
 

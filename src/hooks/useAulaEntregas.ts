@@ -37,7 +37,7 @@ const AREA_COLORS: Record<string, string> = {
 };
 const AREA_NAMES: Record<string, string> = {
   clinica: "Área clínica",
-  laboral: "Laboral y comunitaria",
+  laboral: "Área laboral y comunitaria",
   educacional: "Área educacional",
   comunitaria: "Área comunitaria",
 };

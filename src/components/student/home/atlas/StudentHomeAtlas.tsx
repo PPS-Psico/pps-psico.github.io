@@ -20,6 +20,7 @@ import {
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_DIRECCION_LANZAMIENTOS,
+  FIELD_INSTITUCION_LINK_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_EMPRESA_PPS_SOLICITUD,
   FIELD_ESTADO_PPS,
@@ -43,6 +44,7 @@ interface StudentHomeAtlasProps {
   informeTasks: InformeTask[];
   closedLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
+  institutionAddressMap: Map<string, string>;
   consent: { ppsName: string; lanzamientoId: string; area?: string } | null;
   upcomingStart: { ppsName: string; startDate: string } | null;
   onStartConsent: () => void;
@@ -54,6 +56,9 @@ interface StudentHomeAtlasProps {
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const MIN_HOURS_TARGET = 250;
+const MAPS_URL_BY_INSTITUTION_ID: Record<string, string> = {
+  "b369726f-2fc3-487d-807c-474b13aee8b5": "https://maps.app.goo.gl/ieY49H4DD4rbhgjF9",
+};
 const fmtShort = (raw?: unknown): string => {
   if (!raw) return "";
   const f = formatDate(raw as string);
@@ -158,6 +163,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   solicitudes,
   closedLanzamientos,
   enrollmentMap,
+  institutionAddressMap,
   consent,
   upcomingStart,
   onStartConsent,
@@ -425,6 +431,14 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               <p className="ah-empty__s">
                 Estate atento al grupo de WhatsApp para no perderte novedades.
               </p>
+              {closedLanzamientos.length === 0 ? (
+                <button type="button" className="ah-empty__link" onClick={() => onNavigate("guia")}>
+                  Consultar la guía
+                  <span className="material-icons" aria-hidden>
+                    arrow_forward
+                  </span>
+                </button>
+              ) : null}
             </div>
           </div>
         ) : nConvs === 1 ? (
@@ -442,18 +456,41 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
             const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
             const closes = closesLabel(l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]);
             const direccion = (l[FIELD_DIRECCION_LANZAMIENTOS] as string) || "";
-            const esOnline = direccion.trim() === "Modalidad Virtual";
             const horarios = ((l[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] as string) || "")
               .split(/[;\n]/)
               .map((h) => h.trim())
               .filter(Boolean);
+            const normalizedDireccion = normalizeStringForComparison(direccion);
+            const hasVirtualSchedule = horarios.some((h) =>
+              normalizeStringForComparison(h).includes("virtual")
+            );
+            const hasPresentialSchedule = horarios.some((h) =>
+              normalizeStringForComparison(h).includes("presencial")
+            );
+            const esMixta =
+              normalizedDireccion.includes("modalidad mixta") ||
+              (hasVirtualSchedule && hasPresentialSchedule);
+            const esOnline =
+              !esMixta &&
+              (normalizedDireccion === "modalidad virtual" ||
+                normalizedDireccion.includes("modalidad online"));
+            const modalidad = esMixta ? "Mixta" : esOnline ? "Virtual" : "Presencial";
+            const institutionId = String(l[FIELD_INSTITUCION_LINK_LANZAMIENTOS] || "");
+            const direccionInstitucion =
+              (institutionId ? institutionAddressMap.get(institutionId) : undefined) ||
+              institutionAddressMap.get(normalizeStringForComparison(name));
+            const direccionPresencial =
+              direccionInstitucion ||
+              (!normalizedDireccion.startsWith("modalidad ") ? direccion : "");
             const actsRaw = (l as Record<string, unknown>).actividades_lista;
             const actividades: string[] = Array.isArray(actsRaw)
               ? (actsRaw as string[])
               : actsRaw
                 ? [String(actsRaw)]
                 : [];
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`;
+            const mapsUrl =
+              MAPS_URL_BY_INSTITUTION_ID[institutionId] ||
+              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionPresencial)}`;
             const inicio = fmtShort(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
             const fin = fmtShort(l[FIELD_FECHA_FIN_LANZAMIENTOS]);
             const cronograma = [
@@ -492,7 +529,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   <h2 className="ah-feat__name">{name}</h2>
                   <p className="ah-feat__desc">{desc}</p>
 
-                  {horarios.length > 0 || (!esOnline && direccion) ? (
+                  {horarios.length > 0 || (!esOnline && direccionPresencial) ? (
                     <div className="ah-feat__meta">
                       {horarios.length > 0 ? (
                         <div className="ah-feat__block">
@@ -509,7 +546,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                           </ul>
                         </div>
                       ) : null}
-                      {!esOnline && direccion ? (
+                      {!esOnline && direccionPresencial ? (
                         <div className="ah-feat__block">
                           <span className="eyebrow">Ubicación</span>
                           <a
@@ -524,7 +561,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                               </span>
                             </span>
                             <span className="ah-feat__map-txt">
-                              <span className="ah-feat__map-addr">{direccion}</span>
+                              <span className="ah-feat__map-addr">{direccionPresencial}</span>
                               <span className="ah-feat__map-hint">Abrir en Google Maps</span>
                             </span>
                             <AhIcon name="arrow" size={14} />
@@ -556,14 +593,14 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     {[
                       {
                         k: "Acredita",
-                        v: hs ? String(hs) : "s/d",
-                        u: hs ? "hs" : "",
+                        v: hs === 0 ? "Según recorrido" : hs ? String(hs) : "s/d",
+                        u: hs && hs > 0 ? "hs" : "",
                         accent: true,
                       },
                       { k: "Cupos", v: cupos ? String(cupos) : "s/d", u: "", accent: false },
                       {
                         k: "Modalidad",
-                        v: esOnline ? "Online" : "Presencial",
+                        v: modalidad,
                         u: "",
                         accent: false,
                       },
@@ -600,9 +637,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     Inscribirme{cupos ? ` · ${cupos} ${cupos === 1 ? "cupo" : "cupos"}` : ""}
                     <AhIcon name="arrow" size={15} />
                   </button>
-                  <p className="ah-feat__note">
-                    Te llega un correo de confirmación al inscribirte.
-                  </p>
+                  <p className="ah-feat__note">Te avisamos por correo si quedás seleccionado/a.</p>
                 </aside>
               </article>
             );
@@ -654,7 +689,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     <div className="ah-conv__cell">
                       <span className="k">Horas</span>
                       <span className="v">
-                        {hs || "s/d"} {hs ? <span className="u">hs</span> : null}
+                        {hs === 0 ? "Según recorrido" : hs || "s/d"}{" "}
+                        {hs && hs > 0 ? <span className="u">hs</span> : null}
                       </span>
                     </div>
                     <div className="ah-conv__cell">
@@ -757,7 +793,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       <div className="ah-conv__cell">
                         <span className="k">Horas</span>
                         <span className="v">
-                          {hs || "s/d"} {hs ? <span className="u">hs</span> : null}
+                          {hs === 0 ? "Según recorrido" : hs || "s/d"}{" "}
+                          {hs && hs > 0 ? <span className="u">hs</span> : null}
                         </span>
                       </div>
                       <div className="ah-conv__cell">

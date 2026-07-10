@@ -121,7 +121,7 @@ export function buildWhatsappMessage({
 
 👥 *Cupos:* ${formData.cuposDisponibles}
 
-⏱️ *Acredita:* ${formData.horasAcreditadas} horas de ${safeOrientacion.join(", ") || ""}`;
+⏱️ *Acredita:* ${formData.horasAcreditadas === 0 ? "Según recorrido" : `${formData.horasAcreditadas} horas`} de ${safeOrientacion.join(", ") || ""}`;
 
   if (formData.reqCertificadoTrabajo || formData.reqCv) {
     const reqList: string[] = [];

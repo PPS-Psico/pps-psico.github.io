@@ -395,7 +395,11 @@ const StudentConvocatoriaDetail: React.FC = () => {
 
             {/* Stats — solo mobile (en escritorio van en la tarjeta de acción) */}
             <div className="detail-stats md:hidden">
-              <DetailStat label="Acredita" value={horas || "—"} unit={horas ? "hs" : undefined} />
+              <DetailStat
+                label="Acredita"
+                value={horas === 0 ? "Según recorrido" : horas || "—"}
+                unit={horas > 0 ? "hs" : undefined}
+              />
               <DetailStat label="Cupos" value={cupos || "—"} />
               <DetailStat label="Encuentro" value={encuentro || "—"} />
               <DetailStat label="Modalidad" value="Pres." />
@@ -648,7 +652,11 @@ const StudentConvocatoriaDetail: React.FC = () => {
                 }}
               >
                 {[
-                  { l: "Acredita", v: horas || "—", u: horas ? "hs" : "" },
+                  {
+                    l: "Acredita",
+                    v: horas === 0 ? "Según recorrido" : horas || "—",
+                    u: horas > 0 ? "hs" : "",
+                  },
                   { l: "Cupos", v: cupos || "—", u: "" },
                   { l: "Encuentro", v: encuentro || "—", u: "" },
                   { l: "Modalidad", v: "Pres.", u: "" },
@@ -703,7 +711,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
                   lineHeight: 1.5,
                 }}
               >
-                Te llega un correo de confirmación al inscribirte.
+                Te avisamos por correo si quedás seleccionado/a.
               </p>
             </div>
           </aside>

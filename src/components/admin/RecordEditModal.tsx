@@ -4,6 +4,7 @@ import {
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
 } from "../../constants";
 import { cleanDbValue } from "../../utils/formatters";
 import { getErrorMessage } from "../../utils/getErrorMessage";
@@ -385,6 +386,57 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
             </label>
           )}
           {field.description && <p className="dbe-fdesc">{field.description}</p>}
+        </div>
+      );
+    }
+
+    if (field.key === FIELD_HORAS_ACREDITADAS_LANZAMIENTOS) {
+      const isSegunRecorrido = value === 0 || value === "0";
+      return (
+        <div className={wrapperClasses}>
+          <label className="dbe-flabel">
+            <span>
+              {field.label}
+              {field.required && <span className="req"> ●</span>}
+            </span>
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <input
+              type="number"
+              name={field.key}
+              value={isSegunRecorrido ? "" : toInputValue(inputValue)}
+              onChange={handleChange}
+              placeholder={isSegunRecorrido ? "Según recorrido" : "80"}
+              disabled={isSegunRecorrido}
+              className={inputClasses}
+              min={1}
+            />
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 13,
+                cursor: "pointer",
+                color: "var(--ink-muted)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isSegunRecorrido}
+                onChange={(e) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    [field.key]: e.target.checked ? 0 : 80,
+                  }));
+                }}
+                style={{ cursor: "pointer" }}
+              />
+              Según recorrido
+            </label>
+          </div>
+          {errorMsg && <p className="dbe-errmsg">{errorMsg}</p>}
+          {field.description && !errorMsg && <p className="dbe-fdesc">{field.description}</p>}
         </div>
       );
     }

@@ -539,7 +539,12 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                 <Icon name="clock" size={14} strokeWidth={2.1} />
                 {creditedHours} horas acreditables
               </span>
-            ) : null}
+            ) : (
+              <span>
+                <Icon name="clock" size={14} strokeWidth={2.1} />
+                Según recorrido
+              </span>
+            )}
             {orientation ? (
               <span>
                 <Icon name="book" size={14} strokeWidth={2.1} />

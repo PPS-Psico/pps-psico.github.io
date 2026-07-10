@@ -373,15 +373,31 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
             />
           </FormField>
           <FormField label="Horas acreditadas">
-            <input
-              className="field"
-              type="number"
-              name="horasAcreditadas"
-              value={formData.horasAcreditadas as number}
-              onChange={handleChange}
-              placeholder="80"
-              min={0}
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <input
+                className="field"
+                type="number"
+                name="horasAcreditadas"
+                value={
+                  formData.horasAcreditadas === 0 ? "" : (formData.horasAcreditadas as number) || ""
+                }
+                onChange={handleChange}
+                placeholder={formData.horasAcreditadas === 0 ? "Según recorrido" : "80"}
+                disabled={formData.horasAcreditadas === 0}
+                min={1}
+              />
+              <CheckRow
+                label="Según recorrido"
+                sublabel="El volumen de horas no está prefijado y se define según el recorrido del estudiante"
+                checked={formData.horasAcreditadas === 0}
+                onChange={(checked) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    horasAcreditadas: checked ? 0 : 80,
+                  }));
+                }}
+              />
+            </div>
           </FormField>
           <FormField label="Encuentro inicial">
             <input

@@ -62,6 +62,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   const totalTarget = MIN_HOURS_TARGET;
   const pct = totalTarget > 0 ? Math.min(100, Math.round((hoursAcc / totalTarget) * 100)) : 0;
   const restHs = Math.max(0, totalTarget - hoursAcc);
+  const excessHs = Math.max(0, hoursAcc - totalTarget);
   const areasCursadas = criterios?.orientacionesCursadasCount ?? 0;
 
   const segments = useMemo(() => {
@@ -192,9 +193,16 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
         {/* ── Tu acreditación: una sola tarjeta (progreso + requisitos + CTA) ── */}
         <div className="ah-accr-hero">
           <div className="ah-accr-hero__main">
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
+            <div className="ah-accr__headline">
               <h6>Acreditación</h6>
-              <span className="ah-accr__pct">{pct}%</span>
+              {excessHs > 0 ? (
+                <>
+                  <span className="ah-accr__pct">Objetivo superado</span>
+                  <span className="ah-accr__excess">+{excessHs} hs</span>
+                </>
+              ) : (
+                <span className="ah-accr__pct">{pct}%</span>
+              )}
               <span className="ah-accr__big" style={{ marginLeft: "auto", fontSize: 28 }}>
                 {hoursAcc} <span className="den">/ {totalTarget} hs</span>
               </span>

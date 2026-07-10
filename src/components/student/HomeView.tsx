@@ -93,6 +93,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   myEnrollments,
   criterios,
   lanzamientos,
+  institutionAddressMap,
   enrollmentMap,
   onInscribir,
   onCancelarInscripcion,
@@ -489,6 +490,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           openLanzamientos={openLanzamientos}
           closedLanzamientos={closedLanzamientos}
           enrollmentMap={enrollmentMap}
+          institutionAddressMap={institutionAddressMap}
           practicas={practicas ?? []}
           solicitudes={solicitudes ?? []}
           informeTasks={informeTasks ?? []}

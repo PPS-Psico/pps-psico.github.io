@@ -176,7 +176,9 @@ export const fetchConvocatoriasData = async (
 
   const institutions = await db.instituciones.getAll({
     fields: [
+      "id",
       C.FIELD_NOMBRE_INSTITUCIONES,
+      C.FIELD_DIRECCION_INSTITUCIONES,
       C.FIELD_LOGO_URL_INSTITUCIONES,
       C.FIELD_LOGO_INVERT_DARK_INSTITUCIONES,
     ],
@@ -184,11 +186,19 @@ export const fetchConvocatoriasData = async (
 
   const institutionLogoMap = new Map<string, { url: string; invert: boolean }>();
   institutions.forEach((inst) => {
+    const institutionId = safeGetId(inst);
     const name = cleanInstitutionName(inst[C.FIELD_NOMBRE_INSTITUCIONES]);
+    const address = inst[C.FIELD_DIRECCION_INSTITUCIONES];
     const url = inst[C.FIELD_LOGO_URL_INSTITUCIONES];
     const invert = inst[C.FIELD_LOGO_INVERT_DARK_INSTITUCIONES];
     if (name && url) {
       institutionLogoMap.set(normalizeStringForComparison(name), { url, invert: !!invert });
+    }
+    if (name && address) {
+      institutionAddressMap.set(normalizeStringForComparison(name), address);
+    }
+    if (institutionId && address) {
+      institutionAddressMap.set(institutionId, address);
     }
   });
 

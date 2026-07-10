@@ -796,12 +796,33 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
         {section ? (
           /* Pestaña propia del panel: encabezado de página con la misma
              articulación que las vistas nativas (.ah-pagehead). */
-          <section className="ah-pagehead ah-aula__hero ah-aula__hero--solo">
+          <section
+            className={
+              "ah-pagehead ah-aula__hero ah-aula__hero--solo" +
+              (activeSection === "guia" ? " ah-aula__hero--guide" : "")
+            }
+          >
             <div className="ah-aula__hero-copy">
               <span className="eyebrow">{selectedSection.pageEyebrow}</span>
               <h1 className="ah-aula__title">{selectedSection.pageTitle}</h1>
               <p className="ah-aula__lead">{selectedSection.pageLead}</p>
             </div>
+            {activeSection === "guia" && (
+              <nav className="ah-aula__groute" aria-label="Etapas de la guía">
+                <span className="ah-aula__groute-line" aria-hidden />
+                {guideBlocks.map((block) => (
+                  <a key={block.num} href={`#aula-paso-${block.num}`}>
+                    <span className="ah-aula__groute-copy">
+                      <strong>{block.title}</strong>
+                      <small>{block.kicker}</small>
+                    </span>
+                    <span className="ah-aula__groute-node" aria-hidden>
+                      {block.num}
+                    </span>
+                  </a>
+                ))}
+              </nav>
+            )}
           </section>
         ) : (
           <>
@@ -852,20 +873,14 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
              etapas + capítulos con número grande), el mismo lenguaje que la
              guía del campus pero con los tokens del panel. */
           <>
-            <nav className="ah-aula__gindex" aria-label="Etapas de la guía">
-              {guideBlocks.map((block) => (
-                <a key={block.num} href={`#aula-paso-${block.num}`}>
-                  <span className="ah-aula__gindex-num">{block.num}</span>
-                  <strong>{block.title}</strong>
-                  <small>{block.kicker}</small>
-                </a>
-              ))}
-            </nav>
             <div className="ah-aula__gsteps">
               {guideBlocks.map((block) => (
                 <article
                   key={block.num}
-                  className={"ah-aula__gstep" + (block.team ? " ah-aula__gstep--team" : "")}
+                  className={
+                    `ah-aula__gstep ah-aula__gstep--${block.num}` +
+                    (block.team ? " ah-aula__gstep--team" : "")
+                  }
                   id={`aula-paso-${block.num}`}
                 >
                   <div className="ah-aula__gstep-side">
@@ -879,7 +894,7 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                     <div className="ah-aula__gstep-titleline">
                       {block.team ? (
                         <h3>
-                          Quiénes te <em>acompañan.</em>
+                          Personas <em>clave.</em>
                         </h3>
                       ) : (
                         <h3>{block.title}</h3>
@@ -912,7 +927,6 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                             </span>
                             <strong>{person.name}</strong>
                             <small>{person.role}</small>
-                            {person.tag === "Coordinación" && <span>{person.tag}</span>}
                           </article>
                         ))}
                       </div>
@@ -1014,7 +1028,6 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                                 </span>
                                 <strong>{person.name}</strong>
                                 <small>{person.role}</small>
-                                {person.tag === "Coordinación" && <span>{person.tag}</span>}
                               </article>
                             ))}
                           </div>
@@ -1171,7 +1184,16 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                         <Icon name={deliveryAreaIcons[area.id] ?? "upload"} size={18} />
                       </span>
                       <span className="ah-aula__area-copy">
-                        <strong>{area.name}</strong>
+                        <strong>
+                          {area.id === "laboral" ? (
+                            <>
+                              <span className="ah-aula__area-prefix">Área </span>
+                              Laboral y comunitaria
+                            </>
+                          ) : (
+                            area.name
+                          )}
+                        </strong>
                         <small>
                           {area.institutions.length}{" "}
                           {area.institutions.length === 1 ? "institución" : "instituciones"}
