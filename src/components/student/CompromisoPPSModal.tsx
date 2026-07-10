@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   COMPROMISO_PPS_BLOCKS,
@@ -9,7 +9,9 @@ import {
   COMPROMISO_PPS_SUBTITLE,
   COMPROMISO_PPS_TITLE,
 } from "../../constants/commitmentConstants";
+import { FIELD_SELECTED_AT_CONVOCATORIAS } from "../../constants";
 import type { Convocatoria, Estudiante, LanzamientoPPS } from "../../types";
+import { useAccessibleDialog } from "../../hooks/useAccessibleDialog";
 import "./home/atlas/atlasHome.css";
 
 interface CompromisoPPSModalProps {
@@ -38,6 +40,8 @@ interface WizardStep {
   clauses: readonly { label: string; text: string }[];
 }
 
+type CommitmentField = "fullName" | "dni" | "legajo" | "signature" | "acceptance";
+
 const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   isOpen,
   onClose,
@@ -56,6 +60,13 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   const [acceptedRead, setAcceptedRead] = useState(false);
   const [acceptedCommitment, setAcceptedCommitment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<CommitmentField, string>>>({});
+  const contentRef = useRef<HTMLFormElement>(null);
+  const dialogRef = useAccessibleDialog<HTMLDivElement>({
+    isOpen,
+    onClose,
+    canClose: !isSubmitting,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -73,6 +84,7 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
       setAcceptedCommitment(false);
       setCurrentStep(0);
       setError(null);
+      setFieldErrors({});
     } else {
       document.body.style.overflow = "unset";
     }
@@ -81,6 +93,11 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
       document.body.style.overflow = "unset";
     };
   }, [isOpen, student]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep, isOpen]);
 
   const steps = useMemo<WizardStep[]>(
     () => [
@@ -109,6 +126,20 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
     []
   );
 
+  const deadlineLabel = useMemo(() => {
+    const selectedAt = enrollment?.[FIELD_SELECTED_AT_CONVOCATORIAS];
+    if (!selectedAt) return null;
+    const deadline = new Date(new Date(String(selectedAt)).getTime() + 24 * 60 * 60 * 1000);
+    if (Number.isNaN(deadline.getTime())) return null;
+    return new Intl.DateTimeFormat("es-AR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(deadline);
+  }, [enrollment]);
+
   if (!mounted || !isOpen || !lanzamiento || !enrollment) return null;
 
   const isLastStep = currentStep === steps.length - 1;
@@ -117,62 +148,106 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
 
     if (!isLastStep) {
       setError("Tenés que completar la lectura de todas las ventanas antes de firmar.");
       return;
     }
 
-    if (!acceptedRead || !acceptedCommitment) {
-      setError("Debés marcar ambas declaraciones para registrar el compromiso.");
-      return;
-    }
-
-    if (!fullName.trim() || !legajo.trim() || !signature.trim()) {
-      setError("Completá todos los datos obligatorios antes de confirmar.");
-      return;
-    }
-
+    const nextFieldErrors: Partial<Record<CommitmentField, string>> = {};
+    if (!fullName.trim()) nextFieldErrors.fullName = "Ingresá tu nombre y apellido.";
+    if (!dni.trim()) nextFieldErrors.dni = "Ingresá tu DNI.";
+    if (!legajo.trim()) nextFieldErrors.legajo = "Ingresá tu legajo.";
+    if (!signature.trim()) nextFieldErrors.signature = "Escribí tu nombre como firma.";
     if (student?.legajo && legajo.trim() !== student.legajo.trim()) {
-      setError("El legajo ingresado no coincide con tu registro.");
-      return;
+      nextFieldErrors.legajo = "El legajo no coincide con tu registro.";
     }
-
     if (student?.dni && dni.trim() !== String(student.dni).trim()) {
-      setError("El DNI ingresado no coincide con tu registro.");
+      nextFieldErrors.dni = "El DNI no coincide con tu registro.";
+    }
+    if (!acceptedRead || !acceptedCommitment) {
+      nextFieldErrors.acceptance = "Marcá ambas declaraciones para registrar el compromiso.";
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      window.requestAnimationFrame(() => {
+        const firstInvalid = dialogRef.current?.querySelector<HTMLElement>(
+          '[aria-invalid="true"], [data-commitment-error="true"] input'
+        );
+        firstInvalid?.focus({ preventScroll: false });
+      });
       return;
     }
 
-    await onSubmit({
-      fullName: fullName.trim(),
-      dni: dni.trim() ? Number(dni.trim()) : null,
-      legajo: legajo.trim(),
-      signature: signature.trim(),
-      convocatoriaId: enrollment.id,
-      lanzamientoId: lanzamiento.id,
-    });
-
-    onClose();
+    try {
+      await onSubmit({
+        fullName: fullName.trim(),
+        dni: dni.trim() ? Number(dni.trim()) : null,
+        legajo: legajo.trim(),
+        signature: signature.trim(),
+        convocatoriaId: enrollment.id,
+        lanzamientoId: lanzamiento.id,
+      });
+      onClose();
+    } catch {
+      setError("No pudimos registrar el consentimiento. Revisá tu conexión e intentá nuevamente.");
+    }
   };
 
   return createPortal(
     <div className="ah-root ah-unified">
-      <div className="ah-cmodal-overlay" onClick={onClose}>
-        <div className="ah-cmodal" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="ah-cmodal-overlay ah-motion-overlay"
+        onClick={(event) => {
+          if (event.target === event.currentTarget && !isSubmitting) onClose();
+        }}
+      >
+        <div
+          ref={dialogRef}
+          className="ah-cmodal ah-cmodal--commitment ah-motion-dialog"
+          onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="commitment-dialog-title"
+          aria-describedby="commitment-dialog-description"
+          aria-busy={isSubmitting}
+          tabIndex={-1}
+        >
           <div className="ah-cmodal__head">
             <div>
               <span className="eyebrow">Confirmación obligatoria previa al inicio</span>
-              <h2 className="ah-cmodal__title">{COMPROMISO_PPS_TITLE}</h2>
-              <p className="ah-cmodal__sub">{COMPROMISO_PPS_SUBTITLE}</p>
+              <h2 id="commitment-dialog-title" className="ah-cmodal__title">
+                {COMPROMISO_PPS_TITLE}
+              </h2>
+              <p id="commitment-dialog-description" className="ah-cmodal__sub">
+                {COMPROMISO_PPS_SUBTITLE}
+              </p>
+              {deadlineLabel ? (
+                <div className="ah-cmodal__deadline">
+                  <span className="material-icons" aria-hidden>
+                    schedule
+                  </span>
+                  Confirmá antes del {deadlineLabel}
+                </div>
+              ) : null}
             </div>
-            <button type="button" onClick={onClose} className="ah-iconbtn" aria-label="Cerrar">
+            <button
+              type="button"
+              onClick={onClose}
+              className="ah-iconbtn"
+              aria-label="Cerrar"
+              disabled={isSubmitting}
+              data-dialog-autofocus
+            >
               <span className="material-icons" style={{ fontSize: 22 }}>
                 close
               </span>
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="ah-cmodal__body">
+          <form ref={contentRef} onSubmit={handleSubmit} className="ah-cmodal__body">
             <div className="ah-cmodal__steptop">
               <div>
                 <span className="eyebrow">{activeStep.eyebrow}</span>
@@ -183,13 +258,25 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
               </div>
               <div className="ah-stepnum">{currentStep + 1}</div>
             </div>
-            <div className="ah-stepbar">
+            <div
+              className="ah-stepbar"
+              role="progressbar"
+              aria-label="Progreso del consentimiento"
+              aria-valuemin={1}
+              aria-valuemax={steps.length}
+              aria-valuenow={currentStep + 1}
+            >
               {steps.map((step, index) => (
                 <span key={step.id} className={index <= currentStep ? "on" : ""} />
               ))}
             </div>
 
-            <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div
+              key={activeStep.id}
+              className="ah-stepcontent"
+              aria-live="polite"
+              style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}
+            >
               {!isLastStep ? (
                 <>
                   {activeStep.intro ? (
@@ -239,40 +326,53 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
                     </span>
                   </section>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <label className="ah-input">
-                      <span className="material-icons">badge</span>
-                      <input
-                        value={fullName}
-                        onChange={(event) => setFullName(event.target.value)}
-                        placeholder="Nombre y apellido"
-                      />
-                    </label>
-                    <label className="ah-input">
-                      <span className="material-icons">fingerprint</span>
-                      <input
-                        value={dni}
-                        onChange={(event) => setDni(event.target.value.replace(/\D/g, ""))}
-                        placeholder="DNI"
-                        inputMode="numeric"
-                      />
-                    </label>
-                    <label className="ah-input">
-                      <span className="material-icons">school</span>
-                      <input
-                        value={legajo}
-                        onChange={(event) => setLegajo(event.target.value)}
-                        placeholder="Legajo"
-                      />
-                    </label>
-                    <label className="ah-input">
-                      <span className="material-icons">draw</span>
-                      <input
-                        value={signature}
-                        onChange={(event) => setSignature(event.target.value)}
-                        placeholder="Escribí tu nombre como firma"
-                      />
-                    </label>
+                  <div className="ah-signgrid">
+                    <CommitmentInput
+                      id="commitment-full-name"
+                      icon="badge"
+                      label="Nombre y apellido"
+                      value={fullName}
+                      error={fieldErrors.fullName}
+                      onChange={(value) => {
+                        setFullName(value);
+                        setFieldErrors((current) => ({ ...current, fullName: undefined }));
+                      }}
+                    />
+                    <CommitmentInput
+                      id="commitment-dni"
+                      icon="fingerprint"
+                      label="DNI"
+                      value={dni}
+                      inputMode="numeric"
+                      error={fieldErrors.dni}
+                      onChange={(value) => {
+                        setDni(value.replace(/\D/g, ""));
+                        setFieldErrors((current) => ({ ...current, dni: undefined }));
+                      }}
+                    />
+                    <CommitmentInput
+                      id="commitment-legajo"
+                      icon="school"
+                      label="Legajo"
+                      value={legajo}
+                      error={fieldErrors.legajo}
+                      onChange={(value) => {
+                        setLegajo(value);
+                        setFieldErrors((current) => ({ ...current, legajo: undefined }));
+                      }}
+                    />
+                    <CommitmentInput
+                      id="commitment-signature"
+                      icon="draw"
+                      label="Firma digital"
+                      value={signature}
+                      hint="Escribí tu nombre y apellido como firma."
+                      error={fieldErrors.signature}
+                      onChange={(value) => {
+                        setSignature(value);
+                        setFieldErrors((current) => ({ ...current, signature: undefined }));
+                      }}
+                    />
                   </div>
 
                   <div
@@ -283,7 +383,10 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
                       <input
                         type="checkbox"
                         checked={acceptedRead}
-                        onChange={(event) => setAcceptedRead(event.target.checked)}
+                        onChange={(event) => {
+                          setAcceptedRead(event.target.checked);
+                          setFieldErrors((current) => ({ ...current, acceptance: undefined }));
+                        }}
                       />
                       {COMPROMISO_PPS_CHECK_LECTURA}
                     </label>
@@ -291,13 +394,26 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
                       <input
                         type="checkbox"
                         checked={acceptedCommitment}
-                        onChange={(event) => setAcceptedCommitment(event.target.checked)}
+                        onChange={(event) => {
+                          setAcceptedCommitment(event.target.checked);
+                          setFieldErrors((current) => ({ ...current, acceptance: undefined }));
+                        }}
                       />
                       {COMPROMISO_PPS_CHECK_COMPROMISO}
                     </label>
                   </div>
 
-                  {error && <div className="ah-err">{error}</div>}
+                  {fieldErrors.acceptance ? (
+                    <div className="ah-err" role="alert" data-commitment-error="true">
+                      {fieldErrors.acceptance}
+                    </div>
+                  ) : null}
+
+                  {error && (
+                    <div className="ah-err" role="alert">
+                      {error}
+                    </div>
+                  )}
 
                   <div className="ah-note">
                     La confirmación digital de este documento dejará constancia formal de tu
@@ -311,8 +427,11 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
               <button
                 type="button"
                 className="ah-btn ah-btn--secondary"
-                onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}
-                disabled={currentStep === 0}
+                onClick={() => {
+                  setError(null);
+                  setCurrentStep((prev) => Math.max(prev - 1, 0));
+                }}
+                disabled={currentStep === 0 || isSubmitting}
               >
                 Anterior
               </button>
@@ -320,7 +439,11 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
                 <button
                   type="button"
                   className="ah-btn ah-btn--primary"
-                  onClick={() => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))}
+                  onClick={() => {
+                    setError(null);
+                    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+                  }}
+                  disabled={isSubmitting}
                 >
                   Continuar
                   <span className="material-icons" style={{ fontSize: 17 }}>
@@ -359,6 +482,47 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
       </div>
     </div>,
     document.body
+  );
+};
+
+const CommitmentInput: React.FC<{
+  id: string;
+  icon: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  hint?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+}> = ({ id, icon, label, value, onChange, error, hint, inputMode }) => {
+  const descriptionId = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+
+  return (
+    <label className="ah-signfield" data-commitment-error={error ? "true" : undefined}>
+      <span className="ah-signfield__label">{label}</span>
+      <span className="ah-input">
+        <span className="material-icons" aria-hidden>
+          {icon}
+        </span>
+        <input
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          inputMode={inputMode}
+          aria-invalid={!!error}
+          aria-describedby={descriptionId}
+        />
+      </span>
+      {error ? (
+        <span id={`${id}-error`} className="ah-formerr" role="alert">
+          {error}
+        </span>
+      ) : hint ? (
+        <span id={`${id}-hint`} className="ah-formhint">
+          {hint}
+        </span>
+      ) : null}
+    </label>
   );
 };
 

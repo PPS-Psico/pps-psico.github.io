@@ -150,9 +150,9 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
   if (isLoading || !studentDetails) {
     return (
       <div className="ah-root ah-unified">
-        <main className="ah-main">
+        <section className="ah-main" aria-label="Cargando perfil">
           <div className="ah-card" style={{ height: 120, opacity: 0.4 }} />
-        </main>
+        </section>
       </div>
     );
   }
@@ -168,28 +168,28 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
     value: React.ReactNode;
     type?: string;
   }[] = [
-    { lbl: "Legajo", key: null, value: legajo ?? "—" },
-    { lbl: "DNI", key: "dni", value: dni ?? "—", type: "text" },
+    { lbl: "Legajo", key: null, value: legajo ?? "Sin datos" },
+    { lbl: "DNI", key: "dni", value: dni ?? "Sin datos", type: "text" },
     {
       lbl: "Correo electrónico",
       key: "correo",
-      value: studentDetails[FIELD_CORREO_ESTUDIANTES] || "—",
+      value: studentDetails[FIELD_CORREO_ESTUDIANTES] || "Sin datos",
       type: "email",
     },
     {
       lbl: "Teléfono",
       key: "telefono",
-      value: studentDetails[FIELD_TELEFONO_ESTUDIANTES] || "—",
+      value: studentDetails[FIELD_TELEFONO_ESTUDIANTES] || "Sin datos",
       type: "tel",
     },
   ];
 
   return (
     <div className="ah-root ah-unified">
-      <main className="ah-main">
+      <section className="ah-main" aria-labelledby="student-profile-title">
         <div className="ah-pagehead">
           <span className="eyebrow">Tu cuenta</span>
-          <h1>
+          <h1 id="student-profile-title">
             Mi <em>perfil</em>.
           </h1>
           <p>Mantené tus datos de contacto actualizados.</p>
@@ -203,7 +203,7 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
               <div className="ah-profilehdr__name">{nombre}</div>
               <div className="ah-profilehdr__sub">
                 <span className="dot" />
-                Estudiante activo · LU {legajo ?? "—"}
+                Estudiante activo · LU {legajo ?? "Sin datos"}
               </div>
             </div>
             {!isEditing ? (
@@ -254,19 +254,28 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
         <div className="ah-fieldgrid">
           {fields.map((f) => {
             const editable = isEditing && f.key;
+            const inputId = f.key ? `student-profile-${f.key}` : undefined;
             return (
               <div key={f.lbl} className={"ah-field" + (editable ? " ah-field--edit" : "")}>
-                <div className="ah-field__lbl">{f.lbl}</div>
                 {editable ? (
-                  <input
-                    className="ah-field__input"
-                    type={f.type || "text"}
-                    name={f.key as string}
-                    value={editForm[f.key as keyof typeof editForm]}
-                    onChange={handleEditChange}
-                  />
+                  <>
+                    <label className="ah-field__lbl" htmlFor={inputId}>
+                      {f.lbl}
+                    </label>
+                    <input
+                      id={inputId}
+                      className="ah-field__input"
+                      type={f.type || "text"}
+                      name={f.key as string}
+                      value={editForm[f.key as keyof typeof editForm]}
+                      onChange={handleEditChange}
+                    />
+                  </>
                 ) : (
-                  <div className="ah-field__val">{f.value as React.ReactNode}</div>
+                  <>
+                    <div className="ah-field__lbl">{f.lbl}</div>
+                    <div className="ah-field__val">{f.value as React.ReactNode}</div>
+                  </>
                 )}
               </div>
             );
@@ -276,25 +285,33 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
             className={"ah-field" + (isEditing ? " ah-field--edit" : "")}
             style={{ gridColumn: "1 / -1" }}
           >
-            <div className="ah-field__lbl">Especialidad / orientación</div>
             {isEditing ? (
-              <select
-                className="ah-field__select"
-                name="orientacion"
-                value={editForm.orientacion}
-                onChange={handleEditChange}
-              >
-                <option value="">Seleccionar…</option>
-                {ALL_ORIENTACIONES.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
+              <>
+                <label className="ah-field__lbl" htmlFor="student-profile-orientacion">
+                  Especialidad / orientación
+                </label>
+                <select
+                  id="student-profile-orientacion"
+                  className="ah-field__select"
+                  name="orientacion"
+                  value={editForm.orientacion}
+                  onChange={handleEditChange}
+                >
+                  <option value="">Seleccionar…</option>
+                  {ALL_ORIENTACIONES.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </>
             ) : (
-              <div className="ah-field__val">
-                {studentDetails[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "No definida"}
-              </div>
+              <>
+                <div className="ah-field__lbl">Especialidad / orientación</div>
+                <div className="ah-field__val">
+                  {studentDetails[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "No definida"}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -512,7 +529,7 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
             </div>
           </button>
         </div>
-      </main>
+      </section>
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { Estudiante } from "../types";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAccessibleDialog } from "../hooks/useAccessibleDialog";
 import { Icon, type IconName } from "./student/ds";
 import ConfirmModal from "./ConfirmModal";
 import "./student/home/atlas/atlasHome.css";
@@ -142,6 +143,8 @@ interface EnrollmentFormProps {
   horariosFijos?: boolean;
   /** Color de acento de la convocatoria (hex). Si no se pasa, queda el verde por defecto. */
   accentColor?: string;
+  creditedHours?: number;
+  orientation?: string;
 }
 
 type FormData = {
@@ -183,6 +186,8 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   reqCv = false,
   horariosFijos = false,
   accentColor,
+  creditedHours = 0,
+  orientation = "",
 }) => {
   const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState<FormData>(initialFormData);
@@ -193,6 +198,11 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   const formRef = useRef<HTMLFormElement>(null);
   const certFileInputRef = useRef<HTMLInputElement>(null);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useAccessibleDialog<HTMLDivElement>({
+    isOpen,
+    onClose,
+    canClose: !isSubmitting && !pendingWorkOff,
+  });
 
   const openFilePicker = (inputRef: React.MutableRefObject<HTMLInputElement | null>) => {
     if (!inputRef.current) return;
@@ -383,9 +393,13 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
         ]?.[0];
       }
       setErrors(newErrors);
-
-      const firstError = document.querySelector('[data-error="true"]');
-      firstError?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.requestAnimationFrame(() => {
+        const firstError = formRef.current?.querySelector<HTMLElement>('[data-error="true"]');
+        firstError?.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstError
+          ?.querySelector<HTMLElement>("button, input, select, textarea, [tabindex]")
+          ?.focus({ preventScroll: true });
+      });
       return;
     }
 
@@ -418,6 +432,10 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
 
   if (!isOpen) return null;
 
+  const requestClose = () => {
+    if (!isSubmitting && !pendingWorkOff) onClose();
+  };
+
   const inputBase: React.CSSProperties = {
     background: "var(--bg-elevated)",
     border: "1px solid var(--line-strong)",
@@ -441,19 +459,26 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   return (
     <>
       <div
-        className="ed fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+        className="ed enroll-modal-overlay fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
         data-mode={resolvedTheme}
         data-accent="teal"
         style={accentVars}
-        role="dialog"
-        aria-modal="true"
-        onClick={onClose}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) requestClose();
+        }}
       >
         {/* Ventana flotante: 95vw mobile · max-w-2xl desktop */}
         <div
-          className="relative w-[95vw] max-h-[90dvh] sm:w-full sm:max-w-4xl sm:max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-transform duration-300 animate-scale-in"
+          ref={dialogRef}
+          className="enroll-dialog relative w-[95vw] max-h-[90dvh] sm:w-full sm:max-w-4xl sm:max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
           style={{ background: "var(--bg-elevated)", border: "1px solid var(--line)" }}
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="enrollment-dialog-title"
+          aria-describedby="enrollment-dialog-description"
+          aria-busy={isSubmitting}
+          tabIndex={-1}
         >
           {/* Header */}
           <div
@@ -478,6 +503,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                 Inscripción
               </span>
               <h2
+                id="enrollment-dialog-title"
                 className="enroll-title truncate"
                 style={{
                   marginTop: 4,
@@ -490,15 +516,42 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               >
                 {convocatoriaName}
               </h2>
+              <p id="enrollment-dialog-description" className="enroll-head__description">
+                Revisá tu situación y disponibilidad antes de confirmar.
+              </p>
             </div>
             <button
-              onClick={onClose}
+              type="button"
+              onClick={requestClose}
+              disabled={isSubmitting}
               className="p-2 -mr-1 rounded-full transition-colors hover:bg-[var(--bg-sunken)]"
               style={{ color: "var(--ink-muted)" }}
               aria-label="Cerrar"
+              data-dialog-autofocus
             >
               <Icon name="x" size={20} />
             </button>
+          </div>
+
+          <div className="enroll-meta" aria-label="Resumen de la convocatoria">
+            {creditedHours > 0 ? (
+              <span>
+                <Icon name="clock" size={14} strokeWidth={2.1} />
+                {creditedHours} horas acreditables
+              </span>
+            ) : null}
+            {orientation ? (
+              <span>
+                <Icon name="book" size={14} strokeWidth={2.1} />
+                {orientation}
+              </span>
+            ) : null}
+            <span>
+              <Icon name="check" size={14} strokeWidth={2.1} />
+              {formData.horarios.length > 0
+                ? `${formData.horarios.length} ${formData.horarios.length === 1 ? "horario elegido" : "horarios elegidos"}`
+                : "Horario pendiente"}
+            </span>
           </div>
 
           {/* Banner Horario Único o Fijo */}
@@ -529,6 +582,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
           >
             {errors.submit && (
               <div
+                role="alert"
                 className="p-4 rounded-xl text-sm font-semibold flex items-start gap-2"
                 style={{
                   background: "rgba(192,86,63,0.10)",
@@ -1072,6 +1126,11 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               <div
                 className="absolute top-0 left-0 w-full h-1"
                 style={{ background: "var(--bg-sunken)" }}
+                role="progressbar"
+                aria-label="Carga de documentación"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={fileUploadProgress}
               >
                 <div
                   className="h-full transition-[width] duration-300"
@@ -1081,7 +1140,8 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
             )}
 
             <button
-              onClick={onClose}
+              type="button"
+              onClick={requestClose}
               disabled={isSubmitting}
               className="enroll-cancel w-full sm:flex-1 rounded-xl font-bold text-sm transition-colors hover:bg-[var(--bg-sunken)]"
               style={{ color: "var(--ink-soft)" }}
@@ -1089,6 +1149,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               Cancelar
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (formRef.current) formRef.current.requestSubmit();
               }}
@@ -1105,11 +1166,11 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                       borderTopColor: "var(--on-accent)",
                     }}
                   />
-                  <span>Procesando...</span>
+                  <span>Registrando inscripción...</span>
                 </>
               ) : (
                 <>
-                  <span>Confirmar Inscripción</span>
+                  <span>Confirmar inscripción</span>
                   <Icon name="arrow" size={18} strokeWidth={2.4} />
                 </>
               )}

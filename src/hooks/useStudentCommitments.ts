@@ -94,7 +94,7 @@ export const useStudentCommitments = (
       queryClient.invalidateQueries({ queryKey: ["compromisos", legajo, studentId] });
       showModal(
         "Compromiso registrado",
-        "Tu confirmación quedó registrada en Mi Panel. También te enviaremos una constancia por correo."
+        "Tu confirmación quedó registrada. Te enviaremos una constancia por correo y podrás seguir el inicio de la PPS desde Mis prácticas."
       );
     },
     onError: (error) => {

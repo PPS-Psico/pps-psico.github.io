@@ -132,6 +132,11 @@ function areaVar(area: string): string {
   return "var(--primary-500)";
 }
 
+function areaInk(area: string): string {
+  const a = normalizeStringForComparison(area);
+  return a.startsWith("cl") ? "#06251b" : "#ffffff";
+}
+
 // Estados de solicitud "completados/cerrados" que ya no requieren acción en el
 // home (constante de módulo: estable entre renders).
 const COMPLETED_SOL = [
@@ -180,6 +185,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
 
   const totalTarget = MIN_HOURS_TARGET;
   const hoursAcc = Math.round(criterios?.horasTotales || 0);
+  const progressPct = Math.min(100, Math.round((hoursAcc / totalTarget) * 100));
   // ── Próximo paso ──────────────────────────────────────────────
   // El "Próximo paso" sigue el onboarding de la PPS: si quedó seleccionado y
   // todavía no firmó, lo lleva al consentimiento (lo resuelve `consent`); si ya
@@ -198,7 +204,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
           ? "Comenzás hoy. ¡Mucha suerte!"
           : n === 1
             ? `Comenzás mañana, ${full}.`
-            : `Faltan ${n} días — comenzás el ${full}.`;
+            : `Faltan ${n} días. Comenzás el ${full}.`;
     return {
       m: (MESES[d.getMonth()] || "").toUpperCase(),
       d: String(d.getDate()),
@@ -243,12 +249,12 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
 
   return (
     <div className="ah-root ah-unified">
-      <main className="ah-main">
+      <section className="ah-main" aria-labelledby="student-home-title">
         {/* Hero: saludo + próximo paso */}
         <div className="ah-hero">
           <div>
             <span className="eyebrow ah-hero__date">{currentDate} · PPS</span>
-            <h1 className="ah-hero__greet">
+            <h1 className="ah-hero__greet" id="student-home-title">
               {greeting}, <em>{firstName}.</em>
             </h1>
             {nConvs > 0 ? (
@@ -261,7 +267,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 <b className="ah-mark ah-mark--amber">
                   {nConvs} {nConvs === 1 ? "convocatoria abierta" : "convocatorias abiertas"}
                 </b>{" "}
-                para tu rotación — revisá el detalle y sumate.
+                para tu rotación. Revisá el detalle y sumate.
               </p>
             ) : (
               <p className="ah-hero__line">
@@ -269,10 +275,28 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 <b className="ah-mark ah-mark--teal">
                   {hoursAcc} de {totalTarget} hs
                 </b>{" "}
-                acreditadas. Hoy no hay convocatorias abiertas — te avisamos ni bien se publique una
+                acreditadas. Hoy no hay convocatorias abiertas. Te avisamos ni bien se publique una
                 que encaje con tu rotación.
               </p>
             )}
+            <div
+              className="ah-hero__progress"
+              role="img"
+              aria-label={`${hoursAcc} de ${totalTarget} horas acreditadas, ${progressPct}% completado`}
+            >
+              <div className="ah-hero__progress-head">
+                <span>Avance PPS</span>
+                <strong>
+                  {progressPct}%{" "}
+                  <small>
+                    {hoursAcc}/{totalTarget} hs
+                  </small>
+                </strong>
+              </div>
+              <div className="ah-hero__progress-track" aria-hidden>
+                <span style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
           </div>
 
           <aside className={"ah-next" + (consent ? " ah-next--alert" : "")}>
@@ -329,6 +353,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     width: "100%",
                     justifyContent: "center",
                     background: areaVar(consent.area || ""),
+                    color: areaInk(consent.area || ""),
                   }}
                   onClick={onStartConsent}
                 >
@@ -371,19 +396,27 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
         <div className="ah-sechead">
           <h6>Convocatorias abiertas</h6>
           <span className="n">{String(nConvs).padStart(2, "0")}</span>
-          <a
+          <button
+            type="button"
+            className="ah-sechead__link"
             onClick={(e) => {
               e.preventDefault();
               onNavigate("solicitudes");
             }}
           >
             Ver mis solicitudes
-          </a>
+            <span className="material-icons" aria-hidden>
+              arrow_forward
+            </span>
+          </button>
         </div>
         {nConvs === 0 ? (
           <div className="ah-convs">
             <div
-              className={"ah-empty" + (closedLanzamientos.length > 0 ? " ah-empty--compact" : "")}
+              className={
+                "ah-empty ah-empty--home" +
+                (closedLanzamientos.length > 0 ? " ah-empty--compact" : "")
+              }
             >
               <div className="ah-empty__ic">
                 <AhIcon name="bell" size={20} />
@@ -407,12 +440,6 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               "Práctica profesional supervisada disponible para tu rotación.";
             const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
             const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
-            const periodo = [
-              fmtShort(l[FIELD_FECHA_INICIO_LANZAMIENTOS]),
-              fmtShort(l[FIELD_FECHA_FIN_LANZAMIENTOS]),
-            ]
-              .filter(Boolean)
-              .join(" → ");
             const closes = closesLabel(l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]);
             const direccion = (l[FIELD_DIRECCION_LANZAMIENTOS] as string) || "";
             const esOnline = direccion.trim() === "Modalidad Virtual";
@@ -439,7 +466,13 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               { k: "Cierre", v: fin || "A definir", active: false },
             ];
             return (
-              <article className="ah-feat" style={{ ["--ac" as string]: areaVar(areaPrimary) }}>
+              <article
+                className="ah-feat"
+                style={{
+                  ["--ac" as string]: areaVar(areaPrimary),
+                  ["--ac-ink" as string]: areaInk(areaPrimary),
+                }}
+              >
                 {/* ── Columna editorial ── */}
                 <div className="ah-feat__main">
                   <div className="ah-feat__head">
@@ -521,8 +554,13 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   <span className="eyebrow ah-feat__sidehead">La propuesta</span>
                   <div className="ah-feat__stats">
                     {[
-                      { k: "Acredita", v: hs ? String(hs) : "—", u: hs ? "hs" : "", accent: true },
-                      { k: "Cupos", v: cupos ? String(cupos) : "—", u: "", accent: false },
+                      {
+                        k: "Acredita",
+                        v: hs ? String(hs) : "s/d",
+                        u: hs ? "hs" : "",
+                        accent: true,
+                      },
+                      { k: "Cupos", v: cupos ? String(cupos) : "s/d", u: "", accent: false },
                       {
                         k: "Modalidad",
                         v: esOnline ? "Online" : "Presencial",
@@ -594,8 +632,10 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 <article
                   key={l.id}
                   className="ah-conv"
-                  style={{ ["--ac" as string]: areaVar(areaPrimary) }}
-                  onClick={() => onOpenDetalle(l)}
+                  style={{
+                    ["--ac" as string]: areaVar(areaPrimary),
+                    ["--ac-ink" as string]: areaInk(areaPrimary),
+                  }}
                 >
                   <div className="ah-conv__top">
                     <span className="ah-areabadge">
@@ -614,12 +654,12 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     <div className="ah-conv__cell">
                       <span className="k">Horas</span>
                       <span className="v">
-                        {hs || "—"} <span className="u">hs</span>
+                        {hs || "s/d"} {hs ? <span className="u">hs</span> : null}
                       </span>
                     </div>
                     <div className="ah-conv__cell">
                       <span className="k">Cupos</span>
-                      <span className="v">{cupos || "—"}</span>
+                      <span className="v">{cupos || "s/d"}</span>
                     </div>
                     <div className="ah-conv__cell">
                       <span className="k">Período</span>
@@ -688,8 +728,10 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   <article
                     key={l.id}
                     className="ah-conv"
-                    style={{ ["--ac" as string]: areaVar(areaPrimary) }}
-                    onClick={() => onOpenDetalle(l)}
+                    style={{
+                      ["--ac" as string]: areaVar(areaPrimary),
+                      ["--ac-ink" as string]: areaInk(areaPrimary),
+                    }}
                   >
                     <div className="ah-conv__top">
                       <span className="ah-areabadge">
@@ -715,12 +757,12 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       <div className="ah-conv__cell">
                         <span className="k">Horas</span>
                         <span className="v">
-                          {hs || "—"} <span className="u">hs</span>
+                          {hs || "s/d"} {hs ? <span className="u">hs</span> : null}
                         </span>
                       </div>
                       <div className="ah-conv__cell">
                         <span className="k">Cupos</span>
-                        <span className="v">{cupos || "—"}</span>
+                        <span className="v">{cupos || "s/d"}</span>
                       </div>
                       <div className="ah-conv__cell">
                         <span className="k">Período</span>
@@ -788,7 +830,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
             </div>
           </>
         ) : null}
-      </main>
+      </section>
     </div>
   );
 };

@@ -180,10 +180,10 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
 
   return (
     <div className="ah-root ah-unified">
-      <main className="ah-main">
+      <section className="ah-main" aria-labelledby="student-practicas-title">
         <div className="ah-pagehead">
           <span className="eyebrow">Tu recorrido</span>
-          <h1>
+          <h1 id="student-practicas-title">
             Tus <em>prácticas</em>.
           </h1>
           <p>Historial de PPS y avance hacia la acreditación.</p>
@@ -206,7 +206,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                   key={s.area}
                   className="ah-bar__seg"
                   style={{ flexGrow: s.hs, ["--sc" as string]: areaVar(s.area) }}
-                  title={`${s.area} · ${s.hs} hs`}
+                  title={`${s.area}: ${s.hs} hs`}
                 >
                   <span className="tip">{s.hs}</span>
                 </div>
@@ -215,7 +215,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                 <div
                   className="ah-bar__seg rest"
                   style={{ flexGrow: restHs }}
-                  title={`Restante · ${restHs} hs`}
+                  title={`Restante: ${restHs} hs`}
                 >
                   <span className="tip">{restHs} hs restantes</span>
                 </div>
@@ -370,7 +370,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                               fmtShort(p[FIELD_FECHA_FIN_PRACTICAS]),
                             ]
                               .filter(Boolean)
-                              .join(" — ")}
+                              .join(" - ")}
                           </td>
                           <td className="mono hours">{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</td>
                           <td className="nota">{notaCell(p)}</td>
@@ -383,6 +383,10 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                                 type="button"
                                 className="ah-iconbtn--sm"
                                 title="Solicitar corrección"
+                                aria-label={`Solicitar corrección de ${
+                                  cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
+                                  "la práctica"
+                                }`}
                                 onClick={() => onRequestModificacion(p)}
                               >
                                 <span className="material-icons" style={{ fontSize: 17 }}>
@@ -424,7 +428,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
             />
           </>
         )}
-      </main>
+      </section>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import "../../components/student/home/atlas/atlasHome.css";
 import {
   FIELD_EMPRESA_PPS_SOLICITUD,
@@ -121,7 +121,7 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
 
   return (
     <div className="ah-root ah-unified">
-      <main className="ah-main">
+      <section className="ah-main" aria-labelledby="student-solicitudes-title">
         {finalizacionRequest ? (
           <FinalizationStatusCard
             status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
@@ -134,8 +134,8 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
         ) : (
           <>
             <div className="ah-pagehead">
-              <span className="eyebrow">Trámites · Autogestión</span>
-              <h1>
+              <span className="eyebrow">Trámites y autogestión</span>
+              <h1 id="student-solicitudes-title">
                 Tus <em>solicitudes</em>.
               </h1>
               <p>Acá seguís el estado de cada trámite a medida que avanza con coordinación.</p>
@@ -204,8 +204,8 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
                       </div>
                       <div className="ah-action__d">
                         {isAccreditationReady
-                          ? "Requisitos cumplidos · iniciar cierre"
-                          : "Faltan requisitos · ver detalles"}
+                          ? "Requisitos cumplidos. Iniciar cierre"
+                          : "Faltan requisitos. Ver detalles"}
                       </div>
                     </div>
                     <span className="ah-action__arrow material-icons">arrow_forward</span>
@@ -262,7 +262,7 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
             )}
           </>
         )}
-      </main>
+      </section>
     </div>
   );
 };

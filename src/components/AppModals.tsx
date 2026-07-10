@@ -12,6 +12,7 @@ import {
   FIELD_REQ_CV_LANZAMIENTOS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
 } from "../constants";
 import { getAreaColor } from "./student/ds";
 
@@ -96,6 +97,10 @@ const AppModals: React.FC = () => {
         reqCv={reqCv}
         horariosFijos={horariosFijos}
         accentColor={accentColor}
+        creditedHours={Number(
+          selectedLanzamientoForEnrollment?.[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0
+        )}
+        orientation={orientacion.split(/[,/]/)[0].trim()}
       />
 
       <SeleccionadosModal

@@ -1,0 +1,1 @@
+Auditoría visual de la vista estudiante — capturas frescas tomadas el 2026-07-09. Las vistas autenticadas usan datos mock mediante testing/testing; el marco Entorno de Simulación no forma parte de producción.

@@ -327,7 +327,10 @@ export const useConvocatorias = (
       showModal("Error", `Error: ${err.message}`);
     },
     onSuccess: () => {
-      showModal("¡Inscripción Exitosa!", "Tu solicitud ha sido registrada correctamente.");
+      showModal(
+        "Inscripción confirmada",
+        "Tu inscripción quedó registrada. Podés revisar los horarios elegidos desde Inicio y te avisaremos cuando finalice la selección."
+      );
       queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
       queryClient.invalidateQueries({ queryKey: ["student", legajo] });
       closeEnrollmentForm();

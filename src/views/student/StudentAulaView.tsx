@@ -249,8 +249,8 @@ const guideBlocks: GuideBlock[] = [
       tag: "Documento válido",
       text: (
         <>
-          La <strong>planilla de asistencia firmada</strong> —o el{" "}
-          <strong>informe final aprobado</strong> en prácticas online y eventos especiales— son los
+          La <strong>planilla de asistencia firmada</strong> (o el{" "}
+          <strong>informe final aprobado</strong> en prácticas online y eventos especiales) son los
           documentos que acreditan la realización de la PPS.
         </>
       ),
@@ -411,8 +411,12 @@ const faqGroups: FaqGroup[] = [
         a: "Recibís una notificación por correo y tu estado se actualiza en la sección de convocatorias, dentro de convocatorias cerradas y tus resultados.",
       },
       {
+        q: "¿Qué reviso antes de confirmar una inscripción?",
+        a: "El formulario muestra las horas acreditables, el área y los horarios elegidos. También valida tu situación académica y la documentación requerida antes de registrar la inscripción.",
+      },
+      {
         q: "¿Cuándo firmo el consentimiento digital?",
-        a: "Cuando quedás seleccionado/a y la PPS entra en etapa de confirmación, Mi Panel muestra el botón para realizar el consentimiento. Sin ese paso no podés iniciar la práctica.",
+        a: "Cuando quedás seleccionado/a y la PPS entra en etapa de confirmación, Mi Panel muestra el botón y el plazo disponible. Leé cada paso, revisá tus datos y marcá las dos declaraciones finales. Sin ese consentimiento no podés iniciar la práctica.",
       },
     ],
   },
@@ -566,6 +570,17 @@ const faqGroups: FaqGroup[] = [
             Es la herramienta de gestión PPS para inscripción, solicitudes, seguimiento de horas,
             consentimiento y acreditación. La <strong>planilla de asistencia</strong> sigue siendo
             tu respaldo oficial.
+          </>
+        ),
+      },
+      {
+        q: "¿Dónde encuentro la Guía, Descargas, Preguntas y mi perfil?",
+        a: (
+          <>
+            En computadora, abrí <strong>Recursos</strong> en la barra superior para entrar a Guía
+            2026, Descargas y Preguntas. Tu perfil está dentro del menú de tu cuenta. En celular,
+            tocá <strong>Más</strong> en la barra inferior: ahí vas a encontrar esos recursos y Mi
+            perfil.
           </>
         ),
       },

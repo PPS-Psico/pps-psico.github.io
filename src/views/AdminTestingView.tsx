@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AdminView from "./AdminView";
 import StudentDashboard from "./StudentDashboard";
+import MobileBottomNav from "../components/layout/MobileBottomNav";
 
 import AppModals from "../components/AppModals";
 
@@ -21,52 +22,11 @@ const AdminTestingView: React.FC = () => {
 
   const mobileNavTabs = [
     { id: "inicio" as TabId, label: "Inicio", icon: "home", path: "#" },
+    { id: "entregas" as TabId, label: "Entregas", icon: "upload", path: "#" },
     { id: "practicas" as TabId, label: "Prácticas", icon: "work_history", path: "#" },
     { id: "solicitudes" as TabId, label: "Solicitudes", icon: "list_alt", path: "#" },
     { id: "profile" as TabId, label: "Perfil", icon: "person", path: "#" },
   ];
-
-  // Interceptar navegación móvil simulada
-  const MobileNavSimulated = () => (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800/80 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 safe-area-bottom">
-      <div className="flex justify-around items-center h-[70px] pb-2">
-        {mobileNavTabs.map((tab) => {
-          const isActive = tab.id === studentTabId;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setStudentTabId(tab.id)}
-              style={{ WebkitTapHighlightColor: "transparent" }}
-              className="relative flex flex-col items-center justify-center w-full h-full group focus:outline-none active:bg-transparent"
-            >
-              {isActive && (
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-10 h-1 bg-blue-600 dark:bg-blue-500 rounded-b-lg shadow-sm animate-fade-in z-20"></div>
-              )}
-
-              <div
-                className={`transition duration-300 ease-out transform ${isActive ? "-translate-y-1" : "group-hover:-translate-y-0.5"}`}
-              >
-                <div
-                  className={`p-1.5 rounded-xl transition-colors duration-300 ${isActive ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" : "text-slate-400 dark:text-slate-500"}`}
-                >
-                  <span className={`material-icons !text-2xl ${isActive ? "filled" : "outlined"}`}>
-                    {tab.icon}
-                  </span>
-                </div>
-              </div>
-
-              <span
-                className={`text-[10px] mt-1 font-bold transition-colors duration-300 ${isActive ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-slate-500"}`}
-              >
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6 animate-fade-in-up pb-20">
@@ -125,8 +85,11 @@ const AdminTestingView: React.FC = () => {
               />
             </StudentPanelProvider>
 
-            {/* Simulación de Barra Móvil dentro del contenedor */}
-            <MobileNavSimulated />
+            <MobileBottomNav
+              tabs={mobileNavTabs}
+              activeTabId={studentTabId}
+              onTabChange={setStudentTabId}
+            />
           </div>
         ) : (
           <div className="bg-slate-50 dark:bg-black/20 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 ring-4 ring-slate-100 dark:ring-slate-900">

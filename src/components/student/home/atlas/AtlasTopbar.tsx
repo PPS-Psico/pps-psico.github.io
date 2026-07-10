@@ -1,61 +1,56 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./atlasHome.css";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { isEmbedded } from "../../../../utils/isEmbedded";
 import type { TabId } from "../../../../types";
 
-type ViewTransitionDocument = Document & {
-  startViewTransition?: (updateCallback: () => void) => { finished?: Promise<void> };
-};
-
 interface AtlasTopbarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
 }
 
-const NAV: { id: TabId; label: string; campus?: boolean }[] = [
+const PRIMARY_NAV: { id: TabId; label: string }[] = [
   { id: "inicio", label: "Inicio" },
   { id: "entregas", label: "Entregas" },
   { id: "practicas", label: "Prácticas" },
   { id: "solicitudes", label: "Solicitudes" },
-  { id: "profile", label: "Perfil" },
-  { id: "guia", label: "Guía 2026", campus: true },
-  { id: "descargas", label: "Descargas", campus: true },
-  { id: "preguntas", label: "Preguntas", campus: true },
+];
+
+const RESOURCE_NAV: { id: TabId; label: string; icon: string }[] = [
+  { id: "guia", label: "Guía 2026", icon: "menu_book" },
+  { id: "descargas", label: "Descargas", icon: "download" },
+  { id: "preguntas", label: "Preguntas frecuentes", icon: "help_outline" },
 ];
 
 const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => {
   const { authenticatedUser, logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
-  const initial = (authenticatedUser?.nombre || "E").trim().charAt(0).toUpperCase() || "E";
+  const [openMenu, setOpenMenu] = useState<"resources" | "account" | null>(null);
+  const menusRef = useRef<HTMLDivElement>(null);
+  const initial = (authenticatedUser?.nombre || "").trim().charAt(0).toUpperCase() || "E";
+  const firstName = authenticatedUser?.nombre?.trim().split(/\s+/)[0] || "Estudiante";
   const panelUrl = "https://pps-psico.github.io/#/student";
 
-  const runPanelTransition = (update: () => void) => {
-    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const startViewTransition = (document as ViewTransitionDocument).startViewTransition;
-
-    if (prefersReducedMotion || typeof startViewTransition !== "function") {
-      update();
-      return;
-    }
-
-    const transition = startViewTransition.call(document, update) as
-      | {
-          finished?: Promise<void>;
-          ready?: Promise<void>;
-          updateCallbackDone?: Promise<void>;
-        }
-      | undefined;
-    transition?.finished?.catch(() => {});
-    transition?.ready?.catch(() => {});
-    transition?.updateCallbackDone?.catch(() => {});
-  };
-
   const handleTabChange = (tab: TabId) => {
-    if (tab === activeTab) return;
-    runPanelTransition(() => onTabChange(tab));
+    setOpenMenu(null);
+    if (tab !== activeTab) onTabChange(tab);
   };
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!menusRef.current?.contains(event.target as Node)) setOpenMenu(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenu(null);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
 
   const [embedded] = useState(() => {
     try {
@@ -84,7 +79,7 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
   return (
     <div className="ah-root">
       <header className="ah-topbar">
-        <div className="ah-topbar__inner">
+        <div className="ah-topbar__inner" ref={menusRef}>
           <div className="ah-topbar__brand">
             <div className="ah-topbar__mark" aria-hidden>
               <span></span>
@@ -98,42 +93,68 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
           </div>
 
           <nav className="ah-nav" aria-label="Secciones del panel">
-            {NAV.map((n, idx) => {
-              const isLocked = [
-                "inicio",
-                "entregas",
-                "practicas",
-                "solicitudes",
-                "profile",
-              ].includes(n.id);
-              const showLock = isLocked && !authenticatedUser;
-              const isFirstCampus = n.campus && !NAV[idx - 1]?.campus;
+            {PRIMARY_NAV.map((n) => {
+              const showLock = !authenticatedUser;
               return (
-                <React.Fragment key={n.id}>
-                  {isFirstCampus && <span className="ah-nav__sep" aria-hidden />}
-                  <button
-                    type="button"
-                    className={
-                      "ah-nav__item" +
-                      (n.campus ? " ah-nav__item--campus" : "") +
-                      (activeTab === n.id ? " active" : "") +
-                      (showLock ? " opacity-60 cursor-pointer" : "")
-                    }
-                    aria-current={activeTab === n.id ? "page" : undefined}
-                    onClick={() => handleTabChange(n.id)}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      {n.label}
-                      {showLock && (
-                        <span className="material-icons !text-xs text-slate-400" aria-hidden>
-                          lock
-                        </span>
-                      )}
+                <button
+                  key={n.id}
+                  type="button"
+                  className={
+                    "ah-nav__item" +
+                    (activeTab === n.id ? " active" : "") +
+                    (showLock ? " is-locked" : "")
+                  }
+                  aria-current={activeTab === n.id ? "page" : undefined}
+                  onClick={() => handleTabChange(n.id)}
+                >
+                  <span>{n.label}</span>
+                  {showLock && (
+                    <span className="material-icons ah-nav__lock" aria-hidden>
+                      lock
                     </span>
-                  </button>
-                </React.Fragment>
+                  )}
+                </button>
               );
             })}
+
+            <div className="ah-navmenu">
+              <button
+                type="button"
+                className={
+                  "ah-nav__item ah-nav__item--resources" +
+                  (RESOURCE_NAV.some((item) => item.id === activeTab) ? " active" : "")
+                }
+                aria-haspopup="menu"
+                aria-expanded={openMenu === "resources"}
+                onClick={() =>
+                  setOpenMenu((current) => (current === "resources" ? null : "resources"))
+                }
+              >
+                Recursos
+                <span className="material-icons ah-nav__chevron" aria-hidden>
+                  expand_more
+                </span>
+              </button>
+              {openMenu === "resources" && (
+                <div className="ah-menu ah-menu--resources" role="menu">
+                  <div className="ah-menu__label">Campus PPS</div>
+                  {RESOURCE_NAV.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="menuitem"
+                      className={"ah-menu__item" + (activeTab === item.id ? " active" : "")}
+                      onClick={() => handleTabChange(item.id)}
+                    >
+                      <span className="material-icons" aria-hidden>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </nav>
 
           <div className="ah-topbar__right">
@@ -162,20 +183,67 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 {resolvedTheme === "dark" ? "light_mode" : "dark_mode"}
               </span>
             </button>
-            <button
-              type="button"
-              className="ah-iconbtn"
-              onClick={logout}
-              title="Cerrar sesión"
-              aria-label="Cerrar sesión"
-            >
-              <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
-                logout
-              </span>
-            </button>
-            <div className="ah-avatar" aria-hidden>
-              {initial}
-            </div>
+            {authenticatedUser ? (
+              <div className="ah-account">
+                <button
+                  type="button"
+                  className="ah-account__trigger"
+                  aria-haspopup="menu"
+                  aria-expanded={openMenu === "account"}
+                  onClick={() =>
+                    setOpenMenu((current) => (current === "account" ? null : "account"))
+                  }
+                >
+                  <span className="ah-avatar" aria-hidden>
+                    {initial}
+                  </span>
+                  <span className="ah-account__name">{firstName}</span>
+                  <span className="material-icons ah-account__chevron" aria-hidden>
+                    expand_more
+                  </span>
+                </button>
+                {openMenu === "account" && (
+                  <div className="ah-menu ah-menu--account" role="menu">
+                    <div className="ah-menu__account-name">{authenticatedUser.nombre}</div>
+                    <div className="ah-menu__account-meta">Cuenta de estudiante</div>
+                    <div className="ah-menu__divider" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={"ah-menu__item" + (activeTab === "profile" ? " active" : "")}
+                      onClick={() => handleTabChange("profile")}
+                    >
+                      <span className="material-icons" aria-hidden>
+                        person_outline
+                      </span>
+                      <span>Mi perfil</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="ah-menu__item ah-menu__item--danger"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        logout();
+                      }}
+                    >
+                      <span className="material-icons" aria-hidden>
+                        logout
+                      </span>
+                      <span>Cerrar sesión</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="ah-loginbtn"
+                onClick={() => handleTabChange("inicio")}
+              >
+                Ingresar
+              </button>
+            )}
           </div>
         </div>
       </header>
