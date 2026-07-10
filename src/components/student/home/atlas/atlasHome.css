@@ -1033,6 +1033,9 @@ html.dark .ah-root .ah-feat__side {
   html.pps-embedded .student-desktop-content--inicio {
     margin-top: 14px !important;
   }
+  html.pps-embedded .ah-root .ah-main {
+    width: min(calc(100% - 48px), var(--ah-maxw));
+  }
   html.pps-embedded .ah-main--home {
     padding-top: 0;
   }

@@ -21,6 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isLoginPage = location.pathname === "/login";
   const isStudent = location.pathname.startsWith("/student");
   const isPublicAula = location.pathname === "/aula";
+  const embedded = isEmbedded();
   // Ruta raíz: es solo un redireccionador por rol (no tiene UI propia). Mientras
   // resuelve a /admin o /student NO debe renderizar el header legacy (eso era el
   // "flash de versión vieja" al entrar).
@@ -97,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       id="pps-embed-root"
       className="flex flex-col min-h-screen"
       style={
-        isEmbedded()
+        embedded
           ? { background: "transparent" }
           : isStudent || isPublicAula
             ? { background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }
@@ -134,9 +135,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         className={
           hasOwnTopBar || isFocusedScreen
             ? "flex-grow w-full"
-            : `flex-grow w-full px-4 sm:px-6 lg:px-8 pb-8 pt-16 md:pt-0 ${
-                isFullWidth ? "" : "max-w-7xl mx-auto"
-              }`
+            : embedded && isStudent
+              ? "flex-grow w-full pb-8 pt-16 md:pt-0"
+              : `flex-grow w-full px-4 sm:px-6 lg:px-8 pb-8 pt-16 md:pt-0 ${
+                  isFullWidth ? "" : "max-w-7xl mx-auto"
+                }`
         }
       >
         {children}
