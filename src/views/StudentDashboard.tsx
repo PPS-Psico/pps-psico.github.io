@@ -763,7 +763,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             activeTab={currentActiveTab}
             onTabChange={(id) => setCurrentActiveTab(id as TabId)}
           />
-          <div className="space-y-8 mt-6 animate-fade-in-up">
+          <div
+            className={`student-desktop-content student-desktop-content--${currentActiveTab} space-y-8 mt-6 animate-fade-in-up`}
+          >
             {/* Las secciones del campus y las vistas Atlas traen su propio
                 encabezado de página. El banner solo acompaña vistas legacy
                 y nunca sin sesión (saludaría a un "Estudiante" anónimo). */}

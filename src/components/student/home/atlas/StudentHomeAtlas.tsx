@@ -249,7 +249,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
 
   return (
     <div className="ah-root ah-unified">
-      <section className="ah-main" aria-labelledby="student-home-title">
+      <section className="ah-main ah-main--home" aria-labelledby="student-home-title">
         {/* Hero: saludo + próximo paso */}
         <div className="ah-hero">
           <div>

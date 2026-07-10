@@ -91,6 +91,17 @@ html.pps-embedded .ed {
   min-height: 0 !important;
 }
 
+/* Moodle presenta el iframe dentro de una tarjeta redondeada. La barra del
+   estudiante acompaña ese marco para que no queden cortes rectos en las dos
+   esquinas superiores, sin alterar la versión independiente de Mi Panel. */
+html.pps-embedded .ah-topbar {
+  border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
+  border-bottom-color: color-mix(in oklab, var(--border) 92%, transparent);
+  border-radius: 18px 18px 0 0;
+  background-clip: padding-box;
+  box-shadow: 0 10px 30px -26px color-mix(in oklab, var(--fg) 34%, transparent);
+}
+
 :root {
   --color-primary: 37, 99, 235;
   --glass-border: rgba(255, 255, 255, 0.4);

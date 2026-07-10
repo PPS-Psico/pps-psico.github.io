@@ -1026,6 +1026,44 @@ html.dark .ah-root .ah-feat__side {
   }
 }
 
+/* Dentro de Moodle el viewport útil pierde altura por las barras del campus.
+   Compactamos sólo Inicio para que el estado de convocatorias quede visible
+   en el primer pantallazo; el resto de las vistas conserva su ritmo normal. */
+@media (min-width: 768px) {
+  html.pps-embedded .student-desktop-content--inicio {
+    margin-top: 14px !important;
+  }
+  html.pps-embedded .ah-main--home {
+    padding-top: 0;
+  }
+  html.pps-embedded .ah-main--home .ah-hero {
+    gap: 32px;
+  }
+  html.pps-embedded .ah-main--home .ah-hero__date {
+    margin-bottom: 9px;
+  }
+  html.pps-embedded .ah-main--home .ah-hero__greet {
+    font-size: clamp(38px, 3.4vw, 48px);
+  }
+  html.pps-embedded .ah-main--home .ah-hero__line {
+    margin-top: 11px;
+    line-height: 1.5;
+  }
+  html.pps-embedded .ah-main--home .ah-next {
+    padding: 15px 18px;
+  }
+  html.pps-embedded .ah-main--home .ah-next__tag {
+    margin-bottom: 10px;
+  }
+  html.pps-embedded .ah-main--home .ah-sechead {
+    margin: 30px 0 12px;
+  }
+  html.pps-embedded .ah-main--home .ah-empty--home:not(.ah-empty--compact) {
+    min-height: 220px;
+    padding: 32px;
+  }
+}
+
 /* Variante compacta: cuando no hay convocatorias abiertas pero SÍ cerradas con
    resultados, achicamos este bloque para darle protagonismo a las cerradas
    (el alumno entra a ver si quedó seleccionado). */
