@@ -3309,6 +3309,65 @@ html.dark .mp-logo,
     padding-block: 24px;
   }
 }
+
+/* Moodle entrega un viewport bajo al iframe. En ese contexto la topbar ya
+   aporta marca y navegación, por lo que el login se vuelve una única banda
+   funcional y evita que el formulario quede recortado. */
+@media (min-width: 1024px) {
+  html.pps-embedded .au-embed {
+    grid-template-columns: 1fr;
+    width: auto;
+    max-width: none;
+    height: auto;
+    min-height: 0;
+    margin: 8px 24px 10px;
+    border-radius: 22px;
+  }
+  html.pps-embedded .au-embed__brand {
+    display: none;
+  }
+  html.pps-embedded .au-embed__form {
+    padding: 14px 28px 16px;
+  }
+  html.pps-embedded .au-embed__form > .max-w-md {
+    max-width: 940px;
+  }
+  html.pps-embedded .au-embed .au-loginhead {
+    margin-bottom: 10px;
+  }
+  html.pps-embedded .au-embed .au-loginhead .ed-eyebrow,
+  html.pps-embedded .au-embed .au-loginhead p {
+    display: none;
+  }
+  html.pps-embedded .au-embed .au-loginhead .au-h {
+    font-size: 36px;
+    line-height: 1;
+  }
+  html.pps-embedded .au-embed .au-loginform > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 10px;
+  }
+  html.pps-embedded .au-embed .au-loginfields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+  }
+  html.pps-embedded .au-embed .au-loginfields > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+  html.pps-embedded .au-embed .au-loginfields > :last-child {
+    grid-column: 1 / -1;
+  }
+  html.pps-embedded .au-embed .ed-input {
+    height: 46px;
+  }
+  html.pps-embedded .au-embed .ed-btn-primary {
+    height: 44px;
+  }
+  html.pps-embedded .au-embed .au-loginjoin {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+}
 @media (max-width: 1023px) {
   .au-embed {
     grid-template-columns: 1fr;
