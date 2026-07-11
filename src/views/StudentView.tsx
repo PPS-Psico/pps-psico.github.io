@@ -69,7 +69,11 @@ const StudentLayout: React.FC = () => {
 
   return (
     <div
-      className="pb-28 md:pb-8 min-h-screen flex flex-col"
+      className={
+        authenticatedUser
+          ? "pb-28 md:pb-8 min-h-screen flex flex-col"
+          : "min-h-screen flex flex-col"
+      }
       style={{
         background: isEmbedded() ? "transparent" : resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7",
       }}

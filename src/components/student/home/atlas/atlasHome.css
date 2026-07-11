@@ -153,9 +153,9 @@
 }
 .ah-aula__groute-line {
   position: absolute;
-  z-index: 2;
-  left: 6%;
-  right: 4%;
+  z-index: 0;
+  left: calc(100% / 14);
+  right: calc(100% / 14);
   top: 50%;
   height: 1px;
   background: color-mix(in oklab, var(--primary-500) 72%, var(--border));

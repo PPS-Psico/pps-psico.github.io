@@ -136,10 +136,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           hasOwnTopBar || isFocusedScreen
             ? "flex-grow w-full"
             : embedded && isStudent
-              ? "flex-grow w-full pb-8 pt-16 md:pt-0"
-              : `flex-grow w-full px-4 sm:px-6 lg:px-8 pb-8 pt-16 md:pt-0 ${
-                  isFullWidth ? "" : "max-w-7xl mx-auto"
-                }`
+              ? `flex-grow w-full ${authenticatedUser ? "pb-8" : "pb-0"} pt-16 md:pt-0`
+              : `flex-grow w-full px-4 sm:px-6 lg:px-8 ${
+                  isStudent && !authenticatedUser ? "pb-0" : "pb-8"
+                } pt-16 md:pt-0 ${isFullWidth ? "" : "max-w-7xl mx-auto"}`
         }
       >
         {children}

@@ -419,7 +419,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
 
   const renderLogin = () => (
     <>
-      <div className="text-left mb-9 hidden lg:block">
+      <div className="au-loginhead text-left mb-9 hidden lg:block">
         <span className="ed-eyebrow block mb-4">Acceso · Panel PPS</span>
         <h2 className="au-h text-[52px]">
           Hola <em>de nuevo.</em>
@@ -429,8 +429,8 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
         </p>
       </div>
 
-      <form onSubmit={handleFormSubmit} className="space-y-6">
-        <div className="space-y-5">
+      <form onSubmit={handleFormSubmit} className="au-loginform space-y-6">
+        <div className="au-loginfields space-y-5">
           <EdInput
             id="legajo"
             type="text"
@@ -492,7 +492,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
 
         <div className="group pt-2">{submitBtn("Iniciar Sesión", true)}</div>
 
-        <div className="mt-8 flex items-center justify-center pt-8 border-t border-[var(--line)]">
+        <div className="au-loginjoin mt-8 flex items-center justify-center pt-8 border-t border-[var(--line)]">
           <p className="text-[var(--ink-muted)] text-sm font-medium">
             ¿Primera vez aquí?{" "}
             <button

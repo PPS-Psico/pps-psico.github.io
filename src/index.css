@@ -3229,7 +3229,9 @@ html.dark .mp-logo,
   grid-template-columns: 1.08fr 0.92fr;
   width: 100%;
   max-width: 1080px;
-  margin: 10px auto 24px;
+  height: min(700px, calc(100dvh - 112px));
+  min-height: 520px;
+  margin: 8px auto 12px;
   border: 1px solid var(--line);
   border-radius: 28px;
   overflow: hidden;
@@ -3240,16 +3242,72 @@ html.dark .mp-logo,
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 40px;
-  min-height: 560px;
-  padding: 40px 44px;
+  gap: 24px;
+  min-height: 0;
+  padding: 28px 40px;
 }
 .au-embed__form {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 44px 48px;
+  padding: 30px 46px;
   background: var(--bg-elevated);
+}
+.au-embed__brand .mb-6 {
+  margin-bottom: 14px;
+}
+.au-embed__brand .au-title {
+  font-size: clamp(38px, 3vw, 48px);
+}
+.au-embed__brand .au-sub.mt-5 {
+  margin-top: 14px;
+  line-height: 1.55;
+}
+.au-embed__brand .au-feat {
+  padding-block: 10px;
+}
+.au-embed .au-loginhead {
+  margin-bottom: 24px;
+}
+.au-embed .au-loginhead .mb-4 {
+  margin-bottom: 10px;
+}
+.au-embed .au-loginhead .au-h {
+  font-size: 46px;
+}
+.au-embed .au-loginhead p {
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.au-embed .au-loginform > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 18px;
+}
+.au-embed .au-loginfields > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 14px;
+}
+.au-embed .ed-input {
+  height: 50px;
+}
+.au-embed .ed-btn-primary {
+  height: 52px;
+}
+.au-embed .au-loginjoin {
+  margin-top: 20px;
+  padding-top: 20px;
+}
+@media (max-height: 720px) and (min-width: 1024px) {
+  .au-embed {
+    min-height: 500px;
+  }
+  .au-embed__brand {
+    padding-block: 22px;
+  }
+  .au-embed__brand .au-feat {
+    padding-block: 8px;
+  }
+  .au-embed__form {
+    padding-block: 24px;
+  }
 }
 @media (max-width: 1023px) {
   .au-embed {
