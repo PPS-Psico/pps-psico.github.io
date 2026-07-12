@@ -13,6 +13,11 @@ interface NavTab {
   path: string;
 }
 
+interface MoreTab extends NavTab {
+  description: string;
+  group: "resource" | "account";
+}
+
 interface MobileBottomNavProps {
   tabs: NavTab[];
   activeTabId: TabId;
@@ -29,11 +34,39 @@ const ICON_MAP: Partial<Record<TabId, IconName>> = {
   profile: "user",
 };
 
-const MORE_TABS: NavTab[] = [
-  { id: "profile", label: "Mi perfil", icon: "user", path: "/student/perfil" },
-  { id: "guia", label: "Guía 2026", icon: "book", path: "/student/guia" },
-  { id: "descargas", label: "Descargas", icon: "download", path: "/student/descargas" },
-  { id: "preguntas", label: "Preguntas", icon: "help", path: "/student/preguntas" },
+const MORE_TABS: MoreTab[] = [
+  {
+    id: "guia",
+    label: "Guía 2026",
+    description: "El recorrido completo de tu PPS",
+    group: "resource",
+    icon: "book",
+    path: "/student/guia",
+  },
+  {
+    id: "descargas",
+    label: "Descargas",
+    description: "Planillas, modelos y documentos",
+    group: "resource",
+    icon: "download",
+    path: "/student/descargas",
+  },
+  {
+    id: "preguntas",
+    label: "Preguntas frecuentes",
+    description: "Respuestas rápidas sobre la cursada",
+    group: "resource",
+    icon: "help",
+    path: "/student/preguntas",
+  },
+  {
+    id: "profile",
+    label: "Mi perfil",
+    description: "Datos personales y orientación",
+    group: "account",
+    icon: "user",
+    path: "/student/perfil",
+  },
 ];
 
 /**
@@ -122,8 +155,8 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
             >
               <div className="student-more-sheet__head">
                 <div>
-                  <strong>Recursos y cuenta</strong>
-                  <span>Todo lo que no necesitás tener siempre a la vista.</span>
+                  <strong>Recursos</strong>
+                  <span>Guía, documentos y respuestas del Campus PPS.</span>
                 </div>
                 <button
                   type="button"
@@ -134,24 +167,35 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
                   <Icon name="x" size={18} />
                 </button>
               </div>
-              <div className="student-more-sheet__grid">
-                {MORE_TABS.map((tab) => {
+              <div className="student-more-sheet__list">
+                {MORE_TABS.map((tab, index) => {
                   const on = tab.id === activeTabId;
                   const iconName = ICON_MAP[tab.id] ?? "book";
                   return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="menuitem"
-                      className={"student-more-sheet__item" + (on ? " is-active" : "")}
-                      onClick={() => handleNavigate(tab)}
-                    >
-                      <span className="student-more-sheet__icon" aria-hidden>
-                        <Icon name={iconName} size={20} />
-                      </span>
-                      <span>{tab.label}</span>
-                      <Icon name="chev" size={15} />
-                    </button>
+                    <React.Fragment key={tab.id}>
+                      {tab.group === "account" && index > 0 ? (
+                        <div className="student-more-sheet__divider" role="separator" />
+                      ) : null}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={
+                          "student-more-sheet__item" +
+                          (tab.group === "account" ? " is-account" : "") +
+                          (on ? " is-active" : "")
+                        }
+                        onClick={() => handleNavigate(tab)}
+                      >
+                        <span className="student-more-sheet__icon" aria-hidden>
+                          <Icon name={iconName} size={19} />
+                        </span>
+                        <span className="student-more-sheet__copy">
+                          <strong>{tab.label}</strong>
+                          <small>{tab.description}</small>
+                        </span>
+                        <Icon name="chev" size={15} />
+                      </button>
+                    </React.Fragment>
                   );
                 })}
               </div>

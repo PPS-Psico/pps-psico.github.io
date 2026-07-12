@@ -13,6 +13,9 @@ export type IconName =
   | "cal"
   | "chev"
   | "heart"
+  | "clinical"
+  | "community"
+  | "education"
   | "help"
   | "settings"
   | "book"
@@ -99,6 +102,26 @@ const PATHS: Record<IconName, React.ReactNode> = {
   heart: (
     <>
       <path d="M20.8 5.7a5.5 5.5 0 0 0-7.8 0L12 6.7l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.5 1-1a5.5 5.5 0 0 0 0-7.8z" />
+    </>
+  ),
+  clinical: (
+    <>
+      <path d="M12 21s-7-4.4-7-10.2A4.8 4.8 0 0 1 13.3 7 4.8 4.8 0 0 1 21 10.8C21 16.6 12 21 12 21z" />
+      <path d="M9 12h6M12 9v6" />
+    </>
+  ),
+  community: (
+    <>
+      <circle cx="12" cy="8" r="3" />
+      <circle cx="5.5" cy="11" r="2" />
+      <circle cx="18.5" cy="11" r="2" />
+      <path d="M7 20a5 5 0 0 1 10 0M2.5 19a3.5 3.5 0 0 1 4.7-3.3M21.5 19a3.5 3.5 0 0 0-4.7-3.3" />
+    </>
+  ),
+  education: (
+    <>
+      <path d="M3.5 5.5h6a4 4 0 0 1 4 4V20a4 4 0 0 0-4-4h-6V5.5z" />
+      <path d="M20.5 5.5h-3a4 4 0 0 0-4 4V20a4 4 0 0 1 4-4h3V5.5z" />
     </>
   ),
   help: (

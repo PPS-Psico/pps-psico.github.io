@@ -323,9 +323,9 @@ const campusTeam = [
 ];
 
 const deliveryAreaIcons: Partial<Record<string, IconName>> = {
-  clinica: "help",
-  laboral: "user",
-  educacional: "book",
+  clinica: "clinical",
+  laboral: "community",
+  educacional: "education",
 };
 
 /* Archivos reales servidos desde public/descargas/ — nombres canónicos
@@ -642,10 +642,11 @@ const faqGroups: FaqGroup[] = [
     subtitle: "Propuestas propias y comunicación.",
     items: [
       {
-        q: "¿Cómo presento una propuesta de PPS con institución propia?",
+        q: "¿Cómo propongo una institución nueva para realizar una PPS?",
         a: (
           <>
-            Completás el formulario de Mi Panel con los datos de la institución. En línea con la
+            Desde <strong>Solicitudes → Nueva solicitud de PPS</strong>, completás el formulario con
+            los datos de una institución nueva. En línea con la
             <strong> filosofía integral y cooperativa de las PPS</strong>, las propuestas
             individuales deben aportar al conjunto de la comunidad académica. Requisitos:
             <ol>
@@ -735,7 +736,25 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
   const selectedSection = sections.find((s) => s.id === activeSection) ?? sections[0];
   const selectedArea = useMemo(
     () => deliveryAreas.find((area) => area.id === activeArea) ?? deliveryAreas[0],
-    [deliveryAreas, activeArea]
+    [activeArea, deliveryAreas]
+  );
+
+  const handleDeliveryAreaKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      let nextIndex = index;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % deliveryAreas.length;
+      else if (event.key === "ArrowLeft")
+        nextIndex = (index - 1 + deliveryAreas.length) % deliveryAreas.length;
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = deliveryAreas.length - 1;
+      else return;
+
+      event.preventDefault();
+      const nextArea = deliveryAreas[nextIndex];
+      setActiveArea(nextArea.id);
+      document.getElementById(`delivery-tab-${nextArea.id}`)?.focus();
+    },
+    [deliveryAreas]
   );
   const selectedFaq = useMemo(
     () => faqGroups.find((group) => group.id === activeFaq) ?? faqGroups[0],
@@ -900,18 +919,7 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                         <h3>{block.title}</h3>
                       )}
                       {block.team && (
-                        <Link
-                          className="ah-aula__team-contact"
-                          to={
-                            section
-                              ? "/student/preguntas"
-                              : isPublic
-                                ? "/aula?sec=preguntas"
-                                : "/student/preguntas"
-                          }
-                        >
-                          Cómo nos escribís <Icon name="arrow" size={15} />
-                        </Link>
+                        <span className="ah-aula__team-contact">Conocé a nuestro equipo</span>
                       )}
                     </div>
                     {block.team && (
@@ -1170,15 +1178,21 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
             {activeSection === "entregas" && (
               <div className="ah-aula__deliveries">
                 <div className="ah-aula__areas" role="tablist" aria-label="Áreas de entrega">
-                  {deliveryAreas.map((area) => (
+                  {deliveryAreas.map((area, index) => (
                     <button
                       key={area.id}
                       type="button"
+                      role="tab"
+                      id={`delivery-tab-${area.id}`}
+                      aria-selected={area.id === selectedArea.id}
+                      aria-controls="delivery-panel"
+                      tabIndex={area.id === selectedArea.id ? 0 : -1}
                       className={
                         "ah-aula__area" + (area.id === selectedArea.id ? " is-active" : "")
                       }
                       style={{ ["--area" as string]: area.color }}
                       onClick={() => setActiveArea(area.id)}
+                      onKeyDown={(event) => handleDeliveryAreaKeyDown(event, index)}
                     >
                       <span className="ah-aula__area-ic" aria-hidden>
                         <Icon name={deliveryAreaIcons[area.id] ?? "upload"} size={18} />
@@ -1202,7 +1216,13 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                     </button>
                   ))}
                 </div>
-                <div className="ah-aula__delivery-grid" key={selectedArea.id}>
+                <div
+                  id="delivery-panel"
+                  role="tabpanel"
+                  aria-labelledby={`delivery-tab-${selectedArea.id}`}
+                  className="ah-aula__delivery-grid"
+                  key={selectedArea.id}
+                >
                   {selectedArea.institutions.map((institution) => (
                     <a
                       key={institution.name}
@@ -1212,16 +1232,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                       rel="noopener noreferrer"
                       style={{ ["--area" as string]: selectedArea.color }}
                     >
-                      <span className="ah-aula__folder" aria-hidden>
-                        <Icon name="upload" size={17} />
-                      </span>
                       <strong>{institution.name}</strong>
-                      <span className="ah-aula__delivery-meta">Tarea de Moodle</span>
                       <span className="ah-aula__delivery-foot">
-                        <span className="ah-aula__open">
-                          Abrir entrega <Icon name="arrow" size={14} />
-                        </span>
-                        <span className="ah-aula__module">Moodle</span>
+                        <span className="ah-aula__open">Abrir entrega</span>
                       </span>
                     </a>
                   ))}

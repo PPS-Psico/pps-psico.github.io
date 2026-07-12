@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchStudentData } from "../services";
 import { db } from "../lib/db";
+import { supabase } from "../lib/supabaseClient";
 import { mockDb } from "../services/mockDb";
 import type { Orientacion } from "../types";
 import { useModal } from "../contexts/ModalContext";
@@ -34,7 +35,7 @@ export const useStudentData = (legajo: string) => {
     refetch: refetchStudent,
   } = useQuery({
     queryKey: ["student", legajo],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       let result;
       if (legajo === "99999") {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -43,20 +44,45 @@ export const useStudentData = (legajo: string) => {
       } else {
         result = await fetchStudentData(legajo);
       }
-      try {
-        sessionStorage.setItem(`pps_cache_student_${legajo}`, JSON.stringify(result));
-      } catch (e) {}
+      if (signal.aborted) throw new Error("La carga del estudiante fue cancelada.");
+
+      if (!result?.studentId) {
+        const {
+          data: { user },
+          error: sessionError,
+        } = await supabase.auth.getUser();
+        if (signal.aborted) throw new Error("La carga del estudiante fue cancelada.");
+        if (sessionError || !user) {
+          logger.warn(
+            "[StudentData] Resultado vacío descartado porque la sesión cambió durante la carga"
+          );
+          throw new Error("La sesión cambió mientras se cargaba el estudiante.");
+        }
+      }
+
+      // Un resultado vacío no debe destruir un perfil válido persistido. Si el
+      // estudiante realmente no existe, se muestra el error sin envenenar el
+      // siguiente arranque.
+      if (result?.studentId) {
+        try {
+          sessionStorage.setItem(`pps_cache_student_${legajo}`, JSON.stringify(result));
+        } catch {}
+      }
       return result;
     },
     initialData: () => {
       try {
         const cached = sessionStorage.getItem(`pps_cache_student_${legajo}`);
         return cached ? JSON.parse(cached) : undefined;
-      } catch (e) {
+      } catch {
         return undefined;
       }
     },
+    // Pintar la última copia conocida de inmediato, pero confirmar siempre el
+    // perfil contra Supabase al volver a montar el panel.
+    initialDataUpdatedAt: 0,
     staleTime: 1000 * 60 * 5,
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
   });
 

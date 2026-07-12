@@ -530,7 +530,9 @@ const HomeView: React.FC<HomeViewProps> = ({
           </div>
           <p className="mobile-hero-head__copy">
             {hasOpen
-              ? "Hay una convocatoria abierta para sumar horas."
+              ? openLanzamientos.length === 1
+                ? "Hay una convocatoria abierta para sumar horas."
+                : `Hay ${openLanzamientos.length} convocatorias abiertas para sumar horas.`
               : "Las próximas oportunidades van a aparecer acá."}
           </p>
         </div>

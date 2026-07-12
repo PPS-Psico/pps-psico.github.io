@@ -1,12 +1,15 @@
 import * as C from "../constants";
-import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { Practica } from "../types";
 import { cleanDbValue } from "../utils/formatters";
 import { logger } from "../utils/logger";
 
-export const fetchPracticas = async (studentId: string): Promise<Practica[]> => {
-  const { data, error } = await supabase
+export const fetchPracticas = async (
+  studentId: string,
+  signal?: AbortSignal
+): Promise<Practica[]> => {
+  logger.info(`[Practicas] Consultando Supabase para studentId=${studentId}`);
+  let query = supabase
     .from("practicas")
     .select(
       `
@@ -22,10 +25,16 @@ export const fetchPracticas = async (studentId: string): Promise<Practica[]> => 
     )
     .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId);
 
-  if (error || !data) {
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query;
+
+  if (error) {
     logger.error("Error fetching practicas:", error);
-    return [];
+    throw error;
   }
+
+  const rows = data ?? [];
+  logger.info(`[Practicas] Supabase devolvió ${rows.length} registro(s)`);
 
   type JoinedLanzamiento = {
     nombre_pps: string | null;
@@ -39,7 +48,7 @@ export const fetchPracticas = async (studentId: string): Promise<Practica[]> => 
     lanzamiento: JoinedLanzamiento | JoinedLanzamiento[] | null;
   };
 
-  return (data as unknown as RawPracticaRow[]).map((row) => {
+  return (rows as unknown as RawPracticaRow[]).map((row) => {
     let lanzamiento: JoinedLanzamiento | null = null;
     if (row.lanzamiento) {
       if (Array.isArray(row.lanzamiento)) {

@@ -1,0 +1,21 @@
+/* ============================================================
+   COLORES DE ORIENTACIONES PPS — ÚNICA FUENTE DE VERDAD
+
+   Para modificar un área en toda la aplicación (escritorio, celular,
+   gráficos, chips, tablas y entregas), cambiar solamente este archivo.
+   Los nombres --area-* son la API pública del sistema visual.
+   ============================================================ */
+
+:root {
+  --area-clinica: #3cb88d;
+  --area-laboral: #c23b3f;
+  --area-educacional: #203b73;
+  --area-comunitaria: #7a3f9e;
+}
+
+html.dark {
+  --area-clinica: #4fd49e;
+  --area-laboral: #ef777a;
+  --area-educacional: #7b91de;
+  --area-comunitaria: #bc85dc;
+}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Icon } from "../../components/student/ds";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -9,10 +9,25 @@ const EntregasMobileView: React.FC = () => {
   const { resolvedTheme } = useTheme();
   const { areas } = useAulaEntregas();
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
-
   const selectedArea = useMemo(
     () => areas.find((area) => area.id === activeAreaId) ?? areas[0],
-    [areas, activeAreaId]
+    [activeAreaId, areas]
+  );
+  const handleAreaKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      let nextIndex = index;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % areas.length;
+      else if (event.key === "ArrowLeft") nextIndex = (index - 1 + areas.length) % areas.length;
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = areas.length - 1;
+      else return;
+
+      event.preventDefault();
+      const nextArea = areas[nextIndex];
+      setActiveAreaId(nextArea.id);
+      document.getElementById(`delivery-mobile-tab-${nextArea.id}`)?.focus();
+    },
+    [areas]
   );
 
   return (
@@ -70,19 +85,23 @@ const EntregasMobileView: React.FC = () => {
           scrollbarWidth: "none",
         }}
       >
-        {areas.map((area) => {
+        {areas.map((area, index) => {
           const on = area.id === selectedArea.id;
           return (
             <motion.button
               key={area.id}
               type="button"
               role="tab"
+              id={`delivery-mobile-tab-${area.id}`}
               aria-selected={on}
+              aria-controls="delivery-mobile-panel"
+              tabIndex={on ? 0 : -1}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 haptics.tap();
                 setActiveAreaId(area.id);
               }}
+              onKeyDown={(event) => handleAreaKeyDown(event, index)}
               style={{
                 flex: "0 0 auto",
                 display: "inline-flex",
@@ -126,6 +145,9 @@ const EntregasMobileView: React.FC = () => {
       </div>
 
       <div
+        id="delivery-mobile-panel"
+        role="tabpanel"
+        aria-labelledby={`delivery-mobile-tab-${selectedArea.id}`}
         style={{
           border: "1px solid var(--line, var(--hairline))",
           borderRadius: 18,
@@ -153,21 +175,6 @@ const EntregasMobileView: React.FC = () => {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <span
-              aria-hidden
-              style={{
-                flex: "0 0 auto",
-                width: 40,
-                height: 40,
-                display: "grid",
-                placeItems: "center",
-                borderRadius: 13,
-                background: `color-mix(in oklab, ${selectedArea.color} 12%, var(--bg-elevated))`,
-                color: selectedArea.color,
-              }}
-            >
-              <Icon name="upload" size={18} />
-            </span>
             <span style={{ minWidth: 0, flex: "1 1 auto" }}>
               <strong
                 style={{
@@ -181,19 +188,7 @@ const EntregasMobileView: React.FC = () => {
               >
                 {institution.name}
               </strong>
-              <small
-                style={{
-                  display: "block",
-                  marginTop: 3,
-                  fontSize: 12.5,
-                  color: "var(--ink-muted)",
-                }}
-              >
-                Tarea de Moodle · pestaña nueva
-              </small>
-            </span>
-            <span aria-hidden style={{ color: "var(--ink-subtle)", flex: "0 0 auto" }}>
-              <Icon name="arrow" size={17} />
+              <small className="delivery-mobile-open">Abrir entrega</small>
             </span>
           </motion.a>
         ))}

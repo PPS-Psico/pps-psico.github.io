@@ -56,6 +56,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
 }) => {
   const area = lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] || "Clínica";
   const color = getAreaColor(area);
+  const areaTextColor = `color-mix(in oklab, ${color} 58%, var(--ink))`;
   const name = lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Convocatoria";
   const shortName = name.split(" - ")[0].trim() || name;
 
@@ -120,30 +121,16 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
   const isClosedSelected = isClosed && isSelected;
 
   return (
-    <div
+    <article
       className={
         "cc" +
         (needsConsent ? " cc--consent" : "") +
         (isClosed ? " cc--closed" : "") +
         (isClosedSelected ? " cc--selected" : "")
       }
-      onClick={onOpen}
-      role={onOpen ? "button" : undefined}
-      tabIndex={onOpen ? 0 : undefined}
-      onKeyDown={
-        onOpen
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpen();
-              }
-            }
-          : undefined
-      }
-      style={onOpen ? { cursor: "pointer" } : undefined}
     >
       <div className="cc__top">
-        <span className="cc__area" style={{ color }}>
+        <span className="cc__area" style={{ color: areaTextColor }}>
           <span
             style={{
               width: 7,
@@ -159,7 +146,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
           <span
             className="cc__status"
             style={{
-              color,
+              color: areaTextColor,
               background: "transparent",
               border: `1px solid ${color}`,
               fontWeight: 600,
@@ -225,30 +212,34 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
           <span className="mono cc__meta">{meta || area}</span>
           {isOpen ? (
             isEnrolled ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCancelarInscripcion?.();
-                }}
-                className="cc__cta"
-                style={{ background: "var(--bg-sunken)", color: "var(--ink-soft)" }}
-              >
-                {isSelected ? "Inscripto" : "Cancelar"}
-                <Icon name="arrow" size={15} strokeWidth={2.4} />
-              </button>
+              isSelected ? (
+                <span
+                  className="cc__cta"
+                  style={{ background: "var(--bg-sunken)", color: "var(--ink-soft)" }}
+                >
+                  Inscripto
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onCancelarInscripcion?.()}
+                  className="cc__cta"
+                  style={{ background: "var(--bg-sunken)", color: "var(--ink-soft)" }}
+                >
+                  Cancelar
+                </button>
+              )
             ) : (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   haptics.tap();
-                  (onInscribirse ?? onOpen)?.();
+                  (onOpen ?? onInscribirse)?.();
                 }}
                 className="cc__cta"
                 style={{ background: color }}
               >
-                Inscribirme
+                Ver detalle
                 <Icon name="arrow" size={15} strokeWidth={2.4} />
               </button>
             )
@@ -285,7 +276,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
           )}
         </div>
       )}
-    </div>
+    </article>
   );
 };
 

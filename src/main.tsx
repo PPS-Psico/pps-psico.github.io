@@ -53,6 +53,7 @@ if (import.meta.env.DEV) {
 // @ts-ignore
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import "./styles/orientation-colors.css";
 import "./index.css";
 
 // --- REACT RESILIENCE PATCH ---

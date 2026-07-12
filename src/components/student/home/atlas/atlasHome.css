@@ -77,10 +77,6 @@
   --info-50: #e5f0fa;
 
   /* Áreas */
-  --area-clinica: #3cb88d;
-  --area-educacional: #203b73;
-  --area-laboral: #c93a32;
-  --area-comunitaria: #7a3f9e;
   --display-accent: var(--student-accent-color);
 
   /* Semantic surfaces */
@@ -603,10 +599,6 @@ html.dark .ah-root {
   --fg-subtle: #72798f;
   --border: #1f2438;
   --border-strong: #2d344e;
-  --area-clinica: #4fd49e;
-  --area-educacional: #7b91de;
-  --area-laboral: #f0746e;
-  --area-comunitaria: #bc85dc;
   --grade-caution: #f0b84d;
   --link: var(--primary-300);
   --link-hover: var(--primary-100);
@@ -1487,6 +1479,52 @@ html.dark .ah-root .ah-feat__side {
   max-width: 44ch;
   margin: 0;
 }
+.ah-empty--solicitudes {
+  padding-block: 32px !important;
+}
+.ah-empty--solicitudes .ah-empty__s {
+  max-width: 62ch;
+}
+.ah-empty__requirements {
+  width: min(100%, 620px);
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  list-style: none;
+  text-align: left;
+}
+.ah-empty__requirements li {
+  position: relative;
+  padding: 12px 14px 12px 38px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ah-empty__requirements li::before {
+  content: "✓";
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  color: var(--primary-700);
+  font-weight: 800;
+}
+.ah-empty__hint {
+  max-width: 62ch;
+  margin: 8px 0 0;
+  color: var(--fg-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .ah-empty__requirements {
+    grid-template-columns: 1fr;
+  }
+}
 .ah-empty .ah-btn {
   margin-top: 14px;
 }
@@ -1590,62 +1628,50 @@ html.dark .ah-root .ah-feat__side {
   margin-top: 2px;
 }
 .ah-empty--home-mobile {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
-  min-height: 168px;
+  min-height: 0;
   margin-top: 22px;
-  padding: 28px 24px;
-  text-align: center;
-  border: 1px dashed #d9d3c7;
-  border-radius: 24px;
+  padding: 20px 4px;
+  text-align: left;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
-  justify-content: center;
-  gap: 6px;
+  gap: 4px 14px;
 }
 .ah-empty--home-mobile .ah-empty__ic {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 8px;
-  border: 1px solid #bfe6d8;
+  grid-row: 1 / span 2;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 0;
+  border: 0;
   border-radius: 999px;
-  background: #eefaf5;
-  color: #14785f;
+  background: color-mix(in oklab, var(--primary-500) 12%, var(--bg-elevated));
+  color: var(--link);
 }
 .ah-empty--home-mobile .ah-empty__t {
-  max-width: 24ch;
+  max-width: none;
   font: 600 16px/1.3 var(--font-sans, ui-sans-serif, system-ui, sans-serif);
-  color: #111827;
+  color: var(--fg);
 }
 .ah-empty--home-mobile .ah-empty__s {
-  max-width: 32ch;
+  max-width: none;
   margin-top: 0;
   font: 400 13.5px/1.5 var(--font-sans, ui-sans-serif, system-ui, sans-serif);
-  color: #55504a;
-}
-html.dark .ah-empty--home-mobile {
-  border-color: rgba(148, 163, 184, 0.48);
-}
-html.dark .ah-empty--home-mobile .ah-empty__ic {
-  border-color: rgba(83, 213, 170, 0.35);
-  background: rgba(83, 213, 170, 0.14);
-  color: #5ee0b4;
-}
-html.dark .ah-empty--home-mobile .ah-empty__t {
-  color: #f5f7fb;
-}
-html.dark .ah-empty--home-mobile .ah-empty__s {
-  color: #b7bfce;
+  color: var(--fg-muted);
 }
 
 @media (max-width: 480px) {
   .ah-empty--home-mobile {
-    min-height: 160px;
+    min-height: 0;
     margin: 20px 0 0;
-    padding: 26px 22px;
+    padding: 18px 2px;
   }
 }
 
@@ -5119,24 +5145,33 @@ html.dark .ah-aula__faq-row summary span {
 
 /* ── Entregas ── */
 .ah-aula__deliveries {
-  padding-top: 18px;
+  padding-top: 14px;
 }
 .ah-aula__areas {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 22px;
+  gap: 0;
+  margin-bottom: 24px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--surface) 78%, var(--bg));
+}
+.ah-aula__area:focus-visible,
+.ah-aula__delivery:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--primary-700) 45%, transparent);
+  outline-offset: 3px;
 }
 .ah-aula__area {
   display: flex;
   align-items: center;
   gap: 14px;
   text-align: left;
-  min-height: 76px;
-  padding: 14px 18px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
+  min-height: 72px;
+  padding: 13px 16px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  background: transparent;
   color: var(--fg);
   cursor: pointer;
   transition:
@@ -5146,13 +5181,14 @@ html.dark .ah-aula__faq-row summary span {
     box-shadow var(--duration-fast) var(--ease-standard);
 }
 .ah-aula__area:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in oklab, var(--area) 38%, var(--border));
+  background: color-mix(in oklab, var(--area) 5%, var(--surface));
 }
 .ah-aula__area.is-active {
-  border-color: color-mix(in oklab, var(--area) 48%, var(--border));
-  background: color-mix(in oklab, var(--area) 8%, var(--surface));
-  box-shadow: 0 18px 40px -32px color-mix(in oklab, var(--area) 64%, transparent);
+  border-color: color-mix(in oklab, var(--area) 26%, var(--border));
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--fg) 5%, transparent),
+    0 6px 12px -10px color-mix(in oklab, var(--area) 46%, transparent);
 }
 .ah-aula__area-ic {
   flex: 0 0 auto;
@@ -5169,9 +5205,9 @@ html.dark .ah-aula__faq-row summary span {
     transform var(--duration-fast) var(--ease-standard);
 }
 .ah-aula__area.is-active .ah-aula__area-ic {
-  background: var(--area);
-  color: #fff;
-  transform: scale(1.02);
+  background: color-mix(in oklab, var(--area) 16%, var(--surface));
+  color: color-mix(in oklab, var(--area) 82%, var(--fg));
+  transform: none;
 }
 .ah-aula__area-copy {
   display: block;
@@ -5199,58 +5235,45 @@ html.dark .ah-aula__faq-row summary span {
 .ah-aula__delivery-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
   animation: ahAulaPanelIn 0.3s var(--ease-out) both;
 }
 .ah-aula__delivery {
-  min-height: 214px;
+  position: relative;
+  min-height: 106px;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  justify-content: space-between;
+  padding: 17px 20px 15px;
   border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--area) 1.5%, var(--surface));
   color: inherit;
   text-decoration: none;
   transition:
     transform var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
 }
 .ah-aula__delivery:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in oklab, var(--area) 45%, var(--border));
-  box-shadow: 0 14px 28px -22px color-mix(in oklab, var(--area) 70%, transparent);
+  border-color: color-mix(in oklab, var(--area) 38%, var(--border));
+  background: color-mix(in oklab, var(--area) 4.5%, var(--surface));
+  box-shadow: 0 4px 8px -6px color-mix(in oklab, var(--area) 54%, transparent);
 }
 .ah-aula__delivery:active {
   transform: scale(0.99);
 }
-.ah-aula__folder {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  background: color-mix(in oklab, var(--area) 12%, var(--surface));
-  color: var(--area);
-  transition: transform var(--duration-fast) var(--ease-standard);
-}
-.ah-aula__delivery:hover .ah-aula__folder {
-  transform: scale(1.08) rotate(-3deg);
-}
 .ah-aula__delivery strong {
-  margin-top: 20px;
+  margin-top: 0;
   font-family: var(--font-display);
-  font-weight: var(--display-weight);
-  font-size: 22px;
-  line-height: 1.08;
+  font-weight: 650;
+  max-width: 24ch;
+  font-size: 19px;
+  line-height: 1.18;
   letter-spacing: -0.02em;
   color: var(--fg);
-}
-.ah-aula__delivery-meta {
-  margin-top: 12px;
-  font-size: 13.5px;
-  color: var(--fg-muted);
 }
 .ah-aula__delivery-foot {
   display: flex;
@@ -5258,34 +5281,34 @@ html.dark .ah-aula__faq-row summary span {
   justify-content: space-between;
   gap: 14px;
   margin-top: auto;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
+  padding-top: 10px;
 }
 .ah-aula__open {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: var(--area);
+  color: color-mix(in oklab, var(--area) 58%, var(--fg));
   font-weight: 700;
   font-size: 13.5px;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-standard);
 }
-.ah-aula__module {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--fg-subtle);
+.ah-aula__delivery:hover .ah-aula__open {
+  text-decoration-color: color-mix(in oklab, var(--area) 54%, transparent);
 }
-.ah-aula__open svg {
-  transition: transform var(--duration-fast) var(--ease-standard);
-}
-.ah-aula__delivery:hover .ah-aula__open svg {
-  transform: translateX(3px);
+
+.delivery-mobile-open {
+  display: block;
+  margin-top: 6px;
+  color: var(--accent-text);
+  font-size: 12.5px;
+  font-weight: 700;
 }
 .ah-aula__deliveries-note {
   max-width: 680px;
-  margin: 18px 0 0;
+  margin: 16px 0 0 2px;
   color: var(--fg-muted);
   font-size: 13.5px;
   line-height: var(--lh-relaxed);
@@ -6901,6 +6924,106 @@ html.dark .ah-root .ah-finalization__button {
   }
   .ah-root .ah-aula__groute-node {
     grid-row: 2;
+  }
+}
+
+/* Guía en celular: una sola columna de lectura. El hero-directorio de
+   escritorio se omite porque duplica el recorrido y consume el primer pliegue. */
+@media (max-width: 760px) {
+  .ah-root.ah-aula--section-only .ah-aula__hero--guide {
+    display: none;
+  }
+
+  .ah-root .ah-aula__gsteps {
+    padding-top: 0;
+  }
+
+  .ah-root .ah-aula__gstep:not(.ah-aula__gstep--team) {
+    display: block;
+    padding: 24px 0;
+  }
+
+  .ah-root .ah-aula__gstep:not(.ah-aula__gstep--team) .ah-aula__gstep-side {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-rows: 32px auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 0;
+  }
+
+  .ah-root .ah-aula__gstep:not(.ah-aula__gstep--team) .ah-aula__gstep-num {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border: 1px solid color-mix(in oklab, var(--primary-500) 72%, var(--border));
+    border-radius: 50%;
+    color: var(--primary-500);
+    font: 600 12px/1 var(--font-mono);
+  }
+
+  .ah-root .ah-aula__gstep:not(.ah-aula__gstep--team) .ah-aula__gstep-kick {
+    margin: 0;
+    align-self: center;
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: 0.055em;
+  }
+
+  .ah-root .ah-aula__gstep:not(.ah-aula__gstep--team) .ah-aula__gstep-sum {
+    grid-column: 2;
+    max-width: 32ch;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .ah-root .ah-aula__gstep:not(.ah-aula__gstep--team) .ah-aula__gstep-main {
+    margin-top: 16px;
+  }
+
+  .ah-root .ah-aula__gstep-main h3,
+  .ah-root .ah-aula__gstep--team .ah-aula__gstep-titleline h3 {
+    font-size: 28px;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+  }
+
+  .ah-root .ah-aula__gstep--team {
+    padding: 18px 0 24px;
+  }
+
+  .ah-root .ah-aula__gstep--team .ah-aula__gstep-titleline {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .ah-root .ah-aula__team-contact {
+    display: block;
+    margin-top: 7px;
+    color: var(--fg-muted);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .ah-root .ah-aula__gcards .ah-aula__gcard:last-child {
+    border-bottom: 0;
+  }
+
+  .ah-root .ah-aula__gstep--04 .ah-aula__stat {
+    max-width: none;
+    margin-top: 16px;
+    padding: 12px 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .ah-root .ah-aula__gstep--04 .ah-aula__stat > strong {
+    font-size: 58px;
   }
 }
 

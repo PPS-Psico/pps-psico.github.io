@@ -58,7 +58,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const queryClient = useQueryClient();
 
   // Refs to track state without triggering re-renders
-  const refreshLoopCounter = useRef(0);
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authStabilizationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Dedup del fetch de perfil: `getSession()`, `INITIAL_SESSION` y `SIGNED_IN`
@@ -69,8 +68,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const processedUserIdRef = useRef<string | null>(null);
 
   // Función de limpieza profunda
-  const deepCleanup = useCallback(() => {
+  const deepCleanup = useCallback(async () => {
     logger.info("🧹 Ejecutando limpieza profunda de sesión...");
+    // Detener primero cualquier SELECT en curso. De lo contrario, una consulta
+    // iniciada con la sesión anterior puede completar después de la limpieza y
+    // reemplazar datos válidos por una respuesta vacía de RLS.
+    await queryClient.cancelQueries();
     localStorage.removeItem("sb-qxnxtnhtbpsgzprqtrjl-auth-token");
     sessionStorage.clear();
     queryClient.clear();
@@ -88,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       suppressMoodleAutoLogin();
 
       // 1. Cancel React Query fetching
-      queryClient.cancelQueries();
+      await queryClient.cancelQueries();
 
       // 2. Clear local state first
       setAuthenticatedUser(null);
@@ -98,10 +101,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error) logger.warn("Supabase signOut warning:", error.message);
 
       // 4. Force cleanup
-      deepCleanup();
+      await deepCleanup();
     } catch (error) {
       logger.error("Error during forced logout:", error);
-      deepCleanup();
+      await deepCleanup();
     }
   }, [queryClient, deepCleanup]);
 
@@ -287,12 +290,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     // Initialize: Get current session
-    supabase.auth.getSession().then(({ data, error }) => {
+    supabase.auth.getSession().then(async ({ data, error }) => {
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("refresh token") || msg.includes("not found") || msg.includes("invalid")) {
           logger.error("🚨 Token corrupto detectado. Limpiando almacenamiento.");
-          deepCleanup();
+          await deepCleanup();
         }
         if (isMounted) setIsAuthLoading(false);
       } else {
@@ -309,19 +312,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
 
       if (event === "TOKEN_REFRESHED") {
-        refreshLoopCounter.current += 1;
-        if (refreshLoopCounter.current > 3) {
-          logger.error("🔄 Bucle de refresco detectado. Forzando salida.");
-          refreshLoopCounter.current = 0;
-          deepCleanup();
-          if (isMounted) setIsAuthLoading(false);
-          return;
-        }
+        // Es un evento periódico y esperado de Supabase. Su frecuencia depende
+        // del tiempo de expiración del JWT; acumularlo terminaba expulsando al
+        // usuario después de varias horas de uso normal.
+        logger.scoped("Auth", "Token renovado correctamente");
       } else if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-        refreshLoopCounter.current = 0;
         processSession(session);
       } else if (event === "SIGNED_OUT") {
-        refreshLoopCounter.current = 0;
         processedUserIdRef.current = null;
         if (isMounted) {
           setAuthenticatedUser(null);

@@ -159,7 +159,9 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
                     </span>
                     <div>
                       <div className="ah-action__t">Nueva solicitud de PPS</div>
-                      <div className="ah-action__d">Iniciá un trámite de autogestión</div>
+                      <div className="ah-action__d">
+                        Proponé una institución nueva con 3 cupos o más
+                      </div>
                     </div>
                     <span className="ah-action__arrow material-icons">arrow_forward</span>
                   </button>
@@ -247,16 +249,24 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
             )}
 
             {isEmpty && (
-              <div className="ah-empty" style={{ marginTop: 8 }}>
+              <div className="ah-empty ah-empty--solicitudes" style={{ marginTop: 8 }}>
                 <div className="ah-empty__ic">
                   <span className="material-icons" style={{ fontSize: 20 }}>
                     description
                   </span>
                 </div>
-                <div className="ah-empty__t">Sin solicitudes</div>
+                <div className="ah-empty__t">¿Querés proponer una institución nueva?</div>
                 <p className="ah-empty__s">
-                  No tenés trámites de PPS registrados. Cuando inicies una autogestión va a aparecer
-                  acá con su estado.
+                  La autogestión es únicamente para instituciones nuevas que no tengan convenio
+                  activo con UFLO.
+                </p>
+                <ul className="ah-empty__requirements">
+                  <li>Debe ofrecer al menos 3 cupos para estudiantes.</li>
+                  <li>Debe contar con un/a profesional de Psicología que supervise la práctica.</li>
+                </ul>
+                <p className="ah-empty__hint">
+                  Si cumple estas condiciones, usá “Nueva solicitud de PPS”. El trámite y sus
+                  avances van a aparecer acá.
                 </p>
               </div>
             )}

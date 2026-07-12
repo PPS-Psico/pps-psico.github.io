@@ -22,7 +22,7 @@ const messaging = firebase.messaging();
 
 // --- PWA CACHING ---
 
-const CACHE_NAME = "mi-panel-academico-cache-v51";
+const CACHE_NAME = "mi-panel-academico-cache-v52";
 const FILES_TO_CACHE = ["./index.html", "./manifest.json"];
 
 // Install and precache the minimal shell
@@ -57,9 +57,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const requestUrl = new URL(event.request.url);
+
+  // El SW sólo administra recursos públicos de esta aplicación. Las APIs
+  // externas (especialmente Supabase, que usa Authorization/RLS) deben ir
+  // siempre directo a red y nunca guardarse en Cache Storage.
+  if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
   event.respondWith(
     (async () => {
-      const url = new URL(event.request.url);
+      const url = requestUrl;
       const isHashedAsset =
         url.pathname.includes("/assets/") &&
         (url.pathname.endsWith(".js") ||
@@ -75,7 +84,10 @@ self.addEventListener("fetch", (event) => {
       if (isHashedAsset) {
         const cached = await caches.match(event.request);
         if (cached) {
-          console.log("[SW Cache-First] Servido desde caché instantánea (0ms):", url.pathname.split("/").pop());
+          console.log(
+            "[SW Cache-First] Servido desde caché instantánea (0ms):",
+            url.pathname.split("/").pop()
+          );
           return cached;
         }
       }
@@ -107,9 +119,7 @@ self.addEventListener("fetch", (event) => {
           return new Response("", {
             status: 200,
             headers: {
-              "Content-Type": url.pathname.endsWith(".css")
-                ? "text/css"
-                : "application/javascript",
+              "Content-Type": url.pathname.endsWith(".css") ? "text/css" : "application/javascript",
             },
           });
         }

@@ -183,7 +183,7 @@ const PracticaRow: React.FC<{
     if (norm.includes("clinica")) return "var(--area-clinica, #3CB88D)";
     if (norm.includes("educacion") || norm.includes("educacional"))
       return "var(--area-educacional, #203B73)";
-    if (norm.includes("laboral") || norm.includes("trabajo")) return "var(--area-laboral, #b4502a)";
+    if (norm.includes("laboral") || norm.includes("trabajo")) return "var(--area-laboral, #c23b3f)";
     if (norm.includes("comunitaria") || norm.includes("social"))
       return "var(--area-comunitaria, #7A3F9E)";
     return "var(--accent, #1f3a8a)";

@@ -40,10 +40,10 @@ export default {
         // Áreas PPS — color coding institucional
         // ============================================================
         area: {
-          clinica: '#3CB88D',
-          educacional: '#203B73',
-          laboral: '#C0392B',
-          comunitaria: '#7A3F9E',
+          clinica: 'var(--area-clinica)',
+          educacional: 'var(--area-educacional)',
+          laboral: 'var(--area-laboral)',
+          comunitaria: 'var(--area-comunitaria)',
         },
         // ============================================================
         // Estados semánticos
