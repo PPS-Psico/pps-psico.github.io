@@ -29,6 +29,7 @@ const ExecutiveReportGenerator: React.FC<ExecutiveReportGeneratorProps> = ({
   const [year, setYear] = useState<number>(currentYear);
   const [compareYear, setCompareYear] = useState<number>(currentYear - 1);
   const [selection, setSelection] = useState<ReportSelection | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const {
     data: reportData,
@@ -38,8 +39,25 @@ const ExecutiveReportGenerator: React.FC<ExecutiveReportGeneratorProps> = ({
 
   const handleGenerate = () => {
     setSelection(
-      mode === "single" ? { mode: "single", year } : { mode: "comparative", year, compareYear }
+      mode === "single"
+        ? { mode: "single", year }
+        : mode === "comparative"
+          ? { mode: "comparative", year, compareYear }
+          : { mode: "gestion", year: currentYear }
     );
+  };
+
+  // El generador de PDF (jspdf + autotable) se importa on demand para no
+  // engordar el bundle inicial del panel.
+  const handleDownloadPdf = async () => {
+    if (!reportData) return;
+    setIsGeneratingPdf(true);
+    try {
+      const { generateExecutiveReportPdf } = await import("../../utils/executiveReportPdf");
+      generateExecutiveReportPdf(reportData);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const segBtn = (active: boolean) =>
@@ -60,7 +78,8 @@ const ExecutiveReportGenerator: React.FC<ExecutiveReportGeneratorProps> = ({
             Balance de Prácticas Profesionales
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Estadísticas duras del ciclo. Elegí un año para el balance anual o compará dos ciclos.
+            Estadísticas duras del ciclo. Elegí un año para el balance anual, compará dos ciclos, o
+            generá el informe integral de la gestión desde septiembre de 2024.
           </p>
         </div>
 
@@ -72,26 +91,37 @@ const ExecutiveReportGenerator: React.FC<ExecutiveReportGeneratorProps> = ({
           <button onClick={() => setMode("comparative")} className={segBtn(mode === "comparative")}>
             Comparativo
           </button>
+          <button onClick={() => setMode("gestion")} className={segBtn(mode === "gestion")}>
+            Informe de gestión
+          </button>
         </div>
 
         {/* Selectores de año */}
         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              {mode === "single" ? "Año del balance" : "Año principal"}
-            </label>
-            <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className={yearSelectClasses}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
+          {mode === "gestion" ? (
+            <p className="text-sm text-slate-600 dark:text-slate-400 flex-1">
+              Balance cuantitativo y cualitativo de toda la coordinación: evolución anual,
+              crecimiento de cupos, relación ingreso/egreso y el listado completo de convenios
+              nuevos con orientación y cupos.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {mode === "single" ? "Año del balance" : "Año principal"}
+              </label>
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className={yearSelectClasses}
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {mode === "comparative" && (
             <>
@@ -143,13 +173,21 @@ const ExecutiveReportGenerator: React.FC<ExecutiveReportGeneratorProps> = ({
 
       {reportData && !isLoading && (
         <>
-          <div className="no-print flex justify-end">
+          <div className="no-print flex justify-end gap-2">
             <button
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 bg-slate-700 text-white font-bold text-sm py-2 px-4 rounded-lg hover:bg-slate-800 transition-colors"
+              className="inline-flex items-center gap-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-bold text-sm py-2 px-4 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
             >
               <span className="material-icons !text-base">print</span>
-              Imprimir / Guardar PDF
+              Imprimir
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              className="inline-flex items-center gap-2 bg-slate-800 text-white font-bold text-sm py-2 px-4 rounded-lg hover:bg-slate-900 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
+            >
+              <span className="material-icons !text-base">picture_as_pdf</span>
+              {isGeneratingPdf ? "Generando..." : "Descargar PDF"}
             </button>
           </div>
           <div className="print-only">

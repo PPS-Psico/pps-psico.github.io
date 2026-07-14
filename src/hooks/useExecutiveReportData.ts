@@ -34,6 +34,8 @@ import {
 import {
   AnyReportData,
   ExecutiveReportData,
+  GestionReportData,
+  GestionYearStat,
   NewAgreementDetail,
   PPSRequestSummary,
   ReportSelection,
@@ -46,7 +48,15 @@ import {
   getGroupName,
   normalizeStringForComparison,
 } from "../utils/formatters";
+import { isUnlimitedCupoInstitution } from "../utils/unlimitedCupos";
 import type { DashboardData, MetricRow } from "../utils/metricsCalculations";
+
+// Cupos "estadísticos" de un lanzamiento: las PPS de cupo ilimitado
+// (Fundación Tiempo, Ulloa) aportan 0 para no romper los totales.
+const launchCupos = (l: MetricRow): number => {
+  if (isUnlimitedCupoInstitution(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])) return 0;
+  return Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]) || 0;
+};
 
 const cleanRawValue = (val: unknown): string => {
   if (val === null || val === undefined) return "";
@@ -110,6 +120,97 @@ const processRequestsForYear = (
     });
 };
 
+// Estudiantes que ocuparon cupo (SELECCIONADOS) por lanzamiento. Contamos solo
+// los que efectivamente hicieron la PPS, no todos los inscriptos, para no
+// inflar el número de estudiantes.
+const buildStudentsByLaunchId = (allData: DashboardData) => {
+  const studentsByLaunchId = new Map<string, Set<string>>();
+  allData.convocatorias.forEach((c) => {
+    const estado = normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]);
+    if (estado !== "seleccionado") return;
+    const rawLanzId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
+    const lanzId = Array.isArray(rawLanzId) ? rawLanzId[0] : rawLanzId;
+    const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
+    if (lanzId && sId) {
+      if (!studentsByLaunchId.has(lanzId)) studentsByLaunchId.set(lanzId, new Set());
+      studentsByLaunchId.get(lanzId)!.add(sId);
+    }
+  });
+  return studentsByLaunchId;
+};
+
+const splitOrient = (raw: unknown, sink: Set<string>) => {
+  if (!raw) return;
+  String(raw)
+    .split(/[,;/]/)
+    .forEach((o) => {
+      const t = o.trim();
+      if (t) sink.add(t);
+    });
+};
+
+// FICHA POR INSTITUCIÓN de convenios nuevos: orientación, rotaciones
+// (lanzamientos) y cupos por año, totales y estudiantes que ocuparon cupo.
+// Para gestión: muestra qué tan productivo fue cada convenio.
+const buildAgreementsDetail = (
+  allData: DashboardData,
+  instRecords: MetricRow[]
+): NewAgreementDetail[] => {
+  const studentsByLaunchId = buildStudentsByLaunchId(allData);
+  return instRecords
+    .map((instRecord) => {
+      const instName = String(instRecord[FIELD_NOMBRE_INSTITUCIONES] || "");
+      const normName = normalizeStringForComparison(instName);
+      const convenioYear = Number(instRecord[FIELD_CONVENIO_NUEVO_INSTITUCIONES]);
+      const cupoIlimitado = isUnlimitedCupoInstitution(instName);
+
+      const matchingLaunches = allData.lanzamientos.filter(
+        (l) =>
+          normalizeStringForComparison(getGroupName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])) === normName
+      );
+
+      const perYear = new Map<number, { rotaciones: number; cupos: number }>();
+      const orientSet = new Set<string>();
+      const studentSet = new Set<string>();
+      let totalCupos = 0;
+
+      matchingLaunches.forEach((l) => {
+        const date = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+        const yr = date ? date.getUTCFullYear() : null;
+        const cupos = launchCupos(l);
+        totalCupos += cupos;
+        if (yr) {
+          const entry = perYear.get(yr) || { rotaciones: 0, cupos: 0 };
+          entry.rotaciones += 1;
+          entry.cupos += cupos;
+          perYear.set(yr, entry);
+        }
+        splitOrient(l[FIELD_ORIENTACION_LANZAMIENTOS], orientSet);
+        studentsByLaunchId.get(l.id)?.forEach((s) => studentSet.add(s));
+      });
+
+      if (orientSet.size === 0) {
+        splitOrient(instRecord[FIELD_ORIENTACIONES_INSTITUCIONES], orientSet);
+      }
+
+      const porAnio = Array.from(perYear.entries())
+        .map(([year, v]) => ({ year, rotaciones: v.rotaciones, cupos: v.cupos }))
+        .sort((a, b) => a.year - b.year);
+
+      return {
+        institucion: instName,
+        anioConvenio: Number.isNaN(convenioYear) ? null : convenioYear,
+        orientaciones: Array.from(orientSet),
+        totalRotaciones: matchingLaunches.length,
+        totalCupos,
+        totalEstudiantes: studentSet.size,
+        porAnio,
+        cupoIlimitado,
+      } as NewAgreementDetail;
+    })
+    .sort((a, b) => a.institucion.localeCompare(b.institucion));
+};
+
 const processAllData = (allData: DashboardData, targetYear: number) => {
   // 1. IDENTIFICAR LANZAMIENTOS DEL AÑO OBJETIVO
   const launchesInTargetYear = allData.lanzamientos.filter((l) => {
@@ -162,17 +263,14 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
   const activeWithoutPpsList = activeList.filter((s) => !studentsWithPracticeIds.has(s.id));
 
   // 5. METRICAS DE LANZAMIENTOS
-  const totalCupos = launchesInTargetYear.reduce(
-    (sum: number, l) => sum + (Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]) || 0),
-    0
-  );
+  const totalCupos = launchesInTargetYear.reduce((sum: number, l) => sum + launchCupos(l), 0);
 
   const uniqueLaunchesSet = new Set<string>();
   const ppsLaunchedList: { nombre: string; legajo: string; cupos: number }[] = [];
   const monthlyData: {
     [key: number]: {
       cuposTotal: number;
-      institutions: Map<string, { cupos: number; variants: string[] }>;
+      institutions: Map<string, { cupos: number; variants: string[]; unlimited?: boolean }>;
     };
   } = {};
 
@@ -182,7 +280,7 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
       const groupName = getGroupName(ppsName);
       const date = parseToUTCDate(launch[FIELD_FECHA_INICIO_LANZAMIENTOS]);
       const monthIndex = date ? date.getUTCMonth() : -1;
-      const cupos = Number(launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
+      const cupos = launchCupos(launch);
 
       if (monthIndex >= 0) {
         uniqueLaunchesSet.add(`${groupName}::${monthIndex}`);
@@ -198,6 +296,7 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
         };
         institutionData.cupos += cupos;
         institutionData.variants.push(ppsName);
+        if (isUnlimitedCupoInstitution(ppsName)) institutionData.unlimited = true;
         monthlyData[monthIndex].institutions.set(groupName, institutionData);
       }
 
@@ -213,24 +312,27 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
 
   const ppsLanzadasValue = uniqueLaunchesSet.size;
 
-  const launchesByMonth: TimelineMonthData[] = MONTH_NAMES.map((monthName, index) => {
-    const data = monthlyData[index];
-    if (data) {
-      return {
-        monthName,
-        ppsCount: data.institutions.size,
-        cuposTotal: data.cuposTotal,
-        institutions: Array.from(data.institutions.entries())
-          .map(([name, details]) => ({
-            name,
-            cupos: details.cupos,
-            variants: details.variants.sort(),
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      };
+  const launchesByMonth: TimelineMonthData[] = MONTH_NAMES.map(
+    (monthName, index): TimelineMonthData | null => {
+      const data = monthlyData[index];
+      if (data) {
+        return {
+          monthName,
+          ppsCount: data.institutions.size,
+          cuposTotal: data.cuposTotal,
+          institutions: Array.from(data.institutions.entries())
+            .map(([name, details]) => ({
+              name,
+              cupos: details.cupos,
+              variants: details.variants.sort(),
+              unlimited: details.unlimited === true,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        };
+      }
+      return null;
     }
-    return null;
-  }).filter((item): item is TimelineMonthData => item !== null);
+  ).filter((item): item is TimelineMonthData => item !== null);
 
   const uniqueInstitutionsNames = new Set<string>();
   launchesInTargetYear.forEach((l) => {
@@ -245,95 +347,14 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
   }));
 
   // UPDATE: Filter new agreements strictly by Institution Table and Year
-  const newAgreementsList = allData.instituciones
-    .filter((i) => String(i[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) === String(targetYear))
-    .map((i) => ({ nombre: i[FIELD_NOMBRE_INSTITUCIONES] }));
+  const newAgreementRecords = allData.instituciones.filter(
+    (i) => String(i[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) === String(targetYear)
+  );
+  const newAgreementsList = newAgreementRecords.map((i) => ({
+    nombre: i[FIELD_NOMBRE_INSTITUCIONES],
+  }));
 
-  // DETALLE POR INSTITUCIÓN de los convenios nuevos del año: orientación,
-  // rotaciones (lanzamientos) y cupos por año, totales y estudiantes que
-  // ocuparon cupo. Para gestión: muestra qué tan productivo fue cada convenio.
-  // Contamos solo SELECCIONADOS (los que efectivamente hicieron la PPS), no
-  // todos los inscriptos, para no inflar el número de estudiantes.
-  const studentsByLaunchId = new Map<string, Set<string>>();
-  allData.convocatorias.forEach((c) => {
-    const estado = normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]);
-    if (estado !== "seleccionado") return;
-    const rawLanzId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-    const lanzId = Array.isArray(rawLanzId) ? rawLanzId[0] : rawLanzId;
-    const sId = safeGetId(c[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
-    if (lanzId && sId) {
-      if (!studentsByLaunchId.has(lanzId)) studentsByLaunchId.set(lanzId, new Set());
-      studentsByLaunchId.get(lanzId)!.add(sId);
-    }
-  });
-
-  const splitOrient = (raw: unknown, sink: Set<string>) => {
-    if (!raw) return;
-    String(raw)
-      .split(/[,;/]/)
-      .forEach((o) => {
-        const t = o.trim();
-        if (t) sink.add(t);
-      });
-  };
-
-  const newAgreementsDetail: NewAgreementDetail[] = newAgreementsList
-    .map((ag) => {
-      const instName = String(ag.nombre || "");
-      const normName = normalizeStringForComparison(instName);
-      const instRecord = allData.instituciones.find(
-        (i) => normalizeStringForComparison(i[FIELD_NOMBRE_INSTITUCIONES]) === normName
-      );
-      const convenioYear = instRecord
-        ? Number(instRecord[FIELD_CONVENIO_NUEVO_INSTITUCIONES])
-        : NaN;
-
-      const matchingLaunches = allData.lanzamientos.filter(
-        (l) =>
-          normalizeStringForComparison(getGroupName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])) === normName
-      );
-
-      const perYear = new Map<number, { rotaciones: number; cupos: number }>();
-      const orientSet = new Set<string>();
-      const studentSet = new Set<string>();
-      let totalCupos = 0;
-
-      matchingLaunches.forEach((l) => {
-        const date = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
-        const yr = date ? date.getUTCFullYear() : null;
-        const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
-        totalCupos += cupos;
-        if (yr) {
-          const entry = perYear.get(yr) || { rotaciones: 0, cupos: 0 };
-          entry.rotaciones += 1;
-          entry.cupos += cupos;
-          perYear.set(yr, entry);
-        }
-        splitOrient(l[FIELD_ORIENTACION_LANZAMIENTOS], orientSet);
-        studentsByLaunchId.get(l.id)?.forEach((s) => studentSet.add(s));
-      });
-
-      if (orientSet.size === 0 && instRecord) {
-        splitOrient(instRecord[FIELD_ORIENTACIONES_INSTITUCIONES], orientSet);
-      }
-
-      const porAnio = Array.from(perYear.entries())
-        .map(([year, v]) => ({ year, rotaciones: v.rotaciones, cupos: v.cupos }))
-        .sort((a, b) => a.year - b.year);
-
-      return {
-        institucion: instName,
-        anioConvenio: Number.isNaN(convenioYear) ? null : convenioYear,
-        orientaciones: Array.from(orientSet),
-        totalRotaciones: matchingLaunches.length,
-        totalCupos,
-        totalEstudiantes: studentSet.size,
-        porAnio,
-      } as NewAgreementDetail;
-    })
-    .sort((a: NewAgreementDetail, b: NewAgreementDetail) =>
-      a.institucion.localeCompare(b.institucion)
-    );
+  const newAgreementsDetail = buildAgreementsDetail(allData, newAgreementRecords);
 
   const ppsRequests = processRequestsForYear(targetYear, allData.solicitudes, allData.estudiantes);
 
@@ -377,6 +398,167 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
   };
 };
 
+// Inicio de la coordinación actual: septiembre de 2024.
+const GESTION_START_UTC = Date.UTC(2024, 8, 1);
+const GESTION_START_YEAR = 2024;
+
+const REALIZADA_STATES = new Set(["realizada", "finalizada", "aprobada"]);
+
+const buildGestionReport = (allData: DashboardData): GestionReportData => {
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+
+  const launchDate = (l: MetricRow) => parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
+
+  const gestionLaunches = allData.lanzamientos.filter((l) => {
+    const d = launchDate(l);
+    return d && d.getTime() >= GESTION_START_UTC;
+  });
+
+  const studentsByLaunchId = buildStudentsByLaunchId(allData);
+
+  // Corte anual (año calendario). 2024 arranca en septiembre y el año actual
+  // está en curso: se marcan como parciales para leerlos con ese contexto.
+  const yearlyStats: GestionYearStat[] = [];
+  for (let year = GESTION_START_YEAR; year <= currentYear; year++) {
+    const launches = gestionLaunches.filter((l) => launchDate(l)?.getUTCFullYear() === year);
+    const cupos = launches.reduce((sum, l) => sum + launchCupos(l), 0);
+    const conveniosNuevos = allData.instituciones.filter(
+      (i) => String(i[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) === String(year)
+    ).length;
+    // Ingresantes por cohorte (año de la primera PPS real), no por created_at.
+    const ingresantes = allData.estudiantes.filter((s) => Number(s.cohorte) === year).length;
+    const finalizados = allData.finalizaciones.filter((f) => {
+      const dateStr = f[FIELD_FECHA_SOLICITUD_FINALIZACION] || f.created_at;
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      return !isNaN(d.getTime()) && d.getFullYear() === year && d.getTime() >= GESTION_START_UTC;
+    }).length;
+    const solicitudesYear = allData.solicitudes.filter((r) => {
+      if (!r.created_at) return false;
+      const d = new Date(r.created_at);
+      return !isNaN(d.getTime()) && d.getFullYear() === year && d.getTime() >= GESTION_START_UTC;
+    });
+    const solicitudesConcretadas = solicitudesYear.filter((r) =>
+      REALIZADA_STATES.has(normalizeStringForComparison(r[FIELD_ESTADO_PPS]))
+    ).length;
+
+    const isPartial = year === GESTION_START_YEAR || year === currentYear;
+    const label =
+      year === GESTION_START_YEAR
+        ? `${year} (sept–dic)`
+        : year === currentYear
+          ? `${year} (en curso)`
+          : String(year);
+
+    yearlyStats.push({
+      year,
+      label,
+      isPartial,
+      lanzamientos: launches.length,
+      cupos,
+      conveniosNuevos,
+      ingresantes,
+      finalizados,
+      solicitudes: solicitudesYear.length,
+      solicitudesConcretadas,
+    });
+  }
+
+  const sum = (fn: (y: GestionYearStat) => number) =>
+    yearlyStats.reduce((acc, y) => acc + fn(y), 0);
+
+  const institucionesActivas = new Set(
+    gestionLaunches.map((l) => getGroupName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS]))
+  ).size;
+
+  const colocados = new Set<string>();
+  gestionLaunches.forEach((l) => studentsByLaunchId.get(l.id)?.forEach((s) => colocados.add(s)));
+
+  // Oferta comparada como ventanas móviles de 12 meses alrededor del inicio de
+  // la gestión, para aislar el efecto del cambio de coordinación.
+  const sumWindow = (fromUTC: number, toUTC: number) => {
+    let lanzamientos = 0;
+    let cupos = 0;
+    allData.lanzamientos.forEach((l) => {
+      const d = launchDate(l);
+      if (d && d.getTime() >= fromUTC && d.getTime() < toUTC) {
+        lanzamientos += 1;
+        cupos += launchCupos(l);
+      }
+    });
+    return { lanzamientos, cupos };
+  };
+  const first12End = Date.UTC(2025, 8, 1);
+  const antes = sumWindow(Date.UTC(2023, 8, 1), GESTION_START_UTC);
+  const despues = sumWindow(GESTION_START_UTC, first12End);
+  const pctCupos =
+    now.getTime() >= first12End && antes.cupos > 0
+      ? ((despues.cupos - antes.cupos) / antes.cupos) * 100
+      : null;
+
+  const newAgreementRecords = allData.instituciones.filter((i) => {
+    const y = Number(i[FIELD_CONVENIO_NUEVO_INSTITUCIONES]);
+    return !Number.isNaN(y) && y >= GESTION_START_YEAR && y <= currentYear;
+  });
+  const newAgreementsDetail = buildAgreementsDetail(allData, newAgreementRecords);
+
+  const totals = {
+    lanzamientos: gestionLaunches.length,
+    cupos: sum((y) => y.cupos),
+    conveniosNuevos: newAgreementsDetail.length,
+    ingresantes: sum((y) => y.ingresantes),
+    finalizados: sum((y) => y.finalizados),
+    solicitudes: sum((y) => y.solicitudes),
+    solicitudesConcretadas: sum((y) => y.solicitudesConcretadas),
+    institucionesActivas,
+    estudiantesColocados: colocados.size,
+  };
+
+  // Lectura cualitativa autogenerada a partir de los números.
+  const highlights: string[] = [];
+  highlights.push(
+    `Desde septiembre de 2024 se lanzaron ${totals.lanzamientos} rotaciones de PPS que ofrecieron ${totals.cupos} cupos en ${totals.institucionesActivas} instituciones, con ${totals.estudiantesColocados} estudiantes que ocuparon un cupo.`
+  );
+  if (pctCupos !== null) {
+    const dir = pctCupos >= 0 ? "creció" : "se redujo";
+    highlights.push(
+      `En los primeros 12 meses de gestión (sept. 2024 – ago. 2025) la oferta de cupos ${dir} un ${Math.abs(pctCupos).toFixed(0)}% respecto de los 12 meses previos: de ${antes.cupos} a ${despues.cupos} cupos.`
+    );
+  }
+  if (newAgreementsDetail.length > 0) {
+    const nombres = newAgreementsDetail.slice(0, 3).map((d) => d.institucion);
+    highlights.push(
+      `Se firmaron ${totals.conveniosNuevos} convenios nuevos con instituciones como ${nombres.join(", ")}, ampliando la red de prácticas disponible.`
+    );
+  }
+  const fullYears = yearlyStats.filter((y) => !y.isPartial);
+  const lastFull = fullYears[fullYears.length - 1];
+  if (lastFull && lastFull.finalizados > 0 && lastFull.ingresantes > 0) {
+    const ratio = lastFull.ingresantes / lastFull.finalizados;
+    highlights.push(
+      `En ${lastFull.year}, por cada estudiante que finalizó su recorrido de PPS ingresaron ${ratio.toFixed(1)} estudiantes nuevos (${lastFull.ingresantes} ingresos frente a ${lastFull.finalizados} egresos).`
+    );
+  }
+  if (totals.solicitudes > 0) {
+    const pctConcretadas = (totals.solicitudesConcretadas / totals.solicitudes) * 100;
+    highlights.push(
+      `Se gestionaron ${totals.solicitudes} solicitudes de PPS presentadas por estudiantes, de las cuales ${totals.solicitudesConcretadas} se concretaron (${pctConcretadas.toFixed(0)}%).`
+    );
+  }
+
+  return {
+    reportType: "gestion",
+    periodLabel: `Septiembre 2024 – ${MONTH_NAMES[now.getUTCMonth()]} ${currentYear}`,
+    generatedAt: now.toLocaleDateString("es-ES"),
+    totals,
+    yearlyStats,
+    comparativa12m: { antes, despues, pctCupos },
+    highlights,
+    newAgreementsDetail,
+  };
+};
+
 const fetchAllDataForReport = async () => {
   const [est, prac, lanz, conv, fin, inst, req] = await Promise.all([
     supabase.from(TABLE_NAME_ESTUDIANTES).select("*"),
@@ -415,6 +597,10 @@ export const useExecutiveReportData = ({
       if (!selection) throw new Error("A report selection must be provided.");
 
       const allData = await fetchAllDataForReport();
+
+      if (selection.mode === "gestion") {
+        return buildGestionReport(allData);
+      }
 
       const generateSingleYearReport = (year: number): ExecutiveReportData => {
         const currentMetrics = processAllData(allData, year);
@@ -534,6 +720,10 @@ export const useExecutiveReportData = ({
         newAgreements: {
           yearA: dataA.newAgreementsList,
           yearB: dataB.newAgreementsList,
+        },
+        newAgreementsDetail: {
+          yearA: dataA.newAgreementsDetail,
+          yearB: dataB.newAgreementsDetail,
         },
         ppsRequests: {
           yearA: dataA.ppsRequests,

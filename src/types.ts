@@ -194,11 +194,11 @@ export interface Attachment {
  * Reemplaza al viejo `ReportType` hardcodeado a 2024/2025: ahora cualquier año
  * es válido y el comparativo acepta dos años arbitrarios.
  */
-export type ReportMode = "single" | "comparative";
+export type ReportMode = "single" | "comparative" | "gestion";
 
 export interface ReportSelection {
   mode: ReportMode;
-  /** Año principal del balance. */
+  /** Año principal del balance (ignorado en modo "gestion"). */
   year: number;
   /** Año contra el cual comparar (solo en modo "comparative"). Por defecto year - 1. */
   compareYear?: number;
@@ -207,8 +207,9 @@ export interface ReportSelection {
 export interface TimelineMonthData {
   monthName: string;
   ppsCount: number;
+  /** Total de cupos del mes, sin contar instituciones de cupo ilimitado. */
   cuposTotal: number;
-  institutions: { name: string; cupos: number; variants: string[] }[];
+  institutions: { name: string; cupos: number; variants: string[]; unlimited?: boolean }[];
 }
 
 interface KPISnapshot {
@@ -242,6 +243,8 @@ export interface NewAgreementDetail {
   totalCupos: number;
   totalEstudiantes: number;
   porAnio: NewAgreementYearStat[];
+  /** PPS excepcional de cupo ilimitado: se muestra "Ilimitado" en vez de cupos. */
+  cupoIlimitado?: boolean;
 }
 
 export interface ExecutiveReportData {
@@ -288,10 +291,62 @@ export interface ComparativeExecutiveReportData {
   };
   launchesByMonth: { yearA: TimelineMonthData[]; yearB: TimelineMonthData[] };
   newAgreements: { yearA: string[]; yearB: string[] };
+  newAgreementsDetail: { yearA: NewAgreementDetail[]; yearB: NewAgreementDetail[] };
   ppsRequests: { yearA: PPSRequestSummary[]; yearB: PPSRequestSummary[] };
 }
 
-export type AnyReportData = ExecutiveReportData | ComparativeExecutiveReportData;
+/**
+ * Informe integral de la gestión de la coordinación actual, iniciada en
+ * septiembre de 2024. Cuantitativo por año calendario + lectura cualitativa
+ * autogenerada a partir de los datos.
+ */
+export interface GestionYearStat {
+  year: number;
+  /** Etiqueta legible del período: "2024 (sept–dic)", "2026 (en curso)". */
+  label: string;
+  isPartial: boolean;
+  lanzamientos: number;
+  cupos: number;
+  conveniosNuevos: number;
+  ingresantes: number;
+  finalizados: number;
+  solicitudes: number;
+  solicitudesConcretadas: number;
+}
+
+export interface GestionReportData {
+  reportType: "gestion";
+  /** Ej.: "Septiembre 2024 – Julio 2026". */
+  periodLabel: string;
+  generatedAt: string;
+  totals: {
+    lanzamientos: number;
+    cupos: number;
+    conveniosNuevos: number;
+    ingresantes: number;
+    finalizados: number;
+    solicitudes: number;
+    solicitudesConcretadas: number;
+    institucionesActivas: number;
+    estudiantesColocados: number;
+  };
+  yearlyStats: GestionYearStat[];
+  /** Oferta comparada: primeros 12 meses de gestión vs los 12 meses previos. */
+  comparativa12m: {
+    antes: { lanzamientos: number; cupos: number };
+    despues: { lanzamientos: number; cupos: number };
+    pctCupos: number | null;
+  };
+  /** Lectura cualitativa autogenerada (bullets del resumen ejecutivo). */
+  highlights: string[];
+  /** Todos los convenios nuevos firmados durante la gestión, con ficha. */
+  newAgreementsDetail: NewAgreementDetail[];
+}
+
+export type AnyReportData =
+  | ExecutiveReportData
+  | ComparativeExecutiveReportData
+  | GestionReportData;
 
 export interface StudentInfo {
   legajo: string;

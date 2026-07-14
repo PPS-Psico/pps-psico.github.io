@@ -25,22 +25,46 @@ import {
   TABLE_NAME_INSTITUCIONES,
   TABLE_NAME_FINALIZACION,
   TABLE_NAME_ESTUDIANTES,
+  TABLE_NAME_PRACTICAS,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_NOMBRE_PPS_CONVOCATORIAS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+  FIELD_ORIENTACIONES_INSTITUCIONES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_FECHA_FINALIZACION_ESTUDIANTES,
 } from "../constants";
 import { getGroupName, normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
+import { isUnlimitedCupoInstitution } from "../utils/unlimitedCupos";
 import type { StudentInfo } from "../types";
+
+// IDs de lanzamientos de PPS de cupo ilimitado (Fundación Tiempo, Ulloa). Sus
+// convocatorias se excluyen de las métricas de presión (Dinámica del ciclo,
+// flujos YTD): al aceptar a casi todos los postulantes, no son representativas
+// de la competencia por lugar del resto de las convocatorias.
+const fetchUnlimitedLaunchIds = async (): Promise<Set<string>> => {
+  const ids = new Set<string>();
+  try {
+    const { data } = await supabase
+      .from(TABLE_NAME_LANZAMIENTOS_PPS)
+      .select(`id, ${FIELD_NOMBRE_PPS_LANZAMIENTOS}`);
+    (data || []).forEach((l: Record<string, unknown>) => {
+      if (isUnlimitedCupoInstitution(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])) ids.add(String(l.id));
+    });
+  } catch {
+    /* sin acceso a lanzamientos → no se excluye nada */
+  }
+  return ids;
+};
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 export type Tone = "accent" | "warn" | "ok" | "ai" | "ink";
@@ -146,6 +170,10 @@ export const useMetricsHeredados = ({
 //   · Concreción  → % de postulados que ya consiguió lugar
 // Todo en PERSONAS, acotado al año. NO usa "cupos ofrecidos" (dato sucio por
 // cargas erróneas tipo Fundación Tiempo 4×250).
+// Las convocatorias de cupo ilimitado (Fundación Tiempo, Ulloa) se excluyen de
+// la demanda: no hay competencia por lugar, así la métrica refleja la presión
+// real sobre el resto de las convocatorias. La SELECCIÓN en ellas sí cuenta
+// como "con lugar" (el alumno efectivamente consiguió práctica).
 // ════════════════════════════════════════════════════════════════════════════
 export interface DinamicaCiclo {
   postulados: number; // alumnos distintos que se postularon este año
@@ -183,21 +211,30 @@ export const useMetricsDinamica = ({
       const seleccionados = new Set<string>();
       let postulaciones = 0;
       try {
+        const unlimitedIds = await fetchUnlimitedLaunchIds();
         const { data } = await supabase
           .from(TABLE_NAME_CONVOCATORIAS)
-          .select(`estudiante_id, ${FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS}`)
+          .select(
+            `estudiante_id, ${FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS}, ${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}`
+          )
           .gte("created_at", start)
           .lt("created_at", end);
         const rows = (data || []) as Array<Record<string, unknown>>;
-        postulaciones = rows.length;
         rows.forEach((r) => {
           const sid = r.estudiante_id ? String(r.estudiante_id) : "";
           if (!sid) return;
-          postulados.add(sid);
           const e = normalizeStringForComparison(
             String(r[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] || "")
           );
+          // La selección cuenta siempre (el alumno ya tiene lugar), incluso en
+          // PPS de cupo ilimitado.
           if (ESTADOS_SELECCIONADO.includes(e)) seleccionados.add(sid);
+          // Pero esas convocatorias no cuentan como demanda: no compiten por
+          // lugar y diluirían la presión real del ciclo.
+          const lanzId = String(r[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] || "");
+          if (lanzId && unlimitedIds.has(lanzId)) return;
+          postulaciones += 1;
+          postulados.add(sid);
         });
       } catch {
         return empty;
@@ -560,6 +597,455 @@ export const useHermesActivity = ({
         /* tabla ausente */
       }
       return { total: whatsapp + gmail, whatsapp, gmail };
+    },
+  });
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// DETALLE DE PPS LANZADAS (anexo del Reporte ejecutivo)
+// Todas las convocatorias del año, una fila por lanzamiento: orientación,
+// cupos ofrecidos, fecha de inicio, horas acreditadas y demanda (postulaciones
+// totales y seleccionados por convocatoria, leídos de `convocatorias`).
+// ════════════════════════════════════════════════════════════════════════════
+export interface ReportLaunch {
+  id: string;
+  nombre: string;
+  orient: OrientKey;
+  cupos: number;
+  postulaciones: number;
+  seleccionados: number;
+  /**
+   * true cuando la convocatoria no tiene estado de selección ni prácticas
+   * cargadas pero sí postulaciones y ya inició: `seleccionados` se estima
+   * como min(cupos, postulaciones). El anexo lo marca con asterisco.
+   */
+  selEstimado: boolean;
+  fechaInicio: Date | null;
+  horas: number | null;
+}
+
+export const useReportLaunches = ({
+  year,
+  isTestingMode = false,
+}: {
+  year: number;
+  isTestingMode?: boolean;
+}) => {
+  return useQuery({
+    queryKey: ["metricsReportLaunches", year, isTestingMode],
+    enabled: !isTestingMode,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<ReportLaunch[]> => {
+      const { start, end } = range(year);
+      const { data: launchesRaw } = await supabase
+        .from(TABLE_NAME_LANZAMIENTOS_PPS)
+        .select(
+          `id, ${FIELD_NOMBRE_PPS_LANZAMIENTOS}, ${FIELD_ORIENTACION_LANZAMIENTOS}, ${FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS}, ${FIELD_FECHA_INICIO_LANZAMIENTOS}, ${FIELD_HORAS_ACREDITADAS_LANZAMIENTOS}`
+        )
+        .gte(FIELD_FECHA_INICIO_LANZAMIENTOS, start.slice(0, 10))
+        .lt(FIELD_FECHA_INICIO_LANZAMIENTOS, end.slice(0, 10))
+        .order(FIELD_FECHA_INICIO_LANZAMIENTOS, { ascending: true });
+      const launches = (launchesRaw || []) as Array<Record<string, unknown>>;
+      if (!launches.length) return [];
+
+      // Demanda por lanzamiento. Filtramos por lanzamiento_id (no created_at):
+      // los alumnos pueden inscribirse en un año distinto al de inicio de la PPS.
+      const launchIds = launches.map((l) => String(l.id));
+      const postByLaunch = new Map<string, number>();
+      const selByLaunch = new Map<string, number>();
+      try {
+        const { data: convsRaw } = await supabase
+          .from(TABLE_NAME_CONVOCATORIAS)
+          .select(
+            `${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}, ${FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS}`
+          )
+          .in(FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, launchIds);
+        ((convsRaw || []) as Array<Record<string, unknown>>).forEach((c) => {
+          const rawLanz = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
+          const lanzId = String(Array.isArray(rawLanz) ? rawLanz[0] : rawLanz);
+          if (!lanzId) return;
+          postByLaunch.set(lanzId, (postByLaunch.get(lanzId) || 0) + 1);
+          const e = normalizeStringForComparison(
+            String(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] || "")
+          );
+          if (ESTADOS_SELECCIONADO.includes(e))
+            selByLaunch.set(lanzId, (selByLaunch.get(lanzId) || 0) + 1);
+        });
+      } catch {
+        /* sin convocatorias accesibles → demanda en 0 */
+      }
+
+      // Muchas selecciones no quedan asentadas en convocatorias: la fuente real
+      // es la práctica creada. Contamos prácticas vinculadas al lanzamiento y
+      // usamos el mayor de los dos conteos.
+      const pracByLaunch = new Map<string, number>();
+      try {
+        const { data: pracRaw } = await supabase
+          .from(TABLE_NAME_PRACTICAS)
+          .select(FIELD_LANZAMIENTO_VINCULADO_PRACTICAS)
+          .in(FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, launchIds);
+        ((pracRaw || []) as Array<Record<string, unknown>>).forEach((p) => {
+          const raw = p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
+          const lanzId = String(Array.isArray(raw) ? raw[0] : raw);
+          if (!lanzId) return;
+          pracByLaunch.set(lanzId, (pracByLaunch.get(lanzId) || 0) + 1);
+        });
+      } catch {
+        /* sin prácticas accesibles → solo cuenta convocatorias */
+      }
+
+      const hoy = new Date();
+      return launches.map((l) => {
+        const id = String(l.id);
+        const horas = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]);
+        const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
+        const postulaciones = postByLaunch.get(id) || 0;
+        const fechaInicio = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
+        const selReal = Math.max(selByLaunch.get(id) || 0, pracByLaunch.get(id) || 0);
+        // Convocatoria ya iniciada, con postulantes, pero sin selección asentada
+        // en el sistema → estimamos por cupos (nunca más que los postulantes).
+        const selEstimado =
+          selReal === 0 && postulaciones > 0 && fechaInicio !== null && fechaInicio < hoy;
+        return {
+          id,
+          nombre: String(l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre").trim(),
+          orient: ORIENT_FROM_STRING(l[FIELD_ORIENTACION_LANZAMIENTOS] as string),
+          cupos,
+          postulaciones,
+          seleccionados: selEstimado ? Math.min(cupos, postulaciones) : selReal,
+          selEstimado,
+          fechaInicio,
+          horas: Number.isFinite(horas) && horas > 0 ? horas : null,
+        };
+      });
+    },
+  });
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// FLUJOS ACUMULADOS AL MISMO DÍA DEL AÑO (comparativo YTD)
+// Cuenta actividad del año acotada al mismo día del calendario que hoy, para
+// comparar dos ciclos "hasta el mismo momento" y no un año completo contra otro
+// en curso. Sólo métricas de flujo (se acumulan): postulaciones, alumnos
+// postulados y finalizados. Las de stock (matrícula activa, etc.) no se pueden
+// recortar sin snapshots históricos, así que quedan fuera del modo YTD.
+// ════════════════════════════════════════════════════════════════════════════
+export interface YtdFlows {
+  year: number;
+  cutoffISO: string;
+  postulaciones: number;
+  postulados: number;
+  finalizados: number;
+}
+
+// Límite superior exclusivo: inicio del día siguiente al mismo día/mes de hoy,
+// en el año pedido, acotado al fin de ese año. Se calcula en UTC para alinear
+// con las fechas de la base (parseToUTCDate devuelve medianoche UTC).
+export const ytdCutoff = (year: number, now = new Date()): Date => {
+  const cut = new Date(Date.UTC(year, now.getMonth(), now.getDate() + 1));
+  const yearEnd = new Date(Date.UTC(year + 1, 0, 1));
+  return cut < yearEnd ? cut : yearEnd;
+};
+
+export const useYtdFlows = ({
+  year,
+  isTestingMode = false,
+}: {
+  year: number;
+  isTestingMode?: boolean;
+}) => {
+  return useQuery({
+    queryKey: ["ytdFlows", year, isTestingMode],
+    enabled: !isTestingMode,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<YtdFlows> => {
+      const startISO = `${year}-01-01T00:00:00Z`;
+      const cutoff = ytdCutoff(year);
+      const endISO = cutoff.toISOString();
+      const start = new Date(startISO);
+
+      // Postulaciones y alumnos distintos que se postularon (convocatorias del
+      // año creadas hasta el corte). Mismo criterio que useMetricsDinamica:
+      // las convocatorias de cupo ilimitado no cuentan como demanda.
+      let postulaciones = 0;
+      const postulados = new Set<string>();
+      try {
+        const unlimitedIds = await fetchUnlimitedLaunchIds();
+        const { data } = await supabase
+          .from(TABLE_NAME_CONVOCATORIAS)
+          .select(`estudiante_id, ${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}`)
+          .gte("created_at", startISO)
+          .lt("created_at", endISO);
+        const rows = (data || []) as Array<Record<string, unknown>>;
+        rows.forEach((r) => {
+          const lanzId = String(r[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] || "");
+          if (lanzId && unlimitedIds.has(lanzId)) return;
+          postulaciones += 1;
+          if (r.estudiante_id) postulados.add(String(r.estudiante_id));
+        });
+      } catch {
+        /* tabla/permiso ausente → 0 */
+      }
+
+      // Finalizados hasta el corte (solicitud de finalización + fecha_finalizacion
+      // del estudiante). Mismo criterio que useFinalizadosSeries, acotado al día.
+      const finalizados = new Set<string>();
+      try {
+        const { data } = await supabase
+          .from(TABLE_NAME_FINALIZACION)
+          .select(`estudiante_id, ${FIELD_FECHA_SOLICITUD_FINALIZACION}, created_at`);
+        (data || []).forEach((f: Record<string, unknown>) => {
+          const d = parseToUTCDate(
+            (f[FIELD_FECHA_SOLICITUD_FINALIZACION] as string) || (f.created_at as string)
+          );
+          const sid = String(f.estudiante_id || "");
+          if (d && sid && d >= start && d < cutoff) finalizados.add(sid);
+        });
+      } catch {
+        /* ignore */
+      }
+      try {
+        const { data } = await supabase
+          .from(TABLE_NAME_ESTUDIANTES)
+          .select(`id, ${FIELD_FECHA_FINALIZACION_ESTUDIANTES}`)
+          .not(FIELD_FECHA_FINALIZACION_ESTUDIANTES, "is", null);
+        (data || []).forEach((s: Record<string, unknown>) => {
+          const d = parseToUTCDate(s[FIELD_FECHA_FINALIZACION_ESTUDIANTES] as string);
+          const sid = String(s.id || "");
+          if (d && sid && d >= start && d < cutoff) finalizados.add(sid);
+        });
+      } catch {
+        /* ignore */
+      }
+
+      return {
+        year,
+        cutoffISO: endISO,
+        postulaciones,
+        postulados: postulados.size,
+        finalizados: finalizados.size,
+      };
+    },
+  });
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// FOCO · ESTUDIANTES SIN NINGUNA PPS (análisis del Reporte ejecutivo)
+// Para cada alumno del snapshot sin_pps (mismo RPC que usa el dashboard):
+// a cuántas convocatorias se anotó (en el año y en total) y a cuáles, más si
+// ya quedó seleccionado en alguna (práctica por iniciar).
+// ════════════════════════════════════════════════════════════════════════════
+export interface SinPpsDetail {
+  nombre: string;
+  legajo: string;
+  postulacionesYear: number;
+  postulacionesTotal: number;
+  seleccionado: boolean;
+  convocatorias: string[];
+}
+
+export const useSinPpsDetail = ({
+  year,
+  isTestingMode = false,
+}: {
+  year: number;
+  isTestingMode?: boolean;
+}) => {
+  return useQuery({
+    queryKey: ["sinPpsDetail", year, isTestingMode],
+    enabled: !isTestingMode,
+    staleTime: 1000 * 60 * 2,
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<SinPpsDetail[]> => {
+      try {
+        // Misma fuente que el KPI/modal del dashboard, para que el conteo cierre.
+        const { data: listRaw } = await supabase.rpc("get_sin_pps_list", { p_year: year });
+        const list = (listRaw || []) as Array<{ nombre?: string; legajo?: string }>;
+        if (!list.length) return [];
+
+        const legajos = list.map((s) => String(s.legajo || "")).filter(Boolean);
+        const { data: estRaw } = await supabase
+          .from(TABLE_NAME_ESTUDIANTES)
+          .select(`id, ${FIELD_LEGAJO_ESTUDIANTES}, ${FIELD_NOMBRE_ESTUDIANTES}`)
+          .in(FIELD_LEGAJO_ESTUDIANTES, legajos);
+        const ests = (estRaw || []) as Array<Record<string, unknown>>;
+        if (!ests.length) return [];
+
+        interface Agg {
+          year: number;
+          total: number;
+          seleccionado: boolean;
+          names: Map<string, string>; // nombre PPS → fecha más reciente (para ordenar)
+        }
+        const aggById = new Map<string, Agg>();
+        ests.forEach((e) =>
+          aggById.set(String(e.id), {
+            year: 0,
+            total: 0,
+            seleccionado: false,
+            names: new Map(),
+          })
+        );
+
+        const { data: convsRaw } = await supabase
+          .from(TABLE_NAME_CONVOCATORIAS)
+          .select(
+            `estudiante_id, ${FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS}, ${FIELD_NOMBRE_PPS_CONVOCATORIAS}, created_at`
+          )
+          .in(
+            "estudiante_id",
+            ests.map((e) => String(e.id))
+          );
+        ((convsRaw || []) as Array<Record<string, unknown>>).forEach((c) => {
+          const agg = aggById.get(String(c.estudiante_id || ""));
+          if (!agg) return;
+          agg.total += 1;
+          const d = parseToUTCDate(c.created_at as string);
+          if (d && d.getUTCFullYear() === year) agg.year += 1;
+          const estado = normalizeStringForComparison(
+            String(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] || "")
+          );
+          if (ESTADOS_SELECCIONADO.includes(estado)) agg.seleccionado = true;
+          const nombre = String(c[FIELD_NOMBRE_PPS_CONVOCATORIAS] || "").trim();
+          if (nombre) {
+            const prev = agg.names.get(nombre);
+            const iso = d ? d.toISOString() : "";
+            if (!prev || iso > prev) agg.names.set(nombre, iso);
+          }
+        });
+
+        return ests
+          .map((e) => {
+            const agg = aggById.get(String(e.id))!;
+            return {
+              nombre: String(e[FIELD_NOMBRE_ESTUDIANTES] || "Estudiante"),
+              legajo: String(e[FIELD_LEGAJO_ESTUDIANTES] || "—"),
+              postulacionesYear: agg.year,
+              postulacionesTotal: agg.total,
+              seleccionado: agg.seleccionado,
+              convocatorias: Array.from(agg.names.entries())
+                .sort((a, b) => b[1].localeCompare(a[1]))
+                .map(([n]) => n),
+            };
+          })
+          .sort(
+            (a, b) =>
+              a.postulacionesYear - b.postulacionesYear ||
+              a.postulacionesTotal - b.postulacionesTotal ||
+              a.nombre.localeCompare(b.nombre, "es")
+          );
+      } catch {
+        return [];
+      }
+    },
+  });
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// CONVENIOS NUEVOS · ficha por institución (Reporte ejecutivo/comparativo)
+// Instituciones con convenio firmado en el año (`convenio_nuevo` = año), con la
+// oferta que trajeron: orientación, PPS lanzadas y cupos ofrecidos. Dato clave
+// para las gestiones: qué instituciones nuevas suman y con cuánta capacidad.
+// ════════════════════════════════════════════════════════════════════════════
+export interface NewAgreement {
+  institucion: string;
+  orientaciones: OrientKey[];
+  pps: number;
+  cupos: number;
+  /** PPS excepcional de cupo (casi) ilimitado: mostrar "Ilimitado", no sumar. */
+  cupoIlimitado?: boolean;
+}
+
+export const useNewAgreements = ({
+  year,
+  isTestingMode = false,
+}: {
+  year: number;
+  isTestingMode?: boolean;
+}) => {
+  return useQuery({
+    queryKey: ["newAgreements", year, isTestingMode],
+    enabled: !isTestingMode,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<NewAgreement[]> => {
+      // 1. Instituciones con convenio nuevo del año. Agrupamos por nombre de
+      //    grupo (getGroupName) para coincidir con la identidad usada en las
+      //    métricas de lanzamientos.
+      const { data: instRaw } = await supabase
+        .from(TABLE_NAME_INSTITUCIONES)
+        .select(`${FIELD_NOMBRE_INSTITUCIONES}, ${FIELD_ORIENTACIONES_INSTITUCIONES}`)
+        // convenio_nuevo es smallint (año): comparamos con el número.
+        .eq(FIELD_CONVENIO_NUEVO_INSTITUCIONES, year);
+      const insts = (instRaw || []) as Array<Record<string, unknown>>;
+      if (!insts.length) return [];
+
+      interface Acc {
+        orientDeclared: Set<OrientKey>;
+        orientLaunch: Set<OrientKey>;
+        pps: number;
+        cupos: number;
+      }
+      const byInst = new Map<string, Acc>();
+      insts.forEach((i) => {
+        const nombre = getGroupName(String(i[FIELD_NOMBRE_INSTITUCIONES] || ""));
+        if (!nombre) return;
+        const acc = byInst.get(nombre) || {
+          orientDeclared: new Set<OrientKey>(),
+          orientLaunch: new Set<OrientKey>(),
+          pps: 0,
+          cupos: 0,
+        };
+        // orientaciones declaradas en la institución (texto libre, puede traer varias).
+        String(i[FIELD_ORIENTACIONES_INSTITUCIONES] || "")
+          .split(/[,;/]/)
+          .forEach((o) => {
+            const t = o.trim();
+            if (t) acc.orientDeclared.add(ORIENT_FROM_STRING(t));
+          });
+        byInst.set(nombre, acc);
+      });
+      if (byInst.size === 0) return [];
+
+      // 2. Lanzamientos del año → cupos + orientación real por institución.
+      const { start, end } = range(year);
+      const { data: launchRaw } = await supabase
+        .from(TABLE_NAME_LANZAMIENTOS_PPS)
+        .select(
+          `${FIELD_NOMBRE_PPS_LANZAMIENTOS}, ${FIELD_ORIENTACION_LANZAMIENTOS}, ${FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS}`
+        )
+        .gte(FIELD_FECHA_INICIO_LANZAMIENTOS, start.slice(0, 10))
+        .lt(FIELD_FECHA_INICIO_LANZAMIENTOS, end.slice(0, 10));
+      ((launchRaw || []) as Array<Record<string, unknown>>).forEach((l) => {
+        const nombre = getGroupName(String(l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || ""));
+        const acc = byInst.get(nombre);
+        if (!acc) return;
+        acc.pps += 1;
+        // Las PPS de cupo ilimitado no suman cupos: se muestran "Ilimitado".
+        if (!isUnlimitedCupoInstitution(nombre)) {
+          acc.cupos += Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
+        }
+        acc.orientLaunch.add(ORIENT_FROM_STRING(l[FIELD_ORIENTACION_LANZAMIENTOS] as string));
+      });
+
+      return Array.from(byInst.entries())
+        .map(([institucion, acc]) => {
+          // Preferimos la orientación real de los lanzamientos; si la institución
+          // aún no lanzó nada, usamos la declarada en su ficha.
+          const set = acc.orientLaunch.size ? acc.orientLaunch : acc.orientDeclared;
+          let orientaciones: OrientKey[] = Array.from(set).filter((o) => o !== "sindefinir");
+          if (orientaciones.length === 0 && set.has("sindefinir")) orientaciones = ["sindefinir"];
+          return {
+            institucion,
+            orientaciones,
+            pps: acc.pps,
+            cupos: acc.cupos,
+            cupoIlimitado: isUnlimitedCupoInstitution(institucion),
+          };
+        })
+        .sort((a, b) => b.cupos - a.cupos || a.institucion.localeCompare(b.institucion, "es"));
     },
   });
 };

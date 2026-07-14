@@ -13,7 +13,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useMetricsData, useMetricsYears } from "../../hooks/useMetricsData";
-import { useMetricsDinamica, useHermesActivity } from "../../hooks/useMetricsExtras";
+import { useMetricsDinamica } from "../../hooks/useMetricsExtras";
 import { useAdminPreferences } from "../../contexts/AdminPreferencesContext";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { METRICAS_V3_CSS } from "./metricasV3Styles";
@@ -33,6 +33,7 @@ const ActiveInstitutionsReport = lazy(
 const ExecutiveReportGenerator = lazy(
   () => import("../../components/admin/ExecutiveReportGenerator")
 );
+const GestionReportPanel = lazy(() => import("../../components/admin/GestionReportPanel"));
 const HermesIntelligenceDashboard = lazy(() =>
   import("../../components/admin/metricas/HermesIntelligenceDashboard").then((m) => ({
     default: m.HermesIntelligenceDashboard,
@@ -129,12 +130,11 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
   const { data: metrics, isLoading, error } = useMetricsData({ targetYear: year, isTestingMode });
   const { data: prevMetrics } = useMetricsData({ targetYear: year - 1, isTestingMode });
 
-  // Dinámica del ciclo + Hermes se piden a nivel vista para alimentar el reporte.
+  // Dinámica del ciclo se pide a nivel vista para alimentar el reporte.
   const { data: dinamica } = useMetricsDinamica({
     year,
     isTestingMode,
   });
-  const { data: hermes } = useHermesActivity({ year, isTestingMode });
 
   // Datos del año a comparar (solo se piden si el comparativo está activo).
   const compareActive = compareEnabled && compareYear !== year;
@@ -270,19 +270,27 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
             )}
             {tab === "timeline" && <TimelineView year={year} isTestingMode={isTestingMode} />}
             {tab === "reporte" && (
-              <ExecutiveReport
-                year={year}
-                metrics={metrics}
-                dinamica={dinamica}
-                hermesTotal={hermes?.total ?? 0}
-                compareEnabled={compareEnabled}
-                compareYear={compareYear}
-                yearOptions={yearOptions}
-                metricsB={compareActive ? metricsB : null}
-                dinamicaB={compareActive ? dinamicaB : null}
-                onToggleCompare={setCompareEnabled}
-                onCompareYearChange={setCompareYear}
-              />
+              <>
+                <Suspense fallback={null}>
+                  <ErrorBoundary>
+                    <GestionReportPanel isTestingMode={isTestingMode} />
+                  </ErrorBoundary>
+                </Suspense>
+                <ExecutiveReport
+                  year={year}
+                  metrics={metrics}
+                  prevMetrics={prevMetrics}
+                  dinamica={dinamica}
+                  isTestingMode={isTestingMode}
+                  compareEnabled={compareEnabled}
+                  compareYear={compareYear}
+                  yearOptions={yearOptions}
+                  metricsB={compareActive ? metricsB : null}
+                  dinamicaB={compareActive ? dinamicaB : null}
+                  onToggleCompare={setCompareEnabled}
+                  onCompareYearChange={setCompareYear}
+                />
+              </>
             )}
             {tab === "hermes" && (
               <Suspense
@@ -337,6 +345,7 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
 
             {/* — Footer — */}
             <footer
+              className="mv3-footer"
               style={{
                 marginTop: 40,
                 paddingTop: 24,
