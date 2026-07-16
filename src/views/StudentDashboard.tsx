@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ErrorState from "../components/ErrorState";
 import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
@@ -280,6 +280,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   );
   const currentActiveTab = activeTab ?? internalActiveTab;
   const setCurrentActiveTab = onTabChange ?? setInternalActiveTab;
+  const mobileTabBarRef = useRef<HTMLDivElement>(null);
+  const mobileTabRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
+  const [mobileIndicator, setMobileIndicator] = useState({ x: 0, width: 0, ready: false });
 
   const selectedOrientacion = (studentDetails?.[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "") as
     | Orientacion
@@ -669,6 +672,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     ]
   );
 
+  useLayoutEffect(() => {
+    const tabBar = mobileTabBarRef.current;
+    const activeButton = mobileTabRefs.current[currentActiveTab];
+    if (!tabBar || !activeButton) return;
+
+    const updateIndicator = () => {
+      setMobileIndicator({
+        x: activeButton.offsetLeft,
+        width: activeButton.offsetWidth,
+        ready: true,
+      });
+    };
+
+    updateIndicator();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateIndicator);
+      return () => window.removeEventListener("resize", updateIndicator);
+    }
+    const observer = new ResizeObserver(updateIndicator);
+    observer.observe(tabBar);
+    observer.observe(activeButton);
+    return () => observer.disconnect();
+  }, [currentActiveTab, studentDataTabs]);
+
   const renderTabContent = (tabId: TabId, isMobileLayout: boolean) => {
     /* Secciones con datos del alumno piden sesión; Guía, Descargas y
        Preguntas son material de consulta público. */
@@ -810,24 +837,36 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               data-accent="teal"
             >
               <div
-                className="flex gap-2 overflow-x-auto py-2.5 px-4 scrollbar-none backdrop-blur-md"
+                ref={mobileTabBarRef}
+                className="relative flex gap-2 overflow-x-auto py-2.5 px-4 scrollbar-none backdrop-blur-md"
                 style={{
                   background: "color-mix(in oklab, var(--bg-elevated) 85%, transparent)",
                   borderBottom: "1px solid var(--line)",
                 }}
               >
+                <span
+                  className={`student-mobile-tabs__indicator ${mobileIndicator.ready ? "is-ready" : ""}`}
+                  style={{
+                    width: `${mobileIndicator.width}px`,
+                    transform: `translateX(${mobileIndicator.x}px)`,
+                  }}
+                  aria-hidden
+                />
                 {studentDataTabs.map((tab) => {
                   const on = tab.id === currentActiveTab;
                   return (
                     <button
                       key={tab.id}
+                      ref={(element) => {
+                        mobileTabRefs.current[tab.id] = element;
+                      }}
                       type="button"
                       onClick={() => setCurrentActiveTab(tab.id)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1.5"
+                      className="student-mobile-tabs__button relative z-10 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap active:scale-95 flex items-center gap-1.5"
                       style={{
-                        background: on ? "var(--accent)" : "var(--bg-sunken)",
+                        background: on ? "transparent" : "var(--bg-sunken)",
                         color: on ? "var(--on-accent)" : "var(--ink-soft)",
-                        border: on ? "none" : "1px solid var(--line)",
+                        border: on ? "1px solid transparent" : "1px solid var(--line)",
                       }}
                     >
                       {tab.label}

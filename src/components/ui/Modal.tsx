@@ -10,6 +10,8 @@ interface ModalProps {
 
 const Modal: React.FC<ModalProps> = ({ title, message, isOpen, onClose }) => {
   const [mounted, setMounted] = useState(false);
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -17,7 +19,25 @@ const Modal: React.FC<ModalProps> = ({ title, message, isOpen, onClose }) => {
   }, []);
 
   useEffect(() => {
+    let animationFrame: number | undefined;
+    let exitTimer: number | undefined;
+
     if (isOpen) {
+      setShouldRender(true);
+      animationFrame = window.requestAnimationFrame(() => setIsVisible(true));
+    } else {
+      setIsVisible(false);
+      exitTimer = window.setTimeout(() => setShouldRender(false), 160);
+    }
+
+    return () => {
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
+      if (exitTimer !== undefined) window.clearTimeout(exitTimer);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (shouldRender) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -25,20 +45,20 @@ const Modal: React.FC<ModalProps> = ({ title, message, isOpen, onClose }) => {
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen]);
+  }, [shouldRender]);
 
-  if (!isOpen || !mounted) return null;
+  if (!shouldRender || !mounted) return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[20000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-opacity duration-300 animate-fade-in"
+      className={`ui-modal-overlay fixed inset-0 z-[20000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 ${isVisible ? "is-visible" : ""}`}
       aria-labelledby="modal-title"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md sm:max-w-lg text-center transform transition duration-300 scale-100 opacity-100 border border-slate-200 dark:border-slate-700"
+        className="ui-modal-dialog bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md sm:max-w-lg text-center border border-slate-200 dark:border-slate-700"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 w-14 h-14 rounded-full flex items-center justify-center mb-5">

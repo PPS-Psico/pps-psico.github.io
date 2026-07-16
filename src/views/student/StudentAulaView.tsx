@@ -59,7 +59,7 @@ interface FaqGroup {
   items: { q: string; a: React.ReactNode }[];
 }
 
-/* Bloques de la guía: mismo recorrido en seis etapas que la versión editorial
+/* Bloques de la guía: mismo recorrido en siete etapas que la versión editorial
    del campus (guia.html), traducido al lenguaje visual del panel. */
 interface GuideBlock {
   num: string;
@@ -180,23 +180,24 @@ const guideBlocks: GuideBlock[] = [
   {
     num: "02",
     kicker: "Acceso",
-    title: "Dónde empezar",
+    title: "Tu cuenta abre el recorrido",
     summary:
-      "Tu cuenta de Mi Panel es la llave para inscribirte, seguir tus estados y pedir la acreditación final.",
+      "Mi Panel te identifica como estudiante: completás los datos restantes y creás tu cuenta.",
     bullets: [
-      "Generá o usá tu usuario con número de legajo.",
-      "Ubicate primero: revisá esta guía y las preguntas frecuentes; casi todas las dudas se resuelven ahí.",
-      "Sumate al grupo de difusión para recibir cada convocatoria al instante.",
+      "Revisá especialmente tu correo y tu teléfono: son los canales que usan coordinación y las instituciones para contactarte.",
+      "Un dato incorrecto puede impedir que recibas el resultado de una selección o el contacto para iniciar la práctica.",
+      "Instalá la aplicación en el celular para acceder mejor a avisos, estados y documentación.",
     ],
   },
   {
     num: "03",
     kicker: "Convocatorias",
-    title: "Inscribite",
-    summary: "Las convocatorias se publican durante todo el ciclo y se gestionan desde el panel.",
+    title: "Elegí con criterio",
+    summary: "Inscribite en las convocatorias y declarale al sistema toda tu disponibilidad real.",
     bullets: [
-      "Postulate desde convocatorias abiertas a las que te interesen.",
-      "Si quedás seleccionado/a, recibís un aviso por correo y tu estado se actualiza en el panel.",
+      "Podés seleccionar todos los horarios disponibles que realmente puedas realizar.",
+      "Los cupos de turno tarde son menos frecuentes y se priorizan para estudiantes que trabajan.",
+      "Si quedás seleccionado/a, recibís un aviso por correo y el resultado se actualiza en Mi Panel.",
     ],
     note: {
       tag: "Antes de comenzar",
@@ -212,8 +213,8 @@ const guideBlocks: GuideBlock[] = [
   {
     num: "04",
     kicker: "Compromiso",
-    title: "Asistencia",
-    summary: "El umbral que define si la práctica se acredita.",
+    title: "Asistencia y responsabilidad profesional",
+    summary: "Estar, comunicarte y sostener una actitud ética son condiciones de aprobación.",
     stat: {
       value: "80",
       unit: "%",
@@ -229,9 +230,9 @@ const guideBlocks: GuideBlock[] = [
       key: true,
       text: (
         <>
-          Es obligatorio{" "}
-          <strong>justificar la ausencia y avisar a la institución con antelación</strong>. La falta
-          de aviso es el motivo más frecuente de suspensión de una PPS.
+          <strong>Una sola inasistencia sin aviso previo a la institución</strong> es motivo
+          suficiente para suspender o desaprobar la PPS. La responsabilidad, la confidencialidad y
+          una actitud proactiva se evalúan durante todo el recorrido.
         </>
       ),
     },
@@ -239,19 +240,21 @@ const guideBlocks: GuideBlock[] = [
   {
     num: "05",
     kicker: "Seguimiento",
-    title: "Documentación",
-    summary: "Con qué llevás el registro de tu práctica y qué documento vale.",
+    title: "Los documentos que sostienen tu recorrido",
+    summary:
+      "Mi Panel acompaña la gestión; la evidencia oficial de la práctica se conserva aparte.",
     bullets: [
-      "Mi Panel concentra inscripción, solicitudes y avance de horas: tu referencia de gestión.",
-      "La planilla de seguimiento de horas (en Descargas) es tu control exacto, clase a clase.",
+      "Mi Panel es un seguimiento referencial, no oficial: puede editarse y podés pedir correcciones desde Mis Prácticas.",
+      "En PPS presenciales, la planilla de asistencia firmada es el único documento válido que certifica la práctica.",
+      "En PPS online, la certificación válida es el informe final aprobado.",
     ],
     note: {
       tag: "Documento válido",
       text: (
         <>
-          La <strong>planilla de asistencia firmada</strong> (o el{" "}
-          <strong>informe final aprobado</strong> en prácticas online y eventos especiales) son los
-          documentos que acreditan la realización de la PPS.
+          Si perdés la <strong>planilla de asistencia firmada</strong>, perdés el respaldo de la
+          PPS. Guardala y subila junto con el informe: además de verificar la práctica, queda como
+          copia de emergencia para la acreditación final.
         </>
       ),
     },
@@ -287,10 +290,10 @@ const guideBlocks: GuideBlock[] = [
     num: "07",
     kicker: "Acreditación",
     title: "Finalización",
-    summary: "Cuando completás los requisitos, pedís la acreditación desde Mi Panel.",
+    summary: "Cuando completás los requisitos, pedís la acreditación desde Mis Solicitudes.",
     bullets: [
       "Todos los informes de PPS corregidos y aprobados por el docente.",
-      "El pedido de acreditación se hace desde Mis Prácticas, con un clic.",
+      "El pedido de acreditación se hace desde Mis Solicitudes, con un clic.",
     ],
     note: {
       tag: "Último paso",
@@ -298,10 +301,65 @@ const guideBlocks: GuideBlock[] = [
       text: (
         <>
           Con <strong>todos los requisitos</strong> cumplidos, pedí la{" "}
-          <strong>acreditación de tus PPS</strong> desde Mi Panel para cerrar tu recorrido.
+          <strong>acreditación de tus PPS</strong> desde Mis Solicitudes para cerrar tu recorrido.
+          El trámite puede demorar hasta <strong>14 días hábiles</strong>.
         </>
       ),
     },
+  },
+];
+
+const editorialPrinciples: { icon: IconName; title: string; text: string }[] = [
+  {
+    icon: "shield",
+    title: "Ética profesional",
+    text: "Respetá a las personas, los equipos y el encuadre de cada espacio.",
+  },
+  {
+    icon: "lock",
+    title: "Confidencialidad",
+    text: "Protegé toda información clínica o institucional que conozcas.",
+  },
+  {
+    icon: "education",
+    title: "Representación UFLO",
+    text: "Tu conducta también representa a la Universidad ante la institución.",
+  },
+  {
+    icon: "bell",
+    title: "Comunicación",
+    text: "Informá a la institución cualquier ausencia o dificultad de manera inmediata.",
+  },
+  {
+    icon: "user",
+    title: "Responsabilidad",
+    text: "Cumplí horarios, tareas, acuerdos y condiciones de la convocatoria.",
+  },
+  {
+    icon: "plus",
+    title: "Actitud proactiva",
+    text: "Participá, preguntá y buscá aprender en cada instancia de la PPS.",
+  },
+];
+
+const editorialClosingSteps = [
+  {
+    num: "01",
+    lead: "30 días corridos",
+    title: "Entregá el informe",
+    text: "Contados desde la finalización de la PPS. En prácticas presenciales, adjuntá también la planilla firmada.",
+  },
+  {
+    num: "02",
+    lead: "30 días hábiles",
+    title: "Revisión académica",
+    text: "Es el plazo del equipo docente para corregir y devolver el informe.",
+  },
+  {
+    num: "03",
+    lead: "Último paso",
+    title: "Pedí la acreditación",
+    text: "Cuando todos los requisitos estén aprobados, iniciá el pedido desde Mis Solicitudes.",
   },
 ];
 
@@ -412,7 +470,7 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué reviso antes de confirmar una inscripción?",
-        a: "El formulario muestra las horas acreditables, el área y los horarios elegidos. También valida tu situación académica y la documentación requerida antes de registrar la inscripción.",
+        a: "El formulario muestra las horas acreditables, el área y los horarios elegidos. Podés seleccionar todos los horarios disponibles que realmente puedas realizar. Los cupos del turno tarde son menos frecuentes y se priorizan para estudiantes que trabajan.",
       },
       {
         q: "¿Cuándo firmo el consentimiento digital?",
@@ -445,10 +503,10 @@ const faqGroups: FaqGroup[] = [
         q: "¿Qué sucede si me ausento de la institución?",
         a: (
           <>
-            Es obligatorio <strong>justificar la ausencia</strong> y avisar al referente de la
-            institución con anticipación. Ausentarse sin aviso es una{" "}
-            <strong>falta grave de compromiso</strong> y puede ser determinante en la desaprobación
-            de la práctica.
+            Es obligatorio <strong>avisar previamente a la institución</strong> y justificar la
+            ausencia. <strong>Una sola inasistencia sin aviso</strong> es motivo suficiente para
+            suspender o desaprobar la PPS, independientemente de la justificación posterior. La
+            comunicación responsable forma parte de la evaluación profesional.
           </>
         ),
       },
@@ -487,7 +545,18 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo entrego un informe?",
-        a: "En la sección Entregas, elegís tu orientación e institución: el botón abre la tarea de Moodle correspondiente. Si la PPS fue presencial, subí la planilla de asistencia firmada junto al informe.",
+        a: "En la sección Entregas, elegís tu orientación e institución: el botón abre la tarea de Moodle correspondiente. Si la PPS fue presencial, subí siempre la planilla de asistencia firmada junto al informe. Esa copia sirve para verificar la práctica y como respaldo de emergencia.",
+      },
+      {
+        q: "¿Qué pasa si pierdo la planilla de asistencia?",
+        a: (
+          <>
+            En una PPS presencial, la <strong>planilla firmada es el único documento válido</strong>{" "}
+            que certifica la realización de la práctica y se exige para la acreditación final. Si la
+            perdés y no conservaste una copia, perdés el respaldo de esa PPS. Guardala en un lugar
+            seguro y subila junto con el informe.
+          </>
+        ),
       },
       {
         q: "¿Qué hago si no encuentro un espacio de entrega?",
@@ -564,12 +633,35 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Cuánto demora la acreditación final?",
+        a: (
+          <>
+            Una vez enviada la solicitud desde <strong>Mis Solicitudes</strong>, el trámite puede
+            demorar hasta <strong>14 días hábiles</strong>. Vas a recibir la confirmación cuando la
+            acreditación quede registrada.
+          </>
+        ),
+      },
+      {
         q: "¿Qué es Mi Panel?",
         a: (
           <>
             Es la herramienta de gestión PPS para inscripción, solicitudes, seguimiento de horas,
-            consentimiento y acreditación. La <strong>planilla de asistencia</strong> sigue siendo
-            tu respaldo oficial.
+            consentimiento y acreditación. Su información es <strong>referencial y editable</strong>
+            : no constituye un registro oficial y podés solicitar correcciones desde Mis Prácticas.
+            En una PPS presencial, la <strong>planilla de asistencia firmada</strong> es tu respaldo
+            oficial; en una PPS online, lo es el <strong>informe final aprobado</strong>.
+          </>
+        ),
+      },
+      {
+        q: "¿Qué datos debo revisar cuando creo mi cuenta?",
+        a: (
+          <>
+            Mi Panel te identifica automáticamente como estudiante y te pide completar los datos
+            restantes. Revisá con especial atención <strong>correo y teléfono</strong>: coordinación
+            y las instituciones usan esos canales para comunicar selecciones y organizar el inicio
+            de las prácticas. Un dato incorrecto puede dejarte sin esas notificaciones.
           </>
         ),
       },
@@ -699,6 +791,7 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
   );
   const [activeArea, setActiveArea] = useState<string | null>(null);
   const [activeFaq, setActiveFaq] = useState(faqGroups[0].id);
+  const [openFaq, setOpenFaq] = useState<string | null>(faqGroups[0].items[0]?.q ?? null);
   const [mailCopied, setMailCopied] = useState(false);
 
   const activeSection = section || activeSectionState;
@@ -827,20 +920,15 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
               <p className="ah-aula__lead">{selectedSection.pageLead}</p>
             </div>
             {activeSection === "guia" && (
-              <nav className="ah-aula__groute" aria-label="Etapas de la guía">
-                <span className="ah-aula__groute-line" aria-hidden />
-                {guideBlocks.map((block) => (
-                  <a key={block.num} href={`#aula-paso-${block.num}`}>
-                    <span className="ah-aula__groute-copy">
-                      <strong>{block.title}</strong>
-                      <small>{block.kicker}</small>
-                    </span>
-                    <span className="ah-aula__groute-node" aria-hidden>
-                      {block.num}
-                    </span>
-                  </a>
-                ))}
-              </nav>
+              <figure className="ah-aula__journey-art">
+                <img
+                  src={`${import.meta.env.BASE_URL}campus-pps-recorrido.png`}
+                  alt="Recorrido de la PPS en siete etapas: equipo, acceso, inscripción, compromiso, documentación, entregas y finalización."
+                  width="1915"
+                  height="821"
+                  decoding="async"
+                />
+              </figure>
             )}
           </section>
         ) : (
@@ -888,105 +976,297 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
         )}
 
         {section && activeSection === "guia" ? (
-          /* Guía como pestaña del panel: layout editorial abierto (índice de
-             etapas + capítulos con número grande), el mismo lenguaje que la
-             guía del campus pero con los tokens del panel. */
-          <>
-            <div className="ah-aula__gsteps">
-              {guideBlocks.map((block) => (
-                <article
-                  key={block.num}
-                  className={
-                    `ah-aula__gstep ah-aula__gstep--${block.num}` +
-                    (block.team ? " ah-aula__gstep--team" : "")
-                  }
-                  id={`aula-paso-${block.num}`}
-                >
-                  <div className="ah-aula__gstep-side">
-                    <span className="ah-aula__gstep-num" aria-hidden>
-                      {block.num}
+          <div className="ah-aula__editorial">
+            <section className="ah-aula__editorial-team" aria-labelledby="editorial-team-title">
+              <header className="ah-aula__editorial-heading ah-aula__editorial-heading--compact">
+                <span className="ah-aula__editorial-num" aria-hidden>
+                  01
+                </span>
+                <div>
+                  <span className="ah-aula__editorial-eyebrow">Equipo PPS</span>
+                  <h2 id="editorial-team-title">El equipo que te acompaña</h2>
+                </div>
+              </header>
+              <div className="ah-aula__editorial-people">
+                {campusTeam.map((person) => (
+                  <div key={person.initials}>
+                    <span aria-hidden>{person.initials}</span>
+                    <p>
+                      <strong>{person.name}</strong>
+                      <small>{person.role}</small>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="ah-aula__editorial-opening">
+              <article className="ah-aula__editorial-chapter" aria-labelledby="editorial-account">
+                <header className="ah-aula__editorial-heading">
+                  <span className="ah-aula__editorial-num" aria-hidden>
+                    02
+                  </span>
+                  <div>
+                    <span className="ah-aula__editorial-eyebrow">Primer acceso</span>
+                    <h2 id="editorial-account">Tu cuenta abre el recorrido</h2>
+                  </div>
+                </header>
+                <p className="ah-aula__editorial-pull">
+                  El primer paso para una experiencia ordenada y sin contratiempos.
+                </p>
+                <p className="ah-aula__editorial-copy">
+                  Al ingresar, Mi Panel te identifica automáticamente como estudiante. Solo tenés
+                  que completar los datos restantes y crear tu cuenta.
+                </p>
+                <ul className="ah-aula__editorial-checks">
+                  <li>
+                    <Icon name="check" size={17} />
+                    <span>
+                      <strong>Completá tus datos personales</strong> y comprobá que coincidan con tu
+                      documentación y tu legajo.
                     </span>
-                    <span className="ah-aula__gstep-kick">{block.kicker}</span>
-                    <p className="ah-aula__gstep-sum">{block.summary}</p>
+                  </li>
+                  <li>
+                    <Icon name="bell" size={17} />
+                    <span>
+                      <strong>Revisá correo y teléfono.</strong> Coordinación y las instituciones
+                      usan esos canales para comunicar una selección, coordinar entrevistas y
+                      organizar el inicio.
+                    </span>
+                  </li>
+                  <li>
+                    <Icon name="alert" size={17} />
+                    <span>
+                      <strong>Mantenelos actualizados.</strong> Un dato incorrecto puede impedir que
+                      recibas una notificación o que la institución logre contactarte.
+                    </span>
+                  </li>
+                </ul>
+                <aside className="ah-aula__editorial-app" role="note">
+                  <span className="material-icons ah-aula__editorial-phone" aria-hidden>
+                    smartphone
+                  </span>
+                  <p>
+                    <strong>Mi Panel, mejor en el celular</strong>
+                    <span>
+                      Disponible para instalar en <strong>iOS y Android</strong>. Accedé a avisos,
+                      estados y documentación con mayor comodidad.
+                    </span>
+                  </p>
+                </aside>
+              </article>
+
+              <article className="ah-aula__editorial-chapter" aria-labelledby="editorial-enroll">
+                <header className="ah-aula__editorial-heading">
+                  <span className="ah-aula__editorial-num" aria-hidden>
+                    03
+                  </span>
+                  <div>
+                    <span className="ah-aula__editorial-eyebrow">Convocatorias</span>
+                    <h2 id="editorial-enroll">Elegí con criterio</h2>
                   </div>
-                  <div className="ah-aula__gstep-main">
-                    <div className="ah-aula__gstep-titleline">
-                      {block.team ? (
-                        <h3>
-                          Personas <em>clave.</em>
-                        </h3>
-                      ) : (
-                        <h3>{block.title}</h3>
-                      )}
-                      {block.team && (
-                        <span className="ah-aula__team-contact">Conocé a nuestro equipo</span>
-                      )}
+                </header>
+                <p className="ah-aula__editorial-pull">
+                  Cada horario que elegís puede convertirse en tu vacante.
+                </p>
+                <p className="ah-aula__editorial-copy">
+                  Inscribite con amplitud, pero también con responsabilidad. Marcá solo opciones que
+                  realmente puedas sostener durante toda la práctica.
+                </p>
+                <ul className="ah-aula__editorial-checks ah-aula__editorial-checks--enrollment">
+                  <li>
+                    <Icon name="cal" size={17} />
+                    <span>
+                      <strong>Seleccioná todos los horarios que puedas cumplir.</strong> Podés
+                      elegir más de uno si están disponibles y realmente podés realizarlos.
+                    </span>
+                  </li>
+                  <li>
+                    <Icon name="clock" size={17} />
+                    <span>
+                      <strong>Los cupos de turno tarde son menos frecuentes.</strong> Se priorizan
+                      para estudiantes que trabajan.
+                    </span>
+                  </li>
+                  <li>
+                    <Icon name="bell" size={17} />
+                    <span>
+                      <strong>Revisá tu correo y Mi Panel.</strong> Ahí se comunica el resultado de
+                      cada selección y el plazo para confirmar tu vacante.
+                    </span>
+                  </li>
+                </ul>
+                <aside className="ah-aula__editorial-consent" role="note">
+                  <Icon name="idcard" size={23} />
+                  <p>
+                    <strong>La selección todavía no habilita el inicio</strong>
+                    <span>
+                      Leé y firmá el consentimiento digital dentro del plazo indicado. Ahí confirmás
+                      el horario y las condiciones de la convocatoria. Sin esa aceptación no podés
+                      comenzar la PPS.
+                    </span>
+                  </p>
+                </aside>
+              </article>
+
+              <article
+                className="ah-aula__editorial-commitment"
+                aria-labelledby="editorial-commitment"
+              >
+                <header className="ah-aula__editorial-heading">
+                  <span className="ah-aula__editorial-num" aria-hidden>
+                    04
+                  </span>
+                  <div>
+                    <span className="ah-aula__editorial-eyebrow">Compromiso</span>
+                    <h2 id="editorial-commitment">Estar es parte de aprobar</h2>
+                  </div>
+                </header>
+                <div className="ah-aula__editorial-commitment-lead">
+                  <div className="ah-aula__editorial-attendance">
+                    <strong>
+                      80<span>%</span>
+                    </strong>
+                    <p>
+                      de asistencia mínima requerida. Por debajo de este umbral, la práctica no se
+                      acredita.
+                    </p>
+                  </div>
+                  <blockquote>
+                    <span aria-hidden>“</span>
+                    Una sola inasistencia sin aviso previo a la institución es motivo suficiente
+                    para suspender o desaprobar la PPS.
+                  </blockquote>
+                </div>
+                <div className="ah-aula__editorial-principles">
+                  {editorialPrinciples.map((principle) => (
+                    <div key={principle.title}>
+                      <Icon name={principle.icon} size={21} />
+                      <p>
+                        <strong>{principle.title}</strong>
+                        <span>{principle.text}</span>
+                      </p>
                     </div>
-                    {block.team && (
-                      <div className="ah-aula__teamshow" aria-label="Equipo de gestión PPS">
-                        {campusTeam.map((person, index) => (
-                          <article key={person.initials} className="ah-aula__teamcard">
-                            <span
-                              className="ah-aula__teamcard-avatar"
-                              data-person={index}
-                              aria-hidden
-                            >
-                              {person.initials}
-                            </span>
-                            <strong>{person.name}</strong>
-                            <small>{person.role}</small>
-                          </article>
-                        ))}
-                      </div>
-                    )}
-                    {block.bullets && (
-                      <div className="ah-aula__gcards">
-                        {block.bullets.map((bullet) => (
-                          <p key={bullet} className="ah-aula__gcard">
-                            <i aria-hidden />
-                            {bullet}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                    {block.stat && (
-                      <div className="ah-aula__stat">
-                        <strong>
-                          {block.stat.value}
-                          <span>{block.stat.unit}</span>
-                        </strong>
-                        <p>{block.stat.text}</p>
-                      </div>
-                    )}
-                    {block.timeline && (
-                      <div className="ah-aula__timeline">
-                        {block.timeline.map((row) => (
-                          <div key={row.title} className="ah-aula__tl">
-                            <span className="ah-aula__tl-lead">{row.lead}</span>
-                            <div>
-                              <strong>{row.title}</strong>
-                              <small>{row.detail}</small>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {block.note && (
-                      <div
-                        className={"ah-aula__keynote" + (block.note.key ? " is-key" : "")}
-                        role="note"
-                      >
-                        <div>
-                          <span className="ah-aula__keynote-tag">{block.note.tag}</span>
-                          {block.note.text}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </article>
-              ))}
+                  ))}
+                </div>
+                <p className="ah-aula__editorial-commitment-note">
+                  La evaluación no se limita a sumar horas. La institución informa el desempeño
+                  técnico y actitudinal, y coordinación audita el cumplimiento ético. La PPS puede
+                  suspenderse en cualquier momento si no se respeta el encuadre.
+                </p>
+              </article>
             </div>
-          </>
+
+            <article className="ah-aula__editorial-documents" aria-labelledby="editorial-documents">
+              <header className="ah-aula__editorial-heading">
+                <span className="ah-aula__editorial-num" aria-hidden>
+                  05
+                </span>
+                <div>
+                  <span className="ah-aula__editorial-eyebrow">Seguimiento y respaldo</span>
+                  <h2 id="editorial-documents">Los documentos que sostienen tu recorrido</h2>
+                </div>
+              </header>
+              <div className="ah-aula__editorial-docgrid">
+                <section className="ah-aula__editorial-docintro">
+                  <p>
+                    Tu recorrido deja huellas. Conocé cuál documento acompaña la gestión y cuál
+                    certifica oficialmente cada práctica.
+                  </p>
+                </section>
+                <section className="ah-aula__editorial-doc ah-aula__editorial-doc--panel">
+                  <Icon name="eye" size={25} />
+                  <div>
+                    <span>Seguimiento editable</span>
+                    <h3>Mi Panel no es un documento oficial</h3>
+                    <p>
+                      Organiza inscripciones, estados, solicitudes y horas. Su información es
+                      referencial, puede editarse y podés pedir modificaciones desde Mis Prácticas.
+                    </p>
+                  </div>
+                </section>
+                <section className="ah-aula__editorial-doc ah-aula__editorial-doc--paper">
+                  <Icon name="file" size={25} />
+                  <div>
+                    <span>PPS presenciales</span>
+                    <h3>Planilla de asistencia firmada</h3>
+                    <p>
+                      Es el <strong>único documento válido</strong> que certifica la realización de
+                      una práctica presencial y es obligatorio para la acreditación final. Subila
+                      junto con el informe para conservar una copia de respaldo.
+                    </p>
+                    <strong className="ah-aula__editorial-doc-warning">
+                      Si perdés la planilla, perdés el respaldo de la PPS.
+                    </strong>
+                  </div>
+                </section>
+                <section className="ah-aula__editorial-doc ah-aula__editorial-doc--online">
+                  <Icon name="check" size={25} />
+                  <div>
+                    <span>PPS online</span>
+                    <h3>Informe final aprobado</h3>
+                    <p>
+                      En prácticas a distancia, el informe corregido y aprobado es el documento que
+                      acredita oficialmente la realización de la PPS.
+                    </p>
+                  </div>
+                </section>
+              </div>
+            </article>
+
+            <article className="ah-aula__editorial-closing" aria-labelledby="editorial-closing">
+              <header className="ah-aula__editorial-heading">
+                <span className="ah-aula__editorial-num" aria-hidden>
+                  06
+                </span>
+                <div>
+                  <span className="ah-aula__editorial-eyebrow">Cierre</span>
+                  <h2 id="editorial-closing">Entregas y revisión</h2>
+                </div>
+              </header>
+              <div className="ah-aula__editorial-flow">
+                {editorialClosingSteps.map((step) => (
+                  <section key={step.num}>
+                    <span>{step.num}</span>
+                    <p>
+                      <small>{step.lead}</small>
+                      <strong>{step.title}</strong>
+                      {step.text}
+                    </p>
+                  </section>
+                ))}
+              </div>
+            </article>
+
+            <footer className="ah-aula__editorial-final" aria-labelledby="editorial-final">
+              <div className="ah-aula__editorial-final-title">
+                <span aria-hidden>07</span>
+                <p>
+                  <small>Acreditación</small>
+                  <strong id="editorial-final">El último paso se pide desde Mis Solicitudes</strong>
+                </p>
+              </div>
+              <div className="ah-aula__editorial-final-reqs">
+                <span>
+                  <strong>250 h</strong> totales
+                </span>
+                <span>
+                  <strong>70 h</strong> en tu orientación
+                </span>
+                <span>
+                  <strong>3 de 4</strong> áreas recorridas
+                </span>
+                <span>
+                  <strong>Todos</strong> los informes aprobados
+                </span>
+              </div>
+              <p>
+                Cuando el recorrido esté completo y la documentación esté respaldada, solicitá la
+                acreditación final desde <strong>Mis Solicitudes</strong>. El trámite puede demorar
+                hasta <strong>14 días hábiles</strong>.
+              </p>
+            </footer>
+          </div>
         ) : (
           <section
             className={
@@ -1133,7 +1413,10 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                         className={
                           "ah-aula__faq-tab" + (group.id === activeFaq ? " is-active" : "")
                         }
-                        onClick={() => setActiveFaq(group.id)}
+                        onClick={() => {
+                          setActiveFaq(group.id);
+                          setOpenFaq(group.items[0]?.q ?? null);
+                        }}
                       >
                         <span>{group.label}</span>
                         <small>{group.items.length} respuestas</small>
@@ -1145,18 +1428,35 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                       <h3>{selectedFaq.label}</h3>
                       <p>{selectedFaq.subtitle}</p>
                     </div>
-                    {selectedFaq.items.map((item, idx) => (
-                      <details key={item.q} className="ah-aula__faq-row" open={idx === 0}>
-                        <summary>
-                          <span>{String(idx + 1).padStart(2, "0")}</span>
-                          {item.q}
-                          <i className="ah-aula__faq-chev" aria-hidden>
-                            <Icon name="chev" size={16} />
-                          </i>
-                        </summary>
-                        <div>{item.a}</div>
-                      </details>
-                    ))}
+                    {selectedFaq.items.map((item, idx) => {
+                      const isOpen = openFaq === item.q;
+                      const panelId = `faq-${selectedFaq.id}-${idx}`;
+
+                      return (
+                        <div
+                          key={item.q}
+                          className="ah-aula__faq-row"
+                          data-open={isOpen ? "true" : "false"}
+                        >
+                          <button
+                            type="button"
+                            className="ah-aula__faq-question"
+                            aria-expanded={isOpen}
+                            aria-controls={panelId}
+                            onClick={() => setOpenFaq(isOpen ? null : item.q)}
+                          >
+                            <span>{String(idx + 1).padStart(2, "0")}</span>
+                            {item.q}
+                            <i className="ah-aula__faq-chev" aria-hidden>
+                              <Icon name="chev" size={16} />
+                            </i>
+                          </button>
+                          <div id={panelId} className="ah-aula__faq-panel">
+                            <div className="ah-aula__faq-answer">{item.a}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 <footer className="ah-aula__faq-cta">

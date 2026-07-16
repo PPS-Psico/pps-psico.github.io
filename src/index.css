@@ -8,22 +8,22 @@
 }
 
 ::view-transition-group(root) {
-  animation-duration: 360ms;
+  animation-duration: 250ms;
   animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 ::view-transition-old(root) {
-  animation: pps-page-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: pps-page-out 150ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 ::view-transition-new(root) {
-  animation: pps-page-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pps-page-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 ::view-transition-group(pps-brand),
 ::view-transition-group(pps-tabs),
 ::view-transition-group(pps-actions) {
-  animation-duration: 420ms;
+  animation-duration: 250ms;
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -496,7 +496,7 @@ p {
 /* --- NUEVAS ANIMACIONES PREMIUM (Visual Polish) --- */
 
 /* 1. Shine Effect para Botones */
-@keyframes shimmer {
+@keyframes button-shimmer {
   0% {
     background-position: 200% center;
   }
@@ -518,7 +518,7 @@ p {
 
 .shine-effect {
   background-size: 200% auto;
-  animation: shimmer 4s linear infinite;
+  animation: button-shimmer 4s linear infinite;
 }
 
 .has-shine-effect {
@@ -534,7 +534,7 @@ p {
 }
 
 .hover\:shine-effect:hover {
-  animation: shimmer 2s linear infinite;
+  animation: button-shimmer 2s linear infinite;
 }
 
 /* 2. Fade In Up para Tarjetas */
@@ -603,6 +603,28 @@ p {
   animation: fadeIn 0.4s ease forwards;
 }
 
+/* Modal base: entrada clara y salida más rápida antes del desmontaje. */
+.ui-modal-overlay {
+  opacity: 0;
+  transition: opacity 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ui-modal-dialog {
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  transition:
+    opacity 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ui-modal-overlay.is-visible {
+  opacity: 1;
+  transition-duration: 220ms;
+}
+.ui-modal-overlay.is-visible .ui-modal-dialog {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-duration: 220ms;
+}
+
 /* Respeta a quien pide menos movimiento: las animaciones de entrada se vuelven
    instantáneas (sin desplazamiento ni fundido prolongado). */
 @media (prefers-reduced-motion: reduce) {
@@ -615,7 +637,7 @@ p {
 }
 
 /* 7. Shimmer effect for skeletons */
-@keyframes shimmer {
+@keyframes skeleton-shimmer {
   0% {
     transform: translateX(-100%);
   }
@@ -625,7 +647,35 @@ p {
 }
 
 .animate-shimmer {
-  animation: shimmer 1.5s ease-in-out infinite;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.welcome-reveal {
+  display: grid;
+}
+.welcome-reveal__skeleton,
+.welcome-reveal__content {
+  grid-area: 1 / 1;
+  transition:
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.welcome-reveal__skeleton {
+  opacity: 1;
+  filter: blur(0);
+}
+.welcome-reveal__content {
+  opacity: 0;
+  filter: blur(2px);
+}
+.welcome-reveal.is-revealed .welcome-reveal__skeleton {
+  opacity: 0;
+  filter: blur(2px);
+  pointer-events: none;
+}
+.welcome-reveal.is-revealed .welcome-reveal__content {
+  opacity: 1;
+  filter: blur(0);
 }
 
 /* 4. Glass Card Hover Effect */
@@ -2868,6 +2918,30 @@ html.dark .mp-logo,
 .student-more-sheet__item.is-account {
   border-top: 0;
 }
+.student-mobile-tabs__indicator {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 120ms ease;
+}
+.student-mobile-tabs__indicator.is-ready {
+  opacity: 1;
+}
+.student-mobile-tabs__button {
+  transition:
+    color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
 .student-more-sheet__icon {
   width: 36px;
   height: 36px;
@@ -3041,7 +3115,10 @@ html.dark .mp-logo,
   font-size: 15px;
   font-weight: 600;
   color: var(--ink);
-  transition: all var(--t-base);
+  transition:
+    background-color var(--t-base),
+    border-color var(--t-base),
+    box-shadow var(--t-base);
 }
 .ed-input::placeholder {
   color: var(--ink-muted);
@@ -3098,7 +3175,12 @@ html.dark .mp-logo,
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: all var(--t-base);
+  transition:
+    background-color var(--t-base),
+    color var(--t-base),
+    box-shadow var(--t-base),
+    opacity var(--t-base),
+    transform var(--t-base);
 }
 .ed-btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
@@ -3121,7 +3203,11 @@ html.dark .mp-logo,
   background: transparent;
   appearance: none;
   cursor: pointer;
-  transition: all var(--t-fast);
+  transition:
+    background-color var(--t-fast),
+    border-color var(--t-fast),
+    box-shadow var(--t-fast),
+    transform var(--t-fast);
 }
 .ed-check:checked {
   background: var(--ink);

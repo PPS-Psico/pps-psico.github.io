@@ -52,6 +52,7 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   isSubmitting = false,
 }) => {
   const [mounted, setMounted] = useState(false);
+  const [shouldRender, setShouldRender] = useState(isOpen);
   const [currentStep, setCurrentStep] = useState(0);
   const [fullName, setFullName] = useState("");
   const [dni, setDni] = useState("");
@@ -74,8 +75,17 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   }, []);
 
   useEffect(() => {
+    let exitTimer: number | undefined;
+    if (isOpen) setShouldRender(true);
+    else exitTimer = window.setTimeout(() => setShouldRender(false), 160);
+
+    return () => {
+      if (exitTimer !== undefined) window.clearTimeout(exitTimer);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
       setFullName(student?.nombre || "");
       setDni(student?.dni ? String(student.dni) : "");
       setLegajo(student?.legajo || "");
@@ -85,14 +95,16 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
       setCurrentStep(0);
       setError(null);
       setFieldErrors({});
-    } else {
-      document.body.style.overflow = "unset";
     }
+  }, [isOpen, student]);
+
+  useEffect(() => {
+    document.body.style.overflow = shouldRender ? "hidden" : "unset";
 
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, student]);
+  }, [shouldRender]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -140,7 +152,7 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
     }).format(deadline);
   }, [enrollment]);
 
-  if (!mounted || !isOpen || !lanzamiento || !enrollment) return null;
+  if (!mounted || !shouldRender || !lanzamiento || !enrollment) return null;
 
   const isLastStep = currentStep === steps.length - 1;
   const activeStep = steps[currentStep];
@@ -199,14 +211,14 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   return createPortal(
     <div className="ah-root ah-unified">
       <div
-        className="ah-cmodal-overlay ah-motion-overlay"
+        className={`ah-cmodal-overlay ah-motion-overlay ${isOpen ? "" : "is-closing"}`}
         onClick={(event) => {
           if (event.target === event.currentTarget && !isSubmitting) onClose();
         }}
       >
         <div
           ref={dialogRef}
-          className="ah-cmodal ah-cmodal--commitment ah-motion-dialog"
+          className={`ah-cmodal ah-cmodal--commitment ah-motion-dialog ${isOpen ? "" : "is-closing"}`}
           onClick={(event) => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
