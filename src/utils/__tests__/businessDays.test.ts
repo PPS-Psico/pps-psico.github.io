@@ -1,5 +1,10 @@
 import { describe, it, expect } from "@jest/globals";
-import { isBusinessDay, addBusinessDays, getBusinessDaysCount } from "../businessDays";
+import {
+  isBusinessDay,
+  addBusinessDays,
+  getAcademicRecess,
+  getBusinessDaysCount,
+} from "../businessDays";
 
 // NOTA: estas funciones usan getters de hora local (getDay/getMonth/getDate)
 // combinados con toISOString (UTC) para feriados. Los entornos objetivo
@@ -20,24 +25,30 @@ describe("businessDays", () => {
       expect(isBusinessDay(localDate(2025, 3, 16))).toBe(false); // domingo
     });
 
-    it("rechaza todo el mes de enero (receso)", () => {
-      expect(isBusinessDay(localDate(2025, 1, 15))).toBe(false); // miércoles de enero
+    it("rechaza el receso universitario de verano", () => {
+      expect(getAcademicRecess(localDate(2026, 1, 5))).toBe("summer");
+      expect(isBusinessDay(localDate(2026, 1, 15))).toBe(false);
+      expect(isBusinessDay(localDate(2026, 2, 2))).toBe(true);
     });
 
-    it("rechaza el receso invernal (21 de julio al 1 de agosto)", () => {
-      expect(isBusinessDay(localDate(2025, 7, 21))).toBe(false);
-      expect(isBusinessDay(localDate(2025, 7, 25))).toBe(false);
-      expect(isBusinessDay(localDate(2025, 8, 1))).toBe(false);
+    it("rechaza el receso invernal 2026 de Río Negro (13 al 24 de julio)", () => {
+      expect(getAcademicRecess(localDate(2026, 7, 13))).toBe("winter");
+      expect(isBusinessDay(localDate(2026, 7, 13))).toBe(false);
+      expect(isBusinessDay(localDate(2026, 7, 24))).toBe(false);
     });
 
     it("vuelve a contar como hábil después del receso invernal", () => {
-      // 2025-08-04 es lunes, fuera del receso y sin feriado
-      expect(isBusinessDay(localDate(2025, 8, 4))).toBe(true);
+      expect(isBusinessDay(localDate(2026, 7, 27))).toBe(true);
     });
 
     it("rechaza feriados nacionales conocidos", () => {
       expect(isBusinessDay(localDate(2025, 5, 1))).toBe(false); // Día del Trabajador
       expect(isBusinessDay(localDate(2025, 12, 25))).toBe(false); // Navidad
+    });
+
+    it("rechaza el feriado y el día turístico del 9 y 10 de julio de 2026", () => {
+      expect(isBusinessDay(localDate(2026, 7, 9))).toBe(false);
+      expect(isBusinessDay(localDate(2026, 7, 10))).toBe(false);
     });
   });
 
@@ -58,6 +69,13 @@ describe("businessDays", () => {
     it("el resultado siempre es un día hábil", () => {
       const result = addBusinessDays(localDate(2025, 3, 10), 5);
       expect(isBusinessDay(result)).toBe(true);
+    });
+
+    it("calcula correctamente 14 días hábiles atravesando feriados y receso 2026", () => {
+      const result = addBusinessDays(localDate(2026, 6, 22), 14);
+      expect(result.getFullYear()).toBe(2026);
+      expect(result.getMonth()).toBe(6);
+      expect(result.getDate()).toBe(28);
     });
   });
 

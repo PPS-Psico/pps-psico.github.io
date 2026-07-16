@@ -637,8 +637,9 @@ const faqGroups: FaqGroup[] = [
         a: (
           <>
             Una vez enviada la solicitud desde <strong>Mis Solicitudes</strong>, el trámite puede
-            demorar hasta <strong>14 días hábiles</strong>. Vas a recibir la confirmación cuando la
-            acreditación quede registrada.
+            demorar hasta <strong>14 días hábiles</strong>. No se computan sábados, domingos,
+            feriados nacionales ni los recesos universitarios de verano e invierno. Vas a recibir la
+            confirmación cuando la acreditación quede registrada.
           </>
         ),
       },

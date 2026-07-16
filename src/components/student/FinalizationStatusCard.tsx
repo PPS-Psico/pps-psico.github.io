@@ -1,6 +1,6 @@
 import React from "react";
 import "./home/atlas/atlasHome.css";
-import { addBusinessDays, getBusinessDaysCount } from "../../utils/businessDays";
+import { addBusinessDays, getAcademicRecess, getBusinessDaysCount } from "../../utils/businessDays";
 import { formatDate } from "../../utils/formatters";
 
 interface FinalizationStatusCardProps {
@@ -24,24 +24,19 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
   const startDate = requestDate ? new Date(requestDate) : new Date();
   const targetDate = addBusinessDays(startDate, 14);
   const now = new Date();
-  const currentMonth = now.getMonth();
-  const dayOfMonth = now.getDate();
-  const isJanuary = currentMonth === 0;
-  const isWinterBreak =
-    (currentMonth === 6 && dayOfMonth >= 21) || (currentMonth === 7 && dayOfMonth <= 1);
-  const isPaused = isJanuary || isWinterBreak;
-  const pauseReason = isJanuary ? "Receso de verano" : "Receso de invierno";
-  const pauseDescription = isJanuary
-    ? "Enero no computa plazos administrativos."
+  const currentRecess = getAcademicRecess(now);
+  const isPaused = currentRecess !== null;
+  const isSummerBreak = currentRecess === "summer";
+  const pauseReason = isSummerBreak ? "Receso de verano" : "Receso de invierno";
+  const pauseDescription = isSummerBreak
+    ? "El receso universitario no computa plazos administrativos."
     : "El receso invernal no computa plazos administrativos.";
   const normalizedStatus = normalizeStatus(status);
   const isFinished = normalizedStatus === "cargado" || normalizedStatus === "finalizada";
   const isEnProceso = normalizedStatus === "en proceso";
   const daysDisplay = getBusinessDaysCount(now, targetDate);
-  const totalDuration = targetDate.getTime() - startDate.getTime();
-  const elapsed = now.getTime() - startDate.getTime();
-  let percentage =
-    totalDuration > 0 ? Math.min(100, Math.max(6, (elapsed / totalDuration) * 100)) : 100;
+  const elapsedBusinessDays = Math.max(0, getBusinessDaysCount(startDate, now));
+  let percentage = Math.min(100, Math.max(6, (elapsedBusinessDays / 14) * 100));
 
   if (isPaused) percentage = Math.min(percentage, 95);
   if (daysDisplay < 0) percentage = 100;
@@ -187,7 +182,7 @@ const FinalizationStatusCard: React.FC<FinalizationStatusCardProps> = ({
             {isPaused ? (
               <div className="ah-finalization__pause">
                 <span className="material-icons" aria-hidden>
-                  {isJanuary ? "beach_access" : "ac_unit"}
+                  {isSummerBreak ? "beach_access" : "ac_unit"}
                 </span>
                 <div>
                   <strong>{pauseReason}</strong>
