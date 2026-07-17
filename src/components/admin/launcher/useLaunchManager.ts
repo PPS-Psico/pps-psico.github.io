@@ -28,6 +28,7 @@ import {
   FIELD_FECHA_PUBLICACION_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_HORARIOS_OBLIGATORIOS_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_INSTITUCION_LINK_PRACTICAS,
   FIELD_LOGO_INVERT_DARK_INSTITUCIONES,
@@ -85,7 +86,9 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   const activeTab = forcedTab || internalTab;
 
   const [formData, setFormData] = useState<FormData>(initialState);
-  const [schedules, setSchedules] = useState<ScheduleEntry[]>([{ time: "", orientacion: "" }]);
+  const [schedules, setSchedules] = useState<ScheduleEntry[]>([
+    { time: "", orientacion: "", obligatorio: false },
+  ]);
   const [actividades, setActividades] = useState<string[]>([]);
 
   const [rawActivityText, setRawActivityText] = useState("");
@@ -316,7 +319,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       }
 
       setFormData(initialState);
-      setSchedules([{ time: "", orientacion: "" }]);
+      setSchedules([{ time: "", orientacion: "", obligatorio: false }]);
       setActividades([]);
       setInstiSearch("");
       setSelectedInstitution(null);
@@ -434,6 +437,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
             .map((h: { texto?: string; orientacion_vinculada?: string }) => ({
               time: h.texto || "",
               orientacion: h.orientacion_vinculada || "",
+              obligatorio: false,
             }))
             .filter((s: ScheduleEntry) => s.time.length > 0);
           if (detectedSchedules.length > 0) setSchedules(detectedSchedules);
@@ -469,7 +473,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   );
 
   const handleScheduleChange = useCallback(
-    (index: number, field: "time" | "orientacion", value: string) => {
+    (index: number, field: "time" | "orientacion" | "obligatorio", value: string | boolean) => {
       setSchedules((prev) => {
         const next = [...prev];
         next[index] = { ...next[index], [field]: value };
@@ -480,13 +484,13 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   );
 
   const addSchedule = useCallback(
-    () => setSchedules((p) => [...p, { time: "", orientacion: "" }]),
+    () => setSchedules((p) => [...p, { time: "", orientacion: "", obligatorio: false }]),
     []
   );
   const removeSchedule = useCallback((index: number) => {
     setSchedules((prev) => {
       const next = prev.filter((_, i) => i !== index);
-      return next.length ? next : [{ time: "", orientacion: "" }];
+      return next.length ? next : [{ time: "", orientacion: "", obligatorio: false }];
     });
   }, []);
 
@@ -501,6 +505,12 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   const handleLoadLastData = useCallback(() => {
     if (!lastLanzamiento) return;
     const prevSchedulesString = lastLanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS];
+    const explicitMandatoryRaw = lastLanzamiento[FIELD_HORARIOS_OBLIGATORIOS_LANZAMIENTOS];
+    const explicitMandatory = Array.isArray(explicitMandatoryRaw)
+      ? new Set(explicitMandatoryRaw.map(String))
+      : null;
+    const allLegacySchedulesAreMandatory =
+      explicitMandatory === null && !!lastLanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS];
     let prevSchedulesList: ScheduleEntry[] = [];
     if (prevSchedulesString) {
       prevSchedulesList = String(prevSchedulesString)
@@ -509,12 +519,19 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
           const item = s.trim();
           if (!item) return null;
           const match = item.match(/(.*)\[(.*)\]/);
-          if (match) return { time: match[1].trim(), orientacion: match[2].trim() };
-          return { time: item, orientacion: "" };
+          const obligatorio = allLegacySchedulesAreMandatory || !!explicitMandatory?.has(item);
+          if (match)
+            return {
+              time: match[1].trim(),
+              orientacion: match[2].trim(),
+              obligatorio,
+            };
+          return { time: item, orientacion: "", obligatorio };
         })
         .filter((i): i is ScheduleEntry => i !== null);
     }
-    if (prevSchedulesList.length === 0) prevSchedulesList = [{ time: "", orientacion: "" }];
+    if (prevSchedulesList.length === 0)
+      prevSchedulesList = [{ time: "", orientacion: "", obligatorio: false }];
 
     const prevActivitiesRaw = lastLanzamiento[FIELD_ACTIVIDADES_LANZAMIENTOS];
     let prevActivitiesList: string[] = [];
@@ -570,7 +587,9 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       mensajeWhatsApp: (lastLanzamiento[FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS] as string) || "",
       actividadesLabel:
         (lastLanzamiento[FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS] as string) || "Actividades",
-      horariosFijos: !!lastLanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS],
+      horariosFijos:
+        prevSchedulesList.some((schedule) => schedule.time.trim()) &&
+        prevSchedulesList.every((schedule) => !schedule.time.trim() || schedule.obligatorio),
     }));
     setSchedules(prevSchedulesList);
     setActividades(prevActivitiesList.length ? prevActivitiesList : [""]);
@@ -633,15 +652,23 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       return;
     }
 
-    const horarioFinal = schedules
+    const formattedSchedules = schedules
       .map((s) => {
         const time = s.time.trim();
         const orient = isMultiOrientation ? s.orientacion.trim() : "";
         if (!time) return null;
-        return orient ? `${time} [${orient}]` : time;
+        return {
+          value: orient ? `${time} [${orient}]` : time,
+          obligatorio: s.obligatorio,
+        };
       })
-      .filter(Boolean)
-      .join("; ");
+      .filter((schedule): schedule is { value: string; obligatorio: boolean } => schedule !== null);
+    const horarioFinal = formattedSchedules.map((schedule) => schedule.value).join("; ");
+    const horariosObligatorios = formattedSchedules
+      .filter((schedule) => schedule.obligatorio)
+      .map((schedule) => schedule.value);
+    const todosLosHorariosSonObligatorios =
+      formattedSchedules.length > 0 && horariosObligatorios.length === formattedSchedules.length;
     const actividadesFinal = actividades.map((a) => a.trim()).filter(Boolean);
 
     const finalPayload: Record<string, unknown> = {
@@ -678,7 +705,8 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
         : null,
       [FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS]: formData.mensajeWhatsApp,
       [FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS]: formData.actividadesLabel,
-      [FIELD_HORARIOS_FIJOS_LANZAMIENTOS]: formData.horariosFijos,
+      [FIELD_HORARIOS_FIJOS_LANZAMIENTOS]: todosLosHorariosSonObligatorios,
+      [FIELD_HORARIOS_OBLIGATORIOS_LANZAMIENTOS]: horariosObligatorios,
       [FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS]: formData.fechaEncuentroInicial || null,
       [FIELD_CODIGO_CAMPUS_LANZAMIENTOS]: (formData.linkTareaCampus || "").trim() || null,
       [FIELD_INSTITUCION_LINK_PRACTICAS]: selectedInstitution?.id || "recInstMock_nuevo",

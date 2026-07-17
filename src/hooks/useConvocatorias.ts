@@ -53,6 +53,11 @@ import {
 } from "../constants";
 import { normalizeStringForComparison, cleanInstitutionName, safeGetId } from "../utils/formatters";
 import { logger } from "../utils/logger";
+import {
+  getMandatoryLaunchSchedules,
+  mergeMandatorySchedules,
+  parseLaunchSchedules,
+} from "../utils/scheduleRequirements";
 
 type ConvocatoriasQueryData = Awaited<ReturnType<typeof fetchConvocatoriasData>>;
 
@@ -178,6 +183,19 @@ export const useConvocatorias = (
     { formData: EnrollmentFormData; selectedLanzamiento: LanzamientoPPS }
   >({
     mutationFn: async ({ formData, selectedLanzamiento }) => {
+      const availableSchedules = parseLaunchSchedules(
+        selectedLanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]
+      );
+      const mandatorySchedules = getMandatoryLaunchSchedules(
+        selectedLanzamiento,
+        availableSchedules
+      );
+      const selectedSchedules = mergeMandatorySchedules(
+        formData.horarios,
+        mandatorySchedules,
+        availableSchedules
+      );
+
       if (legajo === "99999") {
         await new Promise((resolve) => setTimeout(resolve, 800));
         const newRecord = {
@@ -188,6 +206,7 @@ export const useConvocatorias = (
             selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS]
           ),
           [FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS]: formData.cursandoElectivas ? "Sí" : "No",
+          [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: selectedSchedules.join("; "),
         };
         await mockDb.create("convocatorias", newRecord);
         return newRecord as unknown as AppRecord<ConvocatoriaFields>;
@@ -256,7 +275,7 @@ export const useConvocatorias = (
         [FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS]: formData.cursandoElectivas ? "Sí" : "No",
         [FIELD_FINALES_ADEUDA_CONVOCATORIAS]: formData.finalesAdeudados,
         [FIELD_OTRA_SITUACION_CONVOCATORIAS]: formData.otraSituacionAcademica,
-        [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: formData.horarios.join("; "),
+        [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: selectedSchedules.join("; "),
         [FIELD_TRABAJA_CONVOCATORIAS]: formData.trabaja,
         [FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS]:
           formData.certificadoTrabajoUrl || studentDetails?.[FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES],

@@ -22,6 +22,7 @@ import {
   FIELD_DIRECCION_LANZAMIENTOS,
   FIELD_INSTITUCION_LINK_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+  FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS,
   FIELD_EMPRESA_PPS_SOLICITUD,
   FIELD_ESTADO_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
@@ -33,6 +34,7 @@ import {
   closesLabel,
   daysUntil,
 } from "../../../../utils/formatters";
+import { getMandatoryLaunchSchedules } from "../../../../utils/scheduleRequirements";
 
 interface StudentHomeAtlasProps {
   student: EstudianteFields | null;
@@ -460,6 +462,9 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               .split(/[;\n]/)
               .map((h) => h.trim())
               .filter(Boolean);
+            const requisito = String(l[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] || "").trim();
+            const horariosObligatorios = getMandatoryLaunchSchedules(l, horarios);
+            const horariosObligatoriosSet = new Set(horariosObligatorios);
             const normalizedDireccion = normalizeStringForComparison(direccion);
             const hasVirtualSchedule = horarios.some((h) =>
               normalizeStringForComparison(h).includes("virtual")
@@ -529,6 +534,18 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   <h2 className="ah-feat__name">{name}</h2>
                   <p className="ah-feat__desc">{desc}</p>
 
+                  {requisito ? (
+                    <div className="ah-feat__requirement" role="note">
+                      <span className="material-icons" aria-hidden>
+                        priority_high
+                      </span>
+                      <div>
+                        <span className="eyebrow">Requisito excluyente</span>
+                        <p>{requisito}</p>
+                      </div>
+                    </div>
+                  ) : null}
+
                   {horarios.length > 0 || (!esOnline && direccionPresencial) ? (
                     <div className="ah-feat__meta">
                       {horarios.length > 0 ? (
@@ -540,7 +557,17 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                                 <span className="ah-feat__ic">
                                   <AhIcon name="cal" size={15} />
                                 </span>
-                                <span>{h}</span>
+                                <span className="ah-feat__schedule-text">{h}</span>
+                                {horariosObligatoriosSet.has(h) ? (
+                                  <span className="ah-feat__schedule-rule">
+                                    <AhIcon name="lock" size={11} />
+                                    Obligatorio
+                                  </span>
+                                ) : horariosObligatorios.length > 0 ? (
+                                  <span className="ah-feat__schedule-rule is-optional">
+                                    A elección
+                                  </span>
+                                ) : null}
                               </li>
                             ))}
                           </ul>
@@ -654,6 +681,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               const desc = rawDesc
                 ? rawDesc.split(/(?<=\.)\s/)[0].slice(0, 120)
                 : "Práctica profesional supervisada disponible para tu rotación.";
+              const requisito = String(l[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] || "").trim();
               const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
               const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
               const periodo = [
@@ -684,6 +712,12 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   </div>
                   <h2 className="ah-conv__name">{name}</h2>
                   <p className="ah-conv__desc">{desc}</p>
+                  {requisito ? (
+                    <div className="ah-conv__requirement" role="note">
+                      <span>Requisito</span>
+                      <p>{requisito}</p>
+                    </div>
+                  ) : null}
                   <div className="ah-conv__spacer" />
                   <div className="ah-conv__data">
                     <div className="ah-conv__cell">

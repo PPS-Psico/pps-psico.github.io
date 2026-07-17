@@ -24,6 +24,7 @@ import {
   FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_DESCRIPCION_LANZAMIENTOS,
+  FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS,
   FIELD_DIRECCION_LANZAMIENTOS,
   FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
   FIELD_ARCHIVO_DESCARGABLE_URL,
@@ -31,6 +32,7 @@ import {
 import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
 import { isEmbedded } from "../../utils/isEmbedded";
 import type { LanzamientoPPS } from "../../types";
+import { getMandatoryLaunchSchedules } from "../../utils/scheduleRequirements";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const fmtShort = (raw?: unknown): string => {
@@ -228,10 +230,13 @@ const StudentConvocatoriaDetail: React.FC = () => {
     .split(/[;\n]/)
     .map((h) => h.trim())
     .filter(Boolean);
+  const horariosObligatorios = getMandatoryLaunchSchedules(lanzamiento, horarios);
+  const horariosObligatoriosSet = new Set(horariosObligatorios);
   const direccion = (lanzamiento[FIELD_DIRECCION_LANZAMIENTOS] as string) || "";
   const descripcion =
     (lanzamiento[FIELD_DESCRIPCION_LANZAMIENTOS] as string) ||
     "Descripción de la propuesta no disponible.";
+  const requisito = String(lanzamiento[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] || "").trim();
   const archivoUrl = (lanzamiento[FIELD_ARCHIVO_DESCARGABLE_URL] as string) || "";
 
   const actividadesRaw = (lanzamiento as Record<string, unknown>).actividades_lista;
@@ -422,6 +427,42 @@ const StudentConvocatoriaDetail: React.FC = () => {
               </p>
             </div>
 
+            {requisito ? (
+              <div className="detail-block">
+                <div
+                  role="note"
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 11,
+                    padding: "13px 15px",
+                    borderRadius: 14,
+                    border: "1px solid color-mix(in oklab, #c58a1b 34%, var(--line))",
+                    borderLeftWidth: 3,
+                    background: "color-mix(in oklab, #c58a1b 7%, var(--bg-elevated))",
+                  }}
+                >
+                  <Icon name="alert" size={18} color="#b7791f" strokeWidth={2.2} />
+                  <div>
+                    <span className="eyebrow" style={{ color: "#9a6518", fontSize: 10.5 }}>
+                      Requisito excluyente
+                    </span>
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        color: "var(--ink)",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {requisito}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {/* Días y horarios */}
             <div className="detail-block">
               <span className="eyebrow" style={{ fontSize: 10.5 }}>
@@ -436,7 +477,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
                 }}
               >
                 {(horarios.length > 0 ? horarios : ["A definir"]).map((h, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ flexShrink: 0, marginTop: 1, lineHeight: 0 }}>
                       <Icon name="cal" size={16} color={color} />
                     </span>
@@ -450,6 +491,45 @@ const StudentConvocatoriaDetail: React.FC = () => {
                     >
                       {h}
                     </span>
+                    {horariosObligatoriosSet.has(h) ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          marginLeft: "auto",
+                          padding: "4px 8px",
+                          borderRadius: 999,
+                          background: "color-mix(in oklab, #c58a1b 10%, var(--bg-elevated))",
+                          color: "#9a6518",
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          letterSpacing: ".04em",
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <Icon name="lock" size={11} strokeWidth={2.4} />
+                        Obligatorio
+                      </span>
+                    ) : horariosObligatorios.length > 0 ? (
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          padding: "4px 8px",
+                          borderRadius: 999,
+                          background: "var(--bg-sunken)",
+                          color: "var(--ink-muted)",
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          letterSpacing: ".04em",
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        A elección
+                      </span>
+                    ) : null}
                   </div>
                 ))}
               </div>

@@ -1009,6 +1009,31 @@ html.dark .ah-root .ah-next__date .m {
   line-height: var(--lh-normal);
   color: var(--fg-muted);
 }
+.ah-conv__requirement {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--warning-500);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--warning-500) 7%, var(--bg-elevated));
+}
+.ah-conv__requirement > span {
+  display: block;
+  color: color-mix(in oklab, var(--warning-500) 72%, var(--fg));
+  font: 650 9.5px/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.ah-conv__requirement p {
+  display: -webkit-box;
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .ah-conv__data {
   display: flex;
   gap: 0;
@@ -1112,6 +1137,36 @@ html.dark .ah-root .ah-conv__desc {
   color: color-mix(in oklab, var(--fg-muted) 88%, var(--fg));
 }
 
+/* Requisito excluyente: visible antes de que el alumno llegue al CTA. */
+.ah-feat__requirement {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-top: 20px;
+  padding: 13px 15px;
+  border: 1px solid color-mix(in oklab, var(--warning-500) 34%, var(--border));
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--warning-500) 7%, var(--bg-elevated));
+}
+.ah-feat__requirement > .material-icons {
+  margin-top: 1px;
+  color: var(--warning-500);
+  font-size: 19px;
+}
+.ah-feat__requirement .eyebrow {
+  display: block;
+  color: color-mix(in oklab, var(--warning-500) 72%, var(--fg));
+  font-size: 10px;
+}
+.ah-feat__requirement p {
+  margin: 5px 0 0;
+  color: var(--fg);
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.45;
+}
+
 /* horarios + ubicación */
 .ah-feat__meta {
   display: grid;
@@ -1145,6 +1200,27 @@ html.dark .ah-root .ah-conv__desc {
   line-height: 1.35;
   color: var(--fg);
   letter-spacing: var(--tracking-snug);
+}
+.ah-feat__schedule-text {
+  min-width: 0;
+}
+.ah-feat__schedule-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 3px 7px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--warning-500) 10%, var(--bg-elevated));
+  color: color-mix(in oklab, var(--warning-500) 75%, var(--fg));
+  font: 650 9.5px/1 var(--font-sans);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ah-feat__schedule-rule.is-optional {
+  background: var(--bg-sunken);
+  color: var(--fg-subtle);
 }
 /* Chip de color para los íconos de la card (horarios y ubicación). */
 .ah-feat__ic {

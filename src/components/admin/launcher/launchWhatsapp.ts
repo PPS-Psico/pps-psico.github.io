@@ -80,17 +80,16 @@ export function buildWhatsappMessage({
   };
 
   if (validSchedules.length > 0) {
-    if (validSchedules.length > 1 && !formData.horariosFijos) {
-      message +=
-        "\n" +
-        validSchedules
-          .map((s, index) => `• *Grupo ${index + 1}:* ${formatScheduleLine(s)}`)
-          .join("\n");
-    } else if (validSchedules.length > 1 && formData.horariosFijos) {
-      message += "\n" + validSchedules.map((s) => `• ${formatScheduleLine(s)}`).join("\n");
-    } else {
-      message += ` ${formatScheduleLine(validSchedules[0])}`;
-    }
+    message +=
+      "\n" +
+      validSchedules
+        .map(
+          (schedule) =>
+            `• ${formatScheduleLine(schedule)}${
+              schedule.obligatorio ? " — *obligatorio para todos*" : " — a elección"
+            }`
+        )
+        .join("\n");
   } else {
     message += " A confirmar";
   }

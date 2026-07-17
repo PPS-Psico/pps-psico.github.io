@@ -10,11 +10,11 @@ import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS,
   FIELD_REQ_CV_LANZAMIENTOS,
-  FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
 } from "../constants";
 import { getAreaColor } from "./student/ds";
+import { getMandatoryLaunchSchedules } from "../utils/scheduleRequirements";
 
 const AppModals: React.FC = () => {
   const isStudentView = typeof window !== "undefined" && window.location.hash.includes("/student");
@@ -63,7 +63,10 @@ const AppModals: React.FC = () => {
   const reqCertificadoTrabajo =
     selectedLanzamientoForEnrollment?.[FIELD_REQ_CERTIFICADO_TRABAJO_LANZAMIENTOS] !== false; // Default true for legacy
   const reqCv = !!selectedLanzamientoForEnrollment?.[FIELD_REQ_CV_LANZAMIENTOS];
-  const horariosFijos = !!selectedLanzamientoForEnrollment?.[FIELD_HORARIOS_FIJOS_LANZAMIENTOS];
+  const horariosObligatorios = getMandatoryLaunchSchedules(
+    selectedLanzamientoForEnrollment,
+    horariosArray
+  );
 
   // Fix: Use constant key instead of hardcoded string to ensure compatibility with snake_case DB response
   const convocatoriaName =
@@ -95,7 +98,7 @@ const AppModals: React.FC = () => {
         studentProfile={studentProfileForEnrollment}
         reqCertificadoTrabajo={reqCertificadoTrabajo}
         reqCv={reqCv}
-        horariosFijos={horariosFijos}
+        horariosObligatorios={horariosObligatorios}
         accentColor={accentColor}
         creditedHours={Number(
           selectedLanzamientoForEnrollment?.[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0

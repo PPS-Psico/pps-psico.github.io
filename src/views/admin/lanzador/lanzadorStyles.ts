@@ -894,6 +894,41 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
     background: rgba(0,0,0,.42); backdrop-filter: blur(1px);
   }
 }
+
+/* ── Obligatoriedad por franja en el formulario de lanzamiento ────────────── */
+.lv4-schedule-help {
+  max-width: 300px; color: var(--ink-3); font-size: 11.5px; line-height: 1.35;
+  text-align: right;
+}
+.lv4-schedule-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px; align-items: center;
+}
+.lv4-schedule-row--oriented {
+  grid-template-columns: minmax(0, 1fr) 180px auto auto;
+}
+.lv4-schedule-required {
+  min-height: 38px; padding: 0 11px; border: 1px solid var(--rule-2);
+  border-radius: 8px; background: var(--paper-2); color: var(--ink-3);
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  transition: color .12s ease, background-color .12s ease, border-color .12s ease;
+}
+.lv4-schedule-required:hover { border-color: var(--rule-3); color: var(--ink-2); }
+.lv4-schedule-required:has(input:checked) {
+  border-color: color-mix(in oklab, var(--warn) 38%, var(--rule-2));
+  background: var(--warn-s); color: var(--warn);
+}
+.lv4-schedule-required input { accent-color: var(--warn); }
+.lv4-schedule-required .material-icons { font-size: 14px; }
+.lv4-schedule-required:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 720px) {
+  .lv4-schedule-help { max-width: none; text-align: left; }
+  .lv4-schedule-row,
+  .lv4-schedule-row--oriented { grid-template-columns: minmax(0, 1fr) auto; }
+  .lv4-schedule-row--oriented > select { grid-column: 1 / -1; grid-row: 2; }
+  .lv4-schedule-required { grid-column: 1; justify-self: start; }
+}
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

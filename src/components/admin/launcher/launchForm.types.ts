@@ -58,6 +58,7 @@ export type FormData = {
 export interface ScheduleEntry {
   time: string;
   orientacion: string;
+  obligatorio: boolean;
 }
 
 export const initialState: FormData = {

@@ -139,6 +139,7 @@ export const lanzamientoSchema = z
     historial_gestion: str,
     horario_seleccionado: str,
     horarios_fijos: bool,
+    horarios_obligatorios: strArr,
     horas_acreditadas: num,
     informe: str,
     institucion_id: str,

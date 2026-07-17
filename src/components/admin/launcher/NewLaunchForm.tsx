@@ -39,7 +39,11 @@ interface NewLaunchFormProps {
 
   // Schedules & activities
   schedules: ScheduleEntry[];
-  onScheduleChange: (index: number, field: "time" | "orientacion", value: string) => void;
+  onScheduleChange: (
+    index: number,
+    field: "time" | "orientacion" | "obligatorio",
+    value: string | boolean
+  ) => void;
   onAddSchedule: () => void;
   onRemoveSchedule: (index: number) => void;
   isMultiOrientation: boolean;
@@ -711,24 +715,20 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
         subtitle="Franjas disponibles y comisiones"
         pending={missingS4}
         right={
-          <CheckRow
-            label="Horarios fijos (obligatorios)"
-            checked={formData.horariosFijos}
-            onChange={(v) => setFormData((prev) => ({ ...prev, horariosFijos: v }))}
-          />
+          <span className="lv4-schedule-help">
+            Marcá como obligatorias solo las franjas comunes
+          </span>
         }
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {schedules.map((schedule, idx) => (
             <div
               key={idx}
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  isMultiOrientation && safeOrientacion.length >= 2 ? "1fr 180px auto" : "1fr auto",
-                gap: 8,
-                alignItems: "center",
-              }}
+              className={`lv4-schedule-row${
+                isMultiOrientation && safeOrientacion.length >= 2
+                  ? " lv4-schedule-row--oriented"
+                  : ""
+              }`}
             >
               <input
                 className="field"
@@ -750,6 +750,17 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
                   ))}
                 </select>
               )}
+              <label className="lv4-schedule-required">
+                <input
+                  type="checkbox"
+                  checked={schedule.obligatorio}
+                  onChange={(e) => onScheduleChange(idx, "obligatorio", e.target.checked)}
+                />
+                <span className="material-icons" aria-hidden>
+                  lock
+                </span>
+                <span>Obligatorio</span>
+              </label>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"

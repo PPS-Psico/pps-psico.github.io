@@ -470,7 +470,15 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué reviso antes de confirmar una inscripción?",
-        a: "El formulario muestra las horas acreditables, el área y los horarios elegidos. Podés seleccionar todos los horarios disponibles que realmente puedas realizar. Los cupos del turno tarde son menos frecuentes y se priorizan para estudiantes que trabajan.",
+        a: (
+          <>
+            Revisá las horas acreditables, el área y el <strong>requisito excluyente</strong> de la
+            tarjeta. En el formulario, los horarios marcados como <strong>obligatorios</strong> ya
+            aparecen incluidos y no se pueden quitar; entre las franjas <strong>a elección</strong>,
+            seleccioná todas las que realmente puedas sostener. Los cupos del turno tarde son menos
+            frecuentes y se priorizan para estudiantes que trabajan.
+          </>
+        ),
       },
       {
         q: "¿Cuándo firmo el consentimiento digital?",
@@ -1078,8 +1086,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                   <li>
                     <Icon name="cal" size={17} />
                     <span>
-                      <strong>Seleccioná todos los horarios que puedas cumplir.</strong> Podés
-                      elegir más de uno si están disponibles y realmente podés realizarlos.
+                      <strong>Distinguí horarios obligatorios y horarios a elección.</strong> Los
+                      obligatorios ya vienen incluidos; entre las demás franjas, elegí todas las que
+                      realmente puedas cumplir.
                     </span>
                   </li>
                   <li>

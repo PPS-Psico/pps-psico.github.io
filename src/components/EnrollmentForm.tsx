@@ -140,7 +140,7 @@ interface EnrollmentFormProps {
   studentProfile: Estudiante | null;
   reqCertificadoTrabajo?: boolean;
   reqCv?: boolean;
-  horariosFijos?: boolean;
+  horariosObligatorios?: string[];
   /** Color de acento de la convocatoria (hex). Si no se pasa, queda el verde por defecto. */
   accentColor?: string;
   creditedHours?: number;
@@ -184,7 +184,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   studentProfile,
   reqCertificadoTrabajo = true,
   reqCv = false,
-  horariosFijos = false,
+  horariosObligatorios = [],
   accentColor,
   creditedHours = 0,
   orientation = "",
@@ -211,18 +211,20 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   };
 
   const isSingleSchedule = horariosDisponibles.length === 1;
-  const showHorariosSelection = horariosDisponibles.length > 1 && !horariosFijos;
+  const mandatorySchedules = useMemo(() => {
+    const mandatorySet = new Set(horariosObligatorios);
+    return horariosDisponibles.filter((schedule) => mandatorySet.has(schedule));
+  }, [horariosDisponibles, horariosObligatorios]);
+  const mandatoryScheduleSet = useMemo(() => new Set(mandatorySchedules), [mandatorySchedules]);
+  const showHorariosSelection =
+    horariosDisponibles.length > 1 && mandatorySchedules.length < horariosDisponibles.length;
   // La columna izquierda (situación laboral + horarios) solo tiene sentido si
   // hay algo que mostrar; si no, el formulario colapsa a una sola columna.
   const hasLeftColumn = reqCertificadoTrabajo || showHorariosSelection;
 
   useEffect(() => {
     if (isOpen) {
-      const initialHorarios = horariosFijos
-        ? [...horariosDisponibles]
-        : isSingleSchedule
-          ? [horariosDisponibles[0]]
-          : [];
+      const initialHorarios = isSingleSchedule ? [horariosDisponibles[0]] : [...mandatorySchedules];
       const works = studentProfile?.[FIELD_TRABAJA_ESTUDIANTES] || false;
       const cert = studentProfile?.[FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES] || null;
 
@@ -235,7 +237,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       setErrors({});
       setFileUploadProgress(0);
     }
-  }, [isOpen, horariosDisponibles, isSingleSchedule, studentProfile, horariosFijos]);
+  }, [isOpen, horariosDisponibles, isSingleSchedule, mandatorySchedules, studentProfile]);
 
   const finalSchema = useMemo(() => {
     return z
@@ -305,6 +307,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   }, [showHorariosSelection, reqCertificadoTrabajo, reqCv]);
 
   const handleHorarioToggle = (horario: string) => {
+    if (mandatoryScheduleSet.has(horario)) return;
     setFormData((prev) => {
       const exists = prev.horarios.includes(horario);
       return {
@@ -554,13 +557,13 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
             <span>
               <Icon name="check" size={14} strokeWidth={2.1} />
               {formData.horarios.length > 0
-                ? `${formData.horarios.length} ${formData.horarios.length === 1 ? "horario elegido" : "horarios elegidos"}`
+                ? `${formData.horarios.length} ${formData.horarios.length === 1 ? "horario incluido" : "horarios incluidos"}`
                 : "Horario pendiente"}
             </span>
           </div>
 
-          {/* Banner Horario Único o Fijo */}
-          {(isSingleSchedule || (horariosFijos && horariosDisponibles.length > 0)) && (
+          {/* Banner Horario Único u horarios obligatorios */}
+          {(isSingleSchedule || mandatorySchedules.length > 0) && (
             <div
               className="enroll-schedule flex items-start gap-3"
               style={{ background: "var(--bg-elevated)", borderBottom: "1px solid var(--line)" }}
@@ -570,10 +573,16 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               </span>
               <div className="min-w-0">
                 <p className="eyebrow" style={{ color: "var(--accent-text)", fontSize: 10 }}>
-                  {horariosFijos ? "Horarios (Obligatorios)" : "Horario de la Práctica"}
+                  {mandatorySchedules.length > 0
+                    ? mandatorySchedules.length === 1
+                      ? "Horario obligatorio"
+                      : "Horarios obligatorios"
+                    : "Horario de la Práctica"}
                 </p>
                 <p className="enroll-schedule__text" style={{ color: "var(--ink)" }}>
-                  {horariosFijos ? horariosDisponibles.join("; ") : horariosDisponibles[0]}
+                  {mandatorySchedules.length > 0
+                    ? mandatorySchedules.join("; ")
+                    : horariosDisponibles[0]}
                 </p>
               </div>
             </div>
@@ -874,20 +883,24 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                       <div className="grid grid-cols-1 gap-3">
                         {horariosDisponibles.map((horario) => {
                           const active = formData.horarios.includes(horario);
+                          const mandatory = mandatoryScheduleSet.has(horario);
                           return (
                             <div
                               key={horario}
-                              onClick={() => handleHorarioToggle(horario)}
+                              onClick={mandatory ? undefined : () => handleHorarioToggle(horario)}
                               role="checkbox"
-                              tabIndex={0}
+                              tabIndex={mandatory ? -1 : 0}
                               aria-checked={active}
+                              aria-disabled={mandatory}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
+                                if (!mandatory && (e.key === "Enter" || e.key === " ")) {
                                   e.preventDefault();
                                   handleHorarioToggle(horario);
                                 }
                               }}
-                              className="cursor-pointer px-5 py-4 rounded-2xl border transition flex items-center justify-between group select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+                              className={`${
+                                mandatory ? "cursor-default" : "cursor-pointer"
+                              } px-5 py-4 rounded-2xl border transition flex items-center justify-between gap-3 group select-none focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2`}
                               style={{
                                 borderColor: active ? "var(--accent)" : "var(--line)",
                                 background: "var(--bg-elevated)",
@@ -900,14 +913,26 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                               >
                                 {horario}
                               </span>
-                              {active && (
+                              {mandatory ? (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide"
+                                  style={{
+                                    background:
+                                      "color-mix(in oklab, var(--accent) 12%, transparent)",
+                                    color: "var(--accent-text)",
+                                  }}
+                                >
+                                  <Icon name="lock" size={11} strokeWidth={2.4} />
+                                  Obligatorio
+                                </span>
+                              ) : active ? (
                                 <div
                                   className="w-6 h-6 rounded-full flex items-center justify-center animate-scale-in"
                                   style={{ background: "var(--accent)", color: "var(--on-accent)" }}
                                 >
                                   <Icon name="check" size={14} strokeWidth={2.6} />
                                 </div>
-                              )}
+                              ) : null}
                             </div>
                           );
                         })}

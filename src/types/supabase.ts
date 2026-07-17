@@ -890,6 +890,7 @@ export type Database = {
           historial_gestion: string | null;
           horario_seleccionado: string | null;
           horarios_fijos: boolean | null;
+          horarios_obligatorios: string[] | null;
           horas_acreditadas: number | null;
           id: string;
           informe: string | null;
@@ -932,6 +933,7 @@ export type Database = {
           historial_gestion?: string | null;
           horario_seleccionado?: string | null;
           horarios_fijos?: boolean | null;
+          horarios_obligatorios?: string[] | null;
           horas_acreditadas?: number | null;
           id?: string;
           informe?: string | null;
@@ -974,6 +976,7 @@ export type Database = {
           historial_gestion?: string | null;
           horario_seleccionado?: string | null;
           horarios_fijos?: boolean | null;
+          horarios_obligatorios?: string[] | null;
           horas_acreditadas?: number | null;
           id?: string;
           informe?: string | null;

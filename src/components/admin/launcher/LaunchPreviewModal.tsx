@@ -54,6 +54,9 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
       })
       .filter(Boolean)
       .join("; ") || "A confirmar";
+  const validSchedules = schedules.filter((schedule) => schedule.time.trim());
+  const allSchedulesMandatory =
+    validSchedules.length > 0 && validSchedules.every((schedule) => schedule.obligatorio);
 
   return (
     <div
@@ -157,7 +160,7 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
                   archivoDescargableNombre={formData.archivoDescargableNombre}
                   archivoDescargableUrl={formData.archivoDescargableUrl}
                   reqCv={formData.reqCv}
-                  horariosFijos={formData.horariosFijos}
+                  horariosFijos={allSchedulesMandatory}
                   fechaEncuentroInicial={formData.fechaEncuentroInicial}
                   timeline={{
                     inscripcion:
