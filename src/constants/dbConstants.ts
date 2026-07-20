@@ -73,6 +73,10 @@ export const FIELD_ES_ONLINE_PRACTICAS = "es_online";
 export const FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS = "nombre_institucion";
 export const FIELD_NOMBRE_BUSQUEDA_PRACTICAS = "legajo_busqueda"; // Deprecated? Kept for schema
 export const FIELD_TIPO_ACTIVIDAD_PRACTICAS = "tipo_actividad";
+export const FIELD_DESAPROBACION_FECHA_PRACTICAS = "desaprobacion_fecha";
+export const FIELD_DESAPROBACION_CAUSAS_PRACTICAS = "desaprobacion_causas";
+export const FIELD_DESAPROBACION_MOTIVO_PUBLICO_PRACTICAS = "desaprobacion_motivo_publico";
+export const FIELD_DESAPROBACION_NOTIFICADO_AT_PRACTICAS = "desaprobacion_notificado_at";
 
 // Lanzamientos
 export const FIELD_NOMBRE_PPS_LANZAMIENTOS = "nombre_pps";
@@ -236,6 +240,12 @@ export const FIELD_PENALIZACION_FECHA = "fecha_incidente";
 export const FIELD_PENALIZACION_NOTAS = "notas";
 export const FIELD_PENALIZACION_PUNTAJE = "puntaje_penalizacion";
 export const FIELD_PENALIZACION_CONVOCATORIA_LINK = "convocatoria_afectada";
+export const FIELD_PENALIZACION_ESTADO = "estado";
+export const FIELD_PENALIZACION_PRACTICA_ID = "practica_id";
+export const FIELD_PENALIZACION_CONVOCATORIA_ID = "convocatoria_id";
+export const FIELD_PENALIZACION_LANZAMIENTO_ID = "lanzamiento_id";
+export const FIELD_PENALIZACION_ANULADA_AT = "anulada_at";
+export const FIELD_PENALIZACION_ANULACION_MOTIVO = "anulacion_motivo";
 
 // Orientaciones
 export const ALL_ORIENTACIONES = ["Clínica", "Educacional", "Laboral", "Comunitaria"] as const;

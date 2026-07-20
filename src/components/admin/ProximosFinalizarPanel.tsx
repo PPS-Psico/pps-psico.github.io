@@ -9,6 +9,7 @@ import {
 import {
   FIELD_ESTADO_ESTUDIANTES,
   FIELD_ESTADO_FINALIZACION,
+  FIELD_ESTADO_PRACTICA,
   FIELD_ESTUDIANTE_FINALIZACION,
   FIELD_HORAS_PRACTICAS,
   FIELD_ESPECIALIDAD_PRACTICAS,
@@ -19,6 +20,7 @@ import {
   FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
 } from "../../constants/dbConstants";
 import { normalizeStringForComparison, safeGetId } from "../../utils/formatters";
+import { isPracticeStatusComputable } from "../../logic/studentRules";
 import { sendSmartEmail } from "../../utils/emailService";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import Loader from "../Loader";
@@ -239,6 +241,7 @@ const ProximosFinalizarPanel: React.FC = () => {
         const orientacionesCursadasSet = new Set<string>();
 
         studentPracticas.forEach((p) => {
+          if (!isPracticeStatusComputable(p[FIELD_ESTADO_PRACTICA])) return;
           const horas = Number(p[FIELD_HORAS_PRACTICAS] || 0);
           horasTotales += horas;
 

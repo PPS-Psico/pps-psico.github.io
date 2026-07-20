@@ -519,6 +519,19 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Qué significa que una PPS figure como desaprobada por la institución?",
+        a: (
+          <>
+            Es una decisión excepcional comunicada por la institución cuando no se alcanza el{" "}
+            <strong>80% de asistencia</strong> o cuando la evaluación del compromiso, la
+            participación o el posicionamiento profesional es desfavorable. La PPS permanece en tu
+            historial para que el antecedente sea transparente, pero aporta <strong>0 horas</strong>
+            , no suma rotaciones y tenés que realizar otra práctica. Coordinación te notifica el
+            fundamento por correo.
+          </>
+        ),
+      },
+      {
         q: "¿Qué pasa si no completo las horas exactas por feriados o paros?",
         a: "Pueden recuperarse extendiendo el período de la PPS si la institución lo autoriza. Si no se recuperan y la práctica termina en fecha, se acreditan las horas tipificadas en la convocatoria, sin importar si las reales fueron menores o mayores.",
       },
@@ -618,6 +631,19 @@ const faqGroups: FaqGroup[] = [
     label: "Mi Panel",
     subtitle: "Acreditación final y uso de la herramienta.",
     items: [
+      {
+        q: "¿Qué significan los estados En curso, Finalizada y Desaprobada?",
+        a: (
+          <>
+            <strong>En curso</strong> identifica una PPS que todavía se está realizando;{" "}
+            <strong>Finalizada</strong> indica que terminó y, en la práctica habitual, luego se
+            completa la corrección del informe. No usamos un estado separado “Aprobada”.{" "}
+            <strong>Desaprobada por la institución</strong> es la excepción: queda visible, pero no
+            computa horas ni rotaciones. Mi Panel sirve para el seguimiento; la carga oficial en SAC
+            se realiza al completar todos los requisitos del ciclo, no PPS por PPS.
+          </>
+        ),
+      },
       {
         q: "¿Cuáles son los requisitos obligatorios para acreditar?",
         a: (

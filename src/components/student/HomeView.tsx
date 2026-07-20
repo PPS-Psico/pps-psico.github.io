@@ -58,6 +58,7 @@ import StudentSolicitudItem, { type StudentSolicitudItemData } from "./home/Stud
 import StudentHomeAtlas, { AhIcon } from "./home/atlas/StudentHomeAtlas";
 import StudentOnboardingCard from "./StudentOnboardingCard";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
+import { isPracticeDisapproved } from "../../logic/studentRules";
 
 interface HomeViewProps {
   myEnrollments: Convocatoria[];
@@ -434,7 +435,9 @@ const HomeView: React.FC<HomeViewProps> = ({
         dates: [fmtShort(p[FIELD_FECHA_INICIO_PRACTICAS]), fmtShort(p[FIELD_FECHA_FIN_PRACTICAS])]
           .filter(Boolean)
           .join(" — "),
-        hs: (p[FIELD_HORAS_PRACTICAS] as number) || 0,
+        hs: isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA])
+          ? 0
+          : (p[FIELD_HORAS_PRACTICAS] as number) || 0,
         nota: notaClean,
       };
     });

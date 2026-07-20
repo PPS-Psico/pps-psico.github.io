@@ -43,6 +43,7 @@ import {
   FIELD_ESTADO_ESTUDIANTES,
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
   FIELD_SELECTED_AT_CONVOCATORIAS,
   FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
   FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
@@ -53,6 +54,7 @@ import type { StudentInfo } from "../types";
 import { fetchHistoricalLaunchOffers } from "../services/historicalLaunchAnalytics";
 import { reportCutoff } from "../features/executive-report/executiveReport.service";
 import { fetchDirectorReportSnapshot } from "../features/executive-report/directorReport.service";
+import { isPracticeStatusComputable } from "../logic/studentRules";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 export type Tone = "accent" | "warn" | "ok" | "ai" | "ink";
@@ -1002,7 +1004,9 @@ export const useTrayectoriaFinalizados = ({
       const traj = new Map<string, Tray>();
       const { data: practicaData, error: practicaError } = await supabase
         .from(TABLE_NAME_PRACTICAS)
-        .select(`estudiante_id, ${FIELD_FECHA_INICIO_PRACTICAS}, ${FIELD_HORAS_PRACTICAS}`)
+        .select(
+          `estudiante_id, ${FIELD_FECHA_INICIO_PRACTICAS}, ${FIELD_HORAS_PRACTICAS}, ${FIELD_ESTADO_PRACTICA}`
+        )
         .eq(FIELD_TIPO_ACTIVIDAD_PRACTICAS, "pps")
         .in("estudiante_id", ids);
       if (practicaError) throw practicaError;
@@ -1012,7 +1016,13 @@ export const useTrayectoriaFinalizados = ({
         const t = traj.get(sid) || { first: null, registros: 0, horas: 0 };
         t.registros += 1;
         const h = Number(p[FIELD_HORAS_PRACTICAS]);
-        if (Number.isFinite(h) && h > 0) t.horas += h;
+        if (
+          isPracticeStatusComputable(p[FIELD_ESTADO_PRACTICA] as string | null) &&
+          Number.isFinite(h) &&
+          h > 0
+        ) {
+          t.horas += h;
+        }
         const d = parseToUTCDate(p[FIELD_FECHA_INICIO_PRACTICAS] as string);
         if (d && (!t.first || d < t.first)) t.first = d;
         traj.set(sid, t);

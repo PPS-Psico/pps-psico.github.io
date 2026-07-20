@@ -720,9 +720,8 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 .split(" - ")[0]
                 .trim();
               const rawDesc = (l[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "";
-              const desc = rawDesc
-                ? rawDesc.split(/(?<=\.)\s/)[0].slice(0, 120)
-                : "Práctica profesional supervisada disponible para tu rotación.";
+              const desc =
+                rawDesc.trim() || "Práctica profesional supervisada disponible para tu rotación.";
               const requisito = String(l[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] || "").trim();
               const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
               const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
@@ -763,7 +762,13 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     </span>
                   </div>
                   <h2 className="ah-conv__name">{name}</h2>
-                  <p className="ah-conv__desc">{desc}</p>
+                  <p
+                    className={
+                      "ah-conv__desc" + (requisito ? " ah-conv__desc--with-requirement" : "")
+                    }
+                  >
+                    {desc}
+                  </p>
                   {requisito ? (
                     <div className="ah-conv__requirement" role="note">
                       <span>Requisito</span>
@@ -845,9 +850,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   .split(" - ")[0]
                   .trim();
                 const rawDesc = (l[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "";
-                const desc = rawDesc
-                  ? rawDesc.split(/(?<=\.)\s/)[0].slice(0, 120)
-                  : "Práctica profesional supervisada.";
+                const desc = rawDesc.trim() || "Práctica profesional supervisada.";
                 const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
                 const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
                 const periodo = [

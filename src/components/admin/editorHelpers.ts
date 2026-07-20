@@ -14,10 +14,17 @@
 export function sumHoursByStudent(
   practicas: Record<string, unknown>[],
   linkField: string,
-  hoursField: string
+  hoursField: string,
+  stateField = "estado"
 ): Map<string, number> {
   const totals = new Map<string, number>();
   for (const p of practicas) {
+    const state = String(p[stateField] || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+    if (state === "desaprobada" || state === "no se pudo concretar") continue;
     const link = p[linkField];
     const ids = Array.isArray(link) ? link.map((x) => String(x)) : [String(link)];
     const hs = Number(p[hoursField]) || 0;

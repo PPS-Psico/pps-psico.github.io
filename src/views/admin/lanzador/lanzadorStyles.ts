@@ -929,6 +929,54 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   .lv4-schedule-row--oriented > select { grid-column: 1 / -1; grid-row: 2; }
   .lv4-schedule-required { grid-column: 1; justify-self: start; }
 }
+
+/* ── Desaprobación institucional ─────────────────────────────────────────── */
+.lv4-input {
+  width: 100%; box-sizing: border-box; font-family: inherit; font-size: 13px;
+  padding: 9px 12px; border-radius: 8px; background: var(--paper-2);
+  border: 1px solid var(--rule-3); color: var(--ink); outline: none;
+  transition: border-color .12s ease;
+}
+.lv4-input:focus { border-color: var(--accent); }
+.lv4-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lv4-form-help { font-size: 11.5px; line-height: 1.45; color: var(--ink-3); margin-top: 6px; }
+.lv4-form-error {
+  padding: 10px 12px; border-radius: 8px; background: var(--warn-s); color: var(--warn);
+  border: 1px solid color-mix(in oklab, var(--warn) 35%, transparent); font-size: 12px;
+}
+.lv4-fieldset { border: 0; padding: 0; margin: 0 0 14px; }
+.lv4-check-row {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; margin-top: 7px;
+  border: 1px solid var(--rule-2); border-radius: 9px; background: var(--paper-2);
+  color: var(--ink-2); cursor: pointer;
+}
+.lv4-check-row:has(input:checked) {
+  border-color: color-mix(in oklab, var(--warn) 45%, var(--rule-2)); background: var(--warn-s);
+}
+.lv4-check-row input { margin-top: 2px; accent-color: var(--warn); }
+.lv4-check-row strong { display: block; font-size: 12.5px; color: var(--ink); }
+.lv4-check-row small { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-3); line-height: 1.4; }
+.lv4-disapproval-icon { background: var(--warn-s); color: var(--warn); }
+.lv4-disapproval-impact {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; margin-bottom: 18px;
+  border: 1px solid color-mix(in oklab, var(--warn) 36%, transparent); border-radius: 10px;
+  background: var(--warn-s); color: var(--ink-2);
+}
+.lv4-disapproval-impact > .material-icons { color: var(--warn); font-size: 19px; }
+.lv4-disapproval-impact strong { display: block; color: var(--ink); font-size: 12.5px; }
+.lv4-disapproval-impact span { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.45; }
+.lv4-disapproved-roster {
+  margin-top: 16px; padding: 14px; border: 1px solid color-mix(in oklab, var(--warn) 32%, var(--rule-2));
+  border-radius: 12px; background: var(--warn-s);
+}
+.lv4-disapproved-roster > .lv4-eyebrow { display: block; margin-bottom: 9px; color: var(--warn); }
+.lv4-disapproved-roster .lv4-insc-row {
+  padding: 9px 10px; border-radius: 9px; background: var(--paper); border: 1px solid var(--rule-2);
+}
+.lv4-disapproved-roster-name { flex: 1; min-width: 0; }
+.lv4-disapproved-roster-name strong { display: block; font-size: 12.5px; color: var(--ink); }
+.lv4-disapproved-roster-name span { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-3); }
+@media (max-width: 560px) { .lv4-form-grid { grid-template-columns: 1fr; gap: 0; } }
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

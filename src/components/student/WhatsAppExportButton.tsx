@@ -3,11 +3,13 @@ import { useModal } from "../../contexts/ModalContext";
 import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
   FIELD_HORAS_PRACTICAS,
   FIELD_LEGAJO_ESTUDIANTES,
 } from "../../constants";
 import type { Practica, CriteriosCalculados, Orientacion, EstudianteFields } from "../../types";
 import { logger } from "../../utils/logger";
+import { isPracticeDisapproved } from "../../logic/studentRules";
 
 interface WhatsAppExportButtonProps {
   practicas: Practica[];
@@ -48,8 +50,10 @@ const WhatsAppExportButton: React.FC<WhatsAppExportButtonProps> = ({
                 ? institucionRaw.join(", ")
                 : institucionRaw;
               const orientacion = p[FIELD_ESPECIALIDAD_PRACTICAS] || "N/A";
-              const horas = p[FIELD_HORAS_PRACTICAS] || 0;
-              return `- *${institucion}* (${orientacion}): ${horas} hs.`;
+              const disapproved = isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA]);
+              const horas = disapproved ? 0 : p[FIELD_HORAS_PRACTICAS] || 0;
+              const resultado = disapproved ? " — desaprobada; no computa" : "";
+              return `- *${institucion}* (${orientacion}): ${horas} hs.${resultado}`;
             })
             .join("\n")
         : "No hay prácticas registradas.";

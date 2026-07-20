@@ -1172,35 +1172,56 @@ export type Database = {
       penalizaciones: {
         Row: {
           airtable_id: string | null;
+          anulacion_motivo: string | null;
+          anulada_at: string | null;
+          anulada_por: string | null;
           convocatoria_afectada: string | null;
+          convocatoria_id: string | null;
           created_at: string | null;
+          estado: string;
           estudiante_id: string | null;
           fecha_incidente: string | null;
           id: string;
+          lanzamiento_id: string | null;
           notas: string | null;
-          puntaje_penalizacion: number | null;
+          practica_id: string | null;
+          puntaje_penalizacion: number;
           tipo_incumplimiento: string | null;
         };
         Insert: {
           airtable_id?: string | null;
+          anulacion_motivo?: string | null;
+          anulada_at?: string | null;
+          anulada_por?: string | null;
           convocatoria_afectada?: string | null;
+          convocatoria_id?: string | null;
           created_at?: string | null;
+          estado?: string;
           estudiante_id?: string | null;
           fecha_incidente?: string | null;
           id?: string;
+          lanzamiento_id?: string | null;
           notas?: string | null;
-          puntaje_penalizacion?: number | null;
+          practica_id?: string | null;
+          puntaje_penalizacion?: number;
           tipo_incumplimiento?: string | null;
         };
         Update: {
           airtable_id?: string | null;
+          anulacion_motivo?: string | null;
+          anulada_at?: string | null;
+          anulada_por?: string | null;
           convocatoria_afectada?: string | null;
+          convocatoria_id?: string | null;
           created_at?: string | null;
+          estado?: string;
           estudiante_id?: string | null;
           fecha_incidente?: string | null;
           id?: string;
+          lanzamiento_id?: string | null;
           notas?: string | null;
-          puntaje_penalizacion?: number | null;
+          practica_id?: string | null;
+          puntaje_penalizacion?: number;
           tipo_incumplimiento?: string | null;
         };
         Relationships: [
@@ -1212,10 +1233,31 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "penalizaciones_convocatoria_id_fkey";
+            columns: ["convocatoria_id"];
+            isOneToOne: false;
+            referencedRelation: "convocatorias";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "penalizaciones_estudiante_id_fkey";
             columns: ["estudiante_id"];
             isOneToOne: false;
             referencedRelation: "estudiantes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "penalizaciones_lanzamiento_id_fkey";
+            columns: ["lanzamiento_id"];
+            isOneToOne: false;
+            referencedRelation: "lanzamientos_pps";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "penalizaciones_practica_id_fkey";
+            columns: ["practica_id"];
+            isOneToOne: false;
+            referencedRelation: "practicas";
             referencedColumns: ["id"];
           },
         ];
@@ -1224,6 +1266,11 @@ export type Database = {
         Row: {
           airtable_id: string | null;
           created_at: string | null;
+          desaprobacion_causas: string[] | null;
+          desaprobacion_fecha: string | null;
+          desaprobacion_motivo_publico: string | null;
+          desaprobacion_notificado_at: string | null;
+          desaprobacion_registrado_por: string | null;
           es_online: boolean;
           especialidad: string | null;
           estado: string | null;
@@ -1240,6 +1287,11 @@ export type Database = {
         Insert: {
           airtable_id?: string | null;
           created_at?: string | null;
+          desaprobacion_causas?: string[] | null;
+          desaprobacion_fecha?: string | null;
+          desaprobacion_motivo_publico?: string | null;
+          desaprobacion_notificado_at?: string | null;
+          desaprobacion_registrado_por?: string | null;
           es_online?: boolean;
           especialidad?: string | null;
           estado?: string | null;
@@ -1256,6 +1308,11 @@ export type Database = {
         Update: {
           airtable_id?: string | null;
           created_at?: string | null;
+          desaprobacion_causas?: string[] | null;
+          desaprobacion_fecha?: string | null;
+          desaprobacion_motivo_publico?: string | null;
+          desaprobacion_notificado_at?: string | null;
+          desaprobacion_registrado_por?: string | null;
           es_online?: boolean;
           especialidad?: string | null;
           estado?: string | null;
@@ -1793,6 +1850,17 @@ export type Database = {
         Args: { legajo_input: string; new_password: string };
         Returns: undefined;
       };
+      anular_desaprobacion_pps: {
+        Args: {
+          p_motivo: string;
+          p_nuevo_estado: string;
+          p_practica_id: string;
+        };
+        Returns: {
+          penalizacion_id: string;
+          practica_id: string;
+        }[];
+      };
       archive_lanzamientos_after_start_grace: { Args: never; Returns: number };
       auth_email: { Args: never; Returns: string };
       calc_cohorte_estudiante: {
@@ -2075,6 +2143,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
       mark_password_changed: { Args: never; Returns: undefined };
+      practica_computa: { Args: { p_estado: string }; Returns: boolean };
       process_consentimiento_timeouts: { Args: never; Returns: undefined };
       register_campus_student: {
         Args: {
@@ -2097,6 +2166,20 @@ export type Database = {
           userid_input: string;
         };
         Returns: undefined;
+      };
+      registrar_desaprobacion_pps: {
+        Args: {
+          p_causas: string[];
+          p_fecha: string;
+          p_informe_ref: string;
+          p_motivo_publico: string;
+          p_notificado_at: string;
+          p_practica_id: string;
+        };
+        Returns: {
+          penalizacion_id: string;
+          practica_id: string;
+        }[];
       };
       reset_student_password_verified: {
         Args: {

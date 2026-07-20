@@ -40,6 +40,19 @@ export const isPracticeFinished = (status: string | null | undefined): boolean =
   );
 };
 
+export const isPracticeDisapproved = (status: string | null | undefined): boolean =>
+  normalizeStringForComparison(status) === "desaprobada";
+
+export const isPracticeStatusComputable = (status: string | null | undefined): boolean => {
+  const normalizedStatus = normalizeStringForComparison(status);
+  return normalizedStatus !== "desaprobada" && normalizedStatus !== "no se pudo concretar";
+};
+
+/** Una PPS desaprobada queda en el historial, pero no aporta ningún requisito. */
+export const isPracticeComputable = (practice: Practica): boolean => {
+  return isPracticeStatusComputable(practice[FIELD_ESTADO_PRACTICA]);
+};
+
 /**
  * Checks if an active practice has exceeded its end date.
  */
@@ -62,7 +75,9 @@ export const isPracticeOverdue = (practice: Practica): boolean => {
  * Calculates total hours from a list of practices.
  */
 export const calculateTotalHours = (practices: Practica[]): number => {
-  return practices.reduce((acc, p) => acc + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
+  return practices
+    .filter(isPracticeComputable)
+    .reduce((acc, p) => acc + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
 };
 
 /**
@@ -77,7 +92,9 @@ export const calculateSpecialtyHours = (
 
   return practices
     .filter(
-      (p) => normalizeStringForComparison(p[FIELD_ESPECIALIDAD_PRACTICAS]) === normalizedTarget
+      (p) =>
+        isPracticeComputable(p) &&
+        normalizeStringForComparison(p[FIELD_ESPECIALIDAD_PRACTICAS]) === normalizedTarget
     )
     .reduce((acc, p) => acc + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
 };
@@ -88,7 +105,7 @@ export const calculateSpecialtyHours = (
 export const getUniqueOrientations = (practices: Practica[]): string[] => {
   const normalizedMap = new Map<string, string>();
 
-  practices.forEach((p) => {
+  practices.filter(isPracticeComputable).forEach((p) => {
     const raw = String(p[FIELD_ESPECIALIDAD_PRACTICAS] || "");
     if (!raw) return;
 

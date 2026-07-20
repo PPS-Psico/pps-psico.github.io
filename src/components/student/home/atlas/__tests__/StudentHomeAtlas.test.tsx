@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import {
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
@@ -36,6 +37,44 @@ const enrollment = {
 } as Convocatoria;
 
 describe("StudentHomeAtlas en escritorio", () => {
+  it("conserva la descripción completa en las tarjetas cuando hay varias convocatorias", () => {
+    const fullDescription =
+      "Esta práctica profesional acerca a estudiantes al trabajo comunitario con equipos interdisciplinarios. También permite participar en talleres, entrevistas y acciones territoriales durante toda la rotación.";
+    const secondLaunch = {
+      ...launch,
+      id: "launch-open-2",
+      [FIELD_NOMBRE_PPS_LANZAMIENTOS]: "Segunda institución - Dispositivo",
+    } as LanzamientoPPS;
+
+    render(
+      <StudentHomeAtlas
+        student={null}
+        studentName="Ana"
+        criterios={initialCriterios}
+        openLanzamientos={[
+          { ...launch, [FIELD_DESCRIPCION_LANZAMIENTOS]: fullDescription },
+          secondLaunch,
+        ]}
+        practicas={[]}
+        solicitudes={[]}
+        informeTasks={[]}
+        closedLanzamientos={[]}
+        enrollmentMap={new Map()}
+        institutionAddressMap={new Map()}
+        consent={null}
+        upcomingStart={null}
+        onStartConsent={jest.fn()}
+        onOpenDetalle={jest.fn()}
+        onInscribir={jest.fn()}
+        onCancelarInscripcion={jest.fn()}
+        onVerConvocados={jest.fn()}
+        onNavigate={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText(fullDescription)).toBeInTheDocument();
+  });
+
   it("permite cancelar una inscripción desde la tarjeta destacada sin navegar", () => {
     const onCancelarInscripcion = jest.fn();
     const onOpenDetalle = jest.fn();

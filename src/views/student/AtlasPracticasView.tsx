@@ -9,10 +9,13 @@ import {
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
+  FIELD_DESAPROBACION_MOTIVO_PUBLICO_PRACTICAS,
+  FIELD_DESAPROBACION_FECHA_PRACTICAS,
 } from "../../constants";
 import type { CriteriosCalculados, InformeTask, Orientacion, Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import NotaSelector from "../../components/NotaSelector";
+import { isPracticeComputable, isPracticeDisapproved } from "../../logic/studentRules";
 
 interface AtlasPracticasViewProps {
   criterios: CriteriosCalculados;
@@ -68,6 +71,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   const segments = useMemo(() => {
     const map = new Map<string, number>();
     (practicas || []).forEach((p) => {
+      if (!isPracticeComputable(p)) return;
       const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "";
       const hs = Number(p[FIELD_HORAS_PRACTICAS] || 0);
       if (!area || !hs) return;
@@ -132,6 +136,9 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
 
   const notaCell = (p: Practica) => {
     const estado = normalizeStringForComparison((p[FIELD_ESTADO_PRACTICA] as string) || "");
+    if (isPracticeDisapproved(estado)) {
+      return <span className="ah-disapproval-grade">Desaprobada</span>;
+    }
     const raw = p[FIELD_NOTA_PRACTICAS];
     const num = raw != null && String(raw).trim() !== "" ? Number(raw) : NaN;
     let text = "Pend.";
@@ -357,11 +364,27 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                   <tbody>
                     {rows.map((p) => {
                       const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
+                      const desaprobada = isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA]);
                       return (
-                        <tr key={p.id}>
+                        <tr key={p.id} className={desaprobada ? "ah-practice-disapproved" : ""}>
                           <td className="name">
-                            {cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
-                              "Institución"}
+                            <span>
+                              {cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
+                                "Institución"}
+                            </span>
+                            {desaprobada ? (
+                              <span
+                                className="ah-disapproval-badge"
+                                title={p[FIELD_DESAPROBACION_MOTIVO_PUBLICO_PRACTICAS] || undefined}
+                              >
+                                Desaprobada por la institución
+                              </span>
+                            ) : null}
+                            {desaprobada && p[FIELD_DESAPROBACION_FECHA_PRACTICAS] ? (
+                              <span className="ah-disapproval-date">
+                                Resolución: {formatDate(p[FIELD_DESAPROBACION_FECHA_PRACTICAS])}
+                              </span>
+                            ) : null}
                           </td>
                           <td className="area">
                             <span
@@ -380,13 +403,25 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                               .filter(Boolean)
                               .join(" - ")}
                           </td>
-                          <td className="mono hours">{Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs</td>
+                          <td className="mono hours">
+                            {desaprobada ? (
+                              <span
+                                className="ah-hours-not-counted"
+                                title={`${Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs registradas; no computan para la acreditación`}
+                              >
+                                <b>0 hs</b>
+                                <small>no computan</small>
+                              </span>
+                            ) : (
+                              `${Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs`
+                            )}
+                          </td>
                           <td className="nota">{notaCell(p)}</td>
                           <td
                             className="ah-table__actions"
                             style={{ width: 40, textAlign: "right" }}
                           >
-                            {onRequestModificacion ? (
+                            {onRequestModificacion && !desaprobada ? (
                               <button
                                 type="button"
                                 className="ah-iconbtn--sm"

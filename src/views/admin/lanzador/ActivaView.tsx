@@ -3,10 +3,12 @@
  * PPS en curso: Roster de estudiantes en curso (bajas y reemplazos) y estadísticas.
  */
 import React, { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  getPenaltyScore,
 } from "../../../constants";
 import {
   normalizeStringForComparison,
@@ -19,11 +21,15 @@ import { useLaunchPracticas } from "./useLaunchData";
 import { useSeleccionadorLogic } from "../../../hooks/useSeleccionadorLogic";
 import Toast from "../../../components/ui/Toast";
 import { supabase } from "../../../lib/supabaseClient";
+import { isPracticeDisapproved, isPracticeStatusComputable } from "../../../logic/studentRules";
+import DisapprovalBadge from "../../../components/admin/DisapprovalBadge";
+import DesaprobacionPPSModal from "../../../components/admin/DesaprobacionPPSModal";
 
 const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> = ({
   launch,
   onArchivar,
 }) => {
+  const queryClient = useQueryClient();
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
   const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
   const fechaFin = launch[FIELD_FECHA_FIN_LANZAMIENTOS] as string | null;
@@ -31,7 +37,11 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   // 1. Estadísticas de prácticas reales
   const { data: practicas = [] } = useLaunchPracticas(launch.id);
 
-  const totalHoras = practicas.reduce((sum, p) => sum + ((p.horas_realizadas as number) || 0), 0);
+  const totalHoras = practicas.reduce(
+    (sum, p) =>
+      sum + (isPracticeStatusComputable(p.estado) ? (p.horas_realizadas as number) || 0 : 0),
+    0
+  );
   const activas = practicas.filter(
     (p) =>
       normalizeStringForComparison(p.estado) === "activa" ||
@@ -40,6 +50,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   const finalizadas = practicas.filter(
     (p) => normalizeStringForComparison(p.estado) === "finalizada"
   ).length;
+  const desaprobadas = practicas.filter((p) => isPracticeDisapproved(p.estado)).length;
 
   // 2. Hook de lógica compartida para la mesa de selección / reemplazos
   const {
@@ -55,7 +66,8 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
 
   // 3. Estados locales para el modal de baja y búsqueda de reemplazos
   const [studentToBaja, setStudentToBaja] = useState<EnrichedStudent | null>(null);
-  const [penaltyType, setPenaltyType] = useState("Ausencia en Inicio / No se presentó");
+  const [studentToDisapprove, setStudentToDisapprove] = useState<EnrichedStudent | null>(null);
+  const [penaltyType, setPenaltyType] = useState("Baja sobre la Fecha / Ausencia en Inicio");
   const [penaltyNotes, setPenaltyNotes] = useState("");
   const [isSubmittingBaja, setIsSubmittingBaja] = useState(false);
   const [showReplacementSearch, setShowReplacementSearch] = useState(false);
@@ -65,6 +77,22 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   const unselectedCandidates = useMemo(() => {
     return candidates.filter((c) => normalizeStringForComparison(c.status) === "inscripto");
   }, [candidates]);
+
+  const activeSelectedCandidates = useMemo(
+    () =>
+      selectedCandidates.filter(
+        (candidate) => !candidate.desaprobaciones.some((item) => item.lanzamientoId === launch.id)
+      ),
+    [launch.id, selectedCandidates]
+  );
+
+  const currentDisapprovedCandidates = useMemo(
+    () =>
+      selectedCandidates.filter((candidate) =>
+        candidate.desaprobaciones.some((item) => item.lanzamientoId === launch.id)
+      ),
+    [launch.id, selectedCandidates]
+  );
 
   // 5. Filtrar estudiantes activos en el sistema para búsqueda manual
   const filteredAvailable = useMemo(() => {
@@ -80,18 +108,6 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
       )
       .slice(0, 5);
   }, [availableStudents, searchQuery]);
-
-  // 6. Valores de penalización por motivo
-  const getPenaltyScore = (type: string) => {
-    const scores: Record<string, number> = {
-      "Ausencia en Inicio / No se presentó": 50,
-      "Baja Anticipada": 30,
-      "Abandono durante la PPS": 70,
-      "Falta sin Aviso": 40,
-      "Baja Administrativa / Sin Penalización": 0,
-    };
-    return scores[type] || 0;
-  };
 
   // 7. Acción de dar de baja con justificación y registro de penalización automático
   const handleConfirmBaja = async () => {
@@ -109,6 +125,8 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
         notas: penaltyNotes.trim() || null,
         puntaje_penalizacion: penaltyScore,
         convocatoria_afectada: launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS",
+        convocatoria_id: studentToBaja.enrollmentId,
+        lanzamiento_id: launch.id,
       };
 
       const { error } = await supabase.from("penalizaciones").insert([penaltyData]);
@@ -160,6 +178,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
         <StatGrid style={{ marginBottom: 28 }}>
           <Stat label="Prácticas activas" value={activas} hint="en curso" tone="ok" />
           <Stat label="Finalizadas" value={finalizadas} hint="completadas" />
+          <Stat label="Desaprobadas" value={desaprobadas} hint="0 hs computables" tone="warn" />
           <Stat label="Horas totales" value={totalHoras} hint="realizadas" />
           <Stat
             label="Período"
@@ -178,11 +197,11 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
               <div className="flex items-baseline justify-between mb-1">
                 <span className="lv4-eyebrow">Alumnos en curso</span>
                 <span className="lv4-badge-ok-strong" style={{ fontSize: 11, borderRadius: 99 }}>
-                  {selectedCandidates.length} seleccionados
+                  {activeSelectedCandidates.length} en curso
                 </span>
               </div>
 
-              {selectedCandidates.length === 0 ? (
+              {activeSelectedCandidates.length === 0 ? (
                 <Banner
                   tone="neutral"
                   icon="group"
@@ -201,7 +220,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                     background: "var(--paper)",
                   }}
                 >
-                  {selectedCandidates.map((student, idx) => {
+                  {activeSelectedCandidates.map((student, idx) => {
                     const waMsg = `Hola ${student.nombre}, te contactamos de la coordinación de PPS de UFLO con respecto a tu práctica en ${launch[FIELD_NOMBRE_PPS_LANZAMIENTOS]}.`;
                     const waUrl = getWhatsAppUrl(student.telefono, waMsg);
                     return (
@@ -212,7 +231,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                           gap: 12,
                           padding: "12px 16px",
                           borderBottom:
-                            idx === selectedCandidates.length - 1
+                            idx === activeSelectedCandidates.length - 1
                               ? "none"
                               : "1px solid var(--rule-2)",
                         }}
@@ -252,6 +271,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                                 {student.horarioAsignado}
                               </span>
                             )}
+                            <DisapprovalBadge disapprovals={student.desaprobaciones} />
                           </div>
                         </div>
 
@@ -304,6 +324,13 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                             </span>
                           )}
                           <button
+                            className="lv4-btn lv4-btn-danger"
+                            onClick={() => setStudentToDisapprove(student)}
+                          >
+                            <span className="material-icons">report</span>
+                            Desaprobar
+                          </button>
+                          <button
                             className="lv4-btn"
                             style={{
                               background: "var(--danger-s, #fde8e8)",
@@ -317,7 +344,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                             }}
                             onClick={() => {
                               setStudentToBaja(student);
-                              setPenaltyType("Ausencia en Inicio / No se presentó");
+                              setPenaltyType("Baja sobre la Fecha / Ausencia en Inicio");
                               setPenaltyNotes("");
                             }}
                           >
@@ -332,6 +359,26 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                   })}
                 </div>
               )}
+
+              {currentDisapprovedCandidates.length > 0 ? (
+                <div className="lv4-disapproved-roster">
+                  <span className="lv4-eyebrow">Antecedentes desaprobados en esta PPS</span>
+                  {currentDisapprovedCandidates.map((student) => (
+                    <div key={student.enrollmentId} className="lv4-insc-row">
+                      <div className="lv4-avatar">{getInitials(student.nombre)}</div>
+                      <div className="lv4-disapproved-roster-name">
+                        <strong>{student.nombre}</strong>
+                        <span>Legajo {student.legajo} · no integra el roster activo</span>
+                      </div>
+                      <DisapprovalBadge
+                        disapprovals={student.desaprobaciones.filter(
+                          (item) => item.lanzamientoId === launch.id
+                        )}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {/* Columna Derecha - Mesa de reemplazos y candidatos */}
@@ -420,6 +467,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                             <span className="truncate">Pref: {candidate.horarioSeleccionado}</span>
                           )}
                         </div>
+                        <DisapprovalBadge disapprovals={candidate.desaprobaciones} />
                       </div>
                       <button
                         className="lv4-btn"
@@ -619,8 +667,8 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                   value={penaltyType}
                   onChange={(e) => setPenaltyType(e.target.value)}
                 >
-                  <option value="Ausencia en Inicio / No se presentó">
-                    Ausencia en Inicio / No se presentó (50 pts)
+                  <option value="Baja sobre la Fecha / Ausencia en Inicio">
+                    Baja sobre la Fecha / Ausencia en Inicio (50 pts)
                   </option>
                   <option value="Baja Anticipada">Baja Anticipada (30 pts)</option>
                   <option value="Abandono durante la PPS">Abandono durante la PPS (70 pts)</option>
@@ -693,6 +741,26 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
           </div>
         </div>
       )}
+
+      {studentToDisapprove ? (
+        <DesaprobacionPPSModal
+          isOpen
+          student={{
+            id: studentToDisapprove.studentId,
+            nombre: studentToDisapprove.nombre,
+            legajo: studentToDisapprove.legajo,
+          }}
+          launchId={launch.id}
+          onClose={() => setStudentToDisapprove(null)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["launchPracticas", launch.id] });
+            setToastInfo({
+              message: "PPS desaprobada y penalización de 100 puntos registrada.",
+              type: "success",
+            });
+          }}
+        />
+      ) : null}
     </div>
   );
 };

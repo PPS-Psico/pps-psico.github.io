@@ -29,6 +29,7 @@ import {
   safeGetId,
   getGroupName,
 } from "./formatters";
+import { isPracticeStatusComputable } from "../logic/studentRules";
 
 // Proyección de usuarios habilitados sin cuenta para el año actual
 // Este valor se suma a los nuevos inscriptos reales para la proyección
@@ -200,13 +201,15 @@ export const calculateDashboardMetrics = (allData: DashboardData, targetYear: nu
   allData.practicas.forEach((p) => {
     const sId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
     if (sId) {
-      const horas = p[FIELD_HORAS_PRACTICAS] || 0;
+      const horas = isPracticeStatusComputable(p[FIELD_ESTADO_PRACTICA])
+        ? Number(p[FIELD_HORAS_PRACTICAS]) || 0
+        : 0;
       const currentTotal = studentHoursMap.get(sId) || 0;
       studentHoursMap.set(sId, currentTotal + horas);
 
       const status = normalizeStringForComparison(p[FIELD_ESTADO_PRACTICA]);
       // practicas.estado canónico (CHECK constraint normalize_states):
-      // En curso · Finalizada · Convenio Realizado · No se pudo concretar.
+      // En curso · Finalizada · Desaprobada · Convenio Realizado · No se pudo concretar.
       if (status === "en curso") {
         studentActivePracticesMap.set(sId, true);
       }

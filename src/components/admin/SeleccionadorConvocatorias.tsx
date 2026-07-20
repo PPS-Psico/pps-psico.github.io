@@ -4,6 +4,7 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
+  getPenaltyScore,
 } from "../../constants";
 import { useSeleccionadorLogic } from "../../hooks/useSeleccionadorLogic";
 import { supabase } from "../../lib/supabaseClient";
@@ -20,6 +21,8 @@ import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
 import { logger } from "../../utils/logger";
+import DisapprovalBadge from "./DisapprovalBadge";
+import { calculateTotalHours, isPracticeDisapproved } from "../../logic/studentRules";
 
 const isCommitmentAccepted = (status?: string | null) =>
   normalizeStringForComparison(status) === "aceptado";
@@ -318,6 +321,8 @@ const StudentRow: React.FC<{
           </span>
         )}
 
+        <DisapprovalBadge disapprovals={student.desaprobaciones} />
+
         {student.terminoCursar && (
           <span
             className={`lv4-badge ${student.finalesAdeuda ? "lv4-badge-warn" : "lv4-badge-muted"}`}
@@ -394,7 +399,9 @@ const StudentRow: React.FC<{
         })()}
 
         {student.penalizacionAcumulada > 0 && (
-          <span className="lv4-badge lv4-badge-danger">Penalización Activa</span>
+          <span className="lv4-badge lv4-badge-danger">
+            {student.penalizacionAcumulada} pts de penalización
+          </span>
         )}
 
         {showCommitmentStatus && (
@@ -496,7 +503,7 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
 
   if (!isOpen || !student) return null;
 
-  const totalHoras = practicas.reduce((sum, p) => sum + (p.horas_realizadas || 0), 0);
+  const totalHoras = calculateTotalHours(practicas);
 
   return (
     <div className="lv4-modal-overlay" onClick={onClose}>
@@ -579,38 +586,50 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
                     </tr>
                   </thead>
                   <tbody>
-                    {practicas.map((practica) => (
-                      <tr key={practica.id}>
-                        <td>
-                          <div className="lv4-table-name">
-                            {practica.nombre_institucion || "N/A"}
-                          </div>
-                          <div className="lv4-table-sub">
-                            {practica.fecha_inicio &&
-                              new Date(practica.fecha_inicio).toLocaleDateString("es-AR")}
-                          </div>
-                        </td>
-                        <td className="center">
-                          <span
-                            className={`lv4-badge ${
-                              practica.estado === "Finalizada"
-                                ? "lv4-badge-ok"
-                                : practica.estado === "En curso"
-                                  ? "lv4-badge-accent"
-                                  : "lv4-badge-muted"
-                            }`}
-                          >
-                            {practica.estado || "N/A"}
-                          </span>
-                        </td>
-                        <td className="center">
-                          <span style={{ fontWeight: 600 }}>{practica.horas_realizadas || 0}</span>
-                        </td>
-                        <td className="center">
-                          <span style={{ fontWeight: 600 }}>{practica.nota || "-"}</span>
-                        </td>
-                      </tr>
-                    ))}
+                    {practicas.map((practica) => {
+                      const desaprobada = isPracticeDisapproved(practica.estado);
+                      return (
+                        <tr key={practica.id}>
+                          <td>
+                            <div className="lv4-table-name">
+                              {practica.nombre_institucion || "N/A"}
+                            </div>
+                            <div className="lv4-table-sub">
+                              {practica.fecha_inicio &&
+                                new Date(practica.fecha_inicio).toLocaleDateString("es-AR")}
+                            </div>
+                          </td>
+                          <td className="center">
+                            <span
+                              className={`lv4-badge ${
+                                desaprobada
+                                  ? "lv4-badge-danger-strong"
+                                  : practica.estado === "Finalizada"
+                                    ? "lv4-badge-ok"
+                                    : practica.estado === "En curso"
+                                      ? "lv4-badge-accent"
+                                      : "lv4-badge-muted"
+                              }`}
+                            >
+                              {desaprobada
+                                ? "Desaprobada por la institución"
+                                : practica.estado || "N/A"}
+                            </span>
+                          </td>
+                          <td className="center">
+                            <span style={{ fontWeight: 600 }}>
+                              {desaprobada ? 0 : practica.horas_realizadas || 0}
+                            </span>
+                            {desaprobada && <div className="lv4-table-sub">no computan</div>}
+                          </td>
+                          <td className="center">
+                            <span style={{ fontWeight: 600 }}>
+                              {desaprobada ? "—" : practica.nota || "-"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -729,6 +748,8 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
         notas: penaltyNotes,
         puntaje_penalizacion: getPenaltyScore(penaltyType),
         convocatoria_afectada: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
+        convocatoria_id: studentToBaja.enrollmentId,
+        lanzamiento_id: selectedLanzamiento.id,
       };
 
       await supabase.from("penalizaciones").insert([penaltyData]);
@@ -740,16 +761,6 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     } catch (error) {
       setToastInfo({ message: "Error al procesar la baja", type: "error" });
     }
-  };
-
-  const getPenaltyScore = (type: string) => {
-    const scores: Record<string, number> = {
-      "Baja Anticipada": 30,
-      "Baja sobre la Fecha / Ausencia en Inicio": 50,
-      "Abandono durante la PPS": 70,
-      "Falta sin Aviso": 40,
-    };
-    return scores[type] || 30;
   };
 
   if (isLoadingLaunches) return <Loader />;

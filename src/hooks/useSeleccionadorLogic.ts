@@ -15,7 +15,9 @@ import {
   FIELD_HORARIO_ASIGNADO_CONVOCATORIAS,
   FIELD_HORARIO_FORMULA_CONVOCATORIAS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
-  FIELD_HORAS_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
+  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+  FIELD_DESAPROBACION_FECHA_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
@@ -23,6 +25,7 @@ import {
   FIELD_OTRA_SITUACION_CONVOCATORIAS,
   FIELD_PENALIZACION_ESTUDIANTE_LINK,
   FIELD_PENALIZACION_PUNTAJE,
+  FIELD_PENALIZACION_ESTADO,
   FIELD_TELEFONO_ESTUDIANTES,
   FIELD_TERMINO_CURSAR_CONVOCATORIAS,
   FIELD_TRABAJA_CONVOCATORIAS,
@@ -30,6 +33,7 @@ import {
   FIELD_DNI_ESTUDIANTES,
   FIELD_ESTADO_ESTUDIANTES,
   FIELD_USER_ID_ESTUDIANTES,
+  isActivePenalty,
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -49,6 +53,7 @@ import { cleanDbValue, normalizeStringForComparison } from "../utils/formatters"
 import { calculateScore } from "../utils/seleccionadorScore";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
+import { calculateTotalHours, isPracticeDisapproved } from "../logic/studentRules";
 
 type CompromisoLite = {
   convocatoria_id: string | null;
@@ -226,15 +231,23 @@ export const useSeleccionadorLogic = (
           const studentPractices = practicasRes.filter(
             (p) => p[FIELD_ESTUDIANTE_LINK_PRACTICAS] === sId
           );
-          const totalHoras = studentPractices.reduce(
-            (sum: number, p) => sum + (p[FIELD_HORAS_PRACTICAS] || 0),
-            0
-          );
+          const totalHoras = calculateTotalHours(studentPractices);
           const cantPracticas = studentPractices.length;
+          const desaprobaciones = studentPractices
+            .filter((p) => isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA]))
+            .map((p) => ({
+              practicaId: p.id,
+              lanzamientoId: p.lanzamiento_id,
+              nombreInstitucion:
+                cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || "PPS",
+              fecha: p[FIELD_DESAPROBACION_FECHA_PRACTICAS],
+            }));
 
           // Calc penalties
           const studentPenalties = penaltiesRes.filter(
-            (p) => p[FIELD_PENALIZACION_ESTUDIANTE_LINK] === sId
+            (p) =>
+              p[FIELD_PENALIZACION_ESTUDIANTE_LINK] === sId &&
+              isActivePenalty(p[FIELD_PENALIZACION_ESTADO])
           );
           const penalizacionAcumulada = studentPenalties.reduce(
             (sum: number, p) => sum + (p[FIELD_PENALIZACION_PUNTAJE] || 0),
@@ -274,6 +287,7 @@ export const useSeleccionadorLogic = (
             totalHoras,
             cantPracticas,
             penalizacionAcumulada,
+            desaprobaciones,
             puntajeTotal,
             trabaja: works,
             certificadoTrabajo: cert as string,

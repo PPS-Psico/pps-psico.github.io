@@ -30,6 +30,15 @@ describe("sumHoursByStudent", () => {
     expect(sumHoursByStudent(practicas, "estudiante_id", "horas_realizadas").get("st_1")).toBe(10);
   });
 
+  it("conserva la práctica desaprobada pero no suma sus horas", () => {
+    const practicas = [
+      { estudiante_id: "st_1", horas_realizadas: 80, estado: "Desaprobada" },
+      { estudiante_id: "st_1", horas_realizadas: 40, estado: "Finalizada" },
+    ];
+
+    expect(sumHoursByStudent(practicas, "estudiante_id", "horas_realizadas").get("st_1")).toBe(40);
+  });
+
   it("devuelve un Map vacío para lista vacía", () => {
     expect(sumHoursByStudent([], "estudiante_id", "horas_realizadas").size).toBe(0);
   });

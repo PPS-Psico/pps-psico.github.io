@@ -8,8 +8,10 @@ import {
   FIELD_HORAS_PRACTICAS,
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
 } from "../../constants";
 import { formatDate } from "../../utils/formatters";
+import { isPracticeDisapproved } from "../../logic/studentRules";
 
 interface PrintableReportProps {
   studentDetails: EstudianteFields | null;
@@ -85,6 +87,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({
               <th className="p-2 border border-gray-300">Institución</th>
               <th className="p-2 border border-gray-300">Especialidad</th>
               <th className="p-2 border border-gray-300">Período</th>
+              <th className="p-2 border border-gray-300">Estado</th>
               <th className="p-2 border border-gray-300 text-right">Horas</th>
             </tr>
           </thead>
@@ -95,6 +98,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({
                 const institucion = Array.isArray(institucionRaw)
                   ? institucionRaw.join(", ")
                   : institucionRaw;
+                const disapproved = isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]);
                 return (
                   <tr key={practica.id || index} className="border-b border-gray-200">
                     <td className="p-2 border border-gray-300">{institucion || "N/A"}</td>
@@ -105,15 +109,20 @@ const PrintableReport: React.FC<PrintableReportProps> = ({
                       {formatDate(practica[FIELD_FECHA_INICIO_PRACTICAS])} -{" "}
                       {formatDate(practica[FIELD_FECHA_FIN_PRACTICAS])}
                     </td>
+                    <td className="p-2 border border-gray-300">
+                      {disapproved
+                        ? "Desaprobada por la institución"
+                        : practica[FIELD_ESTADO_PRACTICA] || "N/A"}
+                    </td>
                     <td className="p-2 border border-gray-300 text-right font-semibold">
-                      {practica[FIELD_HORAS_PRACTICAS] || 0}
+                      {disapproved ? "0 (no computan)" : practica[FIELD_HORAS_PRACTICAS] || 0}
                     </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-gray-500 border border-gray-300">
+                <td colSpan={5} className="p-4 text-center text-gray-500 border border-gray-300">
                   No hay prácticas registradas.
                 </td>
               </tr>

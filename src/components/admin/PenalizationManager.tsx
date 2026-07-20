@@ -43,6 +43,15 @@ import {
   FIELD_PENALIZACION_CONVOCATORIA_LINK,
   FIELD_LEGAJO_CONVOCATORIAS,
   FIELD_NOMBRE_BUSQUEDA_PRACTICAS,
+  FIELD_PENALIZACION_ESTADO,
+  FIELD_PENALIZACION_PRACTICA_ID,
+  FIELD_PENALIZACION_LANZAMIENTO_ID,
+  FIELD_PENALIZACION_ANULADA_AT,
+  FIELD_PENALIZACION_ANULACION_MOTIVO,
+  STANDARD_PENALTY_TYPES,
+  PENALTY_TYPES_THAT_REMOVE_PPS,
+  getPenaltyScore,
+  isActivePenalty,
 } from "../../constants";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
@@ -59,6 +68,7 @@ import {
   mapPractica,
   mapEstudiante,
 } from "../../utils/mappers";
+import DesaprobacionPPSModal from "./DesaprobacionPPSModal";
 
 // ─── CSS scoped (Paper & Ink editorial) ───────────────────────────────────────
 
@@ -90,6 +100,8 @@ html.dark .pen {
 .pen-search-panel{ border:1px solid var(--rule-2); border-radius:16px; background:var(--paper); padding:22px 24px; }
 .pen-search-panel h2{ font-family:'Instrument Serif', serif; font-size:26px; font-weight:700; letter-spacing:-0.025em; margin:6px 0 0; }
 .pen-search-panel p{ font-size:13.5px; color:var(--ink-3); margin:6px 0 0; max-width:520px; }
+.pen-disapproval-panel{ margin-bottom:14px; border-left:3px solid var(--warn); }
+.pen-disapproval-panel .eyebrow{ color:var(--warn); }
 .pen-search-box{ margin-top:18px; border:1px solid var(--rule-3); border-radius:10px; background:var(--paper-2); padding:4px 12px; }
 .pen-search-box:focus-within{ border-color:var(--accent); }
 
@@ -169,18 +181,8 @@ injectPremiumMotion();
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const PENALTY_TYPES = [
-  "Baja Anticipada",
-  "Baja sobre la Fecha / Ausencia en Inicio",
-  "Abandono durante la PPS",
-  "Falta sin Aviso",
-];
-
-const TRIGGER_TYPES = [
-  "Baja Anticipada",
-  "Baja sobre la Fecha / Ausencia en Inicio",
-  "Abandono durante la PPS",
-];
+const PENALTY_TYPES = [...STANDARD_PENALTY_TYPES];
+const TRIGGER_TYPES: readonly string[] = PENALTY_TYPES_THAT_REMOVE_PPS;
 
 type Severity = "critico" | "medio" | "leve";
 
@@ -226,7 +228,7 @@ const AddPenaltyModal: React.FC<{
   onSuccess: () => void;
   isTestingMode?: boolean;
 }> = ({ isOpen, onClose, student, onSuccess, isTestingMode = false }) => {
-  const [penaltyType, setPenaltyType] = useState(PENALTY_TYPES[0]);
+  const [penaltyType, setPenaltyType] = useState<string>(PENALTY_TYPES[0]);
   const [notes, setNotes] = useState("");
   const [selectedPpsId, setSelectedPpsId] = useState<string>("");
   const queryClient = useQueryClient();
@@ -363,9 +365,13 @@ const AddPenaltyModal: React.FC<{
       [FIELD_PENALIZACION_TIPO]: penaltyType,
       [FIELD_PENALIZACION_FECHA]: new Date().toISOString().split("T")[0],
       [FIELD_PENALIZACION_NOTAS]: notes,
-      [FIELD_PENALIZACION_PUNTAJE]: 10,
+      [FIELD_PENALIZACION_PUNTAJE]: getPenaltyScore(penaltyType),
     };
-    if (selectedPpsId) penaltyData[FIELD_PENALIZACION_CONVOCATORIA_LINK] = selectedPpsId;
+    if (selectedPpsId) {
+      penaltyData[FIELD_PENALIZACION_LANZAMIENTO_ID] = selectedPpsId;
+      penaltyData[FIELD_PENALIZACION_CONVOCATORIA_LINK] =
+        relevantPPS?.find((pps) => pps.id === selectedPpsId)?.name || "PPS";
+    }
     applyPenaltyMutation.mutate(penaltyData);
   };
 
@@ -527,18 +533,20 @@ const PenalizedStudentCard: React.FC<{
                   <div className="pen-item-notes">{p[FIELD_PENALIZACION_NOTAS]}</div>
                 )}
               </div>
-              <button
-                className="pen-del"
-                onClick={() => onDeleteRequest(p.id)}
-                disabled={deletingId === p.id}
-                aria-label="Eliminar penalización"
-              >
-                {deletingId === p.id ? (
-                  <span className="pen-spin" />
-                ) : (
-                  <span className="material-icons">delete_outline</span>
-                )}
-              </button>
+              {p[FIELD_PENALIZACION_PRACTICA_ID] ? null : (
+                <button
+                  className="pen-del"
+                  onClick={() => onDeleteRequest(p.id)}
+                  disabled={deletingId === p.id}
+                  aria-label="Anular penalización"
+                >
+                  {deletingId === p.id ? (
+                    <span className="pen-spin" />
+                  ) : (
+                    <span className="material-icons">block</span>
+                  )}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -555,6 +563,8 @@ interface PenalizationManagerProps {
 
 const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode = false }) => {
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(null);
+  const [selectedDisapprovalStudent, setSelectedDisapprovalStudent] =
+    useState<SelectedStudent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
@@ -609,6 +619,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
 
       const penaltiesByStudent = new Map<string, PenalizedStudent>();
       penaltiesRes.forEach((p) => {
+        if (!isActivePenalty(p[FIELD_PENALIZACION_ESTADO] as string | null | undefined)) return;
         const rawStudentLink = p[FIELD_PENALIZACION_ESTUDIANTE_LINK];
         const studentId = (
           Array.isArray(rawStudentLink) ? rawStudentLink[0] : rawStudentLink
@@ -626,14 +637,15 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
           });
         }
         const studentData = penaltiesByStudent.get(studentId)!;
-        const rawPpsLink = p[FIELD_PENALIZACION_CONVOCATORIA_LINK];
+        const rawPpsLink = p[FIELD_PENALIZACION_LANZAMIENTO_ID];
         const ppsId = (Array.isArray(rawPpsLink) ? rawPpsLink[0] : rawPpsLink) as
           | string
           | undefined;
+        const fallbackPpsName = p[FIELD_PENALIZACION_CONVOCATORIA_LINK] as string | undefined;
 
         studentData.penalties.push({
           ...(p as Penalizacion & { id: string }),
-          ppsName: ppsId ? lanzamientosMap.get(ppsId) : undefined,
+          ppsName: (ppsId ? lanzamientosMap.get(ppsId) : undefined) || fallbackPpsName,
         });
         studentData.totalScore += (p[FIELD_PENALIZACION_PUNTAJE] as number) || 0;
       });
@@ -643,15 +655,23 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
 
   const deleteMutation = useMutation({
     mutationFn: (penaltyId: string) => {
-      if (isTestingMode) return mockDb.delete("penalizaciones", penaltyId);
-      return deleteRecord(TABLE_NAME_PENALIZACIONES, penaltyId);
+      const voidData = {
+        [FIELD_PENALIZACION_ESTADO]: "Anulada",
+        [FIELD_PENALIZACION_ANULADA_AT]: new Date().toISOString(),
+        [FIELD_PENALIZACION_ANULACION_MOTIVO]: "Anulada desde el gestor de penalizaciones",
+      };
+      if (isTestingMode) return mockDb.update("penalizaciones", penaltyId, voidData);
+      return updateRecord(TABLE_NAME_PENALIZACIONES, penaltyId, voidData);
     },
     onSuccess: () => {
-      setToastInfo({ message: "Penalización eliminada.", type: "success" });
+      setToastInfo({
+        message: "Penalización anulada; el registro se conserva en auditoría.",
+        type: "success",
+      });
       queryClient.invalidateQueries({ queryKey: ["allPenalizedStudents"] });
     },
     onError: () => {
-      setToastInfo({ message: "Error al eliminar la penalización.", type: "error" });
+      setToastInfo({ message: "Error al anular la penalización.", type: "error" });
     },
     onSettled: () => {
       setDeletingId(null);
@@ -678,6 +698,21 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
     });
     setIsModalOpen(true);
   }, []);
+
+  const handleDisapprovalStudentSelect = useCallback(
+    (student: AirtableRecord<EstudianteFields>) => {
+      if (!student[FIELD_LEGAJO_ESTUDIANTES] || !student[FIELD_NOMBRE_ESTUDIANTES]) {
+        setToastInfo({ message: "El registro del estudiante está incompleto.", type: "error" });
+        return;
+      }
+      setSelectedDisapprovalStudent({
+        id: student.id,
+        legajo: String(student[FIELD_LEGAJO_ESTUDIANTES]),
+        nombre: String(student[FIELD_NOMBRE_ESTUDIANTES]),
+      });
+    },
+    []
+  );
 
   const totalPenalties = useMemo(
     () => (penalizedStudents || []).reduce((sum, s) => sum + s.penalties.length, 0),
@@ -706,18 +741,47 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
         />
       )}
 
+      {selectedDisapprovalStudent ? (
+        <DesaprobacionPPSModal
+          isOpen
+          student={selectedDisapprovalStudent}
+          onClose={() => setSelectedDisapprovalStudent(null)}
+          onSuccess={() =>
+            setToastInfo({
+              message: "PPS desaprobada y penalización de 100 puntos registrada.",
+              type: "success",
+            })
+          }
+        />
+      ) : null}
+
       <ConfirmModal
         isOpen={!!penaltyToDelete}
-        title="Eliminar penalización"
-        message="¿Seguro que querés eliminar este registro? Afectará el puntaje del alumno y no se puede deshacer."
+        title="Anular penalización"
+        message="¿Seguro que querés anular este registro? Dejará de afectar el puntaje, pero seguirá disponible en la auditoría."
         onConfirm={confirmDelete}
         onClose={() => setPenaltyToDelete(null)}
-        confirmText="Eliminar"
+        confirmText="Anular"
         cancelText="Cancelar"
         type="danger"
       />
 
       {/* Panel de búsqueda / alta */}
+      <div className="pen-search-panel pen-disapproval-panel">
+        <span className="eyebrow">Decisión institucional</span>
+        <h2 className="serif">PPS desaprobadas</h2>
+        <p>
+          Registrá una evaluación desfavorable informada por la institución. La PPS permanece en el
+          historial, deja de computar horas y rotaciones y genera 100 puntos de penalización.
+        </p>
+        <div className="pen-search-box">
+          <AdminSearch
+            onStudentSelect={handleDisapprovalStudentSelect}
+            isTestingMode={isTestingMode}
+          />
+        </div>
+      </div>
+
       <div className="pen-search-panel">
         <span className="eyebrow">Aplicar sanción</span>
         <h2 className="serif">Penalizaciones</h2>

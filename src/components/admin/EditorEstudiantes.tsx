@@ -5,6 +5,7 @@ import {
   FIELD_CORREO_ESTUDIANTES,
   FIELD_DNI_ESTUDIANTES,
   FIELD_ESTADO_ESTUDIANTES,
+  FIELD_ESTADO_PRACTICA,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
   FIELD_FECHA_FINALIZACION_ESTUDIANTES,
   FIELD_HORAS_PRACTICAS,
@@ -174,7 +175,7 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
 
       const practicas = await db.practicas.getAll({
         filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds },
-        fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS],
+        fields: [FIELD_ESTUDIANTE_LINK_PRACTICAS, FIELD_HORAS_PRACTICAS, FIELD_ESTADO_PRACTICA],
       });
 
       const realHours = sumHoursByStudent(

@@ -20,6 +20,7 @@ import NotaSelector from "../NotaSelector";
 import { TableSkeleton } from "../Skeletons";
 import { logger } from "../../utils/logger";
 import { haptics } from "../../utils/haptics";
+import { isPracticeDisapproved } from "../../logic/studentRules";
 
 interface PracticasTableProps {
   practicas: Practica[];
@@ -167,11 +168,16 @@ const PracticaRow: React.FC<{
   const institucion = cleanDbValue(rawName) || "Institución desconocida";
 
   let status = practica[FIELD_ESTADO_PRACTICA];
+  const disapproved = isPracticeDisapproved(status);
 
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  if (normalizeStringForComparison(status) === "en curso" && practica[FIELD_FECHA_FIN_PRACTICAS]) {
+  if (
+    !disapproved &&
+    normalizeStringForComparison(status) === "en curso" &&
+    practica[FIELD_FECHA_FIN_PRACTICAS]
+  ) {
     const endDate = parseToUTCDate(practica[FIELD_FECHA_FIN_PRACTICAS]);
     if (endDate && endDate < now) {
       status = "Finalizada";
@@ -205,7 +211,7 @@ const PracticaRow: React.FC<{
   const lpFired = useRef(false);
   const lpStart = useRef<{ x: number; y: number } | null>(null);
   const lpStartPress = (e: React.PointerEvent) => {
-    if (!onRequestModificacion) return;
+    if (!onRequestModificacion || disapproved) return;
     lpFired.current = false;
     lpStart.current = { x: e.clientX, y: e.clientY };
     lpTimer.current = window.setTimeout(() => {
@@ -258,7 +264,7 @@ const PracticaRow: React.FC<{
           </span>
           <span className="prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider text-slate-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 inline-block" />
-            {status}
+            {disapproved ? "Desaprobada por la institución" : status}
           </span>
         </div>
 
@@ -271,7 +277,9 @@ const PracticaRow: React.FC<{
           <span>-</span>
           <DateDisplay
             dateStr={practica[FIELD_FECHA_FIN_PRACTICAS] || null}
-            onDateChange={(newDate) => onFechaFinChange && onFechaFinChange(practica.id, newDate)}
+            onDateChange={(newDate) =>
+              !disapproved && onFechaFinChange && onFechaFinChange(practica.id, newDate)
+            }
             label="Fecha Fin"
           />
         </div>
@@ -280,7 +288,7 @@ const PracticaRow: React.FC<{
       <div className="prow__metrics flex items-center gap-4 flex-shrink-0 self-center pr-1">
         {/* Eliminar — solo en contextos que lo habilitan (no en el panel del alumno).
             La edición/modificación se dispara manteniendo presionada la tarjeta. */}
-        {onDeletePractica && (
+        {onDeletePractica && !disapproved && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -297,7 +305,7 @@ const PracticaRow: React.FC<{
 
         <div className="prow__hs flex flex-col items-center justify-center text-center">
           <span className="display text-[22px] font-bold font-display text-slate-800 dark:text-slate-200">
-            {practica[FIELD_HORAS_PRACTICAS] || 0}
+            {disapproved ? 0 : practica[FIELD_HORAS_PRACTICAS] || 0}
           </span>
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400">
             hs
@@ -305,13 +313,19 @@ const PracticaRow: React.FC<{
         </div>
 
         <div className="relative flex flex-col items-center" ref={triggerRef}>
-          <FlatGrade
-            nota={notaActual}
-            onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
-            isSaving={isSaving}
-            isSuccess={isSuccess}
-            isOpen={isMenuOpen}
-          />
+          {disapproved ? (
+            <span className="text-xs font-semibold text-rose-700 dark:text-rose-300">
+              Desaprobada
+            </span>
+          ) : (
+            <FlatGrade
+              nota={notaActual}
+              onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
+              isSaving={isSaving}
+              isSuccess={isSuccess}
+              isOpen={isMenuOpen}
+            />
+          )}
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">
             nota
           </span>

@@ -6,6 +6,7 @@ import {
   isPracticeFinished,
   isPracticeOverdue,
   calculateTotalHours,
+  isPracticeComputable,
   calculateSpecialtyHours,
   getUniqueOrientations,
   hasBlockingActivePractices,
@@ -103,6 +104,14 @@ describe("studentRules", () => {
 
     it("devuelve 0 para una lista vacía", () => {
       expect(calculateTotalHours([])).toBe(0);
+    });
+
+    it("conserva una PPS desaprobada en el historial pero excluye sus horas", () => {
+      const desaprobada = makePractica({ estado: "Desaprobada", horas_realizadas: 80 });
+      const finalizada = makePractica({ estado: "Finalizada", horas_realizadas: 70 });
+
+      expect(isPracticeComputable(desaprobada)).toBe(false);
+      expect(calculateTotalHours([desaprobada, finalizada])).toBe(70);
     });
   });
 
