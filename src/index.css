@@ -3606,6 +3606,85 @@ html.dark .mp-logo,
   }
 }
 
+/* El iframe de Moodle conserva un alto reducido después del logout. En ese
+   contexto el login se recompone como una tarjeta horizontal contenida: la
+   topbar ya aporta la marca y el formulario debe quedar visible sin scroll. */
+@media (min-width: 1024px) {
+  html.pps-embedded .au-embed[data-auth-mode="login"] {
+    grid-template-columns: 1fr;
+    width: min(calc(100% - 48px), 1080px);
+    max-width: 1080px;
+    height: auto;
+    min-height: 0;
+    margin: 24px auto;
+    border-radius: 16px;
+    box-shadow: none;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-embed__brand {
+    display: none;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-embed__form {
+    padding: 24px 32px;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-embed__form > .max-w-md {
+    display: grid;
+    grid-template-columns: minmax(250px, 0.72fr) minmax(0, 1.28fr);
+    align-items: center;
+    gap: 32px;
+    max-width: none;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginhead {
+    margin: 0;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginhead .mb-4 {
+    margin-bottom: 9px;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginhead .au-h {
+    font-size: 38px;
+    line-height: 1;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginhead p {
+    margin-top: 9px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginform {
+    min-width: 0;
+  }
+  html.pps-embedded
+    .au-embed[data-auth-mode="login"]
+    .au-loginform
+    > :not([hidden])
+    ~ :not([hidden]) {
+    margin-top: 10px;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginfields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+  }
+  html.pps-embedded
+    .au-embed[data-auth-mode="login"]
+    .au-loginfields
+    > :not([hidden])
+    ~ :not([hidden]) {
+    margin-top: 0;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginfields > :last-child {
+    grid-column: 1 / -1;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .ed-input {
+    height: 46px;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .ed-btn-primary {
+    height: 44px;
+  }
+  html.pps-embedded .au-embed[data-auth-mode="login"] .au-loginjoin {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+}
+
 @media (max-width: 1023px) {
   .au-embed {
     grid-template-columns: 1fr;
