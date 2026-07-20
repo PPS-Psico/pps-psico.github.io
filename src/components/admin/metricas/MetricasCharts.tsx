@@ -180,7 +180,7 @@ export function Funnel({
   );
 }
 
-// ── Gráfico de barras (evolución de estudiantes en PPS por año) ───────────
+// ── Gráfico de barras (inicios reales de PPS al mismo corte) ───────────
 export function BarChart({
   data,
   year,
@@ -191,7 +191,7 @@ export function BarChart({
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <div className="card">
-      <span className="eyebrow">Estudiantes en PPS por año</span>
+      <span className="eyebrow">Iniciaron PPS por año · mismo corte</span>
       <div
         style={{
           display: "flex",
@@ -267,9 +267,11 @@ export function BarChart({
 export function TrendLine({
   data,
   year,
+  title = "Tendencia de matrícula activa",
 }: {
   data: { year: string; value: number }[];
   year: number;
+  title?: string;
 }) {
   const W = 320;
   const H = 132;
@@ -277,7 +279,7 @@ export function TrendLine({
   if (data.length < 2) {
     return (
       <div className="card">
-        <span className="eyebrow">Tendencia de matrícula activa</span>
+        <span className="eyebrow">{title}</span>
         <p className="meta" style={{ marginTop: 14 }}>
           Serie insuficiente.
         </p>
@@ -294,7 +296,7 @@ export function TrendLine({
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span className="eyebrow">Tendencia de matrícula activa</span>
+        <span className="eyebrow">{title}</span>
         <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>
           {cur.value}
         </span>
@@ -367,7 +369,7 @@ export function Distribution({
   if (!total) {
     return (
       <div className="card">
-        <span className="eyebrow">Distribución por orientación</span>
+        <span className="eyebrow">Inicios de PPS por orientación</span>
         <p className="meta" style={{ marginTop: 14 }}>
           Sin alumnos asignados este año.
         </p>
@@ -377,7 +379,7 @@ export function Distribution({
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span className="eyebrow">Alumnos por área de PPS</span>
+        <span className="eyebrow">Inicios efectivos por área de PPS</span>
         <span className="meta mono" style={{ fontSize: 11 }}>
           {total} menciones
         </span>
@@ -482,13 +484,20 @@ export function TopInstituciones({
       </div>
     );
   }
-  const max = Math.max(...rows.map((r) => r.ocupados), 1);
+  const usesDocumentedCapacity =
+    rows.every((row) => row.ocupados === 0) && rows.some((row) => row.ofrecidos > 0);
+  const valueOf = (row: TopInstitucion) => (usesDocumentedCapacity ? row.ofrecidos : row.ocupados);
+  const max = Math.max(...rows.map(valueOf), 1);
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span className="eyebrow">Top instituciones · estudiantes</span>
+        <span className="eyebrow">
+          {usesDocumentedCapacity
+            ? "Top instituciones · capacidad"
+            : "Top instituciones · estudiantes"}
+        </span>
         <span className="meta" style={{ fontSize: 11 }}>
-          alumnos en PPS
+          {usesDocumentedCapacity ? "vacantes documentadas" : "alumnos en PPS"}
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 14 }}>
@@ -536,7 +545,7 @@ export function TopInstituciones({
               <div
                 style={{
                   height: "100%",
-                  width: `${(r.ocupados / max) * 100}%`,
+                  width: `${(valueOf(r) / max) * 100}%`,
                   background: ORIENT_VAR[r.orient],
                   borderRadius: 999,
                 }}
@@ -546,7 +555,7 @@ export function TopInstituciones({
               className="mono"
               style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-2)", whiteSpace: "nowrap" }}
             >
-              {r.ocupados}
+              {valueOf(r)}
             </span>
           </button>
         ))}

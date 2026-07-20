@@ -56,9 +56,9 @@ html.dark .metricas-v3 .display em { color: #c9a2bd; }
 .metricas-v3 .kpi .num { font-size: 30px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .metricas-v3 .kpi .ctx { font-size: 12px; color: var(--ink-3); line-height: 1.4; }
 
-.metricas-v3 .hero { display: flex; flex-direction: column; gap: 14px; padding: 24px 24px 22px; border-radius: 16px; border: 1px solid var(--rule-2); background: var(--paper); cursor: pointer; font-family: inherit; text-align: left; min-width: 0; width: 100%; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
+.metricas-v3 .hero { display: flex; flex-direction: column; gap: 12px; padding: 20px 18px 18px; border-radius: 16px; border: 1px solid var(--rule-2); background: var(--paper); cursor: pointer; font-family: inherit; text-align: left; min-width: 0; width: 100%; transition: color .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease, opacity .12s ease, filter .12s ease; }
 .metricas-v3 .hero:hover { border-color: var(--rule-3); background: var(--paper-2); }
-.metricas-v3 .hero .num { font-size: 52px; font-weight: 300; letter-spacing: -0.045em; line-height: 0.9; font-variant-numeric: tabular-nums; }
+.metricas-v3 .hero .num { font-size: 48px; font-weight: 300; letter-spacing: -0.045em; line-height: 0.9; font-variant-numeric: tabular-nums; }
 
 .metricas-v3 .card { padding: 20px 20px 16px; border: 1px solid var(--rule-2); border-radius: 14px; background: var(--paper); }
 .metricas-v3 .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -96,6 +96,7 @@ html.dark .metricas-v3 .display em { color: #c9a2bd; }
 /* — reporte ejecutivo (documento) — */
 .metricas-v3 .exec-sheet { max-width: 880px; margin: 24px auto 0; border: 1px solid var(--rule-2); border-radius: 16px; background: var(--paper); padding: 44px 48px 36px; box-shadow: 0 1px 2px #14131008, 0 14px 36px -20px #14131038; }
 html.dark .metricas-v3 .exec-sheet { box-shadow: none; background: var(--paper-2); }
+.metricas-v3 .exec-sheet::before { content: ''; display: block; height: 4px; border-radius: 999px; margin-bottom: 26px; background: linear-gradient(90deg, #46253d 0%, #203b73 50%, #3cb88d 100%); }
 
 .metricas-v3 .exec-head { border-bottom: 2.5px solid var(--ink); padding-bottom: 14px; position: relative; }
 .metricas-v3 .exec-head::after { content: ''; position: absolute; left: 0; right: 0; bottom: -6px; height: 1px; background: var(--ink); }
@@ -130,7 +131,13 @@ html.dark .metricas-v3 .exec-deck strong {
 .metricas-v3 .exec-num.big { font-size: 44px; letter-spacing: -0.045em; }
 .metricas-v3 .exec-stat-label { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-top: 9px; }
 .metricas-v3 .exec-stat-ctx { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; line-height: 1.4; }
-.metricas-v3 .exec-prev { font-size: 10.5px; color: var(--ink-4); margin-top: 6px; }
+.metricas-v3 .exec-stat { border-top: 1px solid var(--rule-3); padding-top: 12px; min-width: 0; }
+.metricas-v3 .exec-delta-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+.metricas-v3 .exec-delta { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 600; padding: 2.5px 9px; border-radius: 999px; border: 1px solid var(--rule-3); background: var(--paper-2); color: var(--ink-2); white-space: nowrap; }
+.metricas-v3 .exec-delta.flat { color: var(--ink-4); }
+.metricas-v3 .exec-delta.ok { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 32%, transparent); background: var(--ok-soft); }
+.metricas-v3 .exec-delta.warn { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 32%, transparent); background: var(--warn-soft); }
+.metricas-v3 .exec-delta-ref { font-size: 10.5px; color: var(--ink-4); }
 
 .metricas-v3 .exec-bar { display: flex; gap: 2px; height: 14px; }
 .metricas-v3 .exec-bar span { min-width: 3px; border-radius: 2px; }
@@ -141,11 +148,27 @@ html.dark .metricas-v3 .exec-deck strong {
 .metricas-v3 .exec-legend-n { font-size: 11.5px; font-weight: 500; color: var(--ink-3); }
 .metricas-v3 .exec-dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; flex: none; align-self: center; }
 
-.metricas-v3 .exec-strip { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--rule-2); border-radius: 10px; overflow: hidden; }
-.metricas-v3 .exec-strip > div { padding: 14px 14px 12px; }
-.metricas-v3 .exec-strip > div + div { border-left: 1px solid var(--rule-2); }
+/* — cobertura del ciclo (sección Matrícula) — */
+.metricas-v3 .exec-cover { margin-top: 22px; }
+.metricas-v3 .exec-cover-bar { height: 10px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
+.metricas-v3 .exec-cover-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.metricas-v3 .exec-cover-note { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; margin-top: 9px; font-size: 12px; color: var(--ink-3); }
+.metricas-v3 .exec-cover-note strong { color: var(--ink); font-weight: 700; }
+.metricas-v3 .exec-cover-n { font-size: 11px; color: var(--ink-4); }
+
+/* — dinámica del ciclo (barra de resultado) — */
+.metricas-v3 .exec-dyn { margin-top: 22px; }
+
+/* — trayectoria de finalización (histograma de duración) — */
+.metricas-v3 .exec-hist { display: flex; flex-direction: column; gap: 7px; margin-top: 18px; }
+.metricas-v3 .exec-hist-row { display: grid; grid-template-columns: 108px 1fr 84px; align-items: center; gap: 12px; }
+.metricas-v3 .exec-hist-label { font-size: 11.5px; color: var(--ink-3); text-align: right; }
+.metricas-v3 .exec-hist-track { height: 12px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
+.metricas-v3 .exec-hist-fill { display: block; height: 100%; border-radius: 999px; }
+.metricas-v3 .exec-hist-n { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 
 .metricas-v3 .exec-note { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); max-width: 72ch; }
+.metricas-v3 .exec-note strong { color: var(--ink-2); }
 .metricas-v3 .exec-footnote { margin: 10px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--ink-4); max-width: 80ch; }
 .metricas-v3 .exec-sel-chip { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ok); background: var(--ok-soft); border: 1px solid color-mix(in oklab, var(--ok) 28%, transparent); border-radius: 999px; padding: 1px 8px; margin-right: 8px; vertical-align: 1px; white-space: nowrap; }
 .metricas-v3 .exec-t-legajo { font-size: 10.5px; font-weight: 500; color: var(--ink-4); }
@@ -172,6 +195,20 @@ html.dark .metricas-v3 .exec-deck strong {
 .metricas-v3 .exec-foot-note { font-size: 11.5px; color: var(--ink-3); }
 .metricas-v3 .exec-foot-brand { margin-left: auto; font-size: 10.5px; color: var(--ink-4); }
 
+.metricas-v3 .metric-comparison-note {
+  align-items: center;
+  color: var(--ink-3);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  line-height: 1.45;
+  margin-top: 12px;
+}
+.metricas-v3 .metric-comparison-note .material-icons {
+  color: var(--ok);
+  font-size: 16px;
+}
+
 /* — responsive — */
 @media (max-width: 860px) {
   .metricas-v3 .grid-3, .metricas-v3 .grid-4 { grid-template-columns: 1fr 1fr; }
@@ -184,13 +221,13 @@ html.dark .metricas-v3 .exec-deck strong {
   .metricas-v3 .grid-3, .metricas-v3 .grid-4 { grid-template-columns: 1fr; }
   .metricas-v3 .masthead h1 { font-size: 34px; }
   .metricas-v3 .exec-stats-3, .metricas-v3 .exec-stats-4 { grid-template-columns: 1fr; }
-  .metricas-v3 .exec-strip { grid-template-columns: 1fr; }
-  .metricas-v3 .exec-strip > div + div { border-left: none; border-top: 1px solid var(--rule-2); }
   .metricas-v3 .exec-sheet { padding: 26px 18px 24px; }
 }
 
 /* — print (reporte ejecutivo) — */
 @media print {
+  /* Página A4 con márgenes reales: el contenido nunca toca el borde del papel. */
+  @page { size: A4; margin: 14mm 13mm 16mm; }
   .metricas-v3 .no-print, .metricas-v3 .subtabs, .metricas-v3 .masthead, .metricas-v3 .mv3-footer { display: none !important; }
   .metricas-v3 { background: #fff; min-height: 0; }
   .metricas-v3 .wrap { max-width: none; padding: 0; }
@@ -201,14 +238,14 @@ html.dark .metricas-v3 .exec-deck strong {
      para que el PDF conserve la misma grilla que la pantalla. */
   .metricas-v3 .exec-stats-3 { grid-template-columns: repeat(3, 1fr) !important; }
   .metricas-v3 .exec-stats-4 { grid-template-columns: repeat(4, 1fr) !important; }
-  .metricas-v3 .exec-strip { grid-template-columns: repeat(3, 1fr) !important; }
-  .metricas-v3 .exec-strip > div + div { border-left: 1px solid var(--rule-2) !important; border-top: none !important; }
   .metricas-v3 .exec-num.big { font-size: 38px; }
+  /* El anexo (detalle completo de PPS) arranca en página propia. */
+  .metricas-v3 .exec-annex { break-before: page; }
   .metricas-v3 .exec-table { min-width: 0; }
   .metricas-v3 .exec-table-wrap { overflow: visible; }
   .metricas-v3 .exec-table thead { display: table-header-group; }
   .metricas-v3 .exec-table tr { break-inside: avoid; }
-  .metricas-v3 .exec-bar span, .metricas-v3 .exec-dot, .metricas-v3 .exec-deck strong, .metricas-v3 .exec-sel-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .metricas-v3 .exec-bar span, .metricas-v3 .exec-dot, .metricas-v3 .exec-deck strong, .metricas-v3 .exec-sel-chip, .metricas-v3 .exec-sheet::before, .metricas-v3 .exec-cover-bar, .metricas-v3 .exec-cover-fill, .metricas-v3 .exec-delta, .metricas-v3 .exec-hist-track, .metricas-v3 .exec-hist-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* La hoja se imprime siempre en claro, aunque el panel esté en modo oscuro. */
   html.dark .metricas-v3 {
     --paper: #f7f5f0; --paper-2: #efece4; --paper-3: #e5e1d7;

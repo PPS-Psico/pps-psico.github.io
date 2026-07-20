@@ -149,13 +149,16 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
     if (!metrics?.enrollment_evolution) return [];
     return metrics.enrollment_evolution.map((e) => ({
       ...e,
-      label: "Nuevos Inscriptos",
+      label: "Iniciaron PPS",
     }));
   }, [metrics]);
 
   if (isLoading && !metrics) return <MetricsSkeleton />;
   if (error) return <EmptyState icon="error" title="Error" message={(error as any).message} />;
   if (!metrics) return null;
+
+  const usesHistoricalOfferSource = metrics.capacity_source === "historical_documented_offers";
+  const documentedCapacityDescription = `${metrics.capacity_documented_finite_offers ?? 0}/${metrics.pps_lanzadas} ofertas con cupo finito; ${metrics.capacity_unknown_or_realized_offers} sin total finito.`;
 
   return (
     <>
@@ -204,15 +207,15 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <HeroMetric
-          title="Ingresantes"
-          value={metrics.matricula_generada}
+          title="Iniciaron PPS"
+          value={metrics.estudiantes_en_pps}
           icon="group_add"
-          description={`Nuevos en PPS (cohorte ${targetYear})`}
-          onClick={() => openListModal("matricula_generada", `Ingresantes ${targetYear}`)}
+          description={`Estudiantes distintos con práctica iniciada en ${targetYear}`}
+          onClick={() => openListModal("estudiantes_en_pps", `Iniciaron PPS en ${targetYear}`)}
           color="indigo"
           trend={
             metrics.trends
-              ? { value: metrics.trends.matricula_generada, label: `vs ${targetYear - 1}` }
+              ? { value: metrics.trends.estudiantes_en_pps, label: `vs ${targetYear - 1}` }
               : undefined
           }
         />
@@ -255,18 +258,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
           <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-6">
-                {targetYear >= 2025 && (
-                  <EnrollmentEvolutionChart
-                    data={enrollmentChartData}
-                    onBarClick={(item) =>
-                      openListModal(
-                        "nuevosIngresantes",
-                        `Nuevos Inscriptos ${item.year}`,
-                        Number(item.year)
-                      )
-                    }
-                  />
-                )}
+                {targetYear >= 2025 && <EnrollmentEvolutionChart data={enrollmentChartData} />}
                 {targetYear !== 2024 && <OrientationDistributionChart data={distributionData} />}
               </div>
               <div className="space-y-6">
@@ -276,11 +268,11 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                     <div className="flex items-center gap-2 mb-4">
                       <span className="material-icons text-blue-600 !text-lg">list</span>
                       <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                        Inscripciones por Area
+                        Inicios de PPS por área
                       </h3>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                      Estudiantes inscriptos segun el area de la PPS.
+                      Estudiantes con una práctica iniciada, según el área de la PPS.
                     </p>
                     <div className="space-y-2">
                       {distributionData.map((item) => (
@@ -359,10 +351,14 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         {activeTab === "institutions" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <MetricCard
-              title="PPS Lanzadas"
+              title={usesHistoricalOfferSource ? "Ofertas PPS Documentadas" : "PPS Lanzadas"}
               value={metrics.pps_lanzadas}
               icon="rocket_launch"
-              description={`Convocatorias publicadas en ${targetYear}`}
+              description={
+                usesHistoricalOfferSource
+                  ? `Ofertas publicadas reconstruidas en ${targetYear}; relanzamientos deduplicados.`
+                  : `Convocatorias publicadas en ${targetYear}`
+              }
               onClick={() => openListModal("pps_lanzadas", `PPS Lanzadas en ${targetYear}`)}
               isLoading={false}
             />
@@ -377,11 +373,15 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
               isLoading={false}
             />
             <MetricCard
-              title="Cupos Ofrecidos"
+              title={usesHistoricalOfferSource ? "Capacidad Documentada" : "Capacidad Operativa"}
               value={metrics.cupos_ofrecidos}
               icon="groups"
-              description="Total de vacantes disponibles."
-              onClick={() => openListModal("cupos_ofrecidos", `Cupos por PPS en ${targetYear}`)}
+              description={
+                usesHistoricalOfferSource
+                  ? documentedCapacityDescription
+                  : "Cupos fijos más participación efectivamente realizada."
+              }
+              onClick={() => openListModal("cupos_ofrecidos", `Capacidad por PPS en ${targetYear}`)}
               isLoading={false}
             />
             <MetricCard

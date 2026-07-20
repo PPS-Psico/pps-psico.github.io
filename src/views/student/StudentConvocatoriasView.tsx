@@ -182,7 +182,7 @@ const StudentConvocatoriasView: React.FC = () => {
 
       <ConfirmModal
         isOpen={!!pendingCancel}
-        title="Cancelar Inscripción"
+        title="Cancelar inscripción"
         message={`¿Estás seguro que deseas cancelar tu inscripción a "${pendingCancel?.nombre}"?\n\nEsta acción no se puede deshacer.`}
         confirmText="Sí, cancelar inscripción"
         cancelText="Volver"

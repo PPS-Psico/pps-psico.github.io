@@ -1,28 +1,34 @@
 import { supabase } from "../lib/supabaseClient";
 import type { StudentInfo } from "../types";
 import {
-  TABLE_NAME_ESTUDIANTES,
   TABLE_NAME_PRACTICAS,
-  TABLE_NAME_FINALIZACION,
   TABLE_NAME_LANZAMIENTOS_PPS,
   TABLE_NAME_INSTITUCIONES,
   TABLE_NAME_CONVOCATORIAS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
+  FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_HORAS_PRACTICAS,
-  FIELD_ESTADO_PRACTICA,
-  FIELD_ESTUDIANTE_FINALIZACION,
-  FIELD_FECHA_SOLICITUD_FINALIZACION,
-  FIELD_ESTADO_FINALIZACION,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_TIPO_ACTIVIDAD_PRACTICAS,
+  FIELD_FECHA_INICIO_PRACTICAS,
+  FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
 } from "../constants";
 import { getGroupName } from "../utils/formatters";
+import {
+  fetchHistoricalLaunchOffers,
+  type HistoricalLaunchOffer,
+} from "./historicalLaunchAnalytics";
+import { fetchInterviewCompletionCandidates } from "./interviewCompletionCandidates";
 
 export interface ListResult {
   students: StudentInfo[];
@@ -38,6 +44,91 @@ interface RpcListRow {
   horas_total?: number;
 }
 
+const metricCycleRange = (year: number) => {
+  const start = `${year}-01-01`;
+  if (year !== new Date().getFullYear()) return { start, end: `${year + 1}-01-01` };
+
+  const today = new Date();
+  const end = new Date(Date.UTC(year, today.getMonth(), today.getDate() + 1))
+    .toISOString()
+    .slice(0, 10);
+  return { start, end };
+};
+
+type CapacityRow = {
+  id: string;
+  nombre: string;
+  modalidad: "fijo" | "realizado";
+  capacidad: number;
+};
+
+const fetchOperationalCapacityRows = async (year: number): Promise<CapacityRow[]> => {
+  const { start, end } = metricCycleRange(year);
+  const { data: launches, error: launchesError } = await supabase
+    .from(TABLE_NAME_LANZAMIENTOS_PPS)
+    .select(
+      `id, ${FIELD_NOMBRE_PPS_LANZAMIENTOS}, ${FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS}, ${FIELD_MODALIDAD_CUPO_LANZAMIENTOS}`
+    )
+    .eq(FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS, "pps")
+    .gte("fecha_inicio", start)
+    .lt("fecha_inicio", end);
+  if (launchesError) throw launchesError;
+
+  const rows = (launches || []) as Array<Record<string, unknown>>;
+  const launchIds = rows.map((row) => String(row.id));
+  const selected = new Map<string, Set<string>>();
+  if (launchIds.length) {
+    const [convResult, practicesResult] = await Promise.all([
+      supabase
+        .from(TABLE_NAME_CONVOCATORIAS)
+        .select(
+          `${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}, ${FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS}`
+        )
+        .in(FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, launchIds)
+        .eq(FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS, "Seleccionado"),
+      supabase
+        .from(TABLE_NAME_PRACTICAS)
+        .select(`${FIELD_LANZAMIENTO_VINCULADO_PRACTICAS}, ${FIELD_ESTUDIANTE_LINK_PRACTICAS}`)
+        .in(FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, launchIds)
+        .eq(FIELD_TIPO_ACTIVIDAD_PRACTICAS, "pps"),
+    ]);
+    if (convResult.error) throw convResult.error;
+    if (practicesResult.error) throw practicesResult.error;
+
+    [...(convResult.data || []), ...(practicesResult.data || [])].forEach(
+      (entry: Record<string, unknown>) => {
+        const launchId = String(
+          entry[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] ||
+            entry[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] ||
+            ""
+        );
+        const studentId = String(
+          entry[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] ||
+            entry[FIELD_ESTUDIANTE_LINK_PRACTICAS] ||
+            ""
+        );
+        if (!launchId || !studentId) return;
+        const ids = selected.get(launchId) || new Set<string>();
+        ids.add(studentId);
+        selected.set(launchId, ids);
+      }
+    );
+  }
+
+  return rows.map((row) => {
+    const modalidad = row[FIELD_MODALIDAD_CUPO_LANZAMIENTOS] === "realizado" ? "realizado" : "fijo";
+    return {
+      id: String(row.id),
+      nombre: String(row[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Sin nombre"),
+      modalidad,
+      capacidad:
+        modalidad === "realizado"
+          ? selected.get(String(row.id))?.size || 0
+          : Number(row[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]) || 0,
+    };
+  });
+};
+
 /**
  * Clasifica una orientación de texto libre en las categorías canónicas usadas
  * por el dashboard. Réplica del CASE/regex de get_admin_metrics_kpis
@@ -52,6 +143,73 @@ function classifyOrientation(value: string | null | undefined): string {
   if (/comunitaria|comunidad/.test(v)) return "Comunitaria";
   return "Sin definir";
 }
+
+const fetchStartedStudentsByOrientation = async (year: number) => {
+  const { start, end } = metricCycleRange(year);
+  const { data: practices, error: practicesError } = await supabase
+    .from(TABLE_NAME_PRACTICAS)
+    .select(
+      `${FIELD_ESTUDIANTE_LINK_PRACTICAS}, ${FIELD_LANZAMIENTO_VINCULADO_PRACTICAS}, ${FIELD_ESPECIALIDAD_PRACTICAS}, estudiantes!practicas_estudiante_id_fkey(${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_LEGAJO_ESTUDIANTES})`
+    )
+    .eq(FIELD_TIPO_ACTIVIDAD_PRACTICAS, "pps")
+    .gte(FIELD_FECHA_INICIO_PRACTICAS, start)
+    .lt(FIELD_FECHA_INICIO_PRACTICAS, end);
+  if (practicesError) throw practicesError;
+
+  const practiceRows = (practices || []) as Array<Record<string, unknown>>;
+  const launchIds = Array.from(
+    new Set(
+      practiceRows
+        .map((row) => String(row[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] || ""))
+        .filter(Boolean)
+    )
+  );
+  const orientationByLaunch = new Map<string, string>();
+  if (launchIds.length) {
+    const { data: launches, error: launchesError } = await supabase
+      .from(TABLE_NAME_LANZAMIENTOS_PPS)
+      .select(`id, ${FIELD_ORIENTACION_LANZAMIENTOS}`)
+      .in("id", launchIds);
+    if (launchesError) throw launchesError;
+    (launches || []).forEach((launch: Record<string, unknown>) => {
+      orientationByLaunch.set(
+        String(launch.id),
+        String(launch[FIELD_ORIENTACION_LANZAMIENTOS] || "")
+      );
+    });
+  }
+
+  const byOrientation = new Map<string, Map<string, StudentInfo>>();
+  practiceRows.forEach((practice) => {
+    const studentId = String(practice[FIELD_ESTUDIANTE_LINK_PRACTICAS] || "");
+    if (!studentId) return;
+    const launchId = String(practice[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] || "");
+    const orientation = classifyOrientation(
+      orientationByLaunch.get(launchId) || String(practice[FIELD_ESPECIALIDAD_PRACTICAS] || "")
+    );
+    const student = Array.isArray(practice.estudiantes)
+      ? practice.estudiantes[0]
+      : practice.estudiantes;
+    const rawStudent = (student || {}) as Record<string, unknown>;
+    const students = byOrientation.get(orientation) || new Map<string, StudentInfo>();
+    students.set(studentId, {
+      nombre: String(rawStudent[FIELD_NOMBRE_ESTUDIANTES] || "Estudiante"),
+      legajo: String(rawStudent[FIELD_LEGAJO_ESTUDIANTES] || "—"),
+    });
+    byOrientation.set(orientation, students);
+  });
+
+  return byOrientation;
+};
+
+export const fetchStartedOrientationDistribution = async (
+  year: number
+): Promise<Record<string, number>> => {
+  const rows = await fetchStartedStudentsByOrientation(year);
+  return Object.fromEntries(
+    Array.from(rows, ([orientation, students]) => [orientation, students.size])
+  );
+};
 
 export async function fetchMetricList(key: string, year: number): Promise<ListResult> {
   switch (key) {
@@ -70,6 +228,8 @@ export async function fetchMetricList(key: string, year: number): Promise<ListRe
       return fetchSinPpsList(year);
     case "proximos_finalizar":
       return fetchProximosFinalizarList(year);
+    case "interview_completion_candidates":
+      return fetchInterviewCompletionCandidatesList();
     case "haciendo_pps":
       return fetchHaciendoPpsList(year);
     case "pps_lanzadas":
@@ -121,7 +281,7 @@ async function fetchEstudiantesEnPpsList(year: number): Promise<ListResult> {
       { key: "nombre", label: "Nombre" },
       { key: "legajo", label: "Legajo" },
     ],
-    description: `Estudiantes con al menos una actividad de PPS en ${year}.`,
+    description: `Estudiantes con al menos una práctica PPS iniciada en ${year}.`,
   };
 }
 
@@ -213,6 +373,37 @@ async function fetchProximosFinalizarList(year: number): Promise<ListResult> {
   };
 }
 
+async function fetchInterviewCompletionCandidatesList(): Promise<ListResult> {
+  const candidates = await fetchInterviewCompletionCandidates();
+
+  return {
+    students: candidates.map((candidate) => ({
+      nombre: candidate.fullName,
+      legajo: candidate.legajo,
+      horas: `${candidate.totalHours} h`,
+      detalle: [
+        candidate.reasonLabel,
+        `${candidate.specialtyHours} h de especialidad`,
+        `${candidate.rotations} ${candidate.rotations === 1 ? "orientación" : "orientaciones"}`,
+        candidate.selectedOrientation
+          ? `especialidad elegida: ${candidate.selectedOrientation}`
+          : "especialidad sin definir",
+        candidate.activePractices > 0
+          ? `${candidate.activePractices} ${candidate.activePractices === 1 ? "práctica activa" : "prácticas activas"}`
+          : "sin práctica activa",
+      ].join(" · "),
+    })),
+    headers: [
+      { key: "nombre", label: "Nombre" },
+      { key: "legajo", label: "Legajo" },
+      { key: "horas", label: "Horas" },
+      { key: "detalle", label: "Motivo" },
+    ],
+    description:
+      "Cohorte actual elegible para una PPS de Entrevista a Profesionales. Excluye estudiantes que ya tienen Relevamiento del Ejercicio Profesional o Entrevista a Profesionales.",
+  };
+}
+
 async function fetchHaciendoPpsList(year: number): Promise<ListResult> {
   const { data } = await supabase.rpc("get_haciendo_pps_list", { p_year: year });
   const list = (data || []) as unknown as RpcListRow[];
@@ -231,19 +422,27 @@ async function fetchHaciendoPpsList(year: number): Promise<ListResult> {
 }
 
 async function fetchPpsLanzadasList(year: number): Promise<ListResult> {
-  const start = `${year}-01-01`;
-  const end = `${year + 1}-01-01`;
-  const { data } = await supabase
-    .from(TABLE_NAME_LANZAMIENTOS_PPS)
-    .select(`${FIELD_NOMBRE_PPS_LANZAMIENTOS}, ${FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS}`)
-    .gte("fecha_inicio", start)
-    .lt("fecha_inicio", end);
+  const historical = await fetchHistoricalLaunchOffers(year);
+  if (historical.available) {
+    return {
+      students: historical.rows.map(toHistoricalOfferStudent),
+      headers: [
+        { key: "nombre", label: "Oferta PPS" },
+        { key: "legajo", label: "Orientacion" },
+        { key: "cupos", label: "Vacantes documentadas" },
+      ],
+      description:
+        "Una fila por oferta publicada reconstruida desde la fuente documental; los relanzamientos no se cuentan dos veces.",
+    };
+  }
+
+  const rows = await fetchOperationalCapacityRows(year);
 
   return {
-    students: (data || []).map((l: Record<string, unknown>) => ({
-      nombre: (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Sin nombre",
-      legajo: String(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] ?? 0),
-      institucion: (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "",
+    students: rows.map((row) => ({
+      nombre: row.nombre,
+      legajo: String(row.capacidad),
+      institucion: row.nombre,
     })),
     headers: [
       { key: "nombre", label: "PPS" },
@@ -253,13 +452,25 @@ async function fetchPpsLanzadasList(year: number): Promise<ListResult> {
 }
 
 async function fetchInstitucionesActivasList(year: number): Promise<ListResult> {
-  const start = `${year}-01-01`;
-  const end = `${year + 1}-01-01`;
-  const { data } = await supabase
+  const historical = await fetchHistoricalLaunchOffers(year);
+  if (historical.available) {
+    const names = new Set(historical.rows.map((offer) => getGroupName(offer.canonicalName)));
+    return {
+      students: Array.from(names)
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({ nombre: name, legajo: "Documentada" })),
+      description: "Instituciones reconstruidas desde las ofertas documentadas del ciclo.",
+    };
+  }
+
+  const { start, end } = metricCycleRange(year);
+  const { data, error } = await supabase
     .from(TABLE_NAME_LANZAMIENTOS_PPS)
     .select(FIELD_NOMBRE_PPS_LANZAMIENTOS)
+    .eq(FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS, "pps")
     .gte("fecha_inicio", start)
     .lt("fecha_inicio", end);
+  if (error) throw error;
 
   const names = new Set<string>();
   (data || []).forEach((l: Record<string, unknown>) => {
@@ -273,25 +484,48 @@ async function fetchInstitucionesActivasList(year: number): Promise<ListResult> 
 }
 
 async function fetchCuposList(year: number): Promise<ListResult> {
-  const start = `${year}-01-01`;
-  const end = `${year + 1}-01-01`;
-  const { data } = await supabase
-    .from(TABLE_NAME_LANZAMIENTOS_PPS)
-    .select(`${FIELD_NOMBRE_PPS_LANZAMIENTOS}, ${FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS}`)
-    .gte("fecha_inicio", start)
-    .lt("fecha_inicio", end);
+  const historical = await fetchHistoricalLaunchOffers(year);
+  if (historical.available) {
+    return {
+      students: historical.rows.map(toHistoricalOfferStudent),
+      headers: [
+        { key: "nombre", label: "Oferta PPS" },
+        { key: "legajo", label: "Orientacion" },
+        { key: "cupos", label: "Vacantes documentadas" },
+      ],
+      description:
+        "Capacidad documentada minima: suma solo vacantes finitas. Las ofertas abiertas, por participacion o sin cupo informado quedan identificadas sin estimarlas.",
+    };
+  }
+
+  const rows = await fetchOperationalCapacityRows(year);
 
   return {
-    students: (data || []).map((l: Record<string, unknown>) => ({
-      nombre: (l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Sin nombre",
-      legajo: String(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] ?? 0),
+    students: rows.map((row) => ({
+      nombre: row.nombre,
+      legajo: String(row.capacidad),
     })),
     headers: [
       { key: "nombre", label: "PPS" },
-      { key: "legajo", label: "Cupos" },
+      { key: "legajo", label: "Capacidad operativa" },
     ],
+    description: "Cupos fijos más participación efectivamente realizada.",
   };
 }
+
+const toHistoricalOfferStudent = (row: HistoricalLaunchOffer): StudentInfo => ({
+  nombre: row.canonicalName,
+  legajo: row.orientation,
+  cupos:
+    row.offeredCapacity ??
+    (row.capacityMode === "realizado" ? "Segun participacion" : "Sin cupo finito"),
+  detalle: [
+    row.reviewStatus === "verified" ? "conciliada" : "requiere revision",
+    row.relaunches > 0 ? `${row.relaunches} relanzamiento` : "",
+  ]
+    .filter(Boolean)
+    .join(" · "),
+});
 
 async function fetchConveniosList(year: number): Promise<ListResult> {
   const { data } = await supabase
@@ -346,79 +580,15 @@ async function fetchConveniosPorVencerList(): Promise<ListResult> {
 }
 
 export async function fetchOrientationList(year: number, orientation: string): Promise<ListResult> {
-  const start = `${year}-01-01T00:00:00`;
-  const end = `${year + 1}-01-01T00:00:00`;
-
-  const { data: convocatorias } = await supabase
-    .from(TABLE_NAME_CONVOCATORIAS)
-    .select(
-      `${FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS}, ${FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS}, estudiantes!inner(${FIELD_NOMBRE_ESTUDIANTES}, ${FIELD_LEGAJO_ESTUDIANTES})`
-    )
-    // Estados canónicos (ver migración normalize_states). Debe coincidir con el
-    // filtro del KPI orientation_distribution en get_admin_metrics_kpis.
-    .in("estado_inscripcion", ["Seleccionado", "Inscripto"])
-    .gte("created_at", start)
-    .lt("created_at", end);
-
-  if (!convocatorias) return { students: [] };
-
-  const launchIds = Array.from(
-    new Set(
-      convocatorias
-        .map((c: Record<string, unknown>) => {
-          const raw = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-          return Array.isArray(raw) ? raw[0] : raw;
-        })
-        .filter(Boolean)
-    )
-  );
-
-  const { data: launches } = await supabase
-    .from(TABLE_NAME_LANZAMIENTOS_PPS)
-    .select(`id, orientacion, ${FIELD_NOMBRE_PPS_LANZAMIENTOS}`)
-    .in("id", launchIds);
-
-  const launchMap = new Map(
-    (launches || []).map((l: Record<string, unknown>) => [l.id as string, l])
-  );
-
-  const students: StudentInfo[] = [];
-  convocatorias.forEach((c: Record<string, unknown>) => {
-    const rawLanzId = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-    const lanzId = Array.isArray(rawLanzId) ? rawLanzId[0] : rawLanzId;
-    const launch = launchMap.get(lanzId as string);
-    if (!launch) return;
-
-    // Clasifica la orientación con el MISMO criterio que el RPC
-    // get_admin_metrics_kpis (orientation_distribution), para que la lista del
-    // modal coincida exactamente con el conteo del gráfico.
-    if (classifyOrientation(launch.orientacion as string) !== orientation) return;
-
-    const estudiantesRaw = (c as { estudiantes?: unknown }).estudiantes;
-    const s = (Array.isArray(estudiantesRaw) ? estudiantesRaw[0] : estudiantesRaw) as
-      | Record<string, unknown>
-      | undefined;
-    if (s) {
-      students.push({
-        nombre: s[FIELD_NOMBRE_ESTUDIANTES] as string,
-        legajo: s[FIELD_LEGAJO_ESTUDIANTES] as string,
-        institucion: (launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "N/A",
-        raw_value: (launch.orientacion as string) || "(Vacio)",
-      });
-    }
-  });
+  const rows = await fetchStartedStudentsByOrientation(year);
+  const students = Array.from(rows.get(classifyOrientation(orientation))?.values() || []);
 
   return {
     students,
     headers: [
       { key: "nombre", label: "Nombre" },
       { key: "legajo", label: "Legajo" },
-      { key: "institucion", label: "Institucion" },
-      ...(orientation === "Sin definir" ? [{ key: "raw_value", label: "Valor en DB" }] : []),
     ],
-    description:
-      orientation === "Sin definir"
-        ? "Registros con orientaciones no reconocidas."
-        : `Estudiantes en vacantes de ${orientation} durante ${year}.`,
+    description: `Estudiantes con inicio efectivo de PPS en ${orientation} durante ${year}.`,
   };
 }

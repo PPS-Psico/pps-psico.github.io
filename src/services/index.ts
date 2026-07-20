@@ -71,3 +71,10 @@ export {
   fetchSelectedCandidatesForLaunch,
 } from "./selectionNotificationService";
 export type { SelectionCandidate } from "./selectionNotificationService";
+
+export { closeSelectionAndQueueNotifications } from "./selectionClosingService";
+export type {
+  CloseSelectionRpcResult,
+  QueuedSelectionClose,
+  SelectionClosingDependencies,
+} from "./selectionClosingService";

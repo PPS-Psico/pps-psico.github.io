@@ -124,5 +124,18 @@ describe("Flujo de Inscripción de Estudiante (Integration Test)", () => {
     expect(normalizeStringForComparison(nueva![FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS])).toBe(
       "inscripto"
     );
+
+    // La UI se actualiza en el mismo ciclo de la mutación, sin esperar el refetch.
+    await waitFor(() =>
+      expect(
+        result.current.convocatorias.myEnrollments.some(
+          (enrollment) => enrollment[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === lanzamiento.id
+        )
+      ).toBe(true)
+    );
+    expect(result.current.modal.modalInfo).toMatchObject({
+      title: "Inscripción confirmada",
+      tone: "success",
+    });
   });
 });

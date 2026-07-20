@@ -137,8 +137,15 @@ export function DrillModal({ state, onClose }: { state: DrillState | null; onClo
                     <div className="meta mono" style={{ fontSize: 11.5, marginTop: 2 }}>
                       {isInst ? String(r.legajo) : `legajo ${r.legajo}`}
                       {r.institucion ? ` · ${r.institucion}` : ""}
-                      {r.detalle ? ` · ${r.detalle}` : ""}
                     </div>
+                    {r.detalle && (
+                      <div
+                        className="meta"
+                        style={{ fontSize: 11.5, lineHeight: 1.45, marginTop: 4, maxWidth: "72ch" }}
+                      >
+                        {r.detalle}
+                      </div>
+                    )}
                   </div>
                   <div
                     className="mono"

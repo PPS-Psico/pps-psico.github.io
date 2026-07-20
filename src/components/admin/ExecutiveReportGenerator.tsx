@@ -47,6 +47,27 @@ const ExecutiveReportGenerator: React.FC<ExecutiveReportGeneratorProps> = ({
     );
   };
 
+  // El "Imprimir" del navegador sugiere document.title como nombre de archivo:
+  // lo prolijamos durante la impresión y lo restauramos al cerrar el diálogo.
+  const handlePrint = () => {
+    if (!reportData) return;
+    const prevTitle = document.title;
+    document.title =
+      reportData.reportType === "gestion"
+        ? "Informe de gestión PPS · UFLO"
+        : reportData.reportType === "comparative"
+          ? `Comparativo PPS ${reportData.yearA} vs ${reportData.yearB} · UFLO`
+          : `Balance PPS ${reportData.year} · UFLO`;
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.title = prevTitle;
+      },
+      { once: true }
+    );
+    window.print();
+  };
+
   // El generador de PDF (jspdf + autotable) se importa on demand para no
   // engordar el bundle inicial del panel.
   const handleDownloadPdf = async () => {
@@ -175,7 +196,7 @@ const ExecutiveReportGenerator: React.FC<ExecutiveReportGeneratorProps> = ({
         <>
           <div className="no-print flex justify-end gap-2">
             <button
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="inline-flex items-center gap-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-bold text-sm py-2 px-4 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
             >
               <span className="material-icons !text-base">print</span>

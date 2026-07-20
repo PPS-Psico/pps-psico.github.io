@@ -2,14 +2,18 @@
 // MÉTRICAS v3 · Línea de tiempo + Reporte ejecutivo (Paper & Ink)
 // ──────────────────────────────────────────────────────────────────────────
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   useMetricsTimeline,
   useReportLaunches,
   useSinPpsDetail,
   useYtdFlows,
   useNewAgreements,
+  useTrayectoriaFinalizados,
+  useTiempoSeleccion,
   ytdCutoff,
 } from "../../../hooks/useMetricsExtras";
+import { fetchConveniosKpis } from "../../../services/conveniosService";
 import type {
   TimelineEvent,
   DinamicaCiclo,
@@ -229,38 +233,59 @@ function SecHead({ num, title, meta }: { num: string; title: string; meta?: stri
   );
 }
 
-// Cifra del reporte con referencia al año anterior (factual, sin juicio de valor).
+// Cifra del reporte con referencia al año anterior. El chip de variación se
+// colorea según su lectura (goodWhenDown la invierte; neutralDelta lo deja sin
+// juicio, para stocks sin corte pareja) y prevLabel explicita la base de
+// comparación ("2025 al 17 de julio:", "cierre 2025:").
 function ExecStat({
   value,
+  display,
   label,
   ctx,
   prev,
   prevYear,
+  prevLabel,
+  goodWhenDown,
+  neutralDelta,
   big,
 }: {
   value: number;
+  /** Texto ya formateado para mostrar en lugar de fmt(value) (ej. "78%" o "3,4"). */
+  display?: string;
   label: string;
   ctx?: string;
   prev?: number | null;
   prevYear?: number;
+  /** Texto de la base de referencia; por defecto `${prevYear}:`. */
+  prevLabel?: string;
+  /** La baja es buena noticia (ej. "Sin ninguna PPS"): invierte el color. */
+  goodWhenDown?: boolean;
+  /** Referencia sin corte pareja (stocks): chip sin color. */
+  neutralDelta?: boolean;
   big?: boolean;
 }) {
   const diff = prev != null ? value - prev : null;
+  const toneClass =
+    diff == null || diff === 0
+      ? " flat"
+      : neutralDelta
+        ? ""
+        : diff > 0 !== !!goodWhenDown
+          ? " ok"
+          : " warn";
   return (
     <div className="exec-stat">
-      <div className={`mono exec-num${big ? " big" : ""}`}>{fmt(value)}</div>
+      <div className={`mono exec-num${big ? " big" : ""}`}>{display ?? fmt(value)}</div>
       <div className="exec-stat-label">{label}</div>
       {ctx && <div className="exec-stat-ctx">{ctx}</div>}
-      {prev != null && prevYear != null && (
-        <div className="exec-prev mono">
-          {prevYear}: {fmt(prev)}
-          {diff != null && diff !== 0 && (
-            <>
-              {" "}
-              · {diff > 0 ? "+" : "−"}
-              {fmt(Math.abs(diff))}
-            </>
-          )}
+      {prev != null && (prevYear != null || prevLabel) && diff != null && (
+        <div className="exec-delta-row">
+          <span className={`exec-delta mono${toneClass}`}>
+            {diff === 0 ? "=" : diff > 0 ? `↑ ${fmt(diff)}` : `↓ ${fmt(Math.abs(diff))}`}
+          </span>
+          <span className="exec-delta-ref mono">
+            {prevLabel ?? `${prevYear}:`} {fmt(prev)}
+          </span>
         </div>
       )}
     </div>
@@ -354,8 +379,8 @@ function SinPpsFocus({
         </table>
       </div>
       <p className="exec-footnote">
-        Snapshot al día de emisión: alumnos activos del sistema sin ninguna práctica registrada.
-        «Seleccionado» indica que ya tiene cupo asignado y la práctica aún no se cargó.
+        Foto al día de emisión: estudiantes activos sin prácticas y con al menos una postulación PPS
+        en {year}. «Seleccionado» indica que ya tiene cupo asignado y la práctica aún no se cargó.
       </p>
     </div>
   );
@@ -366,13 +391,14 @@ function SinPpsFocus({
 function OrientBar({ launches }: { launches: ReportLaunch[] }) {
   const total = launches.length;
   if (!total) return null;
+  // Solo composición (n y %): los cupos se informan en la tabla de presión por
+  // orientación, que excluye ilimitadas — acá inflarían (Ulloa 200, FT 107).
   const dist = ORIENT_ORDER.map((k) => {
     const of = launches.filter((l) => l.orient === k);
     return {
       key: k,
       label: ORIENT_LABEL[k],
       n: of.length,
-      cupos: of.reduce((a, l) => a + l.cupos, 0),
     };
   }).filter((d) => d.n > 0);
 
@@ -395,7 +421,7 @@ function OrientBar({ launches }: { launches: ReportLaunch[] }) {
             <span className="exec-dot" style={{ background: ORIENT_VAR[d.key] }} />
             <span>{d.label}</span>
             <span className="mono exec-legend-n">
-              {fmt(d.n)} · {Math.round((d.n / total) * 100)}% · {fmt(d.cupos)} cupos
+              {fmt(d.n)} · {Math.round((d.n / total) * 100)}%
             </span>
           </span>
         ))}
@@ -444,24 +470,28 @@ function LaunchAnnex({
   const months = Array.from(groups.entries()).sort((a, b) => a[0] - b[0]);
   const tot = launches.reduce(
     (a, l) => ({
-      cupos: a.cupos + l.cupos,
+      cupos: a.cupos + l.capacidadOperativa,
       post: a.post + l.postulaciones,
       sel: a.sel + l.seleccionados,
     }),
     { cupos: 0, post: 0, sel: 0 }
   );
-  const hayEstimados = launches.some((l) => l.selEstimado);
+  const historicalOfferSource = launches.some((l) => l.source === "historical_documented_offer");
+  const demandAvailable = launches.every((l) => l.demandAvailable);
+  const hayCapacidadRealizada = launches.some(
+    (l) => l.source === "operational_launch" && l.modalidadCupo === "realizado"
+  );
 
   return (
     <div className="exec-table-wrap">
       <table className="exec-table">
         <thead>
           <tr>
-            <th>Convocatoria</th>
+            <th>{historicalOfferSource ? "Oferta PPS" : "Convocatoria"}</th>
             <th>Orientación</th>
-            <th className="num">Inicio</th>
+            <th className="num">{historicalOfferSource ? "Publicación" : "Inicio"}</th>
             <th className="num">Horas</th>
-            <th className="num">Cupos</th>
+            <th className="num">Capacidad</th>
             <th className="num">Postulaciones</th>
             <th className="num">Seleccionados</th>
           </tr>
@@ -470,7 +500,7 @@ function LaunchAnnex({
           {months.map(([m, rows]) => {
             const sub = rows.reduce(
               (a, l) => ({
-                cupos: a.cupos + l.cupos,
+                cupos: a.cupos + l.capacidadOperativa,
                 post: a.post + l.postulaciones,
                 sel: a.sel + l.seleccionados,
               }),
@@ -487,8 +517,8 @@ function LaunchAnnex({
                     </span>
                   </td>
                   <td className="num mono">{fmt(sub.cupos)}</td>
-                  <td className="num mono">{fmt(sub.post)}</td>
-                  <td className="num mono">{fmt(sub.sel)}</td>
+                  <td className="num mono">{demandAvailable ? fmt(sub.post) : "—"}</td>
+                  <td className="num mono">{demandAvailable ? fmt(sub.sel) : "—"}</td>
                 </tr>
                 {rows.map((l) => (
                   <tr key={l.id}>
@@ -501,17 +531,17 @@ function LaunchAnnex({
                     </td>
                     <td className="num mono">{l.fechaInicio ? diaMes(l.fechaInicio) : "—"}</td>
                     <td className="num mono">{l.horas != null ? fmt(l.horas) : "—"}</td>
-                    <td className="num mono">{fmt(l.cupos)}</td>
-                    <td className="num mono">{fmt(l.postulaciones)}</td>
                     <td className="num mono">
-                      {l.seleccionados ? (
-                        <>
-                          {fmt(l.seleccionados)}
-                          {l.selEstimado && <span title="Estimado por cupos ofrecidos">*</span>}
-                        </>
-                      ) : (
-                        "—"
+                      {l.source === "historical_documented_offer" && l.modalidadCupo !== "fijo"
+                        ? "—"
+                        : fmt(l.capacidadOperativa)}
+                      {l.modalidadCupo === "realizado" && (
+                        <span title="Capacidad realizada: estudiantes seleccionados"> †</span>
                       )}
+                    </td>
+                    <td className="num mono">{l.demandAvailable ? fmt(l.postulaciones) : "—"}</td>
+                    <td className="num mono">
+                      {l.demandAvailable && l.seleccionados ? fmt(l.seleccionados) : "—"}
                     </td>
                   </tr>
                 ))}
@@ -523,23 +553,37 @@ function LaunchAnnex({
           <tr className="exec-total">
             <td colSpan={4}>
               Total del ciclo · {launches.length}{" "}
-              {launches.length === 1 ? "convocatoria" : "convocatorias"}
+              {historicalOfferSource
+                ? launches.length === 1
+                  ? "oferta documentada"
+                  : "ofertas documentadas"
+                : launches.length === 1
+                  ? "convocatoria"
+                  : "convocatorias"}
             </td>
             <td className="num mono">{fmt(tot.cupos)}</td>
-            <td className="num mono">{fmt(tot.post)}</td>
-            <td className="num mono">{fmt(tot.sel)}</td>
+            <td className="num mono">{demandAvailable ? fmt(tot.post) : "—"}</td>
+            <td className="num mono">{demandAvailable ? fmt(tot.sel) : "—"}</td>
           </tr>
         </tfoot>
       </table>
-      {(hayEstimados || excluded > 0) && (
+      {(historicalOfferSource || hayCapacidadRealizada || excluded > 0) && (
         <p className="exec-footnote">
-          {hayEstimados && (
+          {historicalOfferSource && (
             <>
-              * Convocatorias ya iniciadas sin estado de selección asentado en el sistema: se estima
-              por los cupos ofrecidos (nunca más que las postulaciones).
+              Fuente histórica documental: una fila por oferta publicada y fecha de publicación. La
+              capacidad suma únicamente vacantes finitas; la demanda y los seleccionados por oferta
+              no están disponibles de forma confiable.
             </>
           )}
-          {hayEstimados && excluded > 0 && <br />}
+          {historicalOfferSource && (hayCapacidadRealizada || excluded > 0) && <br />}
+          {hayCapacidadRealizada && (
+            <>
+              † Capacidad realizada: se informa la cantidad de estudiantes efectivamente
+              seleccionados, no el cupo técnico almacenado.
+            </>
+          )}
+          {hayCapacidadRealizada && excluded > 0 && <br />}
           {excluded > 0 && (
             <>
               Se {excluded === 1 ? "excluyó" : "excluyeron"} {fmt(excluded)}{" "}
@@ -609,7 +653,7 @@ function NewAgreementsTable({
             <th>Institución</th>
             <th>Orientación</th>
             <th className="num">PPS lanzadas</th>
-            <th className="num">Cupos ofrecidos</th>
+            <th className="num">Capacidad operativa</th>
           </tr>
         </thead>
         <tbody>
@@ -620,9 +664,7 @@ function NewAgreementsTable({
                 <OrientList orientaciones={a.orientaciones} />
               </td>
               <td className="num mono">{a.pps ? fmt(a.pps) : "—"}</td>
-              <td className="num mono">
-                {a.cupoIlimitado ? "Ilimitado" : a.cupos ? fmt(a.cupos) : "—"}
-              </td>
+              <td className="num mono">{a.cupos ? fmt(a.cupos) : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -647,7 +689,7 @@ function ComparativeTable({
   yearA,
   yearB,
 }: {
-  rows: { label: string; a: number; b: number }[];
+  rows: { label: string; a: number; b: number; comparable?: boolean }[];
   yearA: number;
   yearB: number;
 }) {
@@ -677,7 +719,14 @@ function ComparativeTable({
         {rows.map((r) => {
           const diff = r.b - r.a;
           const pct = r.a > 0 ? Math.round((diff / r.a) * 100) : null;
-          const color = diff > 0 ? "var(--ok)" : diff < 0 ? "var(--warn)" : "var(--ink-3)";
+          const color =
+            r.comparable === false
+              ? "var(--ink-4)"
+              : diff > 0
+                ? "var(--ok)"
+                : diff < 0
+                  ? "var(--warn)"
+                  : "var(--ink-3)";
           const sign = diff > 0 ? "+" : "";
           return (
             <React.Fragment key={r.label}>
@@ -726,7 +775,11 @@ function ComparativeTable({
                   color,
                 }}
               >
-                {diff === 0 ? "—" : `${sign}${fmt(diff)}${pct !== null ? ` (${sign}${pct}%)` : ""}`}
+                {r.comparable === false
+                  ? "n/c"
+                  : diff === 0
+                    ? "—"
+                    : `${sign}${fmt(diff)}${pct !== null ? ` (${sign}${pct}%)` : ""}`}
               </div>
             </React.Fragment>
           );
@@ -797,6 +850,12 @@ function MonthByMonth({
     selA: sum(A, "sel"),
     selB: sum(B, "sel"),
   };
+  const selectionComparable =
+    launchesA.every((launch) => launch.demandAvailable) &&
+    launchesB.every((launch) => launch.demandAvailable);
+  const offerCountComparable =
+    launchesA.some((launch) => launch.source === "historical_documented_offer") ===
+    launchesB.some((launch) => launch.source === "historical_documented_offer");
 
   if (rowMonths.length === 0) {
     return (
@@ -826,10 +885,20 @@ function MonthByMonth({
               <td className="exec-t-name">{MESES_LARGOS[m]}</td>
               <td className="num mono">{A[m].pps ? fmt(A[m].pps) : "—"}</td>
               <td className="num mono">{B[m].pps ? fmt(B[m].pps) : "—"}</td>
-              <DeltaCell a={A[m].pps} b={B[m].pps} />
-              <td className="num mono sep">{A[m].sel ? fmt(A[m].sel) : "—"}</td>
-              <td className="num mono">{B[m].sel ? fmt(B[m].sel) : "—"}</td>
-              <DeltaCell a={A[m].sel} b={B[m].sel} />
+              {offerCountComparable ? (
+                <DeltaCell a={A[m].pps} b={B[m].pps} />
+              ) : (
+                <td className="num mono">n/c</td>
+              )}
+              <td className="num mono sep">
+                {selectionComparable && A[m].sel ? fmt(A[m].sel) : "—"}
+              </td>
+              <td className="num mono">{selectionComparable && B[m].sel ? fmt(B[m].sel) : "—"}</td>
+              {selectionComparable ? (
+                <DeltaCell a={A[m].sel} b={B[m].sel} />
+              ) : (
+                <td className="num mono">—</td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -838,10 +907,18 @@ function MonthByMonth({
             <td>{bInProgress ? "Acumulado a la fecha" : "Total del año"}</td>
             <td className="num mono">{fmt(totals.ppsA)}</td>
             <td className="num mono">{fmt(totals.ppsB)}</td>
-            <DeltaCell a={totals.ppsA} b={totals.ppsB} />
-            <td className="num mono sep">{fmt(totals.selA)}</td>
-            <td className="num mono">{fmt(totals.selB)}</td>
-            <DeltaCell a={totals.selA} b={totals.selB} />
+            {offerCountComparable ? (
+              <DeltaCell a={totals.ppsA} b={totals.ppsB} />
+            ) : (
+              <td className="num mono">n/c</td>
+            )}
+            <td className="num mono sep">{selectionComparable ? fmt(totals.selA) : "—"}</td>
+            <td className="num mono">{selectionComparable ? fmt(totals.selB) : "—"}</td>
+            {selectionComparable ? (
+              <DeltaCell a={totals.selA} b={totals.selB} />
+            ) : (
+              <td className="num mono">—</td>
+            )}
           </tr>
         </tfoot>
       </table>
@@ -859,7 +936,6 @@ export function ExecutiveReport({
   compareYear,
   yearOptions = [],
   metricsB = null,
-  dinamicaB = null,
   onToggleCompare,
   onCompareYearChange,
 }: {
@@ -889,69 +965,192 @@ export function ExecutiveReport({
   // En el comparativo ordenamos cronológicamente: A = más antiguo, B = más reciente.
   const yA = comparing ? Math.min(year, compareYear as number) : year;
   const yB = comparing ? Math.max(year, compareYear as number) : year;
-  const mA = comparing ? (year < (compareYear as number) ? metrics : metricsB!) : metrics;
-  const mB = comparing ? (year < (compareYear as number) ? metricsB! : metrics) : metrics;
-  const dA = comparing ? (year < (compareYear as number) ? dinamica : dinamicaB) : dinamica;
-  const dB = comparing ? (year < (compareYear as number) ? dinamicaB : dinamica) : dinamica;
 
   // Anexo: detalle de convocatorias del año principal (solo balance anual).
   const { data: launches = [], isLoading: launchesLoading } = useReportLaunches({
     year,
     isTestingMode,
   });
-  // Convocatorias efectivas: excluimos lanzamientos sin ninguna postulación ni
-  // selección (cargas de prueba o internas). El anexo lo aclara al pie.
-  const realLaunches = launches.filter((l) => l.postulaciones > 0 || l.seleccionados > 0);
-  const excludedLaunches = launches.length - realLaunches.length;
+  // La oferta incluye toda PPS clasificada del ciclo, aun si no recibió demanda.
+  const realLaunches = launches;
+  const excludedLaunches = 0;
+  const mainUsesHistoricalOfferSource = realLaunches.some(
+    (launch) => launch.source === "historical_documented_offer"
+  );
 
   // Comparativo: lanzamientos del OTRO año (mes a mes + oferta acumulada YTD).
   const { data: launchesCmp = [] } = useReportLaunches({
     year: compareYear ?? year,
     isTestingMode: isTestingMode || !comparing,
   });
-  const realLaunchesCmp = launchesCmp.filter((l) => l.postulaciones > 0 || l.seleccionados > 0);
+  const realLaunchesCmp = launchesCmp;
   // Orden cronológico A (más antiguo) / B (más reciente), igual que las métricas.
   const olderIsMain = comparing && year < (compareYear as number);
   const launchesA = olderIsMain ? realLaunches : realLaunchesCmp;
   const launchesB = olderIsMain ? realLaunchesCmp : realLaunches;
 
-  // Flujos acumulados al mismo día (se piden siempre que hay comparación).
-  const ytdEnabled = comparing;
-  const { data: ytdMain } = useYtdFlows({ year, isTestingMode: isTestingMode || !ytdEnabled });
+  // Flujos acumulados al mismo día. En el comparativo alimentan la tabla
+  // "al mismo día"; en el balance de un año EN CURSO, el ciclo anterior cortado
+  // al mismo día es la base justa de los chips de variación (contra el año
+  // completo, un ciclo a medio andar siempre daría a la baja).
+  const yearInProgress = year === now.getFullYear();
+  const { data: ytdMain } = useYtdFlows({
+    year,
+    fullYear: !comparing && !yearInProgress,
+    isTestingMode,
+  });
   const { data: ytdCmp } = useYtdFlows({
     year: compareYear ?? year,
-    isTestingMode: isTestingMode || !ytdEnabled,
+    isTestingMode: isTestingMode || !comparing,
+  });
+  const { data: ytdPrevYear } = useYtdFlows({
+    year: year - 1,
+    fullYear: !yearInProgress,
+    isTestingMode: isTestingMode || comparing,
   });
   const ytdFlowsA: YtdFlows | undefined = olderIsMain ? ytdMain : ytdCmp;
   const ytdFlowsB: YtdFlows | undefined = olderIsMain ? ytdCmp : ytdMain;
 
-  // Oferta acumulada al mismo día del calendario en cada año.
+  // Lanzamientos del año anterior, para cortar la oferta al mismo día en el
+  // balance anual (solo se piden con el ciclo en curso).
+  const { data: launchesPrevRaw = [] } = useReportLaunches({
+    year: year - 1,
+    isTestingMode: isTestingMode || comparing || !yearInProgress,
+  });
+
+  // Oferta acumulada al mismo día del calendario en cada año. La capacidad
+  // operativa suma cupos fijos y seleccionados reales en modalidad realizada.
   const cutA = launchesA.filter((l) => l.fechaInicio && l.fechaInicio < ytdCutoff(yA, now));
   const cutB = launchesB.filter((l) => l.fechaInicio && l.fechaInicio < ytdCutoff(yB, now));
   const instCount = (arr: ReportLaunch[]) => new Set(arr.map((l) => getGroupName(l.nombre))).size;
-  const cuposSum = (arr: ReportLaunch[]) => arr.reduce((s, l) => s + l.cupos, 0);
-  const ytdRows: { label: string; a: number; b: number }[] = [
-    { label: "PPS lanzadas", a: cutA.length, b: cutB.length },
-    { label: "Cupos ofrecidos", a: cuposSum(cutA), b: cuposSum(cutB) },
+  const cuposSum = (arr: ReportLaunch[]) => arr.reduce((s, l) => s + l.capacidadOperativa, 0);
+  const capacidadMain = ytdMain?.capacity.operational ?? cuposSum(realLaunches);
+  const institucionesMain = instCount(realLaunches);
+  const iniciaronMain = ytdMain?.enPps ?? metrics.estudiantes_en_pps;
+  const finalizadosMain = ytdMain?.finalizados ?? metrics.alumnos_finalizados;
+  const historicalCapacityInComparison =
+    ytdFlowsA?.capacity.source === "historical_documented_offers" ||
+    ytdFlowsB?.capacity.source === "historical_documented_offers";
+  const offerComparisonIsComparable =
+    ytdFlowsA?.capacity.comparable !== false && ytdFlowsB?.capacity.comparable !== false;
+  const ytdRows: { label: string; a: number; b: number; comparable?: boolean }[] = [
+    {
+      label: historicalCapacityInComparison ? "Ofertas PPS publicadas" : "PPS lanzadas",
+      a: ytdFlowsA?.capacity.launches ?? cutA.length,
+      b: ytdFlowsB?.capacity.launches ?? cutB.length,
+      comparable: offerComparisonIsComparable,
+    },
+    {
+      label: historicalCapacityInComparison
+        ? "Capacidad documentada mínima"
+        : "Capacidad operativa",
+      a: ytdFlowsA?.capacity.operational ?? cuposSum(cutA),
+      b: ytdFlowsB?.capacity.operational ?? cuposSum(cutB),
+      comparable: offerComparisonIsComparable,
+    },
     { label: "Instituciones activas", a: instCount(cutA), b: instCount(cutB) },
     ...(ytdFlowsA && ytdFlowsB
       ? [
-          { label: "Alumnos que se postularon", a: ytdFlowsA.postulados, b: ytdFlowsB.postulados },
+          ...(ytdFlowsA.demandaDisponible && ytdFlowsB.demandaDisponible
+            ? [
+                {
+                  label: "Alumnos que se postularon",
+                  a: ytdFlowsA.postulados,
+                  b: ytdFlowsB.postulados,
+                },
+                {
+                  label: "Postulaciones totales",
+                  a: ytdFlowsA.postulaciones,
+                  b: ytdFlowsB.postulaciones,
+                },
+              ]
+            : []),
           {
-            label: "Postulaciones totales",
-            a: ytdFlowsA.postulaciones,
-            b: ytdFlowsB.postulaciones,
+            label: "Estudiantes con práctica iniciada",
+            a: ytdFlowsA.enPps,
+            b: ytdFlowsB.enPps,
           },
           { label: "Finalizados", a: ytdFlowsA.finalizados, b: ytdFlowsB.finalizados },
         ]
       : []),
   ];
 
+  // Base "al mismo día del año anterior" para los chips del balance anual.
+  const prevCut = launchesPrevRaw.filter(
+    (l) => l.fechaInicio && l.fechaInicio < ytdCutoff(year - 1, now)
+  );
+  const sameDay =
+    !comparing && yearInProgress
+      ? {
+          ppsLanzadas: ytdPrevYear?.capacity.launches ?? prevCut.length,
+          cupos: ytdPrevYear?.capacity.operational ?? cuposSum(prevCut),
+          instituciones: instCount(prevCut),
+          enPps: ytdPrevYear ? ytdPrevYear.enPps : null,
+          finalizados: ytdPrevYear ? ytdPrevYear.finalizados : null,
+        }
+      : null;
+  // Etiquetas de la base de comparación: mismo día para flujos, cierre para
+  // stocks sin corte diario. Con año cerrado, año completo contra año completo.
+  const sameDayRef = `${year - 1} al ${todayShort}:`;
+
   // Foco: detalle de los estudiantes sin ninguna PPS.
   const { data: sinPpsStudents = [], isLoading: sinPpsLoading } = useSinPpsDetail({
     year,
     isTestingMode,
   });
+
+  // Trayectoria de los finalizados del año (sección 02).
+  const { data: trayectoria } = useTrayectoriaFinalizados({ year, isTestingMode });
+  const maxDist = trayectoria ? Math.max(...trayectoria.dist.map((b) => b.n), 1) : 1;
+  const dec = (n: number | null) => (n == null ? "—" : String(n).replace(".", ","));
+
+  // Espera postulación → selección (Dinámica del ciclo).
+  const { data: tiempoSel } = useTiempoSeleccion({ year, isTestingMode });
+
+  // Convenios: nuevas firmas vs renovaciones (tabla convenios, RPC del dashboard).
+  const { data: conveniosKpis } = useQuery({
+    queryKey: ["conveniosKpisReporte", year, isTestingMode],
+    enabled: !isTestingMode,
+    staleTime: 1000 * 60 * 5,
+    queryFn: () => fetchConveniosKpis(year),
+  });
+
+  // Presión por orientación: demanda vs capacidad operativa.
+  const presionOrient = ORIENT_ORDER.map((k) => {
+    const of = realLaunches.filter((l) => l.orient === k);
+    const cupos = of.reduce((a, l) => a + l.capacidadOperativa, 0);
+    const post = of.reduce((a, l) => a + l.postulaciones, 0);
+    return { key: k, label: ORIENT_LABEL[k], n: of.length, cupos, post };
+  }).filter((d) => d.n > 0);
+
+  // Dinámica: % de postulantes que ya consiguió lugar (para la barra de resultado).
+  const pctConLugar =
+    dinamica && dinamica.postulados > 0
+      ? Math.round((dinamica.conLugar / dinamica.postulados) * 100)
+      : 0;
+
+  // Las convocatorias con más demanda del año (Dinámica del ciclo).
+  const masDemandadas = realLaunches
+    .filter((l) => l.postulaciones > 0)
+    .sort((a, b) => b.postulaciones - a.postulaciones)
+    .slice(0, 5);
+
+  // Imprimir con nombre de archivo prolijo: el PDF hereda document.title, así
+  // que lo fijamos durante la impresión y lo restauramos al cerrar el diálogo.
+  const handlePrint = () => {
+    const prevTitle = document.title;
+    document.title = comparing
+      ? `Reporte comparativo PPS ${yA} vs ${yB} · UFLO`
+      : `Reporte ejecutivo PPS ${year} · UFLO`;
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.title = prevTitle;
+      },
+      { once: true }
+    );
+    window.print();
+  };
 
   // Convenios nuevos con su oferta (orientación + cupos), para ambos años.
   const { data: agreementsMain = [], isLoading: agreementsLoading } = useNewAgreements({
@@ -976,31 +1175,6 @@ export function ExecutiveReport({
       prevMetrics.alumnos_finalizados > 0);
   const prev = (k: keyof MetricsKPIs): number | null =>
     prevOk ? (prevMetrics![k] as number) : null;
-
-  // Filas para la tabla comparativa (todas las métricas duras comparables).
-  const compareRows: { label: string; a: number; b: number }[] = comparing
-    ? [
-        { label: "Estudiantes en PPS", a: mA.estudiantes_en_pps, b: mB.estudiantes_en_pps },
-        { label: "Ingresantes (cohorte)", a: mA.matricula_generada, b: mB.matricula_generada },
-        { label: "Finalizados", a: mA.alumnos_finalizados, b: mB.alumnos_finalizados },
-        { label: "Matrícula activa", a: mA.matricula_activa, b: mB.matricula_activa },
-        { label: "Haciendo PPS", a: mA.haciendo_pps, b: mB.haciendo_pps },
-        { label: "PPS lanzadas", a: mA.pps_lanzadas, b: mB.pps_lanzadas },
-        {
-          label: "Instituciones activas",
-          a: mA.instituciones_activas,
-          b: mB.instituciones_activas,
-        },
-        { label: "Cupos ofrecidos", a: mA.cupos_ofrecidos, b: mB.cupos_ofrecidos },
-        { label: "Nuevos convenios", a: mA.nuevos_convenios, b: mB.nuevos_convenios },
-        ...(dA && dB
-          ? [
-              { label: "Alumnos que se postularon", a: dA.postulados, b: dB.postulados },
-              { label: "Postulaciones totales", a: dA.postulaciones, b: dB.postulaciones },
-            ]
-          : []),
-      ]
-    : [];
 
   return (
     <section className="exec-report" style={{ padding: "32px 0 0" }}>
@@ -1080,7 +1254,7 @@ export function ExecutiveReport({
             {comparing ? `Reporte comparativo · ${yA} vs ${yB}` : `Reporte ejecutivo · ${year}`}
           </h2>
         </div>
-        <button className="btn btn-primary press" onClick={() => window.print()} type="button">
+        <button className="btn btn-primary press" onClick={handlePrint} type="button">
           <span className="material-icons" style={{ fontSize: 17 }}>
             print
           </span>
@@ -1107,23 +1281,34 @@ export function ExecutiveReport({
         {comparing ? (
           <>
             <p className="exec-deck">
-              Comparación de los ciclos <strong>{yA}</strong> y <strong>{yB}</strong>: primero el
-              balance de <strong>año completo</strong> y, debajo, el acumulado{" "}
-              <strong>al mismo día ({todayShort})</strong>, para una referencia pareja cuando un
-              ciclo todavía está en curso.
+              Comparación de los ciclos <strong>{yA}</strong> y <strong>{yB}</strong> con flujos
+              acumulados al <strong>mismo día ({todayShort})</strong>. Los stocks no se comparan
+              hasta disponer de snapshots históricos equivalentes.
             </p>
             <section className="exec-sec exec-keep">
-              <SecHead num="01" title="Indicadores · año completo" meta={`${yA} → ${yB}`} />
-              <ComparativeTable rows={compareRows} yearA={yA} yearB={yB} />
-            </section>
-            <section className="exec-sec exec-keep">
-              <SecHead num="02" title="Indicadores · al mismo día" meta={`al ${todayShort}`} />
+              <SecHead
+                num="01"
+                title="Indicadores comparables · al mismo día"
+                meta={`al ${todayShort}`}
+              />
               <ComparativeTable rows={ytdRows} yearA={yA} yearB={yB} />
               <p className="exec-footnote">
-                Acumulado hasta el {todayShort} de cada año. Sólo se incluyen métricas de flujo (se
-                acumulan con el tiempo); las de stock —matrícula activa, estudiantes en PPS,
-                haciendo PPS— no admiten un corte al mismo día y sólo figuran en el balance de año
-                completo (arriba).
+                Acumulado hasta el {todayShort} de cada año. Matrícula activa y haciendo PPS son
+                stocks actuales: sin snapshots históricos no existe una comparación retrospectiva
+                válida.
+                {historicalCapacityInComparison ? (
+                  <>
+                    {" "}
+                    En el ciclo reconstruido, ofertas y capacidad provienen de publicaciones
+                    documentadas; la capacidad es un mínimo de vacantes finitas. Se informa “n/c”
+                    porque no es equivalente a las filas operativas de otros ciclos.
+                  </>
+                ) : (
+                  <> La capacidad combina cupos fijos y plazas realizadas.</>
+                )}
+                {(!ytdFlowsA?.demandaDisponible || !ytdFlowsB?.demandaDisponible) && (
+                  <> La demanda no se muestra cuando el ciclo antecede a la migración confiable.</>
+                )}
               </p>
             </section>
             <section className="exec-sec">
@@ -1137,9 +1322,14 @@ export function ExecutiveReport({
                 cutoffMonth={now.getMonth()}
               />
               <p className="exec-footnote">
-                Convocatorias efectivas por mes de inicio (excluye lanzamientos sin postulaciones).
-                «Seleccionados» = estudiantes que ocuparon un cupo (no los cupos ofrecidos; dato
-                real o, si falta, estimado por postulaciones). Δ = {yB} menos {yA}.
+                {historicalCapacityInComparison
+                  ? "Para el ciclo reconstruido se usa el mes de publicación; para los demás, el mes de inicio. "
+                  : "PPS por mes de inicio. "}
+                «Seleccionados» usa estados y prácticas vinculadas; no se imputan selecciones
+                faltantes a partir del cupo.
+                {offerComparisonIsComparable
+                  ? ` Δ = ${yB} menos ${yA}.`
+                  : " La variación de ofertas figura como n/c por cambio de fuente y unidad de conteo."}
               </p>
             </section>
             <section className="exec-sec">
@@ -1168,78 +1358,186 @@ export function ExecutiveReport({
               />
               <p className="exec-footnote">
                 Instituciones con convenio firmado en cada ciclo y la oferta que trajeron:
-                orientación, PPS lanzadas y cupos ofrecidos.
-                {[...agreementsA, ...agreementsB].some((a) => a.cupoIlimitado) &&
-                  " Fundación Tiempo y Ulloa ofrecen cupo casi ilimitado: figuran como «Ilimitado» y no suman al total de cupos."}
+                orientación, PPS lanzadas y capacidad operativa.
               </p>
             </section>
           </>
         ) : (
           <>
             <p className="exec-deck">
-              Durante el ciclo {year},{" "}
-              <strong>{fmt(metrics.estudiantes_en_pps)} estudiantes</strong> transitaron su práctica
-              profesional supervisada. Se lanzaron{" "}
-              <strong>{fmt(metrics.pps_lanzadas)} convocatorias</strong> en{" "}
-              <strong>{fmt(metrics.instituciones_activas)} instituciones</strong>, con{" "}
-              <strong>{fmt(metrics.cupos_ofrecidos)} cupos ofrecidos</strong> y{" "}
+              Durante el ciclo {year}, <strong>{fmt(iniciaronMain)} estudiantes</strong> iniciaron
+              al menos una práctica profesional supervisada. Se lanzaron{" "}
+              <strong>{fmt(realLaunches.length)} convocatorias</strong> en{" "}
+              <strong>{fmt(institucionesMain)} instituciones</strong>, con{" "}
+              <strong>{fmt(capacidadMain)} plazas de capacidad operativa</strong> y{" "}
               <strong>{fmt(metrics.nuevos_convenios)} convenios nuevos</strong> incorporados a la
               red.
             </p>
 
             <section className="exec-sec exec-keep">
-              <SecHead num="01" title="Matrícula" />
+              <SecHead num="01" title="Matrícula" meta={`snapshot al ${todayShort}`} />
               <div className="exec-stats exec-stats-3">
                 <ExecStat
                   big
-                  value={metrics.estudiantes_en_pps}
-                  label="Estudiantes en PPS"
-                  ctx="Con práctica este año"
-                  prev={prev("estudiantes_en_pps")}
+                  value={iniciaronMain}
+                  label="Iniciaron PPS"
+                  ctx="Personas distintas con práctica iniciada"
+                  prev={ytdPrevYear?.enPps ?? null}
                   prevYear={year - 1}
+                  prevLabel={sameDay ? sameDayRef : `total ${year - 1}:`}
                 />
                 <ExecStat
                   big
-                  value={metrics.alumnos_finalizados}
+                  value={finalizadosMain}
                   label="Finalizados"
-                  ctx="Acreditaciones cerradas"
-                  prev={prev("alumnos_finalizados")}
+                  ctx="Finalizaciones efectivas registradas"
+                  prev={ytdPrevYear?.finalizados ?? null}
                   prevYear={year - 1}
+                  prevLabel={sameDay ? sameDayRef : `total ${year - 1}:`}
                 />
                 <ExecStat
                   big
                   value={metrics.matricula_activa}
                   label="Matrícula activa"
-                  ctx="Alumnos en el sistema"
-                  prev={prev("matricula_activa")}
-                  prevYear={year - 1}
+                  ctx="Foto operativa actual; no se reconstruye hacia atrás"
                 />
               </div>
+              {sameDay && (
+                <p className="exec-footnote">
+                  Las variaciones (↑ ↓) comparan contra {year - 1} cortado al mismo día (
+                  {todayShort}), no contra el año completo: es la única lectura pareja para un ciclo
+                  en curso. Los stocks operativos actuales se muestran aparte y no se comparan como
+                  si fueran flujos anuales.
+                </p>
+              )}
+              {ytdMain && (
+                <p className="exec-footnote">
+                  Contrato {ytdMain.metricVersion}. Vínculos lanzamiento–institución:{" "}
+                  {ytdMain.quality.launchInstitutionLinkCoveragePct == null
+                    ? "sin base"
+                    : `${dec(ytdMain.quality.launchInstitutionLinkCoveragePct)}%`}
+                  ; práctica–lanzamiento:{" "}
+                  {ytdMain.quality.practiceLaunchLinkCoveragePct == null
+                    ? "sin base"
+                    : `${dec(ytdMain.quality.practiceLaunchLinkCoveragePct)}%`}
+                  .{" "}
+                  {ytdMain.capacity.fixedOverCapacityAvailable ? (
+                    <>
+                      {fmt(ytdMain.capacity.fixedOverCapacityLaunches)} lanzamientos fijos superan
+                      el cupo registrado y requieren revisión.
+                    </>
+                  ) : (
+                    <>
+                      Capacidad histórica documentada: {fmt(ytdMain.capacity.fixedOffered)} vacantes
+                      finitas en {fmt(ytdMain.capacity.documentedFiniteOffers ?? 0)} ofertas;{" "}
+                      {fmt(ytdMain.capacity.unknownOrRealizedOffers)} ofertas no tienen un total
+                      finito verificable.
+                    </>
+                  )}
+                </p>
+              )}
             </section>
 
+            {trayectoria && trayectoria.n > 0 && (
+              <section className="exec-sec exec-keep">
+                <SecHead
+                  num="02"
+                  title="Trayectoria hasta la finalización"
+                  meta={`${fmt(trayectoria.n)} de ${fmt(trayectoria.totalFinalizados)} finalizaciones con trayectoria calculable`}
+                />
+                <p className="exec-note">
+                  Cuánto tarda un estudiante en completar su recorrido de prácticas: desde el inicio
+                  de la primera hasta la finalización efectiva, sobre los finalizados de {year}. La
+                  cifra principal es la <strong>mediana</strong>, robusta frente a casos extremos.
+                </p>
+                <div className="exec-stats exec-stats-4">
+                  <ExecStat
+                    big
+                    value={trayectoria.medianaMeses ?? 0}
+                    display={dec(trayectoria.medianaMeses)}
+                    label="Mediana de meses"
+                    ctx="La mitad finaliza en este tiempo o menos"
+                  />
+                  <ExecStat
+                    value={trayectoria.promedioMeses ?? 0}
+                    display={dec(trayectoria.promedioMeses)}
+                    label="Promedio de meses"
+                    ctx="Sensible a las trayectorias largas"
+                  />
+                  <ExecStat
+                    value={trayectoria.promedioRegistrosPractica ?? 0}
+                    display={dec(trayectoria.promedioRegistrosPractica)}
+                    label="Registros promedio"
+                    ctx="Filas de práctica por estudiante finalizado"
+                  />
+                  <ExecStat
+                    value={trayectoria.promedioHorasCargadas ?? 0}
+                    display={
+                      trayectoria.promedioHorasCargadas == null
+                        ? "—"
+                        : fmt(trayectoria.promedioHorasCargadas)
+                    }
+                    label="Horas cargadas promedio"
+                    ctx="Suma de horas registradas al finalizar"
+                  />
+                </div>
+                {trayectoria.p25Meses != null && trayectoria.p75Meses != null && (
+                  <p className="exec-note" style={{ margin: "18px 0 0" }}>
+                    El 50% central de las trayectorias tarda entre{" "}
+                    <strong>{dec(trayectoria.p25Meses)}</strong> y{" "}
+                    <strong>{dec(trayectoria.p75Meses)} meses</strong>.
+                  </p>
+                )}
+                <div className="exec-hist">
+                  {trayectoria.dist.map((b, i) => (
+                    <div key={b.label} className="exec-hist-row">
+                      <span className="exec-hist-label">{b.label}</span>
+                      <span className="exec-hist-track">
+                        <span
+                          className="exec-hist-fill"
+                          style={{
+                            width: `${Math.max((b.n / maxDist) * 100, b.n ? 4 : 0)}%`,
+                            background: `color-mix(in oklab, var(--accent) ${45 + i * 18}%, var(--paper))`,
+                          }}
+                        />
+                      </span>
+                      <span className="exec-hist-n mono">
+                        {b.n ? `${fmt(b.n)} · ${Math.round((b.n / trayectoria.n) * 100)}%` : "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="exec-footnote">
+                  Duración medida del inicio de la primera PPS a la fecha de finalización efectiva.
+                  Cobertura: {fmt(trayectoria.n)} de {fmt(trayectoria.totalFinalizados)} casos.
+                  {trayectoria.duracionesInvalidas > 0 && (
+                    <>
+                      {" "}
+                      Se excluyeron {fmt(trayectoria.duracionesInvalidas)} duraciones fuera del
+                      rango publicable y se informan como incidencia de calidad.
+                    </>
+                  )}
+                </p>
+              </section>
+            )}
+
             <section className="exec-sec exec-keep">
-              <SecHead num="02" title="Seguimiento de estudiantes" />
+              <SecHead num="03" title="Seguimiento de estudiantes" />
               <div className="exec-stats exec-stats-3">
                 <ExecStat
                   value={metrics.sin_pps}
-                  label="Sin ninguna PPS"
-                  ctx="Todavía sin práctica registrada"
-                  prev={prev("sin_pps")}
-                  prevYear={year - 1}
+                  label="Sin PPS · demanda activa"
+                  ctx={`Sin prácticas y con postulaciones en ${year}`}
                 />
                 <ExecStat
                   value={metrics.proximos_finalizar}
                   label="Próximos a finalizar"
-                  ctx="Cerca de acreditar"
-                  prev={prev("proximos_finalizar")}
-                  prevYear={year - 1}
+                  ctx="Cohorte accionable sin Relevamiento/Entrevista previa"
                 />
                 <ExecStat
-                  value={metrics.haciendo_pps}
-                  label="Haciendo PPS"
-                  ctx="Con práctica en curso"
-                  prev={prev("haciendo_pps")}
-                  prevYear={year - 1}
+                  value={metrics.en_acreditacion}
+                  label="En acreditación"
+                  ctx="Solicitud de finalización actualmente en trámite"
                 />
               </div>
             </section>
@@ -1247,8 +1545,8 @@ export function ExecutiveReport({
             {metrics.sin_pps > 0 && (
               <section className="exec-sec exec-keep">
                 <SecHead
-                  num="03"
-                  title="Foco · Estudiantes sin ninguna PPS"
+                  num="04"
+                  title="Foco · Sin PPS con demanda activa"
                   meta={`${fmt(metrics.sin_pps)} ${metrics.sin_pps === 1 ? "estudiante" : "estudiantes"}`}
                 />
                 <SinPpsFocus students={sinPpsStudents} isLoading={sinPpsLoading} year={year} />
@@ -1256,28 +1554,49 @@ export function ExecutiveReport({
             )}
 
             <section className="exec-sec exec-keep">
-              <SecHead num="04" title="Red de instituciones" />
+              <SecHead num="05" title="Red de instituciones" />
               <div className="exec-stats exec-stats-4">
                 <ExecStat
-                  value={metrics.pps_lanzadas}
-                  label="PPS lanzadas"
-                  ctx="Convocatorias del ciclo"
-                  prev={prev("pps_lanzadas")}
+                  value={realLaunches.length}
+                  label={
+                    mainUsesHistoricalOfferSource ? "Ofertas PPS documentadas" : "PPS lanzadas"
+                  }
+                  ctx={
+                    mainUsesHistoricalOfferSource
+                      ? "Publicaciones canónicas del ciclo"
+                      : "Convocatorias del ciclo"
+                  }
+                  prev={
+                    mainUsesHistoricalOfferSource
+                      ? null
+                      : sameDay
+                        ? sameDay.ppsLanzadas
+                        : prev("pps_lanzadas")
+                  }
                   prevYear={year - 1}
+                  prevLabel={sameDay ? sameDayRef : undefined}
                 />
                 <ExecStat
-                  value={metrics.instituciones_activas}
+                  value={institucionesMain}
                   label="Instituciones activas"
                   ctx="Con convocatorias este año"
-                  prev={prev("instituciones_activas")}
+                  prev={sameDay ? sameDay.instituciones : prev("instituciones_activas")}
                   prevYear={year - 1}
+                  prevLabel={sameDay ? sameDayRef : undefined}
                 />
                 <ExecStat
-                  value={metrics.cupos_ofrecidos}
-                  label="Cupos ofrecidos"
-                  ctx="Plazas publicadas"
-                  prev={prev("cupos_ofrecidos")}
+                  value={capacidadMain}
+                  label={
+                    mainUsesHistoricalOfferSource ? "Capacidad documentada" : "Capacidad operativa"
+                  }
+                  ctx={
+                    mainUsesHistoricalOfferSource
+                      ? "Mínimo de vacantes finitas"
+                      : "Cupos fijos + plazas realizadas"
+                  }
+                  prev={mainUsesHistoricalOfferSource ? null : sameDay ? sameDay.cupos : null}
                   prevYear={year - 1}
+                  prevLabel={sameDay ? sameDayRef : undefined}
                 />
                 <ExecStat
                   value={metrics.nuevos_convenios}
@@ -1285,26 +1604,46 @@ export function ExecutiveReport({
                   ctx="Instituciones incorporadas"
                   prev={prev("nuevos_convenios")}
                   prevYear={year - 1}
+                  prevLabel={yearInProgress && !comparing ? `total ${year - 1}:` : undefined}
+                  neutralDelta
                 />
               </div>
+              {sameDay && (
+                <p className="exec-footnote">
+                  PPS, instituciones y cupos de {year - 1} contados hasta el {todayShort} de ese
+                  año. Las firmas de convenios previas a jul 2026 tienen fecha estimada (backfill),
+                  así que se referencia el total anual de {year - 1}.
+                </p>
+              )}
             </section>
 
             {metrics.nuevos_convenios > 0 && (
               <section className="exec-sec exec-keep">
                 <SecHead
-                  num="05"
+                  num="06"
                   title="Convenios nuevos · ficha por institución"
-                  meta={`${fmt(metrics.nuevos_convenios)} ${metrics.nuevos_convenios === 1 ? "institución" : "instituciones"}`}
+                  meta={
+                    conveniosKpis && conveniosKpis.renovaciones > 0
+                      ? `${fmt(conveniosKpis.nuevos_convenios)} ${conveniosKpis.nuevos_convenios === 1 ? "nueva" : "nuevas"} · ${fmt(conveniosKpis.renovaciones)} ${conveniosKpis.renovaciones === 1 ? "renovación" : "renovaciones"}`
+                      : `${fmt(metrics.nuevos_convenios)} ${metrics.nuevos_convenios === 1 ? "institución" : "instituciones"}`
+                  }
                 />
                 <NewAgreementsTable
                   agreements={agreementsMain}
                   isLoading={agreementsLoading}
                   year={year}
                 />
-                {agreementsMain.some((a) => a.cupoIlimitado) && (
+                {(conveniosKpis?.renovaciones ?? 0) > 0 && (
                   <p className="exec-footnote">
-                    Fundación Tiempo y Ulloa ofrecen cupo casi ilimitado: figuran como «Ilimitado» y
-                    no suman al total de cupos.
+                    {conveniosKpis && conveniosKpis.renovaciones > 0 && (
+                      <>
+                        «Nuevas» = instituciones cuya primera firma cae en {year};{" "}
+                        {conveniosKpis.renovaciones === 1
+                          ? "1 renovación de vínculo existente"
+                          : `${fmt(conveniosKpis.renovaciones)} renovaciones de vínculos existentes`}{" "}
+                        no figuran en esta ficha.{" "}
+                      </>
+                    )}
                   </p>
                 )}
               </section>
@@ -1313,43 +1652,194 @@ export function ExecutiveReport({
             {realLaunches.length > 0 && (
               <section className="exec-sec exec-keep">
                 <SecHead
-                  num="06"
+                  num="07"
                   title="Orientación de la oferta"
                   meta={`${fmt(realLaunches.length)} convocatorias efectivas`}
                 />
                 <OrientBar launches={realLaunches} />
+                {presionOrient.length > 0 && (
+                  <>
+                    <p className="label" style={{ margin: "22px 0 8px" }}>
+                      Presión de la demanda por orientación
+                    </p>
+                    <div className="exec-table-wrap">
+                      <table className="exec-table">
+                        <thead>
+                          <tr>
+                            <th>Orientación</th>
+                            <th className="num">Convocatorias</th>
+                            <th className="num">Capacidad</th>
+                            <th className="num">Postulaciones</th>
+                            <th className="num">Postulantes por plaza</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {presionOrient.map((d) => (
+                            <tr key={d.key}>
+                              <td>
+                                <span className="exec-t-orient">
+                                  <span
+                                    className="exec-dot"
+                                    style={{ background: ORIENT_VAR[d.key] }}
+                                  />
+                                  {d.label}
+                                </span>
+                              </td>
+                              <td className="num mono">{fmt(d.n)}</td>
+                              <td className="num mono">{fmt(d.cupos)}</td>
+                              <td className="num mono">{fmt(d.post)}</td>
+                              <td className="num mono">
+                                {d.cupos > 0
+                                  ? (d.post / d.cupos).toFixed(1).replace(".", ",")
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="exec-footnote">
+                      La capacidad combina cupos fijos con plazas efectivamente realizadas. Un valor
+                      alto de «postulantes por plaza» señala una orientación sobredemandada.
+                    </p>
+                  </>
+                )}
               </section>
             )}
 
             {dinamica && dinamica.postulados > 0 && (
               <section className="exec-sec exec-keep">
-                <SecHead num="07" title="Dinámica del ciclo" />
-                <div className="exec-strip">
-                  {[
-                    {
-                      v: `${dinamica.postulacionesPorAlumno}`,
-                      label: `Postulaciones por alumno (${fmt(dinamica.postulaciones)} / ${fmt(dinamica.postulados)})`,
-                    },
-                    { v: fmt(dinamica.sinLugar), label: "Postulados sin lugar todavía" },
-                    {
-                      v: dinamica.concrecionPct == null ? "—" : `${dinamica.concrecionPct}%`,
-                      label: `Concreción (${fmt(dinamica.conLugar)} de ${fmt(dinamica.postulados)} con lugar)`,
-                    },
-                  ].map((s, i) => (
-                    <div key={i}>
-                      <div className="mono exec-num" style={{ fontSize: 24 }}>
-                        {s.v}
-                      </div>
-                      <div className="exec-stat-ctx" style={{ marginTop: 5 }}>
-                        {s.label}
-                      </div>
-                    </div>
-                  ))}
+                <SecHead
+                  num="08"
+                  title="Dinámica del ciclo"
+                  meta={`${fmt(dinamica.postulados)} ${dinamica.postulados === 1 ? "postulante" : "postulantes"}`}
+                />
+                <p className="exec-note">
+                  Mide la <strong>búsqueda de lugar</strong> durante {year}: cuántos estudiantes
+                  salieron a buscar práctica, cuánto esfuerzo les llevó y qué parte ya consiguió
+                  lugar. Incluye todas las PPS del ciclo, sin exclusiones por institución.
+                </p>
+                <div className="exec-stats exec-stats-4">
+                  <ExecStat
+                    value={dinamica.postulados}
+                    label="Alumnos que se postularon"
+                    ctx="Personas distintas que buscaron lugar en el año"
+                  />
+                  <ExecStat
+                    value={dinamica.postulaciones}
+                    label="Postulaciones enviadas"
+                    ctx="Total de inscripciones a convocatorias"
+                  />
+                  <ExecStat
+                    value={dinamica.postulacionesPorAlumno}
+                    display={String(dinamica.postulacionesPorAlumno).replace(".", ",")}
+                    label="Postulaciones por alumno"
+                    ctx="A cuántas convocatorias se anota cada uno para conseguir lugar"
+                  />
+                  <ExecStat
+                    value={dinamica.concrecionPct ?? 0}
+                    display={dinamica.concrecionPct == null ? "—" : `${dinamica.concrecionPct}%`}
+                    label="Concreción"
+                    ctx={`${fmt(dinamica.conLugar)} de ${fmt(dinamica.postulados)} postulantes ya tienen lugar`}
+                  />
                 </div>
+                <div className="exec-dyn">
+                  <div
+                    className="exec-bar"
+                    role="img"
+                    aria-label={`De ${fmt(dinamica.postulados)} postulantes, ${fmt(dinamica.conLugar)} con lugar y ${fmt(dinamica.sinLugar)} sin lugar todavía`}
+                  >
+                    <span
+                      style={{
+                        flexGrow: Math.max(dinamica.conLugar, 0.01),
+                        background: "var(--ok)",
+                      }}
+                    />
+                    <span
+                      style={{
+                        flexGrow: Math.max(dinamica.sinLugar, 0.01),
+                        background: "var(--warn)",
+                      }}
+                    />
+                  </div>
+                  <div className="exec-legend">
+                    <span className="exec-legend-item">
+                      <span className="exec-dot" style={{ background: "var(--ok)" }} />
+                      <span>Con lugar</span>
+                      <span className="mono exec-legend-n">
+                        {fmt(dinamica.conLugar)} · {pctConLugar}%
+                      </span>
+                    </span>
+                    <span className="exec-legend-item">
+                      <span className="exec-dot" style={{ background: "var(--warn)" }} />
+                      <span>Sin lugar todavía</span>
+                      <span className="mono exec-legend-n">
+                        {fmt(dinamica.sinLugar)} · {100 - pctConLugar}%
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                {tiempoSel && tiempoSel.n >= 5 && tiempoSel.medianaDias != null && (
+                  <p className="exec-note" style={{ margin: "16px 0 0" }}>
+                    <strong>Experimental · espera hasta la selección:</strong> la mitad de los casos
+                    medibles se resolvió en <strong>{dec(tiempoSel.medianaDias)} días</strong> o
+                    menos
+                    {tiempoSel.p25Dias != null && tiempoSel.p75Dias != null && (
+                      <>
+                        {" "}
+                        (50% central entre {dec(tiempoSel.p25Dias)} y {dec(tiempoSel.p75Dias)} días)
+                      </>
+                    )}
+                    . Cobertura: {fmt(tiempoSel.n)} de {fmt(tiempoSel.seleccionados)} selecciones (
+                    {tiempoSel.coberturaPct == null ? "—" : `${dec(tiempoSel.coberturaPct)}%`}). No
+                    se usa para comparaciones interanuales hasta alcanzar 90% durante un ciclo
+                    completo.
+                  </p>
+                )}
+                {masDemandadas.length > 0 && (
+                  <>
+                    <p className="label" style={{ margin: "22px 0 8px" }}>
+                      Las convocatorias más demandadas del ciclo
+                    </p>
+                    <div className="exec-table-wrap">
+                      <table className="exec-table">
+                        <thead>
+                          <tr>
+                            <th>Convocatoria</th>
+                            <th className="num">Inicio</th>
+                            <th className="num">Capacidad</th>
+                            <th className="num">Postulaciones</th>
+                            <th className="num">Postulantes por plaza</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {masDemandadas.map((l) => (
+                            <tr key={l.id}>
+                              <td className="exec-t-name">{l.nombre}</td>
+                              <td className="num mono">
+                                {l.fechaInicio ? diaMes(l.fechaInicio) : "—"}
+                              </td>
+                              <td className="num mono">{fmt(l.capacidadOperativa)}</td>
+                              <td className="num mono">{fmt(l.postulaciones)}</td>
+                              <td className="num mono">
+                                {l.capacidadOperativa > 0
+                                  ? (l.postulaciones / l.capacidadOperativa)
+                                      .toFixed(1)
+                                      .replace(".", ",")
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
                 <p className="exec-footnote">
-                  «Sin lugar todavía» cuenta postulantes del año sin selección ni práctica iniciada;
-                  incluye alumnos que ya hicieron PPS en ciclos anteriores, por eso no coincide con
-                  «Sin ninguna PPS» (sección 03).
+                  «Con lugar» = postulantes del año con selección asignada o práctica iniciada. «Sin
+                  lugar todavía» incluye alumnos que ya hicieron PPS en ciclos anteriores, por eso
+                  no coincide con «Sin ninguna PPS» (sección 04). «Postulantes por plaza» aproxima
+                  la competencia usando capacidad fija o realizada según el lanzamiento.
                 </p>
               </section>
             )}
@@ -1361,8 +1851,8 @@ export function ExecutiveReport({
                 meta={
                   realLaunches.length
                     ? `${fmt(realLaunches.length)} convocatorias · ${fmt(
-                        realLaunches.reduce((a, l) => a + l.cupos, 0)
-                      )} cupos`
+                        realLaunches.reduce((a, l) => a + l.capacidadOperativa, 0)
+                      )} plazas operativas`
                     : undefined
                 }
               />

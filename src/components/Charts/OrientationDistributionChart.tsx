@@ -38,7 +38,7 @@ const OrientationDistributionChart: React.FC<OrientationDistributionChartProps> 
           </span>
         </div>
         <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">
-          Distribución por Área
+          Inicios de PPS por área
         </h3>
         <p className="text-sm text-slate-400 dark:text-slate-500 text-center max-w-xs">
           No hay datos de distribución disponibles para el año seleccionado.
@@ -59,7 +59,7 @@ const OrientationDistributionChart: React.FC<OrientationDistributionChartProps> 
           <span className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
             <span className="material-icons !text-lg">pie_chart</span>
           </span>
-          Distribución por Área
+          Inicios de PPS por área
         </h3>
       </div>
 
@@ -92,7 +92,7 @@ const OrientationDistributionChart: React.FC<OrientationDistributionChartProps> 
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-3xl font-black text-slate-800 dark:text-white">{total}</span>
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              Total
+              Menciones
             </span>
           </div>
         </div>

@@ -26,6 +26,8 @@ export type FormData = {
   orientacion: string[]; // Multiple selections
   horasAcreditadas: number | undefined;
   cuposDisponibles: number | undefined;
+  tipoActividad: "pps" | "actividad_especial";
+  modalidadCupo: "fijo" | "realizado";
   estadoConvocatoria: string | undefined;
   reqCertificadoTrabajo: boolean;
   reqCv: boolean;
@@ -71,6 +73,8 @@ export const initialState: FormData = {
   orientacion: [],
   horasAcreditadas: 0,
   cuposDisponibles: 1,
+  tipoActividad: "pps",
+  modalidadCupo: "fijo",
   estadoConvocatoria: "Abierta",
   reqCertificadoTrabajo: true,
   reqCv: false,

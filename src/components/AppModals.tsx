@@ -84,6 +84,7 @@ const AppModals: React.FC = () => {
         isOpen={!!modalInfo}
         title={modalInfo?.title || ""}
         message={modalInfo?.message || ""}
+        tone={modalInfo?.tone || "info"}
         onClose={closeModal}
       />
 

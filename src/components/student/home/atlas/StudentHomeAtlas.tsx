@@ -52,6 +52,7 @@ interface StudentHomeAtlasProps {
   onStartConsent: () => void;
   onOpenDetalle: (l: LanzamientoPPS) => void;
   onInscribir: (l: LanzamientoPPS, completedOrientaciones?: string[]) => void;
+  onCancelarInscripcion: (convocatoriaId: string, nombrePPS: string) => void;
   onVerConvocados: (l: LanzamientoPPS) => void;
   onNavigate: (tab: TabId) => void;
 }
@@ -70,7 +71,7 @@ const fmtShort = (raw?: unknown): string => {
 };
 
 export const AhIcon: React.FC<{
-  name: "bell" | "cal" | "clock" | "arrow" | "timer" | "lock";
+  name: "bell" | "cal" | "clock" | "arrow" | "timer" | "lock" | "check";
   size?: number;
 }> = ({ name, size = 18 }) => {
   const paths: Record<string, React.ReactNode> = {
@@ -111,6 +112,7 @@ export const AhIcon: React.FC<{
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </>
     ),
+    check: <path d="m5 12 4 4L19 6" />,
   };
   return (
     <svg
@@ -171,6 +173,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   onStartConsent,
   onOpenDetalle,
   onInscribir,
+  onCancelarInscripcion,
   onVerConvocados,
   onNavigate,
 }) => {
@@ -456,6 +459,17 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               "Práctica profesional supervisada disponible para tu rotación.";
             const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
             const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
+            const enrollment = enrollmentMap.get(l.id);
+            const enrollmentStatus = enrollment
+              ? normalizeStringForComparison(
+                  (enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] as string) || ""
+                )
+              : "";
+            const isEnrolled = !!enrollment;
+            const isSelected =
+              enrollmentStatus === "seleccionado" ||
+              enrollmentStatus === "adjudicado" ||
+              enrollmentStatus === "en curso";
             const closes = closesLabel(l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]);
             const direccion = (l[FIELD_DIRECCION_LANZAMIENTOS] as string) || "";
             const horarios = ((l[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] as string) || "")
@@ -655,16 +669,44 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="ah-btn ah-btn--primary ah-btn--area ah-feat__cta"
-                    style={{ background: areaVar(areaPrimary) }}
-                    onClick={() => onInscribir(l)}
-                  >
-                    Inscribirme{cupos ? ` · ${cupos} ${cupos === 1 ? "cupo" : "cupos"}` : ""}
-                    <AhIcon name="arrow" size={15} />
-                  </button>
-                  <p className="ah-feat__note">Te avisamos por correo si quedás seleccionado/a.</p>
+                  {isEnrolled ? (
+                    <div className="ah-feat__enrollment-actions">
+                      <div className="ah-feat__enrollment-state" role="status">
+                        <AhIcon name="check" size={16} />
+                        {isSelected ? "Ya estás seleccionado/a" : "Inscripción confirmada"}
+                      </div>
+                      {!isSelected ? (
+                        <button
+                          type="button"
+                          className="ah-btn ah-feat__cancel"
+                          onClick={() => onCancelarInscripcion(enrollment.id, name)}
+                        >
+                          Cancelar inscripción
+                          <span className="material-icons" aria-hidden="true">
+                            close
+                          </span>
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ah-btn ah-btn--primary ah-btn--area ah-feat__cta"
+                      style={{ background: areaVar(areaPrimary) }}
+                      onClick={() => onInscribir(l)}
+                    >
+                      Inscribirme
+                      {cupos ? ` · ${cupos} ${cupos === 1 ? "cupo" : "cupos"}` : ""}
+                      <AhIcon name="arrow" size={15} />
+                    </button>
+                  )}
+                  <p className="ah-feat__note">
+                    {isSelected
+                      ? "Tu lugar fue confirmado. Revisá el próximo paso para completar el consentimiento."
+                      : isEnrolled
+                        ? "Tu postulación ya figura en el sistema."
+                        : "Te avisamos por correo si quedás seleccionado/a."}
+                  </p>
                 </aside>
               </article>
             );
@@ -684,6 +726,16 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               const requisito = String(l[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] || "").trim();
               const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
               const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
+              const enrollment = enrollmentMap.get(l.id);
+              const enrollmentStatus = enrollment
+                ? normalizeStringForComparison(
+                    (enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] as string) || ""
+                  )
+                : "";
+              const isSelected =
+                enrollmentStatus === "seleccionado" ||
+                enrollmentStatus === "adjudicado" ||
+                enrollmentStatus === "en curso";
               const periodo = [
                 fmtShort(l[FIELD_FECHA_INICIO_LANZAMIENTOS]),
                 fmtShort(l[FIELD_FECHA_FIN_LANZAMIENTOS]),
@@ -737,18 +789,37 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     </div>
                   </div>
                   <div className="ah-conv__foot">
-                    <button
-                      type="button"
-                      className="ah-btn ah-btn--primary ah-btn--area"
-                      style={{ background: areaVar(areaPrimary) }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenDetalle(l);
-                      }}
-                    >
-                      Ver detalle
-                      <AhIcon name="arrow" size={15} />
-                    </button>
+                    {enrollment && !isSelected ? (
+                      <>
+                        <span className="ah-conv__enrollment-state">
+                          <AhIcon name="check" size={14} />
+                          Inscripto/a
+                        </span>
+                        <button
+                          type="button"
+                          className="ah-btn ah-conv__cancel"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCancelarInscripcion(enrollment.id, name);
+                          }}
+                        >
+                          Cancelar inscripción
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ah-btn ah-btn--primary ah-btn--area"
+                        style={{ background: areaVar(areaPrimary) }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenDetalle(l);
+                        }}
+                      >
+                        Ver detalle
+                        <AhIcon name="arrow" size={15} />
+                      </button>
+                    )}
                   </div>
                 </article>
               );

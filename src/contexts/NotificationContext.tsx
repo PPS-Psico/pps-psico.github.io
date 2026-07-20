@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import Toast from "../components/ui/Toast";
 import {
   FIELD_EMPRESA_PPS_SOLICITUD,
+  FIELD_CHECKED_AT_ANALYTICS_HEALTH,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_FINALIZACION,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
@@ -18,8 +19,13 @@ import {
   FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ID_ANALYTICS_HEALTH,
+  FIELD_ISSUE_COUNT_ANALYTICS_HEALTH,
+  FIELD_ISSUES_ANALYTICS_HEALTH,
+  FIELD_STATUS_ANALYTICS_HEALTH,
   FIELD_SOLICITUD_NOMBRE_ALUMNO,
   TABLE_NAME_CONVOCATORIAS,
+  TABLE_NAME_ANALYTICS_HEALTH_CHECKS,
   TABLE_NAME_FINALIZACION,
   TABLE_NAME_LANZAMIENTOS_PPS,
   TABLE_NAME_PPS,
@@ -37,6 +43,12 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 /** Fila genérica de un payload de Supabase Realtime (acceso dinámico por columna). */
 type RtRow = { id: string; [key: string]: unknown };
+
+type AnalyticsHealthIssue = {
+  severity?: string;
+  code?: string;
+  message?: string;
+};
 
 export interface AppNotification {
   id: string;
@@ -266,6 +278,49 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 link: "/admin/solicitudes",
                 isRead: readNotificationIds.has(notifId),
               });
+            });
+          }
+
+          // --- E. Salud de analytics ---
+          const { data: analyticsHealth, error: analyticsHealthError } = await supabase
+            .from(TABLE_NAME_ANALYTICS_HEALTH_CHECKS)
+            .select(
+              `${FIELD_ID_ANALYTICS_HEALTH}, ${FIELD_CHECKED_AT_ANALYTICS_HEALTH}, ${FIELD_STATUS_ANALYTICS_HEALTH}, ${FIELD_ISSUE_COUNT_ANALYTICS_HEALTH}, ${FIELD_ISSUES_ANALYTICS_HEALTH}`
+            )
+            .order(FIELD_CHECKED_AT_ANALYTICS_HEALTH, { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (analyticsHealthError) {
+            logger.warn("No se pudo cargar la salud de analytics", analyticsHealthError);
+          } else if (
+            analyticsHealth &&
+            (analyticsHealth[FIELD_STATUS_ANALYTICS_HEALTH] === "warning" ||
+              analyticsHealth[FIELD_STATUS_ANALYTICS_HEALTH] === "critical")
+          ) {
+            const rawIssues = analyticsHealth[FIELD_ISSUES_ANALYTICS_HEALTH];
+            const healthIssues: AnalyticsHealthIssue[] = Array.isArray(rawIssues)
+              ? rawIssues.filter(
+                  (issue): issue is AnalyticsHealthIssue =>
+                    typeof issue === "object" && issue !== null && !Array.isArray(issue)
+                )
+              : [];
+            const primaryIssue =
+              healthIssues.find((issue) => issue.severity === "critical") || healthIssues[0];
+            const healthId = analyticsHealth[FIELD_ID_ANALYTICS_HEALTH];
+            const notifId = `analytics-health-${healthId}`;
+            const isCritical = analyticsHealth[FIELD_STATUS_ANALYTICS_HEALTH] === "critical";
+
+            loadedNotifications.push({
+              id: notifId,
+              title: isCritical ? "Analytics requiere atención" : "Advertencia de analytics",
+              message:
+                primaryIssue?.message ||
+                `Se detectaron ${analyticsHealth[FIELD_ISSUE_COUNT_ANALYTICS_HEALTH]} controles para revisar.`,
+              timestamp: new Date(analyticsHealth[FIELD_CHECKED_AT_ANALYTICS_HEALTH]),
+              type: "info",
+              link: "/admin/metrics",
+              isRead: readNotificationIds.has(notifId),
             });
           }
         } else if (isStudent) {

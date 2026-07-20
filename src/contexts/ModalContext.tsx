@@ -3,11 +3,18 @@ import { LanzamientoPPS, GroupedSeleccionados, Estudiante, EnrollmentFormData } 
 
 type OnSubmitEnrollment = (formData: EnrollmentFormData) => Promise<void>;
 type OnSubmitSolicitudPPS = (formData: Record<string, unknown>) => Promise<void>;
+export type ModalTone = "info" | "success" | "error";
+
+interface ModalInfo {
+  title: string;
+  message: string;
+  tone: ModalTone;
+}
 
 interface ModalContextType {
   // Generic Modal
-  modalInfo: { title: string; message: string } | null;
-  showModal: (title: string, message: string) => void;
+  modalInfo: ModalInfo | null;
+  showModal: (title: string, message: string, tone?: ModalTone) => void;
   closeModal: () => void;
 
   // Enrollment Form Modal
@@ -43,7 +50,7 @@ interface ModalContextType {
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
 export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [modalInfo, setModalInfo] = useState<{ title: string; message: string } | null>(null);
+  const [modalInfo, setModalInfo] = useState<ModalInfo | null>(null);
 
   const [isEnrollmentFormOpen, setIsEnrollmentFormOpen] = useState(false);
   const [selectedLanzamientoForEnrollment, setSelectedLanzamientoForEnrollment] =
@@ -66,8 +73,8 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     null
   );
 
-  const showModal = useCallback((title: string, message: string) => {
-    setModalInfo({ title, message });
+  const showModal = useCallback((title: string, message: string, tone: ModalTone = "info") => {
+    setModalInfo({ title, message, tone });
   }, []);
 
   const closeModal = useCallback(() => {

@@ -34,6 +34,9 @@ const ExecutiveReportGenerator = lazy(
   () => import("../../components/admin/ExecutiveReportGenerator")
 );
 const GestionReportPanel = lazy(() => import("../../components/admin/GestionReportPanel"));
+const ProfessionalReportHub = lazy(
+  () => import("../../features/executive-report/ProfessionalReportHub")
+);
 const HermesIntelligenceDashboard = lazy(() =>
   import("../../components/admin/metricas/HermesIntelligenceDashboard").then((m) => ({
     default: m.HermesIntelligenceDashboard,
@@ -101,6 +104,9 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
   // Modo comparativo del Reporte ejecutivo: compara `year` contra `compareYear`.
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [compareYear, setCompareYear] = useState<number>(new Date().getFullYear() - 1);
+  const [reportExperience, setReportExperience] = useState<"professional" | "current">(
+    "professional"
+  );
   const [tab, setTab] = useState<TabId>(() => {
     try {
       return (localStorage.getItem("metricas-v3-tab") as TabId) || "dashboard";
@@ -147,11 +153,16 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
     isTestingMode: isTestingMode || !compareActive,
   });
 
-  const asOf = new Date().toLocaleDateString("es-AR", {
+  const periodCutoff = metrics?.cutoff_iso || `${year}-12-31`;
+  const cutoffLabel = new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  });
+    timeZone: "UTC",
+  }).format(new Date(`${periodCutoff}T12:00:00Z`));
+  const periodStatus = periodCutoff.endsWith("-12-31")
+    ? `ciclo completo · cierre ${cutoffLabel}`
+    : `acumulado al ${cutoffLabel}`;
 
   return (
     <div className="metricas-v3">
@@ -192,7 +203,7 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
                 ))}
               </div>
               <span className="meta mono" style={{ fontSize: 11, color: "var(--ink-4)" }}>
-                al {asOf}
+                {periodStatus}
               </span>
             </div>
           </div>
@@ -235,10 +246,12 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
               info
             </span>
             <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
-              <strong style={{ color: "var(--ink)" }}>2024 es un año de transición.</strong> En ese
-              ciclo se migró y regularizó la matrícula heredada (sistema Airtable), por lo que los
-              conteos de “ingresantes” y arrastre histórico están inflados y no son comparables de
-              forma directa con años posteriores. Tomá 2025 en adelante como datos limpios.
+              <strong style={{ color: "var(--ink)" }}>
+                2024 tiene una base histórica revisada.
+              </strong>{" "}
+              Las 42 ofertas, 270 vacantes finitas, 117 personas que iniciaron y 32 finalizaciones
+              constituyen el cierre oficial. La demanda —postulaciones y estudiantes postulados— no
+              se reconstruyó con cobertura suficiente y por eso no se publica.
             </p>
           </div>
         )}
@@ -262,7 +275,6 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
               <MetricasDashboardV3
                 year={year}
                 metrics={metrics}
-                prevMetrics={prevMetrics}
                 onStudentSelect={onStudentSelect}
                 isTestingMode={isTestingMode}
                 onModalChange={onModalOpen}
@@ -271,25 +283,79 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
             {tab === "timeline" && <TimelineView year={year} isTestingMode={isTestingMode} />}
             {tab === "reporte" && (
               <>
-                <Suspense fallback={null}>
-                  <ErrorBoundary>
-                    <GestionReportPanel isTestingMode={isTestingMode} />
-                  </ErrorBoundary>
-                </Suspense>
-                <ExecutiveReport
-                  year={year}
-                  metrics={metrics}
-                  prevMetrics={prevMetrics}
-                  dinamica={dinamica}
-                  isTestingMode={isTestingMode}
-                  compareEnabled={compareEnabled}
-                  compareYear={compareYear}
-                  yearOptions={yearOptions}
-                  metricsB={compareActive ? metricsB : null}
-                  dinamicaB={compareActive ? dinamicaB : null}
-                  onToggleCompare={setCompareEnabled}
-                  onCompareYearChange={setCompareYear}
-                />
+                <div
+                  style={{
+                    alignItems: "center",
+                    borderBottom: "1px solid var(--rule-2)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginTop: 24,
+                    paddingBottom: 14,
+                  }}
+                >
+                  <div>
+                    <span className="eyebrow">Edición del reporte</span>
+                    <p className="meta" style={{ fontSize: 12, margin: "5px 0 0" }}>
+                      El reporte anterior se conserva completo para comparación.
+                    </p>
+                  </div>
+                  <div className="year-seg" role="radiogroup" aria-label="Edición del reporte">
+                    <button
+                      type="button"
+                      role="radio"
+                      className="press"
+                      aria-checked={reportExperience === "professional"}
+                      onClick={() => setReportExperience("professional")}
+                    >
+                      Nuevo profesional
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      className="press"
+                      aria-checked={reportExperience === "current"}
+                      onClick={() => setReportExperience("current")}
+                    >
+                      Reporte actual
+                    </button>
+                  </div>
+                </div>
+
+                {reportExperience === "professional" ? (
+                  <Suspense
+                    fallback={
+                      <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+                        <Loader />
+                      </div>
+                    }
+                  >
+                    <ErrorBoundary>
+                      <ProfessionalReportHub year={year} isTestingMode={isTestingMode} />
+                    </ErrorBoundary>
+                  </Suspense>
+                ) : (
+                  <>
+                    <Suspense fallback={null}>
+                      <ErrorBoundary>
+                        <GestionReportPanel isTestingMode={isTestingMode} />
+                      </ErrorBoundary>
+                    </Suspense>
+                    <ExecutiveReport
+                      year={year}
+                      metrics={metrics}
+                      prevMetrics={prevMetrics}
+                      dinamica={dinamica}
+                      isTestingMode={isTestingMode}
+                      compareEnabled={compareEnabled}
+                      compareYear={compareYear}
+                      yearOptions={yearOptions}
+                      metricsB={compareActive ? metricsB : null}
+                      dinamicaB={compareActive ? dinamicaB : null}
+                      onToggleCompare={setCompareEnabled}
+                      onCompareYearChange={setCompareYear}
+                    />
+                  </>
+                )}
               </>
             )}
             {tab === "hermes" && (

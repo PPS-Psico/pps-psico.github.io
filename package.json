@@ -25,7 +25,10 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@fontsource/manrope": "^5.2.8",
+    "@fontsource/source-serif-4": "^5.2.9",
     "@google/genai": "^1.31.0",
+    "@react-pdf/renderer": "^4.5.1",
     "@sentry/browser": "^10.34.0",
     "@sentry/react": "^10.34.0",
     "@supabase/supabase-js": "^2.44.4",

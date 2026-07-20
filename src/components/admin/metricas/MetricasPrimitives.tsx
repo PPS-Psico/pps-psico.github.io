@@ -115,6 +115,7 @@ export function HeroMetric({
   tone,
   trend,
   prevYear,
+  comparisonLabel,
   spark,
   activeYear,
   years,
@@ -126,6 +127,7 @@ export function HeroMetric({
   tone: Tone;
   trend?: number | null;
   prevYear?: number | null;
+  comparisonLabel?: string | null;
   spark?: number[];
   activeYear: number;
   years: number[];
@@ -165,12 +167,12 @@ export function HeroMetric({
       <div
         style={{
           display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 10,
+          alignItems: "flex-start",
+          flexDirection: "column",
+          gap: 6,
         }}
       >
-        <span className="meta" style={{ fontSize: 13, lineHeight: 1.4 }}>
+        <span className="meta" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
           {context}
         </span>
         {trend != null && prevYear != null && (
@@ -178,7 +180,7 @@ export function HeroMetric({
             className="meta mono"
             style={{ fontSize: 11, color: "var(--ink-4)", whiteSpace: "nowrap" }}
           >
-            {fmt(prevYear)} en {activeYear - 1}
+            Base {fmt(prevYear)} · {comparisonLabel?.replace("vs. ", "") || activeYear - 1}
           </span>
         )}
       </div>
@@ -192,24 +194,26 @@ export function KpiCard({
   label,
   context,
   tone = "ink",
+  loading = false,
   onClick,
 }: {
   value: number;
   label: string;
   context: string;
   tone?: Tone;
+  loading?: boolean;
   onClick: () => void;
 }) {
   const T = TONE[tone] || TONE.ink;
-  const empty = value === 0;
+  const empty = !loading && value === 0;
   return (
-    <button onClick={onClick} className="kpi press" type="button">
+    <button onClick={onClick} className="kpi press" type="button" aria-busy={loading || undefined}>
       <span className="eyebrow">{label}</span>
       <span
         className="mono num"
         style={{ color: empty ? "var(--ink-4)" : tone === "ink" ? "var(--ink)" : T.c }}
       >
-        {fmt(value)}
+        {loading ? "…" : fmt(value)}
       </span>
       <span className="ctx">{context}</span>
     </button>

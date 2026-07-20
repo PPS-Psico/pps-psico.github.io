@@ -42,6 +42,8 @@ import {
   FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS,
   FIELD_TELEFONO_INSTITUCIONES,
   FIELD_TUTOR_INSTITUCIONES,
+  FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
+  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
 } from "../../../constants";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../../constants/configConstants";
 import { db } from "../../../lib/db";
@@ -685,6 +687,8 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
         .join(", "),
       [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: Number(formData.horasAcreditadas),
       [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: Number(formData.cuposDisponibles),
+      [FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS]: formData.tipoActividad,
+      [FIELD_MODALIDAD_CUPO_LANZAMIENTOS]: formData.modalidadCupo,
       [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: horarioFinal,
       [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: formData.programarLanzamiento
         ? "Programada"

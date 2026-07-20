@@ -37,6 +37,7 @@ import {
   FIELD_NOTA_PRACTICAS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
+  FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_CORREO_ESTUDIANTES,
   FIELD_TELEFONO_ESTUDIANTES,
   FIELD_DNI_ESTUDIANTES,
@@ -208,8 +209,8 @@ export const useConvocatorias = (
           [FIELD_CURSANDO_ELECTIVAS_CONVOCATORIAS]: formData.cursandoElectivas ? "Sí" : "No",
           [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: selectedSchedules.join("; "),
         };
-        await mockDb.create("convocatorias", newRecord);
-        return newRecord as unknown as AppRecord<ConvocatoriaFields>;
+        const createdRecord = await mockDb.create("convocatorias", newRecord);
+        return createdRecord as unknown as AppRecord<ConvocatoriaFields>;
       }
 
       if (!studentId) throw new Error("No student ID");
@@ -343,12 +344,24 @@ export const useConvocatorias = (
       setIsSubmittingEnrollment(true);
     },
     onError: (err) => {
-      showModal("Error", `Error: ${err.message}`);
+      showModal("No pudimos registrar tu inscripción", err.message, "error");
     },
-    onSuccess: () => {
+    onSuccess: (savedEnrollment) => {
+      const queryKey = ["convocatorias", legajo, studentId] as const;
+      queryClient.setQueryData<ConvocatoriasQueryData>(queryKey, (current) => {
+        if (!current || !savedEnrollment) return current;
+        const updatedEnrollments = current.myEnrollments.filter(
+          (enrollment) => enrollment.id !== savedEnrollment.id
+        );
+        return {
+          ...current,
+          myEnrollments: [savedEnrollment as ConvocatoriaFields, ...updatedEnrollments],
+        };
+      });
       showModal(
         "Inscripción confirmada",
-        "Tu inscripción quedó registrada. Podés revisar los horarios elegidos desde Inicio y te avisaremos cuando finalice la selección."
+        "Tu lugar en la convocatoria quedó registrado. Podés revisar los horarios elegidos desde Inicio; te vamos a avisar cuando finalice la selección.",
+        "success"
       );
       queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
       queryClient.invalidateQueries({ queryKey: ["student", legajo] });
@@ -405,11 +418,15 @@ export const useConvocatorias = (
         legajo,
         message: err.message,
       });
-      showModal("No se pudo eliminar la inscripción", err.message);
+      showModal("No pudimos cancelar tu inscripción", err.message, "error");
     },
     onSuccess: () => {
       logger.info("[Enrollment] Convocatoria deleted successfully");
-      showModal("Inscripción eliminada", "La inscripción se eliminó correctamente.");
+      showModal(
+        "Inscripción cancelada",
+        "Ya no figurás como postulante en esta convocatoria.",
+        "success"
+      );
     },
     // Reconciliamos con el server tanto en éxito como en error.
     onSettled: () => {

@@ -415,6 +415,44 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
         </div>
 
         <div className="lf-grid-2" style={{ marginTop: 4 }}>
+          <FormField label="Tipo de actividad">
+            <select
+              className="field"
+              name="tipoActividad"
+              value={(formData.tipoActividad as string) || "pps"}
+              onChange={(event) => {
+                const tipoActividad = event.target.value as FormData["tipoActividad"];
+                setFormData((prev) => ({
+                  ...prev,
+                  tipoActividad,
+                  modalidadCupo:
+                    tipoActividad === "actividad_especial" ? "fijo" : prev.modalidadCupo,
+                }));
+              }}
+            >
+              <option value="pps">PPS</option>
+              <option value="actividad_especial">Actividad especial</option>
+            </select>
+          </FormField>
+          <FormField label="Modalidad de capacidad">
+            <select
+              className="field"
+              name="modalidadCupo"
+              value={(formData.modalidadCupo as string) || "fijo"}
+              onChange={handleChange}
+              disabled={formData.tipoActividad === "actividad_especial"}
+            >
+              <option value="fijo">Cupo fijo publicado</option>
+              <option value="realizado">Plazas efectivamente seleccionadas</option>
+            </select>
+            <span className="meta">
+              En modalidad realizada, las estadísticas ignoran el cupo técnico y cuentan
+              seleccionados reales.
+            </span>
+          </FormField>
+        </div>
+
+        <div className="lf-grid-2" style={{ marginTop: 4 }}>
           <FormField label="Inicio de práctica">
             <input
               className="field"

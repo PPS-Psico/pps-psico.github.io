@@ -12,6 +12,7 @@ export const TABLE_SOLICITUDES_MODIFICACION = "solicitudes_modificacion_pps";
 export const TABLE_SOLICITUDES_NUEVA = "solicitudes_nueva_pps";
 export const TABLE_COMPROMISOS_PPS = "compromisos_pps";
 export const TABLE_CONVENIOS = "convenios";
+export const TABLE_ANALYTICS_HEALTH_CHECKS = "analytics_health_checks";
 
 // Legacy Aliases for Tables (Kept for compatibility)
 export const TABLE_NAME_PPS = TABLE_PPS;
@@ -26,6 +27,14 @@ export const TABLE_NAME_PENALIZACIONES = TABLE_PENALIZACIONES;
 export const TABLE_NAME_SOLICITUDES_MODIFICACION = TABLE_SOLICITUDES_MODIFICACION;
 export const TABLE_NAME_SOLICITUDES_NUEVA = TABLE_SOLICITUDES_NUEVA;
 export const TABLE_NAME_COMPROMISOS_PPS = TABLE_COMPROMISOS_PPS;
+export const TABLE_NAME_ANALYTICS_HEALTH_CHECKS = TABLE_ANALYTICS_HEALTH_CHECKS;
+
+// Analytics health checks
+export const FIELD_ID_ANALYTICS_HEALTH = "id";
+export const FIELD_CHECKED_AT_ANALYTICS_HEALTH = "checked_at";
+export const FIELD_STATUS_ANALYTICS_HEALTH = "status";
+export const FIELD_ISSUE_COUNT_ANALYTICS_HEALTH = "issue_count";
+export const FIELD_ISSUES_ANALYTICS_HEALTH = "issues";
 
 // --- DB COLUMN NAMES (Mapped to FIELD_ constants for app compatibility) ---
 
@@ -63,6 +72,7 @@ export const FIELD_ESPECIALIDAD_PRACTICAS = "especialidad";
 export const FIELD_ES_ONLINE_PRACTICAS = "es_online";
 export const FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS = "nombre_institucion";
 export const FIELD_NOMBRE_BUSQUEDA_PRACTICAS = "legajo_busqueda"; // Deprecated? Kept for schema
+export const FIELD_TIPO_ACTIVIDAD_PRACTICAS = "tipo_actividad";
 
 // Lanzamientos
 export const FIELD_NOMBRE_PPS_LANZAMIENTOS = "nombre_pps";
@@ -100,7 +110,11 @@ export const FIELD_FECHA_PUBLICACION_LANZAMIENTOS = "fecha_publicacion";
 export const FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS = "mensaje_whatsapp";
 export const FIELD_HORARIOS_FIJOS_LANZAMIENTOS = "horarios_fijos";
 export const FIELD_HORARIOS_OBLIGATORIOS_LANZAMIENTOS = "horarios_obligatorios";
+export const FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS = "tipo_actividad";
+export const FIELD_MODALIDAD_CUPO_LANZAMIENTOS = "modalidad_cupo";
 export const FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS = "fecha_encuentro_inicial";
+export const FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS = "selection_closed_at";
+export const FIELD_SELECTION_CLOSED_BY_LANZAMIENTOS = "selection_closed_by";
 // Flujo de aseguramiento: marca persistente de "seguro gestionado" (ver spec flujo-aseguramiento-pps)
 export const FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS = "seguro_gestionado_at";
 export const FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS = "seguro_gestionado_por";
@@ -135,6 +149,7 @@ export const FIELD_TRABAJA_CONVOCATORIAS = "trabaja";
 export const FIELD_CERTIFICADO_TRABAJO_CONVOCATORIAS = "certificado_trabajo";
 export const FIELD_CV_CONVOCATORIAS = "cv_url";
 export const FIELD_SELECTED_AT_CONVOCATORIAS = "selected_at";
+export const FIELD_SELECTION_DECIDED_AT_CONVOCATORIAS = "selection_decided_at";
 export const FIELD_REMINDER_SENT_AT_CONVOCATORIAS = "reminder_sent_at";
 export const FIELD_BAJA_AUTOMATICA_AT_CONVOCATORIAS = "baja_automatica_at";
 
@@ -155,6 +170,8 @@ export const FIELD_COMPROMISO_FECHA_ACEPTACION = "accepted_at";
 
 // Solicitudes PPS
 export const FIELD_ESTADO_PPS = "estado_seguimiento";
+export const FIELD_MOTIVO_NO_CONCRECION_PPS = "motivo_no_concrecion";
+export const FIELD_MOTIVO_NO_CONCRECION_DETALLE_PPS = "motivo_no_concrecion_detalle";
 export const FIELD_SOLICITUD_NOMBRE_ALUMNO = "nombre_alumno";
 export const FIELD_EMPRESA_PPS_SOLICITUD = "nombre_institucion";
 export const FIELD_LEGAJO_PPS = "estudiante_id"; // Link to Student ID

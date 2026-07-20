@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface ConfirmModalProps {
@@ -23,6 +23,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   type = "warning",
 }) => {
   const [mounted, setMounted] = useState(false);
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -30,71 +33,79 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   }, []);
 
   useEffect(() => {
+    let animationFrame: number | undefined;
+    let exitTimer: number | undefined;
+
     if (isOpen) {
+      setShouldRender(true);
+      animationFrame = window.requestAnimationFrame(() => setIsVisible(true));
+    } else {
+      setIsVisible(false);
+      exitTimer = window.setTimeout(() => setShouldRender(false), 160);
+    }
+
+    return () => {
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
+      if (exitTimer !== undefined) window.clearTimeout(exitTimer);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (shouldRender && mounted) {
       document.body.style.overflow = "hidden";
+      cancelButtonRef.current?.focus();
     } else {
       document.body.style.overflow = "unset";
     }
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen]);
+  }, [mounted, shouldRender]);
 
-  if (!isOpen || !mounted) return null;
+  useEffect(() => {
+    if (!shouldRender) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, shouldRender]);
 
-  const colorClasses = {
-    warning: {
-      icon: "text-amber-500",
-      bgIcon: "bg-amber-100 dark:bg-amber-900/30",
-      button: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500",
-    },
-    info: {
-      icon: "text-blue-500",
-      bgIcon: "bg-blue-100 dark:bg-blue-900/30",
-      button: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
-    },
-    danger: {
-      icon: "text-red-500",
-      bgIcon: "bg-red-100 dark:bg-red-900/30",
-      button: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
-    },
+  if (!shouldRender || !mounted) return null;
+
+  const toneContent = {
+    warning: { icon: "warning_amber", label: "Revisá antes de continuar" },
+    info: { icon: "info", label: "Confirmá esta acción" },
+    danger: { icon: "priority_high", label: "Esta acción es irreversible" },
   };
-
-  const styles = colorClasses[type];
+  const content = toneContent[type];
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[20000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in"
+      className={`ui-modal-overlay ui-modal-overlay--${type} fixed inset-0 z-[20000] flex items-center justify-center p-4 ${isVisible ? "is-visible" : ""}`}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-message"
       onClick={onClose}
     >
-      <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700 transform transition scale-100 relative"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-4">
-          <div
-            className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${styles.bgIcon}`}
-          >
-            <span className={`material-icons !text-2xl ${styles.icon}`}>
-              {type === "danger" ? "error" : type === "info" ? "info" : "warning"}
-            </span>
-          </div>
-          <div className="flex-grow">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 leading-tight">
-              {title}
-            </h3>
-            <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-              {message}
-            </div>
+      <div className="ui-modal-dialog ui-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="ui-modal-status" aria-hidden="true">
+          <span className="material-icons">{content.icon}</span>
+        </div>
+        <div className="ui-modal-copy">
+          <span className="ui-modal-label">{content.label}</span>
+          <h2 id="confirm-modal-title">{title}</h2>
+          <div id="confirm-modal-message" className="ui-confirm-message">
+            {message}
           </div>
         </div>
 
-        <div className="mt-8 flex justify-end gap-3">
+        <div className="ui-modal-actions ui-confirm-actions">
           <button
+            ref={cancelButtonRef}
             onClick={onClose}
-            className="px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-lg transition-colors"
+            className="ui-confirm-button ui-confirm-button--secondary"
           >
             {cancelText}
           </button>
@@ -103,7 +114,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               onConfirm();
               onClose();
             }}
-            className={`px-5 py-2.5 text-sm font-bold text-white rounded-lg shadow-md transition hover:-translate-y-0.5 active:translate-y-0 ${styles.button} focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800`}
+            className="ui-confirm-button ui-confirm-button--primary"
           >
             {confirmText}
           </button>

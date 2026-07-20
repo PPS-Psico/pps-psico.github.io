@@ -1,3 +1,7 @@
 approval_policy = "never"
-
 sandbox_mode = "danger-full-access"
+
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?project_ref=qxnxtnhtbpsgzprqtrjl"
+bearer_token_env_var = "SUPABASE_ACCESS_TOKEN"
+required = true

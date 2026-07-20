@@ -515,6 +515,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           }
           onOpenDetalle={openDetalle}
           onInscribir={onInscribir}
+          onCancelarInscripcion={handleCancelarInscripcion}
           onVerConvocados={(l) => seleccionadosMutation.mutate(l)}
           onNavigate={onNavigate}
         />
@@ -694,7 +695,7 @@ const HomeView: React.FC<HomeViewProps> = ({
 
       <ConfirmModal
         isOpen={!!pendingCancel}
-        title="Cancelar Inscripción"
+        title="Cancelar inscripción"
         message={`¿Estás seguro que deseas cancelar tu inscripción a "${pendingCancel?.nombre}"?\n\nEsta acción no se puede deshacer.`}
         confirmText="Sí, cancelar inscripción"
         cancelText="Volver"

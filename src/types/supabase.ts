@@ -144,6 +144,114 @@ export type Database = {
           },
         ];
       };
+      analytics_health_checks: {
+        Row: {
+          checked_at: string;
+          details: Json;
+          expected_snapshot_date: string | null;
+          health_version: string;
+          id: number;
+          issue_count: number;
+          issues: Json;
+          latest_snapshot_date: string | null;
+          latest_snapshot_status: string | null;
+          source: string;
+          status: string;
+        };
+        Insert: {
+          checked_at?: string;
+          details?: Json;
+          expected_snapshot_date?: string | null;
+          health_version: string;
+          id?: never;
+          issue_count?: number;
+          issues?: Json;
+          latest_snapshot_date?: string | null;
+          latest_snapshot_status?: string | null;
+          source: string;
+          status: string;
+        };
+        Update: {
+          checked_at?: string;
+          details?: Json;
+          expected_snapshot_date?: string | null;
+          health_version?: string;
+          id?: never;
+          issue_count?: number;
+          issues?: Json;
+          latest_snapshot_date?: string | null;
+          latest_snapshot_status?: string | null;
+          source?: string;
+          status?: string;
+        };
+        Relationships: [];
+      };
+      analytics_metric_snapshots: {
+        Row: {
+          denominator: number | null;
+          dimension_key: string;
+          id: number;
+          metric_key: string;
+          metric_version: string;
+          numerator: number | null;
+          quality: Json;
+          snapshot_date: string;
+          taken_at: string;
+          value: number;
+        };
+        Insert: {
+          denominator?: number | null;
+          dimension_key?: string;
+          id?: never;
+          metric_key: string;
+          metric_version: string;
+          numerator?: number | null;
+          quality?: Json;
+          snapshot_date: string;
+          taken_at?: string;
+          value: number;
+        };
+        Update: {
+          denominator?: number | null;
+          dimension_key?: string;
+          id?: never;
+          metric_key?: string;
+          metric_version?: string;
+          numerator?: number | null;
+          quality?: Json;
+          snapshot_date?: string;
+          taken_at?: string;
+          value?: number;
+        };
+        Relationships: [];
+      };
+      analytics_snapshot_runs: {
+        Row: {
+          error_message: string | null;
+          finished_at: string | null;
+          id: number;
+          rows_written: number;
+          started_at: string;
+          status: string;
+        };
+        Insert: {
+          error_message?: string | null;
+          finished_at?: string | null;
+          id?: never;
+          rows_written?: number;
+          started_at?: string;
+          status: string;
+        };
+        Update: {
+          error_message?: string | null;
+          finished_at?: string | null;
+          id?: never;
+          rows_written?: number;
+          started_at?: string;
+          status?: string;
+        };
+        Relationships: [];
+      };
       app_config: {
         Row: {
           created_at: string;
@@ -436,6 +544,7 @@ export type Database = {
           otra_situacion_academica: string | null;
           reminder_sent_at: string | null;
           selected_at: string | null;
+          selection_decided_at: string | null;
           telefono: string | null;
           termino_cursar: string | null;
           trabaja: boolean | null;
@@ -470,6 +579,7 @@ export type Database = {
           otra_situacion_academica?: string | null;
           reminder_sent_at?: string | null;
           selected_at?: string | null;
+          selection_decided_at?: string | null;
           telefono?: string | null;
           termino_cursar?: string | null;
           trabaja?: boolean | null;
@@ -504,6 +614,7 @@ export type Database = {
           otra_situacion_academica?: string | null;
           reminder_sent_at?: string | null;
           selected_at?: string | null;
+          selection_decided_at?: string | null;
           telefono?: string | null;
           termino_cursar?: string | null;
           trabaja?: boolean | null;
@@ -896,6 +1007,7 @@ export type Database = {
           informe: string | null;
           institucion_id: string | null;
           mensaje_whatsapp: string | null;
+          modalidad_cupo: string;
           nombre_pps: string | null;
           notas_gestion: string | null;
           orientacion: string | null;
@@ -908,6 +1020,9 @@ export type Database = {
           requisito_obligatorio: string | null;
           seguro_gestionado_at: string | null;
           seguro_gestionado_por: string | null;
+          selection_closed_at: string | null;
+          selection_closed_by: string | null;
+          tipo_actividad: string;
           updated_at: string | null;
         };
         Insert: {
@@ -939,6 +1054,7 @@ export type Database = {
           informe?: string | null;
           institucion_id?: string | null;
           mensaje_whatsapp?: string | null;
+          modalidad_cupo?: string;
           nombre_pps?: string | null;
           notas_gestion?: string | null;
           orientacion?: string | null;
@@ -951,6 +1067,9 @@ export type Database = {
           requisito_obligatorio?: string | null;
           seguro_gestionado_at?: string | null;
           seguro_gestionado_por?: string | null;
+          selection_closed_at?: string | null;
+          selection_closed_by?: string | null;
+          tipo_actividad?: string;
           updated_at?: string | null;
         };
         Update: {
@@ -982,6 +1101,7 @@ export type Database = {
           informe?: string | null;
           institucion_id?: string | null;
           mensaje_whatsapp?: string | null;
+          modalidad_cupo?: string;
           nombre_pps?: string | null;
           notas_gestion?: string | null;
           orientacion?: string | null;
@@ -994,7 +1114,58 @@ export type Database = {
           requisito_obligatorio?: string | null;
           seguro_gestionado_at?: string | null;
           seguro_gestionado_por?: string | null;
+          selection_closed_at?: string | null;
+          selection_closed_by?: string | null;
+          tipo_actividad?: string;
           updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      moodle_probe: {
+        Row: {
+          autologin_result: string | null;
+          created_at: string;
+          email: string | null;
+          email_match: boolean;
+          firstname: string | null;
+          id: number;
+          idnumber: string | null;
+          idnumber_legajo_match: boolean;
+          lastname: string | null;
+          phone1: string | null;
+          phone2: string | null;
+          username: string | null;
+          username_dni_match: boolean;
+        };
+        Insert: {
+          autologin_result?: string | null;
+          created_at?: string;
+          email?: string | null;
+          email_match?: boolean;
+          firstname?: string | null;
+          id?: never;
+          idnumber?: string | null;
+          idnumber_legajo_match?: boolean;
+          lastname?: string | null;
+          phone1?: string | null;
+          phone2?: string | null;
+          username?: string | null;
+          username_dni_match?: boolean;
+        };
+        Update: {
+          autologin_result?: string | null;
+          created_at?: string;
+          email?: string | null;
+          email_match?: boolean;
+          firstname?: string | null;
+          id?: never;
+          idnumber?: string | null;
+          idnumber_legajo_match?: boolean;
+          lastname?: string | null;
+          phone1?: string | null;
+          phone2?: string | null;
+          username?: string | null;
+          username_dni_match?: boolean;
         };
         Relationships: [];
       };
@@ -1064,6 +1235,7 @@ export type Database = {
           lanzamiento_id: string | null;
           nombre_institucion: string | null;
           nota: string | null;
+          tipo_actividad: string;
         };
         Insert: {
           airtable_id?: string | null;
@@ -1079,6 +1251,7 @@ export type Database = {
           lanzamiento_id?: string | null;
           nombre_institucion?: string | null;
           nota?: string | null;
+          tipo_actividad?: string;
         };
         Update: {
           airtable_id?: string | null;
@@ -1094,6 +1267,7 @@ export type Database = {
           lanzamiento_id?: string | null;
           nombre_institucion?: string | null;
           nota?: string | null;
+          tipo_actividad?: string;
         };
         Relationships: [
           {
@@ -1179,6 +1353,102 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      selection_cycle_events: {
+        Row: {
+          actor_id: string | null;
+          event_type: string;
+          from_state: string | null;
+          id: number;
+          lanzamiento_id: string | null;
+          occurred_at: string;
+          to_state: string | null;
+        };
+        Insert: {
+          actor_id?: string | null;
+          event_type: string;
+          from_state?: string | null;
+          id?: never;
+          lanzamiento_id?: string | null;
+          occurred_at?: string;
+          to_state?: string | null;
+        };
+        Update: {
+          actor_id?: string | null;
+          event_type?: string;
+          from_state?: string | null;
+          id?: never;
+          lanzamiento_id?: string | null;
+          occurred_at?: string;
+          to_state?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "selection_cycle_events_lanzamiento_id_fkey";
+            columns: ["lanzamiento_id"];
+            isOneToOne: false;
+            referencedRelation: "lanzamientos_pps";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      selection_decision_events: {
+        Row: {
+          actor_id: string | null;
+          convocatoria_id: string | null;
+          decided_at: string;
+          estudiante_id: string | null;
+          from_state: string | null;
+          id: number;
+          lanzamiento_id: string | null;
+          source: string;
+          to_state: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          convocatoria_id?: string | null;
+          decided_at?: string;
+          estudiante_id?: string | null;
+          from_state?: string | null;
+          id?: never;
+          lanzamiento_id?: string | null;
+          source?: string;
+          to_state: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          convocatoria_id?: string | null;
+          decided_at?: string;
+          estudiante_id?: string | null;
+          from_state?: string | null;
+          id?: never;
+          lanzamiento_id?: string | null;
+          source?: string;
+          to_state?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "selection_decision_events_convocatoria_id_fkey";
+            columns: ["convocatoria_id"];
+            isOneToOne: false;
+            referencedRelation: "convocatorias";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "selection_decision_events_estudiante_id_fkey";
+            columns: ["estudiante_id"];
+            isOneToOne: false;
+            referencedRelation: "estudiantes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "selection_decision_events_lanzamiento_id_fkey";
+            columns: ["lanzamiento_id"];
+            isOneToOne: false;
+            referencedRelation: "lanzamientos_pps";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       solicitudes_modificacion_pps: {
         Row: {
@@ -1325,6 +1595,8 @@ export type Database = {
           id: string;
           legajo: string | null;
           localidad: string | null;
+          motivo_no_concrecion: string | null;
+          motivo_no_concrecion_detalle: string | null;
           nombre_alumno: string | null;
           nombre_institucion: string | null;
           notas: string | null;
@@ -1349,6 +1621,8 @@ export type Database = {
           id?: string;
           legajo?: string | null;
           localidad?: string | null;
+          motivo_no_concrecion?: string | null;
+          motivo_no_concrecion_detalle?: string | null;
           nombre_alumno?: string | null;
           nombre_institucion?: string | null;
           notas?: string | null;
@@ -1373,6 +1647,8 @@ export type Database = {
           id?: string;
           legajo?: string | null;
           localidad?: string | null;
+          motivo_no_concrecion?: string | null;
+          motivo_no_concrecion_detalle?: string | null;
           nombre_alumno?: string | null;
           nombre_institucion?: string | null;
           notas?: string | null;
@@ -1526,6 +1802,7 @@ export type Database = {
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean };
       clean_dirty_text: { Args: { val: string }; Returns: string };
       cleanup_old_verification_attempts: { Args: never; Returns: undefined };
+      close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json };
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined };
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
       get_activos_list: { Args: { p_year: number }; Returns: Json };
@@ -1537,6 +1814,15 @@ export type Database = {
           fcm_token: string;
           user_id: string;
         }[];
+      };
+      get_analytics_health: { Args: never; Returns: Json };
+      get_analytics_v1: {
+        Args: { p_cutoff?: string; p_year: number };
+        Returns: Json;
+      };
+      get_analytics_v2: {
+        Args: { p_cutoff?: string; p_year: number };
+        Returns: Json;
       };
       get_consent_counts_by_launch: {
         Args: { p_launch_ids: string[] };
@@ -1578,6 +1864,10 @@ export type Database = {
         Returns: Json;
       };
       get_dashboard_metrics: { Args: { target_year: number }; Returns: Json };
+      get_director_report_v1: {
+        Args: { p_snapshot_date?: string; p_year: number };
+        Returns: Json;
+      };
       get_estudiantes_en_pps_list: { Args: { p_year: number }; Returns: Json };
       get_estudiantes_en_pps_list_impl: {
         Args: { p_year: number };
@@ -1618,8 +1908,32 @@ export type Database = {
       get_heredados_count: { Args: { p_year: number }; Returns: number };
       get_heredados_list: { Args: { p_year: number }; Returns: Json };
       get_heredados_list_impl: { Args: { p_year: number }; Returns: Json };
+      get_historical_launch_offer_list: {
+        Args: { p_cutoff?: string; p_year: number };
+        Returns: Json;
+      };
       get_ingresantes_list: { Args: { p_year: number }; Returns: Json };
       get_ingresantes_list_impl: { Args: { p_year: number }; Returns: Json };
+      get_interview_completion_candidates_v1: {
+        Args: never;
+        Returns: {
+          cohorte: number;
+          horas_especialidad: number;
+          horas_faltantes_especialidad: number;
+          horas_faltantes_total: number;
+          horas_total: number;
+          id: string;
+          legajo: string;
+          motivo: string;
+          motivo_codigo: string;
+          nombre: string;
+          orientacion_elegida: string;
+          orientaciones: number;
+          orientaciones_cubiertas: string[];
+          orientaciones_faltantes: number;
+          practicas_activas: number;
+        }[];
+      };
       get_metrics_years: { Args: never; Returns: Json };
       get_my_role: { Args: never; Returns: string };
       get_postulantes_seleccionados: {

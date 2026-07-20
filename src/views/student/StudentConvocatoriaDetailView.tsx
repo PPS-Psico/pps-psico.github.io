@@ -802,7 +802,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
 
         <ConfirmModal
           isOpen={pendingCancel}
-          title="Cancelar Inscripción"
+          title="Cancelar inscripción"
           message={`¿Estás seguro que deseas cancelar tu inscripción a "${shortName}"?\n\nEsta acción no se puede deshacer.`}
           confirmText="Sí, cancelar inscripción"
           cancelText="Volver"

@@ -11,12 +11,15 @@ import {
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_FECHA_INICIO_PRACTICAS,
+  FIELD_TIPO_ACTIVIDAD_PRACTICAS,
   FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
+  FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ESTUDIANTE_FINALIZACION,
-  FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_CONVENIO_NUEVO_INSTITUCIONES,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -30,6 +33,7 @@ import {
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
   FIELD_ESTADO_ESTUDIANTES,
+  FIELD_FECHA_FINALIZACION_ESTUDIANTES,
 } from "../constants";
 import {
   AnyReportData,
@@ -48,15 +52,12 @@ import {
   getGroupName,
   normalizeStringForComparison,
 } from "../utils/formatters";
-import { isUnlimitedCupoInstitution } from "../utils/unlimitedCupos";
 import type { DashboardData, MetricRow } from "../utils/metricsCalculations";
 
-// Cupos "estadísticos" de un lanzamiento: las PPS de cupo ilimitado
-// (Fundación Tiempo, Ulloa) aportan 0 para no romper los totales.
-const launchCupos = (l: MetricRow): number => {
-  if (isUnlimitedCupoInstitution(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])) return 0;
-  return Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]) || 0;
-};
+const launchCupos = (l: MetricRow, selectedByLaunchId: Map<string, Set<string>>): number =>
+  l[FIELD_MODALIDAD_CUPO_LANZAMIENTOS] === "realizado"
+    ? selectedByLaunchId.get(String(l.id))?.size || 0
+    : Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]) || 0;
 
 const cleanRawValue = (val: unknown): string => {
   if (val === null || val === undefined) return "";
@@ -136,6 +137,14 @@ const buildStudentsByLaunchId = (allData: DashboardData) => {
       studentsByLaunchId.get(lanzId)!.add(sId);
     }
   });
+  allData.practicas.forEach((p) => {
+    if (p[FIELD_TIPO_ACTIVIDAD_PRACTICAS] !== "pps") return;
+    const launchId = safeGetId(p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]);
+    const studentId = safeGetId(p[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
+    if (!launchId || !studentId) return;
+    if (!studentsByLaunchId.has(launchId)) studentsByLaunchId.set(launchId, new Set());
+    studentsByLaunchId.get(launchId)!.add(studentId);
+  });
   return studentsByLaunchId;
 };
 
@@ -162,11 +171,13 @@ const buildAgreementsDetail = (
       const instName = String(instRecord[FIELD_NOMBRE_INSTITUCIONES] || "");
       const normName = normalizeStringForComparison(instName);
       const convenioYear = Number(instRecord[FIELD_CONVENIO_NUEVO_INSTITUCIONES]);
-      const cupoIlimitado = isUnlimitedCupoInstitution(instName);
-
       const matchingLaunches = allData.lanzamientos.filter(
         (l) =>
+          l[FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS] === "pps" &&
           normalizeStringForComparison(getGroupName(l[FIELD_NOMBRE_PPS_LANZAMIENTOS])) === normName
+      );
+      const cupoIlimitado = matchingLaunches.some(
+        (launch) => launch[FIELD_MODALIDAD_CUPO_LANZAMIENTOS] === "realizado"
       );
 
       const perYear = new Map<number, { rotaciones: number; cupos: number }>();
@@ -177,7 +188,7 @@ const buildAgreementsDetail = (
       matchingLaunches.forEach((l) => {
         const date = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
         const yr = date ? date.getUTCFullYear() : null;
-        const cupos = launchCupos(l);
+        const cupos = launchCupos(l, studentsByLaunchId);
         totalCupos += cupos;
         if (yr) {
           const entry = perYear.get(yr) || { rotaciones: 0, cupos: 0 };
@@ -213,12 +224,23 @@ const buildAgreementsDetail = (
 
 const processAllData = (allData: DashboardData, targetYear: number) => {
   // 1. IDENTIFICAR LANZAMIENTOS DEL AÑO OBJETIVO
+  const today = new Date();
+  const targetEnd =
+    targetYear === today.getUTCFullYear()
+      ? Date.UTC(targetYear, today.getUTCMonth(), today.getUTCDate() + 1)
+      : Date.UTC(targetYear + 1, 0, 1);
   const launchesInTargetYear = allData.lanzamientos.filter((l) => {
     const date = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS]);
-    return date && date.getUTCFullYear() === targetYear;
+    return (
+      l[FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS] === "pps" &&
+      date &&
+      date.getUTCFullYear() === targetYear &&
+      date.getTime() < targetEnd
+    );
   });
 
   const launchIdsInYear = new Set<string>(launchesInTargetYear.map((l) => l.id));
+  const studentsByLaunchId = buildStudentsByLaunchId(allData);
 
   // 2. IDENTIFICAR ESTUDIANTES ACTIVOS
   const activeStudentIds = new Set<string>();
@@ -239,19 +261,24 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
     return activeStudentIds.has(s.id);
   });
 
-  // 3. ALUMNOS FINALIZADOS
-  const finishedList = allData.finalizaciones
-    .filter((f) => {
-      const dateStr = f[FIELD_FECHA_SOLICITUD_FINALIZACION] || f.created_at;
-      if (!dateStr) return false;
-      const date = new Date(dateStr);
-      return !isNaN(date.getTime()) && date.getFullYear() === targetYear;
-    })
-    .map((f) => {
-      const sId = safeGetId(f[FIELD_ESTUDIANTE_FINALIZACION]);
-      const student = allData.estudiantes.find((s) => s.id === sId);
-      return student || { nombre: "Estudiante Finalizado", legajo: "---" };
-    });
+  // 3. ALUMNOS FINALIZADOS: evento efectivo, no solicitud previa.
+  const finishedList = allData.estudiantes.filter((student) => {
+    const date = parseToUTCDate(student[FIELD_FECHA_FINALIZACION_ESTUDIANTES]);
+    return (
+      student[FIELD_ESTADO_ESTUDIANTES] === "Finalizado" && date?.getUTCFullYear() === targetYear
+    );
+  });
+
+  const startedIds = new Set<string>();
+  allData.practicas.forEach((practice) => {
+    if (practice[FIELD_TIPO_ACTIVIDAD_PRACTICAS] !== "pps") return;
+    const date = parseToUTCDate(practice[FIELD_FECHA_INICIO_PRACTICAS]);
+    const studentId = safeGetId(practice[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
+    if (date?.getUTCFullYear() === targetYear && date.getTime() < targetEnd && studentId) {
+      startedIds.add(studentId);
+    }
+  });
+  const startedList = allData.estudiantes.filter((student) => startedIds.has(student.id));
 
   // 4. ESTUDIANTES ACTIVOS SIN PPS
   const studentsWithPracticeIds = new Set<string>();
@@ -263,9 +290,11 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
   const activeWithoutPpsList = activeList.filter((s) => !studentsWithPracticeIds.has(s.id));
 
   // 5. METRICAS DE LANZAMIENTOS
-  const totalCupos = launchesInTargetYear.reduce((sum: number, l) => sum + launchCupos(l), 0);
+  const totalCupos = launchesInTargetYear.reduce(
+    (sum: number, l) => sum + launchCupos(l, studentsByLaunchId),
+    0
+  );
 
-  const uniqueLaunchesSet = new Set<string>();
   const ppsLaunchedList: { nombre: string; legajo: string; cupos: number }[] = [];
   const monthlyData: {
     [key: number]: {
@@ -280,11 +309,9 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
       const groupName = getGroupName(ppsName);
       const date = parseToUTCDate(launch[FIELD_FECHA_INICIO_LANZAMIENTOS]);
       const monthIndex = date ? date.getUTCMonth() : -1;
-      const cupos = launchCupos(launch);
+      const cupos = launchCupos(launch, studentsByLaunchId);
 
       if (monthIndex >= 0) {
-        uniqueLaunchesSet.add(`${groupName}::${monthIndex}`);
-
         if (!monthlyData[monthIndex]) {
           monthlyData[monthIndex] = { cuposTotal: 0, institutions: new Map() };
         }
@@ -296,21 +323,21 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
         };
         institutionData.cupos += cupos;
         institutionData.variants.push(ppsName);
-        if (isUnlimitedCupoInstitution(ppsName)) institutionData.unlimited = true;
+        if (launch[FIELD_MODALIDAD_CUPO_LANZAMIENTOS] === "realizado") {
+          institutionData.unlimited = true;
+        }
         monthlyData[monthIndex].institutions.set(groupName, institutionData);
       }
 
-      if (!ppsLaunchedList.find((i) => i.nombre === groupName)) {
-        ppsLaunchedList.push({
-          nombre: groupName,
-          legajo: "Varias Comisiones",
-          cupos: 0,
-        });
-      }
+      ppsLaunchedList.push({
+        nombre: String(ppsName),
+        legajo: groupName,
+        cupos,
+      });
     }
   });
 
-  const ppsLanzadasValue = uniqueLaunchesSet.size;
+  const ppsLanzadasValue = launchesInTargetYear.length;
 
   const launchesByMonth: TimelineMonthData[] = MONTH_NAMES.map(
     (monthName, index): TimelineMonthData | null => {
@@ -381,8 +408,8 @@ const processAllData = (allData: DashboardData, targetYear: number) => {
     alumnosSinNingunaPPS: { value: activeWithoutPpsList.length, list: activeWithoutPpsList },
     ppsLanzadas: { value: ppsLanzadasValue, list: ppsLaunchedList },
     cuposOfrecidos: { value: totalCupos, list: [] },
-    alumnosEnPPS: { value: activeList.length - activeWithoutPpsList.length, list: [] },
-    alumnosConPpsEsteAno: { value: activeList.length - activeWithoutPpsList.length, list: [] },
+    alumnosEnPPS: { value: startedList.length, list: startedList },
+    alumnosConPpsEsteAno: { value: startedList.length, list: startedList },
     alumnosActivosSinPpsEsteAno: { value: activeWithoutPpsList.length, list: activeWithoutPpsList },
     alumnosProximosAFinalizar: { value: 0, list: [] },
     alumnosParaAcreditar: { value: 0, list: [] },
@@ -412,7 +439,12 @@ const buildGestionReport = (allData: DashboardData): GestionReportData => {
 
   const gestionLaunches = allData.lanzamientos.filter((l) => {
     const d = launchDate(l);
-    return d && d.getTime() >= GESTION_START_UTC;
+    return (
+      l[FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS] === "pps" &&
+      d &&
+      d.getTime() >= GESTION_START_UTC &&
+      d.getTime() <= now.getTime()
+    );
   });
 
   const studentsByLaunchId = buildStudentsByLaunchId(allData);
@@ -422,17 +454,19 @@ const buildGestionReport = (allData: DashboardData): GestionReportData => {
   const yearlyStats: GestionYearStat[] = [];
   for (let year = GESTION_START_YEAR; year <= currentYear; year++) {
     const launches = gestionLaunches.filter((l) => launchDate(l)?.getUTCFullYear() === year);
-    const cupos = launches.reduce((sum, l) => sum + launchCupos(l), 0);
+    const cupos = launches.reduce((sum, l) => sum + launchCupos(l, studentsByLaunchId), 0);
     const conveniosNuevos = allData.instituciones.filter(
       (i) => String(i[FIELD_CONVENIO_NUEVO_INSTITUCIONES]) === String(year)
     ).length;
     // Ingresantes por cohorte (año de la primera PPS real), no por created_at.
     const ingresantes = allData.estudiantes.filter((s) => Number(s.cohorte) === year).length;
-    const finalizados = allData.finalizaciones.filter((f) => {
-      const dateStr = f[FIELD_FECHA_SOLICITUD_FINALIZACION] || f.created_at;
-      if (!dateStr) return false;
-      const d = new Date(dateStr);
-      return !isNaN(d.getTime()) && d.getFullYear() === year && d.getTime() >= GESTION_START_UTC;
+    const finalizados = allData.estudiantes.filter((student) => {
+      const date = parseToUTCDate(student[FIELD_FECHA_FINALIZACION_ESTUDIANTES]);
+      return (
+        student[FIELD_ESTADO_ESTUDIANTES] === "Finalizado" &&
+        date?.getUTCFullYear() === year &&
+        date.getTime() >= GESTION_START_UTC
+      );
     }).length;
     const solicitudesYear = allData.solicitudes.filter((r) => {
       if (!r.created_at) return false;
@@ -482,9 +516,14 @@ const buildGestionReport = (allData: DashboardData): GestionReportData => {
     let cupos = 0;
     allData.lanzamientos.forEach((l) => {
       const d = launchDate(l);
-      if (d && d.getTime() >= fromUTC && d.getTime() < toUTC) {
+      if (
+        l[FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS] === "pps" &&
+        d &&
+        d.getTime() >= fromUTC &&
+        d.getTime() < toUTC
+      ) {
         lanzamientos += 1;
-        cupos += launchCupos(l);
+        cupos += launchCupos(l, studentsByLaunchId);
       }
     });
     return { lanzamientos, cupos };

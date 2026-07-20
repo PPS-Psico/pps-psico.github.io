@@ -38,7 +38,7 @@ const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
         <p className="text-sm font-bold text-slate-800 dark:text-white">{data.label}</p>
         <div className="flex items-center gap-2 mt-2">
           <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{data.value}</span>
-          <span className="text-xs font-bold text-slate-500">Nuevos Alumnos</span>
+          <span className="text-xs font-bold text-slate-500">Estudiantes</span>
         </div>
         {data.isManualCorrection && (
           <p className="mt-2 text-[9px] text-slate-500 dark:text-slate-400 italic leading-tight max-w-[180px]">
@@ -76,7 +76,7 @@ const EnrollmentEvolutionChart: React.FC<EnrollmentEvolutionChartProps> = ({
           </span>
         </div>
         <h3 className="text-lg font-black text-slate-600 dark:text-slate-300 mb-2">
-          Nuevos Inscriptos
+          Inicios de PPS
         </h3>
         <p className="text-sm text-slate-400 dark:text-slate-500 text-center max-w-xs">
           No hay datos de evolución histórica disponibles.
@@ -97,10 +97,10 @@ const EnrollmentEvolutionChart: React.FC<EnrollmentEvolutionChartProps> = ({
         </div>
         <div>
           <h3 className="text-lg font-black text-slate-800 dark:text-white leading-none">
-            Nuevos Inscriptos
+            Iniciaron PPS
           </h3>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-            Evolución del flujo anual
+            Estudiantes distintos · mismo corte anual
           </p>
         </div>
       </div>

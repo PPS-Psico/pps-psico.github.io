@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 // MÉTRICAS v3 · Dashboard (Paper & Ink · vista ejecutiva)
 //
-// Orquesta KPIs reales (RPC get_admin_metrics_kpis) + lecturas extra de
+// Orquesta resultados de analytics-v2, seguimiento de director-report-v1 y lecturas extra de
 // Supabase (embudo, top instituciones, serie de finalizados, actividad de
 // Hermes). Hermes NO narra: aparece solo como FUENTE de una métrica dura.
 // ──────────────────────────────────────────────────────────────────────────
@@ -10,7 +10,6 @@ import type { MetricsKPIs } from "../../../hooks/useMetricsData";
 import {
   useMetricsDinamica,
   useMetricsTopInstituciones,
-  useFinalizadosSeries,
   useHermesActivity,
   useMetricsHeredados,
 } from "../../../hooks/useMetricsExtras";
@@ -18,6 +17,7 @@ import type { TopInstitucion } from "../../../hooks/useMetricsExtras";
 import { useQuery } from "@tanstack/react-query";
 import { fetchMetricList, fetchOrientationList } from "../../../services/metricsLists";
 import { fetchConveniosKpis } from "../../../services/conveniosService";
+import { buildExecutiveReportModel } from "../../../features/executive-report/executiveReport.model";
 import { HeroMetric, KpiCard, Band, fmt } from "./MetricasPrimitives";
 import {
   DinamicaCicloBand,
@@ -38,7 +38,6 @@ const seriesToSpark = (series: { year: string | number; value: number }[], years
 interface Props {
   year: number;
   metrics: MetricsKPIs;
-  prevMetrics?: MetricsKPIs;
   onStudentSelect?: (s: { legajo: string; nombre: string }) => void;
   isTestingMode?: boolean;
   onModalChange?: (open: boolean) => void;
@@ -47,7 +46,6 @@ interface Props {
 export function MetricasDashboardV3({
   year,
   metrics,
-  prevMetrics,
   onStudentSelect,
   isTestingMode = false,
   onModalChange,
@@ -58,8 +56,10 @@ export function MetricasDashboardV3({
     year,
     isTestingMode,
   });
-  const { data: topInst = [] } = useMetricsTopInstituciones({ year, isTestingMode });
-  const { data: finalizadosSeries = [] } = useFinalizadosSeries(isTestingMode);
+  const { data: topInst = [], isFetched: topInstFetched } = useMetricsTopInstituciones({
+    year,
+    isTestingMode,
+  });
   const { data: hermes } = useHermesActivity({ year, isTestingMode });
   const { data: heredados = 0 } = useMetricsHeredados({ year, isTestingMode });
   const { data: conveniosKpis } = useQuery({
@@ -70,40 +70,43 @@ export function MetricasDashboardV3({
   });
   const renovaciones = conveniosKpis?.renovaciones ?? 0;
   const conveniosPorVencer = conveniosKpis?.convenios_por_vencer ?? 0;
+  const annualModel = useMemo(
+    () =>
+      metrics.analytics_snapshot
+        ? buildExecutiveReportModel({
+            kind: "annual",
+            selected: metrics.analytics_snapshot,
+            previous: metrics.comparison_snapshot,
+          })
+        : null,
+    [metrics.analytics_snapshot, metrics.comparison_snapshot]
+  );
+  const operational = metrics.operational_snapshot;
+  const directorLoading = false;
+  const directorError = operational ? null : new Error("Sin foto operativa disponible");
+  const annualMetrics = useMemo(
+    () => new Map((annualModel?.primaryMetrics || []).map((metric) => [metric.id, metric])),
+    [annualModel]
+  );
 
   const sparkYears = useMemo(() => {
     const ys = new Set<number>();
     metrics.enrollment_evolution?.forEach((e) => ys.add(Number(e.year)));
-    metrics.trend_data?.forEach((e) => ys.add(Number(e.year)));
-    finalizadosSeries.forEach((e) => ys.add(e.year));
+    metrics.finalization_evolution?.forEach((e) => ys.add(Number(e.year)));
     ys.add(year);
     return Array.from(ys)
       .filter((y) => !Number.isNaN(y))
       .sort((a, b) => a - b);
-  }, [metrics, finalizadosSeries, year]);
+  }, [metrics, year]);
 
   const sparks = useMemo(
     () => ({
-      // enrollment_evolution ahora es la serie de "estudiantes en PPS" por año.
+      // enrollment_evolution usa analytics-v2: inicios de PPS al mismo corte.
       enPps: seriesToSpark(metrics.enrollment_evolution || [], sparkYears),
-      activa: seriesToSpark(metrics.trend_data || [], sparkYears),
-      finalizados: seriesToSpark(finalizadosSeries, sparkYears),
+      finalizados: seriesToSpark(metrics.finalization_evolution || [], sparkYears),
     }),
-    [metrics, finalizadosSeries, sparkYears]
+    [metrics, sparkYears]
   );
-
-  // — prev-year valores para "X en {year-1}" —
-  const prevVals = useMemo(() => {
-    const fromSeries = (s?: { year: string; value: number }[]) =>
-      s?.find((e) => Number(e.year) === year - 1)?.value;
-    return {
-      enPps: metrics.estudiantes_en_pps_prev,
-      activa: prevMetrics?.matricula_activa ?? fromSeries(metrics.trend_data),
-      finalizados:
-        prevMetrics?.alumnos_finalizados ??
-        finalizadosSeries.find((e) => e.year === year - 1)?.value,
-    };
-  }, [prevMetrics, metrics, finalizadosSeries, year]);
 
   const openDrill = useCallback(
     (next: DrillState | null) => {
@@ -182,65 +185,122 @@ export function MetricasDashboardV3({
 
   const drillInst = useCallback(
     (r: TopInstitucion) => {
+      const historicalCapacity = metrics.capacity_source === "historical_documented_offers";
       openDrill({
         title: r.nombre,
-        subtitle: `${r.ocupados} estudiantes en PPS en ${year}`,
+        subtitle: historicalCapacity
+          ? `${r.ofrecidos} vacantes finitas documentadas en ${year}`
+          : `${r.ocupados} estudiantes en PPS en ${year}`,
         rows: r.list as DrillRow[],
         kind: "student",
         loading: false,
         onRowClick,
       });
     },
-    [year, openDrill, onRowClick]
+    [metrics.capacity_source, year, openDrill, onRowClick]
   );
 
-  // — Evolución de inscriptos: enrollment_evolution; marca proyección si target es año actual —
+  // — Evolución de inicios reales de PPS al mismo corte temporal —
   const enrollmentData = useMemo(
     () =>
       (metrics.enrollment_evolution || []).map((e) => ({
         ...e,
-        isProjection: Number(e.year) === new Date().getFullYear() && Number(e.year) === year,
+        isProjection: false,
       })),
-    [metrics, year]
+    [metrics]
   );
 
   const hermesTotal = hermes?.total ?? 0;
+  const usesHistoricalOfferSource = metrics.capacity_source === "historical_documented_offers";
+  const capacityCoverage = metrics.capacity_finite_offer_coverage_pct;
+  const capacityContext = usesHistoricalOfferSource
+    ? `${metrics.capacity_documented_finite_offers ?? 0}/${metrics.pps_lanzadas} ofertas con cupo finito${capacityCoverage == null ? "" : ` (${capacityCoverage}%)`}; ${metrics.capacity_unknown_or_realized_offers} sin total finito`
+    : "Cupos fijos + participación realizada";
+  const primaryMetric = (id: string) => annualMetrics.get(id);
+  const metricTrend = (id: string) => {
+    const delta = primaryMetric(id)?.delta;
+    return delta?.comparable ? delta.percent : null;
+  };
+  const metricPrevious = (id: string) => {
+    const delta = primaryMetric(id)?.delta;
+    return delta?.comparable ? delta.previous : null;
+  };
+  const comparisonLabel =
+    annualModel?.primaryMetrics.find((metric) => metric.delta?.comparable)?.delta?.referenceLabel ??
+    null;
 
-  // El año anterior 2024 es de transición (regularización de la migración de
-  // Airtable): comparar contra él da % engañosos. Ocultamos el trend interanual
-  // cuando el año previo es 2024.
-  const hideTrend = year - 1 === 2024;
-  const trendOf = (v: number | undefined) => (hideTrend ? undefined : v);
+  const openOperationalList = (title: string, subtitle: string, rows: DrillRow[]) =>
+    openDrill({ title, subtitle, rows, kind: "student", loading: false, onRowClick });
 
   return (
     <>
-      {/* — Banda matrícula (3 hero con sparkline) — */}
-      <Band cols={3}>
+      {/* Los cuatro resultados coinciden uno a uno con el informe profesional. */}
+      <Band cols={4}>
         <HeroMetric
-          value={metrics.estudiantes_en_pps}
-          label="Estudiantes en PPS"
-          context="Hicieron al menos una práctica este año"
+          value={primaryMetric("offers")?.value ?? metrics.pps_lanzadas}
+          label={primaryMetric("offers")?.label ?? "Ofertas de PPS"}
+          context={primaryMetric("offers")?.detail ?? "Ofertas registradas en el período"}
+          tone="ink"
+          trend={metricTrend("offers")}
+          prevYear={metricPrevious("offers")}
+          comparisonLabel={comparisonLabel}
+          activeYear={year}
+          years={sparkYears}
+          onClick={() =>
+            drillKpi(
+              "pps_lanzadas",
+              primaryMetric("offers")?.label ?? "Ofertas de PPS",
+              `${metrics.pps_lanzadas} ofertas registradas en ${year}`,
+              "inst"
+            )
+          }
+        />
+        <HeroMetric
+          value={primaryMetric("capacity")?.value ?? metrics.cupos_ofrecidos}
+          label={primaryMetric("capacity")?.label ?? "Capacidad registrada"}
+          context={primaryMetric("capacity")?.detail ?? capacityContext}
+          tone="accent"
+          trend={metricTrend("capacity")}
+          prevYear={metricPrevious("capacity")}
+          comparisonLabel={comparisonLabel}
+          activeYear={year}
+          years={sparkYears}
+          onClick={() =>
+            drillKpi(
+              "cupos_ofrecidos",
+              primaryMetric("capacity")?.label ?? "Capacidad registrada",
+              `${metrics.cupos_ofrecidos} lugares registrados en ${year}`,
+              "inst"
+            )
+          }
+        />
+        <HeroMetric
+          value={primaryMetric("started")?.value ?? metrics.estudiantes_en_pps}
+          label={primaryMetric("started")?.label ?? "Estudiantes que iniciaron"}
+          context={primaryMetric("started")?.detail ?? "Personas con una PPS iniciada"}
           tone="ok"
-          trend={trendOf(metrics.trends?.estudiantes_en_pps)}
-          prevYear={prevVals.enPps}
+          trend={metricTrend("started")}
+          prevYear={metricPrevious("started")}
+          comparisonLabel={comparisonLabel}
           spark={sparks.enPps}
           activeYear={year}
           years={sparkYears}
           onClick={() =>
             drillKpi(
               "estudiantes_en_pps",
-              "Estudiantes en PPS",
-              `${metrics.estudiantes_en_pps} con actividad de PPS en ${year}`
+              "Estudiantes que iniciaron PPS",
+              `${metrics.estudiantes_en_pps} con inicio efectivo de PPS en ${year}`
             )
           }
         />
         <HeroMetric
-          value={metrics.alumnos_finalizados}
-          label="Finalizados"
-          context="Acreditaciones cerradas en el ciclo"
+          value={primaryMetric("finalized")?.value ?? metrics.alumnos_finalizados}
+          label={primaryMetric("finalized")?.label ?? "Finalizaciones registradas"}
+          context={primaryMetric("finalized")?.detail ?? "Finalizaciones efectivas del período"}
           tone="ok"
-          trend={trendOf(metrics.trends?.acreditados)}
-          prevYear={prevVals.finalizados}
+          trend={metricTrend("finalized")}
+          prevYear={metricPrevious("finalized")}
+          comparisonLabel={comparisonLabel}
           spark={sparks.finalizados}
           activeYear={year}
           years={sparkYears}
@@ -252,61 +312,96 @@ export function MetricasDashboardV3({
             )
           }
         />
-        <HeroMetric
-          value={metrics.matricula_activa}
-          label="Matrícula activa"
-          context="Alumnos vigentes en el sistema"
-          tone="accent"
-          trend={trendOf(metrics.trends?.activos)}
-          prevYear={prevVals.activa}
-          spark={sparks.activa}
-          activeYear={year}
-          years={sparkYears}
-          onClick={() =>
-            drillKpi(
-              "matricula_activa",
-              "Matrícula activa",
-              `${metrics.matricula_activa} alumnos activos en ${year}`
-            )
-          }
-        />
       </Band>
 
-      {/* — Banda seguimiento (3) — */}
-      <Band title="Seguimiento de estudiantes" cols={3} top>
+      {comparisonLabel && (
+        <div className="metric-comparison-note">
+          <span className="material-icons" aria-hidden="true">
+            compare_arrows
+          </span>
+          Las variaciones comparan el mismo período: {comparisonLabel.replace("vs. ", "")}.
+        </div>
+      )}
+
+      {/* Foto operativa: misma cohorte nominal que recibe Agostina. */}
+      <Band title="Seguimiento operativo actual" cols={4} top>
         <KpiCard
-          value={metrics.sin_pps}
-          label="Sin ninguna PPS"
-          context="Activos sin práctica · al día de hoy"
+          value={operational?.studentSummary.withoutPps ?? 0}
+          label="Sin PPS · demanda activa"
+          context={`Sin prácticas y con postulaciones en ${year}`}
           tone="warn"
+          loading={directorLoading}
           onClick={() =>
-            drillKpi(
-              "sin_pps",
-              "Alumnos sin ninguna PPS",
-              `${metrics.sin_pps} activos sin práctica`
+            openOperationalList(
+              "Sin PPS · demanda activa",
+              "Estudiantes actuales sin prácticas que se postularon durante el ciclo seleccionado",
+              (operational?.withoutPpsStudents || []).map((student) => ({
+                nombre: student.fullName,
+                legajo: student.legajo || "—",
+                horas: `${student.applicationCount} postulaciones`,
+                detalle: `${student.pendingApplications} postulaciones pendientes`,
+              }))
             )
           }
         />
         <KpiCard
-          value={metrics.proximos_finalizar}
+          value={operational?.studentSummary.nearCompletion ?? 0}
           label="Próximos a finalizar"
-          context="≥ 230 hs acumuladas · al día de hoy"
+          context={
+            directorError
+              ? "No se pudo calcular la cohorte actual"
+              : `${operational?.studentSummary.nearByReason.total_hours_230_249 ?? 0} por horas · ${operational?.studentSummary.nearByReason.missing_one_orientation ?? 0} por orientación · ${operational?.studentSummary.nearByReason.specialty_gap_20_or_less ?? 0} por especialidad`
+          }
           tone="accent"
+          loading={directorLoading}
           onClick={() =>
-            drillKpi(
-              "proximos_finalizar",
-              "Próximos a finalizar",
-              `${metrics.proximos_finalizar} con ≥230 hs`
+            openOperationalList(
+              "Próximos a finalizar · PPS de entrevistas",
+              "Cumplen uno de los tres criterios y no realizaron Relevamiento ni Entrevista a Profesionales",
+              (operational?.nearCompletionStudents || []).map((student) => ({
+                nombre: student.fullName,
+                legajo: student.legajo || "—",
+                horas: `${student.totalHours} h`,
+                detalle: student.reasonLabel,
+              }))
             )
           }
         />
         <KpiCard
-          value={metrics.haciendo_pps}
-          label="Haciendo PPS"
-          context="Con práctica en curso"
+          value={operational?.studentSummary.readyToRequest ?? 0}
+          label="Listos para solicitar"
+          context="Completaron horas, especialidad y tres orientaciones"
           tone="ok"
+          loading={directorLoading}
           onClick={() =>
-            drillKpi("haciendo_pps", "Haciendo PPS", `${metrics.haciendo_pps} en curso`)
+            openOperationalList(
+              "Listos para solicitar acreditación",
+              "Cumplen los tres requisitos y todavía no iniciaron el trámite",
+              (operational?.readyToRequestStudents || []).map((student) => ({
+                nombre: student.fullName,
+                legajo: student.legajo || "—",
+                horas: `${student.totalHours} h`,
+                detalle: `${student.specialtyHours} h de especialidad · ${student.rotations} orientaciones`,
+              }))
+            )
+          }
+        />
+        <KpiCard
+          value={operational?.studentSummary.inAccreditation ?? 0}
+          label="En acreditación"
+          context="Solicitud de finalización actualmente en trámite"
+          tone="ok"
+          loading={directorLoading}
+          onClick={() =>
+            openOperationalList(
+              "Estudiantes en acreditación",
+              "Solicitudes de finalización actualmente en trámite",
+              (operational?.accreditationStudents || []).map((student) => ({
+                nombre: student.fullName,
+                legajo: student.legajo || "—",
+                detalle: student.status || "En proceso",
+              }))
+            )
           }
         />
       </Band>
@@ -355,7 +450,7 @@ export function MetricasDashboardV3({
       </Band>
 
       {/* — Dinámica del ciclo (reemplaza al embudo) — */}
-      {dinamica && <DinamicaCicloBand d={dinamica} year={year} />}
+      {metrics.demanda_disponible && dinamica && <DinamicaCicloBand d={dinamica} year={year} />}
 
       {/* — Dos columnas de gráficos — */}
       <section className="band top">
@@ -365,32 +460,22 @@ export function MetricasDashboardV3({
             <Distribution dist={metrics.orientation_distribution || {}} onArea={drillArea} />
           </div>
           <div className="charts-col">
-            <TrendLine data={metrics.trend_data || []} year={year} />
+            <TrendLine
+              data={metrics.finalization_evolution || []}
+              year={year}
+              title="Evolución de finalizaciones"
+            />
             <TopInstituciones rows={topInst} onInst={drillInst} />
           </div>
         </div>
       </section>
 
-      {/* — Banda instituciones (3) — */}
-      <Band title="Red de instituciones" cols={3} top>
+      {/* La oferta y la capacidad ya aparecen arriba con el mismo contrato del informe. */}
+      <Band title="Red institucional" cols={4} top>
         <KpiCard
-          value={metrics.pps_lanzadas}
-          label="PPS lanzadas"
-          context="Convocatorias del año"
-          tone="ink"
-          onClick={() =>
-            drillKpi(
-              "pps_lanzadas",
-              "PPS lanzadas",
-              `${metrics.pps_lanzadas} convocatorias en ${year}`,
-              "inst"
-            )
-          }
-        />
-        <KpiCard
-          value={metrics.instituciones_activas}
+          value={topInstFetched ? topInst.length : metrics.instituciones_activas}
           label="Instituciones activas"
-          context="Con PPS este año"
+          context="Instituciones con ofertas de PPS en el período"
           tone="ink"
           onClick={() =>
             drillKpi(
@@ -401,24 +486,6 @@ export function MetricasDashboardV3({
             )
           }
         />
-        <KpiCard
-          value={metrics.cupos_ofrecidos}
-          label="Cupos ofrecidos"
-          context="Sumados en el año"
-          tone="ink"
-          onClick={() =>
-            drillKpi(
-              "cupos_ofrecidos",
-              "Cupos ofrecidos",
-              `${metrics.cupos_ofrecidos} cupos en ${year}`,
-              "inst"
-            )
-          }
-        />
-      </Band>
-
-      {/* — Banda convenios (nuevos · renovaciones · por vencer) — */}
-      <Band title="Convenios del ciclo" cols={3} top>
         <KpiCard
           value={metrics.nuevos_convenios}
           label="Nuevos convenios"

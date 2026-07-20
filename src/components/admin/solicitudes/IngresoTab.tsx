@@ -1,5 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { FIELD_ESTADO_PPS } from "../../../constants";
+import {
+  FIELD_ESTADO_PPS,
+  FIELD_MOTIVO_NO_CONCRECION_PPS,
+  FIELD_MOTIVO_NO_CONCRECION_DETALLE_PPS,
+} from "../../../constants";
 import { CollapsibleHistory, DataItem, EmptyState, FilterTabs, SearchBar } from "./primitives";
 import type { SolicitudPPSWithStudent } from "./types";
 import { filterIngresoSolicitudes, isHistorySolicitud } from "./helpers";
@@ -220,6 +224,9 @@ const IngresoCardItem: React.FC<IngresoCardItemProps> = ({
 }) => {
   const [estado, setEstado] = useState(sol.estado_seguimiento || "Pendiente");
   const [notas, setNotas] = useState(sol.notas || "");
+  const [motivo, setMotivo] = useState(sol.motivo_no_concrecion || "");
+  const [motivoDetalle, setMotivoDetalle] = useState(sol.motivo_no_concrecion_detalle || "");
+  const esNoConcretada = estado === "No se pudo concretar";
 
   const hasConvenio =
     sol.convenio_uflo?.toLowerCase() === "sí" || sol.convenio_uflo?.toLowerCase() === "si";
@@ -233,7 +240,12 @@ const IngresoCardItem: React.FC<IngresoCardItemProps> = ({
     sol._daysSinceUpdate > 4 &&
     !["Realizada", "No se pudo concretar", "Archivado"].includes(sol.estado_seguimiento || "");
 
-  const dirty = estado !== (sol.estado_seguimiento || "Pendiente") || notas !== (sol.notas || "");
+  const dirty =
+    estado !== (sol.estado_seguimiento || "Pendiente") ||
+    notas !== (sol.notas || "") ||
+    (esNoConcretada &&
+      (motivo !== (sol.motivo_no_concrecion || "") ||
+        motivoDetalle !== (sol.motivo_no_concrecion_detalle || "")));
 
   // Tone color mapper
   const getTone = (est: string) => {
@@ -248,11 +260,24 @@ const IngresoCardItem: React.FC<IngresoCardItemProps> = ({
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (esNoConcretada && !motivo) {
+      onToast("Elegí un motivo para cerrar la solicitud", "warning");
+      return;
+    }
+    if (esNoConcretada && motivo === "Otro" && !motivoDetalle.trim()) {
+      onToast("Detallá el motivo cuando elegís «Otro»", "warning");
+      return;
+    }
     onUpdate({
       recordId: sol.id,
       fields: {
         [FIELD_ESTADO_PPS]: estado,
         notas,
+        // El motivo solo aplica al estado "No se pudo concretar"; en cualquier
+        // otro estado se limpia para que la estadística no arrastre residuos.
+        [FIELD_MOTIVO_NO_CONCRECION_PPS]: esNoConcretada ? motivo : null,
+        [FIELD_MOTIVO_NO_CONCRECION_DETALLE_PPS]:
+          esNoConcretada && motivo === "Otro" ? motivoDetalle.trim() : null,
       },
     });
   };
@@ -618,6 +643,47 @@ const IngresoCardItem: React.FC<IngresoCardItemProps> = ({
                   <option value="No se pudo concretar">No se pudo concretar</option>
                   <option value="Archivado">Archivado</option>
                 </select>
+                {esNoConcretada && (
+                  <>
+                    <label
+                      className="label"
+                      style={{ display: "block", margin: "10px 0 6px", fontSize: 9.5 }}
+                    >
+                      Motivo
+                    </label>
+                    <select
+                      value={motivo}
+                      onChange={(e) => setMotivo(e.target.value)}
+                      className="field"
+                      style={{ fontSize: 13, cursor: "pointer" }}
+                    >
+                      <option value="" disabled>
+                        Seleccionar motivo…
+                      </option>
+                      {motivo === "Histórico sin clasificar" && (
+                        <option value="Histórico sin clasificar" disabled>
+                          Histórico sin clasificar
+                        </option>
+                      )}
+                      <option value="Institución no respondió">Institución no respondió</option>
+                      <option value="Sin cupo disponible">Sin cupo disponible</option>
+                      <option value="Convenio no viable">Convenio no viable</option>
+                      <option value="El alumno desistió">El alumno desistió</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                    {motivo === "Otro" && (
+                      <textarea
+                        value={motivoDetalle}
+                        onChange={(e) => setMotivoDetalle(e.target.value)}
+                        rows={2}
+                        className="field"
+                        style={{ fontSize: 13, minHeight: 0, marginTop: 8 }}
+                        placeholder="Describí brevemente el motivo…"
+                        aria-label="Detalle del motivo de no concreción"
+                      />
+                    )}
+                  </>
+                )}
               </div>
               <div>
                 <label

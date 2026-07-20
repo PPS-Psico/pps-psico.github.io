@@ -29,8 +29,9 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+  FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS,
 } from "../../constants";
-import { notifySelectedStudents, fetchSelectedCandidatesForLaunch } from "../../services";
+import { closeSelectionAndQueueNotifications } from "../../services";
 import { normalizeStringForComparison } from "../../utils/formatters";
 import { logger } from "../../utils/logger";
 import type { LanzamientoPPS } from "../../types";
@@ -196,21 +197,17 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Archivado";
       }
 
-      await db.lanzamientos.update(id, updates);
-
-      // Al cerrar la inscripción notificamos a los seleccionados, pero en
-      // SEGUNDO PLANO: enviar emails + push tarda varios segundos y no debe
-      // bloquear el avance del pipeline ni la actualización de la vista. Si
-      // algo falla, se registra sin frenar el cierre.
       if (estado === "Cerrado") {
-        const launch = launches.find((l) => l.id === id);
-        if (launch) {
-          void fetchSelectedCandidatesForLaunch(id)
-            .then((candidates) => {
-              if (candidates.length > 0) return notifySelectedStudents(launch, candidates);
-            })
-            .catch((e) => logger.error("[Lanzador] Error notificando seleccionados:", e));
-        }
+        const launch = launches.find((item) => item.id === id);
+        if (!launch) throw new Error("No se encontró el lanzamiento que se intenta cerrar.");
+
+        const { notificationTask } = await closeSelectionAndQueueNotifications(launch);
+        void notificationTask.catch((error) =>
+          logger.error("[Lanzador] Error notificando seleccionados:", error)
+        );
+      } else {
+        if (estado === "Abierta") updates[FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS] = null;
+        await db.lanzamientos.update(id, updates);
       }
     },
     // Update optimista: avanzamos el estado del lanzamiento en la cache para que
@@ -268,13 +265,20 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
     mutationFn: async ({ id, action }: { id: string; action: RowAction }) => {
       const launch = launches.find((l) => l.id === id);
       const updates: Record<string, unknown> = {};
+      if (action === "cerrar") {
+        if (!launch) throw new Error("No se encontró el lanzamiento que se intenta cerrar.");
+
+        const { notificationTask } = await closeSelectionAndQueueNotifications(launch);
+        void notificationTask.catch((error) =>
+          logger.error("[Lanzador] Error notificando seleccionados:", error)
+        );
+        return;
+      }
       switch (action) {
         case "abrir":
           updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Abierta";
           updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Relanzamiento Confirmado";
-          break;
-        case "cerrar":
-          updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Cerrado";
+          updates[FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS] = null;
           break;
         case "ocultar":
           updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Oculto";
