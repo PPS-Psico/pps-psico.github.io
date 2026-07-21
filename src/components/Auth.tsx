@@ -1059,7 +1059,6 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
         className="ed au-embed animate-fade-in-up"
         data-mode={resolvedTheme}
         data-accent="teal"
-        data-auth-mode={mode}
         style={{ color: "var(--ink)" }}
       >
         <aside className="au-brand au-embed__brand">
