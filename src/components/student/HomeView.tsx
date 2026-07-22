@@ -56,6 +56,7 @@ import StudentAcreditacionCard from "./home/StudentAcreditacionCard";
 import StudentPracRow, { type StudentPracRowData } from "./home/StudentPracRow";
 import StudentSolicitudItem, { type StudentSolicitudItemData } from "./home/StudentSolicitudItem";
 import StudentHomeAtlas, { AhIcon } from "./home/atlas/StudentHomeAtlas";
+import MesasAvisoBanner from "./home/MesasAvisoBanner";
 import StudentOnboardingCard from "./StudentOnboardingCard";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import { isPracticeDisapproved } from "../../logic/studentRules";
@@ -540,6 +541,8 @@ const HomeView: React.FC<HomeViewProps> = ({
               : "Las próximas oportunidades van a aparecer acá."}
           </p>
         </div>
+
+        <MesasAvisoBanner />
 
         {/* Consentimiento digital (mobile) — la convocatoria seleccionada
             evoluciona a tarjeta de firma (no es un widget aparte). */}

@@ -752,11 +752,17 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
           }}
           launchId={launch.id}
           onClose={() => setStudentToDisapprove(null)}
-          onSuccess={() => {
+          onSuccess={(result) => {
             queryClient.invalidateQueries({ queryKey: ["launchPracticas", launch.id] });
             setToastInfo({
-              message: "PPS desaprobada y penalización de 100 puntos registrada.",
-              type: "success",
+              message: result.emailSent
+                ? result.emailKind === "informe_institucional"
+                  ? "PPS desaprobada. El informe institucional fue enviado con copia a Agostina."
+                  : "PPS desaprobada. El aviso por inasistencia fue enviado con copia a Agostina."
+                : `La PPS quedó desaprobada, pero el correo no pudo enviarse${
+                    result.emailMessage ? `: ${result.emailMessage}` : "."
+                  }`,
+              type: result.emailSent ? "success" : "error",
             });
           }}
         />

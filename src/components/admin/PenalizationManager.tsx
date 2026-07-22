@@ -1,5 +1,5 @@
 /**
- * PenalizationManager — Rediseño v1 (Paper & Ink editorial)
+ * PenalizationManager — Rediseño v2 (búsqueda unificada por alumno o PPS)
  *
  * Solo cambia la capa visual. La lógica de datos se preserva intacta:
  *   · Query de PPS relevantes del alumno (convocatorias + prácticas en curso).
@@ -10,11 +10,12 @@
  *
  * Severidad (puntaje): ≥21 crítico · ≥11 medio · resto leve.
  */
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AdminSearch from "./AdminSearch";
 import {
   fetchAllData,
+  fetchPaginatedData,
   createRecord,
   deleteRecord,
   updateRecord,
@@ -33,12 +34,17 @@ import {
   FIELD_PENALIZACION_PUNTAJE,
   TABLE_NAME_CONVOCATORIAS,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   TABLE_NAME_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
+  FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_HORAS_PRACTICAS,
+  FIELD_TIPO_ACTIVIDAD_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   TABLE_NAME_LANZAMIENTOS_PPS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_PENALIZACION_CONVOCATORIA_LINK,
   FIELD_LEGAJO_CONVOCATORIAS,
@@ -57,7 +63,7 @@ import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
 import ConfirmModal from "../ConfirmModal";
-import { formatDate } from "../../utils/formatters";
+import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { injectPremiumMotion } from "./premiumMotion";
 import { logger } from "../../utils/logger";
@@ -69,6 +75,7 @@ import {
   mapEstudiante,
 } from "../../utils/mappers";
 import DesaprobacionPPSModal from "./DesaprobacionPPSModal";
+import { isPracticeDisapproved } from "../../logic/studentRules";
 
 // ─── CSS scoped (Paper & Ink editorial) ───────────────────────────────────────
 
@@ -96,14 +103,91 @@ html.dark .pen {
 .pen .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
 .pen .eyebrow{ font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; font-weight:600; color:var(--ink-3); }
 
-/* Panel de búsqueda */
-.pen-search-panel{ border:1px solid var(--rule-2); border-radius:16px; background:var(--paper); padding:22px 24px; }
-.pen-search-panel h2{ font-family:'Instrument Serif', serif; font-size:26px; font-weight:700; letter-spacing:-0.025em; margin:6px 0 0; }
-.pen-search-panel p{ font-size:13.5px; color:var(--ink-3); margin:6px 0 0; max-width:520px; }
-.pen-disapproval-panel{ margin-bottom:14px; border-left:3px solid var(--warn); }
-.pen-disapproval-panel .eyebrow{ color:var(--warn); }
-.pen-search-box{ margin-top:18px; border:1px solid var(--rule-3); border-radius:10px; background:var(--paper-2); padding:4px 12px; }
-.pen-search-box:focus-within{ border-color:var(--accent); }
+/* Entrada unificada: alumno o PPS */
+.pen-entry-panel{ border:1px solid var(--rule-2); border-radius:16px; background:var(--paper); overflow:visible; }
+.pen-entry-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:24px; padding:24px 26px 20px; }
+.pen-entry-copy{ min-width:0; }
+.pen-entry-copy h2{ font-family:'Instrument Serif', serif; font-size:28px; line-height:1.08; font-weight:700; letter-spacing:-0.025em; margin:0; text-wrap:balance; }
+.pen-entry-copy p{ font-size:13.5px; line-height:1.55; color:var(--ink-3); margin:7px 0 0; max-width:680px; text-wrap:pretty; }
+.pen-mode-tabs{ display:inline-flex; flex-shrink:0; gap:3px; padding:3px; border-radius:10px; background:var(--paper-2); }
+.pen-mode-tab{ display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:0 14px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--ink-3); font:600 12.5px/1 'Hanken Grotesk',system-ui,sans-serif; cursor:pointer; transition:background .16s ease,color .16s ease,border-color .16s ease; }
+.pen-mode-tab .material-icons{ font-size:17px; }
+.pen-mode-tab:hover{ color:var(--ink); }
+.pen-mode-tab[aria-selected="true"]{ border-color:var(--rule-2); background:var(--paper); color:var(--ink); }
+.pen-mode-tab:focus-visible,.pen-target-clear:focus-visible,.pen-target-action:focus-visible,.pen-pps-result:focus-visible,.pen-search-input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.pen-entry-body{ padding:0 26px 24px; }
+.pen-search-label{ display:block; margin-bottom:8px; font-size:12px; font-weight:600; color:var(--ink-2); }
+.pen-unified-search,.pen-pps-search-control{ height:50px; border:1px solid var(--rule-3); border-radius:10px; background:var(--paper-2); transition:border-color .16s ease,background .16s ease; }
+.pen-unified-search:focus-within,.pen-pps-search-control:focus-within{ border-color:var(--accent); background:var(--paper); }
+.pen-search-wrap{ position:relative; }
+.pen-pps-search-control{ display:flex; align-items:center; }
+.pen-search-icon{ display:flex; align-items:center; justify-content:center; width:46px; flex-shrink:0; color:var(--ink-3); }
+.pen-search-icon .material-icons{ font-size:20px; }
+.pen-search-input{ width:100%; height:100%; padding:0 14px 0 0; border:0; outline:0; background:transparent; color:var(--ink); font:500 14px/1 'Hanken Grotesk',system-ui,sans-serif; }
+.pen-search-input::placeholder{ color:var(--ink-3); opacity:1; }
+.pen-search-spinner{ width:16px; height:16px; margin-right:15px; flex-shrink:0; border:2px solid var(--rule-3); border-top-color:var(--accent); border-radius:999px; animation:pen-spin .8s linear infinite; }
+.pen-search-results{ position:absolute; z-index:120; top:calc(100% + 7px); left:0; right:0; max-height:310px; overflow-y:auto; border:1px solid var(--rule-3); border-radius:10px; background:var(--paper); box-shadow:0 6px 8px rgba(20,19,16,.12); }
+.pen-search-results ul{ margin:0; padding:5px; list-style:none; }
+.pen-pps-result{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px 12px; border:0; border-radius:7px; background:transparent; color:var(--ink); text-align:left; font-family:inherit; cursor:pointer; }
+.pen-pps-result:hover{ background:var(--paper-2); }
+.pen-pps-result-main{ min-width:0; }
+.pen-pps-result-name{ display:block; overflow:hidden; color:var(--ink); font-size:13.5px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.pen-pps-result-meta{ display:block; margin-top:2px; color:var(--ink-3); font-size:11.5px; }
+.pen-pps-result .material-icons{ flex-shrink:0; color:var(--ink-4); font-size:18px; }
+.pen-search-feedback{ padding:18px; color:var(--ink-3); font-size:12.5px; text-align:center; }
+.pen-search-help{ margin:9px 2px 0; color:var(--ink-3); font-size:11.5px; line-height:1.45; }
+.pen-target{ display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:14px; padding:15px 16px; border-top:1px solid var(--rule-2); border-bottom:1px solid var(--rule-2); }
+.pen-target-id{ min-width:0; display:flex; align-items:center; gap:11px; }
+.pen-target-icon{ width:36px; height:36px; display:flex; flex-shrink:0; align-items:center; justify-content:center; border-radius:9px; background:var(--paper-2); color:var(--ink-3); }
+.pen-target-icon .material-icons{ font-size:19px; }
+.pen-target-name{ overflow:hidden; color:var(--ink); font-size:14px; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
+.pen-target-meta{ margin-top:2px; color:var(--ink-3); font-size:11.5px; }
+.pen-target-actions{ display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-shrink:0; }
+.pen-target-action{ min-height:36px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 12px; border:1px solid var(--rule-3); border-radius:8px; background:var(--paper); color:var(--ink); font:600 12px/1 'Hanken Grotesk',system-ui,sans-serif; cursor:pointer; transition:background .16s ease,border-color .16s ease; }
+.pen-target-action:hover{ border-color:var(--ink-4); background:var(--paper-2); }
+.pen-target-action .material-icons{ font-size:16px; }
+.pen-target-action-danger{ border-color:var(--warn); background:var(--warn); color:#fff; }
+.pen-target-action-danger:hover{ border-color:var(--warn); background:var(--warn); opacity:.9; }
+.pen-target-action:disabled{ border-color:var(--rule-2); background:var(--paper-2); color:var(--ink-4); cursor:not-allowed; opacity:1; }
+.pen-target-clear{ width:34px; height:34px; display:flex; align-items:center; justify-content:center; border:0; border-radius:8px; background:transparent; color:var(--ink-3); cursor:pointer; }
+.pen-target-clear:hover{ background:var(--paper-2); color:var(--ink); }
+.pen-target-clear .material-icons{ font-size:18px; }
+.pen-roster{ margin-top:18px; border-top:1px solid var(--rule-2); }
+.pen-roster-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:18px; padding:18px 2px 11px; }
+.pen-roster-head h3{ margin:0; color:var(--ink); font-size:14px; font-weight:650; }
+.pen-roster-head p{ margin:3px 0 0; color:var(--ink-3); font-size:11.5px; }
+.pen-roster-count{ flex-shrink:0; color:var(--ink-3); font:500 11.5px/1 'JetBrains Mono',monospace; }
+.pen-roster-list{ border-top:1px solid var(--rule-2); }
+.pen-roster-row{ display:grid; grid-template-columns:minmax(190px,1.4fr) minmax(120px,.7fr) minmax(95px,.55fr) auto; align-items:center; gap:14px; min-height:62px; padding:9px 2px; border-bottom:1px solid var(--rule-2); }
+.pen-roster-person{ min-width:0; }
+.pen-roster-name{ overflow:hidden; color:var(--ink); font-size:13.5px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.pen-roster-legajo{ margin-top:2px; color:var(--ink-3); font:500 11px/1.3 'JetBrains Mono',monospace; }
+.pen-roster-state{ min-width:0; color:var(--ink-3); font-size:11.5px; }
+.pen-status{ display:inline-flex; align-items:center; min-height:24px; padding:0 8px; border-radius:999px; background:var(--paper-2); color:var(--ink-2); font-size:10.5px; font-weight:600; white-space:nowrap; }
+.pen-status[data-status="disapproved"]{ background:var(--warn-s); color:var(--warn); }
+.pen-roster-hours{ color:var(--ink-3); font:500 11.5px/1.3 'JetBrains Mono',monospace; white-space:nowrap; }
+.pen-roster-empty{ padding:24px 4px 4px; color:var(--ink-3); font-size:12.5px; line-height:1.5; text-align:center; }
+.pen-roster-skeleton{ height:62px; border-bottom:1px solid var(--rule-2); background:linear-gradient(90deg,transparent,var(--paper-2),transparent); background-size:220% 100%; animation:pen-skeleton 1.2s ease-in-out infinite; }
+@keyframes pen-skeleton{ from{ background-position:100% 0; } to{ background-position:-100% 0; } }
+.pen-inline-error{ margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--warn-s); color:var(--warn); font-size:12px; }
+
+@media (max-width:760px){
+  .pen-entry-head{ flex-direction:column; padding:20px 18px 16px; }
+  .pen-mode-tabs{ width:100%; }
+  .pen-mode-tab{ flex:1; }
+  .pen-entry-body{ padding:0 18px 20px; }
+  .pen-target{ align-items:flex-start; flex-direction:column; padding:14px 2px; }
+  .pen-target-actions{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
+  .pen-target-action{ flex:1; }
+  .pen-roster-row{ grid-template-columns:minmax(0,1fr) auto; gap:7px 12px; padding:12px 2px; }
+  .pen-roster-state,.pen-roster-hours{ grid-column:1; }
+  .pen-roster-row>.pen-target-action{ grid-column:2; grid-row:1 / span 3; align-self:center; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .pen-mode-tab,.pen-unified-search,.pen-pps-search-control,.pen-target-action{ transition:none; }
+  .pen-search-spinner,.pen-spin,.pen-roster-skeleton{ animation:none; }
+}
 
 /* Header de listado */
 .pen-list-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:30px 0 14px; flex-wrap:wrap; }
@@ -114,7 +198,7 @@ html.dark .pen {
 /* Tarjeta de alumno */
 .pen-card{ border:1px solid var(--rule-2); border-radius:14px; background:var(--paper); overflow:hidden; transition:border-color .12s ease; }
 .pen-card:hover{ border-color:var(--rule-3); }
-.pen-card[data-sev="critico"]{ border-left:3px solid var(--warn); }
+.pen-card[data-sev="critico"]{ border-color:var(--warn); }
 .pen-card-head{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 18px; cursor:pointer; background:transparent; border:none; text-align:left; font-family:inherit; }
 .pen-card-head:hover{ background:var(--paper-2); }
 .pen-id{ display:flex; align-items:center; gap:13px; min-width:0; }
@@ -218,6 +302,541 @@ interface PenalizedStudent {
   totalScore: number;
   penalties: (Penalizacion & { id: string; ppsName?: string })[];
 }
+
+type EntrySearchMode = "student" | "pps";
+
+interface PpsSearchResult {
+  id: string;
+  name: string;
+  startDate?: string | null;
+  status?: string | null;
+}
+
+interface PpsRosterStudent extends SelectedStudent {
+  practiceState: string;
+  hours: number | null;
+  canDisapprove: boolean;
+  blockedLabel?: string;
+}
+
+const firstLinkedId = (value: unknown): string => {
+  const resolved = Array.isArray(value) ? value[0] : value;
+  return resolved ? String(resolved) : "";
+};
+
+const formatPpsMeta = (pps: PpsSearchResult) =>
+  [pps.status, pps.startDate ? `Inicio ${formatDate(pps.startDate)}` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+const PenaltyEntryPanel: React.FC<{
+  isTestingMode: boolean;
+  onPenalty: (student: SelectedStudent) => void;
+  onDisapprove: (student: SelectedStudent, launchId?: string) => void;
+  onError: (message: string) => void;
+}> = ({ isTestingMode, onPenalty, onDisapprove, onError }) => {
+  const [searchMode, setSearchMode] = useState<EntrySearchMode>("student");
+  const [selectedSearchStudent, setSelectedSearchStudent] = useState<SelectedStudent | null>(null);
+  const [ppsSearchTerm, setPpsSearchTerm] = useState("");
+  const [debouncedPpsSearch, setDebouncedPpsSearch] = useState("");
+  const [isPpsDropdownOpen, setIsPpsDropdownOpen] = useState(false);
+  const [selectedPps, setSelectedPps] = useState<PpsSearchResult | null>(null);
+  const ppsSearchRef = useRef<HTMLDivElement>(null);
+  const ppsInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedPpsSearch(ppsSearchTerm.trim());
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [ppsSearchTerm]);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (ppsSearchRef.current && !ppsSearchRef.current.contains(event.target as Node)) {
+        setIsPpsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, []);
+
+  const ppsSearchQuery = useQuery<PpsSearchResult[]>({
+    queryKey: ["penaltyPpsSearch", debouncedPpsSearch, isTestingMode],
+    queryFn: async () => {
+      if (isTestingMode) {
+        const launches = (await mockDb.getAll("lanzamientos_pps")) as Record<string, unknown>[];
+        const normalizedTerm = normalizeStringForComparison(debouncedPpsSearch);
+        return launches
+          .filter((launch) =>
+            normalizeStringForComparison(launch[FIELD_NOMBRE_PPS_LANZAMIENTOS]).includes(
+              normalizedTerm
+            )
+          )
+          .slice(0, 15)
+          .map((launch) => ({
+            id: String(launch.id),
+            name: String(launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS sin nombre"),
+            startDate: (launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null) || null,
+            status: (launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string | null) || null,
+          }));
+      }
+
+      const result = await fetchPaginatedData(
+        TABLE_NAME_LANZAMIENTOS_PPS,
+        1,
+        15,
+        [
+          FIELD_NOMBRE_PPS_LANZAMIENTOS,
+          FIELD_FECHA_INICIO_LANZAMIENTOS,
+          FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
+        ],
+        debouncedPpsSearch,
+        [FIELD_NOMBRE_PPS_LANZAMIENTOS],
+        { field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "desc" }
+      );
+      if (result.error) throw new Error("No se pudo buscar la PPS.");
+
+      return result.records.map((launch) => ({
+        id: launch.id,
+        name: launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS sin nombre",
+        startDate: launch[FIELD_FECHA_INICIO_LANZAMIENTOS],
+        status: launch[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS],
+      }));
+    },
+    enabled: searchMode === "pps" && debouncedPpsSearch.length >= 2 && !selectedPps,
+    staleTime: 30_000,
+  });
+
+  const rosterQuery = useQuery<PpsRosterStudent[]>({
+    queryKey: ["penaltyPpsRoster", selectedPps?.id, isTestingMode],
+    queryFn: async () => {
+      if (!selectedPps) return [];
+
+      let practices: Record<string, unknown>[];
+      let enrollments: Record<string, unknown>[];
+
+      if (isTestingMode) {
+        const [mockPractices, mockEnrollments] = await Promise.all([
+          mockDb.getAll("practicas"),
+          mockDb.getAll("convocatorias"),
+        ]);
+        practices = (mockPractices as Record<string, unknown>[]).filter(
+          (practice) =>
+            firstLinkedId(practice[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]) === selectedPps.id
+        );
+        enrollments = (mockEnrollments as Record<string, unknown>[]).filter(
+          (enrollment) =>
+            firstLinkedId(enrollment[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]) === selectedPps.id
+        );
+      } else {
+        const [practicesResult, enrollmentsResult] = await Promise.all([
+          fetchAllData(
+            TABLE_NAME_PRACTICAS,
+            [
+              FIELD_ESTUDIANTE_LINK_PRACTICAS,
+              FIELD_ESTADO_PRACTICA,
+              FIELD_HORAS_PRACTICAS,
+              FIELD_TIPO_ACTIVIDAD_PRACTICAS,
+            ],
+            { [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: selectedPps.id }
+          ),
+          fetchAllData(
+            TABLE_NAME_CONVOCATORIAS,
+            [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS, FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS],
+            { [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: selectedPps.id }
+          ),
+        ]);
+        if (practicesResult.error || enrollmentsResult.error) {
+          throw new Error("No se pudo cargar la nómina de la PPS.");
+        }
+        practices = practicesResult.records;
+        enrollments = enrollmentsResult.records;
+      }
+
+      const ppsPractices = practices.filter((practice) => {
+        const activityType = normalizeStringForComparison(practice[FIELD_TIPO_ACTIVIDAD_PRACTICAS]);
+        return !activityType || activityType === "pps";
+      });
+
+      const selectedEnrollmentState = new Map<string, string>();
+      enrollments.forEach((enrollment) => {
+        const state = String(enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] || "");
+        if (normalizeStringForComparison(state) !== "seleccionado") return;
+        const studentId = firstLinkedId(enrollment[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]);
+        if (studentId) selectedEnrollmentState.set(studentId, state);
+      });
+
+      const practiceByStudent = new Map<string, Record<string, unknown>>();
+      ppsPractices.forEach((practice) => {
+        const studentId = firstLinkedId(practice[FIELD_ESTUDIANTE_LINK_PRACTICAS]);
+        if (!studentId) return;
+        const current = practiceByStudent.get(studentId);
+        const currentDisapproved = current
+          ? isPracticeDisapproved(String(current[FIELD_ESTADO_PRACTICA] || ""))
+          : false;
+        const nextDisapproved = isPracticeDisapproved(
+          String(practice[FIELD_ESTADO_PRACTICA] || "")
+        );
+        if (!current || (currentDisapproved && !nextDisapproved)) {
+          practiceByStudent.set(studentId, practice);
+        }
+      });
+
+      const studentIds = new Set<string>([
+        ...selectedEnrollmentState.keys(),
+        ...practiceByStudent.keys(),
+      ]);
+      if (studentIds.size === 0) return [];
+
+      let students: Record<string, unknown>[];
+      if (isTestingMode) {
+        const mockStudents = (await mockDb.getAll("estudiantes")) as Record<string, unknown>[];
+        students = mockStudents.filter((student) => studentIds.has(String(student.id)));
+      } else {
+        const studentsResult = await fetchAllData(
+          TABLE_NAME_ESTUDIANTES,
+          [FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES],
+          { id: Array.from(studentIds) }
+        );
+        if (studentsResult.error) throw new Error("No se pudieron cargar los estudiantes.");
+        students = studentsResult.records;
+      }
+
+      return students
+        .map((student): PpsRosterStudent => {
+          const studentId = String(student.id);
+          const practice = practiceByStudent.get(studentId);
+          const practiceState = practice
+            ? String(practice[FIELD_ESTADO_PRACTICA] || "Sin estado")
+            : selectedEnrollmentState.get(studentId) || "Seleccionado";
+          const alreadyDisapproved = practice ? isPracticeDisapproved(practiceState) : false;
+
+          return {
+            id: studentId,
+            legajo: String(student[FIELD_LEGAJO_ESTUDIANTES] || "—"),
+            nombre: String(student[FIELD_NOMBRE_ESTUDIANTES] || "Estudiante sin nombre"),
+            practiceState,
+            hours: practice ? Number(practice[FIELD_HORAS_PRACTICAS] || 0) : null,
+            canDisapprove: Boolean(practice) && !alreadyDisapproved,
+            blockedLabel: alreadyDisapproved
+              ? "Ya desaprobada"
+              : practice
+                ? undefined
+                : "Sin práctica",
+          };
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+    },
+    enabled: Boolean(selectedPps),
+  });
+
+  const handleStudentSelect = (student: AirtableRecord<EstudianteFields>) => {
+    if (!student[FIELD_LEGAJO_ESTUDIANTES] || !student[FIELD_NOMBRE_ESTUDIANTES]) {
+      onError("El registro del estudiante está incompleto.");
+      return;
+    }
+    setSelectedSearchStudent({
+      id: student.id,
+      legajo: String(student[FIELD_LEGAJO_ESTUDIANTES]),
+      nombre: String(student[FIELD_NOMBRE_ESTUDIANTES]),
+    });
+  };
+
+  const changeMode = (mode: EntrySearchMode) => {
+    setSearchMode(mode);
+    setSelectedSearchStudent(null);
+    setSelectedPps(null);
+    setPpsSearchTerm("");
+    setDebouncedPpsSearch("");
+    setIsPpsDropdownOpen(false);
+  };
+
+  const clearSelectedPps = () => {
+    setSelectedPps(null);
+    setPpsSearchTerm("");
+    setDebouncedPpsSearch("");
+    setIsPpsDropdownOpen(false);
+    window.requestAnimationFrame(() => ppsInputRef.current?.focus());
+  };
+
+  const showPpsDropdown = isPpsDropdownOpen && !selectedPps && debouncedPpsSearch.length >= 2;
+
+  return (
+    <section className="pen-entry-panel" aria-labelledby="pen-entry-title">
+      <div className="pen-entry-head">
+        <div className="pen-entry-copy">
+          <h2 id="pen-entry-title">Registrar una incidencia</h2>
+          <p>
+            Buscá un alumno o abrí una PPS para trabajar sobre toda su nómina. Desde acá podés
+            registrar una penalización o una desaprobación institucional.
+          </p>
+        </div>
+        <div className="pen-mode-tabs" role="tablist" aria-label="Tipo de búsqueda">
+          <button
+            type="button"
+            role="tab"
+            className="pen-mode-tab"
+            aria-selected={searchMode === "student"}
+            onClick={() => changeMode("student")}
+          >
+            <span className="material-icons" aria-hidden="true">
+              person_search
+            </span>
+            Alumno
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className="pen-mode-tab"
+            aria-selected={searchMode === "pps"}
+            onClick={() => changeMode("pps")}
+          >
+            <span className="material-icons" aria-hidden="true">
+              groups
+            </span>
+            PPS
+          </button>
+        </div>
+      </div>
+
+      <div className="pen-entry-body">
+        {searchMode === "student" ? (
+          <div role="tabpanel">
+            <span className="pen-search-label">Buscar alumno</span>
+            <div className="pen-unified-search">
+              <AdminSearch
+                onStudentSelect={handleStudentSelect}
+                isTestingMode={isTestingMode}
+                placeholder="Nombre o legajo del alumno…"
+              />
+            </div>
+            {!selectedSearchStudent ? (
+              <p className="pen-search-help">
+                Elegí un resultado para ver las acciones disponibles.
+              </p>
+            ) : (
+              <div className="pen-target">
+                <div className="pen-target-id">
+                  <span className="pen-target-icon">
+                    <span className="material-icons" aria-hidden="true">
+                      person
+                    </span>
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="pen-target-name">{selectedSearchStudent.nombre}</div>
+                    <div className="pen-target-meta">Legajo {selectedSearchStudent.legajo}</div>
+                  </div>
+                </div>
+                <div className="pen-target-actions">
+                  <button
+                    type="button"
+                    className="pen-target-action pen-target-action-danger"
+                    onClick={() => onDisapprove(selectedSearchStudent)}
+                  >
+                    <span className="material-icons" aria-hidden="true">
+                      report
+                    </span>
+                    Desaprobar PPS
+                  </button>
+                  <button
+                    type="button"
+                    className="pen-target-action"
+                    onClick={() => onPenalty(selectedSearchStudent)}
+                  >
+                    <span className="material-icons" aria-hidden="true">
+                      gavel
+                    </span>
+                    Otra penalización
+                  </button>
+                  <button
+                    type="button"
+                    className="pen-target-clear"
+                    onClick={() => setSelectedSearchStudent(null)}
+                    aria-label="Quitar alumno seleccionado"
+                  >
+                    <span className="material-icons" aria-hidden="true">
+                      close
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div role="tabpanel">
+            <label className="pen-search-label" htmlFor="pen-pps-search">
+              Buscar PPS
+            </label>
+            <div className="pen-search-wrap" ref={ppsSearchRef}>
+              <div className="pen-pps-search-control">
+                <span className="pen-search-icon">
+                  <span className="material-icons" aria-hidden="true">
+                    search
+                  </span>
+                </span>
+                <input
+                  ref={ppsInputRef}
+                  id="pen-pps-search"
+                  className="pen-search-input"
+                  value={ppsSearchTerm}
+                  onChange={(event) => {
+                    setPpsSearchTerm(event.target.value);
+                    setSelectedPps(null);
+                    setIsPpsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsPpsDropdownOpen(true)}
+                  placeholder="Nombre de la PPS…"
+                  autoComplete="off"
+                />
+                {ppsSearchQuery.isFetching ? <span className="pen-search-spinner" /> : null}
+              </div>
+
+              {showPpsDropdown ? (
+                <div className="pen-search-results">
+                  {ppsSearchQuery.isError ? (
+                    <div className="pen-search-feedback">No se pudo realizar la búsqueda.</div>
+                  ) : ppsSearchQuery.data && ppsSearchQuery.data.length > 0 ? (
+                    <ul>
+                      {ppsSearchQuery.data.map((pps) => (
+                        <li key={pps.id}>
+                          <button
+                            type="button"
+                            className="pen-pps-result"
+                            onClick={() => {
+                              setSelectedPps(pps);
+                              setPpsSearchTerm(pps.name);
+                              setIsPpsDropdownOpen(false);
+                            }}
+                          >
+                            <span className="pen-pps-result-main">
+                              <span className="pen-pps-result-name">{pps.name}</span>
+                              <span className="pen-pps-result-meta">
+                                {formatPpsMeta(pps) || "Sin fecha informada"}
+                              </span>
+                            </span>
+                            <span className="material-icons" aria-hidden="true">
+                              arrow_forward
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : ppsSearchQuery.isFetching ? (
+                    <div className="pen-search-feedback">Buscando PPS…</div>
+                  ) : (
+                    <div className="pen-search-feedback">
+                      No encontramos una PPS con ese nombre.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            {!selectedPps ? (
+              <p className="pen-search-help">
+                Escribí al menos dos caracteres y elegí una PPS para abrir su nómina.
+              </p>
+            ) : (
+              <>
+                <div className="pen-target">
+                  <div className="pen-target-id">
+                    <span className="pen-target-icon">
+                      <span className="material-icons" aria-hidden="true">
+                        clinical_notes
+                      </span>
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="pen-target-name">{selectedPps.name}</div>
+                      <div className="pen-target-meta">
+                        {formatPpsMeta(selectedPps) || "PPS seleccionada"}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="pen-target-clear"
+                    onClick={clearSelectedPps}
+                    aria-label="Cambiar PPS"
+                  >
+                    <span className="material-icons" aria-hidden="true">
+                      close
+                    </span>
+                  </button>
+                </div>
+
+                <div className="pen-roster" aria-live="polite">
+                  <div className="pen-roster-head">
+                    <div>
+                      <h3>Nómina de la PPS</h3>
+                      <p>Podés desaprobar varios alumnos sin volver a buscar la PPS.</p>
+                    </div>
+                    {!rosterQuery.isLoading ? (
+                      <span className="pen-roster-count">
+                        {rosterQuery.data?.length || 0} alumnos
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {rosterQuery.isLoading ? (
+                    <div className="pen-roster-list" aria-label="Cargando nómina">
+                      <div className="pen-roster-skeleton" />
+                      <div className="pen-roster-skeleton" />
+                      <div className="pen-roster-skeleton" />
+                    </div>
+                  ) : rosterQuery.isError ? (
+                    <div className="pen-inline-error">No se pudo cargar la nómina de esta PPS.</div>
+                  ) : rosterQuery.data && rosterQuery.data.length > 0 ? (
+                    <div className="pen-roster-list">
+                      {rosterQuery.data.map((student) => {
+                        const disapproved = isPracticeDisapproved(student.practiceState);
+                        return (
+                          <div className="pen-roster-row" key={student.id}>
+                            <div className="pen-roster-person">
+                              <div className="pen-roster-name">{student.nombre}</div>
+                              <div className="pen-roster-legajo">Legajo {student.legajo}</div>
+                            </div>
+                            <div className="pen-roster-state">
+                              <span
+                                className="pen-status"
+                                data-status={disapproved ? "disapproved" : "current"}
+                              >
+                                {student.practiceState}
+                              </span>
+                            </div>
+                            <div className="pen-roster-hours">
+                              {student.hours === null
+                                ? "Sin práctica"
+                                : `${student.hours} h cargadas`}
+                            </div>
+                            <button
+                              type="button"
+                              className={`pen-target-action ${
+                                student.canDisapprove ? "pen-target-action-danger" : ""
+                              }`}
+                              onClick={() => onDisapprove(student, selectedPps.id)}
+                              disabled={!student.canDisapprove}
+                            >
+                              {student.canDisapprove ? "Desaprobar" : student.blockedLabel}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="pen-roster-empty">
+                      Esta PPS todavía no tiene alumnos seleccionados ni prácticas asociadas.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
 
 // ─── Modal: aplicar penalización ───────────────────────────────────────────────
 
@@ -563,8 +1182,10 @@ interface PenalizationManagerProps {
 
 const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode = false }) => {
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(null);
-  const [selectedDisapprovalStudent, setSelectedDisapprovalStudent] =
-    useState<SelectedStudent | null>(null);
+  const [disapprovalRequest, setDisapprovalRequest] = useState<{
+    student: SelectedStudent;
+    launchId?: string;
+  } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastInfo, setToastInfo] = useState<{ message: string; type: "success" | "error" } | null>(
     null
@@ -686,33 +1307,14 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
     }
   };
 
-  const handleStudentSelect = useCallback((student: AirtableRecord<EstudianteFields>) => {
-    if (!student[FIELD_LEGAJO_ESTUDIANTES] || !student[FIELD_NOMBRE_ESTUDIANTES]) {
-      setToastInfo({ message: "El registro del estudiante está incompleto.", type: "error" });
-      return;
-    }
-    setSelectedStudent({
-      id: student.id,
-      legajo: String(student[FIELD_LEGAJO_ESTUDIANTES]),
-      nombre: String(student[FIELD_NOMBRE_ESTUDIANTES]),
-    });
+  const handlePenaltyRequest = useCallback((student: SelectedStudent) => {
+    setSelectedStudent(student);
     setIsModalOpen(true);
   }, []);
 
-  const handleDisapprovalStudentSelect = useCallback(
-    (student: AirtableRecord<EstudianteFields>) => {
-      if (!student[FIELD_LEGAJO_ESTUDIANTES] || !student[FIELD_NOMBRE_ESTUDIANTES]) {
-        setToastInfo({ message: "El registro del estudiante está incompleto.", type: "error" });
-        return;
-      }
-      setSelectedDisapprovalStudent({
-        id: student.id,
-        legajo: String(student[FIELD_LEGAJO_ESTUDIANTES]),
-        nombre: String(student[FIELD_NOMBRE_ESTUDIANTES]),
-      });
-    },
-    []
-  );
+  const handleDisapprovalRequest = useCallback((student: SelectedStudent, launchId?: string) => {
+    setDisapprovalRequest({ student, launchId });
+  }, []);
 
   const totalPenalties = useMemo(
     () => (penalizedStudents || []).reduce((sum, s) => sum + s.penalties.length, 0),
@@ -741,17 +1343,25 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
         />
       )}
 
-      {selectedDisapprovalStudent ? (
+      {disapprovalRequest ? (
         <DesaprobacionPPSModal
           isOpen
-          student={selectedDisapprovalStudent}
-          onClose={() => setSelectedDisapprovalStudent(null)}
-          onSuccess={() =>
+          student={disapprovalRequest.student}
+          launchId={disapprovalRequest.launchId}
+          onClose={() => setDisapprovalRequest(null)}
+          onSuccess={(result) => {
+            queryClient.invalidateQueries({ queryKey: ["penaltyPpsRoster"] });
             setToastInfo({
-              message: "PPS desaprobada y penalización de 100 puntos registrada.",
-              type: "success",
-            })
-          }
+              message: result.emailSent
+                ? result.emailKind === "informe_institucional"
+                  ? "PPS desaprobada. El informe institucional fue enviado con copia a Agostina."
+                  : "PPS desaprobada. El aviso por inasistencia fue enviado con copia a Agostina."
+                : `La PPS quedó desaprobada, pero el correo no pudo enviarse${
+                    result.emailMessage ? `: ${result.emailMessage}` : "."
+                  }`,
+              type: result.emailSent ? "success" : "error",
+            });
+          }}
         />
       ) : null}
 
@@ -766,33 +1376,12 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
         type="danger"
       />
 
-      {/* Panel de búsqueda / alta */}
-      <div className="pen-search-panel pen-disapproval-panel">
-        <span className="eyebrow">Decisión institucional</span>
-        <h2 className="serif">PPS desaprobadas</h2>
-        <p>
-          Registrá una evaluación desfavorable informada por la institución. La PPS permanece en el
-          historial, deja de computar horas y rotaciones y genera 100 puntos de penalización.
-        </p>
-        <div className="pen-search-box">
-          <AdminSearch
-            onStudentSelect={handleDisapprovalStudentSelect}
-            isTestingMode={isTestingMode}
-          />
-        </div>
-      </div>
-
-      <div className="pen-search-panel">
-        <span className="eyebrow">Aplicar sanción</span>
-        <h2 className="serif">Penalizaciones</h2>
-        <p>
-          Buscá un alumno para registrar un incumplimiento. Según el tipo, se da de baja
-          automáticamente su lugar en la PPS afectada.
-        </p>
-        <div className="pen-search-box">
-          <AdminSearch onStudentSelect={handleStudentSelect} isTestingMode={isTestingMode} />
-        </div>
-      </div>
+      <PenaltyEntryPanel
+        isTestingMode={isTestingMode}
+        onPenalty={handlePenaltyRequest}
+        onDisapprove={handleDisapprovalRequest}
+        onError={(message) => setToastInfo({ message, type: "error" })}
+      />
 
       {/* Listado */}
       <div className="pen-list-head">

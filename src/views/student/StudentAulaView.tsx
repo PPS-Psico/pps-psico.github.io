@@ -437,6 +437,22 @@ const faqGroups: FaqGroup[] = [
     subtitle: "Postulación, cupos y consentimiento.",
     items: [
       {
+        q: "¿Cuáles son las fechas y horarios de las mesas de examen reprogramadas?",
+        a: (
+          <>
+            Las fechas de las mesas de examen fueron reprogramadas de la siguiente manera:
+            <ul>
+              <li>
+                <strong>1° Llamado:</strong> Próximo lunes (27/07) manteniendo el mismo horario.
+              </li>
+              <li>
+                <strong>2° Llamado:</strong> Lunes 03/08, reprogramado a las 12:30 hs.
+              </li>
+            </ul>
+          </>
+        ),
+      },
+      {
         q: "¿Cuál es la frecuencia de lanzamiento de convocatorias?",
         a: "Se lanzan de forma periódica a lo largo del año. Conviene revisar Mi Panel, el aula virtual y el grupo de WhatsApp de novedades.",
       },
@@ -519,15 +535,15 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Qué significa que una PPS figure como desaprobada por la institución?",
+        q: "¿Qué significa que una PPS figure como desaprobada?",
         a: (
           <>
-            Es una decisión excepcional comunicada por la institución cuando no se alcanza el{" "}
-            <strong>80% de asistencia</strong> o cuando la evaluación del compromiso, la
-            participación o el posicionamiento profesional es desfavorable. La PPS permanece en tu
-            historial para que el antecedente sea transparente, pero aporta <strong>0 horas</strong>
-            , no suma rotaciones y tenés que realizar otra práctica. Coordinación te notifica el
-            fundamento por correo.
+            Si el reporte de asistencia de la institución muestra que no alcanzaste el{" "}
+            <strong>80% requerido</strong>, la Facultad registra la PPS como desaprobada. Cuando el
+            motivo es la participación, el compromiso o el posicionamiento profesional, la decisión
+            puede ser comunicada por la institución mediante un informe. En ambos casos, la PPS
+            permanece en tu historial, aporta <strong>0 horas</strong>, no suma rotaciones y tenés
+            que realizar otra práctica. Coordinación notifica el resultado por correo institucional.
           </>
         ),
       },
