@@ -262,10 +262,12 @@ const PracticaRow: React.FC<{
           <span className="prow__area font-semibold text-xs" style={{ color }}>
             {areaText}
           </span>
-          <span className="prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider text-slate-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 inline-block" />
-            {disapproved ? "Desaprobada por la institución" : status}
-          </span>
+          {!disapproved && (
+            <span className="prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 inline-block" />
+              {status}
+            </span>
+          )}
         </div>
 
         <h3 className="prow__name text-slate-900 dark:text-white text-base md:text-lg font-display font-semibold leading-tight break-words">

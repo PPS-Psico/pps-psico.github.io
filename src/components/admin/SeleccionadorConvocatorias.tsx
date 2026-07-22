@@ -611,9 +611,7 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
                                       : "lv4-badge-muted"
                               }`}
                             >
-                              {desaprobada
-                                ? "Desaprobada por la institución"
-                                : practica.estado || "N/A"}
+                              {desaprobada ? "Desaprobada" : practica.estado || "N/A"}
                             </span>
                           </td>
                           <td className="center">

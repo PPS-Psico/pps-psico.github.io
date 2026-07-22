@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { Practica } from "../types";
 import { cleanDbValue } from "../utils/formatters";
 import { logger } from "../utils/logger";
+import { isPracticeDisapproved } from "../logic/studentRules";
 
 export const fetchPracticas = async (
   studentId: string,
@@ -88,6 +89,18 @@ export const fetchPracticas = async (
 };
 
 export const deletePractica = async (practicaId: string) => {
+  const { data: practica, error: lookupError } = await supabase
+    .from("practicas")
+    .select(C.FIELD_ESTADO_PRACTICA)
+    .eq("id", practicaId)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+  if (!practica) throw new Error("No se encontró la PPS que intentás eliminar.");
+  if (isPracticeDisapproved(practica[C.FIELD_ESTADO_PRACTICA])) {
+    throw new Error("Una PPS desaprobada no se puede eliminar.");
+  }
+
   const { error } = await supabase.from("practicas").delete().eq("id", practicaId);
 
   if (error) throw error;

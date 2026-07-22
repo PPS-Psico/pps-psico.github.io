@@ -10,8 +10,10 @@ import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
   FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
 } from "../../constants";
 import { cleanDbValue } from "../../utils/formatters";
+import { isPracticeDisapproved } from "../../logic/studentRules";
 
 interface SolicitudModificacionModalProps {
   isOpen: boolean;
@@ -65,6 +67,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
     cleanDbValue(practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || "Institución";
   const horasActuales = practica[FIELD_HORAS_PRACTICAS] || 0;
   const orientacion = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
+  const isDisapproved = isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,6 +176,11 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
   const handleDeletePractica = async () => {
     if (!practica) return;
+    if (isDisapproved) {
+      showToast("Una PPS desaprobada no se puede eliminar.", "error");
+      setShowDeleteConfirm(false);
+      return;
+    }
 
     setIsDeleting(true);
     try {
@@ -225,22 +233,24 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
           </div>
         </button>
 
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-left transition hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/10"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-              <span className="material-icons text-rose-600 dark:text-rose-400">delete</span>
+        {!isDisapproved && (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-left transition hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/10"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                <span className="material-icons text-rose-600 dark:text-rose-400">delete</span>
+              </div>
+              <div>
+                <p className="font-bold text-slate-900 dark:text-white">Eliminar PPS</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Borrar este registro permanentemente
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-slate-900 dark:text-white">Eliminar PPS</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Borrar este registro permanentemente
-              </p>
-            </div>
-          </div>
-        </button>
+          </button>
+        )}
       </div>
 
       <div className="flex gap-3 pt-2">
@@ -392,7 +402,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
       {/* Modal de confirmación para eliminar */}
       <AnimatePresence>
-        {showDeleteConfirm && (
+        {showDeleteConfirm && !isDisapproved && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

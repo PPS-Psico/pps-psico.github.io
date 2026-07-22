@@ -9,11 +9,12 @@ import {
 import { useModal } from "../contexts/ModalContext";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import { fetchPracticas } from "../services";
+import { deletePractica as deletePracticaRecord, fetchPracticas } from "../services";
 import { mockDb } from "../services/mockDb";
 import type { Practica } from "../types";
 import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
 import { logger } from "../utils/logger";
+import { isPracticeDisapproved } from "../logic/studentRules";
 
 export const useStudentPracticas = (legajo: string, studentId: string | null) => {
   const queryClient = useQueryClient();
@@ -202,10 +203,15 @@ export const useStudentPracticas = (legajo: string, studentId: string | null) =>
 
   const deletePractica = useMutation({
     mutationFn: async (practicaId: string) => {
+      const practica = practicas.find((item) => item.id === practicaId);
+      if (practica && isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA])) {
+        throw new Error("Una PPS desaprobada no se puede eliminar.");
+      }
+
       if (legajo === "99999") {
         return mockDb.delete("practicas", practicaId);
       }
-      return db.practicas.delete(practicaId);
+      return deletePracticaRecord(practicaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["practicas", legajo] });

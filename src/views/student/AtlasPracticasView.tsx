@@ -9,8 +9,6 @@ import {
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
-  FIELD_DESAPROBACION_MOTIVO_PUBLICO_PRACTICAS,
-  FIELD_DESAPROBACION_FECHA_PRACTICAS,
 } from "../../constants";
 import type { CriteriosCalculados, InformeTask, Orientacion, Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
@@ -366,25 +364,12 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                       const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
                       const desaprobada = isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA]);
                       return (
-                        <tr key={p.id} className={desaprobada ? "ah-practice-disapproved" : ""}>
+                        <tr key={p.id}>
                           <td className="name">
                             <span>
                               {cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
                                 "Institución"}
                             </span>
-                            {desaprobada ? (
-                              <span
-                                className="ah-disapproval-badge"
-                                title={p[FIELD_DESAPROBACION_MOTIVO_PUBLICO_PRACTICAS] || undefined}
-                              >
-                                Desaprobada por la institución
-                              </span>
-                            ) : null}
-                            {desaprobada && p[FIELD_DESAPROBACION_FECHA_PRACTICAS] ? (
-                              <span className="ah-disapproval-date">
-                                Resolución: {formatDate(p[FIELD_DESAPROBACION_FECHA_PRACTICAS])}
-                              </span>
-                            ) : null}
                           </td>
                           <td className="area">
                             <span

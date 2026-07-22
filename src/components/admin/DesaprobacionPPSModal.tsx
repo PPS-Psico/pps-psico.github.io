@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FIELD_CORREO_ESTUDIANTES, TABLE_ESTUDIANTES } from "../../constants/dbConstants";
 import { supabase } from "../../lib/supabaseClient";
 import { invalidateLaunchData } from "../../lib/launchQueryKeys";
+import { DISAPPROVAL_CC, sendSmartEmail } from "../../utils/emailService";
 import { cleanDbValue, formatDate } from "../../utils/formatters";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import "../../views/admin/lanzador/lanzadorStyles";
 
 interface StudentRef {
   id: string;
@@ -16,8 +20,26 @@ interface DesaprobacionPPSModalProps {
   student: StudentRef;
   launchId?: string | null;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (result: DisapprovalResult) => void;
 }
+
+export interface DisapprovalResult {
+  emailSent: boolean;
+  emailMessage?: string;
+  emailKind: "automatico_inasistencia" | "informe_institucional";
+}
+
+const ATTENDANCE_REASON =
+  "No se alcanzó el mínimo del 80% de asistencia requerido para la aprobación de la práctica.";
+
+const PARTICIPATION_REPORT =
+  "La institución informó dificultades sostenidas en la participación, el compromiso con las actividades propuestas y el cumplimiento del encuadre profesional esperado. De acuerdo con el informe recibido, estos aspectos no alcanzaron los criterios requeridos para la aprobación de la práctica.";
+
+const getLaunchName = (launch: unknown): string => {
+  const normalized = Array.isArray(launch) ? launch[0] : launch;
+  if (!normalized || typeof normalized !== "object") return "";
+  return cleanDbValue((normalized as { nombre_pps?: unknown }).nombre_pps);
+};
 
 const localDateTimeValue = () => {
   const now = new Date();
@@ -48,7 +70,7 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
       const { data, error } = await supabase
         .from("practicas")
         .select(
-          "id, lanzamiento_id, nombre_institucion, fecha_inicio, fecha_finalizacion, estado, horas_realizadas"
+          "id, lanzamiento_id, nombre_institucion, fecha_inicio, fecha_finalizacion, estado, horas_realizadas, lanzamiento:lanzamientos_pps!fk_practica_lanzamiento(nombre_pps)"
         )
         .eq("estudiante_id", student.id)
         .eq("tipo_actividad", "pps")
@@ -75,6 +97,8 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
       setParticipationCause(false);
       setPublicReason("");
       setReportReference("");
+      setFailureDate(localDateTimeValue().slice(0, 10));
+      setNotifiedAt(localDateTimeValue());
       setFormError(null);
     }
   }, [isOpen]);
@@ -85,19 +109,37 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
   );
 
   const mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<DisapprovalResult> => {
       const causes = [
         attendanceCause ? "inasistencia_responsabilidad" : null,
         participationCause ? "falta_participacion_actitud" : null,
       ].filter((cause): cause is string => Boolean(cause));
 
-      if (!practiceId || causes.length === 0 || !publicReason.trim() || !reportReference.trim()) {
-        throw new Error("Completá la PPS, al menos una causa, el motivo comunicado y el informe.");
+      if (!practiceId || causes.length === 0 || !publicReason.trim()) {
+        throw new Error("Completá la PPS, al menos una causa y el motivo comunicado.");
+      }
+
+      if (!selectedPractice) {
+        throw new Error("No se pudo identificar la PPS seleccionada.");
       }
 
       const parsedNotification = new Date(notifiedAt);
       if (Number.isNaN(parsedNotification.getTime())) {
         throw new Error("La fecha de notificación no es válida.");
+      }
+
+      const { data: studentRecord, error: studentError } = await supabase
+        .from(TABLE_ESTUDIANTES)
+        .select(FIELD_CORREO_ESTUDIANTES)
+        .eq("id", student.id)
+        .maybeSingle();
+
+      if (studentError) throw studentError;
+      const studentEmail = studentRecord?.[FIELD_CORREO_ESTUDIANTES]?.trim();
+      if (!studentEmail) {
+        throw new Error(
+          "El estudiante no tiene un correo registrado. La desaprobación no se guardó para evitar dejarlo sin notificación."
+        );
       }
 
       const { error } = await supabase.rpc("registrar_desaprobacion_pps", {
@@ -109,23 +151,75 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
         p_notificado_at: parsedNotification.toISOString(),
       });
       if (error) throw error;
+
+      const ppsName =
+        getLaunchName(selectedPractice.lanzamiento) ||
+        cleanDbValue(selectedPractice.nombre_institucion) ||
+        "Práctica Profesional Supervisada";
+      const institution =
+        cleanDbValue(selectedPractice.nombre_institucion) || ppsName || "la institución";
+      const emailKind = participationCause ? "informe_institucional" : "automatico_inasistencia";
+      const emailResult = await sendSmartEmail(
+        participationCause ? "desaprobacion_institucion" : "desaprobacion_inasistencia",
+        {
+          studentName: student.nombre,
+          studentEmail,
+          ppsName,
+          institution,
+          publicReason: publicReason.trim(),
+          cc: DISAPPROVAL_CC,
+        }
+      );
+
+      return {
+        emailSent: emailResult.success,
+        emailMessage: emailResult.message,
+        emailKind,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["allPenalizedStudents"] });
       queryClient.invalidateQueries({ queryKey: ["practicesForDisapproval", student.id] });
       invalidateLaunchData(queryClient);
-      onSuccess();
+      onSuccess(result);
       onClose();
     },
     onError: (error) =>
       setFormError(getErrorMessage(error, "No se pudo registrar la desaprobación")),
   });
 
-  if (!isOpen) return null;
+  const handleAttendanceCauseChange = (checked: boolean) => {
+    setAttendanceCause(checked);
+    if (
+      checked &&
+      !participationCause &&
+      (!publicReason.trim() || publicReason === PARTICIPATION_REPORT)
+    ) {
+      setPublicReason(ATTENDANCE_REASON);
+    } else if (!checked && !participationCause && publicReason === ATTENDANCE_REASON) {
+      setPublicReason("");
+    }
+  };
 
-  return (
-    <div className="lv4-modal-overlay" onClick={onClose}>
-      <div className="lv4-modal-shell" onClick={(event) => event.stopPropagation()}>
+  const handleParticipationCauseChange = (checked: boolean) => {
+    setParticipationCause(checked);
+    if (checked && (!publicReason.trim() || publicReason === ATTENDANCE_REASON)) {
+      setPublicReason(PARTICIPATION_REPORT);
+    } else if (!checked && attendanceCause && publicReason === PARTICIPATION_REPORT) {
+      setPublicReason(ATTENDANCE_REASON);
+    } else if (!checked && !attendanceCause && publicReason === PARTICIPATION_REPORT) {
+      setPublicReason("");
+    }
+  };
+
+  if (!isOpen || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="lv4 lv4-modal-overlay" onClick={onClose}>
+      <div
+        className={`lv4-modal-shell${participationCause ? " wide" : ""}`}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="lv4-modal-head">
           <span className="lv4-modal-head-glow-a" />
           <span className="lv4-modal-head-glow-b" />
@@ -201,7 +295,7 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
             </div>
             <div className="lv4-form-row">
               <label className="lv4-form-label" htmlFor="disapproval-notified-at">
-                Estudiante notificado
+                Fecha y hora de notificación
               </label>
               <input
                 id="disapproval-notified-at"
@@ -219,18 +313,18 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
               <input
                 type="checkbox"
                 checked={attendanceCause}
-                onChange={(event) => setAttendanceCause(event.target.checked)}
+                onChange={(event) => handleAttendanceCauseChange(event.target.checked)}
               />
               <span>
-                <strong>Asistencia y responsabilidad</strong>
-                <small>Menos del 80%, faltas sin aviso o incumplimiento de horarios.</small>
+                <strong>Inasistencia (menos del 80%)</strong>
+                <small>La Facultad desaprueba a partir del reporte de asistencia recibido.</small>
               </span>
             </label>
             <label className="lv4-check-row">
               <input
                 type="checkbox"
                 checked={participationCause}
-                onChange={(event) => setParticipationCause(event.target.checked)}
+                onChange={(event) => handleParticipationCauseChange(event.target.checked)}
               />
               <span>
                 <strong>Participación y actitud profesional</strong>
@@ -239,32 +333,72 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
             </label>
           </fieldset>
 
+          {attendanceCause || participationCause ? (
+            <div
+              className={`lv4-disapproval-mail ${
+                participationCause ? "is-institutional" : "is-automatic"
+              }`}
+            >
+              <span className="material-icons">
+                {participationCause ? "edit_note" : "mark_email_read"}
+              </span>
+              <div>
+                <strong>
+                  {participationCause
+                    ? "Informe institucional editable"
+                    : "Correo automático por inasistencia"}
+                </strong>
+                <span>
+                  {participationCause
+                    ? "La síntesis que edites abajo se incorporará al correo institucional."
+                    : "Se enviará el aviso aprobado por no alcanzar el 80% de asistencia."}
+                </span>
+                <small>
+                  Con copia visible a Agostina Reale Berrueta ·
+                  agostina.reale@uflouniversidad.edu.ar
+                </small>
+              </div>
+            </div>
+          ) : null}
+
           <div className="lv4-form-row">
             <label className="lv4-form-label" htmlFor="disapproval-public-reason">
-              Motivo comunicado al estudiante
+              {participationCause
+                ? "Informe institucional para el estudiante"
+                : "Motivo registrado"}
             </label>
             <textarea
               id="disapproval-public-reason"
-              className="lv4-textarea"
+              className={`lv4-textarea${participationCause ? " lv4-report-editor" : ""}`}
               value={publicReason}
               onChange={(event) => setPublicReason(event.target.value)}
-              placeholder="Síntesis clara y no sensible del fundamento institucional…"
+              placeholder={
+                participationCause
+                  ? "Editá la síntesis del informe que recibirá el estudiante…"
+                  : "Seleccioná una causa para cargar el motivo…"
+              }
             />
+            <div className="lv4-form-help">
+              {participationCause
+                ? "Este texto se enviará al estudiante dentro del formato institucional. Revisalo antes de confirmar."
+                : "Este motivo queda en el registro. El correo de inasistencia utiliza el texto institucional fijo."}
+            </div>
           </div>
 
           <div className="lv4-form-row">
             <label className="lv4-form-label" htmlFor="disapproval-report-ref">
-              Referencia interna al informe
+              Referencia interna (opcional)
             </label>
             <input
               id="disapproval-report-ref"
               className="lv4-input"
               value={reportReference}
               onChange={(event) => setReportReference(event.target.value)}
-              placeholder="Enlace de Gmail, documento o acta…"
+              placeholder="Enlace al correo, reporte de asistencia, Drive o acta…"
             />
             <div className="lv4-form-help">
-              Esta referencia queda sólo en la bitácora administrativa; el estudiante no la ve.
+              Si tenés un documento de respaldo, podés guardar el enlace acá. Queda sólo en la
+              bitácora administrativa, no se adjunta al correo y el estudiante no lo ve.
             </div>
           </div>
 
@@ -290,11 +424,18 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
             }}
             disabled={mutation.isPending || !practiceId}
           >
-            {mutation.isPending ? "Registrando…" : "Confirmar desaprobación"}
+            {mutation.isPending
+              ? "Registrando y enviando…"
+              : participationCause
+                ? "Desaprobar y enviar informe"
+                : attendanceCause
+                  ? "Desaprobar y enviar aviso"
+                  : "Confirmar desaprobación"}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

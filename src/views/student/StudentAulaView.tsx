@@ -638,9 +638,10 @@ const faqGroups: FaqGroup[] = [
             <strong>En curso</strong> identifica una PPS que todavía se está realizando;{" "}
             <strong>Finalizada</strong> indica que terminó y, en la práctica habitual, luego se
             completa la corrección del informe. No usamos un estado separado “Aprobada”.{" "}
-            <strong>Desaprobada por la institución</strong> es la excepción: queda visible, pero no
-            computa horas ni rotaciones. Mi Panel sirve para el seguimiento; la carga oficial en SAC
-            se realiza al completar todos los requisitos del ciclo, no PPS por PPS.
+            <strong>Desaprobada</strong> es la excepción: la PPS queda visible, pero no computa
+            horas ni rotaciones y no puede eliminarse del historial. Mi Panel sirve para el
+            seguimiento; la carga oficial en SAC se realiza al completar todos los requisitos del
+            ciclo, no PPS por PPS.
           </>
         ),
       },

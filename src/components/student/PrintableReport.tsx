@@ -110,9 +110,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({
                       {formatDate(practica[FIELD_FECHA_FIN_PRACTICAS])}
                     </td>
                     <td className="p-2 border border-gray-300">
-                      {disapproved
-                        ? "Desaprobada por la institución"
-                        : practica[FIELD_ESTADO_PRACTICA] || "N/A"}
+                      {disapproved ? "Desaprobada" : practica[FIELD_ESTADO_PRACTICA] || "N/A"}
                     </td>
                     <td className="p-2 border border-gray-300 text-right font-semibold">
                       {disapproved ? "0 (no computan)" : practica[FIELD_HORAS_PRACTICAS] || 0}

@@ -5,7 +5,7 @@ import React from "react";
 import { ModalProvider } from "../../contexts/ModalContext";
 import { useStudentPracticas } from "../../hooks/useStudentPracticas";
 import { mockDb } from "../../services/mockDb";
-import { FIELD_NOTA_PRACTICAS } from "../../constants";
+import { FIELD_ESTADO_PRACTICA, FIELD_NOTA_PRACTICAS } from "../../constants";
 
 /**
  * Integración del panel de estudiante visto por un administrador.
@@ -88,5 +88,24 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
       const practica = result.current.practicas.find((p: any) => p.id === "prac_1");
       expect(practica?.[FIELD_NOTA_PRACTICAS]).toBe("8");
     });
+  });
+
+  it("impide eliminar una PPS desaprobada", async () => {
+    const storedPractice = mockDb.data.practicas.find((p) => p.id === "prac_1")!;
+    storedPractice[FIELD_ESTADO_PRACTICA] = "Desaprobada";
+
+    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO, null), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.practicas.length).toBeGreaterThan(0));
+
+    await act(async () => {
+      await expect(result.current.deletePractica.mutateAsync("prac_1")).rejects.toThrow(
+        "Una PPS desaprobada no se puede eliminar."
+      );
+    });
+
+    expect(mockDb.data.practicas.some((p) => p.id === "prac_1")).toBe(true);
   });
 });
