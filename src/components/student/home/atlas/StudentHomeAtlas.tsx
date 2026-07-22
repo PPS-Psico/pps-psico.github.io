@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import "./atlasHome.css";
-import MesasAvisoBanner from "../MesasAvisoBanner";
 import type {
   Convocatoria,
   CriteriosCalculados,
@@ -262,9 +261,6 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   return (
     <div className="ah-root ah-unified">
       <section className="ah-main ah-main--home" aria-labelledby="student-home-title">
-        {/* Banner reprogramación de mesas */}
-        <MesasAvisoBanner />
-
         {/* Hero: saludo + próximo paso */}
         <div className="ah-hero">
           <div>

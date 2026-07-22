@@ -3,9 +3,7 @@ import { db } from "../../lib/db";
 import { FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES } from "../../constants";
 import type { EstudianteFields, AirtableRecord } from "../../types";
 
-const MOCK_STUDENTS_FOR_SEARCH: Array<
-  Record<string, unknown> & { id: string; createdTime: string }
-> = [
+const MOCK_STUDENTS_FOR_SEARCH: any[] = [
   {
     id: "recTest1",
     createdTime: "",
@@ -30,14 +28,12 @@ interface AdminSearchProps {
   onStudentSelect: (student: AirtableRecord<EstudianteFields>) => void;
   onSearchChange?: (term: string) => Promise<void>;
   isTestingMode?: boolean;
-  placeholder?: string;
 }
 
 const AdminSearch: React.FC<AdminSearchProps> = ({
   onStudentSelect,
   onSearchChange,
   isTestingMode = false,
-  placeholder,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<AirtableRecord<EstudianteFields>[]>([]);
@@ -126,9 +122,9 @@ const AdminSearch: React.FC<AdminSearchProps> = ({
 
   const showDropdown = isDropdownOpen && searchTerm.length > 0 && !onSearchChange;
 
-  const placeholderText =
-    placeholder ||
-    (isTestingMode ? "Buscar (ej: Tester Alfa, T0001)" : "Buscar por Legajo o Nombre...");
+  const placeholderText = isTestingMode
+    ? "Buscar (ej: Tester Alfa, T0001)"
+    : "Buscar por Legajo o Nombre...";
 
   return (
     <div
@@ -146,7 +142,6 @@ const AdminSearch: React.FC<AdminSearchProps> = ({
           onChange={handleInputChange}
           onFocus={() => setIsDropdownOpen(true)}
           placeholder={placeholderText}
-          aria-label={placeholderText}
           className="w-full h-full pl-10 pr-4 text-sm font-medium bg-transparent border-none outline-none text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0"
           autoComplete="off"
         />

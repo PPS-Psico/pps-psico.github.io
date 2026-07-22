@@ -8,11 +8,7 @@ type EmailScenario =
   | "solicitud"
   | "sac"
   | "recordatorio_consentimiento"
-  | "contacto_institucion"
-  | "desaprobacion_inasistencia"
-  | "desaprobacion_institucion";
-
-export const DISAPPROVAL_CC = "Agostina Reale Berrueta <agostina.reale@uflouniversidad.edu.ar>";
+  | "contacto_institucion";
 
 const DEFAULT_TEMPLATES: Record<EmailScenario, { subject: string; body: string }> = {
   seleccion: {
@@ -82,43 +78,6 @@ Blas Ricera
 Coordinador de PPS - UFLO Psicología
 Contacto: 2213503808`,
   },
-  desaprobacion_inasistencia: {
-    subject: "Notificación sobre el resultado de tu PPS – {{nombre_pps}}",
-    body: `Hola {{nombre_alumno}},
-
-La institución {{institucion}} nos comunicó el detalle de tu asistencia correspondiente a la Práctica Profesional Supervisada **{{nombre_pps}}**.
-
-A partir de esa información, verificamos que no alcanzaste el mínimo del **80% de asistencia requerido para la aprobación de la práctica**. Por este motivo, la Facultad resolvió registrar la PPS como **desaprobada**.
-
-Queremos remarcar que la inscripción y aceptación de una vacante implican un compromiso de asistencia y responsabilidad con la institución que dispone el espacio de formación. El cumplimiento de ese compromiso forma parte de los antecedentes que se consideran en futuras convocatorias de PPS.
-
-Saludos,
-
-Blas
-Coordinador de Prácticas Profesionales Supervisadas
-Licenciatura en Psicología
-UFLO`,
-  },
-  desaprobacion_institucion: {
-    subject: "Notificación institucional sobre tu PPS – {{nombre_pps}}",
-    body: `Hola {{nombre_alumno}},
-
-La institución {{institucion}} comunicó a la Facultad su decisión de desaprobar tu participación en la Práctica Profesional Supervisada **{{nombre_pps}}** y remitió el informe correspondiente.
-
-**Fundamento del informe institucional**
-{{motivo_publico}}
-
-En función de esa evaluación, la PPS queda registrada como **desaprobada**.
-
-La inscripción y aceptación de una vacante implican un compromiso de participación responsable con la institución y con el espacio de formación. El cumplimiento de ese compromiso forma parte de los antecedentes que se consideran en futuras convocatorias de PPS.
-
-Saludos,
-
-Blas
-Coordinador de Prácticas Profesionales Supervisadas
-Licenciatura en Psicología
-UFLO`,
-  },
 };
 
 interface EmailData {
@@ -139,8 +98,6 @@ interface EmailData {
   institutionEmail?: string;
   customSubject?: string;
   customBody?: string;
-  publicReason?: string;
-  cc?: string | string[];
 }
 
 export interface EmailDraft {
@@ -359,10 +316,7 @@ export const sendSmartEmail = async (
       .maybeSingle();
 
     if (dbError) throw new Error("Error al consultar plantillas: " + dbError.message);
-    const isDisapproval =
-      scenario === "desaprobacion_inasistencia" || scenario === "desaprobacion_institucion";
-
-    if (template && template.is_active === false && !isDisapproval) {
+    if (template && template.is_active === false) {
       return { success: true, message: "Automatización desactivada" };
     }
 
@@ -427,7 +381,6 @@ export const sendSmartEmail = async (
       .replace(/{{nombre_institucion}}/g, data.institution || "")
       .replace(/{{estado_nuevo}}/g, data.newState || "")
       .replace(/{{notas}}/g, data.notes || "")
-      .replace(/{{motivo_publico}}/g, data.publicReason || "")
       .replace(/{{encuentro_inicial}}/g, encuentroText);
 
     const firstName =
@@ -446,7 +399,6 @@ export const sendSmartEmail = async (
         text: cleanTextBody,
         html: htmlBody,
         name: data.studentName,
-        cc: data.cc,
       },
     });
 

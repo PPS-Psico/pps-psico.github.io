@@ -605,7 +605,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 
 /* ── Modal shell ─────────────────────────────────────────────────────────── */
 .lv4-modal-overlay {
-  position: fixed; inset: 0; z-index: 200;
+  position: fixed; inset: 0; z-index: 50;
   display: flex; align-items: center; justify-content: center;
   background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); padding: 16px;
 }
@@ -965,25 +965,6 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-disapproval-impact > .material-icons { color: var(--warn); font-size: 19px; }
 .lv4-disapproval-impact strong { display: block; color: var(--ink); font-size: 12.5px; }
 .lv4-disapproval-impact span { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.45; }
-.lv4-disapproval-mail {
-  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; margin-bottom: 16px;
-  border: 1px solid var(--rule-2); border-radius: 10px; background: var(--paper-2); color: var(--ink-2);
-}
-.lv4-disapproval-mail > .material-icons { flex-shrink: 0; font-size: 19px; margin-top: 1px; }
-.lv4-disapproval-mail strong { display: block; color: var(--ink); font-size: 12.5px; }
-.lv4-disapproval-mail span { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.45; }
-.lv4-disapproval-mail small {
-  display: block; margin-top: 6px; color: var(--ink-3); font-size: 10.5px; line-height: 1.4;
-}
-.lv4-disapproval-mail.is-automatic {
-  border-color: color-mix(in oklab, var(--ok) 32%, var(--rule-2)); background: var(--ok-s);
-}
-.lv4-disapproval-mail.is-automatic > .material-icons { color: var(--ok); }
-.lv4-disapproval-mail.is-institutional {
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--rule-2)); background: var(--accent-s);
-}
-.lv4-disapproval-mail.is-institutional > .material-icons { color: var(--accent); }
-.lv4-report-editor { min-height: 132px; }
 .lv4-disapproved-roster {
   margin-top: 16px; padding: 14px; border: 1px solid color-mix(in oklab, var(--warn) 32%, var(--rule-2));
   border-radius: 12px; background: var(--warn-s);
