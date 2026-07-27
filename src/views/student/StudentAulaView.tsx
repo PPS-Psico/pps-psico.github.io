@@ -519,21 +519,36 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Qué significa que una PPS figure como desaprobada por la institución?",
+        q: "¿Alcanza con cumplir el 80% de asistencia para aprobar una PPS?",
         a: (
           <>
-            Es una decisión excepcional comunicada por la institución cuando no se alcanza el{" "}
-            <strong>80% de asistencia</strong> o cuando la evaluación del compromiso, la
-            participación o el posicionamiento profesional es desfavorable. La PPS permanece en tu
-            historial para que el antecedente sea transparente, pero aporta <strong>0 horas</strong>
-            , no suma rotaciones y tenés que realizar otra práctica. Coordinación te notifica el
-            fundamento por correo.
+            No. El <strong>80% es el mínimo de asistencia exigido por la Facultad</strong>, pero no
+            reemplaza las condiciones establecidas por la institución. Para aprobar también
+            necesitás una evaluación favorable de tu desempeño, responsabilidad y cumplimiento del
+            recorrido. La institución puede solicitar que recuperes ausencias, feriados u horas no
+            realizadas. Alcanzar el 80% no te autoriza a dejar incompletas actividades u horas que
+            la institución considere obligatorias.
+          </>
+        ),
+      },
+      {
+        q: "¿Por qué puede desaprobarse una PPS?",
+        a: (
+          <>
+            Puede desaprobarse por <strong>decisión de la Facultad</strong> cuando la documentación
+            disponible acredita menos del 80% de asistencia, aunque la institución haya evaluado
+            favorablemente al estudiante. También puede desaprobarse por{" "}
+            <strong>evaluación de la institución</strong> ante un desempeño desfavorable,
+            incumplimientos, ausencias sin aviso, falta de responsabilidad, una actitud inadecuada u
+            otras dificultades profesionales. En ambos casos, la PPS aporta <strong>0 horas</strong>
+            , no suma como rotación aprobada y debe realizarse una nueva práctica. Coordinación
+            comunica el fundamento por correo.
           </>
         ),
       },
       {
         q: "¿Qué pasa si no completo las horas exactas por feriados o paros?",
-        a: "Pueden recuperarse extendiendo el período de la PPS si la institución lo autoriza. Si no se recuperan y la práctica termina en fecha, se acreditan las horas tipificadas en la convocatoria, sin importar si las reales fueron menores o mayores.",
+        a: "La institución puede solicitar que recuperes esas horas y extiendas el período de la PPS. Si lo solicita, debés cumplir esa indicación: el mínimo de 80% de asistencia de la Facultad no reemplaza las condiciones que la institución establece para aprobar el recorrido.",
       },
       {
         q: "¿Qué sucede si decido continuar más tiempo en mi PPS?",
@@ -1165,8 +1180,8 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                       80<span>%</span>
                     </strong>
                     <p>
-                      de asistencia mínima requerida. Por debajo de este umbral, la práctica no se
-                      acredita.
+                      es el piso mínimo de la Facultad. No reemplaza las condiciones ni las horas
+                      que establezca la institución.
                     </p>
                   </div>
                   <blockquote>
@@ -1187,9 +1202,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                   ))}
                 </div>
                 <p className="ah-aula__editorial-commitment-note">
-                  La evaluación no se limita a sumar horas. La institución informa el desempeño
-                  técnico y actitudinal, y coordinación audita el cumplimiento ético. La PPS puede
-                  suspenderse en cualquier momento si no se respeta el encuadre.
+                  Para aprobar necesitás la evaluación favorable de la institución y cumplir el
+                  mínimo de asistencia de la Facultad. Cualquiera de las dos instancias puede
+                  desaprobar la PPS si no se respetan sus condiciones.
                 </p>
               </article>
             </div>
