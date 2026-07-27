@@ -548,7 +548,7 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué pasa si no completo las horas exactas por feriados o paros?",
-        a: "La institución puede solicitar que recuperes esas horas y extiendas el período de la PPS. Si lo solicita, debés cumplir esa indicación: el mínimo de 80% de asistencia de la Facultad no reemplaza las condiciones que la institución establece para aprobar el recorrido.",
+        a: "La institución puede solicitar que recuperes esas horas y extiendas el período de la PPS. Si lo solicita, debés cumplir esa indicación para obtener su aprobación. Cuando la institución da por aprobado y finalizado el recorrido, se acredita el total de horas establecido en la convocatoria, aunque las horas efectivamente realizadas hayan sido menores. El mínimo de 80% de asistencia de la Facultad no reemplaza las condiciones que la institución establece para aprobar la práctica.",
       },
       {
         q: "¿Qué sucede si decido continuar más tiempo en mi PPS?",
@@ -566,7 +566,7 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué sucede si necesito dar de baja una PPS antes de finalizarla?",
-        a: "Comunicalo de inmediato a la institución y a coordinación. Se evalúa el caso en conjunto, pero en general la PPS se suspende y se pierden las horas realizadas.",
+        a: "Comunicalo de inmediato a la institución y a coordinación. En general, la PPS se suspende y se pierden las horas realizadas. Salvo que la interrupción responda a motivos extraordinarios debidamente justificados, la baja anticipada se considera una penalización y se tendrá en cuenta en futuras convocatorias. Coordinación evalúa cada situación junto con la institución.",
       },
     ],
   },
