@@ -65,18 +65,18 @@ const UnifiedTabs: React.FC<UnifiedTabsProps> = ({
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id;
 
+        const showClose = Boolean(onTabClose) && isActive;
+
+        // El cierre es un <button> hermano, no un role="button" anidado dentro
+        // del <button> de la pestaña: anidar controles es HTML inválido y dejaba
+        // el cierre fuera del alcance del teclado. La píldora activa pasa al
+        // contenedor para que el fondo siga cubriendo pestaña + cierre.
         return (
-          <button
+          <span
             key={tab.id}
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onTabChange(tab.id, tab.path)}
-            className={`
-                            relative flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition duration-300 outline-none whitespace-nowrap z-10 flex-shrink-0
-                            ${variant === "primary" ? "rounded-full" : "rounded-xl"}
-                            ${isActive ? activeTextClass : inactiveTextClass}
-                        `}
-            style={{ WebkitTapHighlightColor: "transparent" }}
+            className={`relative inline-flex items-center flex-shrink-0 ${
+              variant === "primary" ? "rounded-full" : "rounded-xl"
+            }`}
           >
             {isActive && (
               <motion.div
@@ -90,19 +90,31 @@ const UnifiedTabs: React.FC<UnifiedTabsProps> = ({
               />
             )}
 
-            {tab.icon && (
-              <span
-                className={`material-icons relative z-20 !text-[18px] transition-colors duration-300 ${isActive ? "text-blue-600 dark:text-blue-400" : "opacity-70"}`}
-              >
-                {tab.icon}
-              </span>
-            )}
+            <button
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onTabChange(tab.id, tab.path)}
+              className={`
+                            relative flex items-center gap-2 py-2.5 text-sm font-bold transition duration-300 outline-none whitespace-nowrap z-10
+                            ${showClose ? "pl-5 pr-2" : "px-5"}
+                            ${variant === "primary" ? "rounded-full" : "rounded-xl"}
+                            ${isActive ? activeTextClass : inactiveTextClass}
+                        `}
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              {tab.icon && (
+                <span
+                  className={`material-icons relative z-20 !text-[18px] transition-colors duration-300 ${isActive ? "text-blue-600 dark:text-blue-400" : "opacity-70"}`}
+                >
+                  {tab.icon}
+                </span>
+              )}
 
-            <span className="relative z-20">{tab.label}</span>
+              <span className="relative z-20">{tab.label}</span>
 
-            {tab.badge && (
-              <span
-                className={`
+              {tab.badge && (
+                <span
+                  className={`
                                 relative z-20 ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] leading-none
                                 ${
                                   isActive
@@ -110,21 +122,23 @@ const UnifiedTabs: React.FC<UnifiedTabsProps> = ({
                                     : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                                 }
                              `}
-              >
-                {tab.badge}
-              </span>
-            )}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
 
-            {onTabClose && isActive && (
-              <div
-                role="button"
-                onClick={(e) => onTabClose(tab.id, e)}
-                className="relative z-20 ml-1.5 p-0.5 rounded-full hover:bg-slate-200/80 dark:hover:bg-slate-600 text-slate-400 hover:text-rose-500 transition-colors"
+            {showClose && (
+              <button
+                type="button"
+                onClick={(e) => onTabClose?.(tab.id, e)}
+                aria-label={`Cerrar ${tab.label}`}
+                className="relative z-20 mr-3 p-0.5 rounded-full hover:bg-slate-200/80 dark:hover:bg-slate-600 text-slate-400 hover:text-rose-500 transition-colors"
               >
                 <span className="material-icons !text-[14px] block">close</span>
-              </div>
+              </button>
             )}
-          </button>
+          </span>
         );
       })}
     </div>

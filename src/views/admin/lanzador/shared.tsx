@@ -405,6 +405,7 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                             onClick={(e) => e.stopPropagation()}
                             className="lv4-state-menu"
                             role="menu"
+                            tabIndex={-1}
                           >
                             {(
                               [

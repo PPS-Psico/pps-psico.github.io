@@ -53,7 +53,11 @@ const CSS = `
 .admin-nav-tab.active { color: var(--ink); font-weight: 600; }
 .admin-nav-tab .material-icons { font-size: 17px; opacity: .75; }
 .admin-nav-tab.active .material-icons { opacity: 1; }
-.admin-nav-tab .admin-nav-underline {
+/* El item envuelve la pestaña y su botón de cierre. Antes el cierre era un
+   <span role="button"> anidado dentro del <button> de la pestaña: HTML inválido
+   y no alcanzable por teclado. Ahora son hermanos y el subrayado vive acá. */
+.admin-nav-item { position: relative; display: inline-flex; align-items: center; }
+.admin-nav-item .admin-nav-underline {
   position: absolute; left: 11px; right: 11px; bottom: 0; height: 2px;
   background: var(--ink); border-radius: 2px 2px 0 0;
 }
@@ -64,9 +68,11 @@ const CSS = `
 }
 .admin-nav-close {
   display: inline-flex; align-items: center; justify-content: center;
-  margin-left: 2px; padding: 2px; border-radius: 999px;
+  margin-left: -7px; margin-right: 8px; padding: 2px; border-radius: 999px;
+  border: none; background: transparent; cursor: pointer;
   color: var(--ink-4); transition: color .12s ease, background .12s ease;
 }
+.admin-nav-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 .admin-nav-close:hover { color: var(--crit); background: var(--paper-2); }
 
 .admin-pill {
@@ -346,28 +352,30 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
           <div className="admin-nav" role="tablist">
             {navItems.map((tab) => {
               const isActive = currentTabId === tab.id;
+              const showClose = Boolean(onTabClose) && isActive && tab.id === "student-profile";
               return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={isActive}
-                  className={`admin-nav-tab${isActive ? " active" : ""}`}
-                  onClick={() => onTabChange(tab.id, tab.path)}
-                >
-                  {tab.icon && <span className="material-icons">{tab.icon}</span>}
-                  {tab.label}
-                  {tab.badge != null && <span className="admin-nav-badge">{tab.badge}</span>}
-                  {onTabClose && isActive && tab.id === "student-profile" && (
-                    <span
-                      role="button"
+                <span key={tab.id} className="admin-nav-item">
+                  <button
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`admin-nav-tab${isActive ? " active" : ""}`}
+                    onClick={() => onTabChange(tab.id, tab.path)}
+                  >
+                    {tab.icon && <span className="material-icons">{tab.icon}</span>}
+                    {tab.label}
+                    {tab.badge != null && <span className="admin-nav-badge">{tab.badge}</span>}
+                  </button>
+                  {showClose && (
+                    <button
+                      type="button"
                       className="admin-nav-close"
-                      onClick={(e) => onTabClose(tab.id, e)}
-                      aria-label="Cerrar"
+                      onClick={(e) => onTabClose?.(tab.id, e)}
+                      aria-label={`Cerrar ${tab.label}`}
                     >
                       <span className="material-icons" style={{ fontSize: 14 }}>
                         close
                       </span>
-                    </span>
+                    </button>
                   )}
                   {isActive && (
                     <motion.span
@@ -376,7 +384,7 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
                       transition={{ type: "spring", stiffness: 420, damping: 34 }}
                     />
                   )}
-                </button>
+                </span>
               );
             })}
           </div>

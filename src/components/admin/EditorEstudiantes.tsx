@@ -192,9 +192,6 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     },
   });
 
-  if (error)
-    return <EmptyState icon="error" title="Error de Carga" message={(error as Error).message} />;
-
   const updateMutation = useMutation({
     mutationFn: (vars: { id: string; fields: Record<string, unknown> }) => {
       if (isTestingMode) {
@@ -308,6 +305,9 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       queryClient.invalidateQueries({ queryKey: ["editor-students"] });
     },
   });
+
+  if (error)
+    return <EmptyState icon="error" title="Error de Carga" message={(error as Error).message} />;
 
   const handleRowClick = (id: string) => {
     setSelectedRowId((prev) => (prev === id ? null : id));
