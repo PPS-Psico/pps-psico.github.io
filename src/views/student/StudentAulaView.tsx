@@ -709,10 +709,21 @@ const faqGroups: FaqGroup[] = [
         q: "¿Qué datos debo revisar cuando creo mi cuenta?",
         a: (
           <>
-            Mi Panel te identifica automáticamente como estudiante y te pide completar los datos
-            restantes. Revisá con especial atención <strong>correo y teléfono</strong>: coordinación
-            y las instituciones usan esos canales para comunicar selecciones y organizar el inicio
-            de las prácticas. Un dato incorrecto puede dejarte sin esas notificaciones.
+            Para crear tu cuenta, ingresá legajo, DNI, correo y teléfono tal como figuran en el
+            registro académico. Por seguridad, Mi Panel no muestra ni completa esos datos antes de
+            validar la vinculación.
+          </>
+        ),
+      },
+      {
+        q: "¿Qué ocurre al entrar a Mi Panel desde Moodle?",
+        a: (
+          <>
+            Si todavía no tenés cuenta, Mi Panel puede precargar desde Moodle tu nombre, apellido,
+            correo y DNI. Vos completás <strong>legajo, celular y contraseña</strong>; si Moodle no
+            informa un DNI válido, también vas a poder ingresarlo. Si ya tenés cuenta, iniciá sesión
+            normalmente con tu legajo y contraseña o usá <strong>Recuperar acceso</strong>. Por
+            seguridad, los datos de la URL de Moodle no inician sesión automáticamente.
           </>
         ),
       },

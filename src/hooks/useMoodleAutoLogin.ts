@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../constants";
 import { supabase } from "../lib/supabaseClient";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "../constants";
 import { logger } from "../utils/logger";
 
 export type MoodleAutoLoginStatus = "checking" | "done";
@@ -25,12 +25,7 @@ export type MoodleAutoLoginResult = {
 };
 
 /** Razones de la Edge Function que habilitan el alta desde el campus. */
-const ONBOARDING_REASONS = new Set(["not_registered", "no_account", "auth_user_not_found"]);
-
-/** Clave de localStorage que vincula el email de Moodle con el email real de
- *  la cuenta cuando difieren (match por DNI): evita que la próxima entrada
- *  cierre una sesión válida por "no coincidir" con el email de la URL. */
-const linkedAccountKey = (moodleEmail: string) => `pps_account_email_for_${moodleEmail}`;
+const ONBOARDING_REASONS = new Set(["not_registered", "no_account"]);
 
 /**
  * Lee el email que el campus Moodle inyecta en la URL del iframe.
@@ -63,11 +58,9 @@ const getUrlParam = (name: string): string => {
 const getEmailFromUrl = (): string => getUrlParam("email").toLowerCase();
 
 /**
- * Perfil extra que el campus inyecta junto al email (FilterCodes):
- * nombre/apellido separados y, si el Moodle lo tiene cargado, el idnumber
- * (potencialmente el legajo). Hoy se usa como sonda diagnóstica — la Edge
- * Function los loguea para medir qué % de estudiantes los trae — y a futuro
- * precargará el alta de estudiantes nuevos.
+ * Perfil que el campus inyecta mediante FilterCodes. Nombre, apellido, correo y
+ * username (DNI en UFLO) precargan el alta; idnumber se conserva solo como dato
+ * diagnóstico porque Moodle no entrega allí el legajo.
  */
 export const getMoodleProfileFromUrl = (): {
   firstname: string;
@@ -94,15 +87,9 @@ export const getMoodleProfileFromUrl = (): {
  *  - navegada desde una página del mismo sitio (ej. clic en "Entrar a mi panel"
  *    desde aula.html, que abre el panel en una pestaña nueva con referrer propio).
  *
- * Esta es la protección central del auto-login en GitHub Pages, donde NO se
- * pueden setear cabeceras (no hay CSP frame-ancestors disponible). Bloquea el
- * caso casual de copiar la URL con el email de otra persona y pegarla directo
- * en la barra de direcciones: ahí no hay iframe ni referrer → no hay auto-login
- * → cae al login normal con legajo y contraseña.
- *
- * IMPORTANTE: no es una barrera infranqueable (un usuario técnico puede falsificar
- * el referrer). El email viaja por la URL y no está firmado. Para identidad
- * verificada de verdad hace falta LTI (requiere admin de Moodle).
+ * Esta condición controla solamente cuándo mostrar la experiencia de entrada
+ * desde Campus. No autentica identidad: iframe y referrer pueden falsificarse,
+ * por lo que el backend nunca emite sesiones ni credenciales desde FilterCodes.
  */
 const isTrustedContext = (): boolean => {
   // Caso 1: embebida en un iframe.
@@ -126,16 +113,9 @@ const isTrustedContext = (): boolean => {
 const shouldAttempt = (): boolean => getEmailFromUrl() !== "" && isTrustedContext();
 
 /**
- * Guard a nivel de MÓDULO (no por-montaje): el auto-login del campus se intenta
- * UNA sola vez por carga de página. Es clave que sea una variable en memoria:
- *  - sobrevive a los re-montajes de React (iframe que re-mide alto, StrictMode,
- *    cambios de sesión) que si no dispararían varios intentos en paralelo y
- *    pisarían los magic-link tokens entre sí (Supabase invalida el anterior al
- *    generar uno nuevo) → verifyOtp respondía 403 "link invalid or expired";
- *  - se resetea SOLO en una recarga real (F5), que es justo cuando SÍ queremos
- *    volver a auto-loguear.
- * `logout()` lo activa a propósito: así cerrar sesión NO dispara un re-login
- * automático; el alumno queda en el login hasta la próxima recarga de la página.
+ * Guard a nivel de módulo: la resolución de entrada del campus se ejecuta una
+ * vez por carga real, incluso con re-montajes de React. `logout()` lo activa
+ * para que cerrar sesión deje al estudiante en el login hasta recargar.
  */
 let autoLoginConsumed = false;
 export const suppressMoodleAutoLogin = (): void => {
@@ -147,9 +127,9 @@ export const suppressMoodleAutoLogin = (): void => {
 let onboardingResult: MoodleOnboardingProfile | null = null;
 
 /**
- * Intenta iniciar sesión automáticamente a partir del email del estudiante que
- * provee el campus Moodle. Si matchea con un estudiante registrado, lo loguea
- * sin fricción; si no, no hace nada y el usuario ve el login normal.
+ * Resuelve la entrada desde Moodle: conserva una sesión ya activa, muestra el
+ * alta guiada a quien no tiene cuenta y envía al login normal a cuentas
+ * existentes. Nunca inicia sesión a partir de parámetros FilterCodes.
  */
 export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
   // Inicializa en "checking" solo si corresponde, para evitar el flash del login.
@@ -174,7 +154,7 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
       window.location.pathname +
       (window.location.hash ? window.location.hash.split("?")[0] : "");
 
-    logger.warn("[MoodleAutoLogin] Diagnóstico de auto-login:", {
+    logger.warn("[MoodleEntry] Diagnóstico de entrada desde Campus:", {
       email,
       isTrustedContext: isTrusted,
       shouldAttempt: shouldRun,
@@ -187,9 +167,8 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
     hasRun.current = true;
 
     const run = async () => {
-      // `true` cuando el resultado es que el panel va a montar la sesión (sesión
-      // activa que coincide, o verifyOtp exitoso). En ese caso NO mostramos el
-      // login: mantenemos el loader hasta que AuthContext renderice el panel.
+      // Si ya existe una sesión, AuthContext montará el panel. En ese caso
+      // mantenemos el loader para evitar mostrar el login durante la transición.
       let landingOnDashboard = false;
       try {
         // Ya se intentó en esta carga de página (o se cerró sesión): no reintentar.
@@ -201,50 +180,29 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
 
         if (!shouldRun) {
           logger.warn(
-            "[MoodleAutoLogin] No se cumplen las condiciones para auto-login (falta email o no es contexto confiable)."
+            "[MoodleEntry] No se cumplen las condiciones de entrada (falta email o no es contexto de Campus)."
           );
           setStatus("done");
           return;
         }
 
-        // Comprometemos el ÚNICO intento de esta carga ANTES de cualquier await,
-        // para que montajes concurrentes no disparen auto-logins en paralelo (lo
-        // que pisaría los tokens entre sí y haría fallar verifyOtp con 403).
+        // Reservar el único intento antes de cualquier await evita resoluciones
+        // duplicadas cuando React monta el componente de forma concurrente.
         autoLoginConsumed = true;
 
-        logger.warn("[MoodleAutoLogin] Intentando auto-login para:", email);
+        logger.warn("[MoodleEntry] Resolviendo entrada para el perfil de Campus");
 
-        // Si ya hay sesión activa, verificamos si es para la misma cuenta
+        // Una URL sin firma nunca debe cerrar ni reemplazar una sesión válida.
         const { data: sessionData } = await supabase.auth.getSession();
-        logger.warn("[MoodleAutoLogin] Sesión activa actual:", sessionData?.session ? "Sí" : "No");
+        logger.warn("[MoodleEntry] Sesión activa actual:", sessionData?.session ? "Sí" : "No");
         if (sessionData?.session) {
-          const sessionEmail = sessionData.session.user.email?.toLowerCase();
-          // Cuenta vinculada por DNI en una entrada anterior: su email difiere
-          // del de Moodle pero la sesión es del mismo alumno. No cerrarla.
-          let linkedEmail = "";
-          try {
-            linkedEmail = (localStorage.getItem(linkedAccountKey(email)) || "").toLowerCase();
-          } catch {
-            /* sin localStorage */
-          }
-          if (sessionEmail && sessionEmail !== email && sessionEmail !== linkedEmail) {
-            logger.warn(
-              `[MoodleAutoLogin] La sesión activa (${sessionEmail}) es diferente de la URL (${email}). Cerrando sesión actual...`
-            );
-            await supabase.auth.signOut();
-          } else {
-            logger.warn(
-              "[MoodleAutoLogin] Sesión activa coincide con la URL. El panel cargará la sesión; mantenemos el loader."
-            );
-            landingOnDashboard = true;
-            return;
-          }
+          landingOnDashboard = true;
+          return;
         }
 
-        logger.warn("[MoodleAutoLogin] Invocando Edge Function moodle-autologin...");
-        // Pedimos a la Edge Function un token de auto-login para este email.
-        // El perfil extra (firstname/lastname/idnumber) viaja como sonda: la
-        // función lo loguea para medir qué datos inyecta el Moodle real.
+        logger.warn("[MoodleEntry] Consultando estado de entrada desde Campus...");
+        // El perfil se usa únicamente para decidir entre alta guiada y login.
+        // La Edge Function no genera tokens, no crea sesiones y no modifica datos.
         const response = await fetch(`${SUPABASE_URL}/functions/v1/moodle-autologin`, {
           method: "POST",
           headers: {
@@ -261,43 +219,12 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
           return;
         }
 
-        const result = (await response.json()) as {
-          matched?: boolean;
-          token_hash?: string;
-          reason?: string;
-          account_email?: string;
-        };
-        logger.warn("[MoodleAutoLogin] Respuesta de la Edge Function:", result);
+        const result = (await response.json()) as { reason?: string };
+        logger.warn("[MoodleEntry] Respuesta de la Edge Function:", result.reason);
 
-        if (result?.matched && result.token_hash) {
-          logger.warn("[MoodleAutoLogin] Token recibido. Canjeando verifyOtp...");
-          const { error } = await supabase.auth.verifyOtp({
-            type: "magiclink",
-            token_hash: result.token_hash,
-          });
-          if (error) {
-            logger.warn("[MoodleAutoLogin] verifyOtp falló:", error.message);
-          } else {
-            logger.warn(
-              "[MoodleAutoLogin] Sesión iniciada automáticamente desde el campus con éxito."
-            );
-            // Match por DNI con correo de cuenta distinto al de Moodle:
-            // recordarlo para que futuras entradas no cierren esta sesión.
-            const accountEmail = (result.account_email || "").toLowerCase();
-            if (accountEmail && accountEmail !== email) {
-              try {
-                localStorage.setItem(linkedAccountKey(email), accountEmail);
-              } catch {
-                /* sin localStorage */
-              }
-            }
-            // AuthContext detecta el SIGNED_IN y carga el perfil: mantenemos el
-            // loader hasta que el panel monte (no mostrar el login en el medio).
-            landingOnDashboard = true;
-          }
-        } else if (result?.reason && ONBOARDING_REASONS.has(result.reason)) {
-          // Estudiante del campus sin cuenta en el panel: habilitar el alta
-          // guiada con los datos que inyectó Moodle.
+        if (result?.reason && ONBOARDING_REASONS.has(result.reason)) {
+          // Estudiante sin cuenta: precargar nombre, apellido, correo y DNI.
+          // El legajo y el celular los completa el estudiante.
           const p = getMoodleProfileFromUrl();
           onboardingResult = {
             email,
@@ -306,16 +233,11 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
             dni: p.username.replace(/\D/g, ""),
           };
           setOnboarding(onboardingResult);
-          logger.warn(
-            "[MoodleAutoLogin] Sin cuenta en el panel (razón:",
-            result.reason,
-            ") → pantalla de alta."
-          );
+          logger.warn("[MoodleEntry] Mostrando alta guiada:", result.reason);
         } else {
-          logger.warn(
-            "[MoodleAutoLogin] Email no registrado o error en Edge Function. Razón:",
-            result?.reason
-          );
+          // `manual_login`, errores o respuestas desconocidas nunca crean una
+          // sesión: la pantalla continúa con el login normal.
+          logger.warn("[MoodleEntry] Continuando con login normal:", result?.reason);
         }
       } catch (err) {
         logger.warn("[MoodleAutoLogin] Error inesperado:", err);

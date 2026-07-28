@@ -1,8 +1,8 @@
-import { useState } from "react";
 import type { FormEvent } from "react";
+import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
+import { logger } from "../utils/logger";
 import type { MoodleOnboardingProfile } from "./useMoodleAutoLogin";
 
 /**
@@ -11,20 +11,10 @@ import type { MoodleOnboardingProfile } from "./useMoodleAutoLogin";
  * de Moodle) llegan del perfil del campus; el alumno completa legajo, celular
  * y contraseña.
  *
- * Según lo que diga `get_student_signup_status` para el legajo ingresado:
- *  - not_found   → fila nueva: signUp + register_campus_student (INSERT).
- *  - available   → fila precargada sin cuenta: signUp + register_new_student
- *                  (UPDATE/vinculación), validando que el DNI coincida.
- *  - linked      → ya tiene cuenta con otro correo: no se crea nada, se lo
- *                  manda a iniciar sesión (el próximo ingreso auto-loguea por
- *                  DNI gracias a la Edge Function).
- *  - email_in_use→ el correo del campus ya tiene cuenta: iniciar sesión.
+ * La vinculación con una fila precargada o la creación de una fila nueva se
+ * resuelven de forma atómica en `register_campus_student`. El navegador no
+ * consulta ni recibe datos personales del registro académico.
  */
-
-const getFirstRow = (data: unknown): Record<string, unknown> | null => {
-  if (Array.isArray(data)) return (data[0] as Record<string, unknown>) ?? null;
-  return (data as Record<string, unknown>) ?? null;
-};
 
 export type CampusOnboardingState = ReturnType<typeof useCampusOnboarding>;
 
@@ -64,45 +54,7 @@ export const useCampusOnboarding = (profile: MoodleOnboardingProfile) => {
         throw new Error("La contraseña no puede superar los 128 caracteres.");
       if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
 
-      // 1. ¿Qué sabemos de este legajo?
-      const { data: statusData, error: statusError } = await supabase.rpc(
-        "get_student_signup_status",
-        { legajo_input: legajoClean, correo_input: email }
-      );
-      if (statusError)
-        throw new Error("No pudimos validar el legajo en este momento. Intentá nuevamente.");
-
-      const row = getFirstRow(statusData);
-      const signupStatus = String(row?.signup_status ?? "not_found");
-
-      if (signupStatus === "linked") {
-        setHasExistingAccount(true);
-        throw new Error(
-          "Este legajo ya tiene una cuenta creada con otro correo. Iniciá sesión con ese correo y contraseña (o usá Recuperar Acceso); la próxima vez vas a entrar automático desde el campus."
-        );
-      }
-
-      if (signupStatus === "email_in_use") {
-        setHasExistingAccount(true);
-        throw new Error(
-          "Tu correo del campus ya tiene una cuenta en el panel. Iniciá sesión con tu legajo y contraseña, o usá Recuperar Acceso."
-        );
-      }
-
-      const isLinkFlow = signupStatus === "available";
-
-      // Fila precargada: el DNI cargado por coordinación (si existe) debe
-      // coincidir con el del alumno — evita vincular el legajo de otra persona.
-      if (isLinkFlow) {
-        const rowDni = String(row?.dni ?? "").replace(/\D/g, "");
-        if (rowDni && rowDni !== dniClean) {
-          throw new Error(
-            "El legajo ingresado no coincide con tu DNI. Revisá el número o contactá a coordinación."
-          );
-        }
-      }
-
-      // 2. Crear el usuario de Auth con el correo del campus.
+      // Crear el usuario de Auth con el correo recibido desde el campus.
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -126,35 +78,25 @@ export const useCampusOnboarding = (profile: MoodleOnboardingProfile) => {
         );
       }
 
-      // 3. Crear o vincular la fila de estudiantes.
-      const baseArgs = {
+      // La RPC decide en servidor si corresponde vincular una fila precargada
+      // o crear una nueva, y valida correo confirmado + DNI antes de vincular.
+      const { error: rpcError } = await supabase.rpc("register_campus_student", {
         legajo_input: legajoClean,
         userid_input: userId,
         dni_input: Number(dniClean),
         correo_input: email,
         telefono_input: telefonoClean,
-      };
-      const { error: rpcError } = isLinkFlow
-        ? await supabase.rpc("register_new_student", baseArgs)
-        : await supabase.rpc("register_campus_student", {
-            ...baseArgs,
-            nombre_input: profile.firstname,
-            apellido_input: profile.lastname,
-          });
+        nombre_input: profile.firstname,
+        apellido_input: profile.lastname,
+      });
       if (rpcError) {
-        logger.warn(
-          `[CampusOnboarding] ${isLinkFlow ? "register_new_student" : "register_campus_student"} falló:`,
-          rpcError.message
-        );
+        logger.warn("[CampusOnboarding] Alta segura falló:", rpcError.message);
         throw new Error(
-          rpcError.message ||
-            "La cuenta se creó pero no pudimos completar tu perfil. Contactá a coordinación."
+          "La cuenta se creó, pero no pudimos validar los datos con el registro académico. Revisalos o contactá a coordinación."
         );
       }
 
-      logger.warn(
-        `[CampusOnboarding] Alta exitosa (${isLinkFlow ? "vinculación" : "fila nueva"}) para legajo ${legajoClean}.`
-      );
+      logger.warn(`[CampusOnboarding] Alta completada para legajo ${legajoClean}.`);
       // La sesión ya quedó activa por signUp: AuthContext detecta SIGNED_IN,
       // encuentra el perfil recién creado/vinculado y monta el panel solo.
     } catch (err) {
