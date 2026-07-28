@@ -1,71 +1,45 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const ADMIN_ROLES = new Set(["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"]);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 interface BackupData {
-  [tableName: string]: any[];
+  [tableName: string]: unknown[];
 }
 
-// CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
-  // Verificar método y autorización
+
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Method not allowed" }, 405);
   }
 
-  // Verificar autenticación (solo admin o cron job)
-  const url = new URL(req.url);
-  const queryKey = url.searchParams.get("key");
   const authHeader = req.headers.get("Authorization");
   const apiKey = req.headers.get("X-API-Key");
   const cronSecret = Deno.env.get("CRON_SECRET");
-
-  console.log("Query key:", queryKey ? "Present" : "Missing");
-  console.log("Auth header:", authHeader ? "Present" : "Missing");
-  console.log("API Key header:", apiKey ? "Present" : "Missing");
-
-  // Verificar si es cron job (por query param, API Key o Authorization)
-  let isCronJob = false;
-  if (queryKey && queryKey === cronSecret) {
-    isCronJob = true;
-    console.log("Authenticated via query parameter");
-  } else if (apiKey && apiKey === cronSecret) {
-    isCronJob = true;
-    console.log("Authenticated via X-API-Key header");
-  } else if (authHeader && authHeader === `Bearer ${cronSecret}`) {
-    isCronJob = true;
-    console.log("Authenticated via Authorization header");
-  }
-
-  console.log("Is cron job:", isCronJob);
+  const isCronJob = Boolean(cronSecret && apiKey && apiKey === cronSecret);
 
   if (!isCronJob) {
-    console.log("Not a cron job, validating as user token...");
-    const token = authHeader?.replace("Bearer ", "");
-
-    if (!token || token === authHeader) {
-      console.log("No valid token provided");
-      return new Response(JSON.stringify({ error: "Unauthorized - No valid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      return json({ error: "Unauthorized" }, 401);
     }
 
     const {
@@ -74,34 +48,23 @@ Deno.serve(async (req: Request) => {
     } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      console.error("Auth validation error:", authError);
-      return new Response(JSON.stringify({ error: "Unauthorized", details: authError?.message }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Unauthorized" }, 401);
     }
 
-    console.log("User authenticated:", user.id);
-
-    // Un backup completo exporta TODA la base. No alcanza con estar logueado:
-    // antes cualquier alumno autenticado podía dispararlo. El panel que lo usa
-    // (BackupManager, dentro de TallerView) es sólo administrativo.
-    const ADMIN_ROLES = ["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"];
-    const { data: profile } = await supabase
+    const { data: profile, error: roleError } = await supabase
       .from("estudiantes")
       .select("role")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!profile?.role || !ADMIN_ROLES.includes(profile.role)) {
-      console.log("User lacks admin role:", profile?.role);
-      return new Response(JSON.stringify({ error: "Forbidden - Admin role required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (roleError) {
+      console.error("[automated-backup] Role validation failed:", roleError.message);
+      return json({ error: "Authorization check failed" }, 500);
     }
-  } else {
-    console.log("Cron job authenticated successfully");
+
+    if (!profile?.role || !ADMIN_ROLES.has(profile.role)) {
+      return json({ error: "Forbidden - Admin role required" }, 403);
+    }
   }
 
   try {

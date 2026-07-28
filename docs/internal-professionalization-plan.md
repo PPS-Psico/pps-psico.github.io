@@ -1337,8 +1337,10 @@ desplegada sin su migración.
 - `src/services/todoistDirectService.ts:5`: token de API de Todoist hardcodeado.
 - `src/components/admin/AdminDashboard.tsx:28`: token interno de Hermes hardcodeado (como fallback de la env var).
 
-Ambos se removieron del código y ahora se leen solo de variables de entorno
-(`VITE_TODOIST_TOKEN`, `VITE_HERMES_INTERNAL_TOKEN`), documentadas en `.env.example`.
+Ambos se retiraron del frontend. Todoist sigue pendiente de proxy y se configura con
+`VITE_TODOIST_TOKEN`; Hermes ahora se invoca exclusivamente mediante `hermes-proxy`,
+con `HERMES_API_URL` y `HERMES_INTERNAL_TOKEN` como secretos server-side de Supabase.
+La credencial Hermes expuesta debe rotarse fuera del repositorio y actualizarse en Supabase.
 Re-escaneo: 0 incidencias. type-check + tests + build OK.
 
 **⚠️ ACCIÓN REQUERIDA del owner (los tokens estuvieron en el repo → potencialmente expuestos):**

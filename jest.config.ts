@@ -52,8 +52,6 @@ const config: JestConfigWithTsJest = {
                     VITE_GA4_MEASUREMENT_ID: 'G-TEST123456',
                     VITE_ENABLE_MONITORING_IN_DEV: 'true',
                     VITE_APP_VERSION: 'test',
-                    VITE_HERMES_API_URL: 'https://test.hermes.local',
-                    VITE_HERMES_INTERNAL_TOKEN: 'test-hermes-token',
                     VITE_HERMES_WEBHOOK_URL: 'https://test.hermes.local/webhook',
                     VITE_PUBLIC_APP_URL: 'https://test.app.local',
                   },

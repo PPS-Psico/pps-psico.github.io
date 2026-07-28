@@ -2,73 +2,34 @@ name: Automated Database Backup
 
 on:
   schedule:
-    # Ejecutar todos los días a las 2:00 AM UTC
-    # Puedes modificar esto según necesites:
-    # - Cada hora: '0 * * * *'
-    # - Cada 6 horas: '0 */6 * * *'
-    # - Semanal (domingos 2AM): '0 2 * * 0'
-    # - Mensual (1ro de cada mes 2AM): '0 2 1 * *'
-    - cron: '0 2 * * *'
-  
-  # Permite ejecución manual desde la pestaña Actions
+    - cron: "0 2 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   backup:
     name: Create Database Backup
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        
-      - name: Deploy Backup Function
+      - name: Trigger backup
+        env:
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          echo "📦 Ensuring backup function is deployed with --no-verify-jwt..."
-          npx supabase functions deploy automated-backup --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --no-verify-jwt || echo "Deploy step completed"
-      
-      - name: Trigger Backup Function
-        id: backup
-        run: |
-          echo "🚀 Iniciando backup automático..."
-          
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/automated-backup?key=${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-          
-          echo "Status Code: $HTTP_CODE"
-          echo "Response: $BODY"
-          
-          if [ "$HTTP_CODE" -eq 200 ]; then
-            echo "✅ Backup completado exitosamente"
-            echo "result=success" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Error en el backup"
-            echo "result=failure" >> $GITHUB_OUTPUT
+          status=$(curl --silent --show-error --output response.json --write-out "%{http_code}" \
+            --request POST \
+            "https://${PROJECT_REF}.supabase.co/functions/v1/automated-backup" \
+            --header "Content-Type: application/json" \
+            --header "X-API-Key: ${CRON_SECRET}")
+
+          echo "Status Code: ${status}"
+          if [ "${status}" -ne 200 ]; then
+            echo "Backup failed"
+            cat response.json
             exit 1
           fi
 
-      - name: Notify Success
-        if: steps.backup.outputs.result == 'success'
-        run: |
-          echo "✅ Backup completado exitosamente"
-          echo "📅 Fecha: $(date)"
-          echo "🔧 Configuración: ${{ github.workflow }}"
-
-      - name: Notify Failure
-        if: failure()
-        run: |
-          echo "❌ El backup ha fallado"
-          echo "📅 Fecha: $(date)"
-          echo "🔍 Revisar logs para más detalles"
-          
-          # Aquí puedes agregar notificaciones adicionales:
-          # - Enviar email
-          # - Notificar en Slack
-          # - Crear issue en GitHub
+          echo "Backup completed successfully"

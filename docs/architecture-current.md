@@ -25,15 +25,11 @@ La fuente principal de datos es Supabase. El frontend consume:
 
 El proyecto de referencia documentado internamente es `qxnxtnhtbpsgzprqtrjl`.
 
-## Edge Functions observadas en el repo
+## Edge Functions
 
-- `automated-backup`
-- `generate-content`
-- `health-check`
-- `launch-scheduler`
-- `list-backups`
-- `restore-backup`
-- `send-fcm-notification`
+El repositorio mantiene 14 funciones canónicas. El catálogo actualizado de versiones,
+políticas JWT, consumidores, secretos y legado remoto está en
+[edge-functions-inventory.md](./edge-functions-inventory.md).
 
 ## Dominios funcionales principales
 

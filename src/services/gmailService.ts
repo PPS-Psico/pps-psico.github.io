@@ -1,10 +1,10 @@
 import { logger } from "../utils/logger";
+import { invokeHermesTask } from "./hermesProxyService";
 // ──────────────────────────────────────────────────────────────────────────
-// gmailService — puente del panel con Gmail a través del backend Hermes.
+// gmailService — puente del panel con Gmail a través del proxy server-side.
 //
-// El frontend NUNCA habla con la Gmail API directamente: todo pasa por Hermes
-// (que tiene la credencial OAuth en el servidor / dispara n8n). Esto mantiene
-// los secretos fuera del browser y centraliza la auditoría.
+// El frontend NUNCA habla con Gmail ni Hermes directamente. La Edge Function
+// hermes-proxy valida sesión/rol y conserva las credenciales fuera del bundle.
 //
 // Capas:
 //   · getThread   → leer el hilo completo (Capa 1/3: cuerpo completo on-demand)
@@ -14,13 +14,6 @@ import { logger } from "../utils/logger";
 // SEGURIDAD: respeta el kill-switch global PPS_DISABLE_EMAILS. Con el switch
 // activo, sendReply hace dry-run (no envía) y modifyThread no toca nada.
 // ──────────────────────────────────────────────────────────────────────────
-
-const HERMES_URL =
-  (import.meta.env.VITE_HERMES_API_URL as string | undefined) ||
-  "https://pps-hermes.n8n-blas.com.ar";
-const HERMES_TOKEN =
-  (import.meta.env.VITE_HERMES_INTERNAL_TOKEN as string | undefined) ||
-  "8KqNm3vR7tYxL2pH9wJ4sZ6bF1cA5dG0eU8iO3kP4qX7vN2mL9";
 
 export interface GmailMessage {
   id?: string;
@@ -61,26 +54,11 @@ export const isEmailSendingDisabled = (): boolean => {
 };
 
 async function hermesPost<T>(path: string, body: unknown, timeoutMs = 20000): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(`${HERMES_URL}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Hermes-Token": HERMES_TOKEN,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`Hermes ${res.status}: ${txt.slice(0, 160) || res.statusText}`);
-    }
-    return (await res.json()) as T;
-  } finally {
-    clearTimeout(timer);
+  const task = path.replace(/^\/tasks\//, "");
+  if (!task || task === path) {
+    throw new Error(`Ruta de Hermes inválida: ${path}`);
   }
+  return invokeHermesTask<T>(task, body, timeoutMs);
 }
 
 // ── Capa 1/3: leer el hilo completo ───────────────────────────────────────

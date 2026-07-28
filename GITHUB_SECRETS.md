@@ -1,48 +1,45 @@
 # GitHub Secrets y configuracion de entornos
 
-Este proyecto usa GitHub Secrets para inyectar configuracion en build y despliegue, y usa secretos separados dentro de Supabase para Edge Functions.
+Los secretos de CI/CD y los secretos de Edge Functions pertenecen a almacenes distintos.
+Nunca deben guardarse en variables `VITE_*`, Markdown, logs ni codigo fuente.
 
-## Secrets de GitHub Actions
+## GitHub Actions
 
-### Requeridos
+### Build del frontend
 
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `SUPABASE_PROJECT_REF`
+- `VITE_SUPABASE_ANON_KEY` o publishable key equivalente
 - `VITE_VAPID_PUBLIC_KEY`
 - `VITE_GA4_MEASUREMENT_ID`
+- opcionales: `VITE_SENTRY_DSN`, `VITE_APP_VERSION`, `VITE_ENABLE_MONITORING_IN_DEV`
 
-### Recomendados
+### Despliegue de Edge Functions
 
-- `VITE_SENTRY_DSN`
-- `VITE_APP_VERSION`
-- `VITE_ENABLE_MONITORING_IN_DEV`
+- `SUPABASE_ACCESS_TOKEN`: PAT de Supabase con permiso para desplegar.
+- `SUPABASE_PROJECT_REF`: referencia del proyecto, no una URL.
 
-### Cuando corresponda al flujo operativo
+### Workflow de backup
+
+- `SUPABASE_PROJECT_REF`
+- `CRON_SECRET`: mismo valor que el secreto server-side de Supabase.
+
+## Supabase Edge Function Secrets
+
+Los built-ins `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los
+provee Supabase. Según las funciones habilitadas también se requieren:
 
 - `CRON_SECRET`
-
-`CRON_SECRET` debe coincidir con la configuracion esperada por las funciones o procesos automatizados que lo usan.
-
-## Secrets de Supabase Edge Functions
-
-Segun el modulo activo, pueden ser necesarios:
-
 - `GEMINI_API_KEY`
-- `VAPID_PRIVATE_KEY`
-- otros secretos internos de automatizacion o proveedores externos
+- `HERMES_API_URL`
+- `HERMES_INTERNAL_TOKEN`
+- `FCM_SERVICE_ACCOUNT_KEY`
+- credenciales del proveedor de email usadas por `send-email`
+- `TURNSTILE_SECRET_KEY` para recuperación de acceso, cuando corresponda
 
-Estos secretos no deben vivir en el frontend ni en el repo.
+## Reglas operativas
 
-## Notas importantes
-
-- `VITE_GEMINI_API_KEY` no debe volver a usarse como secreto de frontend.
-- Las variables `VITE_AIRTABLE_PAT` y `VITE_AIRTABLE_BASE_ID` deben tratarse como legado, no como arquitectura principal.
-- Nunca documentar tokens reales ni pegar credenciales en Markdown.
-
-## Flujo recomendado
-
-1. Mantener `.env.example` sin valores reales.
-2. Guardar secretos de CI/CD en GitHub.
-3. Guardar secretos server-side en Supabase.
-4. Revisar documentacion si cambia un proveedor, una funcion Edge o un entorno.
+1. `.env.example` solo documenta configuración pública de desarrollo.
+2. Hermes se consume desde `hermes-proxy`; no existen variables `VITE_HERMES_*`.
+3. `restore-backup` no se despliega automáticamente.
+4. Rotar fuera del repo toda credencial que haya aparecido en un bundle o commit público.
+5. Verificar los nombres efectivos en `docs/edge-functions-inventory.md` antes de cambiar CI.

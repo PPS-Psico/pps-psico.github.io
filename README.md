@@ -95,15 +95,15 @@ npm run type-check
 npm run test
 ```
 
-## Edge Functions presentes en el repo
+## Edge Functions
 
-- `automated-backup`
-- `generate-content`
-- `health-check`
-- `launch-scheduler`
-- `list-backups`
-- `restore-backup`
-- `send-fcm-notification`
+El repositorio mantiene 14 funciones canónicas bajo `supabase/functions/`. La política
+`verify_jwt` vive en `supabase/config.toml`; el workflow de despliegue publica 13 y deja
+`restore-backup` fuera por ser destructiva y de operación manual.
+
+El inventario completo —incluyendo versiones remotas, consumidores, secretos y las
+funciones legacy pendientes de retiro— está en
+[docs/edge-functions-inventory.md](./docs/edge-functions-inventory.md).
 
 ## Documentacion recomendada
 
