@@ -8,6 +8,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
+const ADMIN_ROLES = new Set(["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"]);
+
+/**
+ * Dos identidades válidas: el cron (secreto en X-API-Key) o una sesión
+ * administrativa. La anon key NO alcanza: es pública y viaja en el bundle.
+ */
+// deno-lint-ignore no-explicit-any
+const isAuthorized = async (req: Request, sb: any): Promise<boolean> => {
+  const apiKey = req.headers.get("X-API-Key");
+  if (CRON_SECRET && apiKey === CRON_SECRET) return true;
+
+  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+  if (!token) return false;
+
+  const {
+    data: { user },
+  } = await sb.auth.getUser(token);
+  if (!user) return false;
+
+  const { data } = await sb.from("estudiantes").select("role").eq("user_id", user.id).maybeSingle();
+  return !!data?.role && ADMIN_ROLES.has(data.role);
+};
+
 const COORDINADOR_EMAIL = "blas.rivera@uflouniversidad.edu.ar";
 const COORDINADOR_NOMBRE = "Blas Rivera";
 const APP_URL = (Deno.env.get("APP_URL") || "https://pps-psico.github.io").replace(/\/$/, "");
@@ -188,6 +212,18 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // ── Autorización ────────────────────────────────────────────────────────
+  // Esta función MUTA historia académica: deselecciona alumnos y borra
+  // prácticas. Antes alcanzaba con la anon key (que es pública y está en el
+  // bundle) para dispararla desde internet. Ahora exige el secreto del cron o
+  // una sesión administrativa real.
+  if (!(await isAuthorized(req, supabase))) {
+    return new Response(JSON.stringify({ error: "No autorizado." }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const now = new Date();

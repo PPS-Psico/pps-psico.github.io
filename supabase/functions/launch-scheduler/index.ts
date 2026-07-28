@@ -11,9 +11,44 @@ const corsHeaders = {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
+const ADMIN_ROLES = new Set(["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"]);
+
+/**
+ * Dos identidades válidas: el cron (secreto en X-API-Key) o una sesión
+ * administrativa. La anon key NO alcanza: es pública y viaja en el bundle.
+ */
+const isAuthorized = async (req: Request): Promise<boolean> => {
+  const apiKey = req.headers.get("X-API-Key");
+  if (CRON_SECRET && apiKey === CRON_SECRET) return true;
+
+  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+  if (!token) return false;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) return false;
+
+  const { data } = await supabase
+    .from("estudiantes")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return !!data?.role && ADMIN_ROLES.has(data.role);
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Publica convocatorias y dispara notificaciones: no puede quedar abierta.
+  if (!(await isAuthorized(req))) {
+    return new Response(JSON.stringify({ error: "No autorizado." }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {

@@ -82,6 +82,24 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log("User authenticated:", user.id);
+
+    // Un backup completo exporta TODA la base. No alcanza con estar logueado:
+    // antes cualquier alumno autenticado podía dispararlo. El panel que lo usa
+    // (BackupManager, dentro de TallerView) es sólo administrativo.
+    const ADMIN_ROLES = ["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"];
+    const { data: profile } = await supabase
+      .from("estudiantes")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!profile?.role || !ADMIN_ROLES.includes(profile.role)) {
+      console.log("User lacks admin role:", profile?.role);
+      return new Response(JSON.stringify({ error: "Forbidden - Admin role required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   } else {
     console.log("Cron job authenticated successfully");
   }

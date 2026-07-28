@@ -1,14 +1,53 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createTransport } from "npm:nodemailer";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+/**
+ * Autorización.
+ *
+ * Esta función era un relay SMTP abierto: aceptaba destinatario, asunto y HTML
+ * arbitrarios sin ninguna verificación. Con la anon key (pública, va en el
+ * bundle) cualquiera podía mandar correos desde la casilla institucional, que
+ * es exactamente el insumo de un phishing creíble.
+ *
+ * Identidades aceptadas:
+ *  - service_role: llamadas internas entre funciones
+ *    (check-consentimiento-pendientes invoca a ésta para avisar de las bajas).
+ *  - cualquier sesión de usuario real: el alumno dispara mails legítimos al
+ *    aceptar el compromiso, y coordinación al gestionar. No se restringe a
+ *    admin para no romper el flujo del alumno.
+ */
+const isAuthorized = async (req: Request): Promise<boolean> => {
+  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+  if (!token) return false;
+
+  if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) return true;
+
+  const {
+    data: { user },
+  } = await supabaseAdmin.auth.getUser(token);
+  return !!user;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (!(await isAuthorized(req))) {
+    return new Response(JSON.stringify({ error: "No autorizado." }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
