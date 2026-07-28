@@ -37,6 +37,8 @@ dist-ssr
 # Testing
 coverage
 .nyc_output
+.preview-site/
+.preview-pages/
 
 # Misc
 *.swp

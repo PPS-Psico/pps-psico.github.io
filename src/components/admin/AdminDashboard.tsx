@@ -1,16 +1,17 @@
+import { useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useInicioData } from "../../hooks/useInicioData";
-import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { PageHead } from "./dashboard/PageHead";
+import { invokeHermesTask } from "../../services/hermesProxyService";
+import { logger } from "../../utils/logger";
+import { AdminDashboardSkeleton } from "../Skeletons";
 import { Briefing } from "./dashboard/Briefing";
 import { DetectionBand } from "./dashboard/DetectionBand";
-import { SolicitudesBand } from "./dashboard/SolicitudesBand";
 import { DraftsPreview } from "./dashboard/DraftsPreview";
+import { PageHead } from "./dashboard/PageHead";
 import { PrioritiesList } from "./dashboard/PrioritiesList";
-import { AdminDashboardSkeleton } from "../Skeletons";
-import { logger } from "../../utils/logger";
+import { SolicitudesBand } from "./dashboard/SolicitudesBand";
 
 const AdminDashboard: React.FC = () => {
   const { authenticatedUser } = useAuth();
@@ -22,22 +23,7 @@ const AdminDashboard: React.FC = () => {
   const handleReanalyze = async () => {
     setIsReanalyzing(true);
     try {
-      const apiUrl = import.meta.env.VITE_HERMES_API_URL || "https://pps-hermes.n8n-blas.com.ar";
-      // El token interno se lee solo del entorno (no hardcodear en el bundle).
-      const token = import.meta.env.VITE_HERMES_INTERNAL_TOKEN || "";
-
-      const response = await fetch(`${apiUrl}/tasks/daily_brief_from_db`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Hermes-Token": token,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-
+      await invokeHermesTask("daily_brief_from_db");
       await queryClient.invalidateQueries();
     } catch (err) {
       logger.error("[Reanalizar] Error calling Hermes daily brief:", err);

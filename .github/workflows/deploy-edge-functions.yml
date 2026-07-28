@@ -5,11 +5,18 @@ on:
     branches: [main]
     paths:
       - "supabase/functions/**"
+      - "supabase/config.toml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   deploy-functions:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
 
     steps:
       - name: Checkout code
@@ -18,14 +25,20 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
 
-      - name: Deploy Edge Functions
+      - name: Deploy canonical Edge Functions
         run: |
-          supabase functions deploy send-fcm-notification --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy send-email --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy request-password-reset --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy reset-password-with-token --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-          supabase functions deploy student-login --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          supabase functions deploy automated-backup --project-ref "$PROJECT_REF"
+          supabase functions deploy check-consentimiento-pendientes --project-ref "$PROJECT_REF"
+          supabase functions deploy generate-content --project-ref "$PROJECT_REF"
+          supabase functions deploy health-check --project-ref "$PROJECT_REF"
+          supabase functions deploy hermes-proxy --project-ref "$PROJECT_REF"
+          supabase functions deploy launch-scheduler --project-ref "$PROJECT_REF"
+          supabase functions deploy list-backups --project-ref "$PROJECT_REF"
+          supabase functions deploy moodle-autologin --project-ref "$PROJECT_REF"
+          supabase functions deploy request-password-reset --project-ref "$PROJECT_REF"
+          supabase functions deploy reset-password-with-token --project-ref "$PROJECT_REF"
+          supabase functions deploy send-email --project-ref "$PROJECT_REF"
+          supabase functions deploy send-fcm-notification --project-ref "$PROJECT_REF"
+          supabase functions deploy student-login --project-ref "$PROJECT_REF"
