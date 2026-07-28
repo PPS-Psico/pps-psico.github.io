@@ -8,34 +8,34 @@
  * aquí para conveniencia del consumidor de la vista.
  *
  * Pipeline (5 pasos visibles):
- *   1. Borrador     DB 'Oculto'
+ *   1. Borrador     DB 'Oculto' (también 'Programada': prepublicación fuera del pipeline)
  *   2. Selección    DB 'Abierta' (mesa abierta)
  *   3. Seguro       DB 'Cerrado' (mesa cerrada, sin seguro gestionado)
  *   4. Confirmación DB 'Confirmacion' (seguro listo, sala de consentimientos)
  *   5. Activa       DB 'Activa' (PPS corriendo, transición manual del admin)
  *   6. Archivada    DB 'Archivado' (referencia histórica, sin pipeline UI)
  */
-import { normalizeStringForComparison, formatDate } from "../../../utils/formatters";
 import {
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
+  FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS,
 } from "../../../constants";
-import type { LanzamientoPPS } from "../../../types";
 import {
-  STATE_META as _STATE_META,
   BUCKET_META as _BUCKET_META,
   BUCKET_ORDER as _BUCKET_ORDER,
   PIPELINE_STEPS as _PIPELINE_STEPS,
+  STATE_META as _STATE_META,
   deriveBucket,
-  type UIState,
   type SidebarBucket,
+  type UIState,
 } from "../../../services/aseguramientoService";
+import type { LanzamientoPPS } from "../../../types";
+import { formatDate, normalizeStringForComparison } from "../../../utils/formatters";
 
 // Re-exports para que el consumidor de la vista (LanzadorView, etc.) no tenga
 // que importar de dos archivos.
@@ -43,7 +43,7 @@ export const STATE_META = _STATE_META;
 export const BUCKET_META = _BUCKET_META;
 export const BUCKET_ORDER = _BUCKET_ORDER;
 export const PIPELINE_STEPS = _PIPELINE_STEPS;
-export type { UIState, SidebarBucket };
+export type { SidebarBucket, UIState };
 
 /**
  * Mapea el estado crudo de la columna `estado_convocatoria` de la DB al estado
@@ -60,6 +60,8 @@ export type { UIState, SidebarBucket };
 export function mapDbToUiState(dbStatus: string, seguroGestionadoAt?: string | null): UIState {
   const s = normalizeStringForComparison(dbStatus);
   if (s === "oculto") return "borrador";
+  // "Programada" es prepublicación y vive fuera del pipeline visible.
+  if (s === "programada" || s === "programado") return "borrador";
   if (s === "abierta" || s === "abierto") return "seleccion";
   if (s === "confirmacion") return "confirmacion";
   if (s === "activa" || s === "activo") return "activa";

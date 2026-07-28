@@ -110,7 +110,7 @@ export const LAUNCH_TABLE_CONFIG = {
     {
       key: FIELD_FECHA_PUBLICACION_LANZAMIENTOS,
       label: "Fecha Publicación",
-      type: "date" as const,
+      type: "datetime-local" as const,
       description: "Para lanzamientos programados",
     },
 

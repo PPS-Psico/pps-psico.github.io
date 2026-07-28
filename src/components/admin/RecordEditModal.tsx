@@ -2,13 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
-  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
 } from "../../constants";
+import { supabase } from "../../lib/supabaseClient";
 import { cleanDbValue } from "../../utils/formatters";
 import { getErrorMessage } from "../../utils/getErrorMessage";
-import { supabase } from "../../lib/supabaseClient";
 import { logger } from "../../utils/logger";
 import { injectEditorStyles } from "./editorStyles";
 
@@ -24,6 +24,7 @@ interface FieldConfig {
     | "textarea"
     | "number"
     | "date"
+    | "datetime-local"
     | "email"
     | "tel"
     | "select"
@@ -57,6 +58,27 @@ interface RecordEditModalProps {
 
 /** Coacciona un valor arbitrario del formulario a un valor renderable por un input. */
 const toInputValue = (v: unknown): string => (v == null ? "" : String(v));
+
+/** Convierte una fecha persistida al valor local esperado por un input datetime-local. */
+const toLocalDateTimeInputValue = (value: unknown): string => {
+  const rawValue = toInputValue(value);
+  if (!rawValue) return "";
+
+  // Los valores legacy sin zona ya representan hora local; convertirlos con Date
+  // desplazaría el día en zonas negativas como Argentina.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) return `${rawValue}T00:00`;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?$/.test(rawValue)) {
+    return rawValue.slice(0, 16);
+  }
+
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) return rawValue;
+
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
+};
 
 const RecordEditModal: React.FC<RecordEditModalProps> = ({
   isOpen,
@@ -163,8 +185,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
         } else {
           cleanedData[field.key] = Number(val);
         }
-      } else if (field.type === "date") {
-        // Una fecha vacía debe persistirse como null, no como "" (rompe columnas date).
+      } else if (field.type === "date" || field.type === "datetime-local") {
+        // Una fecha vacía debe persistirse como null, no como "" (rompe columnas date/timestamp).
         if (val === "" || val === null || val === undefined) {
           cleanedData[field.key] = null;
         }
@@ -327,6 +349,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     let inputValue = value;
     if (field.type === "date" && typeof value === "string") {
       inputValue = value.split("T")[0];
+    } else if (field.type === "datetime-local") {
+      inputValue = toLocalDateTimeInputValue(value);
     }
 
     if (field.type === "file") {

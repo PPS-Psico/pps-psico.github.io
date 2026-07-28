@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     // 1. Find 'Programada' launches that are due
     const { data: launches, error: fetchError } = await supabase
       .from("lanzamientos_pps")
-      .select("*")
+      .select("id, nombre_pps")
       .eq("estado_convocatoria", "Programada")
       .lte("fecha_publicacion", now);
 
@@ -82,19 +82,28 @@ Deno.serve(async (req) => {
       try {
         console.log(`[Scheduler] Activando: ${launch.nombre_pps} (${launch.id})`);
 
-        // Update status to 'Abierta'
-        const { error: updateError } = await supabase
+        // Update status to 'Abierta' only if the launch is still scheduled.
+        const { data: updatedLaunch, error: updateError } = await supabase
           .from("lanzamientos_pps")
           .update({ estado_convocatoria: "Abierta" })
-          .eq("id", launch.id);
+          .eq("id", launch.id)
+          .eq("estado_convocatoria", "Programada")
+          .select("id")
+          .maybeSingle();
 
         if (updateError) {
           console.error(`❌ Database update failed for ${launch.id}:`, updateError);
-          results.push({ id: launch.id, success: false, error: "DB Update failed" });
+          results.push({ id: launch.id, status: "error", error: "DB Update failed" });
           continue;
         }
 
-        results.push({ id: launch.id, status: "activated" });
+        if (!updatedLaunch) {
+          console.log(`[Scheduler] Omitido por cambio concurrente: ${launch.id}`);
+          results.push({ id: launch.id, status: "skipped" });
+          continue;
+        }
+
+        results.push({ id: updatedLaunch.id, status: "activated" });
       } catch (err: any) {
         console.error(`[Scheduler] Critical error processing launch ${launch.id}:`, err);
         results.push({ id: launch.id, status: "error", error: err.message });
