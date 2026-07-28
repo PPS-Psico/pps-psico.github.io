@@ -34,6 +34,7 @@ import {
   FIELD_LOGO_INVERT_DARK_INSTITUCIONES,
   FIELD_LOGO_URL_INSTITUCIONES,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
+  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
   FIELD_NOMBRE_INSTITUCIONES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -41,9 +42,8 @@ import {
   FIELD_REQ_CV_LANZAMIENTOS,
   FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS,
   FIELD_TELEFONO_INSTITUCIONES,
-  FIELD_TUTOR_INSTITUCIONES,
   FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
-  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
+  FIELD_TUTOR_INSTITUCIONES,
 } from "../../../constants";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../../constants/configConstants";
 import { db } from "../../../lib/db";
@@ -59,7 +59,6 @@ import type {
 } from "../../../types";
 import { ALL_ORIENTACIONES } from "../../../types";
 import { formatDate, normalizeStringForComparison } from "../../../utils/formatters";
-import type { NewInstitutionData } from "./NewInstitutionModalV3";
 import { logger } from "../../../utils/logger";
 import {
   initialState,
@@ -74,10 +73,27 @@ import {
   cleanGeminiJson,
   normalizeDetectedOrientations,
 } from "./launchWhatsapp";
+import type { NewInstitutionData } from "./NewInstitutionModalV3";
 
 export interface ToastInfo {
   message: string;
   type: "success" | "error";
+}
+
+function normalizeScheduledDateToUtc(value: unknown): string {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    throw new Error("La fecha de publicación programada es obligatoria.");
+  }
+
+  const scheduledDate = new Date(String(value));
+  if (Number.isNaN(scheduledDate.getTime())) {
+    throw new Error("La fecha de publicación programada no es válida.");
+  }
+  if (scheduledDate.getTime() <= Date.now()) {
+    throw new Error("La fecha de publicación programada debe ser posterior al momento actual.");
+  }
+
+  return scheduledDate.toISOString();
 }
 
 export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "history") {
@@ -378,8 +394,24 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   });
 
   const updateDetailsMutation = useMutation({
-    mutationFn: ({ id, fields }: { id: string; fields: Record<string, unknown> }) =>
-      db.lanzamientos.update(id, fields),
+    mutationFn: ({ id, fields }: { id: string; fields: Record<string, unknown> }) => {
+      const normalizedFields = { ...fields };
+      const resultingStatus = normalizeStringForComparison(
+        String(
+          normalizedFields[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] ??
+            editingLaunch?.[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] ??
+            ""
+        )
+      );
+
+      if (resultingStatus === "programada" || resultingStatus === "programado") {
+        normalizedFields[FIELD_FECHA_PUBLICACION_LANZAMIENTOS] = normalizeScheduledDateToUtc(
+          normalizedFields[FIELD_FECHA_PUBLICACION_LANZAMIENTOS]
+        );
+      }
+
+      return db.lanzamientos.update(id, normalizedFields);
+    },
     onSuccess: () => {
       setToastInfo({ message: "Lanzamiento actualizado.", type: "success" });
       setEditingLaunch(null);
@@ -638,20 +670,26 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   }, []);
 
   const handleSubmit = useCallback(() => {
-    const fechaRealInicio =
-      formData.programarLanzamiento && formData.fechaPublicacion
-        ? formData.fechaPublicacion
-        : formData.fechaInicio;
-
     const horas = Number(formData.horasAcreditadas);
     const hasHours = !isNaN(horas);
 
-    if (!formData.nombrePPS || !fechaRealInicio || !safeOrientacion.length || !hasHours) {
+    if (!formData.nombrePPS || !formData.fechaInicio || !safeOrientacion.length || !hasHours) {
       setToastInfo({
-        message: "Por favor, complete los campos requeridos (Nombre, Fecha, Orientación, Horas).",
+        message:
+          "Por favor, complete los campos requeridos (Nombre, Fecha de inicio, Orientación, Horas).",
         type: "error",
       });
       return;
+    }
+
+    let fechaPublicacionIso: string | null = null;
+    if (formData.programarLanzamiento) {
+      try {
+        fechaPublicacionIso = normalizeScheduledDateToUtc(formData.fechaPublicacion);
+      } catch (error) {
+        setToastInfo({ message: (error as Error).message, type: "error" });
+        return;
+      }
     }
 
     const formattedSchedules = schedules
@@ -704,9 +742,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       [FIELD_ARCHIVO_DESCARGABLE_URL]: formData.archivoDescargableUrl,
       [FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS]: formData.fechaInicioInscripcion,
       [FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]: formData.fechaFinInscripcion,
-      [FIELD_FECHA_PUBLICACION_LANZAMIENTOS]: formData.programarLanzamiento
-        ? formData.fechaPublicacion
-        : null,
+      [FIELD_FECHA_PUBLICACION_LANZAMIENTOS]: fechaPublicacionIso,
       [FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS]: formData.mensajeWhatsApp,
       [FIELD_ACTIVIDADES_LABEL_LANZAMIENTOS]: formData.actividadesLabel,
       [FIELD_HORARIOS_FIJOS_LANZAMIENTOS]: todosLosHorariosSonObligatorios,
