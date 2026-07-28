@@ -59,7 +59,9 @@ export const useCampusOnboarding = (profile: MoodleOnboardingProfile) => {
       if (dniClean.length < 6 || dniClean.length > 9)
         throw new Error("Ingresá un DNI válido (sin puntos).");
       if (!telefonoClean) throw new Error("Ingresá tu número de celular.");
-      if (password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
+      if (password.length < 10) throw new Error("La contraseña debe tener al menos 10 caracteres.");
+      if (password.length > 128)
+        throw new Error("La contraseña no puede superar los 128 caracteres.");
       if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
 
       // 1. ¿Qué sabemos de este legajo?

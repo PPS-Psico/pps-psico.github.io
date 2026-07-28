@@ -1,24 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-/**
- * reset-password-with-token
- *
- * Paso 2 de la recuperación: canjea el token del mail por un cambio de
- * contraseña efectivo.
- *
- * SEGURIDAD — leer antes de tocar:
- * - El token llega en claro y se compara contra el SHA-256 guardado.
- * - Un solo uso: se marca `used_at` en la misma operación. Un token reusado o
- *   vencido devuelve el mismo error genérico.
- * - La contraseña se aplica con admin.auth.admin.updateUserById, que pasa por
- *   Auth (hash correcto, invalidación de sesiones), en vez de escribir a mano
- *   en auth.users como hacía el flujo anterior.
- */
-
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,10 +17,18 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const responseHeaders = {
+  ...corsHeaders,
+  "Content-Type": "application/json",
+  "Cache-Control": "no-store, max-age=0",
+  "Referrer-Policy": "no-referrer",
+  "X-Content-Type-Options": "nosniff",
+};
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: responseHeaders,
   });
 
 const INVALID = {
@@ -40,8 +39,36 @@ const INVALID = {
 const sha256Hex = async (value: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
+};
+
+type ClaimedToken = {
+  request_id: string;
+  estudiante_id: string;
+  user_id: string;
+  delivery_email_hash: string;
+};
+
+const finishClaim = async (
+  requestId: string,
+  success: boolean,
+  failureCode?: string
+): Promise<boolean> => {
+  const { data, error } = await admin.rpc("complete_password_reset", {
+    p_request_id: requestId,
+    p_success: success,
+    p_failure_code: failureCode ?? null,
+  });
+
+  if (error || data !== true) {
+    console.error(
+      "[password-reset] Could not finalize claimed token:",
+      error?.message ?? "not finalized"
+    );
+    return false;
+  }
+  return true;
 };
 
 Deno.serve(async (req) => {
@@ -53,64 +80,82 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { token, password } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const rawToken = String((body as { token?: unknown }).token ?? "")
+      .trim()
+      .toLowerCase();
+    const newPassword = String((body as { password?: unknown }).password ?? "");
 
-    const rawToken = String(token ?? "").trim();
-    const newPassword = String(password ?? "");
-
-    if (!rawToken) return json(INVALID, 400);
-    if (newPassword.length < 6) {
-      return json({ ok: false, error: "La contraseña debe tener al menos 6 caracteres." }, 400);
+    if (!/^[0-9a-f]{64}$/.test(rawToken)) return json(INVALID, 400);
+    if (newPassword.length < 10) {
+      return json({ ok: false, error: "La contraseña debe tener al menos 10 caracteres." }, 400);
+    }
+    if (newPassword.length > 128) {
+      return json({ ok: false, error: "La contraseña no puede superar los 128 caracteres." }, 400);
     }
 
     const tokenHash = await sha256Hex(rawToken);
+    const { data: claimedRows, error: claimError } = await admin.rpc("claim_password_reset_token", {
+      p_token_hash: tokenHash,
+    });
 
-    const { data: row } = await admin
-      .from("password_reset_tokens")
-      .select("id, user_id, estudiante_id, expires_at, used_at")
-      .eq("token_hash", tokenHash)
-      .maybeSingle();
-
-    if (!row || row.used_at || new Date(row.expires_at).getTime() < Date.now()) {
-      return json(INVALID, 400);
-    }
-
-    // Se marca usado ANTES de aplicar el cambio, condicionando a que siga sin
-    // usar: si dos pedidos llegan a la vez, sólo uno gana.
-    const { data: claimed, error: claimError } = await admin
-      .from("password_reset_tokens")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", row.id)
-      .is("used_at", null)
-      .select("id")
-      .maybeSingle();
+    const claimed = Array.isArray(claimedRows)
+      ? (claimedRows[0] as ClaimedToken | undefined)
+      : undefined;
 
     if (claimError || !claimed) return json(INVALID, 400);
 
-    const { error: updateError } = await admin.auth.admin.updateUserById(row.user_id, {
+    const { data: authData, error: authError } = await admin.auth.admin.getUserById(
+      claimed.user_id
+    );
+    const authUser = authData?.user;
+    const authEmail = authUser?.email?.trim().toLowerCase() ?? "";
+    const currentEmailHash = authEmail ? await sha256Hex(authEmail) : "";
+
+    if (
+      authError ||
+      !authEmail ||
+      !authUser?.email_confirmed_at ||
+      currentEmailHash !== claimed.delivery_email_hash
+    ) {
+      await finishClaim(claimed.request_id, false, "recovery_channel_changed");
+      console.warn("[password-reset] Recovery channel changed after token issuance");
+      return json(INVALID, 400);
+    }
+
+    const { error: updateError } = await admin.auth.admin.updateUserById(claimed.user_id, {
       password: newPassword,
     });
 
     if (updateError) {
-      console.error("[reset-token] Error actualizando contraseña:", updateError.message);
-      // Se libera el token para que el alumno pueda reintentar con el mismo mail.
-      await admin.from("password_reset_tokens").update({ used_at: null }).eq("id", row.id);
+      await finishClaim(claimed.request_id, false, "auth_password_update_failed");
+      console.error("[password-reset] Auth password update failed:", updateError.message);
       return json(
-        { ok: false, error: "No pudimos actualizar la contraseña. Intentá de nuevo." },
+        {
+          ok: false,
+          error: "No pudimos actualizar la contraseña. Pedí un enlace nuevo e intentá otra vez.",
+        },
         500
       );
     }
 
-    // El alumno acaba de elegir su clave: ya no debe forzarse el cambio.
-    await admin
-      .from("estudiantes")
-      .update({ must_change_password: false })
-      .eq("id", row.estudiante_id);
+    // El cambio de contraseña invalida las sesiones de refresh en Auth. Un JWT
+    // de acceso ya emitido puede seguir vivo hasta su expiración configurada,
+    // que es una propiedad general de las sesiones JWT de Supabase.
+    const finalized = await finishClaim(claimed.request_id, true);
+    if (!finalized) {
+      // La contraseña ya cambió: responder error sería engañoso y llevaría al
+      // alumno a repetir un proceso que sí se completó. El log permite reparar
+      // must_change_password si la actualización auxiliar falló.
+      console.error(
+        "[password-reset] Password changed, but local completion metadata needs reconciliation"
+      );
+    }
 
-    console.log("[reset-token] Contraseña actualizada para estudiante:", row.estudiante_id);
+    console.log("[password-reset] Password updated for student:", claimed.estudiante_id);
     return json({ ok: true });
   } catch (error) {
-    console.error("[reset-token] Error:", (error as Error).message);
-    return json({ ok: false, error: "Error inesperado." }, 500);
+    console.error("[password-reset] Unexpected redemption error:", (error as Error).message);
+    return json({ ok: false, error: "Error inesperado. Pedí un enlace nuevo." }, 500);
   }
 });

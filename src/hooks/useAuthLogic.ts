@@ -1,10 +1,5 @@
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useEffect, useState, FormEvent, ChangeEvent } from "react";
 import { supabase } from "../lib/supabaseClient";
-import {
-  FIELD_DNI_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
-  FIELD_TELEFONO_ESTUDIANTES,
-} from "../constants";
 import type { EstudianteFields, AirtableRecord } from "../types";
 import type { AuthUser } from "../contexts/AuthContext";
 import { logger } from "../utils/logger";
@@ -17,10 +12,8 @@ interface UseAuthLogicProps {
 
 type AuthMode = "login" | "register" | "forgot" | "reset" | "migration" | "recover";
 
-const normalizePhone = (phone: unknown) => {
-  if (!phone) return "";
-  return String(phone).replace(/\D/g, "");
-};
+const PASSWORD_MIN_LENGTH = 10;
+const PASSWORD_MAX_LENGTH = 128;
 
 const getFirstRow = (data: unknown) => (Array.isArray(data) && data.length > 0 ? data[0] : null);
 
@@ -55,15 +48,72 @@ const getInitialLegajoFromUrl = (): string => {
   }
 };
 
+/**
+ * Lee el token de recuperación del enlace que llega por mail
+ * (#/login?reset_token=...). El token es hexadecimal de 64 caracteres; se
+ * sanitiza para no arrastrar nada raro de la URL a la llamada.
+ */
+export const getResetTokenFromUrl = (): string | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const candidates: string[] = [];
+
+    const search = new URLSearchParams(window.location.search);
+    candidates.push(search.get("reset_token") || "");
+
+    const hash = window.location.hash || "";
+    const queryIndex = hash.indexOf("?");
+    if (queryIndex !== -1) {
+      const hashParams = new URLSearchParams(hash.slice(queryIndex + 1));
+      candidates.push(hashParams.get("reset_token") || "");
+    }
+
+    const raw = (candidates.find((value) => value.trim() !== "") || "").trim();
+    return /^[a-f0-9]{64}$/i.test(raw) ? raw.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+};
+
+export const removeResetTokenFromUrl = (): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("reset_token");
+
+    const queryIndex = url.hash.indexOf("?");
+    if (queryIndex !== -1) {
+      const hashPath = url.hash.slice(0, queryIndex);
+      const hashParams = new URLSearchParams(url.hash.slice(queryIndex + 1));
+      hashParams.delete("reset_token");
+      const remainingQuery = hashParams.toString();
+      url.hash = remainingQuery ? `${hashPath}?${remainingQuery}` : hashPath;
+    }
+
+    window.history.replaceState(window.history.state, "", url.toString());
+  } catch {
+    // La limpieza es defensiva. Un navegador con una URL no estándar no debe
+    // impedir que el alumno use el formulario.
+  }
+};
+
 export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps) => {
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [resetStep, setResetStep] = useState<"verify" | "reset_password" | "success">("verify");
+  // Token de recuperación que llega por el enlace del mail
+  // (#/login?reset_token=...). Si está presente, la pantalla arranca
+  // directamente en el paso de elegir la nueva contraseña.
+  const [resetToken, setResetToken] = useState<string | null>(() => getResetTokenFromUrl());
+  const [mode, setMode] = useState<AuthMode>(resetToken ? "recover" : "login");
+  const [resetStep, setResetStep] = useState<
+    "verify" | "reset_password" | "email_sent" | "success"
+  >(resetToken ? "reset_password" : "verify");
   const [migrationStep, setMigrationStep] = useState<1 | 2>(1);
   const [registerStep, setRegisterStep] = useState<1 | 2>(1);
 
   const [legajo, setLegajo] = useState(getInitialLegajoFromUrl);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -83,11 +133,16 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
   const [foundStudent, setFoundStudent] = useState<AirtableRecord<EstudianteFields> | null>(null);
   const [verificationData, setVerificationData] = useState({ dni: "", correo: "", telefono: "" });
 
+  useEffect(() => {
+    if (resetToken) removeResetTokenFromUrl();
+  }, [resetToken]);
+
   const resetFormState = () => {
     setError(null);
     setFieldError(null);
     setPassword("");
     setConfirmPassword("");
+    setCaptchaToken(null);
     setResetStep("verify");
     setMigrationStep(1);
     setRegisterStep(1);
@@ -96,11 +151,12 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
   };
 
   const handleModeChange = (newMode: AuthMode) => {
-    setMode(newMode);
+    const resolvedMode = newMode === "migration" ? "recover" : newMode;
+    setMode(resolvedMode);
     // Clean session when switching modes to avoid lingering zombie states
     supabase.auth.signOut().catch(() => {});
 
-    if (!((newMode === "migration" || newMode === "recover") && mode === "login")) {
+    if (!(resolvedMode === "recover" && mode === "login")) {
       resetFormState();
     } else {
       // Keep legajo if switching from login failure
@@ -130,31 +186,32 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     return parsedDni;
   };
 
-  const buildIdentityVerificationArgs = (includePhone: boolean) => ({
-    legajo_input: legajo.trim(),
-    dni_input: parseVerificationDni(verificationData.dni),
-    correo_input: verificationData.correo.trim().toLowerCase(),
-    telefono_input: includePhone ? verificationData.telefono.trim() : undefined,
-  });
-
-  const verifyStudentIdentity = async (includePhone: boolean) => {
-    const { data, error } = await supabase.rpc(
-      "verify_student_identity",
-      buildIdentityVerificationArgs(includePhone)
-    );
-
-    if (error) {
-      throw new Error("No pudimos validar tu identidad en este momento. Intenta nuevamente.");
+  const assertValidNewPassword = () => {
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      throw new Error(`La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`);
     }
-
-    return data && (data as unknown[]).length > 0 ? (data as unknown[])[0] : null;
+    if (password.length > PASSWORD_MAX_LENGTH) {
+      throw new Error(`La contraseña no puede superar los ${PASSWORD_MAX_LENGTH} caracteres.`);
+    }
+    if (password !== confirmPassword) {
+      throw new Error("Las contraseñas no coinciden.");
+    }
   };
 
-  const resetPasswordWithVerifiedIdentity = async (includePhone: boolean) => {
-    return supabase.rpc("reset_student_password_verified", {
-      ...buildIdentityVerificationArgs(includePhone),
-      new_password: password,
+  const requestPasswordResetLink = async (legajoValue: string) => {
+    if (import.meta.env.VITE_TURNSTILE_SITE_KEY && !captchaToken) {
+      throw new Error("Completá la verificación de seguridad.");
+    }
+
+    const { error: invokeError } = await supabase.functions.invoke("request-password-reset", {
+      body: { legajo: legajoValue, captchaToken },
     });
+
+    if (invokeError) {
+      throw new Error(
+        "No pudimos procesar el pedido en este momento. Intentá nuevamente en unos minutos."
+      );
+    }
   };
 
   const getSignupStatus = async (email?: string) => {
@@ -164,27 +221,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     });
 
     if (error) {
-      const missingRpc =
-        error.code === "PGRST202" ||
-        String(error.message || "").includes("get_student_signup_status");
-
-      if (missingRpc) {
-        const { data: fallbackData, error: fallbackError } = await supabase.rpc(
-          "get_student_for_signup",
-          { legajo_input: legajo.trim() }
-        );
-        if (fallbackError)
-          throw new Error("No pudimos validar el legajo en este momento. Intenta nuevamente.");
-
-        const fallbackStudent = getFirstRow(fallbackData) as Record<string, unknown> | null;
-        return fallbackStudent
-          ? {
-              ...fallbackStudent,
-              signup_status: fallbackStudent.user_id ? "linked" : "available",
-            }
-          : { legajo: legajo.trim(), signup_status: "not_found" };
-      }
-
       throw new Error("No pudimos validar el legajo en este momento. Intenta nuevamente.");
     }
     return getFirstRow(data);
@@ -246,46 +282,44 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         // LIMPIEZA PREVENTIVA
         await supabase.auth.signOut();
 
-        if (!legajoTrimmed || !passwordTrimmed)
-          throw new Error("Por favor, completa todos los campos.");
+        if (!legajoTrimmed || !password) throw new Error("Por favor, completa todos los campos.");
 
-        const { data: rpcData, error: rpcError } = await supabase.rpc(
-          "get_student_email_by_legajo",
-          { legajo_input: legajoTrimmed }
+        const { data: loginResult, error: invokeError } = await supabase.functions.invoke(
+          "student-login",
+          {
+            body: {
+              legajo: legajoTrimmed,
+              password,
+            },
+          }
         );
 
-        if (rpcError) throw new Error("Error de conexión al validar legajo. Intenta nuevamente.");
+        const sessionTokens = loginResult as {
+          ok?: boolean;
+          accessToken?: string;
+          refreshToken?: string;
+        } | null;
 
-        const email =
-          rpcData && typeof rpcData === "object" && "email" in (rpcData as Record<string, unknown>)
-            ? String((rpcData as { email: string }).email || "")
-                .trim()
-                .toLowerCase()
-            : "";
+        if (
+          invokeError ||
+          !sessionTokens?.ok ||
+          !sessionTokens.accessToken ||
+          !sessionTokens.refreshToken
+        ) {
+          setError("Legajo o contraseña incorrectos. Verificá tus datos o usá Recuperar acceso.");
+          setFieldError("password");
+          setIsLoading(false);
+          return;
+        }
 
-        if (!email)
-          throw new Error(
-            'Tu usuario parece incompleto. Por favor, ve a "Crear Cuenta" para actualizar tus datos.'
-          );
-
-        // 2. Intentar Login
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: passwordTrimmed,
+        const { error: signInError } = await supabase.auth.setSession({
+          access_token: sessionTokens.accessToken,
+          refresh_token: sessionTokens.refreshToken,
         });
 
         if (signInError) {
-          logger.warn("Login failed:", signInError.message);
-
-          if (signInError.message.includes("Invalid login credentials")) {
-            // MODIFICADO: Ya no redirige a migración. Muestra error en pantalla.
-            setError(
-              "Contraseña incorrecta. Verificá tus datos o usá el botón de recuperar contraseña."
-            );
-            setFieldError("password");
-          } else {
-            setError("Ocurrió un error al iniciar sesión. Intenta nuevamente.");
-          }
+          logger.warn("No se pudo montar la sesión devuelta por student-login");
+          setError("No pudimos iniciar sesión en este momento. Intentá nuevamente.");
           setIsLoading(false);
           return;
         }
@@ -297,101 +331,15 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         setIsLoading(false);
       }
     } else if (mode === "migration") {
-      // === LOGICA DE MIGRACIÓN / ACTIVACIÓN ===
+      // El flujo legacy verificaba DNI/correo y podía cambiar la contraseña por
+      // RPC. Cualquier entrada histórica a ese modo se deriva al canal seguro.
       try {
-        if (migrationStep === 1) {
-          // Paso 1: Validar Identidad
-          if (!legajoTrimmed || !verificationData.dni || !verificationData.correo) {
-            throw new Error("Por favor completa los campos para validar tu identidad.");
-          }
-
-          const studentData = await verifyStudentIdentity(false);
-
-          if (!studentData)
-            throw new Error("Los datos ingresados no coinciden con nuestros registros.");
-
-          setFoundStudent(studentData as unknown as AirtableRecord<EstudianteFields>);
-          setMigrationStep(2);
-          setIsLoading(false);
-          return;
-        }
-
-        if (migrationStep === 2) {
-          // Paso 2: Establecer Contraseña y Crear/Vincular Usuario
-          if (password.length < 6)
-            throw new Error("La contraseña debe tener al menos 6 caracteres.");
-          if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
-
-          if (!foundStudent)
-            throw new Error("Sesión de validación expirada. Por favor comienza de nuevo.");
-
-          const email = String(foundStudent[FIELD_CORREO_ESTUDIANTES]).trim().toLowerCase();
-
-          // 1. Intentamos CREAR el usuario
-          const { data: _authData, error: signUpError } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-            options: { data: { legajo: legajoTrimmed } },
-          });
-
-          // 2. Manejo de Errores: ¿Ya existe?
-          if (signUpError) {
-            if (
-              signUpError.message.includes("already registered") ||
-              signUpError.status === 422 ||
-              signUpError.status === 400
-            ) {
-              logger.info("Usuario ya existe en Auth, intentando forzar actualización de clave...");
-
-              // Si ya existe, usamos RPC para resetear la clave Y REPARAR EL VINCULO
-              const { error: rpcResetError } = await resetPasswordWithVerifiedIdentity(false);
-
-              if (rpcResetError) {
-                logger.error("RPC Reset Error:", rpcResetError);
-                if (
-                  rpcResetError.message.includes("No existe usuario") ||
-                  rpcResetError.message.includes("not found")
-                ) {
-                  throw new Error(
-                    "Error de integridad: El email de tu legajo no coincide con el usuario registrado. Contacta soporte."
-                  );
-                }
-                throw new Error(
-                  "No se pudo actualizar tu usuario existente. Intenta 'Recuperar Acceso'."
-                );
-              }
-            } else {
-              throw new Error(`Error al crear usuario: ${signUpError.message}`);
-            }
-          }
-
-          // 3. Intento de Login final para confirmar y obtener sesión
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password,
-          });
-
-          if (loginError) {
-            setMode("login");
-            setError(
-              "Cuenta configurada, pero el inicio de sesión automático falló. Por favor ingresa manualmente."
-            );
-          } else if (loginData.user) {
-            // 4. Asegurar vínculo en DB (Self-healing por si acaso)
-            const { error: linkError } = await supabase.rpc("register_new_student", {
-              legajo_input: legajoTrimmed,
-              userid_input: loginData.user.id,
-              dni_input: parseInt(String(foundStudent[FIELD_DNI_ESTUDIANTES] ?? "0"), 10),
-              correo_input: email,
-              telefono_input: foundStudent[FIELD_TELEFONO_ESTUDIANTES] || "",
-            });
-
-            if (linkError) logger.warn("Link RPC warning (non-critical):", linkError);
-          }
-        }
+        if (!legajoTrimmed) throw new Error("Ingresá tu número de legajo.");
+        await requestPasswordResetLink(legajoTrimmed);
+        setMode("recover");
+        setResetStep("email_sent");
       } catch (err) {
-        logger.error("Migration error:", err);
-        setError(getErrorMessage(err, "Error del servidor al procesar la solicitud."));
+        setError(getErrorMessage(err, "No pudimos iniciar la recuperación."));
       } finally {
         setIsLoading(false);
       }
@@ -414,9 +362,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           const { dni, correo, telefono } = verificationData;
           if (!dni || !correo || !telefono || !password)
             throw new Error("Todos los campos son obligatorios.");
-          if (password.length < 6)
-            throw new Error("La contraseña debe tener al menos 6 caracteres.");
-          if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
+          assertValidNewPassword();
 
           const inputEmail = correo.trim().toLowerCase();
           const cleanDniInt = parseVerificationDni(dni);
@@ -493,157 +439,67 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     } else if (mode === "recover") {
       try {
         clearLogs();
-        addLog("info", `Iniciando recuperación de contraseña para legajo: ${legajoTrimmed}`);
 
+        // Paso 1: el alumno pide el enlace con su legajo. No se le piden datos
+        // personales: eso era justamente el problema del flujo anterior (DNI,
+        // correo y teléfono no son secretos y se podían cosechar).
         if (resetStep === "verify") {
-          addLog("info", "Validando datos de identidad");
-
-          if (
-            !legajoTrimmed ||
-            !verificationData.dni ||
-            !verificationData.correo ||
-            !verificationData.telefono
-          ) {
-            throw new Error("Por favor completa todos los campos para validar tu identidad.");
+          if (!legajoTrimmed) {
+            throw new Error("Ingresá tu número de legajo.");
           }
 
-          const studentData = await verifyStudentIdentity(true);
+          addLog("info", "Pidiendo enlace de recuperación");
+          await requestPasswordResetLink(legajoTrimmed);
 
-          if (!studentData) {
-            addLog("error", "Datos no coinciden para recuperación", { legajo: legajoTrimmed });
-            throw new Error("Los datos ingresados no coinciden con nuestros registros.");
-          }
-
-          addLog("success", "Verificación exitosa");
-          setResetStep("reset_password");
+          // La respuesta es siempre la misma exista o no el legajo, para no
+          // convertir esta pantalla en un verificador de quién está registrado.
+          addLog("success", "Pedido enviado");
+          setResetStep("email_sent");
           setIsLoading(false);
           return;
         }
 
+        // Paso 2: el alumno llegó desde el enlace del mail (?reset_token=...) y
+        // elige su nueva contraseña.
         if (resetStep === "reset_password") {
-          addLog("info", "Restableciendo contraseña");
+          if (!resetToken) {
+            throw new Error(
+              "Falta el enlace de recuperación. Abrí el link que te enviamos por correo."
+            );
+          }
+          assertValidNewPassword();
 
-          if (password.length < 6)
-            throw new Error("La contraseña debe tener al menos 6 caracteres.");
-          if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
+          addLog("info", "Canjeando token de recuperación");
 
-          const { error: rpcResetError } = await resetPasswordWithVerifiedIdentity(true);
+          const { data, error: invokeError } = await supabase.functions.invoke(
+            "reset-password-with-token",
+            { body: { token: resetToken, password } }
+          );
 
-          if (rpcResetError) {
-            addLog("error", "RPC Error al restablecer contraseña", {
-              message: rpcResetError.message,
-              code: rpcResetError.code,
-              details: rpcResetError.details,
-              hint: rpcResetError.hint,
-              status: (rpcResetError as { status?: number }).status,
+          const result = data as { ok?: boolean; error?: string } | null;
+
+          if (invokeError || !result?.ok) {
+            addLog("error", "No se pudo canjear el token", {
+              message: invokeError?.message ?? result?.error,
             });
-
-            if (
-              rpcResetError.message.includes("No existe un usuario registrado con el correo") ||
-              rpcResetError.message.includes("No existe usuario") ||
-              rpcResetError.message.includes("not found")
-            ) {
-              addLog("info", "Usuario no encontrado en auth, intentando crear usuario...");
-
-              const studentEmail = verificationData.correo.trim().toLowerCase();
-
-              addLog("info", "Creando usuario en auth con email:", { email: studentEmail });
-
-              const { error: signUpError } = await supabase.auth.signUp({
-                email: studentEmail,
-                password: password,
-                options: { data: { legajo: legajoTrimmed } },
-              });
-
-              if (signUpError && !signUpError.message.includes("already registered")) {
-                addLog("error", "Error al crear usuario", { signUpError });
-                throw new Error(`Error al crear usuario: ${signUpError.message}`);
-              }
-
-              addLog(
-                "info",
-                "Usuario creado o ya existía, intentando resetear contraseña nuevamente..."
-              );
-
-              const { error: retryResetError } = await supabase.rpc(
-                "reset_student_password_verified",
-                {
-                  ...buildIdentityVerificationArgs(true),
-                  new_password: password,
-                }
-              );
-
-              if (retryResetError) {
-                addLog("error", "Error en segundo intento de reset", { retryResetError });
-                throw new Error(
-                  "No se pudo completar la recuperación de contraseña. Por favor, intenta 'Crear Cuenta' o contacta a soporte."
-                );
-              }
-
-              addLog("success", "Usuario creado y contraseña restablecida");
-            } else if (
-              rpcResetError.message.includes("constraint") ||
-              rpcResetError.message.includes("duplicate")
-            ) {
-              throw new Error(
-                "Error de validación en la base de datos. Intenta nuevamente en unos minutos o contacta a soporte."
-              );
-            } else if (rpcResetError.code === "23505") {
-              throw new Error(
-                "Error de restricción única en la base de datos. Es posible que ya haya una solicitud pendiente."
-              );
-            } else if (((rpcResetError as { status?: number }).status ?? 0) >= 500) {
-              throw new Error(
-                "El servidor no está respondiendo correctamente (Error 500). Este es un error temporal. Por favor, intenta en unos minutos."
-              );
-            } else {
-              throw new Error(
-                `Error del servidor al restablecer la contraseña. Si el problema persiste, contacta a: blas.rivera@uflouniversidad.edu.ar`
-              );
-            }
+            throw new Error(
+              result?.error ||
+                "El enlace no es válido o ya venció. Pedí uno nuevo desde 'Recuperar acceso'."
+            );
           }
 
-          addLog("success", "Contraseña restablecida exitosamente");
-
-          const studentEmail = verificationData.correo.trim().toLowerCase();
-
-          addLog("info", "Intentando login automático", { email: studentEmail });
-
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: studentEmail,
-            password: password,
-          });
-
-          if (loginError) {
-            addLog("info", "Login automático falló, mostrando éxito manual", { loginError });
-            setResetStep("success");
-            setIsLoading(false);
-            return;
-          }
-
-          if (loginData.user) {
-            addLog("success", "Login automático exitoso");
-          }
-
+          addLog("success", "Contraseña actualizada");
+          setResetToken(null);
           setResetStep("success");
           setIsLoading(false);
         }
       } catch (err) {
         addLog("error", "Error durante recuperación", {
           error: getErrorMessage(err),
-          stack: err instanceof Error ? err.stack : undefined,
           mode,
           resetStep,
-          legajo: legajoTrimmed,
         });
-
-        const errorMessage = getErrorMessage(err, "Error desconocido al recuperar contraseña.");
-        const additionalInfo =
-          mode === "recover" && resetStep === "reset_password"
-            ? "\n\n🔧 Detalles técnicos para soporte:\nEste error indica un problema al actualizar la contraseña en el servidor. Por favor, contacta a blas.rivera@uflouniversidad.edu.ar con tu legajo y menciona 'Error al recuperar contraseña'."
-            : "";
-
-        setError(errorMessage + additionalInfo);
+        setError(getErrorMessage(err, "Error desconocido al recuperar contraseña."));
         setIsLoading(false);
       }
     } else {
@@ -665,6 +521,8 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     setPassword,
     confirmPassword,
     setConfirmPassword,
+    captchaToken,
+    setCaptchaToken,
     rememberMe,
     setRememberMe,
     isLoading,

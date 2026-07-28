@@ -117,28 +117,6 @@ function createTableInterface<TName extends TableName, TAppRecord>(
   };
 }
 
-export const getStudentLoginInfo = async (legajo: string): Promise<{ email: string } | null> => {
-  try {
-    const { data, error } = await supabase.rpc("get_student_email_by_legajo", {
-      legajo_input: legajo,
-    });
-
-    if (error) {
-      logger.error("Error RPC get_student_email:", error);
-      return null;
-    }
-
-    if (!data || typeof data !== "object" || !("email" in data)) {
-      return null;
-    }
-
-    return { email: String((data as { email: unknown }).email) };
-  } catch (error) {
-    logger.error("Error fetching student login info:", error);
-    return null;
-  }
-};
-
 // Typed DB Interface
 export const db = {
   estudiantes: createTableInterface("estudiantes", mapEstudiante),

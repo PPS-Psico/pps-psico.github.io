@@ -169,6 +169,10 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
     const email = getEmailFromUrl();
     const isTrusted = isTrustedContext();
     const shouldRun = shouldAttempt();
+    const safeLocation =
+      window.location.origin +
+      window.location.pathname +
+      (window.location.hash ? window.location.hash.split("?")[0] : "");
 
     logger.warn("[MoodleAutoLogin] Diagnóstico de auto-login:", {
       email,
@@ -176,7 +180,7 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
       shouldAttempt: shouldRun,
       isIframe: window.self !== window.top,
       referrer: document.referrer,
-      locationHref: window.location.href,
+      location: safeLocation,
     });
 
     if (hasRun.current) return;

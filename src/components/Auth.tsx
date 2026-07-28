@@ -9,6 +9,7 @@ import { useMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
 import type { MoodleOnboardingProfile } from "../hooks/useMoodleAutoLogin";
 import { useCampusOnboarding } from "../hooks/useCampusOnboarding";
 import CampusEntryLoader from "./CampusEntryLoader";
+import TurnstileWidget from "./security/TurnstileWidget";
 import {
   FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
   FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
@@ -257,9 +258,11 @@ const CampusWelcome: React.FC<{
           type={showPassword ? "text" : "password"}
           value={ob.password}
           onChange={(e) => ob.setPassword(e.target.value)}
-          placeholder="Nueva Contraseña (mín. 6 caracteres)"
+          placeholder="Nueva Contraseña (mín. 10 caracteres)"
           icon="lock"
           disabled={ob.isLoading}
+          minLength={10}
+          maxLength={128}
           reveal={{ shown: showPassword, toggle: () => setShowPassword(!showPassword) }}
         />
         <EdInput
@@ -270,6 +273,8 @@ const CampusWelcome: React.FC<{
           placeholder="Confirmar Contraseña"
           icon="lock"
           disabled={ob.isLoading}
+          minLength={10}
+          maxLength={128}
         />
       </div>
 
@@ -335,6 +340,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
     setPassword,
     confirmPassword,
     setConfirmPassword,
+    setCaptchaToken,
     rememberMe,
     setRememberMe,
     isLoading,
@@ -579,9 +585,11 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Nueva Contraseña (mín. 6 caracteres)"
+              placeholder="Nueva Contraseña (mín. 10 caracteres)"
               icon="lock"
               disabled={isLoading}
+              minLength={10}
+              maxLength={128}
             />
             <EdInput
               id="confirmPassword"
@@ -591,6 +599,8 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
               placeholder="Confirmar Contraseña"
               icon="lock"
               disabled={isLoading}
+              minLength={10}
+              maxLength={128}
             />
           </div>
           <div className="pt-2">{submitBtn("Crear Cuenta")}</div>
@@ -657,6 +667,8 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
               icon="lock"
               disabled={isLoading}
               autoFocus
+              minLength={10}
+              maxLength={128}
             />
             <EdInput
               id="confirmPassword"
@@ -666,6 +678,8 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
               placeholder="Confirmar Contraseña"
               icon="lock"
               disabled={isLoading}
+              minLength={10}
+              maxLength={128}
             />
           </div>
           <div className="pt-2">{submitBtn("Establecer")}</div>
@@ -684,10 +698,12 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
         </h2>
         <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
           {resetStep === "verify"
-            ? "Completa los datos para validar tu identidad."
-            : resetStep === "reset_password"
-              ? "Identidad confirmada. Ingresa tu nueva clave."
-              : "¡Proceso completado con éxito!"}
+            ? "Ingresá tu legajo y te enviamos un enlace al correo que tenés registrado."
+            : resetStep === "email_sent"
+              ? "Revisá tu correo."
+              : resetStep === "reset_password"
+                ? "Elegí tu nueva clave."
+                : "¡Proceso completado con éxito!"}
         </p>
       </div>
 
@@ -701,35 +717,32 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
             placeholder="Número de Legajo"
             icon="idcard"
             disabled={isLoading}
+            autoFocus
           />
-          <EdInput
-            name="dni"
-            type="text"
-            placeholder="DNI"
-            icon="fingerprint"
-            value={verificationData.dni}
-            onChange={handleVerificationDataChange}
-            disabled={isLoading}
-            inputMode="numeric"
+          <TurnstileWidget
+            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+            theme={resolvedTheme === "dark" ? "dark" : "light"}
+            onTokenChange={setCaptchaToken}
           />
-          <EdInput
-            name="correo"
-            type="email"
-            placeholder="Correo registrado"
-            icon="mail"
-            value={verificationData.correo}
-            onChange={handleVerificationDataChange}
-            disabled={isLoading}
-          />
-          <EdInput
-            name="telefono"
-            type="tel"
-            placeholder="Celular registrado"
-            icon="phone"
-            value={verificationData.telefono}
-            onChange={handleVerificationDataChange}
-            disabled={isLoading}
-          />
+        </div>
+      )}
+
+      {resetStep === "email_sent" && (
+        <div className="bg-[var(--tint)] border border-[var(--accent-soft)] p-8 rounded-2xl text-center animate-fade-in">
+          <div className="mx-auto bg-[var(--accent)] text-[var(--on-accent)] w-16 h-16 rounded-full flex items-center justify-center mb-6 shadow-sm">
+            <AuthIcon name="mail" size={30} strokeWidth={2.4} />
+          </div>
+          <h3 className="au-h text-3xl text-[var(--ink)] mb-2">Revisá tu correo</h3>
+          <p className="text-[var(--ink-soft)] mb-2 font-medium text-sm">
+            Si el legajo está registrado, te enviamos un enlace al correo asociado.
+          </p>
+          <p className="text-[var(--ink-muted)] mb-8 text-[13px] leading-relaxed">
+            El enlace vence en 1 hora y se usa una sola vez. Si no aparece, revisá el correo no
+            deseado.
+          </p>
+          <button type="button" onClick={() => setMode("login")} className="ed-btn-primary">
+            Volver al inicio
+          </button>
         </div>
       )}
 
@@ -744,6 +757,8 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
             icon="lock"
             disabled={isLoading}
             autoFocus
+            minLength={10}
+            maxLength={128}
             reveal={{ shown: showPassword, toggle: () => setShowPassword(!showPassword) }}
           />
           <EdInput
@@ -754,7 +769,12 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
             placeholder="Repetir Contraseña"
             icon="lockreset"
             disabled={isLoading}
+            minLength={10}
+            maxLength={128}
           />
+          <p className="px-1 text-xs leading-relaxed text-[var(--ink-muted)]">
+            Usá entre 10 y 128 caracteres. Los espacios forman parte de la contraseña.
+          </p>
         </div>
       )}
 
@@ -771,9 +791,9 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
         </div>
       )}
 
-      {resetStep !== "success" && (
+      {resetStep !== "success" && resetStep !== "email_sent" && (
         <div className="pt-2 space-y-3">
-          {submitBtn(resetStep === "verify" ? "Validar Identidad" : "Establecer Contraseña")}
+          {submitBtn(resetStep === "verify" ? "Enviar enlace" : "Establecer Contraseña")}
           {backLink("Cancelar")}
         </div>
       )}

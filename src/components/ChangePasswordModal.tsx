@@ -30,8 +30,13 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+    if (newPassword.length < 10) {
+      setError("La contraseña debe tener al menos 10 caracteres.");
+      return;
+    }
+
+    if (newPassword.length > 128) {
+      setError("La contraseña no puede superar los 128 caracteres.");
       return;
     }
 
@@ -106,9 +111,10 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 10 caracteres"
               required
-              minLength={6}
+              minLength={10}
+              maxLength={128}
             />
           </div>
           <div>
@@ -122,7 +128,8 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
               className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Repite la contraseña"
               required
-              minLength={6}
+              minLength={10}
+              maxLength={128}
             />
           </div>
 

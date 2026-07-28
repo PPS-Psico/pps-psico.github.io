@@ -76,7 +76,20 @@ const mockSupabase = {
       }
       return { error: null };
     }),
+    setSession: jest.fn().mockResolvedValue({
+      data: {
+        session: {
+          access_token: "test-access-token",
+          refresh_token: "test-refresh-token",
+          user: { id: "test-user-id", email: "test@test.com" },
+        },
+      },
+      error: null,
+    }),
     getUser: jest.fn().mockResolvedValue({ data: { user: { id: "test-user-id" } }, error: null }),
+  },
+  functions: {
+    invoke: jest.fn().mockResolvedValue({ data: { ok: true }, error: null }),
   },
   from: jest.fn().mockReturnThis(),
   select: jest.fn().mockReturnThis(),

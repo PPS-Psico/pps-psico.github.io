@@ -1169,6 +1169,65 @@ export type Database = {
         };
         Relationships: [];
       };
+      password_reset_tokens: {
+        Row: {
+          claimed_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          delivery_email_hash: string | null;
+          estudiante_id: string;
+          expires_at: string;
+          failure_code: string | null;
+          id: string;
+          requested_ip: string | null;
+          requested_ip_hash: string | null;
+          status: string;
+          token_hash: string;
+          used_at: string | null;
+          user_id: string;
+        };
+        Insert: {
+          claimed_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          delivery_email_hash?: string | null;
+          estudiante_id: string;
+          expires_at: string;
+          failure_code?: string | null;
+          id?: string;
+          requested_ip?: string | null;
+          requested_ip_hash?: string | null;
+          status?: string;
+          token_hash: string;
+          used_at?: string | null;
+          user_id: string;
+        };
+        Update: {
+          claimed_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          delivery_email_hash?: string | null;
+          estudiante_id?: string;
+          expires_at?: string;
+          failure_code?: string | null;
+          id?: string;
+          requested_ip?: string | null;
+          requested_ip_hash?: string | null;
+          status?: string;
+          token_hash?: string;
+          used_at?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "password_reset_tokens_estudiante_id_fkey";
+            columns: ["estudiante_id"];
+            isOneToOne: false;
+            referencedRelation: "estudiantes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       penalizaciones: {
         Row: {
           airtable_id: string | null;
@@ -1868,11 +1927,51 @@ export type Database = {
         Returns: number;
       };
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean };
+      claim_password_reset_token: {
+        Args: { p_token_hash: string };
+        Returns: {
+          delivery_email_hash: string;
+          estudiante_id: string;
+          request_id: string;
+          user_id: string;
+        }[];
+      };
       clean_dirty_text: { Args: { val: string }; Returns: string };
       cleanup_old_verification_attempts: { Args: never; Returns: undefined };
       close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json };
+      complete_password_reset: {
+        Args: {
+          p_failure_code?: string;
+          p_request_id: string;
+          p_success: boolean;
+        };
+        Returns: boolean;
+      };
+      create_password_reset_request: {
+        Args: {
+          p_delivery_email_hash: string;
+          p_estudiante_id: string;
+          p_expires_at: string;
+          p_requested_ip_hash: string;
+          p_token_hash: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined };
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
+      finalize_password_reset_delivery: {
+        Args: {
+          p_delivered: boolean;
+          p_failure_code?: string;
+          p_request_id: string;
+        };
+        Returns: boolean;
+      };
+      finish_student_email_send: {
+        Args: { p_event_id: string; p_sent: boolean };
+        Returns: boolean;
+      };
       get_activos_list: { Args: { p_year: number }; Returns: Json };
       get_activos_list_impl: { Args: { p_year: number }; Returns: Json };
       get_admin_metrics_kpis: { Args: { p_year: number }; Returns: Json };
@@ -2139,10 +2238,12 @@ export type Database = {
           user_id: string;
         }[];
       };
+      identity_ip_rate_limited: { Args: never; Returns: boolean };
       increment_snooze_count: { Args: { reminder_id: string }; Returns: number };
       is_admin: { Args: never; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
       mark_password_changed: { Args: never; Returns: undefined };
+      owns_storage_folder: { Args: { object_name: string }; Returns: boolean };
       practica_computa: { Args: { p_estado: string }; Returns: boolean };
       process_consentimiento_timeouts: { Args: never; Returns: undefined };
       register_campus_student: {
@@ -2180,6 +2281,10 @@ export type Database = {
           penalizacion_id: string;
           practica_id: string;
         }[];
+      };
+      reserve_student_email_send: {
+        Args: { p_user_id: string };
+        Returns: string;
       };
       reset_student_password_verified: {
         Args: {

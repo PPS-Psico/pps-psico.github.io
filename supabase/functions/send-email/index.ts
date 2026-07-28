@@ -1,109 +1,222 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createTransport } from "npm:nodemailer";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const ADMIN_ROLES = new Set(["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"]);
+
+const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const responseHeaders = {
+  ...corsHeaders,
+  "Content-Type": "application/json",
+  "Cache-Control": "no-store, max-age=0",
+  "X-Content-Type-Options": "nosniff",
+};
 
-/**
- * Autorización.
- *
- * Esta función era un relay SMTP abierto: aceptaba destinatario, asunto y HTML
- * arbitrarios sin ninguna verificación. Con la anon key (pública, va en el
- * bundle) cualquiera podía mandar correos desde la casilla institucional, que
- * es exactamente el insumo de un phishing creíble.
- *
- * Identidades aceptadas:
- *  - service_role: llamadas internas entre funciones
- *    (check-consentimiento-pendientes invoca a ésta para avisar de las bajas).
- *  - cualquier sesión de usuario real: el alumno dispara mails legítimos al
- *    aceptar el compromiso, y coordinación al gestionar. No se restringe a
- *    admin para no romper el flujo del alumno.
- */
-const isAuthorized = async (req: Request): Promise<boolean> => {
-  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
-  if (!token) return false;
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: responseHeaders,
+  });
 
-  if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) return true;
+type Principal =
+  | { kind: "service" }
+  | { kind: "admin"; userId: string }
+  | { kind: "student"; userId: string; verifiedEmail: string };
+
+const authenticate = async (req: Request): Promise<Principal | null> => {
+  const token = req.headers
+    .get("Authorization")
+    ?.replace(/^Bearer\s+/i, "")
+    .trim();
+  if (!token) return null;
+
+  if (SUPABASE_SERVICE_ROLE_KEY && token === SUPABASE_SERVICE_ROLE_KEY) {
+    return { kind: "service" };
+  }
 
   const {
     data: { user },
-  } = await supabaseAdmin.auth.getUser(token);
-  return !!user;
+    error: authError,
+  } = await admin.auth.getUser(token);
+  if (authError || !user) return null;
+
+  const { data: profile, error: profileError } = await admin
+    .from("estudiantes")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (profileError || !profile) return null;
+
+  if (profile.role && ADMIN_ROLES.has(profile.role)) {
+    return { kind: "admin", userId: user.id };
+  }
+
+  const verifiedEmail = user.email_confirmed_at ? user.email?.trim().toLowerCase() : "";
+  if (!verifiedEmail) return null;
+
+  return {
+    kind: "student",
+    userId: user.id,
+    verifiedEmail,
+  };
 };
 
-serve(async (req) => {
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const isReasonableEmail = (value: string): boolean =>
+  value.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-
-  if (!(await isAuthorized(req))) {
-    return new Response(JSON.stringify({ error: "No autorizado." }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405);
   }
 
+  const principal = await authenticate(req);
+  if (!principal) return json({ error: "No autorizado." }, 401);
+
+  let studentReservationId: string | null = null;
+
   try {
-    const SMTP_EMAIL = Deno.env.get("SMTP_EMAIL");
-    const SMTP_PASSWORD = Deno.env.get("SMTP_PASSWORD");
+    const smtpEmail = Deno.env.get("SMTP_EMAIL");
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    if (!smtpEmail || !smtpPassword) {
+      throw new Error("El servicio de correo no está configurado.");
+    }
 
-    if (!SMTP_EMAIL || !SMTP_PASSWORD) {
-      throw new Error(
-        "Faltan las credenciales SMTP (SMTP_EMAIL o SMTP_PASSWORD) en las variables de entorno."
+    const body = (await req.json().catch(() => ({}))) as {
+      to?: unknown;
+      cc?: unknown;
+      subject?: unknown;
+      text?: unknown;
+      name?: unknown;
+      html?: unknown;
+    };
+
+    const submittedTo = String(body.to ?? "")
+      .trim()
+      .toLowerCase();
+    const subject = String(body.subject ?? "").trim();
+    const text = String(body.text ?? "");
+    const name = String(body.name ?? "").slice(0, 200);
+    const submittedHtml = body.html == null ? "" : String(body.html);
+    const submittedCc = body.cc == null ? "" : String(body.cc).trim().toLowerCase();
+
+    if (!subject || subject.length > 180) {
+      return json({ error: "El asunto es obligatorio y no puede superar 180 caracteres." }, 400);
+    }
+    if (text.length > 20_000 || submittedHtml.length > 100_000) {
+      return json({ error: "El contenido del correo supera el límite permitido." }, 413);
+    }
+
+    let recipient = submittedTo;
+    let cc: string | undefined = submittedCc || undefined;
+
+    if (principal.kind === "student") {
+      // Un alumno puede disparar sus constancias, pero jamás elegir a quién se
+      // envían. El destino real es exclusivamente su correo confirmado de Auth.
+      recipient = principal.verifiedEmail;
+      cc = undefined;
+
+      const { data: reservationId, error: reservationError } = await admin.rpc(
+        "reserve_student_email_send",
+        { p_user_id: principal.userId }
       );
+
+      if (reservationError) {
+        console.error(
+          "[send-email] Student rate-limit reservation failed:",
+          reservationError.message
+        );
+        return json({ error: "No pudimos procesar el correo en este momento." }, 503);
+      }
+      if (typeof reservationId !== "string") {
+        return json(
+          { error: "Se alcanzó el límite de correos. Intentá nuevamente más tarde." },
+          429
+        );
+      }
+      studentReservationId = reservationId;
+    } else {
+      if (!recipient || !isReasonableEmail(recipient)) {
+        return json({ error: "El destinatario no es válido." }, 400);
+      }
+      if (cc && !isReasonableEmail(cc)) {
+        return json({ error: "La dirección de copia no es válida." }, 400);
+      }
     }
 
-    const { to, cc, subject, text, name, html } = await req.json();
-
-    if (!to || !subject) {
-      throw new Error("Faltan campos obligatorios (to, subject).");
-    }
+    const html =
+      submittedHtml ||
+      `<div style="font-family:sans-serif;padding:20px;">
+        <h2>Hola ${escapeHtml(name)},</h2>
+        <p style="white-space:pre-line;font-size:16px;color:#333;">${escapeHtml(text)}</p>
+        <hr style="border:0;border-top:1px solid #eee;margin:20px 0;" />
+        <p style="font-size:12px;color:#888;">Mensaje automático del sistema de gestión de PPS.</p>
+      </div>`;
 
     const transporter = createTransport({
       service: "gmail",
       auth: {
-        user: SMTP_EMAIL,
-        pass: SMTP_PASSWORD,
+        user: smtpEmail,
+        pass: smtpPassword,
       },
     });
 
-    const htmlContent =
-      html ||
-      `<div style="font-family: sans-serif; padding: 20px;">
-        <h2>Hola ${name || ""},</h2>
-        <p style="white-space: pre-line; font-size: 16px; color: #333;">${text}</p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #888;">Este es un mensaje automático del sistema de gestión de PPS.</p>
-      </div>`;
-
     const info = await transporter.sendMail({
-      from: `"Mi Panel Académico" <${SMTP_EMAIL}>`,
-      to,
-      cc: cc || undefined,
+      from: `"Mi Panel Académico" <${smtpEmail}>`,
+      to: recipient,
+      cc,
       subject,
       text,
-      html: htmlContent,
+      html,
     });
 
-    console.log("Email enviado exitosamente: %s", info.messageId);
+    if (studentReservationId) {
+      await admin.rpc("finish_student_email_send", {
+        p_event_id: studentReservationId,
+        p_sent: true,
+      });
+    }
 
-    return new Response(JSON.stringify({ success: true, messageId: info.messageId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    console.log("[send-email] Email accepted by SMTP");
+    return json(
+      principal.kind === "student"
+        ? { success: true }
+        : { success: true, messageId: info.messageId }
+    );
   } catch (error) {
+    if (studentReservationId) {
+      await admin.rpc("finish_student_email_send", {
+        p_event_id: studentReservationId,
+        p_sent: false,
+      });
+    }
+
     const message = error instanceof Error ? error.message : "Error desconocido";
-    console.error("Error enviando email:", error);
-    return new Response(JSON.stringify({ error: message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
-    });
+    console.error("[send-email] Delivery error:", message);
+    return json({ error: "No se pudo enviar el correo." }, 502);
   }
 });

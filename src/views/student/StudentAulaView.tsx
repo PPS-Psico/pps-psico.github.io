@@ -765,6 +765,19 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Cómo recupero mi contraseña?",
+        a: (
+          <>
+            En la pantalla de ingreso, elegí <strong>¿Olvidaste tu contraseña?</strong> e ingresá
+            solamente tu legajo. Si tu cuenta está activa, vas a recibir un enlace en el correo
+            verificado de tu cuenta. El enlace vence en una hora; si pedís otro, el anterior deja de
+            funcionar. La nueva contraseña debe tener entre <strong>10 y 128 caracteres</strong>. Si
+            no recibís el mensaje, revisá spam y después comunicate con coordinación para verificar
+            el correo asociado a tu cuenta.
+          </>
+        ),
+      },
+      {
         q: "¿Qué pasa si no puedo acceder a Mi Panel?",
         a: "Comunicate con coordinación. Si es tu primera inscripción, puede que el legajo todavía no esté cargado en el sistema.",
       },
