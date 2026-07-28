@@ -1,5 +1,6 @@
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import prettier from 'eslint-plugin-prettier/recommended';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -23,6 +24,7 @@ export default [
       'jest.d.ts',
       'jest-setup.ts',
       'supabase/**',
+      'src/types/supabase.ts',
       '__ANTIGRAVITY_PROBE__.txt',
       '.storybook/**',
       '.agent/**',
@@ -69,6 +71,7 @@ export default [
       '@typescript-eslint': tseslint,
       react,
       'react-hooks': reactHooks,
+      'jsx-a11y': jsxA11y,
       security
     },
     settings: {
@@ -102,6 +105,32 @@ export default [
       // Generaba ~1265 falsos positivos (80% del ruido de lint) que tapaban los
       // warnings que sí importan. La propia plugin documenta su alta tasa de
       // falsos positivos. Si hiciera falta, validar índices puntuales a mano.
+      // ── Accesibilidad (WCAG 2.2 AA, comprometido en PRODUCT.md) ──────────
+      // El plugin estaba instalado pero nunca configurado: no corria ninguna
+      // regla. Se activa el set recomendado; las reglas que detectan barreras
+      // reales de teclado/lector van como error, el resto como warn para
+      // limpieza gradual sin frenar el build.
+      ...jsxA11y.configs.recommended.rules,
+      'jsx-a11y/alt-text': 'error',
+      'jsx-a11y/anchor-has-content': 'error',
+      'jsx-a11y/aria-props': 'error',
+      'jsx-a11y/aria-role': 'error',
+      'jsx-a11y/role-has-required-aria-props': 'error',
+      // Un handler de click sin equivalente de teclado deja el control fuera
+      // del alcance de quien no usa mouse.
+      'jsx-a11y/click-events-have-key-events': 'warn',
+      'jsx-a11y/no-static-element-interactions': 'warn',
+      'jsx-a11y/no-noninteractive-element-interactions': 'warn',
+      'jsx-a11y/label-has-associated-control': 'warn',
+      // Un rol interactivo que no se puede tabular es una barrera dura: se
+      // queda como error.
+      'jsx-a11y/interactive-supports-focus': 'error',
+      // Degradada a warn a proposito. WCAG no prohibe autofocus; el riesgo real
+      // es el cambio de contexto inesperado. Todos los usos actuales son el
+      // input principal de un modal o del paso activo del login, donde mover el
+      // foco es lo correcto para quien navega con teclado. Se deja en warn para
+      // que un autofocus nuevo fuera de ese patron se note.
+      'jsx-a11y/no-autofocus': 'warn',
       'security/detect-object-injection': 'off',
       'security/detect-non-literal-fs-filename': 'warn',
       'security/detect-non-literal-regexp': 'warn',
@@ -116,12 +145,6 @@ export default [
   },
   {
     files: ['main.tsx'],
-    rules: {
-      'react-hooks/rules-of-hooks': 'off'
-    }
-  },
-  {
-    files: ['src/components/admin/EditorEstudiantes.tsx'],
     rules: {
       'react-hooks/rules-of-hooks': 'off'
     }

@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import ThemeToggle from "./layout/ThemeToggle";
 import { useAuth } from "../contexts/AuthContext";
 import { useModal } from "../contexts/ModalContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuthLogic } from "../hooks/useAuthLogic";
-import { useMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
-import type { MoodleOnboardingProfile } from "../hooks/useMoodleAutoLogin";
 import { useCampusOnboarding } from "../hooks/useCampusOnboarding";
-import CampusEntryLoader from "./CampusEntryLoader";
-import TurnstileWidget from "./security/TurnstileWidget";
-import {
-  FIELD_NOMBRE_SEPARADO_ESTUDIANTES,
-  FIELD_APELLIDO_SEPARADO_ESTUDIANTES,
-  FIELD_NOMBRE_ESTUDIANTES,
-} from "../constants";
+import type { MoodleOnboardingProfile } from "../hooks/useMoodleAutoLogin";
+import { useMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
 import { toTitleCase } from "../utils/formatters";
+import CampusEntryLoader from "./CampusEntryLoader";
+import ThemeToggle from "./layout/ThemeToggle";
+import TurnstileWidget from "./security/TurnstileWidget";
 
 /* ── Íconos de trazo (lucide-style) — misma firma que ds/Icon ── */
 type AuthIconName =
@@ -351,13 +345,12 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
     clearLogs,
     handleVerificationDataChange,
     handleFormSubmit,
-    foundStudent,
   } = useAuthLogic({ login, showModal });
 
   const [showPassword, setShowPassword] = useState(false);
 
-  // Ingreso automático desde el campus Moodle (si el email/DNI matchea un
-  // estudiante) u onboarding (si es un alumno del campus sin cuenta).
+  // Entrada desde Moodle: conserva sesiones existentes y muestra onboarding a
+  // estudiantes sin cuenta. Los perfiles ya vinculados usan el login normal.
   const { status: autoLoginStatus, onboarding } = useMoodleAutoLogin();
   // El alumno puede salir de la bienvenida hacia el login normal (p. ej. si ya
   // tiene cuenta con otro correo).
@@ -384,14 +377,6 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
     navigator.clipboard.writeText(logsText).then(() => {
       showModal("Copiado", "Los logs técnicos han sido copiados al portapapeles.");
     });
-  };
-
-  const getDisplayName = () => {
-    if (!foundStudent) return "";
-    const nombre = foundStudent[FIELD_NOMBRE_SEPARADO_ESTUDIANTES];
-    const apellido = foundStudent[FIELD_APELLIDO_SEPARADO_ESTUDIANTES];
-    if (nombre && apellido) return toTitleCase(`${nombre} ${apellido}`);
-    return toTitleCase(foundStudent[FIELD_NOMBRE_ESTUDIANTES] || "");
   };
 
   const submitBtn = (label: string, withArrow = false) => (
@@ -524,7 +509,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
               Crear <em>cuenta.</em>
             </h2>
             <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
-              Ingresa tu legajo para verificar si estás habilitado.
+              Ingresá tu legajo. Tus datos se validan de forma segura al completar el registro.
             </p>
           </div>
           <EdInput
@@ -544,10 +529,11 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
           <div className="text-left mb-8">
             <span className="ed-eyebrow block mb-3">Registro · Paso 2 de 2</span>
             <h2 className="au-h text-[40px]">
-              ¡Hola, <em>{getDisplayName()}!</em>
+              Completá <em>tus datos.</em>
             </h2>
             <p className="text-[var(--ink-muted)] mt-2 text-[15.5px] leading-relaxed">
-              Confirma tus datos y crea una contraseña segura.
+              Deben coincidir con el registro académico. Mi Panel no muestra datos personales antes
+              de validar tu cuenta.
             </p>
           </div>
           <div className="space-y-4">

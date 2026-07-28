@@ -1,9 +1,8 @@
-import { useEffect, useState, FormEvent, ChangeEvent } from "react";
-import { supabase } from "../lib/supabaseClient";
-import type { EstudianteFields, AirtableRecord } from "../types";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import type { AuthUser } from "../contexts/AuthContext";
-import { logger } from "../utils/logger";
+import { supabase } from "../lib/supabaseClient";
 import { getErrorMessage } from "../utils/getErrorMessage";
+import { logger } from "../utils/logger";
 
 interface UseAuthLogicProps {
   login: (user: AuthUser) => void;
@@ -14,8 +13,6 @@ type AuthMode = "login" | "register" | "forgot" | "reset" | "migration" | "recov
 
 const PASSWORD_MIN_LENGTH = 10;
 const PASSWORD_MAX_LENGTH = 128;
-
-const getFirstRow = (data: unknown) => (Array.isArray(data) && data.length > 0 ? data[0] : null);
 
 /**
  * Lee un parámetro de la URL tanto del query string normal (?legajo=123)
@@ -130,7 +127,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
   const clearLogs = () => setDebugLogs([]);
 
-  const [foundStudent, setFoundStudent] = useState<AirtableRecord<EstudianteFields> | null>(null);
   const [verificationData, setVerificationData] = useState({ dni: "", correo: "", telefono: "" });
 
   useEffect(() => {
@@ -147,7 +143,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     setMigrationStep(1);
     setRegisterStep(1);
     setVerificationData({ dni: "", correo: "", telefono: "" });
-    setFoundStudent(null);
   };
 
   const handleModeChange = (newMode: AuthMode) => {
@@ -165,7 +160,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
       setResetStep("verify");
       setError(null);
       setFieldError(null);
-      setFoundStudent(null);
     }
   };
 
@@ -212,51 +206,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         "No pudimos procesar el pedido en este momento. Intentá nuevamente en unos minutos."
       );
     }
-  };
-
-  const getSignupStatus = async (email?: string) => {
-    const { data, error } = await supabase.rpc("get_student_signup_status", {
-      legajo_input: legajo.trim(),
-      correo_input: email?.trim().toLowerCase() || undefined,
-    });
-
-    if (error) {
-      throw new Error("No pudimos validar el legajo en este momento. Intenta nuevamente.");
-    }
-    return getFirstRow(data);
-  };
-
-  const hydrateRegistrationForm = (student: Record<string, unknown>) => {
-    setFoundStudent(student as unknown as AirtableRecord<EstudianteFields>);
-    setVerificationData({
-      dni: student.dni ? String(student.dni).replace(/\D/g, "") : "",
-      correo: student.correo ? String(student.correo).trim().toLowerCase() : "",
-      telefono: student.telefono ? String(student.telefono).trim() : "",
-    });
-  };
-
-  const assertSignupStatusAllowsCreation = (student: Record<string, unknown> | null) => {
-    const status = student?.signup_status || (student?.user_id ? "linked" : "available");
-
-    if (!student || status === "not_found") {
-      throw new Error(
-        "El legajo no figura como estudiante habilitado. Revisá el número ingresado o contactá a coordinación."
-      );
-    }
-
-    if (status === "linked") {
-      throw new Error(
-        "Este legajo ya tiene una cuenta activa. Iniciá sesión o usá Recuperar Acceso si olvidaste tu contraseña."
-      );
-    }
-
-    if (status === "email_in_use") {
-      throw new Error(
-        "El correo indicado ya tiene una cuenta creada. Usá Recuperar Acceso para restablecer la contraseña."
-      );
-    }
-
-    return student;
   };
 
   const handleFormSubmit = async (e: FormEvent) => {
@@ -346,13 +295,13 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     } else if (mode === "register") {
       try {
         if (registerStep === 1) {
-          if (!legajoTrimmed) throw new Error("Por favor ingresa tu legajo.");
+          if (!/^\d{4,8}$/.test(legajoTrimmed)) {
+            throw new Error("Ingresá tu legajo (solo números, entre 4 y 8 dígitos).");
+          }
 
-          const student = assertSignupStatusAllowsCreation(
-            (await getSignupStatus()) as Record<string, unknown> | null
-          );
-
-          hydrateRegistrationForm(student);
+          // La pantalla pública no consulta ni precarga datos personales. La
+          // identidad se valida en servidor al vincular la cuenta autenticada.
+          setVerificationData({ dni: "", correo: "", telefono: "" });
           setRegisterStep(2);
           setIsLoading(false);
           return;
@@ -366,11 +315,9 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
           const inputEmail = correo.trim().toLowerCase();
           const cleanDniInt = parseVerificationDni(dni);
-          assertSignupStatusAllowsCreation(
-            (await getSignupStatus(inputEmail)) as Record<string, unknown> | null
-          );
 
-          // Intentar crear usuario
+          // Crear el usuario antes de la vinculación. La RPC valida que el
+          // correo confirmado de Auth y el DNI coincidan con la fila precargada.
           const { data: authData, error: signUpError } = await supabase.auth.signUp({
             email: inputEmail,
             password: password,
@@ -404,7 +351,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
           }
 
           if (userId) {
-            // Garantizar datos actualizados con DNI limpio y cambiar estado a Activo
             const { error: linkError } = await supabase.rpc("register_new_student", {
               legajo_input: legajoTrimmed,
               userid_input: userId,
@@ -414,21 +360,11 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
             });
 
             if (linkError) {
-              const msg = String(linkError.message || "").toLowerCase();
-              if (msg.includes("cuenta vinculada") || msg.includes("already")) {
-                throw new Error(
-                  "La cuenta se creó, pero el legajo ya aparece vinculado. Intentá ingresar o usá Recuperar Acceso."
-                );
-              }
+              logger.warn("Student signup link failed:", linkError.message);
               throw new Error(
-                "La cuenta se creó, pero no pudimos completar tus datos. Contactá a coordinación para vincular el legajo."
+                "La cuenta se creó, pero no pudimos validar los datos con el registro académico. Revisalos o contactá a coordinación."
               );
             }
-
-            await supabase
-              .from("estudiantes")
-              .update({ estado: "Activo" })
-              .eq("legajo", legajoTrimmed);
           }
         }
       } catch (err) {
@@ -528,7 +464,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     isLoading,
     error,
     fieldError,
-    foundStudent,
     verificationData,
     debugLogs,
     clearLogs,

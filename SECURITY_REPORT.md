@@ -23,11 +23,14 @@ La aplicacion tiene medidas reales de seguridad implementadas, pero el estado co
 
 ## Riesgos prioritarios
 
-- politicas RLS demasiado amplias en tablas de negocio;
-- permisos abiertos o ambiguos en tablas auxiliares;
-- acciones sensibles iniciadas desde frontend sin suficiente control server-side;
-- deuda documental que puede inducir malas decisiones operativas;
-- integraciones antiguas o experimentales con secretos hardcodeados.
+- 0B cerró la exposición de PII de `get_student_signup_status`: la respuesta de compatibilidad devuelve esas columnas en `NULL`, no consulta correos de Auth y las vinculaciones validan DNI + correo confirmado en servidor. La revocación de `anon` quedó preparada en `20260728173000_restrict_student_signup_status.sql`, pero no debe aplicarse hasta publicar el frontend actualizado; mientras tanto todavía permite inferir si un legajo está disponible o vinculado;
+- la emisión insegura de magic-links desde FilterCodes fue deshabilitada en producción con `moodle-autologin` v8: la función exige JWT, no usa import map, no genera credenciales, no modifica filas, no registra PII y envía las cuentas existentes al login normal. La identidad federada automática solo debe volver con LTI/SSO firmado;
+- el frontend y `launch-scheduler` usan `Programada`, pero el `CHECK` real de `lanzamientos_pps` no admite ese estado;
+- el historial local de migraciones tiene drift severo frente al proyecto alojado y no es hoy una reconstrucción confiable;
+- funciones `SECURITY DEFINER` expuestas deben auditarse por contrato y grants, aunque varias ya validan `auth.uid()`, `is_admin()` o `is_staff()`;
+- la [protección contra contraseñas filtradas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) de Supabase Auth continúa desactivada. Debe habilitarse manualmente en `Authentication → Providers → Email / Password Security`; requiere plan Pro o superior;
+- acciones sensibles iniciadas desde frontend necesitan contratos server-side y trazabilidad consistentes;
+- integraciones antiguas o experimentales deben reconciliarse con las funciones efectivamente desplegadas.
 
 ## Fuente de verdad
 
