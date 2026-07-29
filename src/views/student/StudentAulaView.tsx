@@ -721,9 +721,10 @@ const faqGroups: FaqGroup[] = [
           <>
             Si todavía no tenés cuenta, Mi Panel puede precargar desde Moodle tu nombre, apellido,
             correo y DNI. Vos completás <strong>legajo, celular y contraseña</strong>; si Moodle no
-            informa un DNI válido, también vas a poder ingresarlo. Si ya tenés cuenta, iniciá sesión
-            normalmente con tu legajo y contraseña o usá <strong>Recuperar acceso</strong>. Por
-            seguridad, los datos de la URL de Moodle no inician sesión automáticamente.
+            informa un DNI válido, también vas a poder ingresarlo. Si ya tenés una cuenta vinculada
+            y los datos del campus coinciden exactamente, Mi Panel inicia la sesión automáticamente.
+            Si falta algún dato o existe una diferencia, ingresá con legajo y contraseña o usá
+            <strong> Recuperar acceso</strong>.
           </>
         ),
       },

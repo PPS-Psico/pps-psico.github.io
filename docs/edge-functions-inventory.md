@@ -22,7 +22,7 @@ La fuente local está en `supabase/functions/` y la política JWT en `supabase/c
 | `hermes-proxy`                    |      v4 | sí  | canónica; roles `admin`/`SuperUser` y allowlist    |
 | `launch-scheduler`                |     v31 | no  | canónica; cron cada 10 min                         |
 | `list-backups`                    |     v13 | sí  | canónica                                           |
-| `moodle-autologin`                |      v9 | sí  | canónica; no crea sesiones desde FilterCodes       |
+| `moodle-autologin`                |     v10 | sí  | canónica; autologin estricto solo para alumnos     |
 | `request-password-reset`          |      v4 | sí  | canónica                                           |
 | `reset-password-with-token`       |      v4 | sí  | canónica                                           |
 | `restore-backup`                  |     v10 | sí  | manual/hold; no auto-deploy                        |

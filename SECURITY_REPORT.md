@@ -24,7 +24,7 @@ La aplicacion tiene medidas reales de seguridad implementadas, pero el estado co
 ## Riesgos prioritarios
 
 - 0B cerró la exposición de PII de `get_student_signup_status`: la respuesta de compatibilidad no devuelve PII, las vinculaciones validan identidad en servidor y la migración productiva `20260728180058_restrict_student_signup_status.sql` revocó la ejecución pública; solo `service_role` conserva acceso;
-- la emisión insegura de magic-links desde FilterCodes fue deshabilitada en producción con `moodle-autologin` v9: la función exige JWT, no genera credenciales, no modifica filas y envía las cuentas existentes al login normal. La identidad federada automática solo debe volver con LTI/SSO firmado;
+- el autologin de Moodle se restauró como compatibilidad transitoria sin LTI/SSO: `moodle-autologin` exige JWT y origen web permitido, solo admite cuentas ya vinculadas con rol de alumno, correo Auth confirmado y coincidencia estricta de correo, DNI, nombre y apellido, y emite un token de un solo uso sin modificar filas. FilterCodes continúa sin firma criptográfica, por lo que permanece un riesgo residual de suplantación con PII completa; debe reemplazarse por identidad federada si Moodle habilita esa posibilidad;
 - el contrato `Programada` quedó soportado por la migración productiva `20260728183153_support_programmed_launches.sql` y por `launch-scheduler` v31;
 - el historial local de migraciones mantiene drift semántico frente al proyecto alojado: 111 versiones remotas y 83 migraciones locales canónicas al 28/07/2026; la reparación seguirá siendo incremental y sin `db push` sobre producción;
 - la reconciliación de Edge Functions fue desplegada mediante PR #5 y los crons v15/v31 ejecutaron correctamente sin `BOOT_ERROR`;
