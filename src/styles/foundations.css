@@ -1,0 +1,296 @@
+/* Fase 1A · Fundamentos visuales compartidos.
+   Estos aliases conectan los sistemas existentes sin reemplazar los scopes
+   especializados del estudiante (.ed/.ah-root) ni del Lanzador (.lv4-*). */
+:root {
+  --app-canvas: var(--paper);
+  --app-surface: color-mix(in oklab, var(--paper) 94%, var(--paper-2));
+  --app-surface-elevated: var(--paper);
+  --app-surface-muted: var(--paper-2);
+  --app-text: var(--ink);
+  --app-text-soft: var(--ink-2);
+  --app-text-muted: var(--ink-3);
+  --app-border: var(--rule-2);
+  --app-border-strong: var(--rule-3);
+  --app-accent: var(--accent);
+  --app-danger: var(--crit);
+  --app-focus-ring: color-mix(in oklab, var(--app-accent) 42%, transparent);
+  --app-shadow-sm: 0 1px 2px color-mix(in oklab, var(--ink) 7%, transparent);
+  --app-shadow-md: 0 16px 40px -28px color-mix(in oklab, var(--ink) 42%, transparent);
+  --app-radius-sm: 8px;
+  --app-radius-md: 12px;
+  --app-radius-lg: 18px;
+  --app-control-size: 44px;
+  --app-shell-max: 1440px;
+  --app-gutter: clamp(16px, 3vw, 40px);
+  --app-duration-fast: 140ms;
+  --app-duration-base: 220ms;
+  --app-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --app-z-sticky: 40;
+  --app-z-nav: 50;
+  --app-z-banner: 2000;
+}
+
+html {
+  background: var(--app-canvas);
+  scroll-padding-top: 72px;
+}
+
+body {
+  color: var(--app-text);
+}
+
+::selection {
+  color: var(--app-text);
+  background: color-mix(in oklab, var(--app-accent) 22%, transparent);
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--app-focus-ring);
+  outline-offset: 3px;
+}
+
+.app-shell,
+.app-role-shell {
+  min-height: 100dvh;
+  color: var(--app-text);
+  background: var(--app-canvas);
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell--student {
+  --app-canvas: var(--student-bg);
+  --app-surface: var(--student-bg-elevated);
+  --app-surface-elevated: var(--student-bg-elevated);
+  --app-surface-muted: var(--student-bg-sunken);
+  --app-text: var(--student-ink);
+  --app-text-soft: var(--student-ink-soft);
+  --app-text-muted: var(--student-ink-muted);
+  --app-border: var(--student-line);
+  --app-border-strong: var(--student-line-strong);
+  --app-accent: var(--student-accent-color);
+}
+
+.app-shell--embedded {
+  min-height: 0;
+  background: transparent;
+}
+
+.app-shell__content {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-shell__content:focus {
+  outline: none;
+}
+
+.app-container {
+  width: min(100%, var(--app-shell-max));
+  margin-inline: auto;
+  padding-inline: var(--app-gutter);
+}
+
+.app-skip-link {
+  position: fixed;
+  top: 10px;
+  left: 12px;
+  z-index: calc(var(--app-z-banner) + 1);
+  padding: 10px 14px;
+  color: var(--app-surface-elevated);
+  background: var(--app-text);
+  border-radius: var(--app-radius-sm);
+  box-shadow: var(--app-shadow-md);
+  font: 650 13px/1 var(--font-sans);
+  text-decoration: none;
+  transform: translateY(calc(-100% - 20px));
+  transition: transform var(--app-duration-fast) var(--app-ease);
+}
+
+.app-skip-link:focus-visible {
+  outline-color: var(--app-accent);
+  transform: translateY(0);
+}
+
+.app-offline-banner {
+  position: fixed;
+  z-index: var(--app-z-banner);
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px var(--app-gutter);
+  color: #fff;
+  background: var(--app-danger);
+  box-shadow: var(--app-shadow-md);
+  font: 650 12px/1.35 var(--font-sans);
+  text-align: center;
+}
+
+.app-offline-banner .material-icons {
+  font-size: 16px;
+}
+.app-mobile-topbar {
+  position: sticky;
+  z-index: var(--app-z-sticky);
+  top: 0;
+  display: flex;
+  height: 60px;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--app-gutter);
+  background: color-mix(in oklab, var(--app-surface-elevated) 90%, transparent);
+  border-bottom: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-sm);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+}
+
+.app-brand,
+.app-mobile-actions {
+  display: flex;
+  align-items: center;
+}
+
+.app-brand {
+  gap: 10px;
+}
+
+.app-brand__mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--app-surface-elevated);
+  background: var(--app-text);
+  border-radius: var(--app-radius-sm);
+  font: 700 14px/1 var(--font-display);
+}
+
+.app-brand__name {
+  color: var(--app-text);
+  font: 700 14px/1 var(--font-display);
+  letter-spacing: -0.025em;
+}
+
+.app-mobile-actions {
+  gap: 4px;
+}
+
+.app-icon-button {
+  display: inline-grid;
+  width: var(--app-control-size);
+  height: var(--app-control-size);
+  place-items: center;
+  color: var(--app-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition-property: color, background-color, transform;
+  transition-duration: var(--app-duration-fast);
+  transition-timing-function: var(--app-ease);
+}
+
+.app-icon-button:hover {
+  color: var(--app-text);
+  background: var(--app-surface-muted);
+}
+
+.app-icon-button:active {
+  transform: scale(0.96);
+}
+
+.app-bottom-nav {
+  position: fixed;
+  z-index: var(--app-z-nav);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: color-mix(in oklab, var(--app-surface-elevated) 94%, transparent);
+  border-top: 1px solid var(--app-border);
+  box-shadow: 0 -12px 32px -28px color-mix(in oklab, var(--app-text) 44%, transparent);
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+}
+
+.app-bottom-nav__track {
+  display: flex;
+  min-height: 64px;
+  align-items: stretch;
+  justify-content: space-around;
+}
+
+.app-bottom-nav__item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 56px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--app-text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition-property: color, background-color;
+  transition-duration: var(--app-duration-fast);
+}
+
+.app-bottom-nav__item:hover,
+.app-bottom-nav__item.is-active {
+  color: var(--app-accent);
+}
+
+.app-bottom-nav__item:active {
+  background: var(--app-surface-muted);
+}
+
+.app-bottom-nav__icon {
+  font-size: 24px;
+  transition: transform var(--app-duration-fast) var(--app-ease);
+}
+
+.app-bottom-nav__item.is-active .app-bottom-nav__icon {
+  transform: translateY(-1px);
+}
+
+.app-bottom-nav__label {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-bottom-nav__indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 36px;
+  height: 3px;
+  background: var(--app-accent);
+  border-radius: 0 0 999px 999px;
+  transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-skip-link,
+  .app-icon-button,
+  .app-bottom-nav__item,
+  .app-bottom-nav__icon {
+    transition-duration: 0.01ms;
+  }
+}

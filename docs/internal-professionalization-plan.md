@@ -1550,3 +1550,15 @@ incremental con el mismo patrón.
 
 - Fase 0 completada: baseline técnico, seguridad de alta/autenticación, publicación programada, Edge Functions, historial reproducible y evidencia visual previa al rediseño.
 - Los pendientes de rotación de credenciales y protección de contraseñas filtradas son acciones externas de proveedores, no bloquean el cierre técnico del repositorio.
+
+## 15. Fase 1 — unificación visual y UX
+
+La numeración vigente continúa desde la Fase 0 cerrada en la sección anterior. Las fases históricas del roadmap y del track de tooling se conservan como registro, pero no representan la secuencia operativa actual.
+
+### 1A. Fundamentos visuales y shell — cerrada
+
+- objetivo: establecer tokens semánticos y un shell compartido antes de intervenir vistas completas;
+- alcance inicial: canvas, superficies, tipografía, foco, movimiento, navegación móvil admin y accesibilidad del shell;
+- límites: sin lógica nueva, sin datos dependientes de Moodle y sin alterar los sistemas especializados `.lv4-*`, `.ed` o `.ah-root`;
+- documento de ejecución: `docs/phase-1a-visual-foundations.md`;
+- siguiente corte, después de validar esta base: elegir una sola familia de componentes compartidos y migrarla con comparación visual intencional.

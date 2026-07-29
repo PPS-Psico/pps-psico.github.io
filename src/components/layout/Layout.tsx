@@ -1,11 +1,11 @@
 import React, { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import AppHeader from "./Header";
+import { useAuth } from "../../contexts/AuthContext";
 import { useModal } from "../../contexts/ModalContext";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useAuth } from "../../contexts/AuthContext";
-import { logger } from "../../utils/logger";
 import { isEmbedded } from "../../utils/isEmbedded";
+import { logger } from "../../utils/logger";
+import AppHeader from "./Header";
 
 interface LayoutProps {
   children: ReactNode;
@@ -93,27 +93,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return <>{children}</>;
   }
 
+  const shellVariant = embedded ? "embedded" : isStudent || isPublicAula ? "student" : "paper";
+
   return (
     <div
       id="pps-embed-root"
-      className="flex flex-col min-h-screen"
-      style={
-        embedded
-          ? { background: "transparent" }
-          : isStudent || isPublicAula
-            ? { background: resolvedTheme === "dark" ? "#0a0e1a" : "#fafaf7" }
-            : // Admin/Jefe/Directivo/Reportero (Paper & Ink) y también la ruta raíz
-              // y la pantalla de carga de auth: pintamos "paper" desde el contenedor
-              // raíz para que nunca aparezca un flash blanco (estilo viejo).
-              { background: "var(--paper)" }
-      }
+      className={`app-shell app-shell--${shellVariant}`}
+      data-shell={shellVariant}
+      data-theme={resolvedTheme}
     >
+      <a className="app-skip-link" href="#main-content">
+        Saltar al contenido
+      </a>
+
       {!isOnline && (
-        <div className="bg-red-500 text-white text-center text-xs font-bold py-1 px-4 fixed top-0 left-0 right-0 z-[2000] animate-pulse shadow-md flex items-center justify-center gap-2">
-          <span className="material-icons !text-sm">wifi_off</span>
+        <div className="app-offline-banner" role="status" aria-live="polite">
+          <span className="material-icons" aria-hidden="true">
+            wifi_off
+          </span>
           Sin conexión a internet. Verificando red...
         </div>
       )}
+
       {!hasOwnTopBar &&
         !isFocusedScreen &&
         !isRootRedirect &&
@@ -129,21 +130,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         ) : (
           <AppHeader />
         ))}
-      {/* pt-16 for mobile (fixed header spacing), md:pt-0 for desktop (sticky header).
-          Las rutas con barra propia (admin) o pantallas enfocadas van full-bleed. */}
-      <main
+
+      {/* El contenido conserva los gutters de cada experiencia. El shell aporta
+          canvas, foco y accesibilidad sin intervenir los estilos lv4/Atlas. */}
+      <div
+        id="main-content"
+        tabIndex={-1}
         className={
           hasOwnTopBar || isFocusedScreen
-            ? "flex-grow w-full"
+            ? "app-shell__content flex-grow w-full"
             : embedded && isStudent
-              ? `flex-grow w-full ${authenticatedUser ? "pb-8" : "pb-0"} pt-16 md:pt-0`
-              : `flex-grow w-full px-4 sm:px-6 lg:px-8 ${
+              ? `app-shell__content flex-grow w-full ${authenticatedUser ? "pb-8" : "pb-0"} pt-16 md:pt-0`
+              : `app-shell__content flex-grow w-full px-4 sm:px-6 lg:px-8 ${
                   isStudent && !authenticatedUser ? "pb-0" : "pb-8"
                 } pt-16 md:pt-0 ${isFullWidth ? "" : "max-w-7xl mx-auto"}`
         }
       >
         {children}
-      </main>
+      </div>
     </div>
   );
 };

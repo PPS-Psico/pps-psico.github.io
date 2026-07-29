@@ -67,6 +67,7 @@ const server = process.env.VISUAL_BASE_URL
         VITE_SUPABASE_ANON_KEY: "visual-baseline-placeholder",
         VITE_TURNSTILE_SITE_KEY: "",
         VITE_ENABLE_MONITORING_IN_DEV: "false",
+        VITE_VISUAL_BASELINE: "true",
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -220,6 +221,7 @@ try {
   await shot(admin.page, captures[8][0]);
   await clickLaunch(admin.page, "Hospital Garrahan - Guardia Pediátrica");
   await admin.page.getByText("Cerrar inscripción").first().waitFor();
+  await admin.page.locator(".lv4-meta").filter({ hasText: "Postulantes: 3" }).waitFor();
   await shot(admin.page, captures[9][0]);
   await clickLaunch(admin.page, "Clínica San Jorge - Admisiones");
   await admin.page.getByText("Mesa de selección abierta").waitFor();
