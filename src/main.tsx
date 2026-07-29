@@ -5,9 +5,11 @@ import { testSupabaseConnection } from "./constants";
 import { AuthProvider } from "./contexts/AuthContext";
 import { logger } from "./utils/logger";
 
-// Diagnóstico de conexión a Supabase: solo en desarrollo.
-// En producción no tiene sentido hacer un fetch extra ni volcar datos a la consola.
-if (import.meta.env.DEV) {
+const isVisualBaseline = import.meta.env.VITE_VISUAL_BASELINE === "true";
+
+// Diagnóstico de conexión a Supabase: solo en desarrollo real.
+// El baseline visual usa datos ficticios y no debe intentar conexiones externas.
+if (import.meta.env.DEV && !isVisualBaseline) {
   logger.info("ANTIGRAVITY CONTROL: main.tsx loaded");
 
   testSupabaseConnection().then(async (result) => {
@@ -53,8 +55,9 @@ if (import.meta.env.DEV) {
 // @ts-ignore
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import "./styles/orientation-colors.css";
 import "./index.css";
+import "./styles/foundations.css";
+import "./styles/orientation-colors.css";
 
 // --- REACT RESILIENCE PATCH ---
 if (typeof Node === "function" && Node.prototype) {
@@ -147,8 +150,9 @@ root.render(
   </React.StrictMode>
 );
 
-// Register the unified Service Worker (handles both PWA caching and FCM push)
-if ("serviceWorker" in navigator) {
+// Register the unified Service Worker (handles both PWA caching and FCM push).
+// Playwright blocks service workers deliberately to keep visual captures deterministic.
+if (!isVisualBaseline && "serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
       // Unregister any legacy sw.js service workers to prevent duplicate notifications

@@ -174,101 +174,63 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
   // ─── MOBILE LAYOUT ───
   if (isMobile) {
     return (
-      <div className="admin-mobile-shell min-h-screen bg-[var(--paper)] text-[var(--ink)] transition-colors duration-300 pb-[72px]">
-        {/* ── COMPACT TOP BAR (mobile) ── */}
-        <header
-          className="sticky top-0 z-40 flex items-center justify-between px-4 h-14 border-b no-print"
-          style={{
-            background: "color-mix(in oklab, var(--paper) 90%, transparent)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            borderColor: "var(--rule-2)",
-          }}
-        >
-          <div className="flex items-center gap-2.5">
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 6,
-                background: "var(--ink)",
-                color: "var(--paper)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
+      <div className="admin-mobile-shell app-role-shell pb-[72px]">
+        <header className="app-mobile-topbar no-print">
+          <div className="app-brand">
+            <div className="app-brand__mark" aria-hidden="true">
               ψ
             </div>
-            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.02em" }}>
-              Mi Panel
-            </span>
+            <span className="app-brand__name">Mi Panel</span>
           </div>
-          <div className="flex items-center gap-1.5">
+
+          <div className="app-mobile-actions">
             <button
+              type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
-              style={{ color: "var(--ink-3)" }}
-              aria-label="Cambiar tema"
+              className="app-icon-button"
+              aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+              title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
             >
-              <span className="material-icons" style={{ fontSize: 19 }}>
+              <span className="material-icons !text-[19px]" aria-hidden="true">
                 {theme === "dark" ? "dark_mode" : "light_mode"}
               </span>
             </button>
             <button
+              type="button"
               onClick={logout}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
-              style={{ color: "var(--ink-3)" }}
+              className="app-icon-button"
               aria-label="Cerrar sesión"
+              title="Cerrar sesión"
             >
-              <span className="material-icons" style={{ fontSize: 19 }}>
+              <span className="material-icons !text-[19px]" aria-hidden="true">
                 logout
               </span>
             </button>
           </div>
         </header>
 
-        {/* Mobile content area — full bleed */}
         <main className="relative z-10">{renderContent()}</main>
 
-        {/* ── BOTTOM NAV BAR (mobile only) ── */}
-        <nav
-          className="fixed bottom-0 inset-x-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
-          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-        >
-          <div className="flex justify-around items-stretch">
+        <nav className="app-bottom-nav no-print" aria-label="Navegación de administración">
+          <div className="app-bottom-nav__track">
             {navItems
-              .filter((t) => MOBILE_TAB_IDS.has(t.id))
+              .filter((tab) => MOBILE_TAB_IDS.has(tab.id))
               .map((tab) => {
                 const isActive = currentTabId === tab.id;
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => handleTabChange(tab.id, tab.path)}
-                    className={`
-                    flex flex-col items-center justify-center flex-1 py-2.5 gap-0.5 transition duration-200
-                    ${
-                      isActive
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-slate-400 dark:text-slate-500 active:text-slate-600"
-                    }
-                  `}
+                    className={`app-bottom-nav__item${isActive ? " is-active" : ""}`}
+                    aria-current={isActive ? "page" : undefined}
+                    aria-label={`Ir a ${tab.label}`}
                   >
-                    <span
-                      className={`material-icons transition-transform duration-200 ${isActive ? "!text-[26px] scale-110" : "!text-[24px]"}`}
-                    >
+                    <span className="material-icons app-bottom-nav__icon" aria-hidden="true">
                       {tab.icon}
                     </span>
-                    <span
-                      className={`text-[10px] font-bold tracking-wide ${isActive ? "opacity-100" : "opacity-70"}`}
-                    >
-                      {tab.label}
-                    </span>
-                    {isActive && (
-                      <span className="absolute top-0 left-1/2 -translate-x-1/2 h-[3px] w-10 rounded-b-full bg-blue-600 dark:bg-blue-400" />
-                    )}
+                    <span className="app-bottom-nav__label">{tab.label}</span>
+                    {isActive && <span className="app-bottom-nav__indicator" aria-hidden="true" />}
                   </button>
                 );
               })}
@@ -282,8 +244,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
 
   // ─── DESKTOP LAYOUT ───
   return (
-    <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)] relative transition-colors duration-300">
-      {/* --- BARRA SUPERIOR UNIFICADA v3 --- */}
+    <div className="app-role-shell relative">
       <div className={isModalOpen ? "hidden" : ""}>
         <AdminTopBar
           navItems={navItems}
