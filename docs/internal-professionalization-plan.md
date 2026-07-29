@@ -1069,13 +1069,16 @@ Cuando una IA tome este documento como base, debería trabajar así:
   - el frontend dejo de depender de `get_student_details_by_legajo(...)` para login, recuperacion y activacion;
   - migracion: `supabase/migrations/20260410140000_harden_auth_rpcs.sql`.
 
+### Cierre expand/contract de Storage completado
+
+- `20260727120200_harden_storage_policies` y `20260727120300_fix_owner_manage_insert_gap` endurecieron las políticas de acceso;
+- el frontend que resuelve URLs históricas de `documentos_estudiantes` y `documentos_finalizacion` mediante URLs firmadas fue fusionado, publicado y validado antes del cambio productivo;
+- la migración productiva `20260729182222_make_student_documents_private` fijó `storage.buckets.public = false` para `documentos_estudiantes`;
+- `documentos_estudiantes` y `documentos_finalizacion` están privados, sin mover ni eliminar objetos ni cambiar sus paths;
+- se respetó el orden seguro frontend → publicación → migración, por lo que el cierre expand/contract queda completado.
+
 ### Siguiente subpaso sugerido
 
-- completar el cierre expand/contract de Storage:
-  - ya están aplicadas `20260727120200_harden_storage_policies` y `20260727120300_fix_owner_manage_insert_gap`;
-  - la rama actual ya resuelve las URLs históricas de `documentos_estudiantes` y `documentos_finalizacion` mediante URLs firmadas;
-  - falta fusionar/publicar el frontend, validar CV/certificados/solicitudes y recién entonces cambiar `storage.buckets.public` a `false` para `documentos_estudiantes` mediante una migración productiva;
-  - no invertir el orden: privatizar antes de publicar el lector firmado rompería los enlaces actuales.
 - decidir si vale la pena consolidar algunas policies `admin + own` en tablas PPS o si ese warning puede aceptarse como costo menor del modelo real;
 - revisar si alguna lectura publica/semipublica en `convocatorias` merece separarse en una tabla o vista especifica para bajar warnings sin tocar la UX;
 - decidir si conviene mover las RPC privilegiadas de auth fuera de `public` o si alcanza con el cierre actual de grants para este panel interno;

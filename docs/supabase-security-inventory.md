@@ -446,11 +446,18 @@ La Sesion 2 puede considerarse cerrada porque ahora existe:
 
 ### Riesgos que siguen vigentes
 
-1. `documentos_estudiantes` conserva `public = true`: las policies de escritura y listado ya están endurecidas, pero una URL conocida todavía puede descargar el objeto por la ruta pública sin evaluar RLS. El frontend de la rama `chore/reconcile-migration-history` ya prepara URLs firmadas para CV, certificados y documentos de solicitudes; el bucket solo debe pasar a privado después de fusionar y publicar esa compatibilidad.
-2. warnings de `multiple_permissive_policies` en tablas donde conviven permisos de admin y permisos del propio estudiante
-3. `backup_history.created_by` ya tiene indice, pero todavia no muestra uso en advisors por falta de trafico observado
-4. quedan warnings de extensiones instaladas en `public` (`pg_net`, `pg_trgm`)
-5. la proteccion contra claves filtradas en Supabase Auth sigue desactivada
+1. warnings de `multiple_permissive_policies` en tablas donde conviven permisos de admin y permisos del propio estudiante
+2. `backup_history.created_by` ya tiene indice, pero todavia no muestra uso en advisors por falta de trafico observado
+3. quedan warnings de extensiones instaladas en `public` (`pg_net`, `pg_trgm`)
+4. la proteccion contra claves filtradas en Supabase Auth sigue desactivada
+
+### Cierre de Storage privado
+
+- el frontend con URLs firmadas para CV, certificados, solicitudes y documentos de finalización fue fusionado, publicado y validado antes de cambiar el bucket;
+- la migración productiva `20260729182222_make_student_documents_private` fijó `documentos_estudiantes.public = false`;
+- `documentos_estudiantes` y `documentos_finalizacion` están privados, sin mover ni eliminar objetos ni modificar sus paths;
+- las policies por carpeta/owner permanecen activas y no existen policies `anon` para esos documentos;
+- el orden frontend → publicación → migración cerró el expand/contract sin romper los enlaces históricos.
 
 ## Criterio actualizado para el siguiente paso
 

@@ -32,7 +32,7 @@ La aplicacion tiene medidas reales de seguridad implementadas, pero el estado co
 - funciones `SECURITY DEFINER` expuestas deben auditarse por contrato y grants, aunque varias ya validan `auth.uid()`, `is_admin()` o `is_staff()`;
 - la [protección contra contraseñas filtradas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) de Supabase Auth continúa desactivada. Debe habilitarse manualmente en `Authentication → Providers → Email / Password Security`; requiere plan Pro o superior;
 - acciones sensibles iniciadas desde frontend necesitan contratos server-side y trazabilidad consistentes;
-- las políticas de `storage.objects` ya limitan los documentos estudiantiles por carpeta/owner, pero `documentos_estudiantes` aún está marcado como bucket público. El frontend de la rama de Fase 0 ya prepara URLs firmadas; debe publicarse y validarse antes de privatizar el bucket mediante migración para no romper enlaces históricos;
+- las políticas de `storage.objects` limitan los documentos estudiantiles por carpeta/owner y el cierre expand/contract de Storage quedó completado: el frontend con URLs firmadas fue publicado y validado antes de aplicar la migración productiva `20260729182222_make_student_documents_private.sql`; `documentos_estudiantes` y `documentos_finalizacion` están privados y los objetos conservaron sus paths;
 - integraciones antiguas o experimentales deben reconciliarse con las funciones efectivamente desplegadas.
 
 ## Fuente de verdad
