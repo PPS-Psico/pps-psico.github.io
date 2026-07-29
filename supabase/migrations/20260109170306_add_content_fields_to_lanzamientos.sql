@@ -1,0 +1,1 @@
+ALTER TABLE lanzamientos_pps ADD COLUMN IF NOT EXISTS descripcion_larga text; ALTER TABLE lanzamientos_pps ADD COLUMN IF NOT EXISTS actividades_lista text[]; ALTER TABLE lanzamientos_pps ADD COLUMN IF NOT EXISTS requisito_obligatorio text;

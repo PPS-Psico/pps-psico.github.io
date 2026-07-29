@@ -6,17 +6,22 @@ import {
   FIELD_PLANILLA_HORAS_FINALIZACION,
   FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
 } from "../../constants";
+import type { FinalizacionRequest } from "../../hooks/useFinalizacionLogic";
+import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
+import { supabase } from "../../lib/supabaseClient";
 import {
   computeNotaPromedio,
   computeTotalHoras,
   type DetallePracticas,
 } from "../../utils/acreditacion";
-import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
-import type { FinalizacionRequest } from "../../hooks/useFinalizacionLogic";
-import { supabase } from "../../lib/supabaseClient";
-import { Attachment, getNormalizationState, getStoragePath } from "../../utils/attachmentUtils";
-import { formatDate } from "../../utils/formatters";
+import {
+  Attachment,
+  getNormalizationState,
+  getStoragePath,
+  signStorageAttachment,
+} from "../../utils/attachmentUtils";
 import { downloadBlob } from "../../utils/downloadFile";
+import { formatDate } from "../../utils/formatters";
 import CollapsibleSection from "../CollapsibleSection";
 import ConfirmModal from "../ConfirmModal";
 import EmptyState from "../EmptyState";
@@ -452,22 +457,7 @@ const FinalizacionReview: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
   };
 
   const handlePreview = async (files: Attachment[], index: number = 0) => {
-    // Obtener signed URLs para los archivos
-    const filesWithSignedUrls = await Promise.all(
-      files.map(async (file) => {
-        const path = getStoragePath(file.url);
-        if (!path) return file;
-        try {
-          const { data, error } = await supabase.storage
-            .from("documentos_finalizacion")
-            .createSignedUrl(path, 3600);
-          if (error || !data) return file;
-          return { ...file, signedUrl: data.signedUrl };
-        } catch (e) {
-          return file;
-        }
-      })
-    );
+    const filesWithSignedUrls = await Promise.all(files.map(signStorageAttachment));
     setPreviewFiles(filesWithSignedUrls);
     setPreviewInitialIndex(index);
     setIsPreviewOpen(true);

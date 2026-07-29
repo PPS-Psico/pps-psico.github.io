@@ -1,5 +1,18 @@
 project_id = "consulta-pps-uflo"
 
+[api]
+port = 55321
+
+[db]
+port = 55322
+shadow_port = 55320
+major_version = 17
+
+[inbucket]
+port = 55324
+smtp_port = 55325
+pop3_port = 55326
+
 [functions.automated-backup]
 verify_jwt = false
 

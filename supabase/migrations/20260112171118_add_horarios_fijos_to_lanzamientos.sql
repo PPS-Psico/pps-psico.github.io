@@ -1,0 +1,3 @@
+ALTER TABLE lanzamientos_pps 
+ADD COLUMN IF NOT EXISTS horarios_fijos BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS institucion_id TEXT;

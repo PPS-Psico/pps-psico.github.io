@@ -1,0 +1,1 @@
+ALTER TABLE lanzamientos_pps ADD COLUMN IF NOT EXISTS proximo_seguimiento TEXT;

@@ -6,10 +6,10 @@ import {
   fetchAllSolicitudesModificacion,
   fetchAllSolicitudesNuevaPPS,
 } from "../../../services";
-import Loader from "../../Loader";
-import { DataItem, EmptyState, FilterTabs } from "./primitives";
-import { normalizeAttachments, buildCorreccionesList } from "./helpers";
 import { getErrorMessage } from "../../../utils/getErrorMessage";
+import Loader from "../../Loader";
+import { SecureStorageLink } from "../../ui/SecureStorageLink";
+import { DataItem, EmptyState } from "./primitives";
 
 /** Solicitud de corrección (modificación o nueva PPS) normalizada para la UI. */
 interface CorreccionItem {
@@ -436,7 +436,7 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
             {docsList.length > 0 ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {docsList.map((d, i) => (
-                  <a
+                  <SecureStorageLink
                     key={i}
                     href={d.url}
                     target="_blank"
@@ -460,7 +460,7 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
                       description
                     </span>
                     <span style={{ fontSize: 11.5, color: "var(--ink-2)" }}>{d.filename}</span>
-                  </a>
+                  </SecureStorageLink>
                 ))}
               </div>
             ) : (

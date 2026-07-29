@@ -1,0 +1,2 @@
+COMMENT ON COLUMN public.lanzamientos_pps.codigo_tarjeta_campus IS
+  'Link de la Tarea de Moodle (mod_assign) de esta PPS. Lo carga el coordinador desde el Lanzador (alta o "Editar datos"). public/entregas.html lo lee via Supabase REST (anon, policy "Leer lanzamientos") y genera la tarjeta de entrega en el campus, en la orientacion de la PPS. Acepta URL completa (https://campus.uflo.edu.ar/mod/assign/view.php?id=NNN) o solo el id numerico. NULL/vacio = sin Tarea, no se muestra tarjeta.';

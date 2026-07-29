@@ -1,0 +1,88 @@
+{
+  "generatedAt": "2026-07-29T15:48:19.090Z",
+  "isolation": {
+    "data": "mockDb + login testing/testing",
+    "clock": "2026-01-15T12:00:00-03:00",
+    "productionRequests": "blocked",
+    "blockedOrigins": ["https://fonts.googleapis.com"]
+  },
+  "captures": [
+    {
+      "file": "01-login-desktop.png",
+      "role": "Público",
+      "state": "Login",
+      "viewport": "1440x900",
+      "theme": "light"
+    },
+    {
+      "file": "02-login-mobile.png",
+      "role": "Público",
+      "state": "Login",
+      "viewport": "390x844",
+      "theme": "light"
+    },
+    {
+      "file": "03-student-home-desktop.png",
+      "role": "Estudiante",
+      "state": "Inicio",
+      "viewport": "1440x900",
+      "theme": "light"
+    },
+    {
+      "file": "04-student-practicas-desktop.png",
+      "role": "Estudiante",
+      "state": "Prácticas",
+      "viewport": "1440x900",
+      "theme": "light"
+    },
+    {
+      "file": "05-student-solicitudes-desktop.png",
+      "role": "Estudiante",
+      "state": "Solicitudes",
+      "viewport": "1440x900",
+      "theme": "light"
+    },
+    {
+      "file": "06-student-home-dark-desktop.png",
+      "role": "Estudiante",
+      "state": "Inicio",
+      "viewport": "1440x900",
+      "theme": "dark"
+    },
+    {
+      "file": "07-student-home-tablet.png",
+      "role": "Estudiante",
+      "state": "Inicio",
+      "viewport": "1024x768",
+      "theme": "light"
+    },
+    {
+      "file": "08-student-home-mobile.png",
+      "role": "Estudiante",
+      "state": "Inicio",
+      "viewport": "390x844",
+      "theme": "light"
+    },
+    {
+      "file": "09-admin-lanzador-overview.png",
+      "role": "Admin",
+      "state": "Lanzador vacío",
+      "viewport": "1440x900",
+      "theme": "light"
+    },
+    {
+      "file": "10-admin-lanzador-seleccion.png",
+      "role": "Admin",
+      "state": "Lanzador selección",
+      "viewport": "1440x900",
+      "theme": "light"
+    },
+    {
+      "file": "11-admin-lanzador-seguro.png",
+      "role": "Admin",
+      "state": "Lanzador seguro",
+      "viewport": "1440x900",
+      "theme": "light"
+    }
+  ]
+}

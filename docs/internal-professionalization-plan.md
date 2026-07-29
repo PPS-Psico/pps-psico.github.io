@@ -1071,6 +1071,11 @@ Cuando una IA tome este documento como base, debería trabajar así:
 
 ### Siguiente subpaso sugerido
 
+- completar el cierre expand/contract de Storage:
+  - ya están aplicadas `20260727120200_harden_storage_policies` y `20260727120300_fix_owner_manage_insert_gap`;
+  - la rama actual ya resuelve las URLs históricas de `documentos_estudiantes` y `documentos_finalizacion` mediante URLs firmadas;
+  - falta fusionar/publicar el frontend, validar CV/certificados/solicitudes y recién entonces cambiar `storage.buckets.public` a `false` para `documentos_estudiantes` mediante una migración productiva;
+  - no invertir el orden: privatizar antes de publicar el lector firmado rompería los enlaces actuales.
 - decidir si vale la pena consolidar algunas policies `admin + own` en tablas PPS o si ese warning puede aceptarse como costo menor del modelo real;
 - revisar si alguna lectura publica/semipublica en `convocatorias` merece separarse en una tabla o vista especifica para bajar warnings sin tocar la UX;
 - decidir si conviene mover las RPC privilegiadas de auth fuera de `public` o si alcanza con el cierre actual de grants para este panel interno;
@@ -1502,3 +1507,43 @@ pesadas en chunks vendor independientes y cacheables:
 incremental con el mismo patrón.
 
 `any` total: **526**. type-check 0, 206 tests, build OK.
+
+## 14. Fase 0 — estado operativo al 28/07/2026
+
+### 0D. Reconciliación de Edge Functions — cerrada
+
+- PR #5 fusionada en `main`; deploy de las 13 funciones canónicas y Pages exitoso.
+- Política JWT productiva alineada con `supabase/config.toml`.
+- `check-consentimiento-pendientes` v15 y `launch-scheduler` v31 ejecutaron el cron de las 23:20 UTC con HTTP 200, runtime iniciado y sin `BOOT_ERROR`.
+- `restore-backup` permanece en hold y no fue ejecutada; `send-push` y `onesignal-verify` permanecen como legacy remoto.
+- La fuente efectiva ya no contiene JSR, `deno.json` ni credenciales Hermes en el frontend.
+- Pendiente externo: rotar la credencial Hermes publicada. También debe rotarse el token Todoist retirado de `claude_desktop_config.json`.
+
+### 0E. Historial de migraciones — cerrada
+
+- Producción y repositorio están reconciliados en 111 versiones canónicas; la matriz `version:name` tiene fingerprint idéntico (`f4d985c76fbee242d18b03dd9465a468`).
+- Cinco migraciones divergentes se reconstruyeron literalmente y las variantes locales quedaron en `supabase/reference/legacy/`.
+- Un baseline pre-ledger y 20 overlays cronológicos reconstruyen objetos verificados creados fuera del ledger; `supabase/reference/` nunca se trata como historial productivo.
+- El harness aislado usa PostgreSQL 17.6, red deshabilitada, cero puertos publicados, crons inactivos y limpieza automática de su único contenedor.
+- Replay verificado: 111/111 migraciones; 35 tablas, 120 funciones públicas (31 de `pg_trgm`), 103 políticas, 36 FKs canónicas y cinco jobs locales.
+- Los cuatro contratos portables pasan. Los contratos de histórico 2024 y health snapshots se excluyen explícitamente porque requieren datos reales.
+- Las diferencias restantes están explicadas: seis FKs legacy duplicadas, un cron configurado fuera del ledger y dos columnas administradas por la plataforma Storage.
+- `aula_entregas` se reconstruye schema-only; su seed histórico no se copia al entorno descartable.
+- CI conserva `npm run check:migrations`; el replay completo queda manual por el costo de la imagen y no requiere secretos.
+- No se ejecutó DDL/DML productivo, `db push`, `migration repair`, `db reset --linked`, Preview Branch ni restauración.
+- Evidencia, adaptaciones schema-only y rollback: `docs/migration-history-reconciliation.md`.
+
+### 0F. Baseline visual — cerrada
+
+- Se creó un capturador reproducible con Playwright core, Vite local y variables ficticias.
+- La sesión `testing/testing` usa `mockDb`; toda solicitud externa se bloquea antes de salir del navegador.
+- El Lanzador en simulación dejó de consultar producción y ahora cubre lista, conteos, roster, selección y seguro con fixtures.
+- Baseline versionado: 11 capturas para público, estudiante y admin; desktop, tablet, mobile y light/dark.
+- Estados del pipeline cubiertos: vista sin selección, `seleccion` y `seguro`. Las exclusiones sin fixtures confiables quedaron explícitas, no se falsearon con pantallas vacías.
+- Comandos: `npm run visual:baseline` y `npm run visual:baseline:check`.
+- Matriz, aislamiento y actualización intencional: `docs/visual-baseline.md`.
+
+### Cierre de Fase 0
+
+- Fase 0 completada: baseline técnico, seguridad de alta/autenticación, publicación programada, Edge Functions, historial reproducible y evidencia visual previa al rediseño.
+- Los pendientes de rotación de credenciales y protección de contraseñas filtradas son acciones externas de proveedores, no bloquean el cierre técnico del repositorio.

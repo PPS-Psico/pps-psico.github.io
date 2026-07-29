@@ -87,9 +87,11 @@ export const getMoodleProfileFromUrl = (): {
  *  - navegada desde una página del mismo sitio (ej. clic en "Entrar a mi panel"
  *    desde aula.html, que abre el panel en una pestaña nueva con referrer propio).
  *
- * Esta condición controla solamente cuándo mostrar la experiencia de entrada
- * desde Campus. No autentica identidad: iframe y referrer pueden falsificarse,
- * por lo que el backend nunca emite sesiones ni credenciales desde FilterCodes.
+ * Esta condición limita la experiencia automática al contexto de Campus, pero
+ * no autentica por sí sola: iframe y referrer pueden falsificarse. El backend
+ * exige además coincidencia estricta de cuatro atributos, una cuenta ya
+ * vinculada, rol de alumno y correo Auth confirmado antes de emitir un token
+ * de un solo uso. Sigue siendo un fallback transitorio, no SSO federado.
  */
 const isTrustedContext = (): boolean => {
   // Caso 1: embebida en un iframe.
@@ -127,9 +129,10 @@ export const suppressMoodleAutoLogin = (): void => {
 let onboardingResult: MoodleOnboardingProfile | null = null;
 
 /**
- * Resuelve la entrada desde Moodle: conserva una sesión ya activa, muestra el
- * alta guiada a quien no tiene cuenta y envía al login normal a cuentas
- * existentes. Nunca inicia sesión a partir de parámetros FilterCodes.
+ * Resuelve la entrada desde Moodle: conserva una sesión ya activa, inicia una
+ * sesión de un solo uso cuando correo, DNI, nombre y apellido coinciden con un
+ * alumno vinculado, muestra el alta guiada a quien no tiene cuenta y usa el
+ * login normal como fallback ante cualquier ambigüedad.
  */
 export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
   // Inicializa en "checking" solo si corresponde, para evitar el flash del login.
@@ -200,9 +203,9 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
           return;
         }
 
-        logger.warn("[MoodleEntry] Consultando estado de entrada desde Campus...");
-        // El perfil se usa únicamente para decidir entre alta guiada y login.
-        // La Edge Function no genera tokens, no crea sesiones y no modifica datos.
+        logger.warn("[MoodleEntry] Solicitando sesión de un solo uso desde Campus...");
+        // El backend exige coincidencia estricta de correo, DNI, nombre y
+        // apellido con una cuenta de alumno ya vinculada y confirmada.
         const response = await fetch(`${SUPABASE_URL}/functions/v1/moodle-autologin`, {
           method: "POST",
           headers: {
@@ -219,10 +222,26 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
           return;
         }
 
-        const result = (await response.json()) as { reason?: string };
+        const result = (await response.json()) as {
+          matched?: boolean;
+          reason?: string;
+          token_hash?: string;
+        };
         logger.warn("[MoodleEntry] Respuesta de la Edge Function:", result.reason);
 
-        if (result?.reason && ONBOARDING_REASONS.has(result.reason)) {
+        if (result.matched && result.token_hash) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            type: "magiclink",
+            token_hash: result.token_hash,
+          });
+
+          if (verifyError) {
+            logger.warn("[MoodleAutoLogin] No se pudo canjear la sesión de un solo uso");
+          } else {
+            logger.warn("[MoodleAutoLogin] Sesión iniciada automáticamente desde Campus");
+            landingOnDashboard = true;
+          }
+        } else if (result?.reason && ONBOARDING_REASONS.has(result.reason)) {
           // Estudiante sin cuenta: precargar nombre, apellido, correo y DNI.
           // El legajo y el celular los completa el estudiante.
           const p = getMoodleProfileFromUrl();
@@ -235,8 +254,8 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
           setOnboarding(onboardingResult);
           logger.warn("[MoodleEntry] Mostrando alta guiada:", result.reason);
         } else {
-          // `manual_login`, errores o respuestas desconocidas nunca crean una
-          // sesión: la pantalla continúa con el login normal.
+          // Datos incompletos/no coincidentes y errores continúan por el canal
+          // seguro de legajo + contraseña.
           logger.warn("[MoodleEntry] Continuando con login normal:", result?.reason);
         }
       } catch (err) {

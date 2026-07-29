@@ -7,6 +7,8 @@ Este directorio concentra documentacion vigente y util para operar o evolucionar
 - [architecture-current.md](./architecture-current.md): foto tecnica actual del sistema.
 - [internal-professionalization-plan.md](./internal-professionalization-plan.md): roadmap interno y criterios de prioridad.
 - [analytics/README.md](./analytics/README.md): métricas, calidad de datos y plan de analítica confiable.
+- [migration-history-reconciliation.md](./migration-history-reconciliation.md): replay local y reconciliación de las 111 migraciones productivas.
+- [visual-baseline.md](./visual-baseline.md): matriz y capturas previas al rediseño, aisladas de producción.
 
 ## Documentos operativos
 

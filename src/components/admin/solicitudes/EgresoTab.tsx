@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FIELD_ESTUDIANTE_FINALIZACION } from "../../../constants";
 import { supabase } from "../../../lib/supabaseClient";
-import { Attachment, getStoragePath } from "../../../utils/attachmentUtils";
-import { formatDate, safeGetId } from "../../../utils/formatters";
-import { logger } from "../../../utils/logger";
-import { FilePreview } from "../preview";
-import { normalizeAttachments, filterEgresoFinalizaciones, isHistoryFinalizacion } from "./helpers";
-import { CollapsibleHistory, EmptyState, SearchBar } from "./primitives";
-import type { FinalizacionWithStudent } from "./types";
 import {
   computeNotaPromedio,
   computeTotalHoras,
   type DetallePracticas,
 } from "../../../utils/acreditacion";
+import { Attachment, signStorageAttachment } from "../../../utils/attachmentUtils";
+import { formatDate, safeGetId } from "../../../utils/formatters";
+import { logger } from "../../../utils/logger";
+import { FilePreview } from "../preview";
+import { filterEgresoFinalizaciones, isHistoryFinalizacion, normalizeAttachments } from "./helpers";
+import { CollapsibleHistory, EmptyState, SearchBar } from "./primitives";
+import type { FinalizacionWithStudent } from "./types";
 
 // ─── TABS CONTENT: EGRESO ───────────────────────────────────────────
 interface EgresoTabViewProps {
@@ -346,21 +346,7 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
   };
 
   const handlePreview = async (files: Attachment[], index: number = 0) => {
-    const filesWithSigned = await Promise.all(
-      files.map(async (f) => {
-        const path = getStoragePath(f.url);
-        if (!path) return f;
-        try {
-          const { data, error } = await supabase.storage
-            .from("documentos_finalizacion")
-            .createSignedUrl(path, 3600);
-          if (!error && data) return { ...f, signedUrl: data.signedUrl };
-          return f;
-        } catch {
-          return f;
-        }
-      })
-    );
+    const filesWithSigned = await Promise.all(files.map(signStorageAttachment));
     setPreviewFiles(filesWithSigned);
     setPreviewIndex(index);
     setIsPreviewOpen(true);

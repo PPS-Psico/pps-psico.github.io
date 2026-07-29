@@ -14,40 +14,43 @@
  * SeguroGenerator, LanzadorConvocatorias) no se modifican. Solo cambia la
  * capa visual que los envuelve.
  */
-import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams, useLocation } from "react-router-dom";
-import { db } from "../../lib/db";
-import { supabase } from "../../lib/supabaseClient";
-import { useModal } from "../../contexts/ModalContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
+  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_DESCRIPCION_LANZAMIENTOS,
-  FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS,
 } from "../../constants";
+import { useModal } from "../../contexts/ModalContext";
+import { db } from "../../lib/db";
+import { supabase } from "../../lib/supabaseClient";
 import { closeSelectionAndQueueNotifications } from "../../services";
+import { mockDb } from "../../services/mockDb";
+import type { LanzamientoPPS } from "../../types";
 import { normalizeStringForComparison } from "../../utils/formatters";
 import { logger } from "../../utils/logger";
-import type { LanzamientoPPS } from "../../types";
 // Estilos scoped (.lv4) — importar este módulo inyecta el CSS una sola vez.
-import "./lanzador/lanzadorStyles";
 import ConfirmModal from "../../components/ConfirmModal";
-import { launchKeys, invalidateLaunchData } from "../../lib/launchQueryKeys";
-import { type UIState, buildSidebarEntries } from "./lanzador/lanzadorState";
-import { Loader, LanzadorSidebar, type RowAction, type SidebarEntry } from "./lanzador/shared";
+import { invalidateLaunchData, launchKeys } from "../../lib/launchQueryKeys";
+import { buildSidebarEntries, type UIState } from "./lanzador/lanzadorState";
+import "./lanzador/lanzadorStyles";
+import { LanzadorSidebar, Loader, type RowAction, type SidebarEntry } from "./lanzador/shared";
 import {
-  BorradorView,
-  SeleccionView,
-  SeguroView,
-  ConfirmacionView,
   ActivaView,
   ArchivadaView,
+  BorradorView,
+  ConfirmacionView,
+  SeguroView,
+  SeleccionView,
 } from "./lanzador/stepViews";
 
 const LanzadorConvocatorias = lazy(() => import("../../components/admin/LanzadorConvocatorias"));
@@ -107,9 +110,11 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
 
   // ── Fetch launches ────────────────────────────────────────────────────────
   const { data: launches = [], isLoading } = useQuery<LanzamientoPPS[]>({
-    queryKey: launchKeys.history(isTestingMode),
+    queryKey: [...launchKeys.history(isTestingMode), isTestingMode ? "visual-fixture" : "live"],
     queryFn: async () => {
-      if (isTestingMode) return [];
+      if (isTestingMode) {
+        return (await mockDb.getAll("lanzamientos_pps")) as LanzamientoPPS[];
+      }
       return db.lanzamientos.getAll({
         sort: [{ field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "desc" }],
       });
@@ -123,8 +128,30 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   const { data: countsByLaunch = {} } = useQuery<
     Record<string, { inscriptos: number; seleccionados: number }>
   >({
-    queryKey: launchKeys.convCounts(launchIds),
+    queryKey: [...launchKeys.convCounts(launchIds), isTestingMode ? "testing" : "live"],
     queryFn: async () => {
+      if (isTestingMode) {
+        const rows = (await mockDb.getAll("convocatorias")) as Record<string, unknown>[];
+        return launchIds.reduce<Record<string, { inscriptos: number; seleccionados: number }>>(
+          (counts, launchId) => {
+            const matching = rows.filter(
+              (row) => String(row[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]) === launchId
+            );
+            counts[launchId] = {
+              inscriptos: matching.length,
+              seleccionados: matching.filter(
+                (row) =>
+                  normalizeStringForComparison(
+                    String(row[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] ?? "")
+                  ) === "seleccionado"
+              ).length,
+            };
+            return counts;
+          },
+          {}
+        );
+      }
+
       if (launchIds.length === 0) return {};
       const { data, error } = await supabase.rpc("get_convocatoria_counts_by_launch", {
         p_launch_ids: launchIds,
@@ -141,8 +168,17 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   const { data: consentByLaunch = {} } = useQuery<
     Record<string, { aceptados: number; total: number }>
   >({
-    queryKey: launchKeys.consentCounts(launchIds),
+    queryKey: [...launchKeys.consentCounts(launchIds), isTestingMode ? "testing" : "live"],
     queryFn: async () => {
+      if (isTestingMode) {
+        return Object.fromEntries(
+          launchIds.map((id) => [
+            id,
+            { aceptados: 0, total: countsByLaunch[id]?.seleccionados ?? 0 },
+          ])
+        );
+      }
+
       if (launchIds.length === 0) return {};
       const { data, error } = await supabase.rpc("get_consent_counts_by_launch", {
         p_launch_ids: launchIds,
@@ -426,6 +462,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
           <div className="lv4-canvas">
             <SeleccionView
               launch={selectedLaunch}
+              isTestingMode={isTestingMode}
               onCerrarInscripcion={() =>
                 handleChangeEstado(selectedLaunch.id, "Cerrado", {
                   title: "¿Cerrar la mesa de inscripción?",
@@ -441,7 +478,11 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       case "seguro":
         return (
           <div className="lv4-canvas">
-            <SeguroView launch={selectedLaunch} showModal={showModal} />
+            <SeguroView
+              launch={selectedLaunch}
+              showModal={showModal}
+              isTestingMode={isTestingMode}
+            />
           </div>
         );
       case "confirmacion":
