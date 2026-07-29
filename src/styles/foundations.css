@@ -207,6 +207,130 @@ body {
   transform: scale(0.96);
 }
 
+.app-button {
+  display: inline-flex;
+  min-height: var(--app-control-size);
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 20px;
+  color: var(--app-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--app-radius-sm);
+  box-shadow: var(--app-shadow-sm);
+  font: 650 14px/1 var(--font-sans);
+  letter-spacing: -0.01em;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: var(--app-duration-fast);
+  transition-timing-function: var(--app-ease);
+}
+
+.app-button--primary {
+  color: var(--app-surface-elevated);
+  background: var(--app-text);
+  border-color: var(--app-text);
+}
+
+.app-button--secondary {
+  color: var(--app-text);
+  background: var(--app-surface-elevated);
+  border-color: var(--app-border-strong);
+}
+
+.app-button--danger {
+  color: var(--app-surface-elevated);
+  background: var(--app-danger);
+  border-color: var(--app-danger);
+}
+
+@media (hover: hover) {
+  .app-button:not(:disabled):hover {
+    box-shadow: var(--app-shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .app-button--primary:not(:disabled):hover {
+    background: color-mix(in oklab, var(--app-text) 88%, var(--app-canvas));
+    border-color: color-mix(in oklab, var(--app-text) 88%, var(--app-canvas));
+  }
+
+  .app-button--secondary:not(:disabled):hover {
+    background: var(--app-surface-muted);
+    border-color: var(--app-border-strong);
+  }
+
+  .app-button--danger:not(:disabled):hover {
+    background: color-mix(in oklab, var(--app-danger) 88%, var(--app-text));
+    border-color: color-mix(in oklab, var(--app-danger) 88%, var(--app-text));
+  }
+}
+
+.app-button:not(:disabled):active {
+  box-shadow: var(--app-shadow-sm);
+  transform: translateY(0) scale(0.98);
+}
+
+.app-button:disabled {
+  opacity: 0.48;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.app-button--sm {
+  min-height: var(--app-control-size);
+  padding-inline: 14px;
+  font-size: 13px;
+}
+
+.app-button--md {
+  min-height: var(--app-control-size);
+  padding-inline: 20px;
+  font-size: 14px;
+}
+
+.app-button--lg {
+  min-height: 52px;
+  padding-inline: 26px;
+  font-size: 15px;
+}
+
+.app-button__icon {
+  flex: none;
+  line-height: 1;
+}
+
+.app-button__icon--sm {
+  font-size: 17px;
+}
+
+.app-button__icon--md {
+  font-size: 19px;
+}
+
+.app-button__icon--lg {
+  font-size: 21px;
+}
+
+.app-button__spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 2px solid color-mix(in oklab, currentColor 36%, transparent);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: app-button-spin 700ms linear infinite;
+}
+
+@keyframes app-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .app-bottom-nav {
   position: fixed;
   z-index: var(--app-z-nav);
@@ -289,8 +413,13 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .app-skip-link,
   .app-icon-button,
+  .app-button,
   .app-bottom-nav__item,
   .app-bottom-nav__icon {
     transition-duration: 0.01ms;
+  }
+
+  .app-button__spinner {
+    animation-duration: 1.4s;
   }
 }

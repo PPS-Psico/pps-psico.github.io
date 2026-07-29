@@ -1562,3 +1562,11 @@ La numeración vigente continúa desde la Fase 0 cerrada en la sección anterior
 - límites: sin lógica nueva, sin datos dependientes de Moodle y sin alterar los sistemas especializados `.lv4-*`, `.ed` o `.ah-root`;
 - documento de ejecución: `docs/phase-1a-visual-foundations.md`;
 - siguiente corte, después de validar esta base: elegir una sola familia de componentes compartidos y migrarla con comparación visual intencional.
+
+### 1B. Botones compartidos — cerrada
+
+- objetivo: llevar la primitiva `src/components/ui/Button.tsx` a los tokens semánticos `--app-*` sin cambiar su contrato;
+- alcance: variantes primaria, secundaria y destructiva; tamaños, iconos, loading, disabled, foco y área táctil;
+- límites: quedan fuera `ActionButton`, `.btn`, Atlas (`.ah-*`/`.ed-*`), el DS estudiante y Lanzador (`.lv4-*`);
+- documento de ejecución: `docs/phase-1b-shared-buttons.md`;
+- criterio: mismos consumidores y comportamiento, validación técnica completa y baseline sin regresiones fuera del cambio intencional.
