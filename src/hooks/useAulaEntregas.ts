@@ -4,8 +4,8 @@ import { supabase } from "../lib/supabaseClient";
 /* ─────────────────────────────────────────────────────────────────────────────
    Entregas del Aula (tareas de Moodle por área/institución).
 
-   Fuente primaria: tabla `aula_entregas` en Supabase (ver
-   supabase/create_aula_entregas_table.sql). Permite a coordinación sumar o
+   Fuente primaria: tabla `aula_entregas` en Supabase (reconstrucción local en
+   supabase/reference/bootstrap/overlays/20260703130325_create_aula_entregas.sql). Permite a coordinación sumar o
    desactivar espacios de entrega SIN deploy: se edita la tabla y el panel lo
    refleja en la próxima carga.
 

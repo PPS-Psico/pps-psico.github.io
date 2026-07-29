@@ -7,8 +7,16 @@
  * todas leen exactamente el mismo roster/prácticas y se invalidan juntas.
  */
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../../../lib/supabaseClient";
+import {
+  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
+  FIELD_HORARIO_ASIGNADO_CONVOCATORIAS,
+  FIELD_HORARIO_FORMULA_CONVOCATORIAS,
+  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+} from "../../../constants";
 import { launchKeys } from "../../../lib/launchQueryKeys";
+import { supabase } from "../../../lib/supabaseClient";
+import { mockDb } from "../../../services/mockDb";
 
 /** Fila del roster de inscripciones (`convocatorias`) de un lanzamiento. */
 export interface RosterRow {
@@ -34,10 +42,29 @@ export interface LaunchPracticaRow {
  * Roster completo de inscripciones de un lanzamiento (todas las columnas que
  * necesitan las vistas). Cada vista filtra/deriva del mismo set en cliente.
  */
-export function useLaunchRoster(launchId: string) {
+export function useLaunchRoster(launchId: string, isTestingMode = false) {
   return useQuery<RosterRow[]>({
-    queryKey: launchKeys.roster(launchId),
+    queryKey: [...launchKeys.roster(launchId), isTestingMode ? "testing" : "live"],
     queryFn: async () => {
+      if (isTestingMode) {
+        const rows = (await mockDb.getAll("convocatorias")) as Record<string, unknown>[];
+        return rows
+          .filter((row) => String(row[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]) === launchId)
+          .map((row) => ({
+            id: String(row.id),
+            estado_inscripcion:
+              (row[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] as string | null) ?? null,
+            estudiante_id: (row[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS] as string | null) ?? null,
+            horario_asignado: (row[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] as string | null) ?? null,
+            horario_seleccionado:
+              (row[FIELD_HORARIO_FORMULA_CONVOCATORIAS] as string | null) ?? null,
+            selected_at: null,
+            baja_automatica_at: null,
+            reminder_sent_at: null,
+            created_at: (row.created_at as string | null) ?? null,
+          }));
+      }
+
       const { data } = await supabase
         .from("convocatorias")
         .select(

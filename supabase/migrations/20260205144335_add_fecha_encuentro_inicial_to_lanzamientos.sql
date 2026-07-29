@@ -1,0 +1,1 @@
+ALTER TABLE public.lanzamientos_pps ADD COLUMN IF NOT EXISTS fecha_encuentro_inicial TEXT;

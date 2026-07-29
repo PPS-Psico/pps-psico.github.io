@@ -5,29 +5,30 @@
  */
 import React, { Suspense } from "react";
 import { FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS } from "../../../constants";
-import { normalizeStringForComparison } from "../../../utils/formatters";
-import type { LanzamientoPPS } from "../../../types";
 import { useModal } from "../../../contexts/ModalContext";
+import type { LanzamientoPPS } from "../../../types";
+import { normalizeStringForComparison } from "../../../utils/formatters";
 import {
+  Banner,
   CanvasHeader,
   Loader,
+  SeguroGenerator,
+  SeleccionadorConvocatorias,
   Stat,
   StatGrid,
-  Banner,
   useLaunchEditor,
-  SeleccionadorConvocatorias,
-  SeguroGenerator,
 } from "./shared";
 import { useLaunchRoster } from "./useLaunchData";
 
 const SeguroView: React.FC<{
   launch: LanzamientoPPS;
   showModal: ReturnType<typeof useModal>["showModal"];
-}> = ({ launch, showModal }) => {
+  isTestingMode?: boolean;
+}> = ({ launch, showModal, isTestingMode = false }) => {
   const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
 
-  const { data: inscriptos = [] } = useLaunchRoster(launch.id);
+  const { data: inscriptos = [] } = useLaunchRoster(launch.id, isTestingMode);
 
   const total = inscriptos.length;
   const seleccionados = inscriptos.filter(
@@ -62,7 +63,10 @@ const SeguroView: React.FC<{
         </Banner>
 
         <Suspense fallback={<Loader />}>
-          <SeleccionadorConvocatorias isTestingMode={false} preSelectedLaunchId={launch.id} />
+          <SeleccionadorConvocatorias
+            isTestingMode={isTestingMode}
+            preSelectedLaunchId={launch.id}
+          />
         </Suspense>
 
         {seleccionados > 0 && (
@@ -73,7 +77,7 @@ const SeguroView: React.FC<{
             <Suspense fallback={<Loader />}>
               <SeguroGenerator
                 showModal={showModal}
-                isTestingMode={false}
+                isTestingMode={isTestingMode}
                 preSelectedLanzamientoId={launch.id}
               />
             </Suspense>

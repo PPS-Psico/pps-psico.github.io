@@ -1,67 +1,48 @@
 # Inventario canónico de Supabase Edge Functions
 
-Última reconciliación: 28 de julio de 2026. Proyecto: `qxnxtnhtbpsgzprqtrjl`.
+Última verificación: 28 de julio de 2026. Proyecto: `qxnxtnhtbpsgzprqtrjl`.
 La fuente local está en `supabase/functions/` y la política JWT en `supabase/config.toml`.
 
 ## Reglas de despliegue
 
 - `.github/workflows/deploy-edge-functions.yml` despliega 13 funciones canónicas al fusionar a `main`.
-- `restore-backup` es canónica pero queda en hold manual por ser destructiva.
-- `send-push` y `onesignal-verify` existen solo en producción como legado; no se retiran sin confirmación explícita.
-- Las funciones usan imports directos de `esm.sh`; no se permiten `deno.json`, import maps ni JSR.
-- `verify_jwt = false` solo se usa cuando existe autenticación interna para cron o un endpoint público deliberado.
+- `restore-backup` es canónica pero permanece en hold manual por ser destructiva.
+- `send-push` y `onesignal-verify` son legado remoto; no se retiran sin aprobación explícita.
+- Se usan imports directos de `esm.sh`; no se permiten `deno.json`, import maps ni JSR en la fuente efectiva.
+- `verify_jwt = false` solo se admite con autenticación interna de cron o para un endpoint público deliberado.
 
-## Estado local y remoto
+## Estado productivo verificado
 
-| Función                           | Remota | JWT canónico | Consumidor principal                | Estado                                               |
-| --------------------------------- | -----: | :----------: | ----------------------------------- | ---------------------------------------------------- |
-| `automated-backup`                |    v18 |      no      | workflow diario y admin             | canónica; normalizada localmente                     |
-| `check-consentimiento-pendientes` |    v14 |      no      | pg_cron cada 10 min                 | canónica                                             |
-| `generate-content`                |    v19 |      sí      | panel admin                         | canónica; import map remoto pendiente de reemplazo   |
-| `health-check`                    |    v14 |      no      | monitoreo                           | canónica y pública                                   |
-| `hermes-proxy`                    |     v3 |      sí      | panel admin                         | canónica; roles `admin`/`SuperUser`                  |
-| `launch-scheduler`                |    v30 |      no      | pg_cron cada 10 min y admin         | canónica                                             |
-| `list-backups`                    |    v12 |      sí      | `BackupManager`                     | canónica; import map remoto pendiente de reemplazo   |
-| `moodle-autologin`                |     v8 |      sí      | onboarding Moodle                   | canónica                                             |
-| `request-password-reset`          |     v4 |      sí      | recuperación de acceso              | canónica                                             |
-| `reset-password-with-token`       |     v4 |      sí      | recuperación de acceso              | canónica                                             |
-| `restore-backup`                  |    v10 |      sí      | `BackupManager`                     | canónica, manual/hold; no auto-deploy                |
-| `send-email`                      |    v42 |      sí      | flujos administrativos              | canónica                                             |
-| `send-fcm-notification`           |    v43 |      sí      | selección, lanzador y pruebas admin | canónica; autorización interna endurecida localmente |
-| `student-login`                   |     v3 |      sí      | autenticación de estudiante         | canónica                                             |
-| `send-push`                       |    v42 |      sí      | sin consumidor activo               | legacy remoto; retiro pendiente de aprobación        |
-| `onesignal-verify`                |     v9 |      sí      | sin consumidor activo               | legacy remoto; retiro pendiente de aprobación        |
+| Función                           | Versión | JWT | Estado                                             |
+| --------------------------------- | ------: | :-: | -------------------------------------------------- |
+| `automated-backup`                |     v19 | no  | canónica; autenticación `X-API-Key` o sesión admin |
+| `check-consentimiento-pendientes` |     v15 | no  | canónica; cron cada 10 min                         |
+| `generate-content`                |     v20 | sí  | canónica                                           |
+| `health-check`                    |     v15 | no  | pública; solo estado estático                      |
+| `hermes-proxy`                    |      v4 | sí  | canónica; roles `admin`/`SuperUser` y allowlist    |
+| `launch-scheduler`                |     v31 | no  | canónica; cron cada 10 min                         |
+| `list-backups`                    |     v13 | sí  | canónica                                           |
+| `moodle-autologin`                |      v9 | sí  | canónica; no crea sesiones desde FilterCodes       |
+| `request-password-reset`          |      v4 | sí  | canónica                                           |
+| `reset-password-with-token`       |      v4 | sí  | canónica                                           |
+| `restore-backup`                  |     v10 | sí  | manual/hold; no auto-deploy                        |
+| `send-email`                      |     v42 | sí  | canónica                                           |
+| `send-fcm-notification`           |     v44 | sí  | canónica; autorización server-side                 |
+| `student-login`                   |      v3 | sí  | canónica                                           |
+| `send-push`                       |     v42 | sí  | legacy remoto; sin consumidor activo confirmado    |
+| `onesignal-verify`                |      v9 | sí  | legacy remoto; sin consumidor activo confirmado    |
 
-## Autenticación y secretos
+Supabase todavía informa `import_map=true` para `automated-backup`, `generate-content` y `list-backups`, con rutas de versiones antiguas. `get_edge_function` confirmó que los paquetes efectivos actuales contienen solo `index.ts` con imports `esm.sh`; se trata de metadata histórica. `restore-backup` conserva su paquete remoto anterior porque no fue desplegada.
 
-| Función                           | Autenticación interna                               | Secretos adicionales                                                               |
-| --------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `automated-backup`                | `X-API-Key` de cron o sesión con rol admin          | `CRON_SECRET`                                                                      |
-| `check-consentimiento-pendientes` | `X-API-Key` de cron o sesión admin                  | `CRON_SECRET`, `APP_URL`                                                           |
-| `generate-content`                | sesión y rol admin                                  | `GEMINI_API_KEY`                                                                   |
-| `health-check`                    | endpoint público, solo estado estático              | ninguno                                                                            |
-| `hermes-proxy`                    | sesión; roles `admin`/`SuperUser`; allowlist        | `HERMES_API_URL`, `HERMES_INTERNAL_TOKEN`                                          |
-| `launch-scheduler`                | `X-API-Key` de cron o sesión admin                  | `CRON_SECRET`                                                                      |
-| `list-backups`                    | sesión y rol administrativo                         | ninguno adicional                                                                  |
-| `moodle-autologin`                | sesión válida; no crea sesiones desde FilterCodes   | ninguno adicional                                                                  |
-| `request-password-reset`          | contrato público controlado por gateway y Turnstile | `APP_URL`, `TURNSTILE_SECRET_KEY`, `IP_HASH_SECRET`, `SMTP_EMAIL`, `SMTP_PASSWORD` |
-| `reset-password-with-token`       | JWT exigido por gateway y token de recuperación     | ninguno adicional                                                                  |
-| `restore-backup`                  | sesión y rol administrativo + confirmación UI       | ninguno adicional                                                                  |
-| `send-email`                      | service role o sesión con rol admin                 | `SMTP_EMAIL`, `SMTP_PASSWORD`                                                      |
-| `send-fcm-notification`           | service role o sesión con rol admin                 | `FCM_SERVICE_ACCOUNT_KEY`                                                          |
-| `student-login`                   | contrato de autenticación propio tras gateway       | ninguno adicional                                                                  |
+## Verificación posterior al despliegue
 
-Todas usan los built-ins de Supabase que correspondan: `SUPABASE_URL`,
-`SUPABASE_ANON_KEY` y/o `SUPABASE_SERVICE_ROLE_KEY`.
+- PR #5 fusionada en `main` mediante `5cc583a`.
+- Workflow de Edge Functions y CI/CD Pages: exitosos.
+- A las 23:20 UTC, `check-consentimiento-pendientes` v15 respondió 200 y terminó con 0 pendientes.
+- A las 23:20 UTC, `launch-scheduler` v31 respondió 200 y no encontró publicaciones pendientes.
+- Ambas versiones registraron `booted`; no hubo `BOOT_ERROR`.
+- No se ejecutó una restauración, un backup real ni un envío FCM real como smoke test.
 
-## Drift confirmado al iniciar esta reconciliación
+## Secretos pendientes de rotación
 
-En producción, `automated-backup`, `generate-content`, `list-backups` y
-`restore-backup` todavía referencian import maps. La fuente local ya fue normalizada.
-`automated-backup` remoto conserva `verify_jwt=true`, mientras que el contrato canónico
-es `false` porque el cron autentica por `X-API-Key`; el código interno rechaza requests
-anónimos. Este drift se cierra únicamente al desplegar la revisión validada.
-
-La credencial Hermes que estuvo embebida en frontend y snapshots públicos debe rotarse
-en Hermes/n8n/VPS y actualizarse como `HERMES_INTERNAL_TOKEN` en Supabase. La limpieza
-del código no invalida por sí sola una credencial ya publicada.
+La credencial Hermes antes publicada debe rotarse coordinadamente en Hermes/n8n/VPS y actualizarse como `HERMES_INTERNAL_TOKEN` en Supabase. También se detectó un token Todoist trackeado en `claude_desktop_config.json`: fue retirado de la copia actual, pero debe revocarse y reemplazarse desde el entorno local. No se reescribe historia sin aprobación explícita.

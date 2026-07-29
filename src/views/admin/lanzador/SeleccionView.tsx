@@ -3,7 +3,7 @@
  * Mesa abierta: stats de inscripción, salud por franja, difusión y mesa de
  * selección. Al cerrar la inscripción pasa al state "seguro".
  */
-import React, { useState, useMemo, Suspense } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import {
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
@@ -11,31 +11,32 @@ import {
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
 } from "../../../constants";
-import { formatDate } from "../../../utils/formatters";
 import type { LanzamientoPPS } from "../../../types";
+import { formatDate } from "../../../utils/formatters";
 import { logger } from "../../../utils/logger";
+import { computeHorarioHealth } from "./lanzadorHealth";
 import {
+  buildFranjasLibresMessage,
+  buildWhatsappFromLaunch,
   CanvasHeader,
   Loader,
+  SeleccionadorConvocatorias,
   Stat,
   StatGrid,
   useLaunchEditor,
-  SeleccionadorConvocatorias,
-  buildWhatsappFromLaunch,
-  buildFranjasLibresMessage,
 } from "./shared";
 import { useLaunchRoster } from "./useLaunchData";
-import { computeHorarioHealth } from "./lanzadorHealth";
 
-const SeleccionView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () => void }> = ({
-  launch,
-  onCerrarInscripcion,
-}) => {
+const SeleccionView: React.FC<{
+  launch: LanzamientoPPS;
+  onCerrarInscripcion: () => void;
+  isTestingMode?: boolean;
+}> = ({ launch, onCerrarInscripcion, isTestingMode = false }) => {
   const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
   const fechaFin = launch[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string | null;
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
 
-  const { data: inscriptos = [] } = useLaunchRoster(launch.id);
+  const { data: inscriptos = [] } = useLaunchRoster(launch.id, isTestingMode);
 
   const total = inscriptos.length;
 
@@ -334,7 +335,10 @@ const SeleccionView: React.FC<{ launch: LanzamientoPPS; onCerrarInscripcion: () 
             confirmar y enviar los consentimientos.
           </div>
           <Suspense fallback={<Loader />}>
-            <SeleccionadorConvocatorias isTestingMode={false} preSelectedLaunchId={launch.id} />
+            <SeleccionadorConvocatorias
+              isTestingMode={isTestingMode}
+              preSelectedLaunchId={launch.id}
+            />
           </Suspense>
         </div>
       </div>
