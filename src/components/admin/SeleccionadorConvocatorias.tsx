@@ -8,6 +8,7 @@ import {
 } from "../../constants";
 import { useSeleccionadorLogic } from "../../hooks/useSeleccionadorLogic";
 import { supabase } from "../../lib/supabaseClient";
+import { calculateTotalHours, isPracticeDisapproved } from "../../logic/studentRules";
 import type { EnrichedStudent } from "../../types";
 import {
   formatDate,
@@ -16,13 +17,13 @@ import {
   isValidWhatsAppFormat,
   normalizeStringForComparison,
 } from "../../utils/formatters";
+import { logger } from "../../utils/logger";
 import { parseSchedules } from "../../utils/scheduleUtils";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
+import { SecureStorageLink } from "../ui/SecureStorageLink";
 import Toast from "../ui/Toast";
-import { logger } from "../../utils/logger";
 import DisapprovalBadge from "./DisapprovalBadge";
-import { calculateTotalHours, isPracticeDisapproved } from "../../logic/studentRules";
 
 const isCommitmentAccepted = (status?: string | null) =>
   normalizeStringForComparison(status) === "aceptado";
@@ -331,22 +332,21 @@ const StudentRow: React.FC<{
           </span>
         )}
 
-        {student.trabaja && (
-          <a
-            href={student.certificadoTrabajo || "#"}
+        {student.trabaja && student.certificadoTrabajo && (
+          <SecureStorageLink
+            href={student.certificadoTrabajo}
             target="_blank"
             rel="noopener noreferrer"
             className="lv4-badge lv4-badge-accent"
             title="Ver certificado de trabajo"
-            onClick={(e) => !student.certificadoTrabajo && e.preventDefault()}
           >
             <span className="material-icons">work</span>
             Trabaja
-          </a>
+          </SecureStorageLink>
         )}
 
         {student.cvUrl && (
-          <a
+          <SecureStorageLink
             href={student.cvUrl}
             target="_blank"
             rel="noopener noreferrer"
@@ -355,7 +355,7 @@ const StudentRow: React.FC<{
           >
             <span className="material-icons">description</span>
             CV
-          </a>
+          </SecureStorageLink>
         )}
 
         {/* BOTÓN WHATSAPP - Validado contra formato */}

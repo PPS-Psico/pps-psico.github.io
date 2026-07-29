@@ -1071,6 +1071,11 @@ Cuando una IA tome este documento como base, debería trabajar así:
 
 ### Siguiente subpaso sugerido
 
+- completar el cierre expand/contract de Storage:
+  - ya están aplicadas `20260727120200_harden_storage_policies` y `20260727120300_fix_owner_manage_insert_gap`;
+  - la rama actual ya resuelve las URLs históricas de `documentos_estudiantes` y `documentos_finalizacion` mediante URLs firmadas;
+  - falta fusionar/publicar el frontend, validar CV/certificados/solicitudes y recién entonces cambiar `storage.buckets.public` a `false` para `documentos_estudiantes` mediante una migración productiva;
+  - no invertir el orden: privatizar antes de publicar el lector firmado rompería los enlaces actuales.
 - decidir si vale la pena consolidar algunas policies `admin + own` en tablas PPS o si ese warning puede aceptarse como costo menor del modelo real;
 - revisar si alguna lectura publica/semipublica en `convocatorias` merece separarse en una tabla o vista especifica para bajar warnings sin tocar la UX;
 - decidir si conviene mover las RPC privilegiadas de auth fuera de `public` o si alcanza con el cierre actual de grants para este panel interno;
