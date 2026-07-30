@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ActionButton from "../../ui/admin/ActionButton";
 
 // ─── Modales del módulo de Solicitudes ──────────────────────────────
 
@@ -55,25 +56,19 @@ export const RejectModal: React.FC<RejectModalProps> = ({ sol, onClose, onConfir
             background: "var(--paper-2)",
           }}
         >
-          <button onClick={onClose} className="btn btn-sm press">
+          <ActionButton variant="secondary" size="sm" className="press" onClick={onClose}>
             Cancelar
-          </button>
-          <button
+          </ActionButton>
+          <ActionButton
+            variant="danger"
+            size="sm"
+            icon="close"
+            className="press"
             onClick={() => onConfirm(comentario)}
             disabled={!comentario.trim()}
-            className="btn btn-sm press"
-            style={{
-              background: "var(--crit)",
-              color: "var(--paper)",
-              borderColor: "var(--crit)",
-              opacity: comentario.trim() ? 1 : 0.5,
-            }}
           >
-            <span className="material-icons" style={{ fontSize: 15 }}>
-              close
-            </span>
             Rechazar
-          </button>
+          </ActionButton>
         </div>
       </div>
     </div>

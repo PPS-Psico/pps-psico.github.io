@@ -1541,7 +1541,7 @@ incremental con el mismo patrón.
 - Se creó un capturador reproducible con Playwright core, Vite local y variables ficticias.
 - La sesión `testing/testing` usa `mockDb`; toda solicitud externa se bloquea antes de salir del navegador.
 - El Lanzador en simulación dejó de consultar producción y ahora cubre lista, conteos, roster, selección y seguro con fixtures.
-- Baseline versionado: 11 capturas para público, estudiante y admin; desktop, tablet, mobile y light/dark.
+- Baseline versionado: 13 capturas para público, estudiante y admin; desktop, tablet, mobile y light/dark.
 - Estados del pipeline cubiertos: vista sin selección, `seleccion` y `seguro`. Las exclusiones sin fixtures confiables quedaron explícitas, no se falsearon con pantallas vacías.
 - Comandos: `npm run visual:baseline` y `npm run visual:baseline:check`.
 - Matriz, aislamiento y actualización intencional: `docs/visual-baseline.md`.
@@ -1579,11 +1579,12 @@ La numeración vigente continúa desde la Fase 0 cerrada en la sección anterior
 - límites: sin migrar consumidores, `.btn`, botones nativos, Atlas, `.ed` o Lanzador `.lv4-*`;
 - documento de ejecución: `docs/phase-1c-admin-action-button.md`.
 
-### 1D. Adopción incremental en Dashboard — cerrada
+### 1D. Adopción incremental administrativa — en curso
 
 - objetivo: retirar `.btn` por grupos homogéneos, sin una migración global de alto riesgo;
-- primer corte: acciones hermanas de `DetectionBand` y `SolicitudesBand` hacia `ActionButton ghost`;
-- compatibilidad: mismos textos, handlers y destino; icono derecho declarado por la API del adapter;
-- evidencia: nueva captura aislada del Dashboard admin;
-- límites: se excluyen modificadores AI/WA/mail, formularios, icon-only, elementos no-button y todo el Lanzador `.lv4-*`;
+- primer corte cerrado: acciones hermanas de `DetectionBand` y `SolicitudesBand` hacia `ActionButton ghost`;
+- segundo corte cerrado: acciones `Cancelar` y `Rechazar` del pie de `RejectModal` hacia variantes semánticas secondary y danger;
+- compatibilidad: mismos textos, handlers, estados disabled y destinos; los adapters declaran iconos y mantienen `type="button"`;
+- evidencia: capturas aisladas del Dashboard y del modal de rechazo en Solicitudes, ambas con `mockDb` y producción bloqueada;
+- límites: se excluyen modificadores AI/WA/mail, formularios ajenos al corte, icon-only, elementos no-button, Atlas, estudiante y todo el Lanzador `.lv4-*`;
 - documento de ejecución: `docs/phase-1d-dashboard-actions.md`.
