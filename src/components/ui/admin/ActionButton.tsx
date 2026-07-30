@@ -1,5 +1,4 @@
 import React from "react";
-import { adminTheme } from "../../../theme/adminTheme";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
@@ -19,16 +18,16 @@ interface ActionButtonProps {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: adminTheme.button.primary,
-  secondary: adminTheme.button.secondary,
-  ghost: adminTheme.button.ghost,
-  danger: adminTheme.button.danger,
+  primary: "app-button--primary",
+  secondary: "app-button--secondary",
+  ghost: "app-button--ghost",
+  danger: "app-button--danger",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "px-3 py-1.5 text-xs",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "app-button--sm",
+  md: "app-button--md",
+  lg: "app-button--lg",
 };
 
 export const ActionButton: React.FC<ActionButtonProps> = ({
@@ -44,13 +43,24 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   type = "button",
   title,
 }) => {
-  const baseClasses = `
-    inline-flex items-center justify-center gap-2
-    font-medium rounded-lg
-    transition duration-200
-    disabled:opacity-50 disabled:cursor-not-allowed
-    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500/50
-  `;
+  const finalClassName = [
+    "app-button",
+    "app-action-button",
+    variantClasses[variant],
+    sizeClasses[size],
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const iconMarkup = icon && (
+    <span
+      className={`material-icons app-button__icon app-button__icon--${size}`}
+      aria-hidden="true"
+    >
+      {icon}
+    </span>
+  );
 
   return (
     <button
@@ -58,23 +68,13 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
-      className={`
-        ${baseClasses}
-        ${variantClasses[variant]}
-        ${sizeClasses[size]}
-        ${className}
-      `}
+      className={finalClassName}
+      aria-busy={loading || undefined}
     >
-      {loading && (
-        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-      )}
-      {!loading && icon && iconPosition === "left" && (
-        <span className="material-icons text-base">{icon}</span>
-      )}
+      {loading && <span className="app-button__spinner" aria-hidden="true" />}
+      {!loading && iconPosition === "left" && iconMarkup}
       {children}
-      {!loading && icon && iconPosition === "right" && (
-        <span className="material-icons text-base">{icon}</span>
-      )}
+      {!loading && iconPosition === "right" && iconMarkup}
     </button>
   );
 };

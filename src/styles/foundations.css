@@ -247,6 +247,13 @@ body {
   border-color: var(--app-danger);
 }
 
+.app-button--ghost {
+  color: var(--app-text-soft);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 @media (hover: hover) {
   .app-button:not(:disabled):hover {
     box-shadow: var(--app-shadow-md);
@@ -267,11 +274,25 @@ body {
     background: color-mix(in oklab, var(--app-danger) 88%, var(--app-text));
     border-color: color-mix(in oklab, var(--app-danger) 88%, var(--app-text));
   }
+
+  .app-button--ghost:not(:disabled):hover {
+    color: var(--app-text);
+    background: var(--app-surface-muted);
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+  }
 }
 
 .app-button:not(:disabled):active {
   box-shadow: var(--app-shadow-sm);
   transform: translateY(0) scale(0.98);
+}
+
+.app-button--ghost:not(:disabled):active {
+  background: var(--app-surface-muted);
+  box-shadow: none;
+  transform: scale(0.98);
 }
 
 .app-button:disabled {

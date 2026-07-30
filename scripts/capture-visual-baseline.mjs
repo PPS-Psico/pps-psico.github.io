@@ -128,11 +128,10 @@ async function createPage(viewport) {
   await page
     .locator("#legajo:visible, #m-legajo:visible")
     .waitFor({ state: "visible", timeout: 30000 });
-  await page.addStyleTag({
-    content:
-      "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}",
+  await page.evaluate(async () => {
+    document.documentElement.style.caretColor = "transparent";
+    await document.fonts.ready;
   });
-  await page.evaluate(() => document.fonts.ready);
   return { context, page };
 }
 
@@ -183,7 +182,11 @@ async function clickLaunch(page, name) {
 async function shot(page, file) {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(450);
-  await page.screenshot({ path: resolve(outputDir, file), fullPage: true });
+  await page.screenshot({
+    path: resolve(outputDir, file),
+    fullPage: true,
+    animations: "disabled",
+  });
 }
 
 try {
@@ -225,6 +228,13 @@ try {
   await shot(admin.page, captures[9][0]);
   await clickLaunch(admin.page, "Clínica San Jorge - Admisiones");
   await admin.page.getByText("Mesa de selección abierta").waitFor();
+  await Promise.all([
+    admin.page
+      .locator(".lv4-page-head .lv4-meta")
+      .filter({ hasText: "Postulantes: 1 | Seleccionados: 1" })
+      .waitFor({ state: "visible" }),
+    admin.page.locator('.seg-steprow[data-final="1"]').waitFor({ state: "visible" }),
+  ]);
   await shot(admin.page, captures[10][0]);
   await admin.context.close();
   console.log("  admin Lanzador: OK");
