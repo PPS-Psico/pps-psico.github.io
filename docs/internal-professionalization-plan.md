@@ -1570,3 +1570,11 @@ La numeración vigente continúa desde la Fase 0 cerrada en la sección anterior
 - límites: quedan fuera `ActionButton`, `.btn`, Atlas (`.ah-*`/`.ed-*`), el DS estudiante y Lanzador (`.lv4-*`);
 - documento de ejecución: `docs/phase-1b-shared-buttons.md`;
 - criterio: mismos consumidores y comportamiento, validación técnica completa y baseline sin regresiones fuera del cambio intencional.
+
+### 1C. Adapter de acciones administrativas — cerrada
+
+- objetivo: conectar `ActionButton` con los fundamentos semánticos sin romper su API histórica;
+- alcance: variantes primary, secondary, ghost y danger; tamaños, iconos, loading, disabled y foco;
+- compatibilidad: se conservan default secondary, prop `loading`, contenido durante carga y `type="button"`;
+- límites: sin migrar consumidores, `.btn`, botones nativos, Atlas, `.ed` o Lanzador `.lv4-*`;
+- documento de ejecución: `docs/phase-1c-admin-action-button.md`.
