@@ -14,6 +14,8 @@ Las capturas esperan señales finales de sus queries mock, no banners síncronos
 
 El Lanzador propaga `isTestingMode` a lista, conteos, roster, seleccionador y seguro. Esto evita que el entorno rotulado “Datos aislados de producción” consulte RPCs o tablas reales.
 
+La captura de Solicitudes agrega en memoria una solicitud de modificación relacionada con fixtures existentes, abre Correcciones y deja visible el modal de rechazo sin ejecutar la acción. No persiste cambios fuera de `mockDb`.
+
 ## Matriz capturada
 
 | Rol        | Estado/vista                     | Viewport/tema                          |
@@ -23,11 +25,12 @@ El Lanzador propaga `isTestingMode` a lista, conteos, roster, seleccionador y se
 | Estudiante | Mis Prácticas                    | 1440×900 light                         |
 | Estudiante | Mis Solicitudes                  | 1440×900 light                         |
 | Admin      | Dashboard                        | 1440×900 light                         |
+| Admin      | Solicitudes · modal de rechazo   | 1440×900 light                         |
 | Admin      | Lanzador sin selección           | 1440×900 light                         |
 | Admin      | Lanzador `seleccion` (`Abierta`) | 1440×900 light                         |
 | Admin      | Lanzador `seguro` (`Cerrado`)    | 1440×900 light                         |
 
-Las doce capturas y su manifiesto se validan con `npm run visual:baseline:check`.
+Las trece capturas y su manifiesto se validan con `npm run visual:baseline:check`.
 
 ## Exclusiones explícitas
 

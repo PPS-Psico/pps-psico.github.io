@@ -24,6 +24,7 @@ const captures = [
   ["10-admin-lanzador-seleccion.png", "Admin", "Lanzador selección", "1440x900", "light"],
   ["11-admin-lanzador-seguro.png", "Admin", "Lanzador seguro", "1440x900", "light"],
   ["12-admin-dashboard.png", "Admin", "Dashboard", "1440x900", "light"],
+  ["13-admin-solicitudes-rechazo.png", "Admin", "Solicitudes · rechazo", "1440x900", "light"],
 ];
 
 async function verifyBaseline() {
@@ -146,6 +147,28 @@ async function loginMock(page) {
   await page.getByText("Entorno de Simulación").waitFor({ state: "visible" });
 }
 
+async function seedSolicitudesModification(page) {
+  await page.evaluate(async () => {
+    const { mockDb } = await import("/src/services/mockDb.ts");
+    const [practice] = await mockDb.getAll("practicas");
+    if (!practice) throw new Error("No hay una práctica mock para el baseline de Solicitudes.");
+
+    const [student] = await mockDb.getAll("estudiantes", {
+      id: practice.estudiante_id,
+    });
+    if (!student) throw new Error("La práctica mock no tiene un estudiante relacionado.");
+
+    await mockDb.create("solicitudes_modificacion_pps", {
+      estudiante_id: student.id,
+      practica_id: practice.id,
+      estado: "pendiente",
+      tipo_modificacion: "horas",
+      horas_nuevas: 60,
+      motivo: "Ajuste de carga horaria para el baseline visual",
+    });
+  });
+}
+
 async function waitForStudentHomeReady(page) {
   await page
     .locator('.ed.animate-fade-in[data-accent="teal"]:visible')
@@ -229,6 +252,7 @@ try {
   console.log("  estudiante desktop: OK");
   const admin = await createPage({ width: 1440, height: 900 });
   await loginMock(admin.page);
+  await seedSolicitudesModification(admin.page);
   const adminSwitch = admin.page.locator('button:has-text("Vista Admin")');
   await adminSwitch.first().click({ force: true });
   await Promise.all([
@@ -236,6 +260,7 @@ try {
     admin.page.getByRole("button", { name: "Ver todas" }).waitFor(),
   ]);
   await shot(admin.page, captures[11][0]);
+
   const launcherTab = admin.page.locator('button:has-text("Lanzador")');
   await launcherTab.last().click({ force: true });
   await admin.page.getByText("Seleccioná una convocatoria").waitFor();
@@ -254,6 +279,24 @@ try {
     admin.page.locator('.seg-steprow[data-final="1"]').waitFor({ state: "visible" }),
   ]);
   await shot(admin.page, captures[10][0]);
+
+  await admin.page.getByRole("tab", { name: /Solicitudes/ }).click();
+  await admin.page.getByRole("heading", { name: "Solicitudes" }).waitFor();
+  await admin.page.getByRole("button", { name: /Correcciones/ }).click();
+  const seededCorrection = admin.page
+    .locator('[data-solicitud-id^="mock_solicitudes_modificacion_pps_"]')
+    .first();
+  await seededCorrection.waitFor({ state: "visible", timeout: 30000 });
+  await seededCorrection.click();
+  await seededCorrection.getByRole("button", { name: "Rechazar" }).click();
+  const rejectModal = admin.page.locator(".modal-card").filter({ hasText: "Rechazar solicitud" });
+  await rejectModal.waitFor({ state: "visible" });
+  await rejectModal
+    .getByPlaceholder("Explicá por qué se rechaza la solicitud...")
+    .fill("La documentación requiere una corrección antes de continuar.");
+  await rejectModal.getByRole("button", { name: "Rechazar" }).waitFor({ state: "visible" });
+  await shot(admin.page, captures[12][0]);
+
   await admin.context.close();
   console.log("  admin Lanzador: OK");
 
