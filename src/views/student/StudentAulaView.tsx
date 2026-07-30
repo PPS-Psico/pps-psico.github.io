@@ -547,8 +547,8 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Qué pasa si no completo las horas exactas por feriados o paros?",
-        a: "La institución puede solicitar que recuperes esas horas y extiendas el período de la PPS. Si lo solicita, debés cumplir esa indicación para obtener su aprobación. Cuando la institución da por aprobado y finalizado el recorrido, se acredita el total de horas establecido en la convocatoria, aunque las horas efectivamente realizadas hayan sido menores. El mínimo de 80% de asistencia de la Facultad no reemplaza las condiciones que la institución establece para aprobar la práctica.",
+        q: "¿Qué pasa si no completo las horas exactas por feriados, paros u otros motivos?",
+        a: "La institución puede solicitar que recuperes esas horas y extiendas el período de la PPS. Si lo solicita, debés cumplir esa indicación para obtener su aprobación. Cuando la institución da por aprobado y finalizado el recorrido, se acredita el total de horas establecido en la convocatoria, aunque las horas efectivamente realizadas hayan sido menores o mayores.",
       },
       {
         q: "¿Qué sucede si decido continuar más tiempo en mi PPS?",
