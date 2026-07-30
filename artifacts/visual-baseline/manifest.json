@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-30T00:49:59.255Z",
+  "generatedAt": "2026-07-30T13:18:25.588Z",
   "isolation": {
     "data": "mockDb + login testing/testing",
     "clock": "2026-01-15T12:00:00-03:00",
@@ -81,6 +81,13 @@
       "file": "11-admin-lanzador-seguro.png",
       "role": "Admin",
       "state": "Lanzador seguro",
+      "viewport": "1440x900",
+      "theme": "light"
+    },
+    {
+      "file": "12-admin-dashboard.png",
+      "role": "Admin",
+      "state": "Dashboard",
       "viewport": "1440x900",
       "theme": "light"
     }

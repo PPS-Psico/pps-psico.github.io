@@ -1578,3 +1578,12 @@ La numeración vigente continúa desde la Fase 0 cerrada en la sección anterior
 - compatibilidad: se conservan default secondary, prop `loading`, contenido durante carga y `type="button"`;
 - límites: sin migrar consumidores, `.btn`, botones nativos, Atlas, `.ed` o Lanzador `.lv4-*`;
 - documento de ejecución: `docs/phase-1c-admin-action-button.md`.
+
+### 1D. Adopción incremental en Dashboard — cerrada
+
+- objetivo: retirar `.btn` por grupos homogéneos, sin una migración global de alto riesgo;
+- primer corte: acciones hermanas de `DetectionBand` y `SolicitudesBand` hacia `ActionButton ghost`;
+- compatibilidad: mismos textos, handlers y destino; icono derecho declarado por la API del adapter;
+- evidencia: nueva captura aislada del Dashboard admin;
+- límites: se excluyen modificadores AI/WA/mail, formularios, icon-only, elementos no-button y todo el Lanzador `.lv4-*`;
+- documento de ejecución: `docs/phase-1d-dashboard-actions.md`.

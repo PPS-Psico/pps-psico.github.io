@@ -1,4 +1,5 @@
 import React from "react";
+import ActionButton from "../../ui/admin/ActionButton";
 import { DetectionCard, DetectionMetric } from "./DetectionCard";
 
 interface DetectionBandProps {
@@ -29,12 +30,16 @@ export const DetectionBand: React.FC<DetectionBandProps> = ({ metrics, onOpenHer
         >
           En tus conversaciones · instituciones
         </h2>
-        <button className="btn btn-ghost btn-sm press" onClick={onOpenHermes}>
+        <ActionButton
+          variant="ghost"
+          size="sm"
+          icon="arrow_forward"
+          iconPosition="right"
+          className="press"
+          onClick={onOpenHermes}
+        >
           Abrir bandeja Hermes
-          <span className="material-icons" style={{ fontSize: 15 }}>
-            arrow_forward
-          </span>
-        </button>
+        </ActionButton>
       </div>
       <div
         style={{
