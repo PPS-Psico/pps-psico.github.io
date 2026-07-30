@@ -10,7 +10,7 @@ Congelar la apariencia anterior a los próximos rediseños para poder comparar d
 
 `npm run visual:baseline` inicia un Vite local con variables ficticias, entra mediante el usuario de simulación y usa `mockDb`. El reloj del navegador queda fijado en `2026-01-15T12:00:00-03:00` para que los fixtures relativos no cambien de bucket con el paso del tiempo. Playwright bloquea toda solicitud cuyo origen no sea el servidor local; no usa sesiones, credenciales ni datos de Supabase productivo.
 
-Las capturas del Lanzador esperan señales finales de sus queries mock, no banners síncronos ni demoras arbitrarias: selección exige el roster de tres postulantes y seguro exige tanto el conteo `1/1` como el paso final del generador. Esto evita versionar estados parciales con loaders.
+Las capturas esperan señales finales de sus queries mock, no banners síncronos ni demoras arbitrarias. La Home estudiante exige el root final y el saludo visible en cada viewport; selección exige el roster de tres postulantes y seguro exige tanto el conteo `1/1` como el paso final del generador. Esto evita versionar estados parciales con loaders.
 
 El Lanzador propaga `isTestingMode` a lista, conteos, roster, seleccionador y seguro. Esto evita que el entorno rotulado “Datos aislados de producción” consulte RPCs o tablas reales.
 
@@ -22,11 +22,12 @@ El Lanzador propaga `isTestingMode` a lista, conteos, roster, seleccionador y se
 | Estudiante | Inicio                           | 1440×900 light/dark; 1024×768; 390×844 |
 | Estudiante | Mis Prácticas                    | 1440×900 light                         |
 | Estudiante | Mis Solicitudes                  | 1440×900 light                         |
+| Admin      | Dashboard                        | 1440×900 light                         |
 | Admin      | Lanzador sin selección           | 1440×900 light                         |
 | Admin      | Lanzador `seleccion` (`Abierta`) | 1440×900 light                         |
 | Admin      | Lanzador `seguro` (`Cerrado`)    | 1440×900 light                         |
 
-Las once capturas y su manifiesto se validan con `npm run visual:baseline:check`.
+Las doce capturas y su manifiesto se validan con `npm run visual:baseline:check`.
 
 ## Exclusiones explícitas
 

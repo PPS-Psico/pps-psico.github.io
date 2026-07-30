@@ -39,6 +39,23 @@ body {
   color: var(--app-text);
 }
 
+.material-icons {
+  display: inline-block;
+  direction: ltr;
+  font-family: "Material Icons";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 400;
+  font-feature-settings: "liga";
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
 ::selection {
   color: var(--app-text);
   background: color-mix(in oklab, var(--app-accent) 22%, transparent);

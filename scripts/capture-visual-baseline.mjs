@@ -23,6 +23,7 @@ const captures = [
   ["09-admin-lanzador-overview.png", "Admin", "Lanzador vacío", "1440x900", "light"],
   ["10-admin-lanzador-seleccion.png", "Admin", "Lanzador selección", "1440x900", "light"],
   ["11-admin-lanzador-seguro.png", "Admin", "Lanzador seguro", "1440x900", "light"],
+  ["12-admin-dashboard.png", "Admin", "Dashboard", "1440x900", "light"],
 ];
 
 async function verifyBaseline() {
@@ -145,6 +146,16 @@ async function loginMock(page) {
   await page.getByText("Entorno de Simulación").waitFor({ state: "visible" });
 }
 
+async function waitForStudentHomeReady(page) {
+  await page
+    .locator('.ed.animate-fade-in[data-accent="teal"]:visible')
+    .waitFor({ state: "visible", timeout: 30000 });
+  await page
+    .locator("#student-home-title:visible, .mobile-hero-head__title:visible")
+    .filter({ hasText: /Usuario\./ })
+    .waitFor({ state: "visible", timeout: 30000 });
+}
+
 async function clickVisible(page, name) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     for (const locator of [
@@ -199,12 +210,14 @@ try {
   await desktop.page.getByText("Hola de nuevo.").waitFor();
   await shot(desktop.page, captures[0][0]);
   await loginMock(desktop.page);
+  await waitForStudentHomeReady(desktop.page);
   await shot(desktop.page, captures[2][0]);
   await clickVisible(desktop.page, "Prácticas");
   await shot(desktop.page, captures[3][0]);
   await clickVisible(desktop.page, "Solicitudes");
   await shot(desktop.page, captures[4][0]);
   await clickVisible(desktop.page, "Inicio");
+  await waitForStudentHomeReady(desktop.page);
   const themeButton = desktop.page.getByRole("button", { name: "Cambiar tema" });
   if ((await themeButton.count()) > 0) await themeButton.first().click();
   else await desktop.page.evaluate(() => document.documentElement.classList.add("dark"));
@@ -218,6 +231,11 @@ try {
   await loginMock(admin.page);
   const adminSwitch = admin.page.locator('button:has-text("Vista Admin")');
   await adminSwitch.first().click({ force: true });
+  await Promise.all([
+    admin.page.getByRole("button", { name: "Abrir bandeja Hermes" }).waitFor(),
+    admin.page.getByRole("button", { name: "Ver todas" }).waitFor(),
+  ]);
+  await shot(admin.page, captures[11][0]);
   const launcherTab = admin.page.locator('button:has-text("Lanzador")');
   await launcherTab.last().click({ force: true });
   await admin.page.getByText("Seleccioná una convocatoria").waitFor();
@@ -241,12 +259,14 @@ try {
 
   const tablet = await createPage({ width: 1024, height: 768 });
   await loginMock(tablet.page);
+  await waitForStudentHomeReady(tablet.page);
   await shot(tablet.page, captures[6][0]);
   await tablet.context.close();
 
   const mobile = await createPage({ width: 390, height: 844 });
   await shot(mobile.page, captures[1][0]);
   await loginMock(mobile.page);
+  await waitForStudentHomeReady(mobile.page);
   await shot(mobile.page, captures[7][0]);
   await mobile.context.close();
 

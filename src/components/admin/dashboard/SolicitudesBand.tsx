@@ -1,4 +1,5 @@
 import React from "react";
+import ActionButton from "../../ui/admin/ActionButton";
 import { DetectionCard, DetectionMetric } from "./DetectionCard";
 
 interface SolicitudesBandProps {
@@ -29,12 +30,16 @@ export const SolicitudesBand: React.FC<SolicitudesBandProps> = ({ metrics, onOpe
         >
           Solicitudes de alumnos
         </h2>
-        <button className="btn btn-ghost btn-sm press" onClick={() => onOpenSolicitudes()}>
+        <ActionButton
+          variant="ghost"
+          size="sm"
+          icon="arrow_forward"
+          iconPosition="right"
+          className="press"
+          onClick={() => onOpenSolicitudes()}
+        >
           Ver todas
-          <span className="material-icons" style={{ fontSize: 15 }}>
-            arrow_forward
-          </span>
-        </button>
+        </ActionButton>
       </div>
       <div
         style={{
