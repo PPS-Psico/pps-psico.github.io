@@ -31,6 +31,8 @@ import {
 } from "../../constants";
 import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
 import { isEmbedded } from "../../utils/isEmbedded";
+import { getLocationModalityLabel, hasPhysicalAddress } from "../../utils/locationUtils";
+import { getEnrollmentNotice } from "../../utils/enrollmentCopy";
 import type { LanzamientoPPS } from "../../types";
 import { getMandatoryLaunchSchedules } from "../../utils/scheduleRequirements";
 
@@ -233,6 +235,8 @@ const StudentConvocatoriaDetail: React.FC = () => {
   const horariosObligatorios = getMandatoryLaunchSchedules(lanzamiento, horarios);
   const horariosObligatoriosSet = new Set(horariosObligatorios);
   const direccion = (lanzamiento[FIELD_DIRECCION_LANZAMIENTOS] as string) || "";
+  const direccionFisica = hasPhysicalAddress(direccion);
+  const modalidad = getLocationModalityLabel(direccion);
   const descripcion =
     (lanzamiento[FIELD_DESCRIPCION_LANZAMIENTOS] as string) ||
     "Descripción de la propuesta no disponible.";
@@ -270,6 +274,11 @@ const StudentConvocatoriaDetail: React.FC = () => {
     enrollmentStatus === "adjudicado" ||
     enrollmentStatus === "en curso";
   const isEnrolled = !!enrollment;
+  const enrollmentNotice = getEnrollmentNotice({
+    isSelected,
+    isEnrolled,
+    hasFiniteCapacity: cupos > 0,
+  });
 
   // El CTA refleja el estado de forma reactiva: al inscribirse, enrollmentMap
   // se actualiza y el botón pasa a "Cancelar inscripción" sin salir de la página.
@@ -407,7 +416,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
               />
               <DetailStat label="Cupos" value={cupos || "—"} />
               <DetailStat label="Encuentro" value={encuentro || "—"} />
-              <DetailStat label="Modalidad" value="Pres." />
+              <DetailStat label="Modalidad" value={modalidad} />
             </div>
 
             {/* Descripción */}
@@ -552,11 +561,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
                     <span className="eyebrow" style={{ fontSize: 10.5 }}>
                       Ubicación
                     </span>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group"
+                    <div
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -567,7 +572,6 @@ const StudentConvocatoriaDetail: React.FC = () => {
                         borderRadius: 14,
                         border: "1px solid var(--line)",
                         background: "var(--bg-elevated)",
-                        textDecoration: "none",
                       }}
                     >
                       <span
@@ -590,22 +594,29 @@ const StudentConvocatoriaDetail: React.FC = () => {
                           {direccion}
                         </span>
                       </span>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color,
-                          whiteSpace: "nowrap",
-                          flexShrink: 0,
-                        }}
-                      >
-                        Ver mapa
-                        <Icon name="arrow" size={13} strokeWidth={2.4} />
-                      </span>
-                    </a>
+                      {direccionFisica ? (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color,
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                            textDecoration: "none",
+                          }}
+                        >
+                          Ver mapa
+                          <Icon name="arrow" size={13} strokeWidth={2.4} />
+                        </a>
+                      ) : null}
+                    </div>
                   </div>
                 ) : null}
 
@@ -739,7 +750,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
                   },
                   { l: "Cupos", v: cupos || "—", u: "" },
                   { l: "Encuentro", v: encuentro || "—", u: "" },
-                  { l: "Modalidad", v: "Pres.", u: "" },
+                  { l: "Modalidad", v: modalidad, u: "" },
                 ].map((s) => (
                   <div key={s.l}>
                     <div
@@ -791,7 +802,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
                   lineHeight: 1.5,
                 }}
               >
-                Te avisamos por correo si quedás seleccionado/a.
+                {enrollmentNotice}
               </p>
             </div>
           </aside>
