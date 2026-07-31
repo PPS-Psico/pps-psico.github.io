@@ -35,6 +35,7 @@ import {
   daysUntil,
 } from "../../../../utils/formatters";
 import { getMandatoryLaunchSchedules } from "../../../../utils/scheduleRequirements";
+import { getEnrollmentNotice } from "../../../../utils/enrollmentCopy";
 
 interface StudentHomeAtlasProps {
   student: EstudianteFields | null;
@@ -701,11 +702,11 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     </button>
                   )}
                   <p className="ah-feat__note">
-                    {isSelected
-                      ? "Tu lugar fue confirmado. Revisá el próximo paso para completar el consentimiento."
-                      : isEnrolled
-                        ? "Tu postulación ya figura en el sistema."
-                        : "Te avisamos por correo si quedás seleccionado/a."}
+                    {getEnrollmentNotice({
+                      isSelected,
+                      isEnrolled,
+                      hasFiniteCapacity: cupos > 0,
+                    })}
                   </p>
                 </aside>
               </article>
