@@ -1,6 +1,10 @@
 import type { JestConfigWithTsJest } from 'ts-jest';
 
 const config: JestConfigWithTsJest = {
+  // Keep local agent worktrees and generated artifacts out of the product
+  // suite. Every repository-owned test lives under src/.
+  roots: ['<rootDir>/src'],
+
   // Indicates that each test environment is a browser-like environment
   testEnvironment: 'jsdom',
 

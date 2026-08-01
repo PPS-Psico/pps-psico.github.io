@@ -40,7 +40,11 @@ import {
   type UIState,
 } from "../../../services/aseguramientoService";
 import type { LanzamientoPPS } from "../../../types";
-import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../../utils/formatters";
+import {
+  formatDate,
+  normalizeStringForComparison,
+  parseToUTCDate,
+} from "../../../utils/formatters";
 
 // Re-exports para que el consumidor de la vista (LanzadorView, etc.) no tenga
 // que importar de dos archivos.
