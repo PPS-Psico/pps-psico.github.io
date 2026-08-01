@@ -1,29 +1,29 @@
+import type { Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import React, {
   createContext,
-  useState,
+  ReactNode,
+  useCallback,
   useContext,
   useEffect,
-  useCallback,
   useMemo,
-  ReactNode,
   useRef,
+  useState,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
-import { logger } from "../utils/logger";
-import { suppressMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
 import {
+  FIELD_CORREO_ESTUDIANTES,
+  FIELD_DNI_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
-  FIELD_USER_ID_ESTUDIANTES,
-  FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES,
   FIELD_ROLE_ESTUDIANTES,
-  FIELD_DNI_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
   FIELD_TELEFONO_ESTUDIANTES,
+  FIELD_USER_ID_ESTUDIANTES,
 } from "../constants";
+import { suppressMoodleAutoLogin } from "../hooks/useMoodleAutoLogin";
+import { supabase } from "../lib/supabaseClient";
+import { logger } from "../utils/logger";
 
 export type AuthUser = {
   id?: string;
@@ -59,7 +59,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Refs to track state without triggering re-renders
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const authStabilizationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Dedup del fetch de perfil: `getSession()`, `INITIAL_SESSION` y `SIGNED_IN`
   // disparan processSession por separado para la MISMA sesión → sin esto se
   // hacían 3-4 SELECT idénticos a `estudiantes` en el arranque, compitiendo
@@ -85,9 +84,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       logger.info("🚪 Cerrando sesión...");
 
-      // Evita que el auto-login del campus Moodle nos vuelva a loguear apenas
-      // cerramos sesión: el guard se limpia solo con una recarga real de la
-      // página (F5). Ver useMoodleAutoLogin / suppressMoodleAutoLogin.
+      // Evita que la resolución de entrada del campus vuelva a ejecutarse
+      // apenas cerramos sesión. El guard se limpia con una recarga real.
       suppressMoodleAutoLogin();
 
       // 1. Cancel React Query fetching
@@ -123,6 +121,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, 8000);
 
     const processSession = async (session: Session | null) => {
+      // En desarrollo React StrictMode monta, desmonta y vuelve a montar los
+      // efectos. Una instancia ya desmontada no debe reservar el deduplicador:
+      // si lo hiciera, la instancia activa omitiría el perfil y la UI quedaría
+      // en el login aunque Supabase haya emitido SIGNED_IN.
+      if (!isMounted) return;
+
       // If no session, clear user and stop loading
       if (!session?.user) {
         processedUserIdRef.current = null;
@@ -236,24 +240,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 });
             }
 
-            // Stabilization: Delay the state update slightly to let previous React tree unmount cleanly
-            if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
-
-            authStabilizationTimer.current = setTimeout(() => {
-              setAuthenticatedUser({
-                id: session.user.id,
-                studentId: profile.id,
-                legajo: profile[FIELD_LEGAJO_ESTUDIANTES] || "", // Fallback to empty string
-                nombre: profile[FIELD_NOMBRE_ESTUDIANTES] || "Usuario", // Fallback
-                orientaciones: profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]
-                  ? [profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]]
-                  : [],
-                mustChangePassword: !!profile[FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES], // Boolean cast
-                needsDataCompletion,
-                role: dbRole,
-              });
-              setIsAuthLoading(false);
-            }, 50); // Small delay to decouple from event loop
+            // La sesión y el perfil ya fueron validados. Montar el usuario de
+            // inmediato evita que un remount de React/HMR cancele la transición
+            // y deje visualmente el formulario de login con una sesión activa.
+            setAuthenticatedUser({
+              id: session.user.id,
+              studentId: profile.id,
+              legajo: profile[FIELD_LEGAJO_ESTUDIANTES] || "",
+              nombre: profile[FIELD_NOMBRE_ESTUDIANTES] || "Usuario",
+              orientaciones: profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]
+                ? [profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]]
+                : [],
+              mustChangePassword: !!profile[FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES],
+              needsDataCompletion,
+              role: dbRole,
+            });
+            setIsAuthLoading(false);
+            logger.scoped("Auth", `Sesión montada (user_id=${session.user.id})`);
           } else {
             logger.warn(
               `Profile not found for authenticated user (email: ${session.user.email}, id: ${session.user.id}). Posible Admin o Error de Integridad.`
@@ -331,7 +334,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       isMounted = false;
       if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
-      if (authStabilizationTimer.current) clearTimeout(authStabilizationTimer.current);
+      // Liberar cualquier reserva creada por esta ejecución del efecto. La
+      // siguiente instancia activa volverá a procesar la sesión normalmente.
+      processedUserIdRef.current = null;
       subscription.unsubscribe();
     };
     // Listener de auth: debe montarse UNA sola vez. Re-suscribir ante cada cambio

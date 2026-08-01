@@ -4,11 +4,18 @@ Este directorio concentra documentacion vigente y util para operar o evolucionar
 
 ## Documentos base
 
+- [phase-0-baseline.md](./phase-0-baseline.md): baseline verificable y orden de ejecución de la Fase 0.
 - [architecture-current.md](./architecture-current.md): foto tecnica actual del sistema.
 - [internal-professionalization-plan.md](./internal-professionalization-plan.md): roadmap interno y criterios de prioridad.
 - [analytics/README.md](./analytics/README.md): métricas, calidad de datos y plan de analítica confiable.
 - [migration-history-reconciliation.md](./migration-history-reconciliation.md): replay local y reconciliación de las 111 migraciones productivas.
 - [visual-baseline.md](./visual-baseline.md): matriz y capturas previas al rediseño, aisladas de producción.
+- [criterio-metricas-ingresantes.md](./criterio-metricas-ingresantes.md):
+  definiciones vigentes de matrícula administrativa, cuentas, activación,
+  cohorte, postulantes e inicios PPS.
+- [analytics/HISTORICAL_SCOPE_DECISIONS.md](./analytics/HISTORICAL_SCOPE_DECISIONS.md):
+  decisiones de negocio para Sede Comahue y tratamiento de modalidades
+  históricas.
 
 ## Documentos operativos
 
@@ -29,4 +36,5 @@ Si cambia alguno de estos aspectos, hay que actualizar la documentacion correspo
 - seguridad o permisos;
 - integraciones activas;
 - operacion admin;
+- definiciones, fuentes o comparabilidad de métricas;
 - roadmap tecnico.

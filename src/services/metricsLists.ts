@@ -1,28 +1,28 @@
+import {
+  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
+  FIELD_ESTUDIANTE_LINK_PRACTICAS,
+  FIELD_FECHA_INICIO_PRACTICAS,
+  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_NOMBRE_INSTITUCIONES,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
+  FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
+  FIELD_TIPO_ACTIVIDAD_PRACTICAS,
+  TABLE_NAME_CONVOCATORIAS,
+  TABLE_NAME_INSTITUCIONES,
+  TABLE_NAME_LANZAMIENTOS_PPS,
+  TABLE_NAME_PRACTICAS,
+} from "../constants";
 import { supabase } from "../lib/supabaseClient";
 import type { StudentInfo } from "../types";
-import {
-  TABLE_NAME_PRACTICAS,
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_INSTITUCIONES,
-  TABLE_NAME_CONVOCATORIAS,
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
-  FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
-  FIELD_ESTUDIANTE_LINK_PRACTICAS,
-  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
-  FIELD_TIPO_ACTIVIDAD_PRACTICAS,
-  FIELD_FECHA_INICIO_PRACTICAS,
-  FIELD_ESPECIALIDAD_PRACTICAS,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
-  FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
-  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_ESTUDIANTES,
-} from "../constants";
 import { getGroupName } from "../utils/formatters";
 import {
   fetchHistoricalLaunchOffers,
@@ -34,6 +34,7 @@ export interface ListResult {
   students: StudentInfo[];
   headers?: { key: string; label: string }[];
   description?: string;
+  summary?: string;
 }
 
 /** Fila genérica devuelta por las RPC `get_*_list` del dashboard. */
@@ -43,6 +44,10 @@ interface RpcListRow {
   correo?: string;
   horas_total?: number;
 }
+
+const throwIfError = (error: unknown) => {
+  if (error) throw error;
+};
 
 const metricCycleRange = (year: number) => {
   const start = `${year}-01-01`;
@@ -61,6 +66,21 @@ type CapacityRow = {
   modalidad: "fijo" | "realizado";
   capacidad: number;
 };
+
+const historicalCapacitySummary = (rows: HistoricalLaunchOffer[]): string => {
+  const finiteOffers = rows.filter(
+    (row) => row.offeredCapacity != null && Number.isFinite(row.offeredCapacity)
+  );
+  const finiteCapacity = finiteOffers.reduce((total, row) => total + (row.offeredCapacity || 0), 0);
+  const nonFiniteOffers = rows.length - finiteOffers.length;
+  return `${rows.length} ofertas consolidadas: ${finiteOffers.length} con cupo finito por ${finiteCapacity} vacantes; ${nonFiniteOffers} sin cupo finito.`;
+};
+
+const operationalCapacitySummary = (rows: CapacityRow[]): string =>
+  `${rows.length} ofertas operativas con ${rows.reduce(
+    (total, row) => total + row.capacidad,
+    0
+  )} lugares de capacidad registrada.`;
 
 const fetchOperationalCapacityRows = async (year: number): Promise<CapacityRow[]> => {
   const { start, end } = metricCycleRange(year);
@@ -252,7 +272,8 @@ export async function fetchMetricList(key: string, year: number): Promise<ListRe
 }
 
 async function fetchIngresantesList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_ingresantes_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_ingresantes_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
 
   return {
@@ -264,12 +285,13 @@ async function fetchIngresantesList(year: number): Promise<ListResult> {
       { key: "nombre", label: "Nombre" },
       { key: "legajo", label: "Legajo" },
     ],
-    description: `Estudiantes cuya cohorte (año de ingreso al sistema de PPS) es ${year}.`,
+    description: `Estudiantes cuya cohorte de primera actividad PPS registrada es ${year}. La primera actividad puede ser una postulación o una práctica.`,
   };
 }
 
 async function fetchEstudiantesEnPpsList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_estudiantes_en_pps_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_estudiantes_en_pps_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
 
   return {
@@ -286,7 +308,8 @@ async function fetchEstudiantesEnPpsList(year: number): Promise<ListResult> {
 }
 
 async function fetchHeredadosList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_heredados_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_heredados_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
 
   return {
@@ -303,7 +326,8 @@ async function fetchHeredadosList(year: number): Promise<ListResult> {
 }
 
 async function fetchFinalizadosList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_finalizados_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_finalizados_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
 
   return {
@@ -320,7 +344,8 @@ async function fetchFinalizadosList(year: number): Promise<ListResult> {
 }
 
 async function fetchActivosList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_activos_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_activos_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
   return {
     students: list.map((s) => ({
@@ -336,7 +361,8 @@ async function fetchActivosList(year: number): Promise<ListResult> {
 }
 
 async function fetchSinPpsList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_sin_pps_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_sin_pps_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
 
   return {
@@ -355,7 +381,8 @@ async function fetchSinPpsList(year: number): Promise<ListResult> {
 }
 
 async function fetchProximosFinalizarList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_proximos_finalizar_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_proximos_finalizar_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
 
   return {
@@ -405,7 +432,8 @@ async function fetchInterviewCompletionCandidatesList(): Promise<ListResult> {
 }
 
 async function fetchHaciendoPpsList(year: number): Promise<ListResult> {
-  const { data } = await supabase.rpc("get_haciendo_pps_list", { p_year: year });
+  const { data, error } = await supabase.rpc("get_haciendo_pps_list", { p_year: year });
+  throwIfError(error);
   const list = (data || []) as unknown as RpcListRow[];
 
   return {

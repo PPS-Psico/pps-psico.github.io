@@ -23,8 +23,10 @@ import { normalizeStringForComparison } from "../../utils/formatters";
 import {
   computeNotaPromedio,
   computeTotalHoras,
+  isNotaPermitidaParaPps,
   NOTA_NUMERICA_OPTIONS,
   NOTA_TEXTO_OPTIONS,
+  permiteNotaAprobado,
   type DetallePracticaItem,
   type DetallePracticas,
 } from "../../utils/acreditacion";
@@ -283,8 +285,10 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
       const next: Record<string, RowState> = {};
       for (const p of finalizadas) {
         const existing = prev[p.id];
+        const fechaInicio = p[FIELD_FECHA_INICIO_PRACTICAS];
+        const notaGuardada = p[FIELD_NOTA_PRACTICAS] ?? "";
         next[p.id] = existing ?? {
-          nota: p[FIELD_NOTA_PRACTICAS] ?? "",
+          nota: isNotaPermitidaParaPps(notaGuardada, fechaInicio) ? notaGuardada : "",
           fechaFin: toDateInput(p[FIELD_FECHA_FIN_PRACTICAS]),
           informe: null,
           asistencia: null,
@@ -298,7 +302,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     const rs = rows[p.id];
     if (!rs) return false;
     const esOnline = !!p[FIELD_ES_ONLINE_PRACTICAS];
-    if (!rs.nota) return false;
+    if (!isNotaPermitidaParaPps(rs.nota, p[FIELD_FECHA_INICIO_PRACTICAS])) return false;
     if (!rs.informe) return false;
     if (!esOnline && !rs.asistencia) return false;
     return true;
@@ -929,6 +933,7 @@ const PpsDocCard: React.FC<{
   isDeleting,
 }) => {
   const esOnline = !!practica[FIELD_ES_ONLINE_PRACTICAS];
+  const admiteAprobado = permiteNotaAprobado(practica[FIELD_FECHA_INICIO_PRACTICAS]);
   if (!row) return null;
 
   return (
@@ -1036,11 +1041,12 @@ const PpsDocCard: React.FC<{
                 {n}
               </option>
             ))}
-            {NOTA_TEXTO_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
+            {admiteAprobado &&
+              NOTA_TEXTO_OPTIONS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
           </select>
         </div>
       </div>

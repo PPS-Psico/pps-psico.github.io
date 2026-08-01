@@ -5,29 +5,29 @@
 // Supabase (embudo, top instituciones, serie de finalizados, actividad de
 // Hermes). Hermes NO narra: aparece solo como FUENTE de una métrica dura.
 // ──────────────────────────────────────────────────────────────────────────
-import React, { useMemo, useState, useCallback } from "react";
-import type { MetricsKPIs } from "../../../hooks/useMetricsData";
-import {
-  useMetricsDinamica,
-  useMetricsTopInstituciones,
-  useHermesActivity,
-  useMetricsHeredados,
-} from "../../../hooks/useMetricsExtras";
-import type { TopInstitucion } from "../../../hooks/useMetricsExtras";
 import { useQuery } from "@tanstack/react-query";
-import { fetchMetricList, fetchOrientationList } from "../../../services/metricsLists";
-import { fetchConveniosKpis } from "../../../services/conveniosService";
+import { useCallback, useMemo, useState } from "react";
 import { buildExecutiveReportModel } from "../../../features/executive-report/executiveReport.model";
-import { HeroMetric, KpiCard, Band, fmt } from "./MetricasPrimitives";
+import type { MetricsKPIs } from "../../../hooks/useMetricsData";
+import type { TopInstitucion } from "../../../hooks/useMetricsExtras";
 import {
-  DinamicaCicloBand,
+  useHermesActivity,
+  useMetricsDinamica,
+  useMetricsHeredados,
+  useMetricsTopInstituciones,
+} from "../../../hooks/useMetricsExtras";
+import { fetchConveniosKpis } from "../../../services/conveniosService";
+import { fetchMetricList, fetchOrientationList } from "../../../services/metricsLists";
+import type { DrillRow, DrillState } from "./DrillModal";
+import { DrillModal } from "./DrillModal";
+import {
   BarChart,
-  TrendLine,
+  DinamicaCicloBand,
   Distribution,
   TopInstituciones,
+  TrendLine,
 } from "./MetricasCharts";
-import { DrillModal } from "./DrillModal";
-import type { DrillState, DrillRow } from "./DrillModal";
+import { Band, fmt, HeroMetric, KpiCard } from "./MetricasPrimitives";
 
 const seriesToSpark = (series: { year: string | number; value: number }[], years: number[]) =>
   years.map((y) => {

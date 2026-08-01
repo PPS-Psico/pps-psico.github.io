@@ -63,6 +63,7 @@ import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
 import ConfirmModal from "../ConfirmModal";
+import { useModal } from "../../contexts/ModalContext";
 import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { injectPremiumMotion } from "./premiumMotion";
@@ -851,6 +852,7 @@ const AddPenaltyModal: React.FC<{
   const [notes, setNotes] = useState("");
   const [selectedPpsId, setSelectedPpsId] = useState<string>("");
   const queryClient = useQueryClient();
+  const { showModal } = useModal();
 
   const { data: relevantPPS, isLoading: isLoadingPPS } = useQuery({
     queryKey: ["relevantPPSForModal", student.id, isTestingMode],
@@ -974,7 +976,7 @@ const AddPenaltyModal: React.FC<{
       onClose();
     },
     onError: (error: Error) => {
-      alert(`Error: ${error.message}`);
+      showModal("No se pudo aplicar la penalización", error.message, "error");
     },
   });
 

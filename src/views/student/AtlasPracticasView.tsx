@@ -10,19 +10,21 @@ import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
 } from "../../constants";
-import type { CriteriosCalculados, InformeTask, Orientacion, Practica } from "../../types";
+import type { CriteriosCalculados, Orientacion, Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import NotaSelector from "../../components/NotaSelector";
-import { isPracticeComputable, isPracticeDisapproved } from "../../logic/studentRules";
+import {
+  getPracticePresentationStatus,
+  isPracticeActive,
+  isPracticeComputable,
+  isPracticeDisapproved,
+} from "../../logic/studentRules";
 
 interface AtlasPracticasViewProps {
   criterios: CriteriosCalculados;
   selectedOrientacion: Orientacion | "";
-  handleOrientacionChange: (o: Orientacion | "") => void;
-  onRequestFinalization?: () => void;
-  informeTasks?: InformeTask[];
   practicas: Practica[];
-  handleNotaChange: (practicaId: string, nota: string) => void;
+  handleNotaChange: (practicaId: string, nota: string) => Promise<void>;
   onRequestModificacion?: (practica: Practica) => void;
   onRequestNuevaPPS?: () => void;
 }
@@ -57,7 +59,13 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
 }) => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [justUpdated, setJustUpdated] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{ id: string; rect: DOMRect; current: string } | null>(null);
+  const [saveErrorId, setSaveErrorId] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{
+    id: string;
+    rect: DOMRect;
+    current: string;
+    trigger: HTMLButtonElement;
+  } | null>(null);
 
   const hoursAcc = Math.round(criterios?.horasTotales || 0);
   const totalTarget = MIN_HOURS_TARGET;
@@ -100,15 +108,14 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   ].filter(Boolean).length;
 
   // Celebración: confetti UFLO una sola vez por sesión cuando se cumplen los 3
-  // requisitos de cursada. Comparte la marca de sesión con el panel mobile
-  // (CriteriosPanel) para no festejar dos veces. Respeta prefers-reduced-motion.
+  // requisitos cuantitativos de cursada. No implica acreditación final.
   const celebratedRef = useRef(false);
   useEffect(() => {
     if (reqsCumplidos < reqsTotal || celebratedRef.current) return;
     celebratedRef.current = true;
     try {
-      if (window.sessionStorage?.getItem("pps_acreditacion_celebrada") === "1") return;
-      window.sessionStorage?.setItem("pps_acreditacion_celebrada", "1");
+      if (window.sessionStorage?.getItem("pps_requisitos_cursada_celebrados") === "1") return;
+      window.sessionStorage?.setItem("pps_requisitos_cursada_celebrados", "1");
     } catch {
       /* sessionStorage bloqueado — celebramos una vez por montaje */
     }
@@ -126,10 +133,16 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   const onLocalNota = async (id: string, nota: string) => {
     setMenu(null);
     setSavingId(id);
-    await handleNotaChange(id, nota);
-    setSavingId(null);
-    setJustUpdated(id);
-    setTimeout(() => setJustUpdated(null), 2000);
+    setSaveErrorId(null);
+    try {
+      await handleNotaChange(id, nota);
+      setJustUpdated(id);
+      window.setTimeout(() => setJustUpdated(null), 2000);
+    } catch {
+      setSaveErrorId(id);
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const notaCell = (p: Practica) => {
@@ -141,7 +154,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     const num = raw != null && String(raw).trim() !== "" ? Number(raw) : NaN;
     let text = "Pend.";
     let color = "var(--fg-subtle)";
-    if (estado.includes("curso")) {
+    if (isPracticeActive(estado)) {
       text = "en curso";
       color = "var(--info-500)";
     } else if (Number.isFinite(num)) {
@@ -151,6 +164,8 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     if (savingId === p.id) {
       return (
         <span
+          role="status"
+          aria-label="Guardando nota informada"
           className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle"
           style={{ color: "var(--primary-500)" }}
         />
@@ -158,12 +173,17 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     }
     if (justUpdated === p.id) {
       return (
-        <span className="material-icons" style={{ color: "var(--success-500)", fontSize: 20 }}>
+        <span
+          role="status"
+          aria-label="Nota guardada"
+          className="material-icons"
+          style={{ color: "var(--success-500)", fontSize: 20 }}
+        >
           check
         </span>
       );
     }
-    const inCurso = estado.includes("curso");
+    const inCurso = isPracticeActive(estado);
     return inCurso ? (
       <span className="nota" style={{ color, fontSize: 12.5, fontFamily: "var(--font-mono)" }}>
         en curso
@@ -171,12 +191,21 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     ) : (
       <button
         type="button"
-        className="ah-nota"
+        className={`ah-nota${saveErrorId === p.id ? " is-error" : ""}`}
         style={{ color }}
-        title="Clic para editar la nota"
+        title={
+          saveErrorId === p.id
+            ? "No se pudo guardar. Volvé a intentarlo."
+            : "Editar la nota informada por vos"
+        }
+        aria-label={`${
+          saveErrorId === p.id ? "Reintentar edición de" : "Editar"
+        } la nota informada por vos para ${
+          cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || "esta práctica"
+        }`}
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
-          setMenu({ id: p.id, rect, current: text });
+          setMenu({ id: p.id, rect, current: text, trigger: e.currentTarget });
         }}
       >
         {Number.isFinite(num) ? text : <span className="ah-nota__pending">{text}</span>}
@@ -192,14 +221,14 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
           <h1 id="student-practicas-title">
             Tus <em>prácticas</em>.
           </h1>
-          <p>Historial de PPS y avance hacia la acreditación.</p>
+          <p>Tu avance de cursada y el historial de cada PPS.</p>
         </div>
 
-        {/* ── Tu acreditación: una sola tarjeta (progreso + requisitos + CTA) ── */}
+        {/* ── Requisitos de cursada: progreso cuantitativo, sin inferir acreditación ── */}
         <div className="ah-accr-hero">
           <div className="ah-accr-hero__main">
             <div className="ah-accr__headline">
-              <h6>Acreditación</h6>
+              <h2 className="ah-section-label">Requisitos de cursada</h2>
               {excessHs > 0 ? (
                 <>
                   <span className="ah-accr__pct">Objetivo superado</span>
@@ -213,11 +242,16 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
               </span>
             </div>
 
-            <div className="ah-bar">
+            <div
+              className="ah-bar"
+              role="img"
+              aria-label={`${hoursAcc} de ${totalTarget} horas de cursada completadas`}
+            >
               {segments.map((s) => (
                 <div
                   key={s.area}
                   className="ah-bar__seg"
+                  aria-hidden="true"
                   style={{ flexGrow: s.hs, ["--sc" as string]: areaVar(s.area) }}
                   title={`${s.area}: ${s.hs} hs`}
                 >
@@ -227,6 +261,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
               {restHs > 0 ? (
                 <div
                   className="ah-bar__seg rest"
+                  aria-hidden="true"
                   style={{ flexGrow: restHs }}
                   title={`Restante: ${restHs} hs`}
                 >
@@ -281,7 +316,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
 
           <div className="ah-accr-hero__side">
             <div className="ah-accr-hero__sidehead">
-              <h6>Requisitos</h6>
+              <h2 className="ah-section-label">Resumen</h2>
               <span className={"ah-req__count" + (reqsCumplidos === reqsTotal ? " is-done" : "")}>
                 {reqsCumplidos}/{reqsTotal}
               </span>
@@ -311,8 +346,8 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
               {reqsCumplidos === reqsTotal ? "verified" : "info"}
             </span>
             <span>
-              Cuando completes todos los criterios y tus informes estén corregidos, vas a poder
-              iniciar la acreditación desde <b>Solicitudes</b>.
+              Este bloque resume horas, rotación y orientación. La acreditación final es un trámite
+              separado y se gestiona desde <b>Solicitudes</b>.
             </span>
           </p>
         </div>
@@ -322,7 +357,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
           <div>
             <div className="ah-sechead">
               <div className="ah-sechead__title">
-                <h6>Mis prácticas</h6>
+                <h2 className="ah-section-label">Mis prácticas</h2>
                 <span className="n">{String(rows.length).padStart(2, "0")}</span>
               </div>
               {onRequestNuevaPPS ? (
@@ -345,6 +380,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                     <col className="ah-table__col-name" />
                     <col className="ah-table__col-area" />
                     <col className="ah-table__col-period" />
+                    <col className="ah-table__col-status" />
                     <col className="ah-table__col-hours" />
                     <col className="ah-table__col-grade" />
                     <col className="ah-table__col-actions" />
@@ -354,15 +390,17 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                       <th>Institución</th>
                       <th>Área</th>
                       <th>Período</th>
+                      <th>Estado</th>
                       <th>Horas</th>
-                      <th>Nota</th>
-                      <th />
+                      <th>Tu nota</th>
+                      <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((p) => {
                       const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
                       const desaprobada = isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA]);
+                      const presentationStatus = getPracticePresentationStatus(p);
                       return (
                         <tr key={p.id}>
                           <td className="name">
@@ -388,6 +426,12 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                               .filter(Boolean)
                               .join(" - ")}
                           </td>
+                          <td>
+                            <span className={`ah-practice-status is-${presentationStatus.tone}`}>
+                              <span className="dot" aria-hidden="true" />
+                              {presentationStatus.label}
+                            </span>
+                          </td>
                           <td className="mono hours">
                             {desaprobada ? (
                               <span
@@ -402,14 +446,11 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                             )}
                           </td>
                           <td className="nota">{notaCell(p)}</td>
-                          <td
-                            className="ah-table__actions"
-                            style={{ width: 40, textAlign: "right" }}
-                          >
+                          <td className="ah-table__actions" style={{ textAlign: "right" }}>
                             {onRequestModificacion && !desaprobada ? (
                               <button
                                 type="button"
-                                className="ah-iconbtn--sm"
+                                className="ah-row-action"
                                 title="Solicitar corrección"
                                 aria-label={`Solicitar corrección de ${
                                   cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
@@ -417,9 +458,14 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                                 }`}
                                 onClick={() => onRequestModificacion(p)}
                               >
-                                <span className="material-icons" style={{ fontSize: 17 }}>
+                                <span
+                                  className="material-icons"
+                                  style={{ fontSize: 17 }}
+                                  aria-hidden="true"
+                                >
                                   edit
                                 </span>
+                                Corregir
                               </button>
                             ) : null}
                           </td>
@@ -438,7 +484,8 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                 </div>
                 <div className="ah-empty__t">Sin prácticas registradas</div>
                 <p className="ah-empty__s">
-                  Cuando completes tu primera PPS, tu historial y tus horas van a aparecer acá.
+                  Tu historial va a aparecer acá cuando ingreses mediante una convocatoria o cargues
+                  una PPS que ya realizaste.
                 </p>
               </div>
             )}
@@ -447,12 +494,18 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
 
         {menu && (
           <>
-            <div className="fixed inset-0 z-[9998]" onClick={() => setMenu(null)} />
+            <button
+              type="button"
+              aria-label="Cerrar selector de nota"
+              className="fixed inset-0 z-[9998] cursor-default"
+              onClick={() => setMenu(null)}
+            />
             <NotaSelector
               triggerRect={menu.rect}
               currentValue={menu.current}
               onSelect={(n) => onLocalNota(menu.id, n)}
               onClose={() => setMenu(null)}
+              triggerElement={menu.trigger}
             />
           </>
         )}
@@ -462,8 +515,8 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
 };
 
 const Req: React.FC<{ done: boolean; label: string; sub: string }> = ({ done, label, sub }) => (
-  <div className="ah-req">
-    <span className={"ah-req__mk" + (done ? " on" : "")}>
+  <div className="ah-req" aria-label={`${label}: ${done ? "cumplido" : "pendiente"}. ${sub}`}>
+    <span className={"ah-req__mk" + (done ? " on" : "")} aria-hidden="true">
       {done ? (
         <span className="material-icons" style={{ fontSize: 14 }}>
           check

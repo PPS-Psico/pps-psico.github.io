@@ -151,29 +151,35 @@ describe("SeguroGenerator — estado ya asegurado + reversión", () => {
     expect(screen.getByRole("button", { name: /Revertir aseguramiento/i })).toBeInTheDocument();
   });
 
+  // La confirmación ya no es window.confirm: es el ConfirmModal del panel, así
+  // que los tests interactúan con el diálogo real en vez de espiar el nativo.
   it("la reversión pide confirmación y llama a revertirAseguramiento", async () => {
     mockLanzamientosGet.mockResolvedValue([{ seguro_gestionado_at: "2026-05-01T10:00:00.000Z" }]);
-    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
     renderGen({ isTestingMode: false });
 
     const revertBtn = await screen.findByRole("button", { name: /Revertir aseguramiento/i });
     fireEvent.click(revertBtn);
 
-    expect(confirmSpy).toHaveBeenCalled();
+    // Aparece el diálogo del panel, no un confirm nativo.
+    expect(await screen.findByText("¿Revertir el aseguramiento?")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /^Revertir$/i }));
+
     await waitFor(() => expect(mockRevertir).toHaveBeenCalledWith("lanz-1", "coord-1"));
-    confirmSpy.mockRestore();
   });
 
   it("no revierte si el coordinador cancela la confirmación", async () => {
     mockLanzamientosGet.mockResolvedValue([{ seguro_gestionado_at: "2026-05-01T10:00:00.000Z" }]);
-    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
     renderGen({ isTestingMode: false });
 
     const revertBtn = await screen.findByRole("button", { name: /Revertir aseguramiento/i });
     fireEvent.click(revertBtn);
 
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(await screen.findByText("¿Revertir el aseguramiento?")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /Cancelar/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("¿Revertir el aseguramiento?")).not.toBeInTheDocument()
+    );
     expect(mockRevertir).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 });

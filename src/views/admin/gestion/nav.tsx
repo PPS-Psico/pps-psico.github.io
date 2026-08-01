@@ -1,4 +1,6 @@
 import React from "react";
+import { useIsFetching } from "@tanstack/react-query";
+import { APP_VERSION } from "../../../components/admin/HermesStatus";
 import { CATEGORIES, type CatId, type CatDef, type ViewMode } from "./gestionTypes";
 
 // ─── Navegación de Gestión: Rail lateral + ViewModeTabs ─────────────────────
@@ -10,10 +12,11 @@ export const Rail: React.FC<{
   counts: Record<string, number>;
   search: string;
   collapsed: boolean;
+  hasSyncError: boolean;
   onToggle: () => void;
   onSearch: (v: string) => void;
   onSelect: (c: CatId) => void;
-}> = ({ activeCat, counts, search, collapsed, onToggle, onSearch, onSelect }) => {
+}> = ({ activeCat, counts, search, collapsed, hasSyncError, onToggle, onSearch, onSelect }) => {
   const RailRow = (cat: CatDef) => (
     <button
       key={cat.id}
@@ -114,27 +117,67 @@ export const Rail: React.FC<{
       {!collapsed && <div className="rail-section-title label rail-hideable">Categorías</div>}
       {CATEGORIES.filter((c) => c.id !== "hoy").map(RailRow)}
 
-      <div
-        style={{
-          padding: collapsed ? "16px 0" : "20px 14px 16px",
-          marginTop: "auto",
-          borderTop: "1px solid var(--rule-2)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: collapsed ? "center" : "space-between",
-        }}
-      >
-        <span className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span className="dot dot-ok dot-live" style={{ color: "var(--ok)" }} />
-          {!collapsed && <span className="rail-hideable">Sincronizado</span>}
-        </span>
-        {!collapsed && (
-          <span className="mono meta rail-hideable" style={{ fontSize: 10.5 }}>
-            v3.2
-          </span>
-        )}
-      </div>
+      <SyncStatus collapsed={collapsed} hasSyncError={hasSyncError} />
     </aside>
+  );
+};
+
+// ─── Estado de sincronización (real) ─────────────────────────────────────────
+// Antes este pie mostraba un punto verde fijo con "Sincronizado" y "v3.2"
+// escritos a mano. Ahora refleja el estado real de react-query: si hay queries
+// en vuelo, si alguna falló, o si los datos están al día.
+
+const MANAGEMENT_QUERY_ROOTS = new Set([
+  "gmailHilos",
+  "gmailThreadsWithDraft",
+  "pendingContactClassifications",
+  "hermesPlanDia",
+  "instituciones-all-classifier",
+  "whatsapp-messages-context",
+  "whatsapp_contactos",
+]);
+
+const SyncStatus: React.FC<{ collapsed: boolean; hasSyncError: boolean }> = ({
+  collapsed,
+  hasSyncError,
+}) => {
+  const fetching = useIsFetching({
+    predicate: (query) => MANAGEMENT_QUERY_ROOTS.has(String(query.queryKey[0])),
+  });
+
+  const { label, color, live } = hasSyncError
+    ? { label: "Error de sincronización", color: "var(--danger, #c0392b)", live: false }
+    : fetching
+      ? { label: "Sincronizando…", color: "var(--warn)", live: true }
+      : { label: "Sincronizado", color: "var(--ok)", live: false };
+
+  return (
+    <div
+      style={{
+        padding: collapsed ? "16px 0" : "20px 14px 16px",
+        marginTop: "auto",
+        borderTop: "1px solid var(--rule-2)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: collapsed ? "center" : "space-between",
+      }}
+    >
+      <span
+        className="meta"
+        style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        title={label}
+        role="status"
+        aria-live="polite"
+      >
+        <span className={live ? "dot dot-live" : "dot"} style={{ color, background: color }} />
+        {!collapsed && <span className="rail-hideable">{label}</span>}
+      </span>
+      {!collapsed && (
+        <span className="mono meta rail-hideable" style={{ fontSize: 10.5 }}>
+          v{APP_VERSION}
+        </span>
+      )}
+    </div>
   );
 };
 

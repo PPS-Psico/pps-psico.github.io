@@ -17,6 +17,11 @@ import {
 import Loader from "../Loader";
 import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
+import { useConfirm } from "../../hooks/useConfirm";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+
+/** Áreas de PPS que puede tener un espacio del campus. */
+type AreaCampus = "clinica" | "laboral" | "educacional" | "comunitaria";
 
 interface InformeCampusLinkerProps {
   isTestingMode?: boolean;
@@ -181,6 +186,7 @@ const formatFecha = (value: unknown): string => {
 const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode = false }) => {
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
+  const { confirm, confirmDialog } = useConfirm();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<
@@ -196,16 +202,37 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   const [selectedSpaceIdForLink, setSelectedSpaceIdForLink] = useState("");
   const [multiLinkInputs, setMultiLinkInputs] = useState<Record<string, string>>({});
   const [multiSelectedSpaceIds, setMultiSelectedSpaceIds] = useState<Record<string, string>>({});
-  const [editArea, setEditArea] = useState<"clinica" | "laboral" | "educacional" | "comunitaria">(
-    "clinica"
-  );
+  const [editArea, setEditArea] = useState<AreaCampus>("clinica");
   const [editInstitucion, setEditInstitucion] = useState("");
   const [editActivo, setEditActivo] = useState(true);
+
+  // Estado para creación manual de espacios (sin lanzamiento previo)
+  const [isCreatingManualSpace, setIsCreatingManualSpace] = useState(false);
+  const [manualInstType, setManualInstType] = useState<"existing" | "custom">("existing");
+  const [manualInstSelected, setManualInstSelected] = useState("");
+  const [manualInstCustom, setManualInstCustom] = useState("");
+  const [manualArea, setManualArea] = useState<AreaCampus>("clinica");
+  const [manualLinkInput, setManualLinkInput] = useState("");
 
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "warning";
   } | null>(null);
+
+  // 0. Cargar lista de instituciones registradas
+  const { data: dbInstitutions = [] } = useQuery({
+    queryKey: ["all_instituciones_list", isTestingMode],
+    queryFn: async (): Promise<string[]> => {
+      if (isTestingMode) return [];
+      try {
+        const records = await db.instituciones.getAll();
+        return records.map((r) => String(r.nombre || (r as any).institucion || "")).filter(Boolean);
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 10,
+  });
 
   // 1. Cargar lanzamientos de PPS
   const {
@@ -246,6 +273,24 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
   const isLoading = isLaunchesLoading || isEntregasLoading;
   const error = launchesError || entregasError;
+
+  // Lista única y ordenada de instituciones conocidas
+  const knownInstitutions = useMemo(() => {
+    const set = new Set<string>();
+    dbInstitutions.forEach((name) => {
+      if (name.trim()) set.add(name.trim());
+    });
+    entregas.forEach((e) => {
+      if (e.institucion && e.institucion.trim()) set.add(e.institucion.trim());
+    });
+    launches.forEach((l) => {
+      const rawName = String(l[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "")
+        .split("-")[0]
+        .trim();
+      if (rawName) set.add(rawName);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [dbInstitutions, entregas, launches]);
 
   // Filtrar lanzamientos de este año y deduplicar por (Institución, Área) quedándonos con la primera (más antigua)
   const launchesThisYear = useMemo(() => {
@@ -360,9 +405,11 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     setSelectedSpaceIdForLink("");
     setMultiLinkInputs({});
     setMultiSelectedSpaceIds({});
+    setIsCreatingManualSpace(false);
   }, [activeTab]);
 
   const handleSelectSpace = (row: EntregaRow) => {
+    setIsCreatingManualSpace(false);
     setSelectedSpaceId(row.id);
     setSelectedLaunchId(null);
     setLinkInput(`${MOODLE_PREFIX}${row.moodle_id}`);
@@ -372,6 +419,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   };
 
   const handleSelectLaunch = (row: LaunchRow) => {
+    setIsCreatingManualSpace(false);
     setSelectedLaunchId(row.id);
     setSelectedSpaceId(null);
 
@@ -540,8 +588,8 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
       queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
     },
-    onError: (err: any) =>
-      setToast({ message: `Error al vincular: ${err.message}`, type: "error" }),
+    onError: (err: unknown) =>
+      setToast({ message: `Error al vincular: ${getErrorMessage(err)}`, type: "error" }),
   });
 
   // Mutación: Guardar cambios de una entrega (Espacio Campus)
@@ -615,8 +663,8 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       queryClient.invalidateQueries({ queryKey: ["aula_entregas_list"] });
       queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
     },
-    onError: (err: any) =>
-      setToast({ message: `Error al actualizar: ${err.message}`, type: "error" }),
+    onError: (err: unknown) =>
+      setToast({ message: `Error al actualizar: ${getErrorMessage(err)}`, type: "error" }),
   });
 
   // Mutación: Desactivar/Ocultar un espacio de entregas del campus
@@ -633,8 +681,61 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       queryClient.invalidateQueries({ queryKey: ["aula_entregas_list"] });
       queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
     },
-    onError: (err: any) =>
-      setToast({ message: `Error al desactivar: ${err.message}`, type: "error" }),
+    onError: (err: unknown) =>
+      setToast({ message: `Error al desactivar: ${getErrorMessage(err)}`, type: "error" }),
+  });
+
+  // Mutación: Crear espacio manual de informes (sin lanzamiento previo)
+  const createManualSpaceMutation = useMutation({
+    mutationFn: async () => {
+      const instName = (
+        manualInstType === "existing" ? manualInstSelected : manualInstCustom
+      ).trim();
+
+      if (!instName) {
+        throw new Error("Debes indicar o seleccionar el nombre de la institución.");
+      }
+
+      const taskId = getMoodleTaskId(manualLinkInput);
+      if (!taskId) {
+        throw new Error("El enlace ingresado no contiene un ID de tarea de Moodle válido.");
+      }
+
+      // Verificar si ya existe un espacio con ese moodle_id
+      const existing = entregas.find((e) => String(e.moodle_id) === String(taskId));
+      if (existing) {
+        await db.aula_entregas.update(String(existing.id), {
+          activo: true,
+          institucion: instName,
+          area: manualArea,
+        } as any);
+        return existing.id;
+      } else {
+        const created = await db.aula_entregas.create({
+          moodle_id: taskId,
+          institucion: instName,
+          area: manualArea,
+          activo: true,
+        } as any);
+        return (created as any)?.id;
+      }
+    },
+    onSuccess: (newId) => {
+      setToast({
+        message: "Espacio de informe creado con éxito.",
+        type: "success",
+      });
+      setIsCreatingManualSpace(false);
+      queryClient.invalidateQueries({ queryKey: ["informeCampusLinker"] });
+      queryClient.invalidateQueries({ queryKey: ["aula_entregas_list"] });
+      queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
+      if (newId) {
+        setSelectedSpaceId(String(newId));
+      }
+    },
+    onError: (err: unknown) => {
+      setToast({ message: `Error al crear espacio: ${getErrorMessage(err)}`, type: "error" });
+    },
   });
 
   const selectedLaunch = useMemo(
@@ -682,16 +783,33 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Cabecera */}
-      <div className="bg-slate-50 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-200/50 dark:border-slate-700/40">
-        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-          <span className="material-icons text-blue-500">dns</span>
-          Espacios de Informes en Campus (Moodle)
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-          Los estudiantes entregan su informe en una sola tarea de Moodle por institución. Si volvés
-          a lanzar una PPS con una institución que ya tiene espacio activo, vinculala al mismo
-          espacio del campus.
-        </p>
+      <div className="bg-slate-50 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <span className="material-icons text-blue-500">dns</span>
+            Espacios de Informes en Campus (Moodle)
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            Los estudiantes entregan su informe en una sola tarea de Moodle por institución. Podés
+            vincular lanzamientos existentes o agregar espacios para PPS arregladas particularmente.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setSelectedSpaceId(null);
+            setSelectedLaunchId(null);
+            setIsCreatingManualSpace(true);
+            setManualInstType("existing");
+            setManualInstSelected(knownInstitutions[0] || "");
+            setManualInstCustom("");
+            setManualLinkInput("");
+            setManualArea("clinica");
+          }}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition"
+        >
+          <span className="material-icons !text-base">add</span>
+          Nuevo Espacio Manual
+        </button>
       </div>
 
       {/* Buscador e Interruptor de Pestañas */}
@@ -922,6 +1040,165 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
         {/* Columna Derecha: Detalle / Editor */}
         <div className="lg:col-span-7 lg:sticky lg:top-4 h-fit">
+          {/* FORMULARIO DE CREACIÓN MANUAL DE ESPACIO */}
+          {isCreatingManualSpace && (
+            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-6 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-3">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">
+                    Nuevo Espacio Manual
+                  </span>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 mt-1.5 text-base leading-snug">
+                    Agregar espacio sin lanzamiento previo
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingManualSpace(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  <span className="material-icons !text-lg">close</span>
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Utilizá esta opción para crear un espacio de informe en el campus para PPS que
+                fueron arregladas por los estudiantes de forma particular y no derivan de una
+                convocatoria pública previa.
+              </p>
+
+              {/* Formulario */}
+              <div className="space-y-4">
+                {/* Selector de origen de Institución */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-2">
+                    Institución
+                  </label>
+                  <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/40 dark:border-slate-800/60 mb-3 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setManualInstType("existing")}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                        manualInstType === "existing"
+                          ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      Vincular a existente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setManualInstType("custom")}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                        manualInstType === "custom"
+                          ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      Ingresar nombre libre
+                    </button>
+                  </div>
+
+                  {manualInstType === "existing" ? (
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+                        Seleccionar institución registrada:
+                      </label>
+                      <select
+                        value={manualInstSelected}
+                        onChange={(e) => setManualInstSelected(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                      >
+                        <option value="">-- Seleccionar institución --</option>
+                        {knownInstitutions.map((inst) => (
+                          <option key={inst} value={inst}>
+                            {inst}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+                        Nombre completo de la institución:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej: Clínica Privada San Martín, Fundación..."
+                        value={manualInstCustom}
+                        onChange={(e) => setManualInstCustom(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Área Académica / Orientación */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    Área académica / Orientación
+                  </label>
+                  <select
+                    value={manualArea}
+                    onChange={(e) => setManualArea(e.target.value as AreaCampus)}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                  >
+                    <option value="clinica">Clínica</option>
+                    <option value="laboral">Laboral</option>
+                    <option value="educacional">Educacional</option>
+                    <option value="comunitaria">Comunitaria</option>
+                  </select>
+                </div>
+
+                {/* Enlace de Moodle */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    Enlace de la tarea en Moodle
+                  </label>
+                  <input
+                    type="url"
+                    placeholder={PLACEHOLDER}
+                    value={manualLinkInput}
+                    onChange={(e) => setManualLinkInput(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                  />
+                  {getMoodleTaskId(manualLinkInput) ? (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold block mt-1.5">
+                      ✓ ID de Moodle detectado: {getMoodleTaskId(manualLinkInput)}
+                    </span>
+                  ) : manualLinkInput ? (
+                    <span className="text-[11px] text-rose-500 block mt-1.5">
+                      ⚠ No se pudo detectar un ID numérico de tarea (?id=...) en la URL ingresada.
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Acciones */}
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-150 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingManualSpace(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => createManualSpaceMutation.mutate()}
+                  disabled={
+                    createManualSpaceMutation.isPending ||
+                    !getMoodleTaskId(manualLinkInput) ||
+                    (manualInstType === "existing" ? !manualInstSelected : !manualInstCustom.trim())
+                  }
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm transition"
+                >
+                  {createManualSpaceMutation.isPending ? "Creando..." : "Crear Espacio de Informe"}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* EDITOR DE ESPACIO DE CAMPUS */}
           {selectedSpace && (
             <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-6">
@@ -955,7 +1232,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                     </label>
                     <select
                       value={editArea}
-                      onChange={(e) => setEditArea(e.target.value as any)}
+                      onChange={(e) => setEditArea(e.target.value as AreaCampus)}
                       className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
                     >
                       <option value="clinica">Clínica</option>
@@ -1072,14 +1349,15 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                 </a>
                 {editActivo && (
                   <button
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "¿Seguro de desactivar este espacio del campus? Se ocultará de los alumnos pero no borrará las vinculaciones de las PPS."
-                        )
-                      ) {
-                        deactivateSpaceMutation.mutate(selectedSpace.id);
-                      }
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: "¿Ocultar este espacio del campus?",
+                        message:
+                          "Se ocultará de los alumnos, pero no borrará las vinculaciones de las PPS.",
+                        confirmText: "Ocultar",
+                        type: "warning",
+                      });
+                      if (ok) deactivateSpaceMutation.mutate(selectedSpace.id);
                     }}
                     disabled={deactivateSpaceMutation.isPending}
                     className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/30 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition"
@@ -1192,7 +1470,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
               {/* Botones */}
               <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-slate-150 dark:border-slate-800">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const orients = getOrientations(
                       String(selectedLaunch[FIELD_ORIENTACION_LANZAMIENTOS] || "")
                     );
@@ -1214,13 +1492,13 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                     }
 
                     if (hasEmpty && orients.length > 1) {
-                      if (
-                        !window.confirm(
-                          "Hay orientaciones sin link. ¿Deseás guardar el vínculo de todas formas?"
-                        )
-                      ) {
-                        return;
-                      }
+                      const ok = await confirm({
+                        title: "Hay orientaciones sin link",
+                        message: "¿Querés guardar el vínculo de todas formas?",
+                        confirmText: "Guardar igual",
+                        type: "warning",
+                      });
+                      if (!ok) return;
                     } else if (hasEmpty && orients.length === 1) {
                       setToast({
                         message: "Ingresá o seleccioná un link de Moodle.",
@@ -1242,8 +1520,14 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
                 {String(selectedLaunch[FIELD_CODIGO_CAMPUS_LANZAMIENTOS] || "").trim() && (
                   <button
-                    onClick={() => {
-                      if (window.confirm("¿Desvincular esta PPS del espacio del campus?")) {
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: "¿Desvincular esta PPS?",
+                        message: "Se quitará el vínculo con el espacio del campus.",
+                        confirmText: "Desvincular",
+                        type: "warning",
+                      });
+                      if (ok) {
                         const emptyMap: Record<string, string | null> = {};
                         getOrientations(
                           String(selectedLaunch[FIELD_ORIENTACION_LANZAMIENTOS] || "")
@@ -1269,7 +1553,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           )}
 
           {/* VISTA VACÍA */}
-          {!selectedSpace && !selectedLaunch && (
+          {!selectedSpace && !selectedLaunch && !isCreatingManualSpace && (
             <div className="p-8 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/40 dark:bg-slate-900/20 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center min-h-[300px]">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-3">
                 <span className="material-icons !text-2xl">ads_click</span>
@@ -1286,6 +1570,8 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           )}
         </div>
       </div>
+
+      {confirmDialog}
     </div>
   );
 };

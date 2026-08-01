@@ -1,13 +1,12 @@
 import React from "react";
 import { createPortal } from "react-dom";
-import type { CriteriosCalculados, InformeTask } from "../types";
+import type { CriteriosCalculados } from "../types";
 
 interface AcreditacionPreflightModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   criterios: CriteriosCalculados;
-  informeTask: InformeTask; // Mantenemos la prop aunque no usemos informeSubido directamente por seguridad
 }
 
 const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
@@ -19,13 +18,12 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[1300] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[1300] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="acreditacion-preflight-title"
         className="w-full sm:w-[95%] max-w-3xl bg-white dark:bg-[#0F172A] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90dvh] sm:max-h-[85vh] border border-slate-200 dark:border-slate-800 animate-scale-in overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header Fijo */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
@@ -34,7 +32,10 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
               <span className="material-icons !text-2xl">verified</span>
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight leading-none">
+              <h3
+                id="acreditacion-preflight-title"
+                className="text-xl font-black text-slate-800 dark:text-white tracking-tight leading-none"
+              >
                 Estado de Acreditación
               </h3>
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
@@ -192,12 +193,12 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
               </div>
               <div>
                 <h4 className="font-bold text-slate-800 dark:text-white text-sm mb-1">
-                  Informes Corregidos
+                  Verificación manual de informes
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-lg">
-                  Es requisito indispensable contar con{" "}
-                  <strong>todos los informes de prácticas corregidos y aprobados</strong>. El
-                  sistema permite avanzar, pero asegúrate de cumplir para evitar rechazos.
+                  Mi Panel todavía no puede verificar las entregas de Moodle. Antes de enviar,
+                  revisá en el Campus que estén{" "}
+                  <strong>todos los informes corregidos y aprobados</strong>.
                 </p>
               </div>
             </div>

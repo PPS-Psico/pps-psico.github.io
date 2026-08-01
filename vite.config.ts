@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react'
+import { createRequire } from 'node:module'
 import { dirname } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
@@ -6,12 +7,21 @@ import { defineConfig, loadEnv } from 'vite'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
+// Fuente única de versión: package.json. Antes la UI mostraba "v3.2 · build
+// 2026.05.26" escrito a mano en cada footer, que quedó congelado y dejó de
+// coincidir con nada. Ahora se inyecta en build y la fecha es la real.
+const pkg = createRequire(import.meta.url)('./package.json') as { version: string }
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in current working directory.
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+      __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    },
     // CAMBIO CLAVE: Usar ruta relativa './' permite que la app funcione
     // tanto en el subdirectorio de GitHub Pages como en la raíz del preview local.
     // Esto soluciona los errores 404 de CSS/JS.

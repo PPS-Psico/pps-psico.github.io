@@ -826,46 +826,31 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
       </FormSection>
 
       {/* ── CTA ── */}
-      <div
-        style={{
-          position: "sticky",
-          bottom: 0,
-          marginTop: 12,
-          padding: "16px 0",
-          background: "linear-gradient(180deg, transparent, var(--paper) 30%)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
-        <div className="meta">
-          {ready
-            ? "Listo para previsualizar y publicar."
-            : "Completá los datos mínimos: nombre, fecha de inicio y orientación."}
+      <div className={`lv4-launch-cta ${ready ? "is-ready" : ""}`}>
+        <div className="lv4-launch-cta-copy">
+          <span className="material-icons">{ready ? "task_alt" : "info"}</span>
+          <div>
+            <strong>
+              {ready ? "Convocatoria lista para revisar" : "Todavía faltan datos clave"}
+            </strong>
+            <span>
+              {ready
+                ? "Comprobá la vista del estudiante y el mensaje antes de publicarla."
+                : "Completá nombre, fecha de inicio y orientación para poder publicarla."}
+            </span>
+          </div>
         </div>
         <button
           type="button"
-          className="btn btn-primary"
+          className="lv4-btn lv4-btn-primary lv4-launch-preview-btn"
           onClick={onPreview}
-          style={{ padding: "10px 20px", borderRadius: 999 }}
         >
-          <span className="material-icons" style={{ fontSize: 16 }}>
+          <span className="material-icons">
             {formData.programarLanzamiento ? "schedule_send" : "visibility"}
           </span>
-          Previsualizar y lanzar
+          Revisar y publicar
           {missingTotal > 0 && (
-            <span
-              className="mono"
-              style={{
-                fontSize: 10,
-                padding: "2px 6px",
-                borderRadius: 4,
-                background: "var(--warn-soft)",
-                color: "var(--warn)",
-              }}
-            >
+            <span className="lv4-launch-missing" aria-label={`${missingTotal} datos pendientes`}>
               {missingTotal}
             </span>
           )}

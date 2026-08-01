@@ -2,24 +2,24 @@
  * lanzador/ConfirmacionView.tsx — Step 4 del pipeline: sala de confirmación de
  * consentimientos previa a activar la PPS. Extraído de stepViews.tsx.
  */
-import React, { useState, useMemo, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../../../lib/supabaseClient";
-import { useModal } from "../../../contexts/ModalContext";
+import React, { Suspense, useMemo, useState } from "react";
 import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../../constants";
-import { normalizeStringForComparison, getWhatsAppUrl } from "../../../utils/formatters";
+import { useModal } from "../../../contexts/ModalContext";
+import { launchKeys } from "../../../lib/launchQueryKeys";
+import { supabase } from "../../../lib/supabaseClient";
 import type { LanzamientoPPS } from "../../../types";
+import { getWhatsAppUrl, normalizeStringForComparison } from "../../../utils/formatters";
 import {
+  Banner,
   CanvasHeader,
   Loader,
+  SeleccionadorConvocatorias,
   Stat,
   StatGrid,
-  Banner,
   useLaunchEditor,
-  SeleccionadorConvocatorias,
 } from "./shared";
 import { useLaunchRoster } from "./useLaunchData";
-import { launchKeys } from "../../../lib/launchQueryKeys";
 const ConfirmacionView: React.FC<{
   launch: LanzamientoPPS;
   showModal: ReturnType<typeof useModal>["showModal"];
@@ -40,7 +40,8 @@ const ConfirmacionView: React.FC<{
   //     tienen baja_automatica_at (= fueron seleccionados pero no firmaron).
   // Usa el roster compartido (`useLaunchRoster`) — misma fuente que el resto
   // del Lanzador, así sidebar/canvas/seleccionador nunca divergen.
-  const { data: roster = [] } = useLaunchRoster(launch.id);
+  const rosterQuery = useLaunchRoster(launch.id);
+  const { data: roster = [] } = rosterQuery;
   const seleccionados = useMemo(
     () =>
       roster.filter(
@@ -51,32 +52,35 @@ const ConfirmacionView: React.FC<{
     [roster]
   );
 
-  const { data: compromisos = [] } = useQuery({
+  const compromisosQuery = useQuery({
     queryKey: launchKeys.compromisos(launch.id),
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("compromisos_pps")
         .select("estado, convocatoria_id, accepted_at")
         .eq("lanzamiento_id", launch.id);
+      if (error) throw error;
       return data || [];
     },
   });
+  const { data: compromisos = [] } = compromisosQuery;
 
   // Datos de contacto de los seleccionados (query aparte para evitar
   // ambigüedad de FK). Traemos nombre + teléfono + correo para los botones.
   const selEstudianteIds = seleccionados
     .map((s) => (s as { estudiante_id?: string | null }).estudiante_id)
     .filter(Boolean) as string[];
-  const { data: selInfoMap = {} } = useQuery<
+  const seleccionadosInfoQuery = useQuery<
     Record<string, { nombre: string | null; telefono: string | null; correo: string | null }>
   >({
     queryKey: ["seleccionadosInfo", selEstudianteIds.join(",")],
     queryFn: async () => {
       if (selEstudianteIds.length === 0) return {};
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("estudiantes")
         .select("id, nombre, telefono, correo")
         .in("id", selEstudianteIds);
+      if (error) throw error;
       const map: Record<
         string,
         { nombre: string | null; telefono: string | null; correo: string | null }
@@ -95,6 +99,7 @@ const ConfirmacionView: React.FC<{
     },
     enabled: selEstudianteIds.length > 0,
   });
+  const { data: selInfoMap = {} } = seleccionadosInfoQuery;
 
   // Mapa convocatoria_id → compromiso (estado + fecha) para el tracker por alumno
   const compromisoByConv = useMemo(() => {
@@ -165,9 +170,18 @@ const ConfirmacionView: React.FC<{
   // Contadores derivados de la lista real (consistentes entre sí).
   // "total" = todos los que alguna vez fueron seleccionados (incluye bajas).
   const total = consentRows.length;
+  const seleccionadosVigentes = seleccionados.filter(
+    (row) => normalizeStringForComparison(row.estado_inscripcion) === "seleccionado"
+  ).length;
   const confirmados = consentRows.filter((r) => r.status === "firmo").length;
   const pendientes = total - confirmados; // pendientes en ventana + bajas
   const consentPct = total > 0 ? Math.round((confirmados / total) * 100) : 0;
+  const isDataLoading =
+    rosterQuery.isLoading ||
+    compromisosQuery.isLoading ||
+    (selEstudianteIds.length > 0 && seleccionadosInfoQuery.isLoading);
+  const hasDataError =
+    rosterQuery.isError || compromisosQuery.isError || seleccionadosInfoQuery.isError;
 
   const iniciales = (nombre: string | null) =>
     !nombre
@@ -395,12 +409,81 @@ const ConfirmacionView: React.FC<{
     );
   };
 
+  if (isDataLoading) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="confirmacion"
+          primaryAction={{
+            label: "Activar PPS",
+            icon: "play_circle",
+            onClick: onActivar,
+            disabled: true,
+          }}
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  if (hasDataError) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="confirmacion"
+          primaryAction={{
+            label: "Activar PPS",
+            icon: "play_circle",
+            onClick: onActivar,
+            disabled: true,
+          }}
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Banner
+            tone="warn"
+            icon="cloud_off"
+            title="No se pudo verificar la sala de consentimientos"
+            action={
+              <button
+                className="lv4-btn"
+                onClick={() =>
+                  void Promise.all([
+                    rosterQuery.refetch(),
+                    compromisosQuery.refetch(),
+                    seleccionadosInfoQuery.refetch(),
+                  ])
+                }
+              >
+                Reintentar
+              </button>
+            }
+          >
+            La activación queda bloqueada para evitar avanzar con datos incompletos.
+          </Banner>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <CanvasHeader
         launch={launch}
         uiState="confirmacion"
-        primaryAction={{ label: "Activar PPS", icon: "play_circle", onClick: onActivar }}
+        primaryAction={{
+          label: "Activar PPS",
+          icon: "play_circle",
+          onClick: onActivar,
+          disabled: seleccionadosVigentes === 0,
+        }}
         secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
       />
       {editModal}
@@ -720,7 +803,7 @@ const ConfirmacionView: React.FC<{
         </div>
 
         {/* Activar la PPS */}
-        {total > 0 && (
+        {seleccionadosVigentes > 0 && (
           <>
             <div className="lv4-eyebrow" style={{ marginBottom: 8 }}>
               Activar la PPS

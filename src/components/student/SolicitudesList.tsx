@@ -8,7 +8,7 @@ import {
   FIELD_NOTAS_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../../constants";
-import type { CriteriosCalculados, FinalizacionPPS, InformeTask, SolicitudPPS } from "../../types";
+import type { CriteriosCalculados, FinalizacionPPS, SolicitudPPS } from "../../types";
 import { formatDate, getStatusVisuals, normalizeStringForComparison } from "../../utils/formatters";
 import EmptyState from "../EmptyState";
 import FinalizationStatusCard from "./FinalizationStatusCard";
@@ -19,14 +19,10 @@ interface SolicitudesListProps {
   onRequestFinalization?: () => void;
   criterios?: CriteriosCalculados;
   finalizacionRequest?: FinalizacionPPS | null;
-  informeTasks?: InformeTask[];
 }
 
 // 3D Tilt Card Component for SolicitudItem
-const TiltCard: React.FC<{
-  children: React.ReactNode;
-  colorScheme: string;
-}> = ({ children, colorScheme }) => {
+const TiltCard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <motion.div
       whileHover={{
@@ -45,7 +41,7 @@ const TiltCard: React.FC<{
 const RippleEffect: React.FC<{ color: string }> = ({ color }) => {
   const [ripples, setRipples] = useState<Array<{ x: number; y: number; id: number }>>([]);
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -58,7 +54,11 @@ const RippleEffect: React.FC<{ color: string }> = ({ color }) => {
   };
 
   return (
-    <div className="absolute inset-0 overflow-hidden rounded-2xl" onClick={handleClick}>
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 overflow-hidden rounded-2xl"
+      onPointerDown={handlePointerDown}
+    >
       {ripples.map((ripple) => (
         <motion.div
           key={ripple.id}
@@ -122,7 +122,7 @@ const SolicitudItem: React.FC<{ solicitud: SolicitudPPS; index?: number }> = ({
         ease: [0.25, 0.46, 0.45, 0.94],
       }}
     >
-      <TiltCard colorScheme={colorScheme}>
+      <TiltCard>
         <div className="relative bg-white dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200/60 dark:border-slate-700/60 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
           <RippleEffect color={getRippleColor()} />
 
@@ -333,23 +333,12 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
   onRequestFinalization,
   criterios,
   finalizacionRequest,
-  informeTasks = [],
 }) => {
-  const hasPendingCorrections = useMemo(
-    () =>
-      informeTasks.some(
-        (t) =>
-          t.informeSubido && (t.nota === "Sin calificar" || t.nota === "Entregado (sin corregir)")
-      ),
-    [informeTasks]
-  );
-
   const isAccreditationReady = criterios
     ? criterios.cumpleHorasTotales &&
       criterios.cumpleRotacion &&
       criterios.cumpleHorasOrientacion &&
-      !criterios.tienePracticasPendientes &&
-      !hasPendingCorrections
+      !criterios.tienePracticasPendientes
     : false;
 
   const { activeRequests, historyRequests } = useMemo(() => {

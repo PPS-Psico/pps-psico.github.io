@@ -6,19 +6,23 @@ Reemplazar cálculos ambiguos por una capa versionada, comparable y auditable si
 perder el trabajo visual ya realizado. El despliegue se hace por fases para no
 congelar métricas defectuosas en snapshots ni mezclar actividades especiales con PPS.
 
-## Estado de ejecución al 17 de julio de 2026
+## Estado de ejecución al 30 de julio de 2026
 
-| Fase                       | Estado                          | Evidencia                                                                                                                     |
-| -------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| 0. Contención              | Completada                      | Reporte sin exclusiones por institución, finalización efectiva, capacidad operativa y cobertura visible.                      |
-| 1. Clasificación y motivos | Completada                      | Migraciones aplicadas; formulario de lanzamiento y solicitud actualizados; propagación automática a prácticas.                |
-| 2. Capa semántica          | Completada en `analytics-v2`    | Oferta histórica canónica, capacidad con procedencia y bloqueo explícito de comparaciones incompatibles.                      |
-| 3. Cierre de selección     | Completada                      | RPC atómico `close_selection`, timestamps y bitácoras de decisiones/reaperturas.                                              |
-| 4. Backfill histórico      | Completada para 2024            | 363/363 prácticas y 80/80 lanzamientos vinculados; 42 ofertas verificadas y conciliadas con 60 filas legacy.                  |
-| 5. Snapshots               | Completada para stocks v1       | Cron diario 09:00 UTC, dos stocks normalizados y bitácora de ejecución.                                                       |
-| 6. Validación y rollout    | Completada para el alcance 2024 | Contratos SQL, cierre/reapertura transaccional, notificaciones simuladas, tipos, tests, lint y build aprobados.               |
-| 7. Reporte profesional     | Completada y refinada           | Modelo único, informe anual y de gestión, PDF vectorial, reporte anterior preservado, anexo técnico opcional y anexo mensual. |
-| 8. Informe para Dirección  | Completada                      | RPC nominal restringida, criterios 230/250/70/3, presión actual, vista separada, PDF vectorial y contrato de privacidad.      |
+| Fase                        | Estado                             | Evidencia                                                                                                                     |
+| --------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 0. Contención               | Completada                         | Reporte sin exclusiones por institución, finalización efectiva, capacidad operativa y cobertura visible.                      |
+| 1. Clasificación y motivos  | Completada                         | Migraciones aplicadas; formulario de lanzamiento y solicitud actualizados; propagación automática a prácticas.                |
+| 2. Capa semántica           | Completada en `analytics-v2`       | Oferta histórica canónica, capacidad con procedencia y bloqueo explícito de comparaciones incompatibles.                      |
+| 3. Cierre de selección      | Completada                         | RPC atómico `close_selection`, timestamps y bitácoras de decisiones/reaperturas.                                              |
+| 4. Backfill histórico       | Completada para 2024               | 363/363 prácticas y 80/80 lanzamientos vinculados; 42 ofertas verificadas y conciliadas con 60 filas legacy.                  |
+| 5. Snapshots                | Completada para stocks v1          | Cron diario 09:00 UTC, dos stocks normalizados y bitácora de ejecución.                                                       |
+| 6. Validación y rollout     | Completada para el alcance 2024    | Contratos SQL, cierre/reapertura transaccional, notificaciones simuladas, tipos, tests, lint y build aprobados.               |
+| 7. Reporte profesional      | Completada y refinada              | Modelo único, informe anual y de gestión, PDF vectorial, reporte anterior preservado, anexo técnico opcional y anexo mensual. |
+| 8. Informe para Dirección   | Completada                         | RPC nominal restringida, criterios 230/250/70/3, presión actual, vista separada, PDF vectorial y contrato de privacidad.      |
+| 9. Cohorte para entrevistas | Completada                         | Lista única, exclusión por Relevamiento/Entrevista, tarjeta, informe y PDF reconciliados.                                     |
+| 10. Sin PPS con demanda     | Completada                         | Sólo estudiantes activos sin prácticas y con postulaciones PPS dentro del ciclo informado.                                    |
+| 11. Dashboard–informes      | Parcial                            | Informe profesional consolidado; quedan tarjetas legacy, drills no reconciliados y estados de error ambiguos en dashboard.    |
+| 12. Poblaciones de acceso   | Definida; implementación pendiente | Contrato v2 para matrícula administrativa, cuentas creadas, nuevas cuentas activas, cohorte, demanda e inicios.               |
 
 ## Fase 0 — Contención y correcciones visibles
 
@@ -252,6 +256,35 @@ casos de demanda activa.
 **Aceptación:** valores, base comparativa, rótulos y listados coinciden entre
 dashboard, informe web y PDF. Contrato completo en
 [DASHBOARD_REPORT_CONTRACT.md](./DASHBOARD_REPORT_CONTRACT.md).
+
+**Estado al 30/07/2026:** parcial. El informe profesional anual es la superficie
+autoritativa, pero el dashboard todavía conserva dependencia de la RPC legacy,
+datos placeholder entre años, la tarjeta ambigua `matricula_generada` y una
+`Población del ciclo` cuyo total no reconcilia con el drill nominal.
+
+## Fase 12 — Poblaciones de acceso y activación
+
+- reemplaza el término ambiguo `Ingresantes` por etiquetas poblacionales
+  específicas;
+- conserva `estudiantes.cohorte` únicamente como primera actividad PPS;
+- define matrícula administrativa como fuente externa de Sede Comahue;
+- mide cuentas de estudiantes creadas desde `auth.users.created_at`;
+- publica `Nuevas cuentas activas` con fecha de corte y total de cuentas creadas;
+- excluye personal, cuentas no vinculadas y perfiles que no sean estudiantes;
+- documenta que la incorporación inicial de cuentas de 2025 no equivale a un
+  ciclo anual completo;
+- impide calcular tasas de activación con agregados sin vinculación nominal;
+- agrega un RPC de staff y pruebas de reconciliación agregado–detalle;
+- actualiza dashboard, informes, PDF y descargas con el mismo contrato.
+
+**Aceptación:** ninguna métrica de activación lee `cohorte` o
+`estudiantes.created_at`; el total de cuentas creadas y el subconjunto
+actualmente activo reconcilian con sus listados; todo stock declara fecha de
+corte; la etiqueta `Ingresantes` sin calificador desaparece de superficies
+ejecutivas.
+
+Contrato completo en
+[criterio-metricas-ingresantes.md](../criterio-metricas-ingresantes.md).
 
 ## Siguiente ciclo
 

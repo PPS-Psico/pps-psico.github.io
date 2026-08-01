@@ -37,6 +37,7 @@ import {
   PIPELINE_STEPS,
   BUCKET_META,
   BUCKET_ORDER,
+  HIDDEN_BUCKETS,
 } from "./lanzadorState";
 // ─── Micro-components ─────────────────────────────────────────────────────────
 
@@ -139,13 +140,16 @@ const Banner: React.FC<{
   </div>
 );
 
-// ─── Archivada efectiva ─────────────────────────────────────────────────────
-
-/** Buckets "pre-inicio": tareas que solo tienen sentido ANTES de que arranque la PPS. */
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-/** Acciones de estado disponibles desde el menú inline de cada convocatoria. */
-type RowAction = "abrir" | "cerrar" | "ocultar" | "archivar" | "desarchivar";
+/**
+ * Acciones de estado disponibles desde el menú inline de cada convocatoria.
+ *
+ * Ya no hay "archivar"/"desarchivar": escribían `estado_gestion`, que dejó de
+ * decidir la visibilidad del Lanzador (una PPS sale de la vista por su
+ * `fecha_finalizacion`, no por un flag).
+ */
+type RowAction = "abrir" | "cerrar" | "ocultar";
 
 interface SidebarProps {
   entries: SidebarEntry[];
@@ -170,7 +174,8 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
   mobileOpen = false,
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<SidebarBucket>>(
-    () => new Set(BUCKET_ORDER.filter((b) => BUCKET_META[b].collapsedByDefault))
+    () =>
+      new Set([...BUCKET_ORDER, ...HIDDEN_BUCKETS].filter((b) => BUCKET_META[b].collapsedByDefault))
   );
   const [query, setQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -185,24 +190,28 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
     return () => document.removeEventListener("keydown", onKey);
   }, [openMenuId]);
 
+  const hasQuery = query.trim().length > 0;
+
   const filtered = useMemo(() => {
-    if (!query.trim()) return entries;
+    if (!hasQuery) return entries;
     const q = query.toLowerCase();
     return entries.filter(
       (e) =>
         (e.nombre || "").toLowerCase().includes(q) ||
         (e.orientacion || "").toLowerCase().includes(q)
     );
-  }, [entries, query]);
+  }, [entries, query, hasQuery]);
 
-  const groups = useMemo(
-    () =>
-      BUCKET_ORDER.map((k) => ({
-        key: k,
-        items: filtered.filter((e) => e.bucket === k),
-      })).filter((g) => g.items.length > 0),
-    [filtered]
-  );
+  // Sin búsqueda, el sidebar es una lista de trabajo: solo el recorrido
+  // (Abiertas → … → Activas). Las finalizadas y las que están fuera del
+  // pipeline aparecen únicamente al buscar, para que una fecha mal cargada
+  // nunca haga desaparecer una convocatoria sin forma de llegar a ella.
+  const groups = useMemo(() => {
+    const visibles = hasQuery ? [...BUCKET_ORDER, ...HIDDEN_BUCKETS] : BUCKET_ORDER;
+    return visibles
+      .map((k) => ({ key: k, items: filtered.filter((e) => e.bucket === k) }))
+      .filter((g) => g.items.length > 0);
+  }, [filtered, hasQuery]);
 
   const toggleGroup = (k: SidebarBucket) => {
     setCollapsedGroups((prev) => {
@@ -330,7 +339,9 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
 
               {!isGroupCollapsed &&
                 g.items.map((entry) => {
-                  const isArchived = entry.uiState === "archivada";
+                  // Ya no visible para estudiantes: el menú ofrece publicarla
+                  // en vez de volver a ocultarla.
+                  const isHidden = entry.bucket === "oculta";
                   return (
                     <div
                       key={entry.id}
@@ -401,28 +412,39 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                             }}
                             style={{ position: "fixed", inset: 0, zIndex: 40 }}
                           />
+                          {/* tabIndex -1: el contenedor del menú es enfocable por
+                              código (patrón ARIA de menu) pero no entra en el
+                              orden de tabulación; los items son los que reciben
+                              el foco. */}
                           <div
                             onClick={(e) => e.stopPropagation()}
                             className="lv4-state-menu"
                             role="menu"
                             tabIndex={-1}
                           >
+                            {/* "Archivar" ya no existe: una PPS sale de la vista
+                                sola cuando llega su fecha de finalización, y
+                                `estado_gestion` volvió a ser solo el eje de
+                                convenio/relanzamiento de Gestión. Queda
+                                "Ocultar", que sí es una decisión del admin
+                                (dejar de mostrarla a los estudiantes). */}
                             {(
                               [
-                                { action: "abrir", icon: "lock_open", label: "Abrir inscripción" },
-                                { action: "cerrar", icon: "lock", label: "Cerrar inscripción" },
                                 {
-                                  action: "ocultar",
-                                  icon: "visibility_off",
-                                  label: "Ocultar (borrador)",
+                                  action: "abrir",
+                                  icon: "lock_open",
+                                  label: isHidden ? "Publicar inscripción" : "Abrir inscripción",
                                 },
-                                isArchived
-                                  ? {
-                                      action: "desarchivar",
-                                      icon: "unarchive",
-                                      label: "Des-archivar (hacer visible)",
-                                    }
-                                  : { action: "archivar", icon: "archive", label: "Archivar" },
+                                { action: "cerrar", icon: "lock", label: "Cerrar inscripción" },
+                                ...(isHidden
+                                  ? []
+                                  : [
+                                      {
+                                        action: "ocultar",
+                                        icon: "visibility_off",
+                                        label: "Ocultar a estudiantes",
+                                      },
+                                    ]),
                               ] as { action: RowAction; icon: string; label: string }[]
                             ).map((opt) => (
                               <button
@@ -976,5 +998,5 @@ export {
 };
 export type { RowAction, SidebarProps, CanvasHeaderProps, PropagationPrompt };
 // Re-exports de la lógica pura (viven en lanzadorState) para compatibilidad de imports.
-export { isEffectivelyArchived } from "./lanzadorState";
+export { deriveTimeline } from "./lanzadorState";
 export type { SidebarEntry } from "./lanzadorState";

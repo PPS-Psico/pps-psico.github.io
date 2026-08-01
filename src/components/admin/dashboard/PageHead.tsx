@@ -1,6 +1,6 @@
-import React from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import React from "react";
 
 interface PageHeadProps {
   userName: string;
@@ -58,7 +58,13 @@ export const PageHead: React.FC<PageHeadProps> = ({ userName }) => {
               color: "var(--ink)",
             }}
           >
-            Buen día, <em>{firstName}</em>.
+            {firstName ? (
+              <>
+                Buen día, <em>{firstName}</em>.
+              </>
+            ) : (
+              "Buen día."
+            )}
           </h1>
         </div>
         <div className="meta mono" style={{ fontSize: 12, textAlign: "right", lineHeight: 1.6 }}>

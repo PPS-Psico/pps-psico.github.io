@@ -1,12 +1,21 @@
 # Diccionario de métricas
 
-Versión vigente: `analytics-v2` — 2026-07-17. Versión base preservada:
-`analytics-v1`.
+Versión vigente: `analytics-v2` + `population-contract-v2` — 2026-07-30.
+Versión base preservada: `analytics-v1`.
 
-Contrato ejecutable: `public.get_analytics_v2(p_year, p_cutoff)`. La salida
-incluye `metric_version`, `cutoff`, `as_of`, `flows`, `capacity`, `stocks` y
-`quality`. Los comparativos y KPI visibles consumen este RPC. V2 conserva los
-flujos y stocks de v1 y agrega fuente, completitud y comparabilidad de la oferta.
+Contrato ejecutable de resultados: `public.get_analytics_v2(p_year, p_cutoff)`.
+La salida incluye `metric_version`, `cutoff`, `as_of`, `flows`, `capacity`,
+`stocks` y `quality`. V2 conserva los flujos y stocks de v1 y agrega fuente,
+completitud y comparabilidad de la oferta.
+
+Contrato poblacional:
+[criterio-metricas-ingresantes.md](../criterio-metricas-ingresantes.md).
+Contrato histórico:
+[HISTORICAL_SCOPE_DECISIONS.md](./HISTORICAL_SCOPE_DECISIONS.md).
+
+`analytics-v2` es autoritativo para resultados del período. No publica todavía
+matrícula administrativa ni activación de cuentas. Esas poblaciones no deben
+inferirse desde `estudiantes.cohorte`.
 
 ## Dimensiones canónicas
 
@@ -25,6 +34,59 @@ flujos y stocks de v1 y agrega fuente, completitud y comparabilidad de la oferta
 Fundación Tiempo y Fernando Ulloa son `pps`, no actividades especiales. Sus
 lanzamientos pueden usar capacidad `realizado` cuando el cupo almacenado sea un
 valor técnico y no una oferta real.
+
+## Poblaciones canónicas
+
+### Matriculados administrativamente en PPS
+
+- **Definición:** estudiantes de Psicología, Sede Comahue, inscriptos
+  administrativamente en la materia PPS al inicio del año.
+- **Fuente:** padrón administrativo de la Facultad.
+- **No implica:** cuenta creada, búsqueda activa, postulación ni PPS iniciada.
+- **Comparación:** sólo contra la misma matrícula administrativa.
+- **Estado:** serie externa disponible para 2022/1–2025/1; no integrada a
+  `analytics-v2`.
+
+### Cuentas de estudiantes creadas
+
+- **Definición:** cuentas vinculadas a estudiantes cuya
+  `auth.users.created_at`, interpretada en
+  `America/Argentina/Buenos_Aires`, cae dentro del período.
+- **Vínculo:** `estudiantes.user_id = auth.users.id`.
+- **Exclusiones:** personal, cuentas sin perfil de estudiante y usuarios no
+  vinculados.
+- **No usar:** `estudiantes.created_at` ni `estudiantes.cohorte`.
+- **Estado:** definición aprobada; RPC agregado pendiente.
+
+### Nuevas cuentas activas
+
+- **Definición:** cuentas de estudiantes creadas durante el año cuyos perfiles
+  se encuentran actualmente en `estado = 'Activo'`.
+- **Tipo:** cohorte de activación con estado actual.
+- **Publicación:** valor, total de cuentas creadas y fecha de corte.
+- **Estado:** KPI operativo aprobado; implementación pendiente en el dashboard.
+
+### Cohorte de primera actividad PPS
+
+- **Definición:** año de la primera actividad PPS registrada en convocatoria o
+  práctica.
+- **Campo:** `estudiantes.cohorte`.
+- **Etiqueta permitida:** `Cohorte de primera actividad` o
+  `Debut en el circuito PPS`.
+- **No equivale a:** matrícula, creación de cuenta, cuenta activa o primera PPS
+  efectivamente iniciada.
+- **Estado:** disponible como segmentación secundaria; no es KPI de activación.
+
+### Regla de vocabulario
+
+La etiqueta sin calificador **Ingresantes** queda desaconsejada. Toda superficie
+debe elegir una de las poblaciones anteriores o usar los flujos
+`Estudiantes postulados` y `Estudiantes que iniciaron PPS`.
+
+No se calcula una tasa de activación con agregados de matrícula y cuentas. Se
+requiere vinculación nominal por legajo. Tampoco se divide “iniciaron PPS” por
+matrícula administrativa porque el numerador puede incluir arrastre de años
+anteriores.
 
 ## KPIs primarios
 

@@ -15,3 +15,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** Versión de package.json, inyectada en build (ver vite.config.ts). */
+declare const __APP_VERSION__: string;
+/** Fecha del build en formato YYYY-MM-DD, inyectada en build. */
+declare const __BUILD_DATE__: string;

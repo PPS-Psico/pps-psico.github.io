@@ -28,12 +28,56 @@ const SeguroView: React.FC<{
   const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
 
-  const { data: inscriptos = [] } = useLaunchRoster(launch.id, isTestingMode);
+  const rosterQuery = useLaunchRoster(launch.id, isTestingMode);
+  const { data: inscriptos = [] } = rosterQuery;
 
   const total = inscriptos.length;
   const seleccionados = inscriptos.filter(
     (i) => normalizeStringForComparison(i.estado_inscripcion) === "seleccionado"
   ).length;
+
+  if (rosterQuery.isLoading) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="seguro"
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  if (rosterQuery.isError) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="seguro"
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Banner
+            tone="warn"
+            icon="cloud_off"
+            title="No se pudo cargar la mesa de selección"
+            action={
+              <button className="lv4-btn" onClick={() => void rosterQuery.refetch()}>
+                Reintentar
+              </button>
+            }
+          >
+            Los seguros permanecen ocultos hasta verificar el roster de estudiantes.
+          </Banner>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

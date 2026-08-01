@@ -99,6 +99,40 @@ supabase/
 - **Commits**: Se usa commitlint con formato convencional (`feat:`, `fix:`, `chore:`). Husky + lint-staged corre ESLint y Prettier en pre-commit.
 - **Estilos `lv4` (Lanzador)**: Los componentes que viven dentro de `LanzadorView` (`src/views/admin/lanzador/`) y los que se montan dentro de el (ej: `src/components/admin/SeleccionadorConvocatorias.tsx`) deben usar **exclusivamente** las clases `.lv4-*` definidas en `lanzadorStyles.ts` para estilos visuales (colores, bordes, tipografia, estados). Se permite Tailwind solo para **layout primitivo** (flex, grid, gap, padding numerico para spacing). Agregar nuevas clases al final de `LANZADOR_CSS` cuando se necesite una variante visual nueva. Tokens disponibles: `--paper`, `--paper-2`, `--paper-3`, `--ink`, `--ink-2/3/4`, `--rule-2/3`, `--accent`, `--warn`, `--ok`, `--ai` (light + dark).
 
+### Analitica y metricas (MUY IMPORTANTE)
+
+Antes de interpretar, corregir o agregar una metrica, leer en este orden:
+
+1. `docs/analytics/README.md`
+2. `docs/criterio-metricas-ingresantes.md`
+3. `docs/analytics/HISTORICAL_SCOPE_DECISIONS.md`
+4. `docs/analytics/METRIC_DICTIONARY.md`
+5. `docs/analytics/DASHBOARD_REPORT_CONTRACT.md`
+
+Las decisiones de negocio vigentes prevalecen sobre nombres legacy, comentarios
+de migraciones y calculos que todavia no fueron reconciliados.
+
+Reglas que no se deben reinterpretar:
+
+- matricula administrativa PPS, cuenta creada, cuenta actualmente activa,
+  cohorte de primera actividad, estudiante postulado y estudiante que inicio PPS
+  son poblaciones distintas;
+- `estudiantes.cohorte` no representa creacion de cuenta ni matricula;
+- una cuenta creada se fecha con `auth.users.created_at`, nunca con
+  `estudiantes.created_at`;
+- `Nuevas cuentas activas` es un stock de una cohorte y siempre lleva fecha de
+  corte;
+- el resultado oficial 2024 es 42 ofertas, 36 con cupo finito por 270 vacantes y
+  6 sin cupo finito;
+- los estados operativos nominales usan `director-report-v1`; los resultados
+  anuales usan `analytics-v2`;
+- el dashboard conserva deuda legacy documentada: no asumir que una etiqueta o
+  drill actual implementa correctamente el contrato.
+
+Todo cambio de metrica debe actualizar el diccionario, agregar pruebas de
+reconciliacion agregado-detalle y verificar los valores con una lectura actual
+de Supabase.
+
 ### Roles y vistas
 
 | Ruta         | Vista         | Descripcion                                    |

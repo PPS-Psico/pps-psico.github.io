@@ -3,7 +3,6 @@ import PageWrapper from "../../components/layout/PageWrapper";
 import PracticasTable from "../../components/student/PracticasTable";
 import SolicitudModificacionModal from "../../components/student/SolicitudModificacionModal";
 import SolicitudNuevaPPSModal from "../../components/student/SolicitudNuevaPPSModal";
-import { useAuth } from "../../contexts/AuthContext";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import type { Practica } from "../../types";
 import { logger } from "../../utils/logger";
@@ -17,8 +16,6 @@ const PracticasView: React.FC = () => {
     refetchPracticas,
     studentDetails,
   } = useStudentPanel();
-  const { authenticatedUser: user } = useAuth();
-
   const [showModificacionModal, setShowModificacionModal] = useState(false);
   const [showNuevaPPSModal, setShowNuevaPPSModal] = useState(false);
   const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);
@@ -66,13 +63,9 @@ const PracticasView: React.FC = () => {
       >
         <PracticasTable
           practicas={practicas}
-          handleNotaChange={(pid, n, cid) =>
-            updateNota.mutate({ practicaId: pid, nota: n, convocatoriaId: cid })
+          handleNotaChange={(pid, n) =>
+            updateNota.mutateAsync({ practicaId: pid, nota: n }).then(() => undefined)
           }
-          handleFechaFinChange={(pid, fecha) => {
-            alert("DEBUG: Fix Directo - Intentando guardar");
-            updateFechaFin.mutate({ practicaId: pid, fecha });
-          }}
           onRequestModificacion={handleRequestModificacion}
           onDeletePractica={handleDeletePractica}
           onRequestNuevaPPS={handleRequestNuevaPPS}
@@ -87,6 +80,9 @@ const PracticasView: React.FC = () => {
         }}
         practica={selectedPractica}
         studentId={studentDetails?.id || null}
+        onFechaFinChange={(practicaId, fecha) =>
+          updateFechaFin.mutateAsync({ practicaId, fecha }).then(() => undefined)
+        }
         onSuccess={handleSuccess}
       />
 

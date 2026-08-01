@@ -53,30 +53,42 @@ interface BuildWhatsappArgs {
   formData: FormData;
   schedules: ScheduleEntry[];
   isMultiOrientation: boolean;
+  institutionName?: string;
 }
+
+const asText = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
 
 /** Arma el posteo de WhatsApp listo para pegar en los grupos. */
 export function buildWhatsappMessage({
   formData,
   schedules,
   isMultiOrientation,
+  institutionName,
 }: BuildWhatsappArgs): string {
-  const safeOrientacion = Array.isArray(formData.orientacion) ? formData.orientacion : [];
-  const validSchedules = schedules.filter((s) => s.time && s.time.trim());
+  const safeOrientacion = Array.isArray(formData.orientacion)
+    ? formData.orientacion.map(asText).filter(Boolean)
+    : [];
+  const safeSchedules = Array.isArray(schedules) ? schedules : [];
+  const validSchedules = safeSchedules.filter((schedule) => asText(schedule?.time));
+  const nombrePps = asText(formData.nombrePPS) || "Nueva convocatoria";
+  const institucion = asText(institutionName) || nombrePps;
+  const direccion = asText(formData.direccion) || "A confirmar";
+  const descripcion = asText(formData.descripcion) || "Consultá los detalles en Mi Panel.";
 
-  let message = `📢 *¡Nueva Convocatoria PPS: ${formData.nombrePPS || "Nueva Convocatoria"}!* 📢
+  let message = `📢 *¡Nueva Convocatoria PPS: ${nombrePps}!* 📢
 
-✨ *Institución:* ${formData.nombrePPS || ""}
-📍 *Lugar:* ${formData.direccion || "A confirmar"}
+✨ *Institución:* ${institucion}
+📍 *Lugar:* ${direccion}
 
-🎯 *Objetivo:* ${formData.descripcion || ""}
+🎯 *Objetivo:* ${descripcion}
 
-📅 *Horarios*:`;
+📅 *Horarios:*`;
 
-  const formatScheduleLine = (s: ScheduleEntry) => {
-    const time = s.time.trim();
-    const orient = isMultiOrientation && s.orientacion ? ` [${s.orientacion}]` : "";
-    return `${time}${orient}`;
+  const formatScheduleLine = (schedule: ScheduleEntry) => {
+    const time = asText(schedule?.time);
+    const orientation = asText(schedule?.orientacion);
+    const orientationLabel = isMultiOrientation && orientation ? ` [${orientation}]` : "";
+    return `${time}${orientationLabel}`;
   };
 
   if (validSchedules.length > 0) {
@@ -94,49 +106,59 @@ export function buildWhatsappMessage({
     message += " A confirmar";
   }
 
-  if (formData.fechaEncuentroInicial) {
-    const encuentroDate = new Date(formData.fechaEncuentroInicial);
-    const fechaStr = formatDate(formData.fechaEncuentroInicial);
-    const hours = encuentroDate.getHours();
-    const minutes = encuentroDate.getMinutes();
+  const fechaEncuentro = asText(formData.fechaEncuentroInicial);
+  if (fechaEncuentro) {
+    const encuentroDate = new Date(fechaEncuentro);
+    const fechaStr = formatDate(fechaEncuentro);
+    const hasValidDate = !Number.isNaN(encuentroDate.getTime());
+    const hours = hasValidDate ? encuentroDate.getHours() : 0;
+    const minutes = hasValidDate ? encuentroDate.getMinutes() : 0;
     const horaStr =
       hours || minutes
         ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")} hs`
         : "";
     message += `
 
-🤝 *Encuentro Inicial Obligatorio:* ${fechaStr}${horaStr ? ` a las ${horaStr}` : ""}
+🤝 *Encuentro inicial obligatorio:* ${fechaStr}${horaStr ? ` a las ${horaStr}` : ""}
 ⚠️ Es obligatorio para todos los inscriptos`;
   }
 
+  const fechaInicio = asText(formData.fechaInicio);
+  const fechaFin = asText(formData.fechaFin);
+  const fechaInicioInscripcion = asText(formData.fechaInicioInscripcion);
+  const fechaFinInscripcion = asText(formData.fechaFinInscripcion);
+  const cupos = formData.cuposDisponibles || "A confirmar";
+  const horas = Number(formData.horasAcreditadas);
+  const acreditacion = Number.isFinite(horas) && horas > 0 ? `${horas} horas` : "Según recorrido";
+
   message += `
 
-📋 *Período de Prácticas:* ${formatDate(formData.fechaInicio)}${formData.fechaFin ? ` al ${formatDate(formData.fechaFin)}` : ""} (aprox.)
+📋 *Período de prácticas:* ${fechaInicio ? formatDate(fechaInicio) : "A confirmar"}${
+    fechaFin ? ` al ${formatDate(fechaFin)}` : ""
+  } (aprox.)
 📋 *Inscripción:* ${
-    formData.fechaInicioInscripcion && formData.fechaFinInscripcion
-      ? `Desde ${formatDate(formData.fechaInicioInscripcion)} hasta ${formatDate(formData.fechaFinInscripcion)}`
+    fechaInicioInscripcion && fechaFinInscripcion
+      ? `Desde ${formatDate(fechaInicioInscripcion)} hasta ${formatDate(fechaFinInscripcion)}`
       : "Consultar en Campus"
   }
 
-👥 *Cupos:* ${formData.cuposDisponibles}
+👥 *Cupos:* ${cupos}
 
-⏱️ *Acredita:* ${formData.horasAcreditadas === 0 ? "Según recorrido" : `${formData.horasAcreditadas} horas`} de ${safeOrientacion.join(", ") || ""}`;
+⏱️ *Acredita:* ${acreditacion} de ${safeOrientacion.join(", ") || "la orientación correspondiente"}`;
 
   if (formData.reqCertificadoTrabajo || formData.reqCv) {
     const reqList: string[] = [];
-    if (formData.reqCertificadoTrabajo)
-      reqList.push("Se va a priorizar a estudiantes que trabajen");
-    if (formData.reqCv) reqList.push("Requisito cargar CV actualizado");
+    if (formData.reqCertificadoTrabajo) reqList.push("Se priorizará a estudiantes que trabajen");
+    if (formData.reqCv) reqList.push("Requisito: cargar CV actualizado");
     message += "\n📎 *Requisitos:* " + reqList.join(" • ");
   }
 
-  if (formData.requisitoObligatorio) {
-    message += `\n📜 *Requisito:* ${formData.requisitoObligatorio}`;
-  }
+  const requisito = asText(formData.requisitoObligatorio);
+  if (requisito) message += `\n📜 *Requisito:* ${requisito}`;
 
   message += `
 
-💡 *Para inscribirte, completa el formulario en Mi Panel:*`;
+💡 *Para inscribirte, completá el formulario en Mi Panel:*`;
 
   return message;
 }

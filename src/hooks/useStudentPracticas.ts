@@ -3,7 +3,6 @@ import {
   FIELD_ESTADO_PRACTICA,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
-  FIELD_INFORME_SUBIDO_CONVOCATORIAS,
   FIELD_NOTA_PRACTICAS,
 } from "../constants";
 import { useModal } from "../contexts/ModalContext";
@@ -143,46 +142,17 @@ export const useStudentPracticas = (legajo: string, studentId: string | null) =>
     isPracticasLoading || (isPracticasFetching && practicas.length === 0);
 
   const updateNota = useMutation({
-    mutationFn: async ({
-      practicaId,
-      nota,
-      convocatoriaId,
-    }: {
-      practicaId: string;
-      nota: string;
-      convocatoriaId?: string;
-    }) => {
+    mutationFn: async ({ practicaId, nota }: { practicaId: string; nota: string }) => {
       if (legajo === "99999") {
         await mockDb.update("practicas", practicaId, { [FIELD_NOTA_PRACTICAS]: nota });
-        if (nota === "No Entregado" && convocatoriaId) {
-          await mockDb.update("convocatorias", convocatoriaId, {
-            [FIELD_INFORME_SUBIDO_CONVOCATORIAS]: false,
-          });
-        }
         return;
       }
 
       const valueToSend = nota === "Sin calificar" ? null : nota;
-      const promises: Promise<any>[] = [
-        db.practicas.update(practicaId, { [FIELD_NOTA_PRACTICAS]: valueToSend }),
-      ];
-
-      if (nota === "No Entregado" && convocatoriaId) {
-        promises.push(
-          db.convocatorias.update(convocatoriaId, { [FIELD_INFORME_SUBIDO_CONVOCATORIAS]: false })
-        );
-      }
-      return Promise.all(promises);
+      return db.practicas.update(practicaId, { [FIELD_NOTA_PRACTICAS]: valueToSend });
     },
-    onSuccess: (_, variables) => {
-      if (variables.nota === "No Entregado") {
-        showModal(
-          "Actualización Exitosa",
-          'El estado del informe se ha cambiado a "No Entregado".'
-        );
-      }
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["practicas", legajo] });
-      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo] });
     },
     onError: () => showModal("Error", "No se pudo actualizar la nota."),
   });

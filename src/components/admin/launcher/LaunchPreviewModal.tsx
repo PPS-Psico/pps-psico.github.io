@@ -1,12 +1,14 @@
 /**
- * LaunchPreviewModal — Previsualización (tarjeta del estudiante + posteo de
- * WhatsApp) y confirmación de lanzamiento, en el sistema Paper & Ink.
+ * Revisión final de la convocatoria: replica la tarjeta del estudiante y
+ * permite ajustar/copiar el mensaje de difusión antes de publicar.
  */
 import React from "react";
 import {
   FIELD_LOGO_INVERT_DARK_INSTITUCIONES,
   FIELD_LOGO_URL_INSTITUCIONES,
+  FIELD_NOMBRE_INSTITUCIONES,
 } from "../../../constants";
+import { useAccessibleDialog } from "../../../hooks/useAccessibleDialog";
 import type { AirtableRecord, InstitucionFields } from "../../../types";
 import { formatDate } from "../../../utils/formatters";
 import ConvocatoriaCardPremium from "../../ConvocatoriaCardPremium";
@@ -28,6 +30,8 @@ interface LaunchPreviewModalProps {
   isSubmitting: boolean;
 }
 
+const safeText = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+
 export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
   isOpen,
   onClose,
@@ -43,120 +47,158 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
   onConfirm,
   isSubmitting,
 }) => {
+  const dialogRef = useAccessibleDialog<HTMLElement>({
+    isOpen,
+    onClose,
+    canClose: !isSubmitting,
+  });
+
   if (!isOpen) return null;
 
+  const validSchedules = (Array.isArray(schedules) ? schedules : []).filter((schedule) =>
+    safeText(schedule?.time)
+  );
   const horariosCursada =
-    schedules
-      .map((s) => {
-        const time = s.time.trim();
-        const orient = isMultiOrientation && s.orientacion ? ` [${s.orientacion}]` : "";
-        return time ? `${time}${orient}` : null;
+    validSchedules
+      .map((schedule) => {
+        const time = safeText(schedule.time);
+        const orientation = safeText(schedule.orientacion);
+        return `${time}${isMultiOrientation && orientation ? ` [${orientation}]` : ""}`;
       })
-      .filter(Boolean)
       .join("; ") || "A confirmar";
-  const validSchedules = schedules.filter((schedule) => schedule.time.trim());
   const allSchedulesMandatory =
     validSchedules.length > 0 && validSchedules.every((schedule) => schedule.obligatorio);
+  const visibleActivities = (Array.isArray(actividades) ? actividades : [])
+    .map(safeText)
+    .filter(Boolean);
+  const institutionName = safeText(selectedInstitution?.[FIELD_NOMBRE_INSTITUCIONES]);
+  const whatsappMessage = formData.mensajeWhatsApp || "";
+
+  const pendingItems = [
+    !institutionName && "institución",
+    !safeText(formData.nombrePPS) && "nombre",
+    safeOrientacion.length === 0 && "orientación",
+    !safeText(formData.fechaInicio) && "fecha de inicio",
+    !safeText(formData.descripcion) && "descripción",
+    validSchedules.length === 0 && "horarios",
+  ].filter((item): item is string => Boolean(item));
+
+  const closeIfAllowed = () => {
+    if (!isSubmitting) onClose();
+  };
 
   return (
-    <div
-      className="lv4"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1500,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        background: "rgba(0,0,0,0.55)",
-        backdropFilter: "blur(6px)",
-        minHeight: 0,
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 980,
-          maxHeight: "94vh",
-          display: "flex",
-          flexDirection: "column",
-          background: "var(--paper)",
-          color: "var(--ink)",
-          borderRadius: 16,
-          border: "1px solid var(--rule-2)",
-          boxShadow: "0 24px 60px rgba(0,0,0,0.3)",
-          overflow: "hidden",
-          fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-        }}
+    <div className="lv4 lv4-modal-overlay lv4-preview-overlay">
+      <button
+        type="button"
+        className="lv4-preview-backdrop-hit"
+        onClick={closeIfAllowed}
+        disabled={isSubmitting}
+        aria-label="Cerrar previsualización"
+        tabIndex={-1}
+      />
+      <section
+        ref={dialogRef}
+        className="lv4-modal-shell lv4-preview-shell"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="launch-preview-title"
+        tabIndex={-1}
       >
-        {/* Header */}
-        <div
-          style={{
-            padding: "18px 24px",
-            borderBottom: "1px solid var(--rule-2)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span className="material-icons" style={{ fontSize: 22, color: "var(--ink-3)" }}>
-              visibility
-            </span>
-            <div>
-              <h3 className="serif" style={{ margin: 0, fontSize: 19, fontWeight: 700 }}>
-                Previsualización
-              </h3>
-              <div className="meta">Tarjeta del estudiante y mensaje de WhatsApp</div>
+        <header className="lv4-modal-head">
+          <div className="lv4-modal-head-glow-a" />
+          <div className="lv4-modal-head-glow-b" />
+          <div className="lv4-modal-head-row">
+            <div className="lv4-modal-head-info">
+              <div className="lv4-modal-head-icon" aria-hidden="true">
+                <span className="material-icons">preview</span>
+              </div>
+              <div>
+                <h2 id="launch-preview-title" className="lv4-modal-head-title">
+                  Revisión antes de publicar
+                </h2>
+                <div className="lv4-modal-head-meta">
+                  <span>{institutionName || "Institución sin seleccionar"}</span>
+                  <span className="lv4-pill">
+                    {formData.programarLanzamiento ? "Programada" : "Publicación inmediata"}
+                  </span>
+                </div>
+              </div>
             </div>
+            <button
+              type="button"
+              className="lv4-modal-close"
+              onClick={closeIfAllowed}
+              disabled={isSubmitting}
+              aria-label="Cerrar previsualización"
+            >
+              <span className="material-icons">close</span>
+            </button>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-            <span className="material-icons" style={{ fontSize: 18 }}>
-              close
-            </span>
-          </button>
-        </div>
+        </header>
 
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 28,
-              maxWidth: 760,
-              margin: "0 auto",
-            }}
-          >
-            {/* Card preview */}
-            <div>
-              <span className="label" style={{ display: "block", marginBottom: 12 }}>
-                Vista del estudiante
+        <div className="lv4-modal-body lv4-preview-body">
+          <div className={`lv4-preview-summary ${pendingItems.length ? "is-incomplete" : ""}`}>
+            <div className="lv4-preview-summary-main">
+              <span className="material-icons" aria-hidden="true">
+                {pendingItems.length ? "error_outline" : "verified"}
               </span>
-              <div
-                style={{
-                  background: "var(--paper-2)",
-                  borderRadius: 14,
-                  padding: 4,
-                  border: "1px solid var(--rule-2)",
-                }}
-              >
+              <div>
+                <strong>
+                  {pendingItems.length
+                    ? `${pendingItems.length} ${pendingItems.length === 1 ? "dato pendiente" : "datos pendientes"}`
+                    : "Contenido completo para publicar"}
+                </strong>
+                <span>
+                  {pendingItems.length
+                    ? `Revisá: ${pendingItems.join(", ")}. Podés volver a editar antes de lanzar.`
+                    : "Comprobá el contenido y confirmá el lanzamiento cuando esté listo."}
+                </span>
+              </div>
+            </div>
+            <span
+              className={`lv4-chip ${pendingItems.length ? "lv4-chip-seguro" : "lv4-chip-activa"}`}
+            >
+              {pendingItems.length ? "Requiere revisión" : "Lista"}
+            </span>
+          </div>
+
+          <div className="lv4-preview-grid">
+            <article className="lv4-preview-panel">
+              <div className="lv4-preview-panel-head">
+                <div className="lv4-preview-panel-heading">
+                  <div className="lv4-preview-panel-icon" aria-hidden="true">
+                    <span className="material-icons">school</span>
+                  </div>
+                  <div>
+                    <h3 className="lv4-preview-panel-title">Vista del estudiante</h3>
+                    <div className="lv4-preview-panel-meta">
+                      La tarjeta se muestra abierta para revisar todos los detalles
+                    </div>
+                  </div>
+                </div>
+                <span className="lv4-chip lv4-chip-seleccion">Panel</span>
+              </div>
+              <div className="lv4-preview-student-stage">
                 <ConvocatoriaCardPremium
                   id="preview"
-                  nombre={(formData.nombrePPS as string) || "Sin nombre"}
+                  nombre={safeText(formData.nombrePPS) || "Convocatoria sin nombre"}
                   orientacion={safeOrientacion.length ? safeOrientacion : "Sin orientación"}
-                  direccion={(formData.direccion as string) || "Sin dirección"}
-                  descripcion={formData.descripcion || "Sin descripción…"}
-                  actividades={actividades.length ? actividades : ["Actividad 1…", "Actividad 2…"]}
-                  actividadesLabel={formData.actividadesLabel}
+                  direccion={safeText(formData.direccion) || "Ubicación a confirmar"}
+                  descripcion={
+                    safeText(formData.descripcion) ||
+                    "La descripción de la propuesta aparecerá en este espacio."
+                  }
+                  actividades={
+                    visibleActivities.length
+                      ? visibleActivities
+                      : ["Las actividades se informarán próximamente"]
+                  }
+                  actividadesLabel={formData.actividadesLabel || "Actividades"}
                   horasAcreditadas={String(formData.horasAcreditadas || 0)}
                   horariosCursada={horariosCursada}
-                  cupo={String(formData.cuposDisponibles || 0)}
-                  requisitoObligatorio={formData.requisitoObligatorio}
+                  cupo={String(formData.cuposDisponibles || "A confirmar")}
+                  requisitoObligatorio={formData.requisitoObligatorio || ""}
                   archivoDescargableNombre={formData.archivoDescargableNombre}
                   archivoDescargableUrl={formData.archivoDescargableUrl}
                   reqCv={formData.reqCv}
@@ -165,8 +207,8 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
                   timeline={{
                     inscripcion:
                       formData.fechaInicioInscripcion && formData.fechaFinInscripcion
-                        ? `${formatDate(formData.fechaInicioInscripcion)} - ${formatDate(formData.fechaFinInscripcion)}`
-                        : "Abierta/A definir",
+                        ? `${formatDate(formData.fechaInicioInscripcion)} – ${formatDate(formData.fechaFinInscripcion)}`
+                        : "A definir",
                     inicio: formData.fechaInicio ? formatDate(formData.fechaInicio) : "A confirmar",
                     fin: formData.fechaFin ? formatDate(formData.fechaFin) : "A confirmar",
                   }}
@@ -175,104 +217,97 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
                     selectedInstitution?.[FIELD_LOGO_INVERT_DARK_INSTITUCIONES] as boolean
                   }
                   status="abierta"
+                  defaultExpanded
                 />
               </div>
-            </div>
+            </article>
 
-            {/* WhatsApp preview */}
-            <div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 12,
-                }}
-              >
-                <span
-                  className="label"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                >
-                  <span className="material-icons" style={{ fontSize: 14, color: "var(--ok)" }}>
-                    chat
-                  </span>
-                  Posteo de WhatsApp
-                </span>
+            <aside className="lv4-preview-panel lv4-preview-wa-panel">
+              <div className="lv4-preview-panel-head">
+                <div className="lv4-preview-panel-heading">
+                  <div className="lv4-preview-panel-icon is-whatsapp" aria-hidden="true">
+                    <span className="material-icons">forum</span>
+                  </div>
+                  <div>
+                    <h3 className="lv4-preview-panel-title">Mensaje de WhatsApp</h3>
+                    <div className="lv4-preview-panel-meta">Editable y listo para copiar</div>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  className="btn btn-sm"
-                  onClick={() => onCopy(formData.mensajeWhatsApp || "")}
+                  className="lv4-btn"
+                  onClick={() => onCopy(whatsappMessage)}
+                  disabled={!whatsappMessage}
                 >
-                  <span className="material-icons" style={{ fontSize: 14 }}>
-                    {isCopied ? "done_all" : "content_copy"}
-                  </span>
+                  <span className="material-icons">{isCopied ? "done_all" : "content_copy"}</span>
                   {isCopied ? "Copiado" : "Copiar"}
                 </button>
               </div>
-              <textarea
-                className="field"
-                value={formData.mensajeWhatsApp}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, mensajeWhatsApp: e.target.value }))
-                }
-                style={{
-                  minHeight: 280,
-                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                  fontSize: 12.5,
-                  lineHeight: 1.55,
-                  background: "var(--paper-2)",
-                }}
-                placeholder="El mensaje de WhatsApp se genera automáticamente…"
-              />
-            </div>
+              <div className="lv4-preview-editor">
+                <textarea
+                  className="lv4-textarea lv4-preview-textarea"
+                  value={whatsappMessage}
+                  onChange={(event) =>
+                    setFormData((previous) => ({
+                      ...previous,
+                      mensajeWhatsApp: event.target.value,
+                    }))
+                  }
+                  aria-label="Mensaje de WhatsApp"
+                  placeholder="El mensaje se genera automáticamente con los datos de la convocatoria."
+                />
+                <div className="lv4-preview-editor-foot">
+                  <span>Podés ajustar el texto antes de copiarlo.</span>
+                  <span>{whatsappMessage.length.toLocaleString("es-AR")} caracteres</span>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
 
-        {/* Footer */}
-        <div
-          style={{
-            padding: "16px 24px",
-            borderTop: "1px solid var(--rule-2)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <span className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span className="material-icons" style={{ fontSize: 14 }}>
+        <footer className="lv4-modal-foot lv4-preview-foot">
+          <div className="lv4-preview-foot-note">
+            <span className="material-icons" aria-hidden="true">
               info
             </span>
-            {formData.programarLanzamiento
-              ? "Se agendará para la fecha seleccionada."
-              : "Se publicará inmediatamente."}
-          </span>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" className="btn" onClick={onClose} disabled={isSubmitting}>
+            <span>
+              {formData.programarLanzamiento
+                ? "La convocatoria quedará agendada para la fecha elegida."
+                : "La convocatoria se publicará inmediatamente."}
+            </span>
+          </div>
+          <div className="lv4-preview-foot-actions">
+            <button
+              type="button"
+              className="lv4-btn lv4-btn-ghost"
+              onClick={closeIfAllowed}
+              disabled={isSubmitting}
+              data-dialog-autofocus
+            >
               Seguir editando
             </button>
             <button
               type="button"
-              className="btn btn-primary"
+              className="lv4-btn lv4-btn-primary"
               onClick={onConfirm}
               disabled={isSubmitting}
             >
-              <span
-                className={`material-icons ${isSubmitting ? "lf-spin" : ""}`}
-                style={{ fontSize: 16 }}
-              >
+              <span className={`material-icons ${isSubmitting ? "lf-spin" : ""}`}>
                 {isSubmitting
                   ? "autorenew"
                   : formData.programarLanzamiento
                     ? "schedule_send"
                     : "rocket_launch"}
               </span>
-              {formData.programarLanzamiento ? "Programar" : "Lanzar ahora"}
+              {isSubmitting
+                ? "Procesando…"
+                : formData.programarLanzamiento
+                  ? "Confirmar programación"
+                  : "Publicar convocatoria"}
             </button>
           </div>
-        </div>
-      </div>
+        </footer>
+      </section>
     </div>
   );
 };

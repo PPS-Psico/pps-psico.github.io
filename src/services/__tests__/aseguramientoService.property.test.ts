@@ -23,6 +23,7 @@ import {
   type BucketInput,
   type ClipboardStudent,
   type SidebarBucket,
+  type LaunchTimeline,
 } from "../aseguramientoService";
 
 // ── Generadores ────────────────────────────────────────────────────────────
@@ -37,16 +38,25 @@ const ALL_STATES: UIState[] = [
 ];
 
 const ALL_BUCKETS: SidebarBucket[] = [
-  "borrador",
   "abierta",
   "seleccionar",
   "asegurar",
   "confirmacion",
   "activa",
-  "archivada",
+  "finalizada",
+  "oculta",
 ];
 
+const ALL_TIMELINES: LaunchTimeline[] = ["pendiente", "en_curso", "finalizada", "desconocida"];
+
 const arbDbState = fc.constantFrom(...ALL_STATES);
+
+/**
+ * Timelines donde el calendario NO decide y manda el paso del pipeline.
+ * Las propiedades 1-3 y 5 describen la clasificación por etapa, que solo aplica
+ * mientras la PPS no arrancó (o no tenemos fechas para saberlo).
+ */
+const arbPrePipelineTimeline = fc.constantFrom<LaunchTimeline>("pendiente", "desconocida");
 
 /** Estados donde tiene sentido "A asegurar": no terminal, no borrador/archivada. */
 const arbNonTerminalState = fc.constantFrom<UIState>("seleccion", "seguro");
@@ -69,6 +79,7 @@ const arbBucketInput: fc.Arbitrary<BucketInput> = fc.record({
   totalSel: arbCount,
   totalInsc: arbCount,
   vencida: fc.boolean(),
+  timeline: fc.constantFrom(...ALL_TIMELINES),
 });
 
 /** Campos de estudiante sin tabs/saltos para que la fila TSV sea íntegra. */
@@ -102,13 +113,15 @@ describe("aseguramientoService — property-based", () => {
         arbCount,
         arbCount,
         fc.boolean(),
-        (dbState, seguroGestionadoAt, totalSel, totalInsc, vencida) => {
+        arbPrePipelineTimeline,
+        (dbState, seguroGestionadoAt, totalSel, totalInsc, vencida, timeline) => {
           const bucket = deriveBucket({
             dbState,
             seguroGestionadoAt,
             totalSel,
             totalInsc,
             vencida,
+            timeline,
           });
           expect(bucket).toBe("confirmacion");
           expect(bucket).not.toBe("asegurar");
@@ -128,13 +141,15 @@ describe("aseguramientoService — property-based", () => {
         fc.integer({ min: 1, max: 50 }),
         arbCount,
         fc.boolean(),
-        (dbState, totalSel, totalInsc, vencida) => {
+        arbPrePipelineTimeline,
+        (dbState, totalSel, totalInsc, vencida, timeline) => {
           const bucket = deriveBucket({
             dbState,
             seguroGestionadoAt: null,
             totalSel,
             totalInsc,
             vencida,
+            timeline,
           });
           expect(bucket).toBe("asegurar");
         }
@@ -155,7 +170,8 @@ describe("aseguramientoService — property-based", () => {
         fc.integer({ min: 1, max: 50 }),
         arbCount,
         fc.boolean(),
-        (dbStateOriginal, marca, totalSel, totalInsc, vencida) => {
+        arbPrePipelineTimeline,
+        (dbStateOriginal, marca, totalSel, totalInsc, vencida, timeline) => {
           // 1) Marcar: dbState pasa a "confirmacion" + marca set.
           const conMarca = deriveBucket({
             dbState: "confirmacion",
@@ -163,6 +179,7 @@ describe("aseguramientoService — property-based", () => {
             totalSel,
             totalInsc,
             vencida,
+            timeline,
           });
           expect(conMarca).toBe("confirmacion");
 
@@ -173,6 +190,7 @@ describe("aseguramientoService — property-based", () => {
             totalSel,
             totalInsc,
             vencida,
+            timeline,
           });
           expect(revertido).toBe("asegurar");
         }
@@ -192,38 +210,82 @@ describe("aseguramientoService — property-based", () => {
     );
   });
 
-  it("Property 5: el estado 'archivada' tiene precedencia sobre la marca", () => {
+  it("Property 5: el estado 'archivada' sale del pipeline y tiene precedencia sobre la marca", () => {
     // Feature: flujo-aseguramiento-pps, Property 5: El estado Archivada tiene
-    // precedencia sobre la marca.
+    // precedencia sobre la marca. Con el modelo nuevo eso significa "oculta":
+    // no está en el recorrido, pero tampoco es una PPS finalizada.
     fc.assert(
       fc.property(
         arbSeguroAt,
         arbCount,
         arbCount,
         fc.boolean(),
-        (seguroGestionadoAt, totalSel, totalInsc, vencida) => {
+        arbPrePipelineTimeline,
+        (seguroGestionadoAt, totalSel, totalInsc, vencida, timeline) => {
           const bucket = deriveBucket({
             dbState: "archivada",
             seguroGestionadoAt,
             totalSel,
             totalInsc,
             vencida,
+            timeline,
           });
-          expect(bucket).toBe("archivada");
+          expect(bucket).toBe("oculta");
         }
       ),
       { numRuns: 100 }
     );
   });
 
-  it("Property 6: el flag isSeguroGestionado refleja la marca y bucket != archivada", () => {
+  it("Property 6: el flag isSeguroGestionado refleja la marca y bucket != finalizada", () => {
     // Feature: flujo-aseguramiento-pps, Property 6: El indicador "seguro gestionado"
-    // refleja la marca (cualquier estado salvo archivada).
+    // refleja la marca mientras la PPS siga en el recorrido.
     fc.assert(
       fc.property(arbBucketInput, (input) => {
         const flag = isSeguroGestionado(input);
-        const expected = input.seguroGestionadoAt != null && deriveBucket(input) !== "archivada";
+        const expected = input.seguroGestionadoAt != null && deriveBucket(input) !== "finalizada";
         expect(flag).toBe(expected);
+      }),
+      { numRuns: 100 }
+    );
+  });
+
+  it("Property 6b: una PPS finalizada sale de la vista sin importar el paso del pipeline", () => {
+    // El calendario tiene precedencia absoluta: si la fecha de fin pasó, no hay
+    // estado ni conteo que la mantenga en el recorrido operativo.
+    fc.assert(
+      fc.property(arbDbState, arbSeguroAt, arbCount, arbCount, fc.boolean(), (...args) => {
+        const [dbState, seguroGestionadoAt, totalSel, totalInsc, vencida] = args;
+        const bucket = deriveBucket({
+          dbState,
+          seguroGestionadoAt,
+          totalSel,
+          totalInsc,
+          vencida,
+          timeline: "finalizada",
+        });
+        expect(bucket).toBe("finalizada");
+      }),
+      { numRuns: 100 }
+    );
+  });
+
+  it("Property 6c: una PPS en curso es 'activa' aunque nadie haya apretado Activar", () => {
+    // Este es el bug que motivó el rediseño: la transición a 'Activa' era un
+    // click manual, así que las PPS que arrancaban sin ese click quedaban
+    // trabadas en pasos previos y terminaban archivadas.
+    fc.assert(
+      fc.property(arbDbState, arbSeguroAt, arbCount, arbCount, fc.boolean(), (...args) => {
+        const [dbState, seguroGestionadoAt, totalSel, totalInsc, vencida] = args;
+        const bucket = deriveBucket({
+          dbState,
+          seguroGestionadoAt,
+          totalSel,
+          totalInsc,
+          vencida,
+          timeline: "en_curso",
+        });
+        expect(bucket).toBe("activa");
       }),
       { numRuns: 100 }
     );

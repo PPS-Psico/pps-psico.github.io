@@ -100,6 +100,35 @@ export const signStorageAttachment = async (attachment: Attachment): Promise<Att
   }
 };
 
+/** Buckets de documentos de alumnos que pueden requerir URL firmada. */
+export const STUDENT_DOC_BUCKETS = ["documentos_finalizacion", "documentos_estudiantes"] as const;
+
+export type StorageRef = { bucket: string; path: string };
+
+/**
+ * Extrae bucket + path de una URL de Storage guardada en base.
+ *
+ * Las URLs históricas se guardaron con getPublicUrl. Para poder servirlas con
+ * URLs firmadas (y dejar de depender de que el bucket sea público) hace falta
+ * recuperar el path del objeto desde esa URL. Generaliza a `getStoragePath`,
+ * que sólo contemplaba `documentos_finalizacion`.
+ */
+export const getStorageRef = (fullUrl: string): StorageRef | null => {
+  if (!fullUrl) return null;
+  try {
+    for (const bucket of STUDENT_DOC_BUCKETS) {
+      const parts = fullUrl.split(`/${bucket}/`);
+      if (parts.length > 1) {
+        return { bucket, path: decodeURIComponent(parts[1]) };
+      }
+    }
+    return null;
+  } catch (e) {
+    logger.error("Error parsing storage ref:", e);
+    return null;
+  }
+};
+
 export const getNormalizationState = (request: unknown): string => {
   if (!request || typeof request !== "object") return "";
   const rawState = (request as Record<string, unknown>)[FIELD_ESTADO_FINALIZACION];

@@ -1,26 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ErrorState from "../components/ErrorState";
-import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
-import AtlasTopbar from "../components/student/home/atlas/AtlasTopbar";
-import CriteriosPanel from "../components/student/CriteriosPanel";
-import FinalizacionForm from "../components/student/FinalizacionForm";
-import HomeView from "../components/student/HomeView";
-import PrintableReport from "../components/student/PrintableReport";
-import PracticasTable from "../components/student/PracticasTable";
-import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
-import SolicitudNuevaPPSModal from "../components/student/SolicitudNuevaPPSModal";
-import SolicitudesList from "../components/student/SolicitudesList";
-import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
-import AtlasProfileView from "./student/AtlasProfileView";
-import AtlasPracticasView from "./student/AtlasPracticasView";
 import Auth from "../components/Auth";
 import CampusEntryLoader from "../components/CampusEntryLoader";
-import { isEmbedded } from "../utils/isEmbedded";
-// Aula (contenido estático pesado en JSX): lazy para sacarlo del bundle inicial.
-const StudentAulaView = React.lazy(() => import("./student/StudentAulaView"));
-const EntregasMobileView = React.lazy(() => import("./student/EntregasMobileView"));
+import ErrorState from "../components/ErrorState";
+import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
+import CriteriosPanel from "../components/student/CriteriosPanel";
+import FinalizacionForm from "../components/student/FinalizacionForm";
+import AtlasTopbar from "../components/student/home/atlas/AtlasTopbar";
+import HomeView from "../components/student/HomeView";
+import PracticasTable from "../components/student/PracticasTable";
+import PrintableReport from "../components/student/PrintableReport";
+import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
+import SolicitudNuevaPPSModal from "../components/student/SolicitudNuevaPPSModal";
 import WelcomeBanner from "../components/student/WelcomeBanner";
 import WhatsAppExportButton from "../components/student/WhatsAppExportButton";
 import {
@@ -57,14 +49,20 @@ import { useStudentPanel } from "../contexts/StudentPanelContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { db } from "../lib/db";
 import type { Orientacion, Practica, TabId } from "../types";
+import { isEmbedded } from "../utils/isEmbedded";
+import AtlasPracticasView from "./student/AtlasPracticasView";
+import AtlasProfileView from "./student/AtlasProfileView";
+import AtlasSolicitudesView from "./student/AtlasSolicitudesView";
+// Aula (contenido estático pesado en JSX): lazy para sacarlo del bundle inicial.
+const StudentAulaView = React.lazy(() => import("./student/StudentAulaView"));
 // import { normalizeStringForComparison, parseToUTCDate } from '../utils/formatters';
-import FinalizationStatusCard from "../components/student/FinalizationStatusCard";
 import FinalizacionReadOnlyView from "../components/student/FinalizacionReadOnlyView";
+import FinalizationStatusCard from "../components/student/FinalizationStatusCard";
 // import MobileSectionHeader from '../components/layout/MobileSectionHeader'; // Unused
 import ErrorBoundary from "../components/ErrorBoundary";
-import { logger } from "../utils/logger";
-import { getErrorMessage } from "../utils/getErrorMessage";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { getErrorMessage } from "../utils/getErrorMessage";
+import { logger } from "../utils/logger";
 
 // Export individual views for Router
 export { default as StudentPracticas } from "../components/student/PracticasTable";
@@ -169,7 +167,6 @@ export const StudentHome: React.FC = () => {
       <HomeView
         myEnrollments={enrollmentMap ? Array.from(enrollmentMap.values()) : []}
         allLanzamientos={allLanzamientos}
-        informeTasks={informeTasks}
         lanzamientos={lanzamientos}
         onNavigate={(id) => navigate(`/student/${id === "inicio" ? "" : id}`)}
         student={studentDetails}
@@ -254,11 +251,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     institutionAddressMap,
     institutionLogoMap,
     isLoading,
-    isStudentLoading,
     isPracticasLoading,
     error,
     updateOrientation,
-    updateInternalNotes,
     updateNota,
     updateFechaFin,
     deletePractica,
@@ -310,15 +305,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   );
 
   const handleNotaChange = useCallback(
-    (practicaId: string, nota: string, convocatoriaId?: string) => {
-      updateNota.mutate({ practicaId, nota, convocatoriaId });
-    },
+    (practicaId: string, nota: string) =>
+      updateNota.mutateAsync({ practicaId, nota }).then(() => undefined),
     [updateNota]
   );
   const handleFechaFinChange = useCallback(
-    (practicaId: string, fecha: string) => {
-      updateFechaFin.mutate({ practicaId, fecha });
-    },
+    (practicaId: string, fecha: string) =>
+      updateFechaFin.mutateAsync({ practicaId, fecha }).then(() => undefined),
     [updateFechaFin]
   );
   const handleRequestModificacion = useCallback((practica: Practica) => {
@@ -402,7 +395,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <HomeView
           myEnrollments={enrollmentMap ? Array.from(enrollmentMap.values()) : []}
           allLanzamientos={allLanzamientos}
-          informeTasks={informeTasks}
           lanzamientos={lanzamientos}
           onNavigate={(id) => setCurrentActiveTab(id)}
           student={studentDetails}
@@ -431,7 +423,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [
       enrollmentMap,
       allLanzamientos,
-      informeTasks,
       lanzamientos,
       studentDetails,
       enrollStudent.mutate,
@@ -450,21 +441,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     ]
   );
 
-  const solicitudesContent = useMemo(
-    () => (
-      <ErrorBoundary>
-        <SolicitudesList
-          solicitudes={solicitudes}
-          onCreateSolicitud={handleStartSolicitud}
-          onRequestFinalization={handleOpenFinalization}
-          criterios={criterios}
-          informeTasks={informeTasks}
-        />
-      </ErrorBoundary>
-    ),
-    [solicitudes, handleStartSolicitud, handleOpenFinalization, criterios, informeTasks]
-  );
-
   // Versión Atlas (escritorio) de Solicitudes.
   const atlasSolicitudesContent = useMemo(
     () => (
@@ -474,19 +450,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           onCreateSolicitud={handleStartSolicitud}
           onRequestFinalization={handleOpenFinalization}
           criterios={criterios}
-          informeTasks={informeTasks}
           finalizacionRequest={finalizacionRequest}
         />
       </ErrorBoundary>
     ),
-    [
-      solicitudes,
-      handleStartSolicitud,
-      handleOpenFinalization,
-      criterios,
-      informeTasks,
-      finalizacionRequest,
-    ]
+    [solicitudes, handleStartSolicitud, handleOpenFinalization, criterios, finalizacionRequest]
   );
 
   // Versión mobile (editorial) de Solicitudes.
@@ -500,7 +468,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <PracticasTable
           practicas={practicas}
           handleNotaChange={handleNotaChange}
-          handleFechaFinChange={handleFechaFinChange}
           isLoading={isPracticasLoading}
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
@@ -510,7 +477,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [
       practicas,
       handleNotaChange,
-      handleFechaFinChange,
       isPracticasLoading,
       handleRequestModificacion,
       handleRequestNuevaPPS,
@@ -524,9 +490,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <AtlasPracticasView
           criterios={criterios}
           selectedOrientacion={selectedOrientacion}
-          handleOrientacionChange={handleOrientacionChange}
-          onRequestFinalization={handleOpenFinalization}
-          informeTasks={informeTasks}
           practicas={practicas}
           handleNotaChange={handleNotaChange}
           onRequestModificacion={handleRequestModificacion}
@@ -537,9 +500,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [
       criterios,
       selectedOrientacion,
-      handleOrientacionChange,
-      handleOpenFinalization,
-      informeTasks,
       practicas,
       handleNotaChange,
       handleRequestModificacion,
@@ -575,7 +535,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         content: (
           <ErrorBoundary>
             <React.Suspense fallback={null}>
-              {isMobile ? <EntregasMobileView /> : <StudentAulaView section="entregas" />}
+              <StudentAulaView
+                section="entregas"
+                practicas={practicas}
+                informeTasks={informeTasks}
+                isPracticasLoading={isPracticasLoading}
+              />
             </React.Suspense>
           </ErrorBoundary>
         ),
@@ -592,8 +557,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 selectedOrientacion={selectedOrientacion}
                 handleOrientacionChange={handleOrientacionChange}
                 showSaveConfirmation={showSaveConfirmation}
-                onRequestFinalization={handleOpenFinalization}
-                informeTasks={informeTasks}
                 showOrientationSelector={false}
               />
             )}
@@ -655,20 +618,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [
       homeContent,
       isMobile,
+      practicas,
+      informeTasks,
+      isPracticasLoading,
       resolvedTheme,
       finalizacionRequest,
       criterios,
       selectedOrientacion,
       handleOrientacionChange,
       showSaveConfirmation,
-      handleOpenFinalization,
-      informeTasks,
       practicasContent,
       atlasPracticasContent,
       mobileSolicitudesContent,
       atlasSolicitudesContent,
       atlasProfileContent,
-      setCurrentActiveTab,
     ]
   );
 
@@ -701,9 +664,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
        Preguntas son material de consulta público. */
     const isLocked = ["inicio", "entregas", "practicas", "solicitudes", "profile"].includes(tabId);
     if (isLocked && !currentUser) {
-      /* Mientras se resuelve la sesión (restauración + posible auto-login desde
-         el campus) mostramos el MISMO loader branded que usa <Auth> en su estado
-         "checking", para que se vea un solo spinner continuo y el login no
+      /* Mientras se resuelve la sesión y la entrada desde el campus mostramos
+         el MISMO loader branded que usa <Auth> en su estado "checking", para que se vea un solo spinner continuo y el login no
          parpadee antes de que el panel monte. */
       if (isAuthLoading) {
         return (
@@ -909,6 +871,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }}
         practica={selectedPractica}
         studentId={studentDetails?.id || null}
+        onFechaFinChange={handleFechaFinChange}
         onSuccess={handleRefetchPracticas}
       />
 

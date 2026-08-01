@@ -524,6 +524,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   const {
     data: gmailHilos = [],
     isLoading: loadingGmail,
+    isError: gmailError,
     refetch: refetchGmail,
   } = useGmailHilos(isTestingMode);
   const [openMailHilo, setOpenMailHilo] = useState<GmailHilo | null>(null);
@@ -568,7 +569,11 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   }, []);
 
   // Set de thread_ids que ya tienen borrador de Hermes (para el indicador ✦).
-  const { data: threadsWithDraft, refetch: refetchDrafts } = useQuery({
+  const {
+    data: threadsWithDraft,
+    isError: draftsError,
+    refetch: refetchDrafts,
+  } = useQuery({
     queryKey: ["gmailThreadsWithDraft", isTestingMode],
     enabled: !isTestingMode,
     staleTime: 60 * 1000,
@@ -625,7 +630,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   // Contactos WhatsApp pendientes de clasificar (propuestas de Hermes sin validar).
   // queryKey comparte raíz con la lista del clasificador (["pendingContactClassifications"])
   // para que al aprobar/descartar se invalide también este contador.
-  const { data: pendingContactos = 0 } = useQuery({
+  const { data: pendingContactos = 0, isError: contactosError } = useQuery({
     queryKey: ["pendingContactClassifications", "count", isTestingMode],
     staleTime: 1000 * 60 * 2,
     queryFn: async (): Promise<number> => {
@@ -1074,6 +1079,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
           counts={counts}
           search={searchTerm}
           collapsed={railCollapsed}
+          hasSyncError={gmailError || draftsError || contactosError}
           onToggle={toggleRail}
           onSearch={setSearchTerm}
           onSelect={(c) => {

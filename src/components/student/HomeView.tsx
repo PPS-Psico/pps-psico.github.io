@@ -5,7 +5,6 @@ import type {
   Convocatoria,
   LanzamientoPPS,
   EstudianteFields,
-  InformeTask,
   TabId,
   CriteriosCalculados,
   FinalizacionPPS,
@@ -17,7 +16,6 @@ import {
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
@@ -51,7 +49,6 @@ import { fetchSeleccionados } from "../../services";
 import { mockDb } from "../../services/mockDb";
 import StudentSummaryCard from "./home/StudentSummaryCard";
 import StudentConvCard from "./home/StudentConvCard";
-import StudentNextStepCard, { type NextStepData } from "./home/StudentNextStepCard";
 import StudentAcreditacionCard from "./home/StudentAcreditacionCard";
 import StudentPracRow, { type StudentPracRowData } from "./home/StudentPracRow";
 import StudentSolicitudItem, { type StudentSolicitudItemData } from "./home/StudentSolicitudItem";
@@ -74,7 +71,6 @@ interface HomeViewProps {
   compromisoMap?: Map<string, CompromisoPPS>;
   completedLanzamientoIds: Set<string>;
   completedOrientationsByInstitution: Map<string, Set<string>>;
-  informeTasks: InformeTask[];
   onNavigate: (tabId: TabId) => void;
   criterios: CriteriosCalculados;
   onOpenFinalization: () => void;
@@ -102,7 +98,6 @@ const HomeView: React.FC<HomeViewProps> = ({
   onAcceptCompromiso,
   isSubmittingCompromiso,
   onNavigate,
-  informeTasks,
   compromisoMap,
   allLanzamientos,
 }) => {
@@ -216,13 +211,9 @@ const HomeView: React.FC<HomeViewProps> = ({
     return status === "abierta" || status === "abierto";
   });
 
-  // Cerradas en el Home: SOLO las que todavía no comenzaron (su fecha de inicio
-  // es hoy o futura). Una vez que la PPS arranca deja de ser accionable acá (el
-  // consentimiento ya cerró y la práctica vive en "Mis prácticas"), así que no
-  // ensuciamos el inicio con todo el historial de cerradas.
-  // Incluimos también las PPS donde el estudiante está inscripto/seleccionado
-  // aunque su lanzamiento ya no figure en la lista pública (Confirmacion/
-  // archivado), siempre que aún no hayan comenzado.
+  // Resultados en el Home: SOLO convocatorias en las que el estudiante se
+  // inscribió y cuya PPS todavía no comenzó. Una vez que arranca, deja de ser un
+  // resultado accionable del inicio y pasa a vivir en "Mis prácticas".
   const openIds = new Set(openLanzamientos.map((l) => l.id));
   const notStarted = (l: LanzamientoPPS) => {
     const d = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
@@ -244,7 +235,7 @@ const HomeView: React.FC<HomeViewProps> = ({
     (allLanzamientos || []).forEach((l) => {
       if (enrollmentMap.has(l.id)) push(l);
     });
-    return out;
+    return out.filter((l) => enrollmentMap.has(l.id));
   })();
 
   const activeEnrollment = myEnrollments?.find((e) => {
@@ -330,79 +321,12 @@ const HomeView: React.FC<HomeViewProps> = ({
       return {
         enrollment: e,
         lanzamiento,
-        ppsName: ((lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "tu PPS")
-          .split(" - ")[0]
-          .trim(),
       };
     }
     return null;
   })();
 
-  // PPS confirmada por comenzar: el estudiante quedó seleccionado/adjudicado, ya
-  // firmó el consentimiento y la práctica todavía no arrancó. Alimenta el
-  // "Próximo paso" del inicio como recordatorio de la fecha de inicio (sin
-  // acción). Si todavía falta firmar, ese caso lo cubre `pendingConsent`; si la
-  // PPS ya arrancó, deja de ser un "próximo paso".
-  const upcomingStart = (() => {
-    for (const e of myEnrollments || []) {
-      const status = normalizeStringForComparison(
-        (e[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] as string) || ""
-      );
-      if (status !== "seleccionado" && status !== "adjudicado") continue;
-      const compromiso = compromisoMap?.get(e.id);
-      const compromisoEstado = normalizeStringForComparison(compromiso?.estado || "");
-      const compromisoAceptado = compromisoEstado.startsWith("acept") || !!compromiso?.accepted_at;
-      if (!compromisoAceptado) continue;
-      const lanzamientoId = (e as Record<string, unknown>)[
-        FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS
-      ] as string;
-      const lanzamiento =
-        (lanzamientos || []).find((l) => l.id === lanzamientoId) ||
-        (allLanzamientos || []).find((l) => l.id === lanzamientoId);
-      if (!lanzamiento) continue;
-      const inicioRaw = lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS];
-      const inicioDate = parseToUTCDate(inicioRaw as string);
-      if (!inicioDate) continue;
-      if (inicioDate < today) continue;
-      return {
-        ppsName: ((lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "tu PPS")
-          .split(" - ")[0]
-          .trim(),
-        startDate: inicioRaw as string,
-      };
-    }
-    return null;
-  })();
-
-  // Próximo paso: prioriza informe pendiente, luego convocatoria abierta.
-  const pendingInforme = informeTasks?.find((t) => !t.informeSubido);
-  const nextStep: NextStepData | null = (() => {
-    if (pendingInforme) {
-      return {
-        title: "Entregá tu informe final",
-        subtitle:
-          "Tenés un informe pendiente. Subilo para cerrar la práctica y acreditar las horas.",
-        where: (pendingInforme.ppsName || "Tu PPS").split(" - ")[0].trim(),
-        date: fmtShort(pendingInforme.fechaFinalizacion),
-      };
-    }
-    if (openLanzamientos.length > 0) {
-      const l = openLanzamientos[0];
-      const nm = ((l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "una convocatoria")
-        .split(" - ")[0]
-        .trim();
-      return {
-        title: `Inscribite a ${nm}`,
-        subtitle:
-          openLanzamientos.length === 1
-            ? "Hay una convocatoria abierta. No pierdas el cupo."
-            : `Hay ${openLanzamientos.length} convocatorias abiertas. No pierdas el cupo.`,
-        where: (l[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "Convocatoria",
-        date: "",
-      };
-    }
-    return null;
-  })();
+  const consentMarker = pendingConsent ? { lanzamientoId: pendingConsent.lanzamiento.id } : null;
 
   const solicitudItems: StudentSolicitudItemData[] = (solicitudes || []).slice(0, 4).map((s) => ({
     id: s.id,
@@ -487,28 +411,14 @@ const HomeView: React.FC<HomeViewProps> = ({
       {/* ── Escritorio: rediseño Atlas ── */}
       <div className="hidden md:block">
         <StudentHomeAtlas
-          student={student}
           studentName={studentName}
           criterios={criterios}
           openLanzamientos={openLanzamientos}
           closedLanzamientos={closedLanzamientos}
           enrollmentMap={enrollmentMap}
           institutionAddressMap={institutionAddressMap}
-          practicas={practicas ?? []}
           solicitudes={solicitudes ?? []}
-          informeTasks={informeTasks ?? []}
-          consent={
-            pendingConsent
-              ? {
-                  ppsName: pendingConsent.ppsName,
-                  lanzamientoId: pendingConsent.lanzamiento.id,
-                  area: pendingConsent.lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as
-                    | string
-                    | undefined,
-                }
-              : null
-          }
-          upcomingStart={upcomingStart}
+          consent={consentMarker}
           onStartConsent={() =>
             pendingConsent &&
             setPendingCompromiso({
@@ -578,8 +488,6 @@ const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Contexto editorial — solo escritorio (mobile mantiene su flujo) */}
             <div className="mt-4 hidden md:flex md:flex-col md:gap-4">
-              {nextStep && <StudentNextStepCard next={nextStep} />}
-
               {solicitudItems.length > 0 && (
                 <div className="rounded-2xl border border-student-line bg-student-bg-elevated p-5">
                   <div className="mb-1 flex items-baseline justify-between">
@@ -627,7 +535,7 @@ const HomeView: React.FC<HomeViewProps> = ({
               </>
             ) : null}
 
-            {/* Cerradas recientemente (excluye la que ya se muestra como consentimiento) */}
+            {/* Resultados propios (excluye el que ya se muestra como consentimiento) */}
             {(() => {
               const closedToShow = closedLanzamientos.filter(
                 (l) => l.id !== pendingConsent?.lanzamiento?.id
@@ -638,7 +546,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                   <div
                     className={`flex items-baseline justify-between mb-2.5 ${hasOpen ? "mt-7" : ""}`}
                   >
-                    <span className="eyebrow">Cerradas recientemente</span>
+                    <span className="eyebrow">Tus resultados</span>
                     <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-subtle)" }}>
                       {closedToShow.length}
                     </span>

@@ -5,6 +5,7 @@ import {
   STATE_META,
   BUCKET_META,
   BUCKET_ORDER,
+  HIDDEN_BUCKETS,
   PIPELINE_STEPS,
 } from "../lanzadorState";
 
@@ -100,13 +101,24 @@ describe("lanzadorState", () => {
     it("BUCKET_ORDER referencia solo buckets definidos en BUCKET_META", () => {
       const known = Object.keys(BUCKET_META);
       BUCKET_ORDER.forEach((b) => expect(known).toContain(b));
+      HIDDEN_BUCKETS.forEach((b) => expect(known).toContain(b));
     });
 
     it("BUCKET_ORDER prioriza acciones pendientes (seleccionar/asegurar primero)", () => {
       expect(BUCKET_ORDER[0]).toBe("seleccionar");
       expect(BUCKET_ORDER[1]).toBe("asegurar");
-      // Las archivadas siempre al final.
-      expect(BUCKET_ORDER[BUCKET_ORDER.length - 1]).toBe("archivada");
+      // Las que están en curso cierran el recorrido visible.
+      expect(BUCKET_ORDER[BUCKET_ORDER.length - 1]).toBe("activa");
+    });
+
+    it("el recorrido visible no incluye lo que sale de la vista operativa", () => {
+      // "Finalizadas" y "Fuera del pipeline" existen como clasificación (el
+      // buscador las alcanza) pero no se listan como grupo.
+      expect(BUCKET_ORDER).not.toContain("finalizada");
+      expect(BUCKET_ORDER).not.toContain("oculta");
+      expect(HIDDEN_BUCKETS).toEqual(["finalizada", "oculta"]);
+      // Y ningún bucket puede estar en las dos listas a la vez.
+      HIDDEN_BUCKETS.forEach((b) => expect(BUCKET_ORDER).not.toContain(b));
     });
   });
 });

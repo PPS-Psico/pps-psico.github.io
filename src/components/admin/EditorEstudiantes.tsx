@@ -306,6 +306,10 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
     },
   });
 
+  // El corte por error va DESPUÉS de todos los hooks. Antes estaba arriba de
+  // las tres mutations: al fallar la carga se renderizaban menos hooks que en
+  // el render anterior y React tiraba "rendered fewer hooks than expected",
+  // así que un error de red rompía el editor en vez de mostrar este estado.
   if (error)
     return <EmptyState icon="error" title="Error de Carga" message={(error as Error).message} />;
 

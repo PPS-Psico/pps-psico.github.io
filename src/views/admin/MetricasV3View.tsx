@@ -8,20 +8,22 @@
 //   · Línea de tiempo    → hitos del ciclo derivados de datos reales
 //   · Reporte ejecutivo  → one-pager imprimible
 //
-// Datos: RPC get_admin_metrics_kpis (KPIs duras) + lecturas Supabase extra.
+// Datos: analytics-v2 para resultados anuales; director-report-v1 para la
+// foto operativa; lecturas legacy y complementarias para enriquecer la vista.
 // Hermes en shadow mode: solo fuente de una métrica, jamás narrador.
 // ──────────────────────────────────────────────────────────────────────────
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { useMetricsData, useMetricsYears } from "../../hooks/useMetricsData";
-import { useMetricsDinamica } from "../../hooks/useMetricsExtras";
-import { useAdminPreferences } from "../../contexts/AdminPreferencesContext";
-import { injectScopedStyles } from "../../utils/injectScopedStyles";
-import { METRICAS_V3_CSS } from "./metricasV3Styles";
+import HermesStatus from "../../components/admin/HermesStatus";
 import { MetricasDashboardV3 } from "../../components/admin/metricas/MetricasDashboardV3";
-import { TimelineView, ExecutiveReport } from "../../components/admin/metricas/MetricasTimeline";
+import { ExecutiveReport, TimelineView } from "../../components/admin/metricas/MetricasTimeline";
+import EmptyState from "../../components/EmptyState";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import Loader from "../../components/Loader";
-import EmptyState from "../../components/EmptyState";
+import { useAdminPreferences } from "../../contexts/AdminPreferencesContext";
+import { useMetricsData, useMetricsYears } from "../../hooks/useMetricsData";
+import { useMetricsDinamica } from "../../hooks/useMetricsExtras";
+import { injectScopedStyles } from "../../utils/injectScopedStyles";
+import { METRICAS_V3_CSS } from "./metricasV3Styles";
 
 // Generadores de export (Excel/PDF) reubicados como subpestaña opcional.
 const GestionRelanzamientoReport = lazy(
@@ -46,6 +48,10 @@ const HermesIntelligenceDashboard = lazy(() =>
 injectScopedStyles("metricas-v3-styles", METRICAS_V3_CSS);
 
 type TabId = "dashboard" | "timeline" | "reporte" | "hermes" | "descargas";
+
+const TAB_IDS: readonly TabId[] = ["dashboard", "timeline", "reporte", "hermes", "descargas"];
+const isTabId = (value: string | null): value is TabId =>
+  value !== null && TAB_IDS.includes(value as TabId);
 
 interface MetricasV3ViewProps {
   onStudentSelect: (student: { legajo: string; nombre: string }) => void;
@@ -109,7 +115,8 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
   );
   const [tab, setTab] = useState<TabId>(() => {
     try {
-      return (localStorage.getItem("metricas-v3-tab") as TabId) || "dashboard";
+      const storedTab = localStorage.getItem("metricas-v3-tab");
+      return isTabId(storedTab) ? storedTab : "dashboard";
     } catch {
       return "dashboard";
     }
@@ -128,29 +135,45 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
     }
   }, [tab]);
 
-  // Si "Descargas" deja de estar disponible, volver al dashboard.
+  // Si la pestaña persistida deja de estar disponible por preferencias,
+  // volver a una vista válida en lugar de renderizar una pantalla vacía.
   useEffect(() => {
-    if (tab === "descargas" && !preferences.showReports) setTab("dashboard");
-  }, [tab, preferences.showReports]);
+    if (!subtabs.some((subtab) => subtab.id === tab)) setTab("dashboard");
+  }, [subtabs, tab]);
 
-  const { data: metrics, isLoading, error } = useMetricsData({ targetYear: year, isTestingMode });
-  const { data: prevMetrics } = useMetricsData({ targetYear: year - 1, isTestingMode });
+  const {
+    data: metrics,
+    isLoading,
+    error,
+    partialErrors,
+    partialLoading,
+  } = useMetricsData({ targetYear: year, isTestingMode });
 
-  // Dinámica del ciclo se pide a nivel vista para alimentar el reporte.
+  // El reporte legacy es la única superficie que requiere una segunda carga
+  // anual y la dinámica calculada a nivel de vista.
+  const legacyReportActive = tab === "reporte" && reportExperience === "current";
+  const { data: prevMetrics } = useMetricsData({
+    targetYear: year - 1,
+    isTestingMode,
+    enabled: legacyReportActive,
+  });
   const { data: dinamica } = useMetricsDinamica({
     year,
     isTestingMode,
+    enabled: legacyReportActive,
   });
 
-  // Datos del año a comparar (solo se piden si el comparativo está activo).
-  const compareActive = compareEnabled && compareYear !== year;
+  // Datos del año a comparar (solo para el reporte legacy y si está activo).
+  const compareActive = legacyReportActive && compareEnabled && compareYear !== year;
   const { data: metricsB } = useMetricsData({
     targetYear: compareYear,
-    isTestingMode: isTestingMode || !compareActive,
+    isTestingMode,
+    enabled: compareActive,
   });
   const { data: dinamicaB } = useMetricsDinamica({
     year: compareYear,
-    isTestingMode: isTestingMode || !compareActive,
+    isTestingMode,
+    enabled: compareActive,
   });
 
   const periodCutoff = metrics?.cutoff_iso || `${year}-12-31`;
@@ -424,18 +447,7 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
               }}
             >
               <div className="meta">Mi Panel Académico · PPS · UFLO Psicología</div>
-              <div
-                className="meta mono"
-                style={{ display: "flex", gap: 16, alignItems: "center", fontSize: 11 }}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span
-                    className="dot dot-live"
-                    style={{ color: "var(--ok)", background: "var(--ok)" }}
-                  />{" "}
-                  Hermes online
-                </span>
-              </div>
+              <HermesStatus className="meta mono" />
             </footer>
           </>
         )}

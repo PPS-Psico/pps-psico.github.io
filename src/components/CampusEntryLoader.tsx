@@ -2,7 +2,7 @@ import React from "react";
 
 /**
  * Loader branded que se muestra mientras se resuelve el ingreso al panel
- * (restauración de sesión + auto-login desde el campus Moodle). Es un ÚNICO
+ * (restauración de sesión + resolución de entrada desde Moodle). Es un ÚNICO
  * spinner reutilizado por AuthContext-gating (StudentDashboard) y por el estado
  * "checking" de <Auth>, para que el usuario vea una sola pantalla de carga
  * continua en vez de dos spinners distintos con el login parpadeando en medio.

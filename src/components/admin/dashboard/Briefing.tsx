@@ -1,4 +1,5 @@
 import React from "react";
+import DOMPurify from "dompurify";
 
 interface BriefingData {
   generadoAgo: string;
@@ -20,8 +21,25 @@ interface BriefingProps {
 const FIGURE_RX =
   /\d[\d.]*(?:\s+de\s+\d[\d.]*)?\s*(?:%|hs\b)|\d[\d.]*\s+(?:solicitudes?|convocatorias?|novedades?|mails?|chats?|instituciones?|alumnos?|borradores?|lanzamientos?|pendientes?)\b/gi;
 
-const highlightFigures = (html: string): string =>
-  html
+/**
+ * El contenido del briefing lo genera Hermes (agent_suggestions.payload) y se
+ * inyecta con dangerouslySetInnerHTML. Como es texto producido por un modelo a
+ * partir de datos externos (mails, chats), es un vector de inyección: bastaba
+ * un `<img src=x onerror=...>` en el payload para ejecutar código en la sesión
+ * de coordinación, que vive en localStorage.
+ *
+ * Se escapa TODO y después se re-habilita una allowlist mínima de etiquetas de
+ * formato, sin atributos. Así `<script>`, `<img>`, `onerror=` y `javascript:`
+ * quedan como texto visible en lugar de ejecutarse.
+ */
+const sanitize = (raw: string): string =>
+  DOMPurify.sanitize(raw ?? "", {
+    ALLOWED_TAGS: ["strong", "em", "b", "i", "br"],
+    ALLOWED_ATTR: [],
+  });
+
+const highlightFigures = (raw: string): string =>
+  sanitize(raw)
     .split(/(<[^>]+>)/g)
     .map((seg) =>
       seg.startsWith("<")

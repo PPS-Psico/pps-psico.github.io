@@ -37,6 +37,7 @@ import {
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import type { AirtableRecord, EstudianteFields } from "../../types";
 import ErrorBoundary from "../../components/ErrorBoundary";
+import HermesStatus from "../../components/admin/HermesStatus";
 import Loader from "../../components/Loader";
 import RecordEditModal from "../../components/admin/RecordEditModal";
 import Toast from "../../components/ui/Toast";
@@ -673,16 +674,7 @@ const TallerView: React.FC<TallerViewProps> = ({ onStudentSelect, isTestingMode 
 
           <footer className="taller-foot">
             <div className="meta">Mi Panel Académico · PPS · UFLO Psicología</div>
-            <div
-              className="meta mono"
-              style={{ display: "flex", gap: 16, alignItems: "center", fontSize: 11 }}
-            >
-              <span
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ok)" }}
-              >
-                <span className="dot dot-ok dot-live" /> Hermes online
-              </span>
-            </div>
+            <HermesStatus className="meta mono" />
           </footer>
         </div>
 

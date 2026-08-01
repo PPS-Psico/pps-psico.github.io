@@ -18,6 +18,7 @@ import { computeHorarioHealth } from "./lanzadorHealth";
 import {
   buildFranjasLibresMessage,
   buildWhatsappFromLaunch,
+  Banner,
   CanvasHeader,
   Loader,
   SeleccionadorConvocatorias,
@@ -36,7 +37,8 @@ const SeleccionView: React.FC<{
   const fechaFin = launch[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string | null;
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
 
-  const { data: inscriptos = [] } = useLaunchRoster(launch.id, isTestingMode);
+  const rosterQuery = useLaunchRoster(launch.id, isTestingMode);
+  const { data: inscriptos = [] } = rosterQuery;
 
   const total = inscriptos.length;
 
@@ -73,6 +75,61 @@ const SeleccionView: React.FC<{
       logger.error(e);
     }
   };
+
+  if (rosterQuery.isLoading) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="seleccion"
+          primaryAction={{
+            label: "Cerrar inscripción",
+            icon: "lock",
+            onClick: onCerrarInscripcion,
+            disabled: true,
+          }}
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  if (rosterQuery.isError) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="seleccion"
+          primaryAction={{
+            label: "Cerrar inscripción",
+            icon: "lock",
+            onClick: onCerrarInscripcion,
+            disabled: true,
+          }}
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Banner
+            tone="warn"
+            icon="cloud_off"
+            title="No se pudieron cargar las inscripciones"
+            action={
+              <button className="lv4-btn" onClick={() => void rosterQuery.refetch()}>
+                Reintentar
+              </button>
+            }
+          >
+            No se muestran conteos ni se permite cerrar la mesa hasta recuperar los datos.
+          </Banner>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

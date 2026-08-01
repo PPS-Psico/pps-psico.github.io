@@ -3,10 +3,10 @@
  * Referencia histórica: stats finales y acciones (duplicar / reabrir).
  */
 import React, { useMemo } from "react";
-import { normalizeStringForComparison } from "../../../utils/formatters";
 import type { LanzamientoPPS } from "../../../types";
-import { CanvasHeader, Stat, StatGrid, Banner } from "./shared";
-import { useLaunchRoster, useLaunchPracticas } from "./useLaunchData";
+import { normalizeStringForComparison } from "../../../utils/formatters";
+import { Banner, CanvasHeader, Loader, Stat, StatGrid } from "./shared";
+import { useLaunchPracticas, useLaunchRoster } from "./useLaunchData";
 
 const ArchivadaView: React.FC<{
   launch: LanzamientoPPS;
@@ -15,9 +15,11 @@ const ArchivadaView: React.FC<{
   onReactivarActiva?: () => void;
   onReactivarConfirmacion?: () => void;
 }> = ({ launch, onDuplicar, onReabrir, onReactivarActiva, onReactivarConfirmacion }) => {
-  const { data: practicas = [] } = useLaunchPracticas(launch.id);
+  const practicasQuery = useLaunchPracticas(launch.id);
+  const { data: practicas = [] } = practicasQuery;
 
-  const { data: convocatorias = [] } = useLaunchRoster(launch.id);
+  const rosterQuery = useLaunchRoster(launch.id);
+  const { data: convocatorias = [] } = rosterQuery;
 
   const inscriptos = convocatorias.length;
   const seleccionados = convocatorias.filter(
@@ -64,6 +66,60 @@ const ArchivadaView: React.FC<{
       },
     ].filter((a) => a.show);
   }, [onDuplicar, onReabrir, onReactivarActiva, onReactivarConfirmacion, seleccionados]);
+
+  if (practicasQuery.isLoading || rosterQuery.isLoading) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="archivada"
+          primaryAction={{
+            label: "Duplicar como base",
+            icon: "content_copy",
+            onClick: onDuplicar,
+            disabled: true,
+          }}
+        />
+        <div className="lv4-canvas-body">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  if (practicasQuery.isError || rosterQuery.isError) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="archivada"
+          primaryAction={{
+            label: "Duplicar como base",
+            icon: "content_copy",
+            onClick: onDuplicar,
+            disabled: true,
+          }}
+        />
+        <div className="lv4-canvas-body">
+          <Banner
+            tone="warn"
+            icon="cloud_off"
+            title="No se pudo cargar el historial"
+            action={
+              <button
+                className="lv4-btn"
+                onClick={() => void Promise.all([practicasQuery.refetch(), rosterQuery.refetch()])}
+              >
+                Reintentar
+              </button>
+            }
+          >
+            Las estadísticas y acciones de reactivación quedan ocultas hasta verificar los datos.
+          </Banner>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

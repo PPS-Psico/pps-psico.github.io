@@ -48,21 +48,17 @@ describe("StudentHomeAtlas en escritorio", () => {
 
     render(
       <StudentHomeAtlas
-        student={null}
         studentName="Ana"
         criterios={initialCriterios}
         openLanzamientos={[
           { ...launch, [FIELD_DESCRIPCION_LANZAMIENTOS]: fullDescription },
           secondLaunch,
         ]}
-        practicas={[]}
         solicitudes={[]}
-        informeTasks={[]}
         closedLanzamientos={[]}
         enrollmentMap={new Map()}
         institutionAddressMap={new Map()}
         consent={null}
-        upcomingStart={null}
         onStartConsent={jest.fn()}
         onOpenDetalle={jest.fn()}
         onInscribir={jest.fn()}
@@ -73,6 +69,7 @@ describe("StudentHomeAtlas en escritorio", () => {
     );
 
     expect(screen.getByText(fullDescription)).toBeInTheDocument();
+    expect(screen.queryByText(/Próximo paso/i)).not.toBeInTheDocument();
   });
 
   it("permite cancelar una inscripción desde la tarjeta destacada sin navegar", () => {
@@ -81,18 +78,14 @@ describe("StudentHomeAtlas en escritorio", () => {
 
     render(
       <StudentHomeAtlas
-        student={null}
         studentName="Ana"
         criterios={initialCriterios}
         openLanzamientos={[launch]}
-        practicas={[]}
         solicitudes={[]}
-        informeTasks={[]}
         closedLanzamientos={[]}
         enrollmentMap={new Map([[launch.id, enrollment]])}
         institutionAddressMap={new Map()}
         consent={null}
-        upcomingStart={null}
         onStartConsent={jest.fn()}
         onOpenDetalle={onOpenDetalle}
         onInscribir={jest.fn()}
@@ -107,5 +100,38 @@ describe("StudentHomeAtlas en escritorio", () => {
 
     expect(onCancelarInscripcion).toHaveBeenCalledWith(enrollment.id, "Institución de prueba");
     expect(onOpenDetalle).not.toHaveBeenCalled();
+  });
+
+  it("presenta el estado personal antes que la nÃ³mina de convocados", () => {
+    const closedLaunch = { ...launch, id: "launch-closed" } as LanzamientoPPS;
+    const notSelectedEnrollment = {
+      ...enrollment,
+      id: "enrollment-closed",
+      [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: closedLaunch.id,
+      [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "No Seleccionado",
+    } as Convocatoria;
+
+    render(
+      <StudentHomeAtlas
+        studentName="Ana"
+        criterios={initialCriterios}
+        openLanzamientos={[]}
+        solicitudes={[]}
+        closedLanzamientos={[closedLaunch]}
+        enrollmentMap={new Map([[closedLaunch.id, notSelectedEnrollment]])}
+        institutionAddressMap={new Map()}
+        consent={null}
+        onStartConsent={jest.fn()}
+        onOpenDetalle={jest.fn()}
+        onInscribir={jest.fn()}
+        onCancelarInscripcion={jest.fn()}
+        onVerConvocados={jest.fn()}
+        onNavigate={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Tus resultados" })).toBeInTheDocument();
+    expect(screen.getByText("No seleccionado/a")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ver convocados/i })).toBeInTheDocument();
   });
 });

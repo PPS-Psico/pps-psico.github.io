@@ -7,7 +7,7 @@ import {
   FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
 } from "../../constants";
-import type { CriteriosCalculados, FinalizacionPPS, InformeTask, SolicitudPPS } from "../../types";
+import type { CriteriosCalculados, FinalizacionPPS, SolicitudPPS } from "../../types";
 import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import FinalizationStatusCard from "../../components/student/FinalizationStatusCard";
 
@@ -17,7 +17,6 @@ interface AtlasSolicitudesViewProps {
   onRequestFinalization?: () => void;
   criterios?: CriteriosCalculados;
   finalizacionRequest?: FinalizacionPPS | null;
-  informeTasks?: InformeTask[];
 }
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -69,22 +68,12 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
   onRequestFinalization,
   criterios,
   finalizacionRequest,
-  informeTasks = [],
 }) => {
-  const hasPendingCorrections = useMemo(
-    () =>
-      informeTasks.some(
-        (t) =>
-          t.informeSubido && (t.nota === "Sin calificar" || t.nota === "Entregado (sin corregir)")
-      ),
-    [informeTasks]
-  );
   const isAccreditationReady = criterios
     ? criterios.cumpleHorasTotales &&
       criterios.cumpleRotacion &&
       criterios.cumpleHorasOrientacion &&
-      !criterios.tienePracticasPendientes &&
-      !hasPendingCorrections
+      !criterios.tienePracticasPendientes
     : false;
   const missingAccreditationItems = criterios
     ? [
@@ -92,7 +81,6 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
         !criterios.cumpleRotacion,
         !criterios.cumpleHorasOrientacion,
         criterios.tienePracticasPendientes,
-        hasPendingCorrections,
       ].filter(Boolean).length
     : 0;
 

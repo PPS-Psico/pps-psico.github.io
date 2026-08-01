@@ -48,6 +48,7 @@ html.dark .metricas-v3 .display em { color: #c9a2bd; }
 .metricas-v3 section.band.top { border-top: 1px solid var(--rule-2); }
 .metricas-v3 .band-title { margin: 0 0 16px; }
 .metricas-v3 .grid { display: grid; gap: 12px; }
+.metricas-v3 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .metricas-v3 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .metricas-v3 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
@@ -211,14 +212,14 @@ html.dark .metricas-v3 .exec-deck strong {
 
 /* — responsive — */
 @media (max-width: 860px) {
-  .metricas-v3 .grid-3, .metricas-v3 .grid-4 { grid-template-columns: 1fr 1fr; }
+  .metricas-v3 .grid-2, .metricas-v3 .grid-3, .metricas-v3 .grid-4 { grid-template-columns: 1fr 1fr; }
   .metricas-v3 .charts-2col { grid-template-columns: 1fr; }
   .metricas-v3 .masthead h1 { font-size: 40px; }
   .metricas-v3 .exec-stats-3, .metricas-v3 .exec-stats-4 { grid-template-columns: 1fr 1fr; }
   .metricas-v3 .exec-sheet { padding: 32px 26px 28px; }
 }
 @media (max-width: 560px) {
-  .metricas-v3 .grid-3, .metricas-v3 .grid-4 { grid-template-columns: 1fr; }
+  .metricas-v3 .grid-2, .metricas-v3 .grid-3, .metricas-v3 .grid-4 { grid-template-columns: 1fr; }
   .metricas-v3 .masthead h1 { font-size: 34px; }
   .metricas-v3 .exec-stats-3, .metricas-v3 .exec-stats-4 { grid-template-columns: 1fr; }
   .metricas-v3 .exec-sheet { padding: 26px 18px 24px; }

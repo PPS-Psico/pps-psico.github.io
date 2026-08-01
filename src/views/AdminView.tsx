@@ -6,7 +6,10 @@ import { type TabItem } from "../components/UnifiedTabs";
 import AdminTopBar from "../components/layout/AdminTopBar";
 import { useAdminPreferences } from "../contexts/AdminPreferencesContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useModal } from "../contexts/ModalContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES } from "../constants";
+import type { AirtableRecord, EstudianteFields } from "../types";
 
 // Components for Testing Mode
 const AdminDashboard = lazy(() => import("../components/admin/AdminDashboard"));
@@ -39,6 +42,7 @@ const MOBILE_TAB_IDS = new Set(["dashboard", "lanzador", "gestion"]);
 const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
   const { preferences } = useAdminPreferences();
   const { logout } = useAuth();
+  const { showModal } = useModal();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -130,9 +134,24 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     navigate("/admin/herramientas");
   };
 
-  const handleTestStudentSelect = (student: any) => {
-    alert("Navegación simulada al perfil de: " + student.nombre + " (" + student.legajo + ")");
+  // Modo testing: no navega, solo deja constancia de a qué perfil se iría.
+  // Métricas y Taller entregan formas distintas del estudiante (una plana, la
+  // otra el registro completo), así que cada una tiene su adaptador tipado.
+  const announceTestStudent = (nombre: string | null, legajo: string | null) => {
+    showModal(
+      "Navegación simulada",
+      `En modo real se abriría el panel de ${nombre || "el estudiante"} (legajo ${legajo || "—"}).`
+    );
   };
+
+  const handleTestStudentSelectFlat = (student: { legajo: string; nombre: string }) =>
+    announceTestStudent(student.nombre, student.legajo);
+
+  const handleTestStudentSelectRecord = (student: AirtableRecord<EstudianteFields>) =>
+    announceTestStudent(
+      student[FIELD_NOMBRE_ESTUDIANTES],
+      student[FIELD_LEGAJO_ESTUDIANTES] == null ? null : String(student[FIELD_LEGAJO_ESTUDIANTES])
+    );
 
   const renderContent = () => {
     if (!isTestingMode) {
@@ -158,13 +177,13 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
           {localTab === "solicitudes" && <SolicitudesManager isTestingMode={true} />}
           {localTab === "metrics" && (
             <MetricsView
-              onStudentSelect={handleTestStudentSelect}
+              onStudentSelect={handleTestStudentSelectFlat}
               isTestingMode={true}
               onModalOpen={setIsModalOpen}
             />
           )}
           {localTab === "herramientas" && (
-            <TallerView onStudentSelect={handleTestStudentSelect} isTestingMode={true} />
+            <TallerView onStudentSelect={handleTestStudentSelectRecord} isTestingMode={true} />
           )}
         </div>
       </React.Suspense>

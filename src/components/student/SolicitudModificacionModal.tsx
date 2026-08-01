@@ -11,8 +11,10 @@ import {
   FIELD_HORAS_PRACTICAS,
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
+  FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_FECHA_INICIO_PRACTICAS,
 } from "../../constants";
-import { cleanDbValue } from "../../utils/formatters";
+import { cleanDbValue, formatDate } from "../../utils/formatters";
 import { isPracticeDisapproved } from "../../logic/studentRules";
 
 interface SolicitudModificacionModalProps {
@@ -20,46 +22,109 @@ interface SolicitudModificacionModalProps {
   onClose: () => void;
   practica: Practica | null;
   studentId: string | null;
+  onFechaFinChange?: (practicaId: string, fecha: string) => Promise<void>;
   onSuccess?: () => void;
 }
 
-type ModificacionType = "horas" | "eliminacion" | null;
+type ModificacionType = "horas" | "fecha_fin" | "eliminacion" | null;
 
 const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   isOpen,
   onClose,
   practica,
   studentId,
+  onFechaFinChange,
   onSuccess,
 }) => {
   const { showToast } = useNotifications();
   const [step, setStep] = useState<1 | 2>(1);
   const [tipoModificacion, setTipoModificacion] = useState<ModificacionType>(null);
   const [horasNuevas, setHorasNuevas] = useState<string>("");
+  const [fechaFinNueva, setFechaFinNueva] = useState<string>("");
   const [planillaFile, setPlanillaFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+      const previousOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
-      // Reset state
       setStep(1);
       setTipoModificacion(null);
       setHorasNuevas("");
+      setFechaFinNueva("");
       setPlanillaFile(null);
       setShowDeleteConfirm(false);
-    } else {
-      document.body.style.overflow = "unset";
+      window.setTimeout(() => closeButtonRef.current?.focus(), 0);
+
+      return () => {
+        document.body.style.overflow = previousOverflow;
+        previouslyFocusedRef.current?.focus();
+      };
     }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (showDeleteConfirm) {
+      window.setTimeout(
+        () => deleteDialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus(),
+        0
+      );
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+          window.setTimeout(() => deleteTriggerRef.current?.focus(), 0);
+        } else if (!isSubmitting && !isDeleting && !isUpdatingDate) {
+          onClose();
+        }
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const activeDialog = showDeleteConfirm ? deleteDialogRef.current : dialogRef.current;
+      const focusable = Array.from(
+        activeDialog?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      ).filter((element) => !element.hasAttribute("hidden"));
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        activeDialog?.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isDeleting, isOpen, isSubmitting, isUpdatingDate, onClose, showDeleteConfirm]);
 
   if (!isOpen || !practica) return null;
 
@@ -68,6 +133,14 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   const horasActuales = practica[FIELD_HORAS_PRACTICAS] || 0;
   const orientacion = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
   const isDisapproved = isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]);
+  const fechaInicio = practica[FIELD_FECHA_INICIO_PRACTICAS];
+  const fechaFinActual = practica[FIELD_FECHA_FIN_PRACTICAS];
+  const toDateInputValue = (value: unknown) => {
+    if (!value) return "";
+    return String(value).split("T")[0];
+  };
+  const fechaInicioInput = toDateInputValue(fechaInicio);
+  const fechaFinActualInput = toDateInputValue(fechaFinActual);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -195,6 +268,25 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
     }
   };
 
+  const handleUpdateFechaFin = async () => {
+    if (!onFechaFinChange || !fechaFinNueva) return;
+    if (fechaInicioInput && fechaFinNueva < fechaInicioInput) {
+      showToast("La fecha de finalización no puede ser anterior al inicio.", "error");
+      return;
+    }
+
+    setIsUpdatingDate(true);
+    try {
+      await onFechaFinChange(practica.id, fechaFinNueva);
+      onSuccess?.();
+      onClose();
+    } catch {
+      // La mutación de origen muestra el error y conserva el editor abierto.
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
+
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
@@ -233,8 +325,44 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
           </div>
         </button>
 
+        {onFechaFinChange && !isDisapproved ? (
+          <button
+            type="button"
+            onClick={() => {
+              setFechaFinNueva(fechaFinActualInput);
+              setTipoModificacion("fecha_fin");
+              setStep(2);
+            }}
+            className={`w-full p-4 rounded-xl border-2 text-left transition ${
+              tipoModificacion === "fecha_fin"
+                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                : "border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <span
+                  className="material-icons text-emerald-700 dark:text-emerald-300"
+                  aria-hidden="true"
+                >
+                  event
+                </span>
+              </div>
+              <div>
+                <p className="font-bold text-slate-900 dark:text-white">
+                  Editar fecha de finalización
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Actual: {formatDate(fechaFinActual)}
+                </p>
+              </div>
+            </div>
+          </button>
+        ) : null}
+
         {!isDisapproved && (
           <button
+            ref={deleteTriggerRef}
             onClick={() => setShowDeleteConfirm(true)}
             className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-left transition hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/10"
           >
@@ -273,10 +401,14 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          <label
+            htmlFor="solicitud-horas-nuevas"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+          >
             Cantidad de horas <span className="text-slate-400">(máx 120)</span>
           </label>
           <input
+            id="solicitud-horas-nuevas"
             type="number"
             value={horasNuevas}
             onChange={(e) => setHorasNuevas(e.target.value)}
@@ -291,15 +423,27 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          <label
+            htmlFor="solicitud-planilla-file"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+          >
             Planilla de asistencia <span className="text-rose-500">*</span>
           </label>
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Seleccionar planilla de asistencia"
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${
               dragActive
                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
@@ -309,11 +453,13 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             }`}
           >
             <input
+              id="solicitud-planilla-file"
               ref={fileInputRef}
               type="file"
               accept=".pdf,.doc,.docx,.doc,.jpeg,.jpg,.png,.webp"
               onChange={handleFileChange}
               className="hidden"
+              aria-label="Archivo de planilla de asistencia"
             />
             {planillaFile ? (
               <div className="flex items-center justify-center gap-2">
@@ -324,11 +470,13 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
                   {planillaFile.name}
                 </span>
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setPlanillaFile(null);
                   }}
                   className="ml-2 text-slate-400 hover:text-rose-500"
+                  aria-label={`Quitar archivo ${planillaFile.name}`}
                 >
                   <span className="material-icons text-sm">close</span>
                 </button>
@@ -373,9 +521,59 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
     </div>
   );
 
+  const renderStep2Fecha = () => (
+    <div className="space-y-6">
+      <div>
+        <label
+          htmlFor="practica-fecha-fin"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+        >
+          Fecha de finalización
+        </label>
+        <input
+          id="practica-fecha-fin"
+          type="date"
+          value={fechaFinNueva}
+          min={fechaInicioInput || undefined}
+          onChange={(event) => setFechaFinNueva(event.target.value)}
+          className="min-h-11 w-full px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+        />
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+          Esta PPS comenzó el {formatDate(fechaInicio)}.
+        </p>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setStep(1);
+            setTipoModificacion(null);
+          }}
+          className="flex-1"
+        >
+          Volver
+        </Button>
+        <Button
+          onClick={handleUpdateFechaFin}
+          isLoading={isUpdatingDate}
+          disabled={!fechaFinNueva || fechaFinNueva === fechaFinActualInput}
+          className="flex-1"
+        >
+          Guardar fecha
+        </Button>
+      </div>
+    </div>
+  );
+
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="solicitud-modificacion-title"
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
@@ -383,12 +581,23 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
       >
         <div className="p-6 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              {step === 1 ? "Solicitar modificación" : "Cambiar horas"}
+            <h2
+              id="solicitud-modificacion-title"
+              className="text-xl font-bold text-slate-900 dark:text-white"
+            >
+              {step === 1
+                ? "Editar práctica"
+                : tipoModificacion === "fecha_fin"
+                  ? "Editar fecha"
+                  : "Cambiar horas"}
             </h2>
             <button
+              ref={closeButtonRef}
+              type="button"
               onClick={onClose}
+              disabled={isSubmitting || isUpdatingDate || isDeleting}
               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              aria-label="Cerrar edición de práctica"
             >
               <span className="material-icons">close</span>
             </button>
@@ -396,7 +605,11 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {step === 1 ? renderStep1() : renderStep2Horas()}
+          {step === 1
+            ? renderStep1()
+            : tipoModificacion === "fecha_fin"
+              ? renderStep2Fecha()
+              : renderStep2Horas()}
         </div>
       </motion.div>
 
@@ -410,6 +623,12 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4"
           >
             <motion.div
+              ref={deleteDialogRef}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-practica-title"
+              aria-describedby="delete-practica-description"
+              tabIndex={-1}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -421,10 +640,16 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
                     warning
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                <h3
+                  id="delete-practica-title"
+                  className="text-xl font-bold text-slate-900 dark:text-white mb-2"
+                >
                   ¿Eliminar PPS?
                 </h3>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">
+                <p
+                  id="delete-practica-description"
+                  className="text-slate-600 dark:text-slate-400 text-sm"
+                >
                   Esta acción no se puede deshacer. Se eliminará permanentemente el registro de{" "}
                   <strong>{institucion}</strong>.
                 </p>
@@ -433,7 +658,10 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
               <div className="flex gap-3">
                 <Button
                   variant="secondary"
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0);
+                  }}
                   className="flex-1"
                 >
                   Cancelar

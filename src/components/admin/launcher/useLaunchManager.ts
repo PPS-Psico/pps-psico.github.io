@@ -46,6 +46,7 @@ import {
   FIELD_TUTOR_INSTITUCIONES,
 } from "../../../constants";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../../constants/configConstants";
+import { useConfirm } from "../../../hooks/useConfirm";
 import { db } from "../../../lib/db";
 import { supabase } from "../../../lib/supabaseClient";
 import { uploadInstitutionLogo } from "../../../services";
@@ -122,6 +123,10 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [editingLaunch, setEditingLaunch] = useState<LanzamientoPPS | null>(null);
   const [copiedLaunchId, setCopiedLaunchId] = useState<string | null>(null);
+
+  // Confirmación con la UI del panel. El consumidor debe renderizar
+  // `confirmDialog` (ver LanzadorConvocatorias).
+  const { confirm, confirmDialog } = useConfirm();
 
   const isMultiOrientation = useMemo(() => {
     const orientations = Array.isArray(formData.orientacion) ? formData.orientacion : [];
@@ -488,10 +493,25 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   }, [rawActivityText]);
 
   const handleSmartPreview = useCallback(() => {
-    const message = buildWhatsappMessage({ formData, schedules, isMultiOrientation });
-    setFormData((prev) => ({ ...prev, mensajeWhatsApp: message }));
-    setShowPreviewModal(true);
-  }, [formData, schedules, isMultiOrientation]);
+    try {
+      const institutionName = selectedInstitution?.[FIELD_NOMBRE_INSTITUCIONES];
+      const message = buildWhatsappMessage({
+        formData,
+        schedules,
+        isMultiOrientation,
+        institutionName: typeof institutionName === "string" ? institutionName : undefined,
+      });
+      setFormData((prev) => ({ ...prev, mensajeWhatsApp: message }));
+      setShowPreviewModal(true);
+    } catch (error) {
+      logger.error("[Lanzador] No se pudo generar la previsualización:", error);
+      setToastInfo({
+        message:
+          "No pudimos generar la previsualización. Revisá los horarios e intentá nuevamente.",
+        type: "error",
+      });
+    }
+  }, [formData, schedules, isMultiOrientation, selectedInstitution]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -782,16 +802,17 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   );
 
   const handleDeleteLaunch = useCallback(
-    (id: string) => {
-      if (
-        window.confirm(
-          "¿Estás seguro de eliminar este lanzamiento? Esto no se puede deshacer y podría afectar a los estudiantes inscriptos."
-        )
-      ) {
-        deleteLaunchMutation.mutate(id);
-      }
+    async (id: string) => {
+      const ok = await confirm({
+        title: "¿Eliminar este lanzamiento?",
+        message:
+          "Esto no se puede deshacer y podría afectar a los estudiantes inscriptos en la convocatoria.",
+        confirmText: "Eliminar",
+        type: "danger",
+      });
+      if (ok) deleteLaunchMutation.mutate(id);
     },
-    [deleteLaunchMutation]
+    [confirm, deleteLaunchMutation]
   );
 
   const handleCopyHistoryWhatsApp = useCallback((launch: LanzamientoPPS) => {
@@ -838,6 +859,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     selectedInstitution,
     lastLanzamiento,
     // modals
+    confirmDialog,
     isNewInstitutionModalOpen,
     setIsNewInstitutionModalOpen,
     showPreviewModal,

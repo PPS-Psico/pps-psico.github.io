@@ -1,10 +1,10 @@
 import React, { useState } from "react";
+import type { Convocatoria } from "../types";
 import {
   getEspecialidadClasses,
   normalizeStringForComparison,
   parseOrientaciones,
 } from "../utils/formatters";
-import type { Convocatoria } from "../types";
 
 export interface ConvocatoriaDetailProps {
   id: string;
@@ -42,6 +42,8 @@ export interface ConvocatoriaDetailProps {
   completedOrientaciones?: string[];
   fechaEncuentroInicial?: string;
   hideCompromisoStatus?: boolean;
+  /** Abre el detalle desde el primer render; útil para previsualizaciones. */
+  defaultExpanded?: boolean;
 }
 
 const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
@@ -73,12 +75,13 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   completedOrientaciones = [],
   fechaEncuentroInicial,
   hideCompromisoStatus = false,
+  defaultExpanded = false,
 }) => {
   const orientationsArray = parseOrientaciones(orientacion);
   const primaryOrientacion = orientationsArray[0] || "Clínica";
   const theme = getEspecialidadClasses(primaryOrientacion);
   const [isHovered, setIsHovered] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const completedSet = new Set(completedOrientaciones.map((o) => normalizeStringForComparison(o)));
 

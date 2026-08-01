@@ -1,22 +1,59 @@
 # Contrato compartido entre dashboard e informes
 
-Versión: `dashboard-report-contract-v1` · 18/07/2026.
+Versión: `dashboard-report-contract-v1.1` · 30/07/2026.
 
 ## Decisión
 
-El dashboard y los informes no calculan variantes propias de una misma cifra.
-Comparten dos contratos, separados por su naturaleza temporal:
+El dashboard y los informes no deben calcular variantes propias de una misma
+cifra. El contrato objetivo separa tres familias:
 
 1. **Resultados del período (`analytics-v2`)**: ofertas, capacidad registrada,
    estudiantes que iniciaron, finalizaciones, postulaciones y postulantes.
 2. **Foto operativa (`director-report-v1`)**: estudiantes sin PPS con demanda
    activa, próximos a finalizar, listos para solicitar acreditación y solicitudes
    en trámite.
+3. **Poblaciones de acceso y activación (`population-contract-v2`)**: matrícula
+   administrativa, cuentas creadas, nuevas cuentas activas y cohorte de primera
+   actividad.
 
 No se comparan stocks actuales como si fueran resultados anuales. Cambiar el
 selector de año modifica el ciclo de los resultados y el año usado para probar
 demanda activa; la situación académica de cada estudiante sigue siendo la foto
 actual registrada en la base.
+
+## Estado de cumplimiento
+
+Este archivo define el contrato objetivo, no certifica por sí solo que todas las
+pantallas ya lo cumplan.
+
+Al 30/07/2026 permanecen pendientes:
+
+- reemplazar o renombrar la tarjeta legacy
+  `matricula_generada = cohorte = año`;
+- implementar el KPI `Nuevas cuentas activas` desde
+  `auth.users.created_at` + estado actual;
+- hacer reconciliables `Población del ciclo` y su listado nominal;
+- separar errores de consulta, cero real y dato parcial;
+- evitar datos placeholder de un año etiquetados con el año recién seleccionado;
+- desacoplar `analytics-v2` de la disponibilidad de la RPC legacy.
+
+Hasta completar estos puntos, el informe profesional anual es la superficie
+autoritativa para resultados del período. Las tarjetas poblacionales legacy del
+dashboard no deben citarse como matrícula o activación.
+
+## Vocabulario poblacional obligatorio
+
+- `Matriculados administrativamente en PPS`: padrón externo de Sede Comahue.
+- `Cuentas de estudiantes creadas`: flujo por `auth.users.created_at`.
+- `Nuevas cuentas activas`: cuentas creadas en el año que siguen activas al
+  corte.
+- `Cohorte de primera actividad`: debut registrado en convocatoria o práctica.
+- `Estudiantes postulados`: demanda observada en el período.
+- `Estudiantes que iniciaron PPS`: inicio efectivo en el período.
+
+La etiqueta `Ingresantes` sin calificador no se publica. El contrato completo
+está en
+[criterio-metricas-ingresantes.md](../criterio-metricas-ingresantes.md).
 
 ## Períodos
 

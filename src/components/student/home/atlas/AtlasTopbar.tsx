@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import "./atlasHome.css";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -28,13 +28,55 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
   const { resolvedTheme, setTheme } = useTheme();
   const [openMenu, setOpenMenu] = useState<"resources" | "account" | null>(null);
   const menusRef = useRef<HTMLDivElement>(null);
+  const resourcesTriggerRef = useRef<HTMLButtonElement>(null);
+  const resourcesMenuRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const initial = (authenticatedUser?.nombre || "").trim().charAt(0).toUpperCase() || "E";
   const firstName = authenticatedUser?.nombre?.trim().split(/\s+/)[0] || "Estudiante";
   const panelUrl = "https://pps-psico.github.io/#/student";
 
+  const restoreMenuTriggerFocus = useCallback((menu: "resources" | "account") => {
+    const trigger = menu === "resources" ? resourcesTriggerRef.current : accountTriggerRef.current;
+    requestAnimationFrame(() => trigger?.focus());
+  }, []);
+
   const handleTabChange = (tab: TabId) => {
+    const menuToRestore = openMenu;
     setOpenMenu(null);
     if (tab !== activeTab) onTabChange(tab);
+    if (menuToRestore) restoreMenuTriggerFocus(menuToRestore);
+  };
+
+  const handleMenuKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+    menu: "resources" | "account"
+  ) => {
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
+    );
+    const activeIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      setOpenMenu(null);
+      restoreMenuTriggerFocus(menu);
+      return;
+    }
+    if (event.key === "Tab") {
+      setOpenMenu(null);
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || items.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.key === "Home") items[0]?.focus();
+    else if (event.key === "End") items[items.length - 1]?.focus();
+    else if (event.key === "ArrowDown") items[(activeIndex + 1) % items.length]?.focus();
+    else items[(activeIndex - 1 + items.length) % items.length]?.focus();
   };
 
   useEffect(() => {
@@ -42,7 +84,10 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
       if (!menusRef.current?.contains(event.target as Node)) setOpenMenu(null);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenMenu(null);
+      if (event.key === "Escape" && openMenu) {
+        setOpenMenu(null);
+        restoreMenuTriggerFocus(openMenu);
+      }
     };
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
@@ -50,7 +95,15 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, []);
+  }, [openMenu, restoreMenuTriggerFocus]);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const menu = openMenu === "resources" ? resourcesMenuRef.current : accountMenuRef.current;
+    requestAnimationFrame(() =>
+      menu?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+    );
+  }, [openMenu]);
 
   const [embedded] = useState(() => {
     try {
@@ -119,6 +172,7 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
 
             <div className="ah-navmenu">
               <button
+                ref={resourcesTriggerRef}
                 type="button"
                 className={
                   "ah-nav__item ah-nav__item--resources" +
@@ -126,6 +180,7 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 }
                 aria-haspopup="menu"
                 aria-expanded={openMenu === "resources"}
+                aria-controls="atlas-resources-menu"
                 onClick={() =>
                   setOpenMenu((current) => (current === "resources" ? null : "resources"))
                 }
@@ -136,8 +191,17 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                 </span>
               </button>
               {openMenu === "resources" && (
-                <div className="ah-menu ah-menu--resources" role="menu">
-                  <div className="ah-menu__label">Campus PPS</div>
+                <div
+                  ref={resourcesMenuRef}
+                  id="atlas-resources-menu"
+                  className="ah-menu ah-menu--resources"
+                  role="menu"
+                  tabIndex={-1}
+                  onKeyDown={(event) => handleMenuKeyDown(event, "resources")}
+                >
+                  <div className="ah-menu__label" role="presentation">
+                    Campus PPS
+                  </div>
                   {RESOURCE_NAV.map((item) => (
                     <button
                       key={item.id}
@@ -186,10 +250,12 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
             {authenticatedUser ? (
               <div className="ah-account">
                 <button
+                  ref={accountTriggerRef}
                   type="button"
                   className="ah-account__trigger"
                   aria-haspopup="menu"
                   aria-expanded={openMenu === "account"}
+                  aria-controls="atlas-account-menu"
                   onClick={() =>
                     setOpenMenu((current) => (current === "account" ? null : "account"))
                   }
@@ -203,10 +269,21 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                   </span>
                 </button>
                 {openMenu === "account" && (
-                  <div className="ah-menu ah-menu--account" role="menu">
-                    <div className="ah-menu__account-name">{authenticatedUser.nombre}</div>
-                    <div className="ah-menu__account-meta">Cuenta de estudiante</div>
-                    <div className="ah-menu__divider" />
+                  <div
+                    ref={accountMenuRef}
+                    id="atlas-account-menu"
+                    className="ah-menu ah-menu--account"
+                    role="menu"
+                    tabIndex={-1}
+                    onKeyDown={(event) => handleMenuKeyDown(event, "account")}
+                  >
+                    <div className="ah-menu__account-name" role="presentation">
+                      {authenticatedUser.nombre}
+                    </div>
+                    <div className="ah-menu__account-meta" role="presentation">
+                      Cuenta de estudiante
+                    </div>
+                    <div className="ah-menu__divider" role="separator" />
                     <button
                       type="button"
                       role="menuitem"

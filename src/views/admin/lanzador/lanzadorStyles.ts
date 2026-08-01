@@ -930,6 +930,100 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   .lv4-schedule-required { grid-column: 1; justify-self: start; }
 }
 
+/* ── Previsualización de lanzamiento ────────────────────────────────────── */
+.lv4-preview-overlay { z-index: 1500; padding: 18px; }
+.lv4-preview-backdrop-hit {
+  position: absolute; inset: 0; width: 100%; height: 100%; padding: 0;
+  border: 0; background: transparent; cursor: default;
+}
+.lv4-preview-shell {
+  position: relative; z-index: 1;
+  max-width: 1180px; max-height: calc(100vh - 36px); border-radius: 18px;
+}
+.lv4-preview-body { padding: 0; background: var(--paper-2); }
+.lv4-preview-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 13px 24px; border-bottom: 1px solid var(--rule-2); background: var(--paper);
+}
+.lv4-preview-summary-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lv4-preview-summary-main > .material-icons { font-size: 18px; color: var(--ok); }
+.lv4-preview-summary-main strong { display: block; font-size: 12.5px; color: var(--ink); }
+.lv4-preview-summary-main span { display: block; margin-top: 1px; font-size: 11px; color: var(--ink-3); }
+.lv4-preview-summary.is-incomplete .lv4-preview-summary-main > .material-icons { color: var(--warn); }
+.lv4-preview-grid {
+  display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(330px, .85fr);
+  gap: 18px; padding: 18px; align-items: start;
+}
+.lv4-preview-panel {
+  min-width: 0; border: 1px solid var(--rule-2); border-radius: 14px;
+  background: var(--paper); overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+}
+.lv4-preview-panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 58px; padding: 12px 16px; border-bottom: 1px solid var(--rule-2);
+}
+.lv4-preview-panel-heading { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lv4-preview-panel-icon {
+  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 9px;
+  display: grid; place-items: center; background: var(--accent-s); color: var(--accent);
+}
+.lv4-preview-panel-icon.is-whatsapp { background: var(--ok-s); color: var(--ok); }
+.lv4-preview-panel-icon .material-icons { font-size: 18px; }
+.lv4-preview-panel-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--ink); }
+.lv4-preview-panel-meta { margin-top: 2px; font-size: 10.5px; color: var(--ink-3); }
+.lv4-preview-student-stage { padding: 14px; background: var(--paper-2); }
+.lv4-preview-student-stage > * { margin: 0 auto; }
+.lv4-preview-wa-panel { position: sticky; top: 0; }
+.lv4-preview-editor { padding: 14px; }
+.lv4-preview-textarea {
+  min-height: 520px; resize: vertical; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px; line-height: 1.6; white-space: pre-wrap;
+}
+.lv4-preview-editor-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 8px; color: var(--ink-4); font-size: 10.5px;
+}
+.lv4-preview-foot { justify-content: space-between; align-items: center; }
+.lv4-preview-foot-note { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink-3); }
+.lv4-preview-foot-note .material-icons { font-size: 16px; }
+.lv4-preview-foot-actions { display: flex; gap: 9px; }
+.lv4-launch-cta {
+  position: sticky; bottom: 0; z-index: 4; margin-top: 18px; padding: 15px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  border: 1px solid var(--rule-2); border-radius: 12px; background: color-mix(in oklab, var(--paper) 92%, transparent);
+  box-shadow: 0 12px 28px color-mix(in oklab, var(--ink) 9%, transparent); backdrop-filter: blur(10px);
+}
+.lv4-launch-cta.is-ready { border-color: color-mix(in oklab, var(--ok) 30%, var(--rule-2)); }
+.lv4-launch-cta-copy { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lv4-launch-cta-copy > .material-icons { font-size: 19px; color: var(--warn); }
+.lv4-launch-cta.is-ready .lv4-launch-cta-copy > .material-icons { color: var(--ok); }
+.lv4-launch-cta-copy strong { display: block; color: var(--ink); font-size: 12.5px; }
+.lv4-launch-cta-copy span:not(.material-icons) { display: block; margin-top: 2px; color: var(--ink-3); font-size: 11px; }
+.lv4-launch-preview-btn { min-height: 40px; white-space: nowrap; }
+.lv4-launch-preview-btn > .material-icons { font-size: 17px; }
+.lv4-launch-missing {
+  display: inline-grid; place-items: center; min-width: 19px; height: 19px; padding: 0 5px;
+  border-radius: 999px; background: var(--warn); color: var(--paper); font-size: 10px; font-weight: 700;
+}
+@media (max-width: 900px) {
+  .lv4-preview-grid { grid-template-columns: 1fr; }
+  .lv4-preview-wa-panel { position: static; }
+  .lv4-preview-textarea { min-height: 300px; }
+}
+@media (max-width: 560px) {
+  .lv4-preview-overlay { padding: 0; }
+  .lv4-preview-shell { max-height: 100vh; min-height: 100vh; border-radius: 0; border: 0; }
+  .lv4-preview-summary { align-items: flex-start; padding: 12px 14px; }
+  .lv4-preview-grid { padding: 10px; gap: 10px; }
+  .lv4-preview-student-stage, .lv4-preview-editor { padding: 8px; }
+  .lv4-preview-foot { align-items: stretch; }
+  .lv4-preview-foot-note { display: none; }
+  .lv4-preview-foot-actions { width: 100%; }
+  .lv4-preview-foot-actions .lv4-btn { flex: 1; justify-content: center; }
+  .lv4-launch-cta { align-items: stretch; flex-direction: column; }
+  .lv4-launch-preview-btn { justify-content: center; }
+}
+
 /* ── Desaprobación institucional ─────────────────────────────────────────── */
 .lv4-input {
   width: 100%; box-sizing: border-box; font-family: inherit; font-size: 13px;

@@ -116,8 +116,18 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
     enrollmentStatus === "adjudicado" ||
     enrollmentStatus === "en curso";
 
-  const statusText = needsConsent ? "Seleccionado/a" : isSelected ? "Seleccionado" : "Inscripto";
   const isClosed = !isOpen && !needsConsent;
+  const statusText = needsConsent
+    ? "Seleccionado/a"
+    : isSelected
+      ? "Seleccionado/a"
+      : isClosed && enrollmentStatus === "no seleccionado"
+        ? "No seleccionado/a"
+        : isClosed && enrollmentStatus === "inscripto"
+          ? "Resultado pendiente"
+          : isClosed
+            ? "Inscripción registrada"
+            : "Inscripto";
   const isClosedSelected = isClosed && isSelected;
 
   return (
@@ -268,7 +278,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
                 onVerConvocados?.();
               }}
               className="cc__cta"
-              style={{ background: color }}
+              style={{ background: "var(--bg-sunken)", color: "var(--ink-soft)" }}
             >
               Ver convocados
               <Icon name="arrow" size={15} strokeWidth={2.4} />

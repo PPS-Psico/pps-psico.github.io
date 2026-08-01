@@ -2,32 +2,58 @@ import { useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useModal } from "../../contexts/ModalContext";
 import { useInicioData } from "../../hooks/useInicioData";
-import { invokeHermesTask } from "../../services/hermesProxyService";
+import { callHermes, HermesError } from "../../services/hermesClient";
 import { logger } from "../../utils/logger";
 import { AdminDashboardSkeleton } from "../Skeletons";
 import { Briefing } from "./dashboard/Briefing";
+import { DashboardDataStatus } from "./dashboard/DashboardDataStatus";
 import { DetectionBand } from "./dashboard/DetectionBand";
 import { DraftsPreview } from "./dashboard/DraftsPreview";
 import { PageHead } from "./dashboard/PageHead";
 import { PrioritiesList } from "./dashboard/PrioritiesList";
 import { SolicitudesBand } from "./dashboard/SolicitudesBand";
+import HermesStatus from "./HermesStatus";
 
 const AdminDashboard: React.FC = () => {
   const { authenticatedUser } = useAuth();
+  const { showModal } = useModal();
   const navigate = useNavigate();
   const data = useInicioData();
   const queryClient = useQueryClient();
   const [isReanalyzing, setIsReanalyzing] = useState(false);
 
+  const refreshInicioData = () =>
+    queryClient.invalidateQueries({
+      predicate: ({ queryKey }) => {
+        const rootKey = queryKey[0];
+        return (
+          typeof rootKey === "string" && (rootKey.startsWith("inicio_") || rootKey === "gmailHilos")
+        );
+      },
+    });
+
   const handleReanalyze = async () => {
     setIsReanalyzing(true);
     try {
-      await invokeHermesTask("daily_brief_from_db");
-      await queryClient.invalidateQueries();
+      // Sale por la Edge Function `hermes-proxy`: el token vive en el servidor.
+      await callHermes("daily_brief_from_db", {}, 60000);
+      await refreshInicioData();
+      showModal(
+        "Análisis actualizado",
+        "Hermes terminó el análisis y los datos de Inicio se actualizaron.",
+        "success"
+      );
     } catch (err) {
       logger.error("[Reanalizar] Error calling Hermes daily brief:", err);
-      alert("No se pudo reanalizar en este momento. Por favor verificá la conexión con Hermes.");
+      showModal(
+        "No se pudo reanalizar",
+        err instanceof HermesError
+          ? err.message
+          : "No se pudo contactar a Hermes en este momento. Probá de nuevo en un rato.",
+        "error"
+      );
     } finally {
       setIsReanalyzing(false);
     }
@@ -46,7 +72,8 @@ const AdminDashboard: React.FC = () => {
       }}
     >
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: "0 48px 64px" }}>
-        <PageHead userName={authenticatedUser?.nombre || "Luis"} />
+        <PageHead userName={authenticatedUser?.nombre ?? ""} />
+        <DashboardDataStatus status={data.status} onRetry={() => void refreshInicioData()} />
 
         {data.briefing && (
           <Briefing
@@ -73,9 +100,8 @@ const AdminDashboard: React.FC = () => {
           onOpenSolicitudes={() => navigate("/admin/solicitudes")}
         />
 
-        {/* DraftsPreview now expects DraftPreview[] mapped to what it needs. We'll pass it. Wait, we should adapt DraftsPreview to take DraftPreview type. */}
         <DraftsPreview
-          drafts={data.drafts as any}
+          drafts={data.drafts}
           total={data.totalDrafts}
           onOpenHermes={() => navigate("/admin/gestion?view=hermes")}
           onOpenDraft={(d) => {
@@ -111,16 +137,7 @@ const AdminDashboard: React.FC = () => {
           }}
         >
           <div className="meta">Mi Panel Académico · PPS · UFLO Psicología</div>
-          <div
-            className="meta mono"
-            style={{ display: "flex", gap: 16, alignItems: "center", fontSize: 11 }}
-          >
-            <span>v3.2 · build 2026.05.26</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span className="dot dot-ok dot-live" style={{ color: "var(--ok)" }}></span> Hermes
-              online
-            </span>
-          </div>
+          <HermesStatus showVersion className="meta mono" />
         </footer>
       </main>
     </div>

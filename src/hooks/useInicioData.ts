@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useGmailHilos, matchesGmailFilter } from "./useGmailHilos";
+import { matchesGmailFilter, useGmailHilos } from "./useGmailHilos";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +51,14 @@ export interface BriefingData {
   listaNombre: string;
 }
 
+export interface InicioDataStatus {
+  isLoading: boolean;
+  isFetching: boolean;
+  hasError: boolean;
+  failedSections: string[];
+  updatedAt: number | null;
+}
+
 export interface InicioData {
   briefing: BriefingData;
   detectionMetrics: DetectionMetric[];
@@ -59,6 +67,7 @@ export interface InicioData {
   totalDrafts: number;
   priorities: PriorityItem[];
   loaded: boolean;
+  status: InicioDataStatus;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -246,29 +255,28 @@ function timeAgo(iso?: string): string {
 export function useInicioData(): InicioData {
   // 1. Último daily_brief de Hermes
   //    Traemos SIEMPRE el más reciente, sin filtrar por fecha: si el job de las
-  //    8am no corrió todavía (o falló), seguimos mostrando el último brief
-  //    disponible (el de ayer) en vez de dejar la tarjeta vacía. El brief viejo
-  //    se reemplaza recién cuando Hermes persiste uno nuevo.
-  const { data: brief } = useQuery({
+  //    8am no corrió todavía (o falló), seguimos mostrando el último brief.
+  const briefQuery = useQuery({
     queryKey: ["inicio_daily_brief"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agent_suggestions")
         .select("id, payload, created_at")
         .eq("tipo", "daily_brief")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (error) throw error;
       return data;
     },
     staleTime: 5 * 60 * 1000,
   });
+  const brief = briefQuery.data;
 
   // 2. Métricas de instituciones (DetectionBand)
-  // Mails: usamos la MISMA fuente que la bandeja de Mails de Gestión
-  // (hook useGmailHilos + matchesGmailFilter) para que el número de la tarjeta
-  // y la lista del destino sean siempre idénticos.
-  const { data: gmailHilos = [] } = useGmailHilos(false);
+  // Mails: usamos la MISMA fuente que la bandeja de Mails de Gestión.
+  const gmailQuery = useGmailHilos(false);
+  const gmailHilos = useMemo(() => gmailQuery.data ?? [], [gmailQuery.data]);
   const gmailEsperando = useMemo(
     () => gmailHilos.filter((h) => matchesGmailFilter(h, "esperando")).length,
     [gmailHilos]
@@ -278,70 +286,80 @@ export function useInicioData(): InicioData {
     [gmailHilos]
   );
 
-  const { data: clasifPending = 0 } = useQuery({
+  const clasifPendingQuery = useQuery({
     queryKey: ["inicio_clasif_pending"],
     queryFn: async () => {
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("agent_suggestions")
         .select("id", { count: "exact", head: true })
         .eq("tipo", "clasificacion")
         .eq("estado", "pending");
+      if (error) throw error;
       return count ?? 0;
     },
     staleTime: 60 * 1000,
   });
+  const clasifPending = clasifPendingQuery.data ?? 0;
 
-  const { data: contactosSinConvenio = 0 } = useQuery({
+  const contactosSinConvenioQuery = useQuery({
     queryKey: ["inicio_contactos_sin_convenio"],
     queryFn: async () => {
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("whatsapp_contactos")
         .select("chat_jid", { count: "exact", head: true })
         .eq("tipo", "sin_convenio");
+      if (error) throw error;
       return count ?? 0;
     },
     staleTime: 60 * 1000,
   });
+  const contactosSinConvenio = contactosSinConvenioQuery.data ?? 0;
 
-  const { data: contactosSinVincular = 0 } = useQuery({
+  const contactosSinVincularQuery = useQuery({
     queryKey: ["inicio_contactos_sin_vincular"],
     queryFn: async () => {
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("whatsapp_contactos")
         .select("chat_jid", { count: "exact", head: true })
         .is("institucion_id", null)
         .neq("tipo", "ignorado");
+      if (error) throw error;
       return count ?? 0;
     },
     staleTime: 60 * 1000,
   });
+  const contactosSinVincular = contactosSinVincularQuery.data ?? 0;
 
   // 3. Métricas de solicitudes (SolicitudesBand)
-  const { data: solicitudesActivas = [] } = useQuery({
+  const solicitudesActivasQuery = useQuery({
     queryKey: ["inicio_solicitudes_activas"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("solicitudes_pps")
         .select(
           "id, estado_seguimiento, actualizacion, created_at, nombre_institucion, nombre_alumno"
         )
         .not("estado_seguimiento", "in", "(Realizada,No se pudo concretar,Archivado)")
         .order("created_at", { ascending: false });
+      if (error) throw error;
       return data || [];
     },
     staleTime: 2 * 60 * 1000,
   });
+  const solicitudesActivas = solicitudesActivasQuery.data ?? [];
 
-  const { data: instituciones = [] } = useQuery({
+  const institucionesQuery = useQuery({
     queryKey: ["inicio_instituciones_nombres"],
     queryFn: async () => {
-      const { data } = await supabase.from("instituciones").select("id, nombre");
+      const { data, error } = await supabase.from("instituciones").select("id, nombre");
+      if (error) throw error;
       return data || [];
     },
     staleTime: 10 * 60 * 1000,
   });
+  const instituciones = institucionesQuery.data ?? [];
 
-  const { data: pendingCorrecciones = 0 } = useQuery({
+  const pendingCorreccionesQuery = useQuery({
     queryKey: ["inicio_correcciones_pending"],
     queryFn: async () => {
       const [mod, nuevas] = await Promise.all([
@@ -354,21 +372,23 @@ export function useInicioData(): InicioData {
           .select("id", { count: "exact", head: true })
           .eq("estado", "pendiente"),
       ]);
+      if (mod.error) throw mod.error;
+      if (nuevas.error) throw nuevas.error;
       return (mod.count ?? 0) + (nuevas.count ?? 0);
     },
     staleTime: 2 * 60 * 1000,
   });
+  const pendingCorrecciones = pendingCorreccionesQuery.data ?? 0;
 
-  const { data: egresoMetrics = { total: 0, criticos: 0, atencion: 0, aprobados: 0 } } = useQuery({
+  const egresoMetricsQuery = useQuery({
     queryKey: ["inicio_egreso_metrics"],
     queryFn: async () => {
-      // egreso pendiente = solicitudes con archivos cargados pero no marcadas como Cargado
-      // contamos suggestions tipo=update_estado donde contexto.kind=verificacion_finalizacion
-      const { data: verifs } = await supabase
+      const { data: verifs, error } = await supabase
         .from("agent_suggestions")
         .select("payload, contexto, created_at")
         .eq("tipo", "update_estado")
         .eq("estado", "pending");
+      if (error) throw error;
       const all = (verifs || []).filter(
         (v) => (v.contexto as { kind?: string } | null)?.kind === "verificacion_finalizacion"
       );
@@ -385,35 +405,54 @@ export function useInicioData(): InicioData {
     },
     staleTime: 2 * 60 * 1000,
   });
+  const egresoMetrics = egresoMetricsQuery.data ?? {
+    total: 0,
+    criticos: 0,
+    atencion: 0,
+    aprobados: 0,
+  };
 
-  // 4. Drafts (Hermes preparó N respuestas)
-  const { data: rawDrafts = [] } = useQuery({
+  // 4. Drafts: total exacto + sólo las tres filas que se muestran.
+  const draftsQuery = useQuery({
     queryKey: ["inicio_drafts_preview"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("agent_suggestions")
-        .select("id, payload, contexto, institucion_id, tipo, created_at")
-        .in("tipo", ["email_draft", "whatsapp_followup"])
-        .eq("estado", "pending")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      return data || [];
+      const [preview, total] = await Promise.all([
+        supabase
+          .from("agent_suggestions")
+          .select("id, payload, contexto, institucion_id, tipo, created_at")
+          .in("tipo", ["email_draft", "whatsapp_followup"])
+          .eq("estado", "pending")
+          .order("created_at", { ascending: false })
+          .limit(3),
+        supabase
+          .from("agent_suggestions")
+          .select("id", { count: "exact", head: true })
+          .in("tipo", ["email_draft", "whatsapp_followup"])
+          .eq("estado", "pending"),
+      ]);
+      if (preview.error) throw preview.error;
+      if (total.error) throw total.error;
+      return { items: preview.data || [], total: total.count ?? 0 };
     },
     staleTime: 60 * 1000,
   });
+  const rawDrafts = draftsQuery.data?.items ?? [];
+  const totalDrafts = draftsQuery.data?.total ?? 0;
 
   // 5. Privacidad — total de contactos en lista PPS
-  const { data: totalChatsPps = 0 } = useQuery({
+  const totalChatsPpsQuery = useQuery({
     queryKey: ["inicio_total_chats_pps"],
     queryFn: async () => {
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("whatsapp_contactos")
         .select("chat_jid", { count: "exact", head: true })
         .neq("tipo", "ignorado");
+      if (error) throw error;
       return count ?? 0;
     },
     staleTime: 30 * 60 * 1000,
   });
+  const totalChatsPps = totalChatsPpsQuery.data ?? 0;
 
   // ── Cómputos derivados ─────────────────────────────────────────────────────
 
@@ -544,7 +583,7 @@ export function useInicioData(): InicioData {
     },
   ];
 
-  const drafts: DraftPreview[] = rawDrafts.slice(0, 3).map((d) => {
+  const drafts: DraftPreview[] = rawDrafts.map((d) => {
     const payload = (d.payload as Record<string, unknown>) || {};
     const contexto = (d.contexto as Record<string, unknown>) || {};
     const instId = (d.institucion_id as string | null) ?? null;
@@ -561,8 +600,6 @@ export function useInicioData(): InicioData {
       threadId: (contexto.thread_id as string) || null,
     };
   });
-
-  const totalDrafts = rawDrafts.length;
 
   // Priorities — mapean desde bullets del daily_brief. Resolución de destino en
   // orden de confiabilidad:
@@ -641,6 +678,27 @@ export function useInicioData(): InicioData {
     }
   }
 
+  const trackedQueries = [
+    { label: "briefing de Hermes", query: briefQuery },
+    { label: "mails", query: gmailQuery },
+    { label: "clasificaciones", query: clasifPendingQuery },
+    { label: "contactos sin convenio", query: contactosSinConvenioQuery },
+    { label: "contactos sin vincular", query: contactosSinVincularQuery },
+    { label: "solicitudes", query: solicitudesActivasQuery },
+    { label: "instituciones", query: institucionesQuery },
+    { label: "correcciones", query: pendingCorreccionesQuery },
+    { label: "finalizaciones", query: egresoMetricsQuery },
+    { label: "borradores", query: draftsQuery },
+    { label: "contactos PPS", query: totalChatsPpsQuery },
+  ];
+  const failedSections = trackedQueries
+    .filter(({ query }) => query.isError)
+    .map(({ label }) => label);
+  const isLoading = trackedQueries.some(({ query }) => query.isPending);
+  const updatedTimestamps = trackedQueries
+    .filter(({ query }) => !query.isError && query.dataUpdatedAt > 0)
+    .map(({ query }) => query.dataUpdatedAt);
+
   return {
     briefing: {
       lead,
@@ -654,6 +712,13 @@ export function useInicioData(): InicioData {
     drafts,
     totalDrafts,
     priorities,
-    loaded: !!brief !== undefined,
+    loaded: !isLoading,
+    status: {
+      isLoading,
+      isFetching: trackedQueries.some(({ query }) => query.isFetching),
+      hasError: failedSections.length > 0,
+      failedSections,
+      updatedAt: updatedTimestamps.length > 0 ? Math.min(...updatedTimestamps) : null,
+    },
   };
 }

@@ -1496,8 +1496,8 @@ html.dark .mp-logo,
   font-weight: 700;
 }
 .mp-iconbtn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -1639,7 +1639,7 @@ html.dark .mp-logo,
   font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.03em;
-  min-width: 32px;
+  min-width: 44px;
   text-align: center;
 }
 
@@ -2788,8 +2788,14 @@ html.dark .mp-logo,
   gap: 4px;
 }
 .tab {
+  min-height: 52px;
   padding: 6px 4px;
   gap: 5px;
+}
+.student-mobile-nav .tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 12px;
 }
 .tab__icon {
   width: 46px;
@@ -3030,8 +3036,8 @@ html.dark .mp-logo,
   line-height: 1.45;
 }
 .student-more-sheet__close {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -3043,6 +3049,10 @@ html.dark .mp-logo,
 .student-more-sheet__close:hover,
 .student-more-sheet__close:focus-visible {
   background: var(--bg-sunken);
+}
+.student-more-sheet__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .student-more-sheet__list {
   display: flex;
@@ -3069,7 +3079,10 @@ html.dark .mp-logo,
 .student-more-sheet__item:focus-visible {
   border-radius: 12px;
   background: var(--bg-sunken);
-  outline: none;
+}
+.student-more-sheet__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .student-more-sheet__item.is-active {
   border-radius: 12px;

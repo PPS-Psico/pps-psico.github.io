@@ -7,6 +7,12 @@ una regla de calidad documentados antes de publicarse.
 ## Documentos
 
 - [METRIC_DICTIONARY.md](./METRIC_DICTIONARY.md): contratos de métricas y estado de madurez.
+- [criterio-metricas-ingresantes.md](../criterio-metricas-ingresantes.md): contrato
+  vigente de matrícula administrativa, cuentas, activación, cohorte, demanda e
+  inicios.
+- [HISTORICAL_SCOPE_DECISIONS.md](./HISTORICAL_SCOPE_DECISIONS.md): decisiones
+  de dominio sobre Sede Comahue, gestión, modalidades legacy y reconstrucción
+  2023–2024.
 - [DATA_QUALITY_BASELINE_2026-07-17.md](./DATA_QUALITY_BASELINE_2026-07-17.md): línea de base obtenida de Supabase productivo.
 - [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md): fases, dependencias y criterios de aceptación.
 - [STATUS_REPORT_2026-07-17.md](./STATUS_REPORT_2026-07-17.md): estado ejecutivo, correcciones aplicadas y pendientes.
@@ -29,3 +35,20 @@ Un cambio de métrica no está completo hasta que:
 3. documenta backfills, exclusiones y limitaciones;
 4. reconcilia el resultado contra datos agregados de Supabase;
 5. registra la fecha desde la que la serie es comparable.
+
+## Orden de precedencia
+
+Cuando dos documentos entren en conflicto:
+
+1. decisión de negocio vigente y fechada;
+2. `criterio-metricas-ingresantes.md` para poblaciones;
+3. `HISTORICAL_SCOPE_DECISIONS.md` para alcance histórico;
+4. `METRIC_DICTIONARY.md` para resultados y cálculos;
+5. contratos de cada informe;
+6. documentos de auditoría, reconstrucción y changelog;
+7. comentarios de código y nombres legacy.
+
+Una migración explica la implementación que existía al aplicarse, pero no
+reemplaza una decisión de negocio posterior. Si el código y el contrato vigente
+difieren, se documenta como deuda de implementación; no se redefine la métrica
+para que coincida con el código.

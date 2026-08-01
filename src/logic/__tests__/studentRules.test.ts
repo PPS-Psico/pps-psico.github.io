@@ -5,6 +5,7 @@ import {
   isPracticeActive,
   isPracticeFinished,
   isPracticeOverdue,
+  getPracticePresentationStatus,
   calculateTotalHours,
   isPracticeComputable,
   calculateSpecialtyHours,
@@ -58,6 +59,38 @@ describe("studentRules", () => {
     it("devuelve false para estados activos o desconocidos", () => {
       expect(isPracticeFinished("En curso")).toBe(false);
       expect(isPracticeFinished(null)).toBe(false);
+    });
+  });
+
+  describe("getPracticePresentationStatus", () => {
+    it("normaliza los estados que ve el estudiante", () => {
+      expect(getPracticePresentationStatus(makePractica({ estado: "En proceso" }))).toEqual({
+        label: "En curso",
+        tone: "active",
+      });
+      expect(getPracticePresentationStatus(makePractica({ estado: "PPS Realizada" }))).toEqual({
+        label: "Finalizada",
+        tone: "complete",
+      });
+      expect(getPracticePresentationStatus(makePractica({ estado: "Desaprobada" }))).toEqual({
+        label: "Desaprobada",
+        tone: "danger",
+      });
+      expect(getPracticePresentationStatus(makePractica({ estado: "Cancelada" }))).toEqual({
+        label: "No concretada",
+        tone: "neutral",
+      });
+    });
+
+    it("pide verificación ante estados vacíos o desconocidos", () => {
+      expect(getPracticePresentationStatus(makePractica({ estado: null as any }))).toEqual({
+        label: "Por verificar",
+        tone: "neutral",
+      });
+      expect(getPracticePresentationStatus(makePractica({ estado: "Estado nuevo" }))).toEqual({
+        label: "Por verificar",
+        tone: "neutral",
+      });
     });
   });
 

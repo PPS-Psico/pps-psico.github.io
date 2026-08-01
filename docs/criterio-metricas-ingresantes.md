@@ -1,161 +1,198 @@
-# Criterio de métricas — Ingresantes y cohorte
+# Poblaciones de ingreso, activación y actividad PPS
 
-> Decisión de criterio tomada el 2026-05-31, tras detectar que el dashboard
-> mostraba "218 ingresantes 2025 vs 73 en 2026", una caída que no era real.
+Estado: **vigente**
 
----
+Versión: `population-contract-v2`
 
-## El problema que teníamos
+Fecha de decisión: 30/07/2026
+Ámbito: Licenciatura en Psicología · Sede Comahue
 
-La métrica "Matrícula generada / Nuevos ingresantes en el año" daba números
-imposibles: **218 en 2025 vs 73 en 2026**, cuando los dos años fueron parecidos
-en actividad real de PPS.
+Este documento reemplaza la versión del 31/05/2026 que presentaba
+`estudiantes.cohorte` como criterio de “ingresantes”. Aquella implementación
+resolvió un problema técnico de migración, pero no representa la definición de
+gestión acordada posteriormente.
 
-Causas, confirmadas con los datos:
+La palabra **ingresantes** queda desaconsejada en métricas y reportes porque
+puede significar matrícula administrativa, creación de cuenta, primera
+postulación o primera PPS. Cada superficie debe usar una etiqueta específica.
 
-1. **`created_at` está contaminado por la migración de Airtable.** Al migrar, los
-   registros históricos (estudiantes y convocatorias) entraron con `created_at`
-   de 2025. Estudiantes que ya venían haciendo PPS desde 2023/2024 quedaban
-   contados como "nuevos de 2025". De los 218 "debut 2025", al menos 90 tenían
-   prueba de actividad anterior.
+## Embudo poblacional canónico
 
-2. **La definición vieja medía "primera vez en la tabla convocatorias"**, que es
-   una métrica de _debut_ — naturalmente alta el primer año del sistema y
-   decreciente después, porque el "stock" de quienes debutan se agota. No medía
-   ingresantes.
+```text
+Matriculado administrativamente en PPS
+  → cuenta creada en Mi Panel
+  → estudiante activo en Mi Panel
+  → estudiante postulado
+  → estudiante que inició una PPS
+```
 
-3. **Se comparaba un año completo (2025) contra uno en curso (2026).**
+Las etapas no son intercambiables. Una persona matriculada puede no crear una
+cuenta porque todavía no desea hacer PPS; una persona con cuenta puede no
+postularse; una persona postulada puede no haber iniciado una práctica.
 
-La actividad real (prácticas por `fecha_inicio` del lanzamiento, inmune a la
-migración) viene **creciendo**: 2023→124, 2024→363, 2025→593, 2026→372 (a mayo).
-No hubo ningún derrumbe.
+## 1. Matrícula administrativa PPS
 
----
+- **Qué mide:** estudiantes de Sede Comahue inscriptos administrativamente en la
+  materia PPS al inicio del año.
+- **Qué habilita:** acceso potencial al campus Moodle de la materia.
+- **Fuente:** registro administrativo provisto por la Facultad; no se deriva de
+  Supabase ni de Mi Panel.
+- **Tipo:** flujo administrativo anual.
+- **No implica:** creación de cuenta, búsqueda activa de una práctica,
+  postulación ni inicio efectivo.
+- **Etiqueta permitida:** `Matriculados administrativamente en PPS`.
+- **Etiqueta prohibida sin calificador:** `estudiantes activos`.
 
-## La solución: campo `cohorte`
+Serie administrativa disponible:
 
-Se agregó la columna `estudiantes.cohorte` (smallint).
+| Ciclo  | Matriculados |
+| ------ | -----------: |
+| 2022/1 |           39 |
+| 2023/1 |           87 |
+| 2024/1 |          101 |
+| 2025/1 |          242 |
 
-### Criterio de definición (el acordado)
+No existe todavía un valor oficial documentado para 2026/1.
 
-> **cohorte = año de la PRIMERA ACTIVIDAD PPS REAL del estudiante**, definida
-> como el **mínimo** entre:
->
-> - `fecha_inicio` del lanzamiento de sus convocatorias,
-> - `fecha_inicio` propia de sus convocatorias (copia desnormalizada),
-> - `fecha_inicio` de sus prácticas.
->
-> **NUNCA** `created_at` (lo aplastó la migración).
+Estos totales no permiten calcular una tasa de activación de Mi Panel. Para ello
+se necesita el padrón nominal anual, vinculado por legajo con las cuentas.
 
-Se descartan fechas con año fuera de rango (basura tipo `2202`).
+## 2. Cuentas de estudiantes creadas en Mi Panel
 
-### Regla para los estudiantes "sin PPS"
+- **Qué mide:** estudiantes distintos con una cuenta vinculada cuya fecha de
+  creación cae dentro del año.
+- **Fuente temporal:** `auth.users.created_at`, interpretado en
+  `America/Argentina/Buenos_Aires`.
+- **Vínculo obligatorio:** `estudiantes.user_id = auth.users.id`.
+- **Población:** cuentas vinculadas a estudiantes; se excluyen usuarios de
+  personal y cuentas sin perfil de estudiante.
+- **Tipo:** flujo de activación digital.
+- **Etiqueta permitida:** `Cuentas de estudiantes creadas`.
+- **No usar como fuente:** `estudiantes.created_at`, porque fue afectado por
+  importaciones y migraciones históricas.
+- **No usar como sustituto:** `estudiantes.cohorte`.
 
-- Cargado a mano (solo nombre + legajo), sin cuenta y sin PPS → `cohorte = NULL`.
-  **No cuenta** para ninguna métrica de ingresantes. Es solo un legajo habilitado
-  a registrarse.
-- Cuando crea cuenta y se inscribe a su primera PPS → se le asigna
-  `cohorte = año de esa primera actividad`, **automáticamente** (trigger).
+El conteo debe conservar la fecha de corte y una consulta reproducible. Una
+cuenta creada en un año permanece en el flujo de ese año aunque posteriormente
+el estudiante finalice.
 
-Esto lo implementan los triggers `trg_set_cohorte_conv` (en `convocatorias`) y
-`trg_set_cohorte_prac` (en `practicas`): al insertarse la primera actividad de un
-estudiante con cohorte NULL, le calculan y setean el año. No pisan correcciones
-manuales (solo actúan si la cohorte es NULL).
+## 3. Nuevas cuentas actualmente activas
 
-### Editable a mano
+- **Qué mide:** cuentas de estudiantes creadas durante el año cuyos perfiles se
+  encuentran actualmente en `estado = 'Activo'`.
+- **Numerador:** subconjunto de “Cuentas de estudiantes creadas en Mi Panel”.
+- **Fuente:** `auth.users.created_at` + estado actual de `estudiantes`.
+- **Tipo:** cohorte de activación con estado actual; no es un flujo histórico
+  inmutable.
+- **Fecha obligatoria:** siempre debe publicarse `al DD/MM/AAAA`.
+- **Etiqueta recomendada:** `Nuevas cuentas activas`.
 
-`cohorte` es un campo persistente, no un cálculo al vuelo. Para casos especiales
-(p. ej. un dato que el criterio automático no captura bien), se edita
-directamente y el trigger no lo sobrescribe.
+Este es el indicador operativo elegido por la Coordinación para describir a los
+estudiantes que ingresaron efectivamente a Mi Panel durante el año y todavía
+continúan activos.
 
----
+El total puede disminuir cuando un estudiante finaliza o cambia de estado. Por
+eso debe mostrarse junto con el total fijo de cuentas creadas:
 
-## Resultado
+```text
+Nuevas cuentas activas al corte
+de un total de cuentas creadas durante el año
+```
 
-| Año  | Ingresantes (cohorte) | Nota                        |
-| ---- | --------------------- | --------------------------- |
-| 2021 | 5                     | cola histórica de Airtable  |
-| 2022 | 7                     |                             |
-| 2023 | 32                    |                             |
-| 2024 | 120                   | ver "limitación 2024" abajo |
-| 2025 | 98                    |                             |
-| 2026 | 78                    | año en curso (a mayo)       |
+## 4. Cohorte de primera actividad PPS
 
-El falso "218 vs 73" desapareció. 2024/2025/2026 son del mismo orden.
+- **Qué mide:** año de la primera actividad PPS registrada para el estudiante.
+- **Campo:** `estudiantes.cohorte`.
+- **Cálculo histórico:** mínimo año válido entre actividad de convocatoria y
+  práctica.
+- **Tipo:** debut registrado en el circuito PPS.
+- **Etiqueta permitida:** `Debut en el circuito PPS` o
+  `Cohorte de primera actividad`.
+- **Etiqueta prohibida:** `Matrícula`, `Cuenta creada`, `Nueva cuenta activa` o
+  `Primera PPS iniciada`.
 
-### Limitación conocida — 2024 infla un poco
+La primera actividad puede ser una postulación. Por lo tanto, `cohorte` tampoco
+prueba que una práctica haya comenzado.
 
-2024 (120) da más que 2025 (98), lo cual es contraintuitivo. Causa: los datos
-heredados anteriores a noviembre 2024 (cuando asumió la coordinación actual) son
-un "desastre de datos" migrado de Airtable. Muchos estudiantes con actividad real
-de 2021-2023 tienen su primer registro fechado en 2024, así que la cohorte 2024
-absorbe arrastre histórico. **No hay forma 100% confiable de separar eso solo con
-los datos del panel.**
+El campo sigue siendo útil para segmentación histórica, pero deja de ser la
+fuente del KPI de activación de Mi Panel.
 
-Se cruzó con el Airtable original (campo manual "Fecha de creación", cargado en
-265/266 estudiantes): da 2024=142, 2025=124. Es decir, **las dos fuentes
-independientes coinciden en que 2024 ≥ 2025** en cargas de matrícula — 2024 fue
-un año de regularización masiva de la migración, no una cohorte normal.
+## 5. Estudiantes postulados
 
----
+- **Qué mide:** personas distintas con al menos una postulación a una oferta de
+  tipo `pps` dentro del período.
+- **Fuente:** `analytics-v2.flows.applicants`.
+- **Tipo:** flujo de demanda observada.
+- **Fecha anual:** la definida por el contrato `analytics-v2`.
+- **Etiqueta:** `Estudiantes postulados`.
 
-## Decisión final: la métrica principal NO es "ingresantes"
+No es una medida de matrícula ni de cuentas activas. Representa evidencia de
+que el estudiante está buscando una PPS durante el período.
 
-La cohorte (debut / primera PPS) tiene dos defectos estructurales para mostrar
-la salud del programa:
+## 6. Estudiantes que iniciaron PPS
 
-- **No crece**: cada estudiante debuta una sola vez, así que la serie tiende a
-  bajar tras el pico inicial.
-- **2024 está inflado** por la regularización migratoria.
+- **Qué mide:** personas distintas con al menos una práctica `pps` cuya
+  `fecha_inicio` cae dentro del período.
+- **Fuente:** `analytics-v2.flows.pps_started`.
+- **Tipo:** flujo de inicio efectivo.
+- **Etiqueta:** `Estudiantes que iniciaron PPS`.
 
-Pero la facultad **viene creciendo**, y eso se ve en una métrica distinta:
-**"Estudiantes en PPS"** = estudiantes DISTINTOS con al menos una actividad PPS
-real en el año (por `fecha_inicio` del lanzamiento/práctica, inmune a la
-migración). Cuenta a cada estudiante cada año que participa.
+Esta es la medida apropiada para describir participación anual efectiva. No debe
+llamarse matrícula ni activación.
 
-| Año  | Estudiantes en PPS | a 31/may (YTD) |
-| ---- | ------------------ | -------------- |
-| 2021 | 5                  | 1              |
-| 2022 | 9                  | 5              |
-| 2023 | 39                 | 12             |
-| 2024 | 158                | 67             |
-| 2025 | 215                | 162            |
-| 2026 | 199 (en curso)     | 199            |
+## Reglas de comparación
 
-A la misma altura del año, **2026 (199) ya supera a 2025 (162)** — crecimiento
-real y sostenido.
+1. Matrícula administrativa se compara contra matrícula administrativa.
+2. Cuentas creadas se comparan contra cuentas creadas con cobertura temporal
+   equivalente.
+3. Nuevas cuentas activas se comparan sólo con el mismo criterio de estado y la
+   misma fecha de corte.
+4. Postulantes e inicios se comparan como flujos YTD contra el mismo día y mes
+   del año anterior.
+5. No se divide “estudiantes que iniciaron” por matrícula administrativa como
+   tasa de conversión: puede haber arrastre de estudiantes matriculados en años
+   anteriores.
+6. No se calcula una tasa de activación con totales agregados. Se necesita
+   vinculación nominal por legajo entre el padrón administrativo y Mi Panel.
 
-### Qué quedó en el dashboard
+## Limitación de 2025
 
-- **Hero principal**: "Estudiantes en PPS" (la que crece). Su trend es
-  **YTD-aware**: si el año está en curso, compara contra el año anterior a la
-  misma altura (por día del año), no contra el año completo. Así 2026 muestra
-  +23% en vez de una falsa caída.
-- **"Ingresantes (cohorte)"**: queda como métrica secundaria.
-- **Nota de 2024**: al seleccionar el año 2024 en Métricas aparece un aviso de
-  "año de transición" (regularización de la migración, no comparable directo).
-- **Gráfico de evolución y serie**: pasan a contar "estudiantes en PPS" por año.
+La creación de cuentas de 2025 se concentra en la incorporación inicial de Mi
+Panel entre fines de noviembre y diciembre. No representa un año completo de
+activación natural y no es comparable directamente con el flujo continuo de
+2026 sin una aclaración visible.
 
-Implementación: `supabase/migrations/20260601170000_add_estudiantes_en_pps_metric.sql`
-(agrega `estudiantes_en_pps`, `estudiantes_en_pps_prev`, trend YTD-aware y
-`get_estudiantes_en_pps_list`).
+Los perfiles migrados o importados tampoco deben clasificarse usando
+`estudiantes.created_at`.
 
----
+## Estado de implementación
 
-## Implementación
+Este documento es la definición de negocio vigente, pero el dashboard aún
+conserva una tarjeta legacy:
 
-- Migración `supabase/migrations/20260601150000_add_cohorte_to_estudiantes.sql`
-  — columna + función `calc_cohorte_estudiante` + backfill + triggers + índice.
-- Migración `supabase/migrations/20260601160000_metrics_use_cohorte.sql`
-  — `get_admin_metrics_kpis` (matricula_generada, enrollment_evolution, trend) y
-  `get_ingresantes_list` ahora cuentan por `cohorte`.
-- Frontend: `useExecutiveReportData` (reporte clásico) usa `cohorte` para
-  "Estudiantes Nuevos"; etiquetas del dashboard v3 y el clásico actualizadas a
-  "Ingresantes del año · Nuevos en el sistema de PPS (cohorte)".
+```text
+matricula_generada = estudiantes con cohorte = año
+```
 
-## Pendiente para el flujo de carga
+Mientras esa implementación no se reemplace:
 
-Cuando se cargue el listado de ingresantes de fin de año (nombre + legajo), el
-formulario de "usuario nuevo sin cuenta" debería permitir setear la `cohorte`
-explícitamente. Hoy queda NULL hasta la primera PPS; para ingresantes que aún no
-hicieron PPS pero ya sabés de qué año son, conviene poder cargarlo a mano.
+- debe etiquetarse como `Cohorte de primera actividad`, no como
+  `Ingresantes nuevos`;
+- no puede interpretarse como matrícula ni como creación de cuenta;
+- no debe usarse en el informe ejecutivo como indicador de activación.
+
+La implementación objetivo requiere un RPC de staff que publique por año:
+
+- `student_accounts_created`;
+- `student_accounts_created_currently_active`;
+- `as_of`;
+- cobertura de vínculo cuenta–estudiante.
+
+## Pruebas contractuales mínimas
+
+1. Ninguna tarjeta llamada `Nuevas cuentas activas` puede leer `cohorte`.
+2. Ninguna consulta de creación de cuenta puede leer `estudiantes.created_at`.
+3. El total agregado debe reconciliar con el listado nominal deduplicado.
+4. La respuesta debe excluir cuentas no vinculadas a estudiantes.
+5. El stock activo debe declarar fecha de corte.
+6. Los informes y el dashboard deben consumir el mismo contrato versionado.

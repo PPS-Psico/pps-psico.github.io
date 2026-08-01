@@ -72,12 +72,14 @@ const TABLE_CONFIG = {
       label: "ID Estudiante",
       type: "text" as const,
       required: true,
+      createOnly: true,
     },
     {
       key: FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
       label: "ID Lanzamiento",
       type: "text" as const,
       required: true,
+      createOnly: true,
     },
     {
       key: FIELD_ESPECIALIDAD_PRACTICAS,

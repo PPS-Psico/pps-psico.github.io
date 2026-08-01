@@ -4,6 +4,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import {
   computeNotaPromedio,
   computeTotalHoras,
+  resolveFrecuenciaSemanal,
   type DetallePracticas,
 } from "../../../utils/acreditacion";
 import { Attachment, signStorageAttachment } from "../../../utils/attachmentUtils";
@@ -13,6 +14,7 @@ import { FilePreview } from "../preview";
 import { filterEgresoFinalizaciones, isHistoryFinalizacion, normalizeAttachments } from "./helpers";
 import { CollapsibleHistory, EmptyState, SearchBar } from "./primitives";
 import type { FinalizacionWithStudent } from "./types";
+import { getHorarioEfectivo } from "../../../utils/scheduleUtils";
 
 // ─── TABS CONTENT: EGRESO ───────────────────────────────────────────
 interface EgresoTabViewProps {
@@ -164,6 +166,7 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
 }) => {
   const [practice, setPractice] = useState<any>(null);
   const [loadingPrac, setLoadingPrac] = useState(false);
+  const [horariosPorPractica, setHorariosPorPractica] = useState<Record<string, string>>({});
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<Attachment[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -249,6 +252,66 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
       active = false;
     };
   }, [sol, expanded]);
+
+  // Horario declarado de cada PPS del trámite. No vive en el snapshot de la solicitud
+  // (está en la inscripción a la convocatoria), pero es el dato que manda para la
+  // frecuencia semanal que pide el SAC: el cálculo horas/semanas es solo el respaldo.
+  useEffect(() => {
+    let active = true;
+    const fetchHorarios = async () => {
+      const sId = safeGetId(sol[FIELD_ESTUDIANTE_FINALIZACION]);
+      const practicaIds = detalle?.items.map((i) => i.practicaId).filter(Boolean) ?? [];
+      if (!sId || !expanded || practicaIds.length === 0) return;
+
+      try {
+        const { data: practicas, error: errPracticas } = await supabase
+          .from("practicas")
+          .select(
+            "id, lanzamiento_id, lanzamiento:lanzamientos_pps!fk_practica_lanzamiento(horario_seleccionado)"
+          )
+          .in("id", practicaIds);
+        if (errPracticas || !practicas || !active) return;
+
+        const lanzamientoIds = practicas
+          .map((p) => p.lanzamiento_id)
+          .filter((id): id is string => !!id);
+
+        // Horario de la inscripción del alumno: más específico que el del lanzamiento.
+        const horarioPorLanzamiento = new Map<string, string>();
+        if (lanzamientoIds.length > 0) {
+          const { data: inscripciones } = await supabase
+            .from("convocatorias")
+            .select("lanzamiento_id, horario_asignado, horario_seleccionado")
+            .eq("estudiante_id", sId)
+            .in("lanzamiento_id", lanzamientoIds);
+          inscripciones?.forEach((ins) => {
+            const horario = getHorarioEfectivo(ins);
+            if (ins.lanzamiento_id && horario) {
+              horarioPorLanzamiento.set(ins.lanzamiento_id, horario);
+            }
+          });
+        }
+
+        const map: Record<string, string> = {};
+        practicas.forEach((p) => {
+          const deInscripcion = p.lanzamiento_id
+            ? horarioPorLanzamiento.get(p.lanzamiento_id)
+            : undefined;
+          const deLanzamiento = p.lanzamiento?.horario_seleccionado;
+          const horario = deInscripcion || deLanzamiento;
+          if (horario) map[p.id] = horario;
+        });
+
+        if (active) setHorariosPorPractica(map);
+      } catch (e) {
+        logger.error(e);
+      }
+    };
+    fetchHorarios();
+    return () => {
+      active = false;
+    };
+  }, [sol, expanded, detalle]);
 
   const isFinalizado =
     sol.estado?.toLowerCase() === "cargado" || sol.estado?.toLowerCase() === "finalizada";
@@ -554,6 +617,14 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                   const asistenciaIdx = allFiles.findIndex(
                     (f) => f.url === item.asistencia?.url && f.type === "asistencia"
                   );
+                  // Datos que pide el SAC al cargar la PPS y que hay que tener a mano acá.
+                  const horarioDeclarado = horariosPorPractica[item.practicaId];
+                  const frecuencia = resolveFrecuenciaSemanal({
+                    horas: item.horas,
+                    fechaInicio: item.fechaInicio,
+                    fechaFinalizacion: item.fechaFinalizacion,
+                    horarioDeclarado,
+                  });
 
                   return (
                     <div
@@ -584,6 +655,49 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                         <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--ink-3)" }}>
                           {item.especialidad || "Sin orientación"} · {item.horas || 0} hs
                           {item.esOnline && " · Online"}
+                        </p>
+                        <p
+                          style={{
+                            margin: "3px 0 0",
+                            fontSize: 10.5,
+                            color: "var(--ink-4)",
+                            display: "flex",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <span
+                            className="material-icons"
+                            style={{ fontSize: 12, color: "var(--ink-4)" }}
+                          >
+                            date_range
+                          </span>
+                          {formatDate(item.fechaInicio)} — {formatDate(item.fechaFinalizacion)}
+                          <span style={{ color: "var(--rule-3)" }}>·</span>
+                          <span
+                            title={
+                              frecuencia.advertencia ??
+                              (frecuencia.origen === "horario"
+                                ? `Horario declarado: ${horarioDeclarado}`
+                                : "Estimado repartiendo las horas acreditadas entre las semanas del período")
+                            }
+                            style={{
+                              color: frecuencia.advertencia ? "var(--warn)" : undefined,
+                              fontWeight: frecuencia.advertencia ? 600 : undefined,
+                            }}
+                          >
+                            {frecuencia.valor != null
+                              ? `${frecuencia.valor} hs/sem${frecuencia.origen === "calculo" ? " (est.)" : ""}`
+                              : "frecuencia s/d"}
+                            {frecuencia.advertencia && " ⚠"}
+                          </span>
+                          {horarioDeclarado && (
+                            <>
+                              <span style={{ color: "var(--rule-3)" }}>·</span>
+                              <span>{horarioDeclarado}</span>
+                            </>
+                          )}
                         </p>
                       </div>
 

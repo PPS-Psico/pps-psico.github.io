@@ -195,6 +195,7 @@ export function KpiCard({
   context,
   tone = "ink",
   loading = false,
+  error = false,
   onClick,
 }: {
   value: number;
@@ -202,18 +203,26 @@ export function KpiCard({
   context: string;
   tone?: Tone;
   loading?: boolean;
+  error?: boolean;
   onClick: () => void;
 }) {
   const T = TONE[tone] || TONE.ink;
-  const empty = !loading && value === 0;
+  const empty = !loading && !error && value === 0;
   return (
-    <button onClick={onClick} className="kpi press" type="button" aria-busy={loading || undefined}>
+    <button
+      onClick={onClick}
+      className="kpi press"
+      type="button"
+      aria-busy={loading || undefined}
+      aria-disabled={error || undefined}
+      disabled={error}
+    >
       <span className="eyebrow">{label}</span>
       <span
         className="mono num"
-        style={{ color: empty ? "var(--ink-4)" : tone === "ink" ? "var(--ink)" : T.c }}
+        style={{ color: empty || error ? "var(--ink-4)" : tone === "ink" ? "var(--ink)" : T.c }}
       >
-        {loading ? "…" : fmt(value)}
+        {loading ? "…" : error ? "—" : fmt(value)}
       </span>
       <span className="ctx">{context}</span>
     </button>
@@ -228,7 +237,7 @@ export function Band({
   children,
 }: {
   title?: string;
-  cols: 3 | 4;
+  cols: 2 | 3 | 4;
   top?: boolean;
   children: React.ReactNode;
 }) {

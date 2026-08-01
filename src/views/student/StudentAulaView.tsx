@@ -2,7 +2,8 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Icon, type IconName } from "../../components/student/ds";
 import { useAuth } from "../../contexts/AuthContext";
-import { MOODLE_ASSIGN, useAulaEntregas } from "../../hooks/useAulaEntregas";
+import type { InformeTask, Practica } from "../../types";
+import StudentDeliveriesPanel from "./StudentDeliveriesPanel";
 
 type AulaSectionId = "guia" | "descargas" | "preguntas" | "entregas";
 
@@ -164,7 +165,7 @@ const sections: AulaSection[] = [
       </>
     ),
     pageLead:
-      "Elegí tu orientación y abrí la tarea de la institución donde cursaste. Ahí subís la planilla firmada y el informe final.",
+      "Tus PPS aparecen primero con su acceso de entrega. Si necesitás subir un informe de otra práctica, también podés ver todos los espacios disponibles.",
   },
 ];
 
@@ -182,7 +183,7 @@ const guideBlocks: GuideBlock[] = [
     kicker: "Acceso",
     title: "Tu cuenta abre el recorrido",
     summary:
-      "Mi Panel te identifica como estudiante: completás los datos restantes y creás tu cuenta.",
+      "Ingresás tu legajo y completás tus datos; Mi Panel los valida de forma segura al crear la cuenta.",
     bullets: [
       "Revisá especialmente tu correo y tu teléfono: son los canales que usan coordinación y las instituciones para contactarte.",
       "Un dato incorrecto puede impedir que recibas el resultado de una selección o el contacto para iniciar la práctica.",
@@ -380,12 +381,6 @@ const campusTeam = [
   },
 ];
 
-const deliveryAreaIcons: Partial<Record<string, IconName>> = {
-  clinica: "clinical",
-  laboral: "community",
-  educacional: "education",
-};
-
 /* Archivos reales servidos desde public/descargas/ — nombres canónicos
    documentados en public/descargas/README.md. */
 const downloads: DownloadGroup[] = [
@@ -428,8 +423,8 @@ const downloads: DownloadGroup[] = [
   },
 ];
 
-/* Mismo cuerpo de respuestas que el centro de ayuda editorial del campus
-   (preguntas.html): 26 respuestas completas, agrupadas por etapa. */
+/* Mismo cuerpo de respuestas que el centro de ayuda editorial del campus,
+   agrupadas por etapa y actualizado con los flujos vigentes de Mi Panel. */
 const faqGroups: FaqGroup[] = [
   {
     id: "inscripcion",
@@ -466,7 +461,7 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo sé si quedé seleccionado en una convocatoria?",
-        a: "Recibís una notificación por correo y tu estado se actualiza en la sección de convocatorias, dentro de convocatorias cerradas y tus resultados.",
+        a: "Recibís una notificación por correo y, en Inicio > Tus resultados, ves primero tu estado personal: seleccionado/a, no seleccionado/a o resultado pendiente. La opción Ver convocados queda disponible como detalle.",
       },
       {
         q: "¿Qué reviso antes de confirmar una inscripción?",
@@ -500,6 +495,17 @@ const faqGroups: FaqGroup[] = [
             <strong>máximo de 80 horas</strong>. Las horas no se acreditan oficialmente hasta
             completar las <strong>250</strong>; mientras tanto hay un registro interno en Mi Panel y
             tu seguimiento con la planilla.
+          </>
+        ),
+      },
+      {
+        q: "¿Cómo corrijo los datos de una PPS en Mi Panel?",
+        a: (
+          <>
+            En el celular, abrí <strong>Mis prácticas</strong> y mantené presionada la tarjeta de la
+            PPS para ver las opciones de corrección, incluida la fecha de finalización. En la
+            computadora, seleccioná <strong>Corregir</strong> en la fila correspondiente. Para
+            cambiar la nota, tocá directamente el número.
           </>
         ),
       },
@@ -581,7 +587,11 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo entrego un informe?",
-        a: "En la sección Entregas, elegís tu orientación e institución: el botón abre la tarea de Moodle correspondiente. Si la PPS fue presencial, subí siempre la planilla de asistencia firmada junto al informe. Esa copia sirve para verificar la práctica y como respaldo de emergencia.",
+        a: "En Entregas aparecen primero las PPS registradas en Mi Panel. Abrí la tarjeta de la práctica para entrar a su espacio en Moodle. Si el informe que necesitás subir no corresponde a una de esas PPS, desplegá Ver todos los espacios y elegí el área y la institución. En una PPS presencial, subí también la planilla firmada.",
+      },
+      {
+        q: "¿Dónde reviso si el informe quedó entregado?",
+        a: "Revisalo dentro de la tarea en Moodle. Ahí vas a encontrar el archivo enviado y el estado oficial de la entrega, la corrección y la aprobación.",
       },
       {
         q: "¿Qué pasa si pierdo la planilla de asistencia?",
@@ -595,8 +605,8 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Qué hago si no encuentro un espacio de entrega?",
-        a: "Notificá a coordinación para que habilite el espacio manualmente en la sección que corresponda a tu orientación.",
+        q: "¿Qué hago si no encuentro un espacio de entrega o realicé una PPS arreglada de forma particular?",
+        a: "Desplegá Ver todos los espacios en la pestaña Entregas y buscá por área e institución. Si tampoco figura allí, escribí a coordinación para que habilite o te indique el destino correcto en Moodle.",
       },
       {
         q: "¿Debo firmar planilla en prácticas online o eventos especiales?",
@@ -678,7 +688,30 @@ const faqGroups: FaqGroup[] = [
                 <strong>Todos los informes</strong> corregidos y aprobados.
               </li>
             </ol>
-            Usá la planilla de seguimiento para el control exacto de horas: Mi Panel es referencial.
+            El indicador <strong>3/3 de Mis Prácticas</strong> resume solamente horas, orientación y
+            rotación. La revisión de informes y la acreditación final se gestionan por separado. Usá
+            la planilla de seguimiento para el control exacto de horas: Mi Panel es referencial.
+          </>
+        ),
+      },
+      {
+        q: "¿De dónde sale la nota que veo en Mis Prácticas?",
+        a: (
+          <>
+            Por ahora la <strong>informás vos</strong> desde Mis Prácticas para mantener actualizado
+            tu seguimiento. Mi Panel todavía no recibe calificaciones automáticamente desde Moodle,
+            por lo que ese valor es referencial y puede ser revisado por coordinación. Si detectás
+            otra diferencia en una PPS, usá <strong>Solicitar corrección</strong> en esa práctica.
+          </>
+        ),
+      },
+      {
+        q: "¿Qué nota elijo al solicitar la acreditación?",
+        a: (
+          <>
+            Para las PPS iniciadas en <strong>2024 o antes</strong>, podés indicar una nota numérica
+            o <strong>Aprobado</strong>. Para las PPS iniciadas desde <strong>2025</strong>, la
+            calificación debe ser obligatoriamente numérica.
           </>
         ),
       },
@@ -791,7 +824,7 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué pasa si no puedo acceder a Mi Panel?",
-        a: "Comunicate con coordinación. Si es tu primera inscripción, puede que el legajo todavía no esté cargado en el sistema.",
+        a: "Comunicate con coordinación. En el primer acceso, legajo, DNI y correo deben coincidir con el registro académico; si algún dato falta o está desactualizado, coordinación debe corregirlo antes de vincular la cuenta.",
       },
       {
         q: "¿Cómo solicito una corrección en Mi Panel?",
@@ -854,18 +887,25 @@ const faqGroups: FaqGroup[] = [
 interface StudentAulaViewProps {
   mode?: "panel" | "public";
   section?: AulaSectionId;
+  practicas?: Practica[];
+  informeTasks?: InformeTask[];
+  isPracticasLoading?: boolean;
 }
 
-const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", section }) => {
+const StudentAulaView: React.FC<StudentAulaViewProps> = ({
+  mode = "panel",
+  section,
+  practicas,
+  informeTasks,
+  isPracticasLoading,
+}) => {
   const { authenticatedUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const isPublic = mode === "public";
-  const { areas: deliveryAreas } = useAulaEntregas();
 
   const [activeSectionState, setActiveSectionState] = useState<AulaSectionId>(() =>
     resolveInitialSection(searchParams.get("sec"))
   );
-  const [activeArea, setActiveArea] = useState<string | null>(null);
   const [activeFaq, setActiveFaq] = useState(faqGroups[0].id);
   const [openFaq, setOpenFaq] = useState<string | null>(faqGroups[0].items[0]?.q ?? null);
   const [mailCopied, setMailCopied] = useState(false);
@@ -903,28 +943,6 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
   }, []);
 
   const selectedSection = sections.find((s) => s.id === activeSection) ?? sections[0];
-  const selectedArea = useMemo(
-    () => deliveryAreas.find((area) => area.id === activeArea) ?? deliveryAreas[0],
-    [activeArea, deliveryAreas]
-  );
-
-  const handleDeliveryAreaKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-      let nextIndex = index;
-      if (event.key === "ArrowRight") nextIndex = (index + 1) % deliveryAreas.length;
-      else if (event.key === "ArrowLeft")
-        nextIndex = (index - 1 + deliveryAreas.length) % deliveryAreas.length;
-      else if (event.key === "Home") nextIndex = 0;
-      else if (event.key === "End") nextIndex = deliveryAreas.length - 1;
-      else return;
-
-      event.preventDefault();
-      const nextArea = deliveryAreas[nextIndex];
-      setActiveArea(nextArea.id);
-      document.getElementById(`delivery-tab-${nextArea.id}`)?.focus();
-    },
-    [deliveryAreas]
-  );
   const selectedFaq = useMemo(
     () => faqGroups.find((group) => group.id === activeFaq) ?? faqGroups[0],
     [activeFaq]
@@ -1091,8 +1109,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
                   El primer paso para una experiencia ordenada y sin contratiempos.
                 </p>
                 <p className="ah-aula__editorial-copy">
-                  Al ingresar, Mi Panel te identifica automáticamente como estudiante. Solo tenés
-                  que completar los datos restantes y crear tu cuenta.
+                  Para crear tu cuenta, ingresá legajo, DNI, correo y teléfono tal como figuran en
+                  el registro académico. Por seguridad, Mi Panel valida la coincidencia sin mostrar
+                  datos personales antes de vincularte.
                 </p>
                 <ul className="ah-aula__editorial-checks">
                   <li>
@@ -1553,74 +1572,12 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({ mode = "panel", secti
             )}
 
             {activeSection === "entregas" && (
-              <div className="ah-aula__deliveries">
-                <div className="ah-aula__areas" role="tablist" aria-label="Áreas de entrega">
-                  {deliveryAreas.map((area, index) => (
-                    <button
-                      key={area.id}
-                      type="button"
-                      role="tab"
-                      id={`delivery-tab-${area.id}`}
-                      aria-selected={area.id === selectedArea.id}
-                      aria-controls="delivery-panel"
-                      tabIndex={area.id === selectedArea.id ? 0 : -1}
-                      className={
-                        "ah-aula__area" + (area.id === selectedArea.id ? " is-active" : "")
-                      }
-                      style={{ ["--area" as string]: area.color }}
-                      onClick={() => setActiveArea(area.id)}
-                      onKeyDown={(event) => handleDeliveryAreaKeyDown(event, index)}
-                    >
-                      <span className="ah-aula__area-ic" aria-hidden>
-                        <Icon name={deliveryAreaIcons[area.id] ?? "upload"} size={18} />
-                      </span>
-                      <span className="ah-aula__area-copy">
-                        <strong>
-                          {area.id === "laboral" ? (
-                            <>
-                              <span className="ah-aula__area-prefix">Área </span>
-                              Laboral y comunitaria
-                            </>
-                          ) : (
-                            area.name
-                          )}
-                        </strong>
-                        <small>
-                          {area.institutions.length}{" "}
-                          {area.institutions.length === 1 ? "institución" : "instituciones"}
-                        </small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <div
-                  id="delivery-panel"
-                  role="tabpanel"
-                  aria-labelledby={`delivery-tab-${selectedArea.id}`}
-                  className="ah-aula__delivery-grid"
-                  key={selectedArea.id}
-                >
-                  {selectedArea.institutions.map((institution) => (
-                    <a
-                      key={institution.name}
-                      className="ah-aula__delivery"
-                      href={`${MOODLE_ASSIGN}${institution.moodleId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ ["--area" as string]: selectedArea.color }}
-                    >
-                      <strong>{institution.name}</strong>
-                      <span className="ah-aula__delivery-foot">
-                        <span className="ah-aula__open">Abrir entrega</span>
-                      </span>
-                    </a>
-                  ))}
-                </div>
-                <p className="ah-aula__deliveries-note">
-                  Cada tarjeta abre la tarea de esa institución en Moodle, donde subís el informe
-                  final y, si corresponde, la planilla firmada.
-                </p>
-              </div>
+              <StudentDeliveriesPanel
+                practicas={practicas}
+                informeTasks={informeTasks}
+                isPracticasLoading={isPracticasLoading}
+                isPublic={isPublic}
+              />
             )}
           </section>
         )}

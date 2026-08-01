@@ -16,10 +16,11 @@
  *  - Helpers de formato (`buildClipboardText`, `buildHeader`) usados por el
  *    Generador de seguros.
  *
- * La transición a "Activa" ahora la hace el admin explícitamente
- * (botón "Activar PPS" en la sala de Confirmación) — ya no se deriva de la
- * marca de aseguramiento. Esto desacopla "seguro listo" de "PPS corriendo"
- * y permite operar con reemplazos/consentimientos parciales.
+ * "Activa" y "Finalizada" las decide el CALENDARIO, no un click: una PPS está
+ * en curso entre su `fecha_inicio` y su `fecha_finalizacion`, y sale de la vista
+ * operativa cuando esa última pasa. El botón "Activar PPS" de la sala de
+ * Confirmación sigue existiendo como confirmación explícita, pero ya no es
+ * requisito para que la PPS aparezca como activa.
  */
 import {
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
@@ -27,21 +28,29 @@ import {
   FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS,
 } from "../constants";
 import { db } from "../lib/db";
+import { parseToUTCDate } from "../utils/formatters";
 
 // ── Tipos compartidos ─────────────────────────────────────────────────────────
 
 /** Estado del lanzamiento en el pipeline de 5 pasos visibles (+ archivada). */
 export type UIState = "borrador" | "seleccion" | "seguro" | "confirmacion" | "activa" | "archivada";
 
-/** Categoría operativa del sidebar del Lanzador. */
+/**
+ * Categoría operativa del sidebar del Lanzador.
+ *
+ * Las cinco primeras son el recorrido visible. Las dos últimas NO se muestran
+ * como grupo: son la forma de salir de la vista operativa (`finalizada` cuando
+ * la PPS terminó, `oculta` cuando la convocatoria no está en el pipeline).
+ * Siguen siendo alcanzables por el buscador del sidebar.
+ */
 export type SidebarBucket =
-  | "borrador"
   | "abierta"
   | "seleccionar"
   | "asegurar"
   | "confirmacion"
   | "activa"
-  | "archivada";
+  | "finalizada"
+  | "oculta";
 
 /** Metadata del pipeline (label + step). Los steps van de 1 a 6. */
 export const STATE_META: Record<UIState, { label: string; step: number }> = {
@@ -61,25 +70,74 @@ export const BUCKET_META: Record<
   SidebarBucket,
   { label: string; tone: UIState; collapsedByDefault: boolean }
 > = {
-  borrador: { label: "Borradores", tone: "borrador", collapsedByDefault: true },
   abierta: { label: "Abiertas", tone: "seleccion", collapsedByDefault: false },
   seleccionar: { label: "A seleccionar", tone: "seleccion", collapsedByDefault: false },
   asegurar: { label: "A asegurar", tone: "seguro", collapsedByDefault: false },
   confirmacion: { label: "En confirmación", tone: "confirmacion", collapsedByDefault: false },
   activa: { label: "Activas", tone: "activa", collapsedByDefault: false },
-  archivada: { label: "Archivadas", tone: "archivada", collapsedByDefault: true },
+  // Estos dos solo se listan cuando hay una búsqueda activa, así que arrancan
+  // expandidos: si el admin los buscó, los quiere ver.
+  finalizada: { label: "Finalizadas", tone: "archivada", collapsedByDefault: false },
+  oculta: { label: "Fuera del pipeline", tone: "borrador", collapsedByDefault: false },
 };
 
-/** Orden del sidebar: acciones pendientes primero, archivadas al final. */
+/**
+ * Orden del sidebar: el recorrido operativo, con las acciones pendientes
+ * primero. Una convocatoria vive acá desde que se abre la inscripción hasta que
+ * llega su fecha de finalización.
+ */
 export const BUCKET_ORDER: SidebarBucket[] = [
   "seleccionar",
   "asegurar",
   "confirmacion",
   "abierta",
   "activa",
-  "borrador",
-  "archivada",
 ];
+
+/**
+ * Buckets que NO forman parte del recorrido y por lo tanto no se muestran como
+ * grupo: una PPS finalizada ya no pide trabajo, y una convocatoria oculta no
+ * está en el pipeline. El sidebar sí las revela cuando hay una búsqueda activa,
+ * para que una fecha mal cargada no haga desaparecer nada sin salida.
+ */
+export const HIDDEN_BUCKETS: SidebarBucket[] = ["finalizada", "oculta"];
+
+/**
+ * Dónde está parado el lanzamiento en el calendario. Es el eje que manda sobre
+ * el pipeline: una PPS que arrancó está en curso aunque el admin nunca haya
+ * apretado "Activar", y una que llegó a su fecha de fin terminó aunque haya
+ * quedado con consentimientos pendientes.
+ *
+ * `desconocida` = no hay fechas suficientes para ubicarla (típicamente registros
+ * legacy sin `fecha_finalizacion`). Nunca se la trata como en curso: sin fecha
+ * de fin no hay forma de saber si sigue viva, y suponer que sí llenaría
+ * "Activas" de ruido histórico.
+ */
+export type LaunchTimeline = "pendiente" | "en_curso" | "finalizada" | "desconocida";
+
+/**
+ * Ubica un lanzamiento en el calendario comparando por día (no por instante).
+ *
+ * Las fechas vienen como `YYYY-MM-DD` y se normalizan a mediodía UTC vía
+ * `parseToUTCDate`: comparar con `new Date(str)` + `setHours(0,0,0,0)` corría un
+ * día hacia atrás en timezones negativos como Argentina.
+ */
+export function deriveTimeline(
+  fechaInicio: string | null | undefined,
+  fechaFinalizacion: string | null | undefined,
+  now: Date = new Date()
+): LaunchTimeline {
+  const hoy = parseToUTCDate(now.toISOString());
+  const ini = parseToUTCDate(fechaInicio);
+  const fin = parseToUTCDate(fechaFinalizacion);
+  if (!hoy) return "desconocida";
+
+  if (fin && fin.getTime() < hoy.getTime()) return "finalizada";
+  if (!ini) return "desconocida";
+  if (ini.getTime() > hoy.getTime()) return "pendiente";
+  // Ya arrancó: solo es "en curso" si sabemos que todavía no terminó.
+  return fin ? "en_curso" : "desconocida";
+}
 
 export interface BucketInput {
   /** Estado mapeado desde `estado_convocatoria` (+ marca de seguro). */
@@ -92,51 +150,57 @@ export interface BucketInput {
   totalInsc: number;
   /** ¿La ventana de inscripción ya venció? */
   vencida: boolean;
+  /** Posición en el calendario (ver `deriveTimeline`). */
+  timeline: LaunchTimeline;
 }
 
 // ── Derivación de bucket (PURA) ────────────────────────────────────────────────
 
 /**
  * Clasifica un lanzamiento en exactamente un bucket. Orden de precedencia:
- *  1. borrador
- *  2. archivada           (precede a la marca de aseguramiento)
- *  3. confirmacion        (sala de consentimientos; explícita en DB o por marca)
- *  4. activa              (admin activó la PPS explícitamente)
- *  5. hay seleccionados   → asegurar (Req 3.3/4.1)
- *  6. cerrada/vencida con inscriptos → seleccionar
- *  7. cerrada/vencida sin inscriptos → archivada (no prosperó)
- *  8. resto               → abierta
+ *  1. finalizada          (fecha de fin pasada → sale de la vista operativa)
+ *  2. activa              (arrancó y no terminó, sin importar el paso del admin)
+ *  3. oculta              (no visible / archivada en DB, y todavía no arrancó)
+ *  4. activa              (marcada 'Activa' en DB aunque no haya llegado su fecha)
+ *  5. confirmacion        (sala de consentimientos; explícita en DB o por marca)
+ *  6. hay seleccionados   → asegurar (Req 3.3/4.1)
+ *  7. cerrada/vencida con inscriptos → seleccionar
+ *  8. cerrada/vencida sin inscriptos → oculta (no prosperó)
+ *  9. resto               → abierta
  *
- * Nótese: la marca `seguro_gestionado_at` ya NO clasifica como "activa".
- * Eso lo hace ahora `dbState === "activa"` (acción explícita del admin).
+ * El calendario tiene precedencia sobre el pipeline (1 y 2). Antes "Activa"
+ * dependía de un click del admin en la sala de Confirmación, así que las PPS
+ * que arrancaban sin ese click quedaban trabadas en pasos previos y una regla
+ * de "archivada efectiva" terminaba enterrándolas.
  */
 export function deriveBucket(input: BucketInput): SidebarBucket {
-  const { dbState, seguroGestionadoAt, totalSel, totalInsc, vencida } = input;
+  const { dbState, seguroGestionadoAt, totalSel, totalInsc, vencida, timeline } = input;
 
-  if (dbState === "borrador") return "borrador";
-  if (dbState === "archivada") return "archivada";
-  if (dbState === "confirmacion") return "confirmacion";
+  if (timeline === "finalizada") return "finalizada";
+  if (timeline === "en_curso") return "activa";
+
+  if (dbState === "borrador" || dbState === "archivada") return "oculta";
   if (dbState === "activa") return "activa";
+  if (dbState === "confirmacion") return "confirmacion";
 
   // La marca de seguro tiene precedencia sobre los conteos y la ventana de
   // inscripción: si está seteada (aunque el DB haya quedado en 'Cerrado' por
   // datos legacy), el lanzamiento está operativamente en la sala de
-  // Confirmación. Esto reemplaza el hack anterior que la trataba como 'activa'
-  // y se saltaba la sala de consentimientos.
+  // Confirmación.
   if (seguroGestionadoAt != null) return "confirmacion";
 
   if (totalSel > 0) return "asegurar";
 
   const cerradaOVencida = dbState === "seguro" || (dbState === "seleccion" && vencida);
   if (cerradaOVencida && totalInsc > 0) return "seleccionar";
-  if (cerradaOVencida) return "archivada";
+  if (cerradaOVencida) return "oculta";
 
   return "abierta";
 }
 
-/** True si el lanzamiento tiene marca de aseguramiento y no está archivado. */
+/** True si el lanzamiento tiene marca de aseguramiento y sigue en el recorrido. */
 export function isSeguroGestionado(input: BucketInput): boolean {
-  return input.seguroGestionadoAt != null && deriveBucket(input) !== "archivada";
+  return input.seguroGestionadoAt != null && deriveBucket(input) !== "finalizada";
 }
 
 // ── Mutaciones de aseguramiento ─────────────────────────────────────────────────

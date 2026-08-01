@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState } from "react";
 import {
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
@@ -8,24 +8,18 @@ import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
 } from "../../constants";
+import { getPracticePresentationStatus, isPracticeDisapproved } from "../../logic/studentRules";
 import type { Practica } from "../../types";
-import {
-  cleanDbValue,
-  formatDate,
-  normalizeStringForComparison,
-  parseToUTCDate,
-} from "../../utils/formatters";
+import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
+import { haptics } from "../../utils/haptics";
+import { logger } from "../../utils/logger";
 import EmptyState from "../EmptyState";
 import NotaSelector from "../NotaSelector";
 import { TableSkeleton } from "../Skeletons";
-import { logger } from "../../utils/logger";
-import { haptics } from "../../utils/haptics";
-import { isPracticeDisapproved } from "../../logic/studentRules";
 
 interface PracticasTableProps {
   practicas: Practica[];
-  handleNotaChange: (practicaId: string, nota: string, convocatoriaId?: string) => void;
-  handleFechaFinChange?: (practicaId: string, fecha: string) => void;
+  handleNotaChange: (practicaId: string, nota: string) => Promise<void>;
   isLoading?: boolean;
   onRequestModificacion?: (practica: Practica) => void;
   onDeletePractica?: (practicaId: string) => void;
@@ -33,126 +27,112 @@ interface PracticasTableProps {
 }
 
 // Flat editorial grade — número plano clickeable, color de marca (sin caja ni slot-machine)
-const FlatGrade: React.FC<{
+interface FlatGradeProps {
   nota: string;
   onClick: () => void;
   isSaving: boolean;
   isSuccess: boolean;
   isOpen: boolean;
-}> = ({ nota, onClick, isSaving, isSuccess, isOpen }) => {
-  const num = parseInt(nota, 10);
-  const hasGrade = !isNaN(num);
-  const color = !hasGrade
-    ? "var(--student-ink-subtle, #94a3b8)"
-    : num >= 7
-      ? "#3CB88D" // teal · aprobado holgado
-      : num >= 4
-        ? "#B7770B" // ámbar · aprobado justo
-        : "#C0392B"; // rojo · desaprobado
-  const displayText = hasGrade ? String(num) : "Pend.";
+  hasError: boolean;
+  institution: string;
+}
 
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      title="Clic para editar nota"
-      className={`prow__nota cursor-pointer leading-none transition-opacity hover:opacity-60 ${
-        isOpen ? "opacity-100 underline underline-offset-4 decoration-2" : ""
-      }`}
-      style={{
-        color,
-        fontFamily: hasGrade ? undefined : "var(--font-sans)",
-        fontSize: hasGrade ? undefined : 12,
-        fontWeight: hasGrade ? undefined : 700,
-        letterSpacing: hasGrade ? undefined : 0,
-        minWidth: hasGrade ? undefined : 38,
-      }}
-    >
-      {isSaving ? (
-        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle" />
-      ) : isSuccess ? (
-        <span className="material-icons !text-2xl align-middle">check</span>
-      ) : (
-        displayText
-      )}
-    </button>
-  );
-};
+const FlatGrade = forwardRef<HTMLButtonElement, FlatGradeProps>(
+  ({ nota, onClick, isSaving, isSuccess, isOpen, hasError, institution }, ref) => {
+    const num = parseInt(nota, 10);
+    const hasGrade = !isNaN(num);
+    const color = !hasGrade
+      ? "var(--student-ink-subtle, #94a3b8)"
+      : num >= 7
+        ? "#3CB88D" // teal · aprobado holgado
+        : num >= 4
+          ? "#B7770B" // ámbar · aprobado justo
+          : "#C0392B"; // rojo · desaprobado
+    const displayText = hasGrade ? String(num) : "Pend.";
 
-const DateDisplay: React.FC<{
-  dateStr: string | null;
-  onDateChange: (newDate: string) => void;
-  label: string;
-}> = ({ dateStr, onDateChange }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const inputValue = dateStr ? dateStr.split("T")[0] : "";
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    setIsEditing(false);
-    if (e.target.value && e.target.value !== inputValue) {
-      onDateChange(e.target.value);
-    }
-  };
-
-  const handleContainerClick = () => {
-    setIsEditing(true);
-  };
-
-  if (isEditing) {
     return (
-      <input
-        type="date"
-        autoFocus
-        defaultValue={inputValue}
-        onBlur={handleBlur}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.currentTarget.blur();
-          }
+      <button
+        ref={ref}
+        type="button"
+        disabled={isSaving}
+        aria-label={`${
+          hasError ? "Reintentar edición de" : "Editar"
+        } la nota informada por vos para ${institution}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
         }}
-        className="bg-white dark:bg-slate-800 border border-emerald-500 rounded px-1 py-0.5 text-xs text-slate-800 dark:text-white outline-none w-28"
-      />
+        title={
+          hasError ? "No se pudo guardar. Volvé a intentarlo." : "Editar la nota informada por vos"
+        }
+        className={`prow__nota min-w-11 min-h-11 inline-flex items-center justify-center rounded-lg cursor-pointer leading-none transition-[opacity,background-color] hover:bg-slate-100 dark:hover:bg-slate-800 ${
+          isOpen ? "opacity-100 underline underline-offset-4 decoration-2" : ""
+        } ${hasError ? "text-rose-600 dark:text-rose-300 underline decoration-wavy" : ""}`}
+        style={{
+          color: hasError ? "var(--danger-600, #b42318)" : color,
+          fontFamily: hasGrade ? undefined : "var(--font-sans)",
+          fontSize: hasGrade ? undefined : 12,
+          fontWeight: hasGrade ? undefined : 700,
+          letterSpacing: hasGrade ? undefined : 0,
+          minWidth: hasGrade ? undefined : 38,
+        }}
+      >
+        {isSaving ? (
+          <span
+            role="status"
+            aria-label="Guardando nota informada"
+            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle"
+          />
+        ) : isSuccess ? (
+          <span
+            role="status"
+            aria-label="Nota guardada"
+            className="material-icons !text-2xl align-middle"
+          >
+            check
+          </span>
+        ) : (
+          displayText
+        )}
+      </button>
     );
   }
+);
 
-  return (
-    <span
-      onClick={handleContainerClick}
-      className="group/date relative cursor-default md:cursor-pointer flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-      title="Clic para editar fecha (Solo PC)"
-    >
-      {formatDate(dateStr)}
-      <span className="material-icons !text-[10px] opacity-0 group-hover/date:opacity-100 transition-opacity hidden md:inline-block">
-        edit
-      </span>
-    </span>
-  );
-};
+FlatGrade.displayName = "FlatGrade";
 
 const PracticaRow: React.FC<{
   practica: Practica;
-  onNotaChange: (id: string, nota: string) => void;
-  onFechaFinChange?: (id: string, fecha: string) => void;
+  onNotaChange: (id: string, nota: string) => Promise<void>;
   onRequestModificacion?: (practica: Practica) => void;
   onDeletePractica?: (id: string) => void;
   isSaving: boolean;
   isSuccess: boolean;
+  hasSaveError: boolean;
   index: number;
 }> = ({
   practica,
   onNotaChange,
-  onFechaFinChange,
   onRequestModificacion,
   onDeletePractica,
   isSaving,
   isSuccess,
+  hasSaveError,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [triggerRect, setTriggerRect] = useState<DOMRect>(new DOMRect(0, 0, 0, 0));
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(
+    () => () => {
+      if (longPressTimerRef.current !== null) {
+        window.clearTimeout(longPressTimerRef.current);
+      }
+    },
+    []
+  );
 
   const handleMenuToggle = () => {
     if (!isSaving && triggerRef.current) {
@@ -167,22 +147,8 @@ const PracticaRow: React.FC<{
   const rawName = practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
   const institucion = cleanDbValue(rawName) || "Institución desconocida";
 
-  let status = practica[FIELD_ESTADO_PRACTICA];
-  const disapproved = isPracticeDisapproved(status);
-
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  if (
-    !disapproved &&
-    normalizeStringForComparison(status) === "en curso" &&
-    practica[FIELD_FECHA_FIN_PRACTICAS]
-  ) {
-    const endDate = parseToUTCDate(practica[FIELD_FECHA_FIN_PRACTICAS]);
-    if (endDate && endDate < now) {
-      status = "Finalizada";
-    }
-  }
+  const disapproved = isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]);
+  const presentationStatus = getPracticePresentationStatus(practica);
 
   const getAreaColor = (area: string) => {
     const norm = normalizeStringForComparison(area);
@@ -205,69 +171,107 @@ const PracticaRow: React.FC<{
     setIsMenuOpen(false);
   };
 
-  // Long-press en la tarjeta → solicitar modificación (reemplaza el botón de
-  // editar para ganar espacio). Un toque corto sobre la nota sigue editándola.
-  const lpTimer = useRef<number | null>(null);
-  const lpFired = useRef(false);
-  const lpStart = useRef<{ x: number; y: number } | null>(null);
-  const lpStartPress = (e: React.PointerEvent) => {
-    if (!onRequestModificacion || disapproved) return;
-    lpFired.current = false;
-    lpStart.current = { x: e.clientX, y: e.clientY };
-    lpTimer.current = window.setTimeout(() => {
-      lpFired.current = true;
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(12);
-      onRequestModificacion(practica);
-    }, 500);
-  };
-  const lpCancel = () => {
-    if (lpTimer.current) {
-      clearTimeout(lpTimer.current);
-      lpTimer.current = null;
+  const canRequestModification = Boolean(onRequestModificacion && !disapproved);
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
-    lpStart.current = null;
+    longPressStartRef.current = null;
   };
-  const lpMove = (e: React.PointerEvent) => {
-    if (!lpStart.current) return;
-    if (
-      Math.abs(e.clientX - lpStart.current.x) > 10 ||
-      Math.abs(e.clientY - lpStart.current.y) > 10
-    ) {
-      lpCancel();
+
+  const isNestedControl = (target: EventTarget | null) =>
+    target instanceof Element &&
+    Boolean(target.closest("button, input, select, textarea, a, [role='button']"));
+
+  const handleLongPressStart = (event: React.PointerEvent<HTMLElement>) => {
+    if (!canRequestModification || isNestedControl(event.target)) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    cancelLongPress();
+    longPressStartRef.current = { x: event.clientX, y: event.clientY };
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTimerRef.current = null;
+      longPressStartRef.current = null;
+      haptics.select();
+      onRequestModificacion?.(practica);
+    }, 550);
+  };
+
+  const handleLongPressMove = (event: React.PointerEvent<HTMLElement>) => {
+    const start = longPressStartRef.current;
+    if (!start) return;
+    if (Math.abs(event.clientX - start.x) > 12 || Math.abs(event.clientY - start.y) > 12) {
+      cancelLongPress();
+    }
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (!canRequestModification || event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      haptics.select();
+      onRequestModificacion?.(practica);
     }
   };
 
   return (
-    <div
-      className="prow flex w-full gap-4 items-start relative group select-none bg-white dark:bg-[#131829] border border-slate-200/80 dark:border-slate-800/40 rounded-2xl py-3.5 pl-5 pr-4 shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] hover:shadow-md transition-[box-shadow,transform] active:scale-[0.995]"
-      onPointerDown={lpStartPress}
-      onPointerUp={lpCancel}
-      onPointerCancel={lpCancel}
-      onPointerLeave={lpCancel}
-      onPointerMove={lpMove}
-      onContextMenu={(e) => {
-        if (onRequestModificacion) e.preventDefault();
+    <article
+      className={`prow flex w-full gap-4 items-start relative group flex-wrap bg-white dark:bg-[#131829] border border-slate-200/80 dark:border-slate-800/40 rounded-2xl py-3.5 pl-5 pr-4 shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] hover:shadow-md transition-[box-shadow,background-color] ${
+        canRequestModification
+          ? "select-none active:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:active:bg-slate-900 dark:focus-visible:ring-offset-slate-950"
+          : ""
+      }`}
+      role={canRequestModification ? "button" : undefined}
+      tabIndex={canRequestModification ? 0 : undefined}
+      aria-label={
+        canRequestModification
+          ? `${institucion}. Abrir opciones de edición de la práctica.`
+          : undefined
+      }
+      aria-describedby={canRequestModification ? "practicas-edit-hint" : undefined}
+      onPointerDown={handleLongPressStart}
+      onPointerMove={handleLongPressMove}
+      onPointerUp={cancelLongPress}
+      onPointerCancel={cancelLongPress}
+      onPointerLeave={cancelLongPress}
+      onKeyDown={handleCardKeyDown}
+      onContextMenu={(event) => {
+        if (canRequestModification && !isNestedControl(event.target)) event.preventDefault();
       }}
-      onClickCapture={(e) => {
-        if (lpFired.current) {
-          e.preventDefault();
-          e.stopPropagation();
-          lpFired.current = false;
-        }
-      }}
-      style={onRequestModificacion ? { WebkitTouchCallout: "none" } : undefined}
+      style={canRequestModification ? { WebkitTouchCallout: "none" } : undefined}
     >
       <div className="flex-1 min-w-0 pr-2">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="prow__area font-semibold text-xs" style={{ color }}>
             {areaText}
           </span>
-          {!disapproved && (
-            <span className="prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider text-slate-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 inline-block" />
-              {status}
-            </span>
-          )}
+          <span
+            className={`prow__status text-[10px] inline-flex items-center gap-1 uppercase tracking-wider ${
+              presentationStatus.tone === "active"
+                ? "text-blue-600 dark:text-blue-300"
+                : presentationStatus.tone === "complete"
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : presentationStatus.tone === "danger"
+                    ? "text-rose-700 dark:text-rose-300"
+                    : "text-slate-500 dark:text-slate-400"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full inline-block ${
+                presentationStatus.tone === "active"
+                  ? "bg-blue-500"
+                  : presentationStatus.tone === "complete"
+                    ? "bg-emerald-500"
+                    : presentationStatus.tone === "danger"
+                      ? "bg-rose-500"
+                      : "bg-slate-400"
+              }`}
+              aria-hidden="true"
+            />
+            {presentationStatus.label}
+          </span>
         </div>
 
         <h3 className="prow__name text-slate-900 dark:text-white text-base md:text-lg font-display font-semibold leading-tight break-words">
@@ -277,19 +281,12 @@ const PracticaRow: React.FC<{
         <div className="prow__dates flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-2">
           <span>{formatDate(practica[FIELD_FECHA_INICIO_PRACTICAS])}</span>
           <span>-</span>
-          <DateDisplay
-            dateStr={practica[FIELD_FECHA_FIN_PRACTICAS] || null}
-            onDateChange={(newDate) =>
-              !disapproved && onFechaFinChange && onFechaFinChange(practica.id, newDate)
-            }
-            label="Fecha Fin"
-          />
+          <span>{formatDate(practica[FIELD_FECHA_FIN_PRACTICAS])}</span>
         </div>
       </div>
 
       <div className="prow__metrics flex items-center gap-4 flex-shrink-0 self-center pr-1">
-        {/* Eliminar — solo en contextos que lo habilitan (no en el panel del alumno).
-            La edición/modificación se dispara manteniendo presionada la tarjeta. */}
+        {/* Eliminar — solo en contextos que lo habilitan (no en el panel del alumno). */}
         {onDeletePractica && !disapproved && (
           <button
             onClick={(e) => {
@@ -298,8 +295,9 @@ const PracticaRow: React.FC<{
                 onDeletePractica(practica.id);
               }
             }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+            className="min-w-11 min-h-11 inline-flex items-center justify-center rounded-lg text-rose-600 dark:text-rose-300 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
             title="Eliminar práctica"
+            aria-label={`Eliminar ${institucion}`}
           >
             <span className="material-icons text-base">delete_outline</span>
           </button>
@@ -314,29 +312,34 @@ const PracticaRow: React.FC<{
           </span>
         </div>
 
-        <div className="relative flex flex-col items-center" ref={triggerRef}>
+        <div className="relative flex flex-col items-center">
           {disapproved ? (
             <span className="text-xs font-semibold text-rose-700 dark:text-rose-300">
               Desaprobada
             </span>
           ) : (
             <FlatGrade
+              ref={triggerRef}
               nota={notaActual}
               onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
               isSaving={isSaving}
               isSuccess={isSuccess}
               isOpen={isMenuOpen}
+              hasError={hasSaveError}
+              institution={institucion}
             />
           )}
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">
-            nota
+            tu nota
           </span>
         </div>
       </div>
 
       {isMenuOpen && (
         <>
-          <div
+          <button
+            type="button"
+            aria-label="Cerrar selector de nota"
             className="fixed inset-0 z-40 cursor-default"
             onClick={(e) => {
               e.stopPropagation();
@@ -348,17 +351,17 @@ const PracticaRow: React.FC<{
             onClose={() => setIsMenuOpen(false)}
             currentValue={notaActual}
             triggerRect={triggerRect}
+            triggerElement={triggerRef.current}
           />
         </>
       )}
-    </div>
+    </article>
   );
 };
 
 const PracticasTable: React.FC<PracticasTableProps> = ({
   practicas,
   handleNotaChange,
-  handleFechaFinChange,
   isLoading = false,
   onRequestModificacion,
   onDeletePractica,
@@ -367,7 +370,6 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
   if (import.meta.env.DEV) {
     logger.info("[DEBUG] PracticasTable Props:", {
       practicasCount: practicas.length,
-      hasDateHandler: !!handleFechaFinChange,
       hasModificacionHandler: !!onRequestModificacion,
       hasNuevaPPSHandler: !!onRequestNuevaPPS,
     });
@@ -375,13 +377,20 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
 
   const [savingNotaId, setSavingNotaId] = useState<string | null>(null);
   const [justUpdatedPracticaId, setJustUpdatedPracticaId] = useState<string | null>(null);
+  const [saveErrorPracticaId, setSaveErrorPracticaId] = useState<string | null>(null);
 
   const onLocalNoteChange = async (practicaId: string, nota: string) => {
     setSavingNotaId(practicaId);
-    await handleNotaChange(practicaId, nota);
-    setSavingNotaId(null);
-    setJustUpdatedPracticaId(practicaId);
-    setTimeout(() => setJustUpdatedPracticaId(null), 2000);
+    setSaveErrorPracticaId(null);
+    try {
+      await handleNotaChange(practicaId, nota);
+      setJustUpdatedPracticaId(practicaId);
+      window.setTimeout(() => setJustUpdatedPracticaId(null), 2000);
+    } catch {
+      setSaveErrorPracticaId(practicaId);
+    } finally {
+      setSavingNotaId(null);
+    }
   };
 
   if (isLoading) {
@@ -399,10 +408,24 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
     return (
       <EmptyState
         type="no-practicas"
-        title="Sin Prácticas"
-        message="Aún no tienes historial de prácticas registradas. Completa tu primera PPS desde el panel de convocatorias."
+        title="Todavía no hay prácticas"
+        message="Tu historial va a aparecer cuando ingreses mediante una convocatoria o cargues una PPS que ya realizaste."
         className="py-8"
         size="md"
+        action={
+          onRequestNuevaPPS ? (
+            <button
+              type="button"
+              onClick={onRequestNuevaPPS}
+              className="min-h-11 px-5 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+            >
+              <span className="material-icons !text-lg" aria-hidden="true">
+                add
+              </span>
+              Cargar una PPS realizada
+            </button>
+          ) : undefined
+        }
       />
     );
   }
@@ -412,16 +435,29 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
     const dateB = new Date(b[FIELD_FECHA_INICIO_PRACTICAS] || 0).getTime();
     return dateB - dateA;
   });
+  const hasEditablePractices =
+    Boolean(onRequestModificacion) &&
+    sortedPracticas.some((practica) => !isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]));
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-baseline px-2 mb-1">
-        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-normal">
-          Mis prácticas
-        </h3>
-        <span className="mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-          {sortedPracticas.length} {sortedPracticas.length === 1 ? "práctica" : "prácticas"}
-        </span>
+      <div className="px-2 mb-1">
+        <div className="flex justify-between items-baseline">
+          <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-normal">
+            Mis prácticas
+          </h2>
+          <span className="mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+            {sortedPracticas.length} {sortedPracticas.length === 1 ? "práctica" : "prácticas"}
+          </span>
+        </div>
+        {hasEditablePractices ? (
+          <p
+            id="practicas-edit-hint"
+            className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400"
+          >
+            Mantené presionada una práctica para editarla.
+          </p>
+        ) : null}
       </div>
 
       {sortedPracticas.map((practica, index) => (
@@ -429,28 +465,27 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
           key={practica.id}
           practica={practica}
           onNotaChange={onLocalNoteChange}
-          onFechaFinChange={handleFechaFinChange}
           onRequestModificacion={onRequestModificacion}
           onDeletePractica={onDeletePractica}
           isSaving={savingNotaId === practica.id}
           isSuccess={justUpdatedPracticaId === practica.id}
+          hasSaveError={saveErrorPracticaId === practica.id}
           index={index}
         />
       ))}
 
-      {/* Botón sutil para agregar nueva PPS */}
+      {/* Acción secundaria para agregar otra PPS realizada */}
       {onRequestNuevaPPS && (
         <div className="flex justify-center py-4">
           <button
             type="button"
             onClick={onRequestNuevaPPS}
-            className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-uflo-teal hover:shadow-lg hover:scale-110 hover:border-emerald-200 dark:hover:border-emerald-900/30 active:scale-90 transition"
-            title="Cargar una PPS realizada"
-            aria-label="Cargar una PPS realizada"
+            className="min-h-11 px-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 inline-flex items-center justify-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-300 dark:hover:border-emerald-800 transition-colors"
           >
-            <span className="material-icons text-2xl" aria-hidden="true">
+            <span className="material-icons !text-lg" aria-hidden="true">
               add
             </span>
+            Cargar otra PPS
           </button>
         </div>
       )}

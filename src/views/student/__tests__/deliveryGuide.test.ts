@@ -1,0 +1,173 @@
+import {
+  FIELD_ESPECIALIDAD_PRACTICAS,
+  FIELD_ESTADO_PRACTICA,
+  FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+} from "../../../constants";
+import { FALLBACK_DELIVERY_AREAS } from "../../../hooks/useAulaEntregas";
+import type { InformeTask, Practica } from "../../../types";
+import {
+  buildGuidedDeliveries,
+  resolveDeliveryAreaId,
+  resolveDeliveryInstitution,
+} from "../deliveryGuide";
+
+const practice = (overrides: Partial<Practica> = {}): Practica =>
+  ({
+    id: "practice-1",
+    [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: "Relevamiento Prof.",
+    [FIELD_ESPECIALIDAD_PRACTICAS]: "Clínica",
+    [FIELD_ESTADO_PRACTICA]: "Finalizada",
+    [FIELD_FECHA_FIN_PRACTICAS]: "2026-06-30",
+    ...overrides,
+  }) as Practica;
+
+describe("deliveryGuide", () => {
+  it("usa el área para desambiguar instituciones con el mismo nombre", () => {
+    const areaId = resolveDeliveryAreaId("Clínica", FALLBACK_DELIVERY_AREAS);
+    const institution = resolveDeliveryInstitution(
+      "Relevamiento Prof.",
+      null,
+      areaId,
+      FALLBACK_DELIVERY_AREAS
+    );
+
+    expect(areaId).toBe("clinica");
+    expect(institution?.moodleId).toBe("906164");
+  });
+
+  it("no habilita coincidencias ambiguas cuando falta el área", () => {
+    const institution = resolveDeliveryInstitution(
+      "Relevamiento Prof.",
+      null,
+      null,
+      FALLBACK_DELIVERY_AREAS
+    );
+
+    expect(institution).toBeNull();
+  });
+
+  it("no cruza a otra área cuando la práctica ya tiene un área identificada", () => {
+    const institution = resolveDeliveryInstitution(
+      "Randstad",
+      null,
+      "clinica",
+      FALLBACK_DELIVERY_AREAS
+    );
+
+    expect(institution).toBeNull();
+  });
+
+  it("calcula el plazo sin inferir que una entrega está pendiente o vencida", () => {
+    const deliveries = buildGuidedDeliveries(
+      [
+        practice(),
+        practice({
+          id: "practice-2",
+          [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: "Randstad",
+          [FIELD_ESPECIALIDAD_PRACTICAS]: "Laboral",
+          [FIELD_FECHA_FIN_PRACTICAS]: "2026-08-01",
+        }),
+      ],
+      [],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-08-05T12:00:00Z")
+    );
+
+    expect(deliveries[0]).toMatchObject({
+      id: "practice-2",
+      statusLabel: "Verificar en Moodle",
+      statusTone: "neutral",
+    });
+    expect(deliveries[1]).toMatchObject({
+      id: "practice-1",
+      deadlineLabel: "30 de jul de 2026",
+      statusLabel: "Verificar en Moodle",
+      statusTone: "neutral",
+    });
+    expect(deliveries[0].institution?.name).toBe("Randstad");
+  });
+
+  it("presenta una nota de Mi Panel como dato informado, no como estado Moodle", () => {
+    const task: InformeTask = {
+      convocatoriaId: "conv-1",
+      practicaId: "practice-1",
+      ppsName: "PPS Relevamiento Prof.",
+      fechaFinalizacion: "2026-06-30",
+      informeSubido: true,
+      nota: "Aprobado",
+    };
+
+    const [delivery] = buildGuidedDeliveries(
+      [practice()],
+      [task],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-07-10T12:00:00Z")
+    );
+
+    expect(delivery).toMatchObject({
+      statusLabel: "Nota informada",
+      statusTone: "info",
+    });
+  });
+
+  it("identifica una confirmación manual sin llamarla entrega verificada", () => {
+    const task: InformeTask = {
+      convocatoriaId: "conv-1",
+      practicaId: "practice-1",
+      ppsName: "PPS Relevamiento Prof.",
+      fechaFinalizacion: "2026-06-30",
+      informeSubido: true,
+      nota: "Entregado (sin corregir)",
+    };
+
+    const [delivery] = buildGuidedDeliveries(
+      [practice()],
+      [task],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-07-10T12:00:00Z")
+    );
+
+    expect(delivery).toMatchObject({
+      statusLabel: "Marcada en Mi Panel",
+      statusTone: "info",
+    });
+  });
+
+  it("no fabrica un plazo con la fecha sintética de una tarea", () => {
+    const task: InformeTask = {
+      convocatoriaId: "conv-1",
+      practicaId: "practice-1",
+      ppsName: "PPS Relevamiento Prof.",
+      fechaFinalizacion: "2026-07-26",
+      informeSubido: false,
+      nota: "Sin calificar",
+    };
+    const practiceWithoutEnd = practice({
+      [FIELD_FECHA_FIN_PRACTICAS]: null,
+    });
+
+    const [delivery] = buildGuidedDeliveries(
+      [practiceWithoutEnd],
+      [task],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-07-26T12:00:00Z")
+    );
+
+    expect(delivery).toMatchObject({
+      deadline: null,
+      deadlineLabel: "Sin fecha de cierre",
+      statusLabel: "Estado no sincronizado",
+    });
+  });
+
+  it("excluye prácticas desaprobadas de la guía de entregas", () => {
+    const deliveries = buildGuidedDeliveries(
+      [practice({ [FIELD_ESTADO_PRACTICA]: "Desaprobada" })],
+      [],
+      FALLBACK_DELIVERY_AREAS
+    );
+
+    expect(deliveries).toEqual([]);
+  });
+});

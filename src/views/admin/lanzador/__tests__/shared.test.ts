@@ -3,20 +3,15 @@
  *
  * Cubren las funciones que el refactor de `LanzadorView.tsx` relocalizó y que
  * concentran reglas de negocio reales:
- *  - `isEffectivelyArchived`: cuándo una convocatoria debe tratarse como
- *    archivada aunque su estado siga en un paso del pipeline.
+ *  - `deriveTimeline`: dónde está parada una convocatoria en el calendario.
+ *    Es la regla que decide "Activas" y "Finalizadas", y reemplazó a la vieja
+ *    `isEffectivelyArchived` (que archivaba por `estado_gestion` + fecha de
+ *    inicio vencida, enterrando PPS que estaban corriendo).
  *  - `buildWhatsappFromLaunch` / `buildFranjasLibresMessage`: armado de los
  *    mensajes de difusión por WhatsApp.
- *
- * Son tests "de relocalización": aseguran que mover el código no cambió su
- * comportamiento observable.
  */
 import { describe, it, expect } from "@jest/globals";
-import {
-  isEffectivelyArchived,
-  buildWhatsappFromLaunch,
-  buildFranjasLibresMessage,
-} from "../shared";
+import { deriveTimeline, buildWhatsappFromLaunch, buildFranjasLibresMessage } from "../shared";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -32,38 +27,44 @@ import type { LanzamientoPPS } from "../../../../types";
 
 const PAST = "2020-01-01";
 const FUTURE = "2099-12-31";
+const HOY = new Date("2026-07-24T12:00:00Z");
 
-describe("isEffectivelyArchived", () => {
-  it("trata como archivada si estado_gestion es 'Archivado' o 'No se Relanza'", () => {
-    expect(isEffectivelyArchived("Archivado", "abierta", FUTURE)).toBe(true);
-    expect(isEffectivelyArchived("No se Relanza", "seleccionar", FUTURE)).toBe(true);
+describe("deriveTimeline", () => {
+  it("marca finalizada cuando la fecha de fin ya pasó", () => {
+    expect(deriveTimeline(PAST, "2026-07-23", HOY)).toBe("finalizada");
   });
 
-  it("archiva un bucket pre-inicio cuya fecha de inicio ya pasó (+gracia)", () => {
-    expect(isEffectivelyArchived(null, "seleccionar", PAST)).toBe(true);
-    expect(isEffectivelyArchived(null, "asegurar", PAST)).toBe(true);
-    expect(isEffectivelyArchived(null, "confirmacion", PAST)).toBe(true);
+  it("marca en curso entre inicio y fin", () => {
+    expect(deriveTimeline("2026-06-01", "2026-09-01", HOY)).toBe("en_curso");
   });
 
-  it("NO archiva un bucket pre-inicio con fecha de inicio futura", () => {
-    expect(isEffectivelyArchived(null, "seleccionar", FUTURE)).toBe(false);
+  it("marca pendiente cuando todavía no arrancó", () => {
+    expect(deriveTimeline("2026-07-28", "2026-11-26", HOY)).toBe("pendiente");
   });
 
-  it("NO archiva buckets que no son pre-inicio aunque la fecha haya pasado", () => {
-    expect(isEffectivelyArchived(null, "activa", PAST)).toBe(false);
-    expect(isEffectivelyArchived(null, "abierta", PAST)).toBe(false);
+  it("incluye los bordes: el día de inicio ya es en curso y el de fin todavía no finalizó", () => {
+    expect(deriveTimeline("2026-07-24", "2026-09-01", HOY)).toBe("en_curso");
+    expect(deriveTimeline("2026-06-01", "2026-07-24", HOY)).toBe("en_curso");
   });
 
-  it("NO archiva si no hay fecha de inicio", () => {
-    expect(isEffectivelyArchived(null, "seleccionar", null)).toBe(false);
-    expect(isEffectivelyArchived(undefined, "seleccionar", undefined)).toBe(false);
+  it("compara por día calendario, sin correrse por zona horaria", () => {
+    // `new Date("2026-07-23")` es medianoche UTC = 22/07 21:00 en Argentina.
+    // La regla anterior normalizaba con setHours() local y adelantaba un día,
+    // archivando convocatorias 24h antes de tiempo.
+    expect(deriveTimeline("2026-07-23", "2026-10-23", HOY)).toBe("en_curso");
+    expect(deriveTimeline("2026-01-01", "2026-07-24", HOY)).not.toBe("finalizada");
   });
 
-  it("respeta el período de gracia configurable", () => {
-    // Con una gracia enorme, ni una fecha de 2020 cae fuera de gracia.
-    expect(isEffectivelyArchived(null, "seleccionar", PAST, 9999)).toBe(false);
-    // Con gracia 0, una fecha de inicio pasada sí archiva.
-    expect(isEffectivelyArchived(null, "seleccionar", PAST, 0)).toBe(true);
+  it("no asume que siga viva si falta la fecha de fin", () => {
+    // Registros legacy sin fecha_finalizacion: sin ese dato no hay forma de
+    // saber si terminó, así que no entran a "Activas".
+    expect(deriveTimeline(PAST, null, HOY)).toBe("desconocida");
+    expect(deriveTimeline(null, null, HOY)).toBe("desconocida");
+    expect(deriveTimeline(undefined, undefined, HOY)).toBe("desconocida");
+  });
+
+  it("una fecha de fin futura sin inicio queda como desconocida", () => {
+    expect(deriveTimeline(null, FUTURE, HOY)).toBe("desconocida");
   });
 });
 

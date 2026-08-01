@@ -51,6 +51,7 @@ import { injectPremiumMotion } from "./premiumMotion";
 import { downloadBlob } from "../../utils/downloadFile";
 import { logger } from "../../utils/logger";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { useConfirm } from "../../hooks/useConfirm";
 import type { Convocatoria } from "../../types";
 
 /**
@@ -222,6 +223,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   const { authenticatedUser } = useAuth();
   const coordinadorId = authenticatedUser?.id ?? null;
   const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
 
   const [step, setStep] = useState<"selection" | "review">(contextual ? "review" : "selection");
 
@@ -840,9 +842,12 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
   // ── Reversión del aseguramiento (Req 5.x, 9.10) ─────────────────────────────
   const handleRevertir = async () => {
     if (!preSelectedLanzamientoId) return;
-    const confirmed = window.confirm(
-      '¿Revertir el aseguramiento? La PPS volverá a aparecer en "A asegurar".'
-    );
+    const confirmed = await confirm({
+      title: "¿Revertir el aseguramiento?",
+      message: 'La PPS volverá a aparecer en "A asegurar".',
+      confirmText: "Revertir",
+      type: "warning",
+    });
     if (!confirmed) return;
 
     setIsMarcando(true);
@@ -1219,6 +1224,8 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
         : step === "selection"
           ? renderSelectionStep()
           : renderReviewStep()}
+
+      {confirmDialog}
     </div>
   );
 };

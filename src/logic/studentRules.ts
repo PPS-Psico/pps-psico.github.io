@@ -43,6 +43,36 @@ export const isPracticeFinished = (status: string | null | undefined): boolean =
 export const isPracticeDisapproved = (status: string | null | undefined): boolean =>
   normalizeStringForComparison(status) === "desaprobada";
 
+export type PracticePresentationTone = "active" | "complete" | "danger" | "neutral";
+
+export interface PracticePresentationStatus {
+  label: "En curso" | "Finalizada" | "Desaprobada" | "No concretada" | "Por verificar";
+  tone: PracticePresentationTone;
+}
+
+/**
+ * Canonical student-facing status. Desktop and mobile must consume this helper
+ * instead of deriving their own truth from dates or display copy.
+ */
+export const getPracticePresentationStatus = (practice: Practica): PracticePresentationStatus => {
+  const rawStatus = practice[FIELD_ESTADO_PRACTICA];
+  const normalizedStatus = normalizeStringForComparison(rawStatus);
+
+  if (isPracticeDisapproved(rawStatus)) {
+    return { label: "Desaprobada", tone: "danger" };
+  }
+  if (isPracticeActive(rawStatus)) {
+    return { label: "En curso", tone: "active" };
+  }
+  if (isPracticeFinished(rawStatus)) {
+    return { label: "Finalizada", tone: "complete" };
+  }
+  if (normalizedStatus === "no se pudo concretar" || normalizedStatus === "cancelada") {
+    return { label: "No concretada", tone: "neutral" };
+  }
+  return { label: "Por verificar", tone: "neutral" };
+};
+
 export const isPracticeStatusComputable = (status: string | null | undefined): boolean => {
   const normalizedStatus = normalizeStringForComparison(status);
   return normalizedStatus !== "desaprobada" && normalizedStatus !== "no se pudo concretar";

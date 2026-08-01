@@ -18,43 +18,43 @@
 // acá solo se LEE actividad agregada, nunca se la interpreta.
 // ──────────────────────────────────────────────────────────────────────────
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../lib/supabaseClient";
 import {
-  TABLE_NAME_CONVOCATORIAS,
-  TABLE_NAME_LANZAMIENTOS_PPS,
-  TABLE_NAME_INSTITUCIONES,
-  TABLE_NAME_ESTUDIANTES,
-  TABLE_NAME_PRACTICAS,
+  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
+  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_ESTADO_ESTUDIANTES,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
+  FIELD_ESTADO_PRACTICA,
+  FIELD_FECHA_FINALIZACION_ESTUDIANTES,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_PRACTICAS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
+  FIELD_HORAS_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_LEGAJO_ESTUDIANTES,
+  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
+  FIELD_NOMBRE_ESTUDIANTES,
+  FIELD_NOMBRE_INSTITUCIONES,
   FIELD_NOMBRE_PPS_CONVOCATORIAS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
-  FIELD_NOMBRE_INSTITUCIONES,
-  FIELD_CONVENIO_NUEVO_INSTITUCIONES,
   FIELD_ORIENTACIONES_INSTITUCIONES,
-  FIELD_NOMBRE_ESTUDIANTES,
-  FIELD_LEGAJO_ESTUDIANTES,
-  FIELD_FECHA_FINALIZACION_ESTUDIANTES,
-  FIELD_ESTADO_ESTUDIANTES,
-  FIELD_FECHA_INICIO_PRACTICAS,
-  FIELD_HORAS_PRACTICAS,
-  FIELD_ESTADO_PRACTICA,
   FIELD_SELECTED_AT_CONVOCATORIAS,
   FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS,
-  FIELD_MODALIDAD_CUPO_LANZAMIENTOS,
   FIELD_TIPO_ACTIVIDAD_PRACTICAS,
+  TABLE_NAME_CONVOCATORIAS,
+  TABLE_NAME_ESTUDIANTES,
+  TABLE_NAME_INSTITUCIONES,
+  TABLE_NAME_LANZAMIENTOS_PPS,
+  TABLE_NAME_PRACTICAS,
 } from "../constants";
-import { getGroupName, normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
-import type { StudentInfo } from "../types";
-import { fetchHistoricalLaunchOffers } from "../services/historicalLaunchAnalytics";
-import { reportCutoff } from "../features/executive-report/executiveReport.service";
 import { fetchDirectorReportSnapshot } from "../features/executive-report/directorReport.service";
+import { reportCutoff } from "../features/executive-report/executiveReport.service";
+import { supabase } from "../lib/supabaseClient";
 import { isPracticeStatusComputable } from "../logic/studentRules";
+import { fetchHistoricalLaunchOffers } from "../services/historicalLaunchAnalytics";
+import type { StudentInfo } from "../types";
+import { getGroupName, normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 export type Tone = "accent" | "warn" | "ok" | "ai" | "ink";
@@ -122,6 +122,18 @@ const ORIENT_FROM_STRING = (raw: string | null | undefined): OrientKey => {
   return "sindefinir";
 };
 
+const dominantOrient = (orientations: Record<OrientKey, number>): OrientKey => {
+  let best: OrientKey = "sindefinir";
+  let max = -1;
+  (Object.keys(orientations) as OrientKey[]).forEach((key) => {
+    if (key !== "sindefinir" && orientations[key] > max) {
+      max = orientations[key];
+      best = key;
+    }
+  });
+  return max <= 0 ? "sindefinir" : best;
+};
+
 // Estados de inscripción que cuentan como "ocupando" un cupo.
 // estado_inscripcion canónico (CHECK constraint normalize_states):
 // Inscripto · Seleccionado · No Seleccionado.
@@ -143,15 +155,10 @@ export const useMetricsHeredados = ({
     queryKey: ["metricsHeredados", year, isTestingMode],
     enabled: !isTestingMode,
     staleTime: 1000 * 60 * 5,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<number> => {
-      try {
-        const { data, error } = await supabase.rpc("get_heredados_count", { p_year: year });
-        if (error) throw error;
-        return Number(data) || 0;
-      } catch {
-        return 0;
-      }
+      const { data, error } = await supabase.rpc("get_heredados_count", { p_year: year });
+      if (error) throw error;
+      return Number(data) || 0;
     },
   });
 };
@@ -178,15 +185,16 @@ export interface DinamicaCiclo {
 export const useMetricsDinamica = ({
   year,
   isTestingMode = false,
+  enabled = true,
 }: {
   year: number;
   isTestingMode?: boolean;
+  enabled?: boolean;
 }) => {
   return useQuery({
     queryKey: ["metricsDinamica", year, isTestingMode],
-    enabled: !isTestingMode,
+    enabled: enabled && !isTestingMode,
     staleTime: 1000 * 60 * 2,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<DinamicaCiclo> => {
       const { start, end } = range(year);
       const postulados = new Set<string>();
@@ -284,7 +292,6 @@ export const useMetricsFunnel = ({
     queryKey: ["metricsFunnel", year, isTestingMode],
     enabled: !isTestingMode,
     staleTime: 1000 * 60 * 2,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<FunnelStage[]> => {
       const { start, end } = range(year);
       // Embudo en PERSONAS (alumnos distintos), acotado al año y ACUMULATIVO:
@@ -390,7 +397,6 @@ export const useMetricsTopInstituciones = ({
     queryKey: ["metricsTopInst", year, isTestingMode],
     enabled: !isTestingMode,
     staleTime: 1000 * 60 * 2,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<TopInstitucion[]> => {
       const { start, end } = range(year);
 
@@ -524,18 +530,6 @@ export const useMetricsTopInstituciones = ({
         if (entry) entry.realizados += selectedByLaunch.get(launchId)?.size || 0;
       });
 
-      const dominantOrient = (o: Record<OrientKey, number>): OrientKey => {
-        let best: OrientKey = "sindefinir";
-        let max = -1;
-        (Object.keys(o) as OrientKey[]).forEach((k) => {
-          if (k !== "sindefinir" && o[k] > max) {
-            max = o[k];
-            best = k;
-          }
-        });
-        return max <= 0 ? "sindefinir" : best;
-      };
-
       return Array.from(inst.values())
         .map((e) => ({
           nombre: e.nombre,
@@ -598,31 +592,24 @@ export const useHermesActivity = ({
     queryKey: ["hermesActivity", year, isTestingMode],
     enabled: !isTestingMode,
     staleTime: 1000 * 60 * 5,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<{ total: number; whatsapp: number; gmail: number }> => {
       const { start, end } = range(year);
-      let whatsapp = 0;
-      let gmail = 0;
-      try {
-        const { count } = await supabase
+      const [whatsappResult, gmailResult] = await Promise.all([
+        supabase
           .from("whatsapp_mensajes")
           .select("id", { count: "exact", head: true })
           .gte("timestamp", start)
-          .lt("timestamp", end);
-        whatsapp = count || 0;
-      } catch {
-        /* tabla ausente */
-      }
-      try {
-        const { count } = await supabase
+          .lt("timestamp", end),
+        supabase
           .from("gmail_hilos")
           .select("thread_id", { count: "exact", head: true })
           .gte("ultimo_mensaje_at", start)
-          .lt("ultimo_mensaje_at", end);
-        gmail = count || 0;
-      } catch {
-        /* tabla ausente */
-      }
+          .lt("ultimo_mensaje_at", end),
+      ]);
+      if (whatsappResult.error) throw whatsappResult.error;
+      if (gmailResult.error) throw gmailResult.error;
+      const whatsapp = whatsappResult.count || 0;
+      const gmail = gmailResult.count || 0;
       return { total: whatsapp + gmail, whatsapp, gmail };
     },
   });
@@ -661,7 +648,6 @@ export const useReportLaunches = ({
     queryKey: ["metricsReportLaunches", year, isTestingMode],
     enabled: !isTestingMode,
     staleTime: 1000 * 60 * 5,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<ReportLaunch[]> => {
       const historical = await fetchHistoricalLaunchOffers(year);
       if (historical.available) {
@@ -851,7 +837,6 @@ export const useYtdFlows = ({
     queryKey: ["ytdFlows", year, fullYear, isTestingMode],
     enabled: !isTestingMode,
     staleTime: 1000 * 60 * 5,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<YtdFlows> => {
       const exclusiveCutoff = fullYear ? new Date(Date.UTC(year + 1, 0, 1)) : ytdCutoff(year);
       const cutoffDate = new Date(exclusiveCutoff.getTime() - 86400000).toISOString().slice(0, 10);
@@ -954,7 +939,6 @@ export const useTrayectoriaFinalizados = ({
     queryKey: ["trayectoriaFinalizados", year, isTestingMode],
     enabled: !isTestingMode,
     staleTime: 1000 * 60 * 5,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<TrayectoriaFinalizados> => {
       const empty: TrayectoriaFinalizados = {
         totalFinalizados: 0,

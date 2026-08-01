@@ -110,8 +110,16 @@ function groupRows(rows: AulaEntregaRow[]): DeliveryArea[] {
     }));
 }
 
-export function useAulaEntregas(): { areas: DeliveryArea[]; isLive: boolean } {
-  const { data } = useQuery({
+export type DeliveryDirectoryState = "loading" | "live" | "fallback";
+
+export function useAulaEntregas(): {
+  areas: DeliveryArea[];
+  isLive: boolean;
+  state: DeliveryDirectoryState;
+  isRefreshing: boolean;
+  retry: () => void;
+} {
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["aula_entregas"],
     queryFn: async () => {
       // La tabla aún no está en los tipos generados (types/supabase.ts); el
@@ -128,6 +136,14 @@ export function useAulaEntregas(): { areas: DeliveryArea[]; isLive: boolean } {
   });
 
   const grouped = data && data.length > 0 ? groupRows(data) : [];
-  if (grouped.length > 0) return { areas: grouped, isLive: true };
-  return { areas: FALLBACK_DELIVERY_AREAS, isLive: false };
+  const isLive = grouped.length > 0;
+  return {
+    areas: isLive ? grouped : FALLBACK_DELIVERY_AREAS,
+    isLive,
+    state: isLoading ? "loading" : isLive ? "live" : "fallback",
+    isRefreshing: isFetching && !isLoading,
+    retry: () => {
+      void refetch();
+    },
+  };
 }

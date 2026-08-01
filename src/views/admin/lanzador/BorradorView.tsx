@@ -2,25 +2,25 @@
  * lanzador/BorradorView.tsx — Vista del estado "borrador" del pipeline.
  * State "borrador" = DB 'Oculto'. Edición de datos y completitud antes de lanzar.
  */
-import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { db } from "../../../lib/db";
+import React, { useState } from "react";
+import { LAUNCH_TABLE_CONFIG } from "../../../components/admin/LanzadorConvocatorias";
+import RecordEditModal from "../../../components/admin/RecordEditModal";
 import {
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_DESCRIPCION_LANZAMIENTOS,
+  FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS,
-  FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
-  FIELD_DESCRIPCION_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
 } from "../../../constants";
-import { formatDate } from "../../../utils/formatters";
+import { db } from "../../../lib/db";
 import type { LanzamientoPPS } from "../../../types";
-import RecordEditModal from "../../../components/admin/RecordEditModal";
-import { LAUNCH_TABLE_CONFIG } from "../../../components/admin/LanzadorConvocatorias";
+import { formatDate } from "../../../utils/formatters";
 import { logger } from "../../../utils/logger";
 import { CanvasHeader, buildWhatsappFromLaunch } from "./shared";
 
@@ -52,11 +52,16 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
     buildWhatsappFromLaunch(launch);
 
   const campos = [
-    { label: "Nombre PPS", value: nombre, icon: "label", required: true },
-    { label: "Orientación", value: orientacion, icon: "school", required: true },
+    { label: "Nombre PPS", value: nombre?.trim() || null, icon: "label", required: true },
+    {
+      label: "Orientación",
+      value: orientacion?.trim() || null,
+      icon: "school",
+      required: true,
+    },
     {
       label: "Cupos disponibles",
-      value: cupos !== null ? String(cupos) : null,
+      value: cupos !== null && Number.isFinite(cupos) && cupos > 0 ? String(cupos) : null,
       icon: "group",
       required: true,
     },
@@ -86,10 +91,11 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
     { label: "Descripción", value: descripcion ? "Definida" : null, icon: "description" },
   ];
 
-  const requiredFilled = [nombre, orientacion, cupos, fechaInicio, fechaFin].filter(Boolean).length;
-  const totalRequired = 5;
+  const requiredFields = campos.filter((campo) => campo.required);
+  const requiredFilled = requiredFields.filter((campo) => campo.value !== null).length;
+  const totalRequired = requiredFields.length;
   const pct = Math.round((requiredFilled / totalRequired) * 100);
-  const isReady = pct >= 80;
+  const isReady = requiredFilled === totalRequired;
 
   const handleSave = async (recordId: string | null, fields: Record<string, unknown>) => {
     setSaving(true);

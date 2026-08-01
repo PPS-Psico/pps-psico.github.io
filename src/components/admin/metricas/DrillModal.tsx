@@ -3,7 +3,7 @@
 // Lista de alumnos/instituciones de una métrica. Reemplaza StudentListModal en
 // la vista ejecutiva para mantener el registro editorial. Cierra con Esc/click.
 // ──────────────────────────────────────────────────────────────────────────
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import type { StudentInfo } from "../../../types";
 
 export interface DrillRow extends StudentInfo {
@@ -15,9 +15,13 @@ export interface DrillRow extends StudentInfo {
 export interface DrillState {
   title: string;
   subtitle?: string;
+  description?: string;
+  summary?: string;
   rows: DrillRow[];
   kind?: "student" | "inst";
   loading?: boolean;
+  error?: string;
+  onRetry?: () => void;
   onRowClick?: (row: DrillRow) => void;
 }
 
@@ -32,7 +36,8 @@ export function DrillModal({ state, onClose }: { state: DrillState | null; onClo
   }, [state, onClose]);
 
   if (!state) return null;
-  const { title, subtitle, rows, kind, loading, onRowClick } = state;
+  const { title, subtitle, description, summary, rows, kind, loading, error, onRetry, onRowClick } =
+    state;
   const isInst = kind === "inst";
 
   return (
@@ -63,6 +68,11 @@ export function DrillModal({ state, onClose }: { state: DrillState | null; onClo
                 {subtitle}
               </div>
             )}
+            {description && (
+              <div className="meta" style={{ fontSize: 11.5, lineHeight: 1.45, marginTop: 7 }}>
+                {description}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -83,12 +93,31 @@ export function DrillModal({ state, onClose }: { state: DrillState | null; onClo
               Cargando registros…
             </div>
           )}
-          {!loading && rows.length === 0 && (
+          {!loading && error && (
             <div className="meta" style={{ padding: "40px 22px", textAlign: "center" }}>
-              Sin registros para este año.
+              <span className="material-icons" style={{ color: "var(--warn)", fontSize: 24 }}>
+                error_outline
+              </span>
+              <p style={{ margin: "8px 0 0" }}>{error}</p>
+              {onRetry && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm press"
+                  style={{ marginTop: 14 }}
+                  onClick={onRetry}
+                >
+                  Reintentar
+                </button>
+              )}
+            </div>
+          )}
+          {!loading && !error && rows.length === 0 && (
+            <div className="meta" style={{ padding: "40px 22px", textAlign: "center" }}>
+              No hay registros que cumplan este criterio.
             </div>
           )}
           {!loading &&
+            !error &&
             rows.map((r, i) => {
               const clickable =
                 !!onRowClick &&
@@ -173,7 +202,11 @@ export function DrillModal({ state, onClose }: { state: DrillState | null; onClo
           }}
         >
           <span className="meta mono" style={{ fontSize: 11.5 }}>
-            {loading ? "…" : `${rows.length} ${rows.length === 1 ? "registro" : "registros"}`}
+            {loading
+              ? "…"
+              : error
+                ? "Detalle no disponible"
+                : summary || `${rows.length} ${rows.length === 1 ? "registro" : "registros"}`}
           </span>
           <button onClick={onClose} className="btn btn-primary btn-sm press" type="button">
             Cerrar

@@ -3,10 +3,7 @@ import "./atlasHome.css";
 import type {
   Convocatoria,
   CriteriosCalculados,
-  EstudianteFields,
-  InformeTask,
   LanzamientoPPS,
-  Practica,
   SolicitudPPS,
   TabId,
 } from "../../../../types";
@@ -32,24 +29,19 @@ import {
   formatDate,
   normalizeStringForComparison,
   closesLabel,
-  daysUntil,
 } from "../../../../utils/formatters";
 import { getMandatoryLaunchSchedules } from "../../../../utils/scheduleRequirements";
 import { getEnrollmentNotice } from "../../../../utils/enrollmentCopy";
 
 interface StudentHomeAtlasProps {
-  student: EstudianteFields | null;
   studentName: string;
   criterios: CriteriosCalculados;
   openLanzamientos: LanzamientoPPS[];
-  practicas: Practica[];
   solicitudes: SolicitudPPS[];
-  informeTasks: InformeTask[];
   closedLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
   institutionAddressMap: Map<string, string>;
-  consent: { ppsName: string; lanzamientoId: string; area?: string } | null;
-  upcomingStart: { ppsName: string; startDate: string } | null;
+  consent: { lanzamientoId: string } | null;
   onStartConsent: () => void;
   onOpenDetalle: (l: LanzamientoPPS) => void;
   onInscribir: (l: LanzamientoPPS, completedOrientaciones?: string[]) => void;
@@ -72,7 +64,7 @@ const fmtShort = (raw?: unknown): string => {
 };
 
 export const AhIcon: React.FC<{
-  name: "bell" | "cal" | "clock" | "arrow" | "timer" | "lock" | "check";
+  name: "bell" | "cal" | "arrow" | "timer" | "lock" | "check";
   size?: number;
 }> = ({ name, size = 18 }) => {
   const paths: Record<string, React.ReactNode> = {
@@ -86,12 +78,6 @@ export const AhIcon: React.FC<{
       <>
         <rect x="3" y="4" width="18" height="18" rx="2" />
         <path d="M16 2v4M8 2v4M3 10h18" />
-      </>
-    ),
-    clock: (
-      <>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
       </>
     ),
     arrow: (
@@ -161,6 +147,15 @@ const COMPLETED_SOL = [
   "baja",
 ];
 
+const enrollmentOutcome = (status: string) => {
+  if (status === "seleccionado" || status === "adjudicado" || status === "en curso") {
+    return "Seleccionado/a";
+  }
+  if (status === "no seleccionado") return "No seleccionado/a";
+  if (status === "inscripto") return "Resultado pendiente";
+  return "Inscripción registrada";
+};
+
 const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   studentName,
   criterios,
@@ -170,7 +165,6 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   enrollmentMap,
   institutionAddressMap,
   consent,
-  upcomingStart,
   onStartConsent,
   onOpenDetalle,
   onInscribir,
@@ -198,31 +192,6 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   const totalTarget = MIN_HOURS_TARGET;
   const hoursAcc = Math.round(criterios?.horasTotales || 0);
   const progressPct = Math.min(100, Math.round((hoursAcc / totalTarget) * 100));
-  // ── Próximo paso ──────────────────────────────────────────────
-  // El "Próximo paso" sigue el onboarding de la PPS: si quedó seleccionado y
-  // todavía no firmó, lo lleva al consentimiento (lo resuelve `consent`); si ya
-  // firmó y la PPS aún no arranca, recuerda la fecha de inicio (`startStep`);
-  // si ya está en curso o no hay nada seleccionado, queda "Al día".
-  const startStep = useMemo(() => {
-    if (!upcomingStart) return null;
-    const d = new Date(upcomingStart.startDate);
-    if (isNaN(d.getTime())) return null;
-    const n = daysUntil(upcomingStart.startDate);
-    const full = formatDate(upcomingStart.startDate);
-    const sub =
-      n == null
-        ? `Comenzás ${full}.`
-        : n <= 0
-          ? "Comenzás hoy. ¡Mucha suerte!"
-          : n === 1
-            ? `Comenzás mañana, ${full}.`
-            : `Faltan ${n} días. Comenzás el ${full}.`;
-    return {
-      m: (MESES[d.getMonth()] || "").toUpperCase(),
-      d: String(d.getDate()),
-      sub,
-    };
-  }, [upcomingStart]);
 
   // ── Solicitudes ───────────────────────────────────────────────
   // Solo mostramos las que siguen en proceso; las completadas/cerradas
@@ -262,7 +231,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   return (
     <div className="ah-root ah-unified">
       <section className="ah-main ah-main--home" aria-labelledby="student-home-title">
-        {/* Hero: saludo + próximo paso */}
+        {/* Hero editorial */}
         <div className="ah-hero">
           <div>
             <span className="eyebrow ah-hero__date">{currentDate} · PPS</span>
@@ -279,7 +248,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 <b className="ah-mark ah-mark--amber">
                   {nConvs} {nConvs === 1 ? "convocatoria abierta" : "convocatorias abiertas"}
                 </b>{" "}
-                para tu rotación. Revisá el detalle y sumate.
+                publicadas. Revisá el detalle si querés inscribirte.
               </p>
             ) : (
               <p className="ah-hero__line">
@@ -287,8 +256,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 <b className="ah-mark ah-mark--teal">
                   {hoursAcc} de {totalTarget} hs
                 </b>{" "}
-                acreditadas. Hoy no hay convocatorias abiertas. Te avisamos ni bien se publique una
-                que encaje con tu rotación.
+                acreditadas. Hoy no hay convocatorias abiertas. Te avisamos cuando se publique una.
               </p>
             )}
             <div
@@ -310,103 +278,11 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               </div>
             </div>
           </div>
-
-          <aside className={"ah-next" + (consent ? " ah-next--alert" : "")}>
-            <div className="ah-next__tag">
-              <h6>Próximo paso</h6>
-              {consent ? (
-                <span className="ah-badge ah-badge--warn">
-                  <span className="dot" />
-                  Acción requerida
-                </span>
-              ) : startStep ? (
-                <span className="ah-badge ah-badge--ok">
-                  <span className="dot" />
-                  Confirmada
-                </span>
-              ) : (
-                <span className="ah-badge ah-badge--ok">
-                  <span className="dot" />
-                  Al día
-                </span>
-              )}
-            </div>
-
-            {consent ? (
-              <>
-                <div className="ah-next__body">
-                  <div
-                    className="ah-next__date"
-                    style={{
-                      display: "grid",
-                      placeItems: "center",
-                      padding: 8,
-                      color: "var(--warning-500)",
-                      borderColor: "var(--warning-500)",
-                    }}
-                  >
-                    <span className="material-icons" style={{ fontSize: 24 }} aria-hidden>
-                      draw
-                    </span>
-                  </div>
-                  <div>
-                    <div className="ah-next__t">Realizá el consentimiento digital</div>
-                    <div className="ah-next__s">
-                      Quedaste <b>seleccionado/a</b> en <b>{consent.ppsName}</b>. Firmá el
-                      consentimiento para confirmar tu lugar.
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="ah-btn ah-btn--primary ah-btn--area"
-                  style={{
-                    marginTop: 14,
-                    width: "100%",
-                    justifyContent: "center",
-                    background: areaVar(consent.area || ""),
-                    color: areaInk(consent.area || ""),
-                  }}
-                  onClick={onStartConsent}
-                >
-                  Firmar consentimiento
-                  <AhIcon name="arrow" size={15} />
-                </button>
-              </>
-            ) : startStep ? (
-              <div className="ah-next__body">
-                <div className="ah-next__date">
-                  <span className="m">{startStep.m}</span>
-                  <span className="d">{startStep.d}</span>
-                </div>
-                <div>
-                  <div className="ah-next__t">Arrancás {upcomingStart?.ppsName}</div>
-                  <div className="ah-next__s">{startStep.sub}</div>
-                </div>
-              </div>
-            ) : (
-              <div className="ah-next__body">
-                <div
-                  className="ah-next__date"
-                  style={{ display: "grid", placeItems: "center", padding: 8 }}
-                >
-                  <AhIcon name="clock" size={20} />
-                </div>
-                <div>
-                  <div className="ah-next__t">No tenés pasos pendientes</div>
-                  <div className="ah-next__s">
-                    Cuando quedes seleccionado/a en una PPS, acá vas a ver el consentimiento y la
-                    fecha de inicio.
-                  </div>
-                </div>
-              </div>
-            )}
-          </aside>
         </div>
 
         {/* Convocatorias */}
         <div className="ah-sechead">
-          <h6>Convocatorias abiertas</h6>
+          <h2 className="ah-section-label">Convocatorias abiertas</h2>
           <span className="n">{String(nConvs).padStart(2, "0")}</span>
           <button
             type="button"
@@ -456,8 +332,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               .split(" - ")[0]
               .trim();
             const desc =
-              (l[FIELD_DESCRIPCION_LANZAMIENTOS] as string) ||
-              "Práctica profesional supervisada disponible para tu rotación.";
+              (l[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "Práctica profesional supervisada.";
             const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
             const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
             const enrollment = enrollmentMap.get(l.id);
@@ -721,8 +596,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 .split(" - ")[0]
                 .trim();
               const rawDesc = (l[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "";
-              const desc =
-                rawDesc.trim() || "Práctica profesional supervisada disponible para tu rotación.";
+              const desc = rawDesc.trim() || "Práctica profesional supervisada.";
               const requisito = String(l[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] || "").trim();
               const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
               const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
@@ -833,11 +707,11 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
           </div>
         )}
 
-        {/* Cerradas — el alumno ve acá si quedó seleccionado y los convocados */}
+        {/* Resultados propios; la nómina completa queda como detalle secundario. */}
         {closedLanzamientos.length > 0 ? (
           <>
             <div className="ah-sechead">
-              <h6>Cerradas · tus resultados</h6>
+              <h2 className="ah-section-label">Tus resultados</h2>
               <span className="n">{String(closedLanzamientos.length).padStart(2, "0")}</span>
             </div>
             <div
@@ -868,6 +742,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                   : "";
                 const isSelected =
                   status === "seleccionado" || status === "adjudicado" || status === "en curso";
+                const outcome = enrollmentOutcome(status);
                 const isConsentCard = consent?.lanzamientoId === l.id;
                 return (
                   <article
@@ -883,17 +758,10 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                         <span className="dot" />
                         <span className="ah-areabadge__mark">{areaPrimary}</span>
                       </span>
-                      {isSelected ? (
-                        <span className="ah-closes">
-                          <AhIcon name="lock" size={13} />
-                          Seleccionado/a
-                        </span>
-                      ) : (
-                        <span className="ah-closes">
-                          <AhIcon name="lock" size={13} />
-                          Cerrada
-                        </span>
-                      )}
+                      <span className="ah-closes">
+                        <AhIcon name={isSelected ? "check" : "lock"} size={13} />
+                        {outcome}
+                      </span>
                     </div>
                     <h2 className="ah-conv__name">{name}</h2>
                     <p className="ah-conv__desc">{desc}</p>
@@ -932,8 +800,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       ) : (
                         <button
                           type="button"
-                          className="ah-btn ah-btn--primary ah-btn--area"
-                          style={{ background: areaVar(areaPrimary) }}
+                          className="ah-btn ah-btn--secondary"
                           onClick={(e) => {
                             e.stopPropagation();
                             onVerConvocados(l);
@@ -955,7 +822,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
         {hasSols ? (
           <>
             <div className="ah-sechead">
-              <h6>Solicitudes en proceso</h6>
+              <h2 className="ah-section-label">Solicitudes en proceso</h2>
               <span className="n">{String(solItems.length).padStart(2, "0")}</span>
             </div>
             <div className="ah-card">

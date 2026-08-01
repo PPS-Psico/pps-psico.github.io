@@ -3,12 +3,14 @@
  *
  * Layout: sidebar colapsable izquierdo + canvas central por estado.
  *
- * Estados mapeados desde la DB:
- *   'Oculto'    → borrador
- *   'Abierta'   → abierta
- *   'Cerrado'   → cerrada (sin seleccionados) | seleccionada (con seleccionados en convocatorias)
- *   'Activa'    → activa
- *   'Archivado' → archivada
+ * El sidebar agrupa por RECORRIDO (ver `lanzadorState`):
+ *   Abiertas → A seleccionar → A asegurar → En confirmación → Activas
+ * y una convocatoria sale de la vista cuando llega su `fecha_finalizacion`.
+ *
+ * El canvas, en cambio, sigue el `estado_convocatoria` real de la DB: el grupo
+ * dice DÓNDE está la PPS en el tiempo, el canvas QUÉ le falta. Por eso una PPS
+ * ya iniciada pero todavía en 'Cerrado' aparece en Activas y abre el generador
+ * de seguros.
  *
  * NOTA: Los sub-componentes internos (SeleccionadorConvocatorias,
  * SeguroGenerator, LanzadorConvocatorias) no se modifican. Solo cambia la
@@ -109,7 +111,12 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   }, [sidebarCollapsed]);
 
   // ── Fetch launches ────────────────────────────────────────────────────────
-  const { data: launches = [], isLoading } = useQuery<LanzamientoPPS[]>({
+  const {
+    data: launches = [],
+    isLoading,
+    isError: launchesHasError,
+    refetch: refetchLaunches,
+  } = useQuery<LanzamientoPPS[]>({
     queryKey: [...launchKeys.history(isTestingMode), isTestingMode ? "visual-fixture" : "live"],
     queryFn: async () => {
       if (isTestingMode) {
@@ -125,9 +132,11 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   // Se cuenta en la base vía RPC (get_convocatoria_counts_by_launch), no en el
   // cliente: evita traer miles de filas y el límite de 1000 de PostgREST.
   const launchIds = launches.map((l) => l.id);
-  const { data: countsByLaunch = {} } = useQuery<
-    Record<string, { inscriptos: number; seleccionados: number }>
-  >({
+  const {
+    data: countsByLaunch = {},
+    isError: countsHaveError,
+    refetch: refetchCounts,
+  } = useQuery<Record<string, { inscriptos: number; seleccionados: number }>>({
     queryKey: [...launchKeys.convCounts(launchIds), isTestingMode ? "testing" : "live"],
     queryFn: async () => {
       if (isTestingMode) {
@@ -165,9 +174,11 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   // ── Consentimientos digitales (compromisos) por lanzamiento ───────────────
   // Para la categoría "A asegurar": cuántos seleccionados aceptaron el
   // consentimiento digital vs. cuántos siguen pendientes. También vía RPC.
-  const { data: consentByLaunch = {} } = useQuery<
-    Record<string, { aceptados: number; total: number }>
-  >({
+  const {
+    data: consentByLaunch = {},
+    isError: consentsHaveError,
+    refetch: refetchConsents,
+  } = useQuery<Record<string, { aceptados: number; total: number }>>({
     queryKey: [...launchKeys.consentCounts(launchIds), isTestingMode ? "testing" : "live"],
     queryFn: async () => {
       if (isTestingMode) {
@@ -202,8 +213,8 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
 
   const selectedUiState = useMemo<UIState | null>(() => {
     if (!selectedId) return null;
-    // Reutilizamos el uiState ya calculado en `entries` (incluye la regla de
-    // "archivada efectiva"), así el canvas y el sidebar nunca divergen.
+    // Reutilizamos el uiState ya calculado en `entries`, así el canvas y el
+    // sidebar nunca divergen.
     return entries.find((e) => e.id === selectedId)?.uiState ?? null;
   }, [entries, selectedId]);
 
@@ -319,31 +330,6 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         case "ocultar":
           updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Oculto";
           break;
-        case "archivar":
-          updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Archivado";
-          break;
-        case "desarchivar": {
-          updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Relanzamiento Confirmado";
-          // Si quedó oculta/archivada por `estado_convocatoria`, la normalizamos a
-          // "Cerrado" o "Activa" para que vuelva a ser visible.
-          const ec = normalizeStringForComparison(
-            (launch?.[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] as string) || ""
-          );
-          if (ec === "archivado" || ec === "archivada" || ec === "oculto") {
-            const hasSelected = (countsByLaunch[id]?.seleccionados || 0) > 0;
-            const fechaInicio = launch?.[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
-            const pastStart = fechaInicio
-              ? new Date(fechaInicio).getTime() <= new Date().getTime()
-              : false;
-
-            if (hasSelected && pastStart) {
-              updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Activa";
-            } else {
-              updates[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] = "Cerrado";
-            }
-          }
-          break;
-        }
       }
       await db.lanzamientos.update(id, updates as Record<string, unknown>);
     },
@@ -357,11 +343,12 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
 
   const handleRowAction = useCallback(
     (id: string, action: RowAction) => {
-      if (action === "archivar") {
+      if (action === "ocultar") {
         setConfirmState({
-          title: "¿Archivar convocatoria?",
-          message: "Dejará de verse para los estudiantes y pasará a «Archivadas».",
-          confirmText: "Archivar",
+          title: "¿Ocultar la convocatoria?",
+          message:
+            "Dejará de verse para los estudiantes. Podés volver a publicarla cuando quieras.",
+          confirmText: "Ocultar",
           type: "warning",
           onConfirm: () => rowActionMutation.mutate({ id, action }),
         });
@@ -407,6 +394,28 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
               refresh
             </span>
             <p>Cargando convocatorias…</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (launchesHasError || countsHaveError || consentsHaveError) {
+      return (
+        <div className="lv4-canvas">
+          <div className="lv4-empty">
+            <span className="material-icons">cloud_off</span>
+            <p>No se pudieron cargar todos los datos del Lanzador.</p>
+            <button
+              className="lv4-btn lv4-btn-primary"
+              onClick={() =>
+                void Promise.all([refetchLaunches(), refetchCounts(), refetchConsents()])
+              }
+            >
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                refresh
+              </span>
+              Reintentar
+            </button>
           </div>
         </div>
       );
@@ -491,15 +500,30 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             <ConfirmacionView
               launch={selectedLaunch}
               showModal={showModal}
-              onActivar={() =>
+              onActivar={() => {
+                const counts = countsByLaunch[selectedLaunch.id];
+                if (!counts) {
+                  showModal(
+                    "No se pudo verificar la selección",
+                    "Esperá a que terminen de cargar los conteos e intentá nuevamente."
+                  );
+                  return;
+                }
+                if (counts.seleccionados <= 0) {
+                  showModal(
+                    "No hay estudiantes seleccionados",
+                    "Seleccioná al menos un estudiante vigente antes de activar la PPS."
+                  );
+                  return;
+                }
                 handleChangeEstado(selectedLaunch.id, "Activa", {
                   title: "¿Activar esta PPS?",
                   message:
                     "Pasará a estado «Activa» (en curso). Los estudiantes con el compromiso aún pendiente quedarán como reemplazos.",
                   confirmText: "Activar PPS",
                   type: "info",
-                })
-              }
+                });
+              }}
             />
           </div>
         );

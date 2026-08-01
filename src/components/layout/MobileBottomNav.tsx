@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import type { TabId } from "../../types";
@@ -79,12 +79,19 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
   const location = useLocation();
   const { resolvedTheme } = useTheme();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const moreCloseRef = useRef<HTMLButtonElement>(null);
   const mainTabs = useMemo(() => tabs.filter((tab) => tab.id !== "profile"), [tabs]);
   const isMoreActive = MORE_TABS.some((tab) => tab.id === activeTabId);
 
+  const closeMoreMenu = useCallback((restoreFocus = true) => {
+    setIsMoreOpen(false);
+    if (restoreFocus) requestAnimationFrame(() => moreTriggerRef.current?.focus());
+  }, []);
+
   const handleNavigate = useCallback(
     (tab: NavTab) => {
-      setIsMoreOpen(false);
+      if (isMoreOpen) closeMoreMenu();
       if (onTabChange) {
         haptics.tap();
         onTabChange(tab.id);
@@ -97,7 +104,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },
-    [navigate, location.pathname, onTabChange]
+    [closeMoreMenu, isMoreOpen, navigate, location.pathname, onTabChange]
   );
 
   useEffect(() => setIsMoreOpen(false), [location.pathname]);
@@ -106,15 +113,33 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
     if (!isMoreOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => moreCloseRef.current?.focus());
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsMoreOpen(false);
+      if (event.key === "Escape") closeMoreMenu();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [isMoreOpen]);
+  }, [closeMoreMenu, isMoreOpen]);
+
+  const handleSheetKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not([disabled])")
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <nav
@@ -141,33 +166,36 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.16 }}
-              onClick={() => setIsMoreOpen(false)}
+              onClick={() => closeMoreMenu()}
             />
             <motion.div
               id="student-more-menu"
-              role="menu"
-              aria-label="Recursos y cuenta"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="student-more-title"
               className="student-more-sheet"
               initial={{ opacity: 0, y: 16, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.99 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              onKeyDown={handleSheetKeyDown}
             >
               <div className="student-more-sheet__head">
                 <div>
-                  <strong>Recursos</strong>
+                  <strong id="student-more-title">Recursos</strong>
                   <span>Guía, documentos y respuestas del Campus PPS.</span>
                 </div>
                 <button
+                  ref={moreCloseRef}
                   type="button"
                   className="student-more-sheet__close"
                   aria-label="Cerrar menú"
-                  onClick={() => setIsMoreOpen(false)}
+                  onClick={() => closeMoreMenu()}
                 >
                   <Icon name="x" size={18} />
                 </button>
               </div>
-              <div className="student-more-sheet__list">
+              <div className="student-more-sheet__list" role="menu">
                 {MORE_TABS.map((tab, index) => {
                   const on = tab.id === activeTabId;
                   const iconName = ICON_MAP[tab.id] ?? "book";
@@ -273,8 +301,9 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
           );
         })}
         <motion.button
+          ref={moreTriggerRef}
           type="button"
-          aria-haspopup="menu"
+          aria-haspopup="dialog"
           aria-controls="student-more-menu"
           aria-expanded={isMoreOpen}
           aria-current={isMoreActive ? "page" : undefined}
@@ -283,7 +312,8 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tabs, activeTabId, on
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
           onClick={() => {
             haptics.tap();
-            setIsMoreOpen((current) => !current);
+            if (isMoreOpen) closeMoreMenu();
+            else setIsMoreOpen(true);
           }}
           style={{
             display: "flex",

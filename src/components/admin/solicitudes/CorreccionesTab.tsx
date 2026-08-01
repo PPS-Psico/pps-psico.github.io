@@ -10,6 +10,8 @@ import { getErrorMessage } from "../../../utils/getErrorMessage";
 import Loader from "../../Loader";
 import { SecureStorageLink } from "../../ui/SecureStorageLink";
 import { DataItem, EmptyState } from "./primitives";
+import { getStorageRef } from "../../../utils/attachmentUtils";
+import { supabase } from "../../../lib/supabaseClient";
 
 /** Solicitud de corrección (modificación o nueva PPS) normalizada para la UI. */
 interface CorreccionItem {
@@ -218,6 +220,45 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
     }
     return list;
   }, [sol.planilla_asistencia_url, sol.informe_final_url]);
+
+  // Las URLs guardadas en base son públicas (getPublicUrl). Se reemplazan por
+  // URLs firmadas de corta duración para que los documentos de alumnos dejen de
+  // depender de que el bucket sea público. Si el firmado falla se cae a la URL
+  // original, así que este cambio no puede dejar un enlace peor que antes.
+  const [signedDocs, setSignedDocs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const signAll = async () => {
+      const entries = await Promise.all(
+        docsList.map(async (d) => {
+          const ref = getStorageRef(d.url);
+          if (!ref) return null;
+          try {
+            const { data, error } = await supabase.storage
+              .from(ref.bucket)
+              .createSignedUrl(ref.path, 3600);
+            if (error || !data?.signedUrl) return null;
+            return [d.url, data.signedUrl] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      if (cancelled) return;
+      const next: Record<string, string> = {};
+      for (const e of entries) if (e) next[e[0]] = e[1];
+      setSignedDocs(next);
+    };
+
+    if (docsList.length > 0) void signAll();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [docsList]);
 
   return (
     <div
@@ -438,7 +479,7 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
                 {docsList.map((d, i) => (
                   <SecureStorageLink
                     key={i}
-                    href={d.url}
+                    href={signedDocs[d.url] || d.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="press"

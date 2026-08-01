@@ -49,6 +49,9 @@ const LanzadorConvocatorias: React.FC<LanzadorConvocatoriasProps> = ({
         isLoading={m.createInstitutionMutation.isPending}
       />
 
+      {/* Confirmación de borrado de lanzamiento (antes window.confirm). */}
+      {m.confirmDialog}
+
       {!forcedTab && (
         <div style={{ maxWidth: 880, margin: "0 auto 24px" }}>
           <SubTabs

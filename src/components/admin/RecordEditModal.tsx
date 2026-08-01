@@ -38,6 +38,7 @@ interface FieldConfig {
   filePath?: string;
   required?: boolean;
   minLength?: number;
+  createOnly?: boolean;
 }
 
 interface TableConfig {
@@ -100,6 +101,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     const data: Record<string, unknown> = {};
 
     tableConfig.fieldConfig.forEach((field) => {
+      if (!isCreateMode && field.createOnly) return;
+
       let rawVal;
       if (isCreateMode) {
         if (initialData && initialData[field.key] !== undefined) {
@@ -148,7 +151,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     const errors: Record<string, string> = {};
 
     tableConfig.fieldConfig.forEach((field) => {
-      if (field.type === "section" || field.type === "file") return;
+      if ((!isCreateMode && field.createOnly) || field.type === "section" || field.type === "file")
+        return;
       const val = formData[field.key];
 
       if (field.required) {
@@ -177,6 +181,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
     const cleanedData = { ...formData };
 
     tableConfig.fieldConfig.forEach((field) => {
+      if (!isCreateMode && field.createOnly) return;
+
       const val = cleanedData[field.key];
 
       if (field.type === "number") {
@@ -401,7 +407,12 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
                     setFormData((prev) => ({ ...prev, [field.key]: urlData.publicUrl }));
                   } catch (err) {
                     logger.error("Error uploading file:", err);
-                    alert("Error al subir archivo: " + getErrorMessage(err));
+                    // El fallo es de este campo: se muestra inline junto al
+                    // control, no en un alert que tapa el formulario entero.
+                    setValidationErrors((prev) => ({
+                      ...prev,
+                      [field.key]: `Error al subir archivo: ${getErrorMessage(err)}`,
+                    }));
                   } finally {
                     setUploadingField(null);
                   }
@@ -409,7 +420,8 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
               />
             </label>
           )}
-          {field.description && <p className="dbe-fdesc">{field.description}</p>}
+          {errorMsg && <p className="dbe-errmsg">{errorMsg}</p>}
+          {field.description && !errorMsg && <p className="dbe-fdesc">{field.description}</p>}
         </div>
       );
     }
@@ -524,9 +536,11 @@ const RecordEditModal: React.FC<RecordEditModalProps> = ({
 
         <main className="dbe-modal-body">
           <div className="dbe-grid">
-            {tableConfig.fieldConfig.map((field) => (
-              <React.Fragment key={field.key}>{renderField(field)}</React.Fragment>
-            ))}
+            {tableConfig.fieldConfig
+              .filter((field) => isCreateMode || !field.createOnly)
+              .map((field) => (
+                <React.Fragment key={field.key}>{renderField(field)}</React.Fragment>
+              ))}
           </div>
         </main>
 

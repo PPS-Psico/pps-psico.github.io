@@ -2,28 +2,28 @@
  * lanzador/ActivaView.tsx — Vista del estado "activa" (DB 'Activa').
  * PPS en curso: Roster de estudiantes en curso (bajas y reemplazos) y estadísticas.
  */
-import React, { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import React, { useMemo, useState } from "react";
+import DesaprobacionPPSModal from "../../../components/admin/DesaprobacionPPSModal";
+import DisapprovalBadge from "../../../components/admin/DisapprovalBadge";
+import Toast from "../../../components/ui/Toast";
 import {
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   getPenaltyScore,
 } from "../../../constants";
-import {
-  normalizeStringForComparison,
-  formatDate,
-  getWhatsAppUrl,
-} from "../../../utils/formatters";
-import type { LanzamientoPPS, EnrichedStudent } from "../../../types";
-import { CanvasHeader, Stat, StatGrid, Banner, useLaunchEditor, Loader } from "./shared";
-import { useLaunchPracticas } from "./useLaunchData";
 import { useSeleccionadorLogic } from "../../../hooks/useSeleccionadorLogic";
-import Toast from "../../../components/ui/Toast";
 import { supabase } from "../../../lib/supabaseClient";
 import { isPracticeDisapproved, isPracticeStatusComputable } from "../../../logic/studentRules";
-import DisapprovalBadge from "../../../components/admin/DisapprovalBadge";
-import DesaprobacionPPSModal from "../../../components/admin/DesaprobacionPPSModal";
+import type { EnrichedStudent, LanzamientoPPS } from "../../../types";
+import {
+  formatDate,
+  getWhatsAppUrl,
+  normalizeStringForComparison,
+} from "../../../utils/formatters";
+import { Banner, CanvasHeader, Loader, Stat, StatGrid, useLaunchEditor } from "./shared";
+import { useLaunchPracticas } from "./useLaunchData";
 
 const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> = ({
   launch,
@@ -35,7 +35,8 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   const fechaFin = launch[FIELD_FECHA_FIN_LANZAMIENTOS] as string | null;
 
   // 1. Estadísticas de prácticas reales
-  const { data: practicas = [] } = useLaunchPracticas(launch.id);
+  const practicasQuery = useLaunchPracticas(launch.id);
+  const { data: practicas = [] } = practicasQuery;
 
   const totalHoras = practicas.reduce(
     (sum, p) =>
@@ -154,6 +155,61 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
       .toUpperCase()
       .slice(0, 2);
   };
+
+  if (practicasQuery.isLoading) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="activa"
+          primaryAction={{
+            label: "Archivar convocatoria",
+            icon: "archive",
+            onClick: onArchivar,
+            disabled: true,
+          }}
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  if (practicasQuery.isError) {
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="activa"
+          primaryAction={{
+            label: "Archivar convocatoria",
+            icon: "archive",
+            onClick: onArchivar,
+            disabled: true,
+          }}
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <Banner
+            tone="warn"
+            icon="cloud_off"
+            title="No se pudieron cargar las prácticas"
+            action={
+              <button className="lv4-btn" onClick={() => void practicasQuery.refetch()}>
+                Reintentar
+              </button>
+            }
+          >
+            El seguimiento y el archivado quedan bloqueados hasta recuperar los datos.
+          </Banner>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

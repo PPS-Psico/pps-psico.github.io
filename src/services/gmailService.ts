@@ -1,5 +1,5 @@
 import { logger } from "../utils/logger";
-import { invokeHermesTask } from "./hermesProxyService";
+import { callHermes } from "./hermesClient";
 // ──────────────────────────────────────────────────────────────────────────
 // gmailService — puente del panel con Gmail a través del proxy server-side.
 //
@@ -11,8 +11,10 @@ import { invokeHermesTask } from "./hermesProxyService";
 //   · sendReply   → responder dentro del hilo (Capa 2)
 //   · modifyThread→ archivar / marcar leído / etc. (Capa 2)
 //
-// SEGURIDAD: respeta el kill-switch global PPS_DISABLE_EMAILS. Con el switch
-// activo, sendReply hace dry-run (no envía) y modifyThread no toca nada.
+// SEGURIDAD: las llamadas salen por la Edge Function `hermes-proxy`, que valida
+// sesión + rol y guarda el token de Hermes en el servidor. El browser no ve el
+// secreto. Además respeta el kill-switch global PPS_DISABLE_EMAILS: con el
+// switch activo, sendReply hace dry-run (no envía) y modifyThread no toca nada.
 // ──────────────────────────────────────────────────────────────────────────
 
 export interface GmailMessage {
@@ -53,17 +55,9 @@ export const isEmailSendingDisabled = (): boolean => {
   }
 };
 
-async function hermesPost<T>(path: string, body: unknown, timeoutMs = 20000): Promise<T> {
-  const task = path.replace(/^\/tasks\//, "");
-  if (!task || task === path) {
-    throw new Error(`Ruta de Hermes inválida: ${path}`);
-  }
-  return invokeHermesTask<T>(task, body, timeoutMs);
-}
-
 // ── Capa 1/3: leer el hilo completo ───────────────────────────────────────
 export async function getThread(threadId: string): Promise<GmailThread> {
-  const data = await hermesPost<Record<string, unknown>>("/tasks/gmail_thread", {
+  const data = await callHermes<Record<string, unknown>>("gmail_thread", {
     thread_id: threadId,
   });
   const mensajesRaw = (data.mensajes || data.messages || []) as Array<Record<string, unknown>>;
@@ -99,7 +93,7 @@ export async function sendReply(params: {
     return { success: true, dryRun: true, message: "DRY-RUN: no se envió (modo seguro)" };
   }
   try {
-    await hermesPost("/tasks/gmail_send", {
+    await callHermes("gmail_send", {
       thread_id: params.threadId,
       to: params.to,
       subject: params.subject,
@@ -126,7 +120,7 @@ export async function modifyThread(
     };
   }
   try {
-    await hermesPost("/tasks/gmail_modify", { thread_id: threadId, action });
+    await callHermes("gmail_modify", { thread_id: threadId, action });
     return { success: true };
   } catch (e) {
     return { success: false, message: (e as Error).message };
@@ -183,8 +177,8 @@ export async function getDraftForThread(
 /** Pide a Hermes generar borradores para los correos pendientes (on-demand). */
 export async function generatePendingDrafts(limit = 10): Promise<{ generados: number } | null> {
   try {
-    const res = await hermesPost<{ borradores_generados?: number }>(
-      "/tasks/draft_pending_emails",
+    const res = await callHermes<{ borradores_generados?: number }>(
+      "draft_pending_emails",
       { limit, only_missing: true },
       30000
     );
@@ -199,11 +193,7 @@ export async function planToday(
   limit = 9
 ): Promise<{ ok: true; acciones: number } | { ok: false; motivo: string }> {
   try {
-    const res = await hermesPost<{ acciones_generadas?: number }>(
-      "/tasks/plan_today",
-      { limit },
-      40000
-    );
+    const res = await callHermes<{ acciones_generadas?: number }>("plan_today", { limit }, 40000);
     return { ok: true, acciones: res.acciones_generadas ?? 0 };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -256,8 +246,8 @@ export async function learnFromDraftEdit(params: {
   const edited = params.borradorOriginal.trim() !== params.borradorFinal.trim();
   // Si no editó nada, igual avisamos (accion=approved) para que aprenda que estuvo OK.
   try {
-    await hermesPost(
-      "/tasks/learn_from_feedback",
+    await callHermes(
+      "learn_from_feedback",
       {
         suggestion_id: params.suggestionId,
         accion: edited ? "edited" : "approved",

@@ -13,6 +13,33 @@ type AuthMode = "login" | "register" | "forgot" | "reset" | "migration" | "recov
 
 const PASSWORD_MIN_LENGTH = 10;
 const PASSWORD_MAX_LENGTH = 128;
+const SUPABASE_AUTH_STORAGE_KEY = "sb-qxnxtnhtbpsgzprqtrjl-auth-token";
+
+/**
+ * El login manual puede empezar con un refresh token viejo guardado por otra
+ * ejecución local. Esa sesión rota no debe impedir solicitar una nueva.
+ *
+ * `scope: "local"` evita revocar las sesiones que el mismo usuario tenga en
+ * Moodle/GitHub. Si Supabase no puede cerrar la sesión porque el refresh token
+ * ya fue revocado, descartamos solamente la copia de este navegador.
+ */
+export const clearLocalSessionBeforeLogin = async () => {
+  try {
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      logger.warn("No se pudo cerrar la sesión local anterior; se descartará del navegador.");
+    }
+  } catch (error) {
+    logger.warn("La sesión local anterior ya no era válida; se iniciará una nueva.", error);
+  } finally {
+    try {
+      localStorage.removeItem(SUPABASE_AUTH_STORAGE_KEY);
+    } catch {
+      // El navegador puede negar almacenamiento persistente. setSession sigue
+      // pudiendo montar la sesión actual en memoria.
+    }
+  }
+};
 
 /**
  * Lee un parámetro de la URL tanto del query string normal (?legajo=123)
@@ -149,7 +176,7 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     const resolvedMode = newMode === "migration" ? "recover" : newMode;
     setMode(resolvedMode);
     // Clean session when switching modes to avoid lingering zombie states
-    supabase.auth.signOut().catch(() => {});
+    supabase.auth.signOut({ scope: "local" }).catch(() => {});
 
     if (!(resolvedMode === "recover" && mode === "login")) {
       resetFormState();
@@ -228,8 +255,9 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
 
     if (mode === "login") {
       try {
-        // LIMPIEZA PREVENTIVA
-        await supabase.auth.signOut();
+        // La limpieza es local y tolera refresh tokens vencidos o revocados.
+        // Nunca debe bloquear un nuevo intento de login.
+        await clearLocalSessionBeforeLogin();
 
         if (!legajoTrimmed || !password) throw new Error("Por favor, completa todos los campos.");
 
