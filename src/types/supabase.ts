@@ -1,2451 +1,2554 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5";
-  };
+    PostgrestVersion: "13.0.5"
+  }
   public: {
     Tables: {
       admin_action_log: {
         Row: {
-          action_type: string;
-          actor_legajo: string | null;
-          actor_name: string | null;
-          actor_user_id: string | null;
-          created_at: string;
-          id: string;
-          metadata: Json;
-          summary: string;
-          target_id: string;
-          target_table: string;
-        };
+          action_type: string
+          actor_legajo: string | null
+          actor_name: string | null
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          summary: string
+          target_id: string
+          target_table: string
+        }
         Insert: {
-          action_type: string;
-          actor_legajo?: string | null;
-          actor_name?: string | null;
-          actor_user_id?: string | null;
-          created_at?: string;
-          id?: string;
-          metadata?: Json;
-          summary: string;
-          target_id: string;
-          target_table: string;
-        };
+          action_type: string
+          actor_legajo?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          summary: string
+          target_id: string
+          target_table: string
+        }
         Update: {
-          action_type?: string;
-          actor_legajo?: string | null;
-          actor_name?: string | null;
-          actor_user_id?: string | null;
-          created_at?: string;
-          id?: string;
-          metadata?: Json;
-          summary?: string;
-          target_id?: string;
-          target_table?: string;
-        };
-        Relationships: [];
-      };
+          action_type?: string
+          actor_legajo?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          summary?: string
+          target_id?: string
+          target_table?: string
+        }
+        Relationships: []
+      }
       agent_audit_log: {
         Row: {
-          duration_ms: number | null;
-          error: string | null;
-          id: string;
-          input: Json | null;
-          invocation_id: string;
-          output: Json | null;
-          suggestion_id: string | null;
-          timestamp: string;
-          tool: string;
-        };
+          duration_ms: number | null
+          error: string | null
+          id: string
+          input: Json | null
+          invocation_id: string
+          output: Json | null
+          suggestion_id: string | null
+          timestamp: string
+          tool: string
+        }
         Insert: {
-          duration_ms?: number | null;
-          error?: string | null;
-          id?: string;
-          input?: Json | null;
-          invocation_id: string;
-          output?: Json | null;
-          suggestion_id?: string | null;
-          timestamp?: string;
-          tool: string;
-        };
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input?: Json | null
+          invocation_id: string
+          output?: Json | null
+          suggestion_id?: string | null
+          timestamp?: string
+          tool: string
+        }
         Update: {
-          duration_ms?: number | null;
-          error?: string | null;
-          id?: string;
-          input?: Json | null;
-          invocation_id?: string;
-          output?: Json | null;
-          suggestion_id?: string | null;
-          timestamp?: string;
-          tool?: string;
-        };
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input?: Json | null
+          invocation_id?: string
+          output?: Json | null
+          suggestion_id?: string | null
+          timestamp?: string
+          tool?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "agent_audit_log_suggestion_id_fkey";
-            columns: ["suggestion_id"];
-            isOneToOne: false;
-            referencedRelation: "agent_suggestions";
-            referencedColumns: ["id"];
+            foreignKeyName: "agent_audit_log_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "agent_suggestions"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       agent_suggestions: {
         Row: {
-          contexto: Json | null;
-          created_at: string;
-          edited_payload: Json | null;
-          estado: string;
-          expires_at: string | null;
-          id: string;
-          institucion_id: string | null;
-          lanzamiento_id: string | null;
-          payload: Json;
-          resolved_at: string | null;
-          resolved_by: string | null;
-          tipo: string;
-        };
+          contexto: Json | null
+          created_at: string
+          edited_payload: Json | null
+          estado: string
+          expires_at: string | null
+          id: string
+          institucion_id: string | null
+          lanzamiento_id: string | null
+          payload: Json
+          resolved_at: string | null
+          resolved_by: string | null
+          tipo: string
+        }
         Insert: {
-          contexto?: Json | null;
-          created_at?: string;
-          edited_payload?: Json | null;
-          estado?: string;
-          expires_at?: string | null;
-          id?: string;
-          institucion_id?: string | null;
-          lanzamiento_id?: string | null;
-          payload: Json;
-          resolved_at?: string | null;
-          resolved_by?: string | null;
-          tipo: string;
-        };
+          contexto?: Json | null
+          created_at?: string
+          edited_payload?: Json | null
+          estado?: string
+          expires_at?: string | null
+          id?: string
+          institucion_id?: string | null
+          lanzamiento_id?: string | null
+          payload: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          tipo: string
+        }
         Update: {
-          contexto?: Json | null;
-          created_at?: string;
-          edited_payload?: Json | null;
-          estado?: string;
-          expires_at?: string | null;
-          id?: string;
-          institucion_id?: string | null;
-          lanzamiento_id?: string | null;
-          payload?: Json;
-          resolved_at?: string | null;
-          resolved_by?: string | null;
-          tipo?: string;
-        };
+          contexto?: Json | null
+          created_at?: string
+          edited_payload?: Json | null
+          estado?: string
+          expires_at?: string | null
+          id?: string
+          institucion_id?: string | null
+          lanzamiento_id?: string | null
+          payload?: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          tipo?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "agent_suggestions_lanzamiento_id_fkey";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "agent_suggestions_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       analytics_health_checks: {
         Row: {
-          checked_at: string;
-          details: Json;
-          expected_snapshot_date: string | null;
-          health_version: string;
-          id: number;
-          issue_count: number;
-          issues: Json;
-          latest_snapshot_date: string | null;
-          latest_snapshot_status: string | null;
-          source: string;
-          status: string;
-        };
+          checked_at: string
+          details: Json
+          expected_snapshot_date: string | null
+          health_version: string
+          id: number
+          issue_count: number
+          issues: Json
+          latest_snapshot_date: string | null
+          latest_snapshot_status: string | null
+          source: string
+          status: string
+        }
         Insert: {
-          checked_at?: string;
-          details?: Json;
-          expected_snapshot_date?: string | null;
-          health_version: string;
-          id?: never;
-          issue_count?: number;
-          issues?: Json;
-          latest_snapshot_date?: string | null;
-          latest_snapshot_status?: string | null;
-          source: string;
-          status: string;
-        };
+          checked_at?: string
+          details?: Json
+          expected_snapshot_date?: string | null
+          health_version: string
+          id?: never
+          issue_count?: number
+          issues?: Json
+          latest_snapshot_date?: string | null
+          latest_snapshot_status?: string | null
+          source: string
+          status: string
+        }
         Update: {
-          checked_at?: string;
-          details?: Json;
-          expected_snapshot_date?: string | null;
-          health_version?: string;
-          id?: never;
-          issue_count?: number;
-          issues?: Json;
-          latest_snapshot_date?: string | null;
-          latest_snapshot_status?: string | null;
-          source?: string;
-          status?: string;
-        };
-        Relationships: [];
-      };
+          checked_at?: string
+          details?: Json
+          expected_snapshot_date?: string | null
+          health_version?: string
+          id?: never
+          issue_count?: number
+          issues?: Json
+          latest_snapshot_date?: string | null
+          latest_snapshot_status?: string | null
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
       analytics_metric_snapshots: {
         Row: {
-          denominator: number | null;
-          dimension_key: string;
-          id: number;
-          metric_key: string;
-          metric_version: string;
-          numerator: number | null;
-          quality: Json;
-          snapshot_date: string;
-          taken_at: string;
-          value: number;
-        };
+          denominator: number | null
+          dimension_key: string
+          id: number
+          metric_key: string
+          metric_version: string
+          numerator: number | null
+          quality: Json
+          snapshot_date: string
+          taken_at: string
+          value: number
+        }
         Insert: {
-          denominator?: number | null;
-          dimension_key?: string;
-          id?: never;
-          metric_key: string;
-          metric_version: string;
-          numerator?: number | null;
-          quality?: Json;
-          snapshot_date: string;
-          taken_at?: string;
-          value: number;
-        };
+          denominator?: number | null
+          dimension_key?: string
+          id?: never
+          metric_key: string
+          metric_version: string
+          numerator?: number | null
+          quality?: Json
+          snapshot_date: string
+          taken_at?: string
+          value: number
+        }
         Update: {
-          denominator?: number | null;
-          dimension_key?: string;
-          id?: never;
-          metric_key?: string;
-          metric_version?: string;
-          numerator?: number | null;
-          quality?: Json;
-          snapshot_date?: string;
-          taken_at?: string;
-          value?: number;
-        };
-        Relationships: [];
-      };
+          denominator?: number | null
+          dimension_key?: string
+          id?: never
+          metric_key?: string
+          metric_version?: string
+          numerator?: number | null
+          quality?: Json
+          snapshot_date?: string
+          taken_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       analytics_snapshot_runs: {
         Row: {
-          error_message: string | null;
-          finished_at: string | null;
-          id: number;
-          rows_written: number;
-          started_at: string;
-          status: string;
-        };
+          error_message: string | null
+          finished_at: string | null
+          id: number
+          rows_written: number
+          started_at: string
+          status: string
+        }
         Insert: {
-          error_message?: string | null;
-          finished_at?: string | null;
-          id?: never;
-          rows_written?: number;
-          started_at?: string;
-          status: string;
-        };
+          error_message?: string | null
+          finished_at?: string | null
+          id?: never
+          rows_written?: number
+          started_at?: string
+          status: string
+        }
         Update: {
-          error_message?: string | null;
-          finished_at?: string | null;
-          id?: never;
-          rows_written?: number;
-          started_at?: string;
-          status?: string;
-        };
-        Relationships: [];
-      };
+          error_message?: string | null
+          finished_at?: string | null
+          id?: never
+          rows_written?: number
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
-          created_at: string;
-          horas_objetivo_orientacion: number;
-          horas_objetivo_total: number;
-          id: number;
-          rotacion_objetivo: number;
-        };
+          created_at: string
+          horas_objetivo_orientacion: number
+          horas_objetivo_total: number
+          id: number
+          rotacion_objetivo: number
+        }
         Insert: {
-          created_at?: string;
-          horas_objetivo_orientacion?: number;
-          horas_objetivo_total?: number;
-          id?: number;
-          rotacion_objetivo?: number;
-        };
+          created_at?: string
+          horas_objetivo_orientacion?: number
+          horas_objetivo_total?: number
+          id?: number
+          rotacion_objetivo?: number
+        }
         Update: {
-          created_at?: string;
-          horas_objetivo_orientacion?: number;
-          horas_objetivo_total?: number;
-          id?: number;
-          rotacion_objetivo?: number;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          horas_objetivo_orientacion?: number
+          horas_objetivo_total?: number
+          id?: number
+          rotacion_objetivo?: number
+        }
+        Relationships: []
+      }
       aula_entregas: {
         Row: {
-          activo: boolean;
-          area: string;
-          created_at: string;
-          id: number;
-          institucion: string;
-          moodle_id: string;
-          orden: number | null;
-        };
+          activo: boolean
+          area: string
+          created_at: string
+          id: number
+          institucion: string
+          moodle_id: string
+          orden: number | null
+        }
         Insert: {
-          activo?: boolean;
-          area: string;
-          created_at?: string;
-          id?: never;
-          institucion: string;
-          moodle_id: string;
-          orden?: number | null;
-        };
+          activo?: boolean
+          area: string
+          created_at?: string
+          id?: never
+          institucion: string
+          moodle_id: string
+          orden?: number | null
+        }
         Update: {
-          activo?: boolean;
-          area?: string;
-          created_at?: string;
-          id?: never;
-          institucion?: string;
-          moodle_id?: string;
-          orden?: number | null;
-        };
-        Relationships: [];
-      };
+          activo?: boolean
+          area?: string
+          created_at?: string
+          id?: never
+          institucion?: string
+          moodle_id?: string
+          orden?: number | null
+        }
+        Relationships: []
+      }
       backup_config: {
         Row: {
-          backup_time: string | null;
-          created_at: string | null;
-          enabled: boolean | null;
-          frequency: string;
-          id: string;
-          include_tables: string[] | null;
-          last_backup_at: string | null;
-          retain_count: number | null;
-          storage_bucket: string | null;
-          updated_at: string | null;
-        };
+          backup_time: string | null
+          created_at: string | null
+          enabled: boolean | null
+          frequency: string
+          id: string
+          include_tables: string[] | null
+          last_backup_at: string | null
+          retain_count: number | null
+          storage_bucket: string | null
+          updated_at: string | null
+        }
         Insert: {
-          backup_time?: string | null;
-          created_at?: string | null;
-          enabled?: boolean | null;
-          frequency?: string;
-          id?: string;
-          include_tables?: string[] | null;
-          last_backup_at?: string | null;
-          retain_count?: number | null;
-          storage_bucket?: string | null;
-          updated_at?: string | null;
-        };
+          backup_time?: string | null
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency?: string
+          id?: string
+          include_tables?: string[] | null
+          last_backup_at?: string | null
+          retain_count?: number | null
+          storage_bucket?: string | null
+          updated_at?: string | null
+        }
         Update: {
-          backup_time?: string | null;
-          created_at?: string | null;
-          enabled?: boolean | null;
-          frequency?: string;
-          id?: string;
-          include_tables?: string[] | null;
-          last_backup_at?: string | null;
-          retain_count?: number | null;
-          storage_bucket?: string | null;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
+          backup_time?: string | null
+          created_at?: string | null
+          enabled?: boolean | null
+          frequency?: string
+          id?: string
+          include_tables?: string[] | null
+          last_backup_at?: string | null
+          retain_count?: number | null
+          storage_bucket?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       backup_history: {
         Row: {
-          backup_type: string;
-          completed_at: string | null;
-          created_by: string | null;
-          error_message: string | null;
-          file_size_bytes: number | null;
-          id: string;
-          metadata: Json | null;
-          record_count: number | null;
-          started_at: string | null;
-          status: string;
-          storage_path: string | null;
-          tables_backed_up: string[] | null;
-        };
+          backup_type: string
+          completed_at: string | null
+          created_by: string | null
+          error_message: string | null
+          file_size_bytes: number | null
+          id: string
+          metadata: Json | null
+          record_count: number | null
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tables_backed_up: string[] | null
+        }
         Insert: {
-          backup_type?: string;
-          completed_at?: string | null;
-          created_by?: string | null;
-          error_message?: string | null;
-          file_size_bytes?: number | null;
-          id?: string;
-          metadata?: Json | null;
-          record_count?: number | null;
-          started_at?: string | null;
-          status?: string;
-          storage_path?: string | null;
-          tables_backed_up?: string[] | null;
-        };
+          backup_type?: string
+          completed_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          metadata?: Json | null
+          record_count?: number | null
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tables_backed_up?: string[] | null
+        }
         Update: {
-          backup_type?: string;
-          completed_at?: string | null;
-          created_by?: string | null;
-          error_message?: string | null;
-          file_size_bytes?: number | null;
-          id?: string;
-          metadata?: Json | null;
-          record_count?: number | null;
-          started_at?: string | null;
-          status?: string;
-          storage_path?: string | null;
-          tables_backed_up?: string[] | null;
-        };
-        Relationships: [];
-      };
+          backup_type?: string
+          completed_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          metadata?: Json | null
+          record_count?: number | null
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tables_backed_up?: string[] | null
+        }
+        Relationships: []
+      }
       compromisos_pps: {
         Row: {
-          accepted_at: string | null;
-          acepta_compromiso: boolean;
-          acepta_lectura: boolean;
-          convocatoria_id: string;
-          created_at: string | null;
-          dni: number | null;
-          estado: string;
-          estudiante_id: string;
-          firma_texto: string;
-          id: string;
-          lanzamiento_id: string;
-          legajo: string;
-          nombre_completo: string;
-          texto_acta: string;
-          updated_at: string | null;
-          version: string;
-        };
+          accepted_at: string | null
+          acepta_compromiso: boolean
+          acepta_lectura: boolean
+          convocatoria_id: string
+          created_at: string | null
+          dni: number | null
+          estado: string
+          estudiante_id: string
+          firma_texto: string
+          id: string
+          lanzamiento_id: string
+          legajo: string
+          nombre_completo: string
+          texto_acta: string
+          updated_at: string | null
+          version: string
+        }
         Insert: {
-          accepted_at?: string | null;
-          acepta_compromiso?: boolean;
-          acepta_lectura?: boolean;
-          convocatoria_id: string;
-          created_at?: string | null;
-          dni?: number | null;
-          estado?: string;
-          estudiante_id: string;
-          firma_texto: string;
-          id?: string;
-          lanzamiento_id: string;
-          legajo: string;
-          nombre_completo: string;
-          texto_acta: string;
-          updated_at?: string | null;
-          version: string;
-        };
+          accepted_at?: string | null
+          acepta_compromiso?: boolean
+          acepta_lectura?: boolean
+          convocatoria_id: string
+          created_at?: string | null
+          dni?: number | null
+          estado?: string
+          estudiante_id: string
+          firma_texto: string
+          id?: string
+          lanzamiento_id: string
+          legajo: string
+          nombre_completo: string
+          texto_acta: string
+          updated_at?: string | null
+          version: string
+        }
         Update: {
-          accepted_at?: string | null;
-          acepta_compromiso?: boolean;
-          acepta_lectura?: boolean;
-          convocatoria_id?: string;
-          created_at?: string | null;
-          dni?: number | null;
-          estado?: string;
-          estudiante_id?: string;
-          firma_texto?: string;
-          id?: string;
-          lanzamiento_id?: string;
-          legajo?: string;
-          nombre_completo?: string;
-          texto_acta?: string;
-          updated_at?: string | null;
-          version?: string;
-        };
+          accepted_at?: string | null
+          acepta_compromiso?: boolean
+          acepta_lectura?: boolean
+          convocatoria_id?: string
+          created_at?: string | null
+          dni?: number | null
+          estado?: string
+          estudiante_id?: string
+          firma_texto?: string
+          id?: string
+          lanzamiento_id?: string
+          legajo?: string
+          nombre_completo?: string
+          texto_acta?: string
+          updated_at?: string | null
+          version?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "compromisos_pps_convocatoria_id_fkey";
-            columns: ["convocatoria_id"];
-            isOneToOne: true;
-            referencedRelation: "convocatorias";
-            referencedColumns: ["id"];
+            foreignKeyName: "compromisos_pps_convocatoria_id_fkey"
+            columns: ["convocatoria_id"]
+            isOneToOne: true
+            referencedRelation: "convocatorias"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "compromisos_pps_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "compromisos_pps_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "compromisos_pps_lanzamiento_id_fkey";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "compromisos_pps_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       convenios: {
         Row: {
-          archivo_url: string | null;
-          created_at: string;
-          es_renovacion: boolean;
-          fecha_firma: string;
-          fecha_vencimiento: string | null;
-          id: string;
-          institucion_id: string;
-          notas: string | null;
-          tipo: string;
-        };
+          archivo_url: string | null
+          created_at: string
+          es_renovacion: boolean
+          fecha_firma: string
+          fecha_vencimiento: string | null
+          id: string
+          institucion_id: string
+          notas: string | null
+          tipo: string
+        }
         Insert: {
-          archivo_url?: string | null;
-          created_at?: string;
-          es_renovacion?: boolean;
-          fecha_firma: string;
-          fecha_vencimiento?: string | null;
-          id?: string;
-          institucion_id: string;
-          notas?: string | null;
-          tipo?: string;
-        };
+          archivo_url?: string | null
+          created_at?: string
+          es_renovacion?: boolean
+          fecha_firma: string
+          fecha_vencimiento?: string | null
+          id?: string
+          institucion_id: string
+          notas?: string | null
+          tipo?: string
+        }
         Update: {
-          archivo_url?: string | null;
-          created_at?: string;
-          es_renovacion?: boolean;
-          fecha_firma?: string;
-          fecha_vencimiento?: string | null;
-          id?: string;
-          institucion_id?: string;
-          notas?: string | null;
-          tipo?: string;
-        };
+          archivo_url?: string | null
+          created_at?: string
+          es_renovacion?: boolean
+          fecha_firma?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          institucion_id?: string
+          notas?: string | null
+          tipo?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "convenios_institucion_id_fkey";
-            columns: ["institucion_id"];
-            isOneToOne: false;
-            referencedRelation: "instituciones";
-            referencedColumns: ["id"];
+            foreignKeyName: "convenios_institucion_id_fkey"
+            columns: ["institucion_id"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       convocatorias: {
         Row: {
-          airtable_id: string | null;
-          baja_automatica_at: string | null;
-          certificado_trabajo: string | null;
-          certificado_url: string | null;
-          correo: string | null;
-          created_at: string | null;
-          cursando_electivas: string | null;
-          cv_url: string | null;
-          direccion: string | null;
-          dni: number | null;
-          estado_inscripcion: string | null;
-          estudiante_id: string | null;
-          fecha_entrega_informe: string | null;
-          fecha_finalizacion: string | null;
-          fecha_inicio: string | null;
-          fecha_nacimiento: string | null;
-          finales_adeuda: string | null;
-          horario_asignado: string | null;
-          horario_seleccionado: string | null;
-          horas_acreditadas: number | null;
-          id: string;
-          informe_subido: boolean | null;
-          lanzamiento_id: string | null;
-          legajo: number | null;
-          nombre_pps: string | null;
-          orientacion: string | null;
-          otra_situacion_academica: string | null;
-          reminder_sent_at: string | null;
-          selected_at: string | null;
-          selection_decided_at: string | null;
-          telefono: string | null;
-          termino_cursar: string | null;
-          trabaja: boolean | null;
-        };
+          airtable_id: string | null
+          baja_automatica_at: string | null
+          certificado_trabajo: string | null
+          certificado_url: string | null
+          correo: string | null
+          created_at: string | null
+          cursando_electivas: string | null
+          cv_url: string | null
+          direccion: string | null
+          dni: number | null
+          estado_inscripcion: string | null
+          estudiante_id: string | null
+          fecha_entrega_informe: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          fecha_nacimiento: string | null
+          finales_adeuda: string | null
+          horario_asignado: string | null
+          horario_seleccionado: string | null
+          horas_acreditadas: number | null
+          id: string
+          informe_subido: boolean | null
+          lanzamiento_id: string | null
+          legajo: number | null
+          nombre_pps: string | null
+          orientacion: string | null
+          otra_situacion_academica: string | null
+          reminder_sent_at: string | null
+          selected_at: string | null
+          selection_decided_at: string | null
+          telefono: string | null
+          termino_cursar: string | null
+          trabaja: boolean | null
+        }
         Insert: {
-          airtable_id?: string | null;
-          baja_automatica_at?: string | null;
-          certificado_trabajo?: string | null;
-          certificado_url?: string | null;
-          correo?: string | null;
-          created_at?: string | null;
-          cursando_electivas?: string | null;
-          cv_url?: string | null;
-          direccion?: string | null;
-          dni?: number | null;
-          estado_inscripcion?: string | null;
-          estudiante_id?: string | null;
-          fecha_entrega_informe?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_inicio?: string | null;
-          fecha_nacimiento?: string | null;
-          finales_adeuda?: string | null;
-          horario_asignado?: string | null;
-          horario_seleccionado?: string | null;
-          horas_acreditadas?: number | null;
-          id?: string;
-          informe_subido?: boolean | null;
-          lanzamiento_id?: string | null;
-          legajo?: number | null;
-          nombre_pps?: string | null;
-          orientacion?: string | null;
-          otra_situacion_academica?: string | null;
-          reminder_sent_at?: string | null;
-          selected_at?: string | null;
-          selection_decided_at?: string | null;
-          telefono?: string | null;
-          termino_cursar?: string | null;
-          trabaja?: boolean | null;
-        };
+          airtable_id?: string | null
+          baja_automatica_at?: string | null
+          certificado_trabajo?: string | null
+          certificado_url?: string | null
+          correo?: string | null
+          created_at?: string | null
+          cursando_electivas?: string | null
+          cv_url?: string | null
+          direccion?: string | null
+          dni?: number | null
+          estado_inscripcion?: string | null
+          estudiante_id?: string | null
+          fecha_entrega_informe?: string | null
+          fecha_finalizacion?: string | null
+          fecha_inicio?: string | null
+          fecha_nacimiento?: string | null
+          finales_adeuda?: string | null
+          horario_asignado?: string | null
+          horario_seleccionado?: string | null
+          horas_acreditadas?: number | null
+          id?: string
+          informe_subido?: boolean | null
+          lanzamiento_id?: string | null
+          legajo?: number | null
+          nombre_pps?: string | null
+          orientacion?: string | null
+          otra_situacion_academica?: string | null
+          reminder_sent_at?: string | null
+          selected_at?: string | null
+          selection_decided_at?: string | null
+          telefono?: string | null
+          termino_cursar?: string | null
+          trabaja?: boolean | null
+        }
         Update: {
-          airtable_id?: string | null;
-          baja_automatica_at?: string | null;
-          certificado_trabajo?: string | null;
-          certificado_url?: string | null;
-          correo?: string | null;
-          created_at?: string | null;
-          cursando_electivas?: string | null;
-          cv_url?: string | null;
-          direccion?: string | null;
-          dni?: number | null;
-          estado_inscripcion?: string | null;
-          estudiante_id?: string | null;
-          fecha_entrega_informe?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_inicio?: string | null;
-          fecha_nacimiento?: string | null;
-          finales_adeuda?: string | null;
-          horario_asignado?: string | null;
-          horario_seleccionado?: string | null;
-          horas_acreditadas?: number | null;
-          id?: string;
-          informe_subido?: boolean | null;
-          lanzamiento_id?: string | null;
-          legajo?: number | null;
-          nombre_pps?: string | null;
-          orientacion?: string | null;
-          otra_situacion_academica?: string | null;
-          reminder_sent_at?: string | null;
-          selected_at?: string | null;
-          selection_decided_at?: string | null;
-          telefono?: string | null;
-          termino_cursar?: string | null;
-          trabaja?: boolean | null;
-        };
+          airtable_id?: string | null
+          baja_automatica_at?: string | null
+          certificado_trabajo?: string | null
+          certificado_url?: string | null
+          correo?: string | null
+          created_at?: string | null
+          cursando_electivas?: string | null
+          cv_url?: string | null
+          direccion?: string | null
+          dni?: number | null
+          estado_inscripcion?: string | null
+          estudiante_id?: string | null
+          fecha_entrega_informe?: string | null
+          fecha_finalizacion?: string | null
+          fecha_inicio?: string | null
+          fecha_nacimiento?: string | null
+          finales_adeuda?: string | null
+          horario_asignado?: string | null
+          horario_seleccionado?: string | null
+          horas_acreditadas?: number | null
+          id?: string
+          informe_subido?: boolean | null
+          lanzamiento_id?: string | null
+          legajo?: number | null
+          nombre_pps?: string | null
+          orientacion?: string | null
+          otra_situacion_academica?: string | null
+          reminder_sent_at?: string | null
+          selected_at?: string | null
+          selection_decided_at?: string | null
+          telefono?: string | null
+          termino_cursar?: string | null
+          trabaja?: boolean | null
+        }
         Relationships: [
           {
-            foreignKeyName: "convocatorias_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "convocatorias_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "convocatorias_lanzamiento_id_fkey";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "convocatorias_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_convocatoria_estudiante";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "fk_convocatoria_estudiante"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_convocatoria_lanzamiento";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "fk_convocatoria_lanzamiento"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       debug_logs: {
         Row: {
-          created_at: string | null;
-          data: Json | null;
-          id: string;
-          msg: string | null;
-        };
+          created_at: string | null
+          data: Json | null
+          id: string
+          msg: string | null
+        }
         Insert: {
-          created_at?: string | null;
-          data?: Json | null;
-          id?: string;
-          msg?: string | null;
-        };
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          msg?: string | null
+        }
         Update: {
-          created_at?: string | null;
-          data?: Json | null;
-          id?: string;
-          msg?: string | null;
-        };
-        Relationships: [];
-      };
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          msg?: string | null
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
-          body: string;
-          id: string;
-          is_active: boolean | null;
-          subject: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
+          body: string
+          id: string
+          is_active: boolean | null
+          subject: string
+          updated_at: string
+          updated_by: string | null
+        }
         Insert: {
-          body: string;
-          id: string;
-          is_active?: boolean | null;
-          subject: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
+          body: string
+          id: string
+          is_active?: boolean | null
+          subject: string
+          updated_at?: string
+          updated_by?: string | null
+        }
         Update: {
-          body?: string;
-          id?: string;
-          is_active?: boolean | null;
-          subject?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
-        Relationships: [];
-      };
+          body?: string
+          id?: string
+          is_active?: boolean | null
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       estudiantes: {
         Row: {
-          airtable_id: string | null;
-          apellido_separado: string | null;
-          certificado_trabajo: string | null;
-          cohorte: number | null;
-          correo: string | null;
-          created_at: string | null;
-          dni: number | null;
-          estado: string | null;
-          fecha_finalizacion: string | null;
-          fecha_nacimiento: string | null;
-          genero: string | null;
-          id: string;
-          legajo: string | null;
-          must_change_password: boolean | null;
-          nombre: string | null;
-          nombre_separado: string | null;
-          notas_internas: string | null;
-          orientacion_elegida: string | null;
-          role: string | null;
-          telefono: string | null;
-          trabaja: boolean | null;
-          user_id: string | null;
-        };
+          airtable_id: string | null
+          apellido_separado: string | null
+          certificado_trabajo: string | null
+          cohorte: number | null
+          correo: string | null
+          created_at: string | null
+          dni: number | null
+          estado: string | null
+          fecha_finalizacion: string | null
+          fecha_nacimiento: string | null
+          genero: string | null
+          id: string
+          legajo: string | null
+          must_change_password: boolean | null
+          nombre: string | null
+          nombre_separado: string | null
+          notas_internas: string | null
+          orientacion_elegida: string | null
+          role: string | null
+          telefono: string | null
+          trabaja: boolean | null
+          user_id: string | null
+        }
         Insert: {
-          airtable_id?: string | null;
-          apellido_separado?: string | null;
-          certificado_trabajo?: string | null;
-          cohorte?: number | null;
-          correo?: string | null;
-          created_at?: string | null;
-          dni?: number | null;
-          estado?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_nacimiento?: string | null;
-          genero?: string | null;
-          id?: string;
-          legajo?: string | null;
-          must_change_password?: boolean | null;
-          nombre?: string | null;
-          nombre_separado?: string | null;
-          notas_internas?: string | null;
-          orientacion_elegida?: string | null;
-          role?: string | null;
-          telefono?: string | null;
-          trabaja?: boolean | null;
-          user_id?: string | null;
-        };
+          airtable_id?: string | null
+          apellido_separado?: string | null
+          certificado_trabajo?: string | null
+          cohorte?: number | null
+          correo?: string | null
+          created_at?: string | null
+          dni?: number | null
+          estado?: string | null
+          fecha_finalizacion?: string | null
+          fecha_nacimiento?: string | null
+          genero?: string | null
+          id?: string
+          legajo?: string | null
+          must_change_password?: boolean | null
+          nombre?: string | null
+          nombre_separado?: string | null
+          notas_internas?: string | null
+          orientacion_elegida?: string | null
+          role?: string | null
+          telefono?: string | null
+          trabaja?: boolean | null
+          user_id?: string | null
+        }
         Update: {
-          airtable_id?: string | null;
-          apellido_separado?: string | null;
-          certificado_trabajo?: string | null;
-          cohorte?: number | null;
-          correo?: string | null;
-          created_at?: string | null;
-          dni?: number | null;
-          estado?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_nacimiento?: string | null;
-          genero?: string | null;
-          id?: string;
-          legajo?: string | null;
-          must_change_password?: boolean | null;
-          nombre?: string | null;
-          nombre_separado?: string | null;
-          notas_internas?: string | null;
-          orientacion_elegida?: string | null;
-          role?: string | null;
-          telefono?: string | null;
-          trabaja?: boolean | null;
-          user_id?: string | null;
-        };
-        Relationships: [];
-      };
+          airtable_id?: string | null
+          apellido_separado?: string | null
+          certificado_trabajo?: string | null
+          cohorte?: number | null
+          correo?: string | null
+          created_at?: string | null
+          dni?: number | null
+          estado?: string | null
+          fecha_finalizacion?: string | null
+          fecha_nacimiento?: string | null
+          genero?: string | null
+          id?: string
+          legajo?: string | null
+          must_change_password?: boolean | null
+          nombre?: string | null
+          nombre_separado?: string | null
+          notas_internas?: string | null
+          orientacion_elegida?: string | null
+          role?: string | null
+          telefono?: string | null
+          trabaja?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       fcm_tokens: {
         Row: {
-          created_at: string | null;
-          fcm_token: string;
-          id: string;
-          updated_at: string | null;
-          user_id: string;
-        };
+          created_at: string | null
+          fcm_token: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
         Insert: {
-          created_at?: string | null;
-          fcm_token: string;
-          id?: string;
-          updated_at?: string | null;
-          user_id: string;
-        };
+          created_at?: string | null
+          fcm_token: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
         Update: {
-          created_at?: string | null;
-          fcm_token?: string;
-          id?: string;
-          updated_at?: string | null;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string | null
+          fcm_token?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       finalizacion_pps: {
         Row: {
-          airtable_id: string | null;
-          certificado_url: Json | null;
-          created_at: string | null;
-          detalle_practicas: Json | null;
-          estado: string | null;
-          estudiante_id: string | null;
-          fecha_solicitud: string | null;
-          id: string;
-          informe_final_url: Json | null;
-          planilla_asistencia_url: Json | null;
-          planilla_horas_url: Json | null;
-          sugerencias_mejoras: string | null;
-        };
+          airtable_id: string | null
+          certificado_url: Json | null
+          created_at: string | null
+          detalle_practicas: Json | null
+          estado: string | null
+          estudiante_id: string | null
+          fecha_solicitud: string | null
+          id: string
+          informe_final_url: Json | null
+          planilla_asistencia_url: Json | null
+          planilla_horas_url: Json | null
+          sugerencias_mejoras: string | null
+        }
         Insert: {
-          airtable_id?: string | null;
-          certificado_url?: Json | null;
-          created_at?: string | null;
-          detalle_practicas?: Json | null;
-          estado?: string | null;
-          estudiante_id?: string | null;
-          fecha_solicitud?: string | null;
-          id?: string;
-          informe_final_url?: Json | null;
-          planilla_asistencia_url?: Json | null;
-          planilla_horas_url?: Json | null;
-          sugerencias_mejoras?: string | null;
-        };
+          airtable_id?: string | null
+          certificado_url?: Json | null
+          created_at?: string | null
+          detalle_practicas?: Json | null
+          estado?: string | null
+          estudiante_id?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          informe_final_url?: Json | null
+          planilla_asistencia_url?: Json | null
+          planilla_horas_url?: Json | null
+          sugerencias_mejoras?: string | null
+        }
         Update: {
-          airtable_id?: string | null;
-          certificado_url?: Json | null;
-          created_at?: string | null;
-          detalle_practicas?: Json | null;
-          estado?: string | null;
-          estudiante_id?: string | null;
-          fecha_solicitud?: string | null;
-          id?: string;
-          informe_final_url?: Json | null;
-          planilla_asistencia_url?: Json | null;
-          planilla_horas_url?: Json | null;
-          sugerencias_mejoras?: string | null;
-        };
+          airtable_id?: string | null
+          certificado_url?: Json | null
+          created_at?: string | null
+          detalle_practicas?: Json | null
+          estado?: string | null
+          estudiante_id?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          informe_final_url?: Json | null
+          planilla_asistencia_url?: Json | null
+          planilla_horas_url?: Json | null
+          sugerencias_mejoras?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "finalizacion_pps_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "finalizacion_pps_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_finalizacion_estudiante";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "fk_finalizacion_estudiante"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       gmail_hilos: {
         Row: {
-          asunto: string | null;
-          clasificacion: string | null;
-          estado: string;
-          ingested_at: string;
-          institucion_id: string | null;
-          participantes: Json | null;
-          primer_mensaje_at: string | null;
-          raw_mensajes: Json | null;
-          thread_id: string;
-          ultimo_mensaje_at: string | null;
-          ultimo_mensaje_de: string | null;
-          updated_at: string;
-        };
+          asunto: string | null
+          clasificacion: string | null
+          estado: string
+          ingested_at: string
+          institucion_id: string | null
+          participantes: Json | null
+          primer_mensaje_at: string | null
+          raw_mensajes: Json | null
+          thread_id: string
+          ultimo_mensaje_at: string | null
+          ultimo_mensaje_de: string | null
+          updated_at: string
+        }
         Insert: {
-          asunto?: string | null;
-          clasificacion?: string | null;
-          estado?: string;
-          ingested_at?: string;
-          institucion_id?: string | null;
-          participantes?: Json | null;
-          primer_mensaje_at?: string | null;
-          raw_mensajes?: Json | null;
-          thread_id: string;
-          ultimo_mensaje_at?: string | null;
-          ultimo_mensaje_de?: string | null;
-          updated_at?: string;
-        };
+          asunto?: string | null
+          clasificacion?: string | null
+          estado?: string
+          ingested_at?: string
+          institucion_id?: string | null
+          participantes?: Json | null
+          primer_mensaje_at?: string | null
+          raw_mensajes?: Json | null
+          thread_id: string
+          ultimo_mensaje_at?: string | null
+          ultimo_mensaje_de?: string | null
+          updated_at?: string
+        }
         Update: {
-          asunto?: string | null;
-          clasificacion?: string | null;
-          estado?: string;
-          ingested_at?: string;
-          institucion_id?: string | null;
-          participantes?: Json | null;
-          primer_mensaje_at?: string | null;
-          raw_mensajes?: Json | null;
-          thread_id?: string;
-          ultimo_mensaje_at?: string | null;
-          ultimo_mensaje_de?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          asunto?: string | null
+          clasificacion?: string | null
+          estado?: string
+          ingested_at?: string
+          institucion_id?: string | null
+          participantes?: Json | null
+          primer_mensaje_at?: string | null
+          raw_mensajes?: Json | null
+          thread_id?: string
+          ultimo_mensaje_at?: string | null
+          ultimo_mensaje_de?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       institucion_resumen: {
         Row: {
-          actualizado_at: string;
-          institucion_id: string;
-          pendientes_concretos: Json | null;
-          resumen: string;
-          ultimo_canal: string | null;
-          ultimo_contacto_at: string | null;
-          version_prompt: string | null;
-        };
+          actualizado_at: string
+          institucion_id: string
+          pendientes_concretos: Json | null
+          resumen: string
+          ultimo_canal: string | null
+          ultimo_contacto_at: string | null
+          version_prompt: string | null
+        }
         Insert: {
-          actualizado_at?: string;
-          institucion_id: string;
-          pendientes_concretos?: Json | null;
-          resumen: string;
-          ultimo_canal?: string | null;
-          ultimo_contacto_at?: string | null;
-          version_prompt?: string | null;
-        };
+          actualizado_at?: string
+          institucion_id: string
+          pendientes_concretos?: Json | null
+          resumen: string
+          ultimo_canal?: string | null
+          ultimo_contacto_at?: string | null
+          version_prompt?: string | null
+        }
         Update: {
-          actualizado_at?: string;
-          institucion_id?: string;
-          pendientes_concretos?: Json | null;
-          resumen?: string;
-          ultimo_canal?: string | null;
-          ultimo_contacto_at?: string | null;
-          version_prompt?: string | null;
-        };
-        Relationships: [];
-      };
+          actualizado_at?: string
+          institucion_id?: string
+          pendientes_concretos?: Json | null
+          resumen?: string
+          ultimo_canal?: string | null
+          ultimo_contacto_at?: string | null
+          version_prompt?: string | null
+        }
+        Relationships: []
+      }
       instituciones: {
         Row: {
-          airtable_id: string | null;
-          codigo_tarjeta_campus: string | null;
-          convenio_nuevo: number | null;
-          created_at: string | null;
-          direccion: string | null;
-          id: string;
-          logo_invert_dark: boolean | null;
-          logo_url: string | null;
-          nombre: string | null;
-          orientaciones: string | null;
-          telefono: string | null;
-          tutor: string | null;
-        };
+          airtable_id: string | null
+          codigo_tarjeta_campus: string | null
+          convenio_nuevo: number | null
+          created_at: string | null
+          direccion: string | null
+          id: string
+          logo_invert_dark: boolean | null
+          logo_url: string | null
+          nombre: string | null
+          orientaciones: string | null
+          telefono: string | null
+          tutor: string | null
+        }
         Insert: {
-          airtable_id?: string | null;
-          codigo_tarjeta_campus?: string | null;
-          convenio_nuevo?: number | null;
-          created_at?: string | null;
-          direccion?: string | null;
-          id?: string;
-          logo_invert_dark?: boolean | null;
-          logo_url?: string | null;
-          nombre?: string | null;
-          orientaciones?: string | null;
-          telefono?: string | null;
-          tutor?: string | null;
-        };
+          airtable_id?: string | null
+          codigo_tarjeta_campus?: string | null
+          convenio_nuevo?: number | null
+          created_at?: string | null
+          direccion?: string | null
+          id?: string
+          logo_invert_dark?: boolean | null
+          logo_url?: string | null
+          nombre?: string | null
+          orientaciones?: string | null
+          telefono?: string | null
+          tutor?: string | null
+        }
         Update: {
-          airtable_id?: string | null;
-          codigo_tarjeta_campus?: string | null;
-          convenio_nuevo?: number | null;
-          created_at?: string | null;
-          direccion?: string | null;
-          id?: string;
-          logo_invert_dark?: boolean | null;
-          logo_url?: string | null;
-          nombre?: string | null;
-          orientaciones?: string | null;
-          telefono?: string | null;
-          tutor?: string | null;
-        };
-        Relationships: [];
-      };
+          airtable_id?: string | null
+          codigo_tarjeta_campus?: string | null
+          convenio_nuevo?: number | null
+          created_at?: string | null
+          direccion?: string | null
+          id?: string
+          logo_invert_dark?: boolean | null
+          logo_url?: string | null
+          nombre?: string | null
+          orientaciones?: string | null
+          telefono?: string | null
+          tutor?: string | null
+        }
+        Relationships: []
+      }
       lanzamientos_pps: {
         Row: {
-          actividades_label: string | null;
-          actividades_lista: string[] | null;
-          airtable_id: string | null;
-          archivo_descargable_nombre: string | null;
-          archivo_descargable_url: string | null;
-          codigo_tarjeta_campus: string | null;
-          created_at: string | null;
-          cupos_disponibles: number | null;
-          descripcion_larga: string | null;
-          direccion: string | null;
-          estado_convocatoria: string | null;
-          estado_gestion: string | null;
-          fecha_encuentro_inicial: string | null;
-          fecha_fin_inscripcion: string | null;
-          fecha_finalizacion: string | null;
-          fecha_inicio: string | null;
-          fecha_inicio_inscripcion: string | null;
-          fecha_publicacion: string | null;
-          fecha_relanzamiento: string | null;
-          historial_gestion: string | null;
-          horario_seleccionado: string | null;
-          horarios_fijos: boolean | null;
-          horarios_obligatorios: string[] | null;
-          horas_acreditadas: number | null;
-          id: string;
-          informe: string | null;
-          institucion_id: string | null;
-          mensaje_whatsapp: string | null;
-          modalidad_cupo: string;
-          nombre_pps: string | null;
-          notas_gestion: string | null;
-          orientacion: string | null;
-          permite_certificado: boolean | null;
-          plantilla_seguro_url: string | null;
-          plazo_inscripcion_dias: number | null;
-          proximo_seguimiento: string | null;
-          req_certificado_trabajo: boolean | null;
-          req_cv: boolean | null;
-          requisito_obligatorio: string | null;
-          seguro_gestionado_at: string | null;
-          seguro_gestionado_por: string | null;
-          selection_closed_at: string | null;
-          selection_closed_by: string | null;
-          tipo_actividad: string;
-          updated_at: string | null;
-        };
+          actividades_label: string | null
+          actividades_lista: string[] | null
+          airtable_id: string | null
+          archivo_descargable_nombre: string | null
+          archivo_descargable_url: string | null
+          codigo_tarjeta_campus: string | null
+          created_at: string | null
+          cupos_disponibles: number | null
+          descripcion_larga: string | null
+          direccion: string | null
+          estado_convocatoria: string | null
+          estado_gestion: string | null
+          fecha_encuentro_inicial: string | null
+          fecha_fin_inscripcion: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          fecha_inicio_inscripcion: string | null
+          fecha_publicacion: string | null
+          fecha_relanzamiento: string | null
+          historial_gestion: string | null
+          horario_seleccionado: string | null
+          horarios_fijos: boolean | null
+          horarios_obligatorios: string[] | null
+          horas_acreditadas: number | null
+          id: string
+          informe: string | null
+          institucion_id: string | null
+          mensaje_whatsapp: string | null
+          modalidad_cupo: string
+          nombre_pps: string | null
+          notas_gestion: string | null
+          orientacion: string | null
+          permite_certificado: boolean | null
+          plantilla_seguro_url: string | null
+          plazo_inscripcion_dias: number | null
+          proximo_seguimiento: string | null
+          req_certificado_trabajo: boolean | null
+          req_cv: boolean | null
+          requisito_obligatorio: string | null
+          seguro_gestionado_at: string | null
+          seguro_gestionado_por: string | null
+          selection_closed_at: string | null
+          selection_closed_by: string | null
+          tipo_actividad: string
+          updated_at: string | null
+        }
         Insert: {
-          actividades_label?: string | null;
-          actividades_lista?: string[] | null;
-          airtable_id?: string | null;
-          archivo_descargable_nombre?: string | null;
-          archivo_descargable_url?: string | null;
-          codigo_tarjeta_campus?: string | null;
-          created_at?: string | null;
-          cupos_disponibles?: number | null;
-          descripcion_larga?: string | null;
-          direccion?: string | null;
-          estado_convocatoria?: string | null;
-          estado_gestion?: string | null;
-          fecha_encuentro_inicial?: string | null;
-          fecha_fin_inscripcion?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_inicio?: string | null;
-          fecha_inicio_inscripcion?: string | null;
-          fecha_publicacion?: string | null;
-          fecha_relanzamiento?: string | null;
-          historial_gestion?: string | null;
-          horario_seleccionado?: string | null;
-          horarios_fijos?: boolean | null;
-          horarios_obligatorios?: string[] | null;
-          horas_acreditadas?: number | null;
-          id?: string;
-          informe?: string | null;
-          institucion_id?: string | null;
-          mensaje_whatsapp?: string | null;
-          modalidad_cupo?: string;
-          nombre_pps?: string | null;
-          notas_gestion?: string | null;
-          orientacion?: string | null;
-          permite_certificado?: boolean | null;
-          plantilla_seguro_url?: string | null;
-          plazo_inscripcion_dias?: number | null;
-          proximo_seguimiento?: string | null;
-          req_certificado_trabajo?: boolean | null;
-          req_cv?: boolean | null;
-          requisito_obligatorio?: string | null;
-          seguro_gestionado_at?: string | null;
-          seguro_gestionado_por?: string | null;
-          selection_closed_at?: string | null;
-          selection_closed_by?: string | null;
-          tipo_actividad?: string;
-          updated_at?: string | null;
-        };
+          actividades_label?: string | null
+          actividades_lista?: string[] | null
+          airtable_id?: string | null
+          archivo_descargable_nombre?: string | null
+          archivo_descargable_url?: string | null
+          codigo_tarjeta_campus?: string | null
+          created_at?: string | null
+          cupos_disponibles?: number | null
+          descripcion_larga?: string | null
+          direccion?: string | null
+          estado_convocatoria?: string | null
+          estado_gestion?: string | null
+          fecha_encuentro_inicial?: string | null
+          fecha_fin_inscripcion?: string | null
+          fecha_finalizacion?: string | null
+          fecha_inicio?: string | null
+          fecha_inicio_inscripcion?: string | null
+          fecha_publicacion?: string | null
+          fecha_relanzamiento?: string | null
+          historial_gestion?: string | null
+          horario_seleccionado?: string | null
+          horarios_fijos?: boolean | null
+          horarios_obligatorios?: string[] | null
+          horas_acreditadas?: number | null
+          id?: string
+          informe?: string | null
+          institucion_id?: string | null
+          mensaje_whatsapp?: string | null
+          modalidad_cupo?: string
+          nombre_pps?: string | null
+          notas_gestion?: string | null
+          orientacion?: string | null
+          permite_certificado?: boolean | null
+          plantilla_seguro_url?: string | null
+          plazo_inscripcion_dias?: number | null
+          proximo_seguimiento?: string | null
+          req_certificado_trabajo?: boolean | null
+          req_cv?: boolean | null
+          requisito_obligatorio?: string | null
+          seguro_gestionado_at?: string | null
+          seguro_gestionado_por?: string | null
+          selection_closed_at?: string | null
+          selection_closed_by?: string | null
+          tipo_actividad?: string
+          updated_at?: string | null
+        }
         Update: {
-          actividades_label?: string | null;
-          actividades_lista?: string[] | null;
-          airtable_id?: string | null;
-          archivo_descargable_nombre?: string | null;
-          archivo_descargable_url?: string | null;
-          codigo_tarjeta_campus?: string | null;
-          created_at?: string | null;
-          cupos_disponibles?: number | null;
-          descripcion_larga?: string | null;
-          direccion?: string | null;
-          estado_convocatoria?: string | null;
-          estado_gestion?: string | null;
-          fecha_encuentro_inicial?: string | null;
-          fecha_fin_inscripcion?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_inicio?: string | null;
-          fecha_inicio_inscripcion?: string | null;
-          fecha_publicacion?: string | null;
-          fecha_relanzamiento?: string | null;
-          historial_gestion?: string | null;
-          horario_seleccionado?: string | null;
-          horarios_fijos?: boolean | null;
-          horarios_obligatorios?: string[] | null;
-          horas_acreditadas?: number | null;
-          id?: string;
-          informe?: string | null;
-          institucion_id?: string | null;
-          mensaje_whatsapp?: string | null;
-          modalidad_cupo?: string;
-          nombre_pps?: string | null;
-          notas_gestion?: string | null;
-          orientacion?: string | null;
-          permite_certificado?: boolean | null;
-          plantilla_seguro_url?: string | null;
-          plazo_inscripcion_dias?: number | null;
-          proximo_seguimiento?: string | null;
-          req_certificado_trabajo?: boolean | null;
-          req_cv?: boolean | null;
-          requisito_obligatorio?: string | null;
-          seguro_gestionado_at?: string | null;
-          seguro_gestionado_por?: string | null;
-          selection_closed_at?: string | null;
-          selection_closed_by?: string | null;
-          tipo_actividad?: string;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
+          actividades_label?: string | null
+          actividades_lista?: string[] | null
+          airtable_id?: string | null
+          archivo_descargable_nombre?: string | null
+          archivo_descargable_url?: string | null
+          codigo_tarjeta_campus?: string | null
+          created_at?: string | null
+          cupos_disponibles?: number | null
+          descripcion_larga?: string | null
+          direccion?: string | null
+          estado_convocatoria?: string | null
+          estado_gestion?: string | null
+          fecha_encuentro_inicial?: string | null
+          fecha_fin_inscripcion?: string | null
+          fecha_finalizacion?: string | null
+          fecha_inicio?: string | null
+          fecha_inicio_inscripcion?: string | null
+          fecha_publicacion?: string | null
+          fecha_relanzamiento?: string | null
+          historial_gestion?: string | null
+          horario_seleccionado?: string | null
+          horarios_fijos?: boolean | null
+          horarios_obligatorios?: string[] | null
+          horas_acreditadas?: number | null
+          id?: string
+          informe?: string | null
+          institucion_id?: string | null
+          mensaje_whatsapp?: string | null
+          modalidad_cupo?: string
+          nombre_pps?: string | null
+          notas_gestion?: string | null
+          orientacion?: string | null
+          permite_certificado?: boolean | null
+          plantilla_seguro_url?: string | null
+          plazo_inscripcion_dias?: number | null
+          proximo_seguimiento?: string | null
+          req_certificado_trabajo?: boolean | null
+          req_cv?: boolean | null
+          requisito_obligatorio?: string | null
+          seguro_gestionado_at?: string | null
+          seguro_gestionado_por?: string | null
+          selection_closed_at?: string | null
+          selection_closed_by?: string | null
+          tipo_actividad?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       moodle_probe: {
         Row: {
-          autologin_result: string | null;
-          created_at: string;
-          email: string | null;
-          email_match: boolean;
-          firstname: string | null;
-          id: number;
-          idnumber: string | null;
-          idnumber_legajo_match: boolean;
-          lastname: string | null;
-          phone1: string | null;
-          phone2: string | null;
-          username: string | null;
-          username_dni_match: boolean;
-        };
+          autologin_result: string | null
+          created_at: string
+          email: string | null
+          email_match: boolean
+          firstname: string | null
+          id: number
+          idnumber: string | null
+          idnumber_legajo_match: boolean
+          lastname: string | null
+          phone1: string | null
+          phone2: string | null
+          username: string | null
+          username_dni_match: boolean
+        }
         Insert: {
-          autologin_result?: string | null;
-          created_at?: string;
-          email?: string | null;
-          email_match?: boolean;
-          firstname?: string | null;
-          id?: never;
-          idnumber?: string | null;
-          idnumber_legajo_match?: boolean;
-          lastname?: string | null;
-          phone1?: string | null;
-          phone2?: string | null;
-          username?: string | null;
-          username_dni_match?: boolean;
-        };
+          autologin_result?: string | null
+          created_at?: string
+          email?: string | null
+          email_match?: boolean
+          firstname?: string | null
+          id?: never
+          idnumber?: string | null
+          idnumber_legajo_match?: boolean
+          lastname?: string | null
+          phone1?: string | null
+          phone2?: string | null
+          username?: string | null
+          username_dni_match?: boolean
+        }
         Update: {
-          autologin_result?: string | null;
-          created_at?: string;
-          email?: string | null;
-          email_match?: boolean;
-          firstname?: string | null;
-          id?: never;
-          idnumber?: string | null;
-          idnumber_legajo_match?: boolean;
-          lastname?: string | null;
-          phone1?: string | null;
-          phone2?: string | null;
-          username?: string | null;
-          username_dni_match?: boolean;
-        };
-        Relationships: [];
-      };
+          autologin_result?: string | null
+          created_at?: string
+          email?: string | null
+          email_match?: boolean
+          firstname?: string | null
+          id?: never
+          idnumber?: string | null
+          idnumber_legajo_match?: boolean
+          lastname?: string | null
+          phone1?: string | null
+          phone2?: string | null
+          username?: string | null
+          username_dni_match?: boolean
+        }
+        Relationships: []
+      }
       password_reset_tokens: {
         Row: {
-          claimed_at: string | null;
-          completed_at: string | null;
-          created_at: string;
-          delivery_email_hash: string | null;
-          estudiante_id: string;
-          expires_at: string;
-          failure_code: string | null;
-          id: string;
-          requested_ip: string | null;
-          requested_ip_hash: string | null;
-          status: string;
-          token_hash: string;
-          used_at: string | null;
-          user_id: string;
-        };
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          delivery_email_hash: string | null
+          estudiante_id: string
+          expires_at: string
+          failure_code: string | null
+          id: string
+          requested_ip: string | null
+          requested_ip_hash: string | null
+          status: string
+          token_hash: string
+          used_at: string | null
+          user_id: string
+        }
         Insert: {
-          claimed_at?: string | null;
-          completed_at?: string | null;
-          created_at?: string;
-          delivery_email_hash?: string | null;
-          estudiante_id: string;
-          expires_at: string;
-          failure_code?: string | null;
-          id?: string;
-          requested_ip?: string | null;
-          requested_ip_hash?: string | null;
-          status?: string;
-          token_hash: string;
-          used_at?: string | null;
-          user_id: string;
-        };
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivery_email_hash?: string | null
+          estudiante_id: string
+          expires_at: string
+          failure_code?: string | null
+          id?: string
+          requested_ip?: string | null
+          requested_ip_hash?: string | null
+          status?: string
+          token_hash: string
+          used_at?: string | null
+          user_id: string
+        }
         Update: {
-          claimed_at?: string | null;
-          completed_at?: string | null;
-          created_at?: string;
-          delivery_email_hash?: string | null;
-          estudiante_id?: string;
-          expires_at?: string;
-          failure_code?: string | null;
-          id?: string;
-          requested_ip?: string | null;
-          requested_ip_hash?: string | null;
-          status?: string;
-          token_hash?: string;
-          used_at?: string | null;
-          user_id?: string;
-        };
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivery_email_hash?: string | null
+          estudiante_id?: string
+          expires_at?: string
+          failure_code?: string | null
+          id?: string
+          requested_ip?: string | null
+          requested_ip_hash?: string | null
+          status?: string
+          token_hash?: string
+          used_at?: string | null
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "password_reset_tokens_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "password_reset_tokens_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       penalizaciones: {
         Row: {
-          airtable_id: string | null;
-          anulacion_motivo: string | null;
-          anulada_at: string | null;
-          anulada_por: string | null;
-          convocatoria_afectada: string | null;
-          convocatoria_id: string | null;
-          created_at: string | null;
-          estado: string;
-          estudiante_id: string | null;
-          fecha_incidente: string | null;
-          id: string;
-          lanzamiento_id: string | null;
-          notas: string | null;
-          practica_id: string | null;
-          puntaje_penalizacion: number;
-          tipo_incumplimiento: string | null;
-        };
+          airtable_id: string | null
+          anulacion_motivo: string | null
+          anulada_at: string | null
+          anulada_por: string | null
+          convocatoria_afectada: string | null
+          convocatoria_id: string | null
+          created_at: string | null
+          estado: string
+          estudiante_id: string | null
+          fecha_incidente: string | null
+          id: string
+          lanzamiento_id: string | null
+          notas: string | null
+          practica_id: string | null
+          puntaje_penalizacion: number
+          tipo_incumplimiento: string | null
+        }
         Insert: {
-          airtable_id?: string | null;
-          anulacion_motivo?: string | null;
-          anulada_at?: string | null;
-          anulada_por?: string | null;
-          convocatoria_afectada?: string | null;
-          convocatoria_id?: string | null;
-          created_at?: string | null;
-          estado?: string;
-          estudiante_id?: string | null;
-          fecha_incidente?: string | null;
-          id?: string;
-          lanzamiento_id?: string | null;
-          notas?: string | null;
-          practica_id?: string | null;
-          puntaje_penalizacion?: number;
-          tipo_incumplimiento?: string | null;
-        };
+          airtable_id?: string | null
+          anulacion_motivo?: string | null
+          anulada_at?: string | null
+          anulada_por?: string | null
+          convocatoria_afectada?: string | null
+          convocatoria_id?: string | null
+          created_at?: string | null
+          estado?: string
+          estudiante_id?: string | null
+          fecha_incidente?: string | null
+          id?: string
+          lanzamiento_id?: string | null
+          notas?: string | null
+          practica_id?: string | null
+          puntaje_penalizacion?: number
+          tipo_incumplimiento?: string | null
+        }
         Update: {
-          airtable_id?: string | null;
-          anulacion_motivo?: string | null;
-          anulada_at?: string | null;
-          anulada_por?: string | null;
-          convocatoria_afectada?: string | null;
-          convocatoria_id?: string | null;
-          created_at?: string | null;
-          estado?: string;
-          estudiante_id?: string | null;
-          fecha_incidente?: string | null;
-          id?: string;
-          lanzamiento_id?: string | null;
-          notas?: string | null;
-          practica_id?: string | null;
-          puntaje_penalizacion?: number;
-          tipo_incumplimiento?: string | null;
-        };
+          airtable_id?: string | null
+          anulacion_motivo?: string | null
+          anulada_at?: string | null
+          anulada_por?: string | null
+          convocatoria_afectada?: string | null
+          convocatoria_id?: string | null
+          created_at?: string | null
+          estado?: string
+          estudiante_id?: string | null
+          fecha_incidente?: string | null
+          id?: string
+          lanzamiento_id?: string | null
+          notas?: string | null
+          practica_id?: string | null
+          puntaje_penalizacion?: number
+          tipo_incumplimiento?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_penalizacion_estudiante";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "fk_penalizacion_estudiante"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "penalizaciones_convocatoria_id_fkey";
-            columns: ["convocatoria_id"];
-            isOneToOne: false;
-            referencedRelation: "convocatorias";
-            referencedColumns: ["id"];
+            foreignKeyName: "penalizaciones_convocatoria_id_fkey"
+            columns: ["convocatoria_id"]
+            isOneToOne: false
+            referencedRelation: "convocatorias"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "penalizaciones_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "penalizaciones_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "penalizaciones_lanzamiento_id_fkey";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "penalizaciones_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "penalizaciones_practica_id_fkey";
-            columns: ["practica_id"];
-            isOneToOne: false;
-            referencedRelation: "practicas";
-            referencedColumns: ["id"];
+            foreignKeyName: "penalizaciones_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       practicas: {
         Row: {
-          airtable_id: string | null;
-          created_at: string | null;
-          desaprobacion_causas: string[] | null;
-          desaprobacion_fecha: string | null;
-          desaprobacion_motivo_publico: string | null;
-          desaprobacion_notificado_at: string | null;
-          desaprobacion_registrado_por: string | null;
-          es_online: boolean;
-          especialidad: string | null;
-          estado: string | null;
-          estudiante_id: string | null;
-          fecha_finalizacion: string | null;
-          fecha_inicio: string | null;
-          horas_realizadas: number | null;
-          id: string;
-          lanzamiento_id: string | null;
-          nombre_institucion: string | null;
-          nota: string | null;
-          tipo_actividad: string;
-        };
+          airtable_id: string | null
+          created_at: string | null
+          desaprobacion_causas: string[] | null
+          desaprobacion_fecha: string | null
+          desaprobacion_motivo_publico: string | null
+          desaprobacion_notificado_at: string | null
+          desaprobacion_registrado_por: string | null
+          es_online: boolean
+          especialidad: string | null
+          estado: string | null
+          estudiante_id: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          horas_realizadas: number | null
+          id: string
+          lanzamiento_id: string | null
+          nombre_institucion: string | null
+          nota: string | null
+          tipo_actividad: string
+        }
         Insert: {
-          airtable_id?: string | null;
-          created_at?: string | null;
-          desaprobacion_causas?: string[] | null;
-          desaprobacion_fecha?: string | null;
-          desaprobacion_motivo_publico?: string | null;
-          desaprobacion_notificado_at?: string | null;
-          desaprobacion_registrado_por?: string | null;
-          es_online?: boolean;
-          especialidad?: string | null;
-          estado?: string | null;
-          estudiante_id?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_inicio?: string | null;
-          horas_realizadas?: number | null;
-          id?: string;
-          lanzamiento_id?: string | null;
-          nombre_institucion?: string | null;
-          nota?: string | null;
-          tipo_actividad?: string;
-        };
+          airtable_id?: string | null
+          created_at?: string | null
+          desaprobacion_causas?: string[] | null
+          desaprobacion_fecha?: string | null
+          desaprobacion_motivo_publico?: string | null
+          desaprobacion_notificado_at?: string | null
+          desaprobacion_registrado_por?: string | null
+          es_online?: boolean
+          especialidad?: string | null
+          estado?: string | null
+          estudiante_id?: string | null
+          fecha_finalizacion?: string | null
+          fecha_inicio?: string | null
+          horas_realizadas?: number | null
+          id?: string
+          lanzamiento_id?: string | null
+          nombre_institucion?: string | null
+          nota?: string | null
+          tipo_actividad?: string
+        }
         Update: {
-          airtable_id?: string | null;
-          created_at?: string | null;
-          desaprobacion_causas?: string[] | null;
-          desaprobacion_fecha?: string | null;
-          desaprobacion_motivo_publico?: string | null;
-          desaprobacion_notificado_at?: string | null;
-          desaprobacion_registrado_por?: string | null;
-          es_online?: boolean;
-          especialidad?: string | null;
-          estado?: string | null;
-          estudiante_id?: string | null;
-          fecha_finalizacion?: string | null;
-          fecha_inicio?: string | null;
-          horas_realizadas?: number | null;
-          id?: string;
-          lanzamiento_id?: string | null;
-          nombre_institucion?: string | null;
-          nota?: string | null;
-          tipo_actividad?: string;
-        };
+          airtable_id?: string | null
+          created_at?: string | null
+          desaprobacion_causas?: string[] | null
+          desaprobacion_fecha?: string | null
+          desaprobacion_motivo_publico?: string | null
+          desaprobacion_notificado_at?: string | null
+          desaprobacion_registrado_por?: string | null
+          es_online?: boolean
+          especialidad?: string | null
+          estado?: string | null
+          estudiante_id?: string | null
+          fecha_finalizacion?: string | null
+          fecha_inicio?: string | null
+          horas_realizadas?: number | null
+          id?: string
+          lanzamiento_id?: string | null
+          nombre_institucion?: string | null
+          nota?: string | null
+          tipo_actividad?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_practica_estudiante";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "fk_practica_estudiante"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_practica_lanzamiento";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "fk_practica_lanzamiento"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "practicas_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "practicas_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "practicas_lanzamiento_id_fkey";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "practicas_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       reminders: {
         Row: {
-          completed: boolean;
-          completed_at: string | null;
-          created_at: string;
-          description: string | null;
-          due_date: string;
-          id: string;
-          institution_phone: string | null;
-          pps_id: string | null;
-          pps_name: string | null;
-          priority: string;
-          snooze_count: number;
-          snoozed_until: string | null;
-          title: string;
-          type: string;
-          user_id: string;
-        };
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          institution_phone: string | null
+          pps_id: string | null
+          pps_name: string | null
+          priority: string
+          snooze_count: number
+          snoozed_until: string | null
+          title: string
+          type: string
+          user_id: string
+        }
         Insert: {
-          completed?: boolean;
-          completed_at?: string | null;
-          created_at?: string;
-          description?: string | null;
-          due_date: string;
-          id?: string;
-          institution_phone?: string | null;
-          pps_id?: string | null;
-          pps_name?: string | null;
-          priority?: string;
-          snooze_count?: number;
-          snoozed_until?: string | null;
-          title: string;
-          type: string;
-          user_id: string;
-        };
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          institution_phone?: string | null
+          pps_id?: string | null
+          pps_name?: string | null
+          priority?: string
+          snooze_count?: number
+          snoozed_until?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
         Update: {
-          completed?: boolean;
-          completed_at?: string | null;
-          created_at?: string;
-          description?: string | null;
-          due_date?: string;
-          id?: string;
-          institution_phone?: string | null;
-          pps_id?: string | null;
-          pps_name?: string | null;
-          priority?: string;
-          snooze_count?: number;
-          snoozed_until?: string | null;
-          title?: string;
-          type?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          institution_phone?: string | null
+          pps_id?: string | null
+          pps_name?: string | null
+          priority?: string
+          snooze_count?: number
+          snoozed_until?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       selection_cycle_events: {
         Row: {
-          actor_id: string | null;
-          event_type: string;
-          from_state: string | null;
-          id: number;
-          lanzamiento_id: string | null;
-          occurred_at: string;
-          to_state: string | null;
-        };
+          actor_id: string | null
+          event_type: string
+          from_state: string | null
+          id: number
+          lanzamiento_id: string | null
+          occurred_at: string
+          to_state: string | null
+        }
         Insert: {
-          actor_id?: string | null;
-          event_type: string;
-          from_state?: string | null;
-          id?: never;
-          lanzamiento_id?: string | null;
-          occurred_at?: string;
-          to_state?: string | null;
-        };
+          actor_id?: string | null
+          event_type: string
+          from_state?: string | null
+          id?: never
+          lanzamiento_id?: string | null
+          occurred_at?: string
+          to_state?: string | null
+        }
         Update: {
-          actor_id?: string | null;
-          event_type?: string;
-          from_state?: string | null;
-          id?: never;
-          lanzamiento_id?: string | null;
-          occurred_at?: string;
-          to_state?: string | null;
-        };
+          actor_id?: string | null
+          event_type?: string
+          from_state?: string | null
+          id?: never
+          lanzamiento_id?: string | null
+          occurred_at?: string
+          to_state?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "selection_cycle_events_lanzamiento_id_fkey";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "selection_cycle_events_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       selection_decision_events: {
         Row: {
-          actor_id: string | null;
-          convocatoria_id: string | null;
-          decided_at: string;
-          estudiante_id: string | null;
-          from_state: string | null;
-          id: number;
-          lanzamiento_id: string | null;
-          source: string;
-          to_state: string;
-        };
+          actor_id: string | null
+          convocatoria_id: string | null
+          decided_at: string
+          estudiante_id: string | null
+          from_state: string | null
+          id: number
+          lanzamiento_id: string | null
+          source: string
+          to_state: string
+        }
         Insert: {
-          actor_id?: string | null;
-          convocatoria_id?: string | null;
-          decided_at?: string;
-          estudiante_id?: string | null;
-          from_state?: string | null;
-          id?: never;
-          lanzamiento_id?: string | null;
-          source?: string;
-          to_state: string;
-        };
+          actor_id?: string | null
+          convocatoria_id?: string | null
+          decided_at?: string
+          estudiante_id?: string | null
+          from_state?: string | null
+          id?: never
+          lanzamiento_id?: string | null
+          source?: string
+          to_state: string
+        }
         Update: {
-          actor_id?: string | null;
-          convocatoria_id?: string | null;
-          decided_at?: string;
-          estudiante_id?: string | null;
-          from_state?: string | null;
-          id?: never;
-          lanzamiento_id?: string | null;
-          source?: string;
-          to_state?: string;
-        };
+          actor_id?: string | null
+          convocatoria_id?: string | null
+          decided_at?: string
+          estudiante_id?: string | null
+          from_state?: string | null
+          id?: never
+          lanzamiento_id?: string | null
+          source?: string
+          to_state?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "selection_decision_events_convocatoria_id_fkey";
-            columns: ["convocatoria_id"];
-            isOneToOne: false;
-            referencedRelation: "convocatorias";
-            referencedColumns: ["id"];
+            foreignKeyName: "selection_decision_events_convocatoria_id_fkey"
+            columns: ["convocatoria_id"]
+            isOneToOne: false
+            referencedRelation: "convocatorias"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "selection_decision_events_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "selection_decision_events_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "selection_decision_events_lanzamiento_id_fkey";
-            columns: ["lanzamiento_id"];
-            isOneToOne: false;
-            referencedRelation: "lanzamientos_pps";
-            referencedColumns: ["id"];
+            foreignKeyName: "selection_decision_events_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       solicitudes_modificacion_pps: {
         Row: {
-          comentario_rechazo: string | null;
-          created_at: string | null;
-          estado: string;
-          estudiante_id: string;
-          horas_nuevas: number | null;
-          id: string;
-          notas_admin: string | null;
-          planilla_asistencia_url: string | null;
-          practica_id: string;
-          tipo_modificacion: string;
-          updated_at: string | null;
-        };
+          comentario_rechazo: string | null
+          created_at: string | null
+          estado: string
+          estudiante_id: string
+          horas_nuevas: number | null
+          id: string
+          notas_admin: string | null
+          planilla_asistencia_url: string | null
+          practica_id: string
+          tipo_modificacion: string
+          updated_at: string | null
+        }
         Insert: {
-          comentario_rechazo?: string | null;
-          created_at?: string | null;
-          estado?: string;
-          estudiante_id: string;
-          horas_nuevas?: number | null;
-          id?: string;
-          notas_admin?: string | null;
-          planilla_asistencia_url?: string | null;
-          practica_id: string;
-          tipo_modificacion: string;
-          updated_at?: string | null;
-        };
+          comentario_rechazo?: string | null
+          created_at?: string | null
+          estado?: string
+          estudiante_id: string
+          horas_nuevas?: number | null
+          id?: string
+          notas_admin?: string | null
+          planilla_asistencia_url?: string | null
+          practica_id: string
+          tipo_modificacion: string
+          updated_at?: string | null
+        }
         Update: {
-          comentario_rechazo?: string | null;
-          created_at?: string | null;
-          estado?: string;
-          estudiante_id?: string;
-          horas_nuevas?: number | null;
-          id?: string;
-          notas_admin?: string | null;
-          planilla_asistencia_url?: string | null;
-          practica_id?: string;
-          tipo_modificacion?: string;
-          updated_at?: string | null;
-        };
+          comentario_rechazo?: string | null
+          created_at?: string | null
+          estado?: string
+          estudiante_id?: string
+          horas_nuevas?: number | null
+          id?: string
+          notas_admin?: string | null
+          planilla_asistencia_url?: string | null
+          practica_id?: string
+          tipo_modificacion?: string
+          updated_at?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "solicitudes_modificacion_pps_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "solicitudes_modificacion_pps_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "solicitudes_modificacion_pps_practica_id_fkey";
-            columns: ["practica_id"];
-            isOneToOne: false;
-            referencedRelation: "practicas";
-            referencedColumns: ["id"];
+            foreignKeyName: "solicitudes_modificacion_pps_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       solicitudes_nueva_pps: {
         Row: {
-          comentario_rechazo: string | null;
-          created_at: string | null;
-          es_online: boolean;
-          estado: string;
-          estudiante_id: string;
-          fecha_finalizacion: string;
-          fecha_inicio: string;
-          horas_estimadas: number;
-          id: string;
-          informe_final_url: string;
-          institucion_id: string | null;
-          nombre_institucion_manual: string | null;
-          notas_admin: string | null;
-          orientacion: string;
-          planilla_asistencia_url: string | null;
-          updated_at: string | null;
-        };
+          comentario_rechazo: string | null
+          created_at: string | null
+          es_online: boolean
+          estado: string
+          estudiante_id: string
+          fecha_finalizacion: string
+          fecha_inicio: string
+          horas_estimadas: number
+          id: string
+          informe_final_url: string
+          institucion_id: string | null
+          nombre_institucion_manual: string | null
+          notas_admin: string | null
+          orientacion: string
+          planilla_asistencia_url: string | null
+          updated_at: string | null
+        }
         Insert: {
-          comentario_rechazo?: string | null;
-          created_at?: string | null;
-          es_online?: boolean;
-          estado?: string;
-          estudiante_id: string;
-          fecha_finalizacion: string;
-          fecha_inicio: string;
-          horas_estimadas: number;
-          id?: string;
-          informe_final_url: string;
-          institucion_id?: string | null;
-          nombre_institucion_manual?: string | null;
-          notas_admin?: string | null;
-          orientacion: string;
-          planilla_asistencia_url?: string | null;
-          updated_at?: string | null;
-        };
+          comentario_rechazo?: string | null
+          created_at?: string | null
+          es_online?: boolean
+          estado?: string
+          estudiante_id: string
+          fecha_finalizacion: string
+          fecha_inicio: string
+          horas_estimadas: number
+          id?: string
+          informe_final_url: string
+          institucion_id?: string | null
+          nombre_institucion_manual?: string | null
+          notas_admin?: string | null
+          orientacion: string
+          planilla_asistencia_url?: string | null
+          updated_at?: string | null
+        }
         Update: {
-          comentario_rechazo?: string | null;
-          created_at?: string | null;
-          es_online?: boolean;
-          estado?: string;
-          estudiante_id?: string;
-          fecha_finalizacion?: string;
-          fecha_inicio?: string;
-          horas_estimadas?: number;
-          id?: string;
-          informe_final_url?: string;
-          institucion_id?: string | null;
-          nombre_institucion_manual?: string | null;
-          notas_admin?: string | null;
-          orientacion?: string;
-          planilla_asistencia_url?: string | null;
-          updated_at?: string | null;
-        };
+          comentario_rechazo?: string | null
+          created_at?: string | null
+          es_online?: boolean
+          estado?: string
+          estudiante_id?: string
+          fecha_finalizacion?: string
+          fecha_inicio?: string
+          horas_estimadas?: number
+          id?: string
+          informe_final_url?: string
+          institucion_id?: string | null
+          nombre_institucion_manual?: string | null
+          notas_admin?: string | null
+          orientacion?: string
+          planilla_asistencia_url?: string | null
+          updated_at?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "solicitudes_nueva_pps_estudiante_id_fkey";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "solicitudes_nueva_pps_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "solicitudes_nueva_pps_institucion_id_fkey";
-            columns: ["institucion_id"];
-            isOneToOne: false;
-            referencedRelation: "instituciones";
-            referencedColumns: ["id"];
+            foreignKeyName: "solicitudes_nueva_pps_institucion_id_fkey"
+            columns: ["institucion_id"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       solicitudes_pps: {
         Row: {
-          actualizacion: string | null;
-          airtable_id: string | null;
-          contacto_tutor: string | null;
-          convenio_uflo: string | null;
-          created_at: string | null;
-          descripcion_institucion: string | null;
-          direccion_completa: string | null;
-          email: string | null;
-          email_institucion: string | null;
-          estado_seguimiento: string | null;
-          estudiante_id: string | null;
-          id: string;
-          legajo: string | null;
-          localidad: string | null;
-          motivo_no_concrecion: string | null;
-          motivo_no_concrecion_detalle: string | null;
-          nombre_alumno: string | null;
-          nombre_institucion: string | null;
-          notas: string | null;
-          orientacion_sugerida: string | null;
-          referente_institucion: string | null;
-          telefono_institucion: string | null;
-          tipo_practica: string | null;
-          tutor_disponible: string | null;
-        };
+          actualizacion: string | null
+          airtable_id: string | null
+          contacto_tutor: string | null
+          convenio_uflo: string | null
+          created_at: string | null
+          descripcion_institucion: string | null
+          direccion_completa: string | null
+          email: string | null
+          email_institucion: string | null
+          estado_seguimiento: string | null
+          estudiante_id: string | null
+          id: string
+          legajo: string | null
+          localidad: string | null
+          motivo_no_concrecion: string | null
+          motivo_no_concrecion_detalle: string | null
+          nombre_alumno: string | null
+          nombre_institucion: string | null
+          notas: string | null
+          orientacion_sugerida: string | null
+          referente_institucion: string | null
+          telefono_institucion: string | null
+          tipo_practica: string | null
+          tutor_disponible: string | null
+        }
         Insert: {
-          actualizacion?: string | null;
-          airtable_id?: string | null;
-          contacto_tutor?: string | null;
-          convenio_uflo?: string | null;
-          created_at?: string | null;
-          descripcion_institucion?: string | null;
-          direccion_completa?: string | null;
-          email?: string | null;
-          email_institucion?: string | null;
-          estado_seguimiento?: string | null;
-          estudiante_id?: string | null;
-          id?: string;
-          legajo?: string | null;
-          localidad?: string | null;
-          motivo_no_concrecion?: string | null;
-          motivo_no_concrecion_detalle?: string | null;
-          nombre_alumno?: string | null;
-          nombre_institucion?: string | null;
-          notas?: string | null;
-          orientacion_sugerida?: string | null;
-          referente_institucion?: string | null;
-          telefono_institucion?: string | null;
-          tipo_practica?: string | null;
-          tutor_disponible?: string | null;
-        };
+          actualizacion?: string | null
+          airtable_id?: string | null
+          contacto_tutor?: string | null
+          convenio_uflo?: string | null
+          created_at?: string | null
+          descripcion_institucion?: string | null
+          direccion_completa?: string | null
+          email?: string | null
+          email_institucion?: string | null
+          estado_seguimiento?: string | null
+          estudiante_id?: string | null
+          id?: string
+          legajo?: string | null
+          localidad?: string | null
+          motivo_no_concrecion?: string | null
+          motivo_no_concrecion_detalle?: string | null
+          nombre_alumno?: string | null
+          nombre_institucion?: string | null
+          notas?: string | null
+          orientacion_sugerida?: string | null
+          referente_institucion?: string | null
+          telefono_institucion?: string | null
+          tipo_practica?: string | null
+          tutor_disponible?: string | null
+        }
         Update: {
-          actualizacion?: string | null;
-          airtable_id?: string | null;
-          contacto_tutor?: string | null;
-          convenio_uflo?: string | null;
-          created_at?: string | null;
-          descripcion_institucion?: string | null;
-          direccion_completa?: string | null;
-          email?: string | null;
-          email_institucion?: string | null;
-          estado_seguimiento?: string | null;
-          estudiante_id?: string | null;
-          id?: string;
-          legajo?: string | null;
-          localidad?: string | null;
-          motivo_no_concrecion?: string | null;
-          motivo_no_concrecion_detalle?: string | null;
-          nombre_alumno?: string | null;
-          nombre_institucion?: string | null;
-          notas?: string | null;
-          orientacion_sugerida?: string | null;
-          referente_institucion?: string | null;
-          telefono_institucion?: string | null;
-          tipo_practica?: string | null;
-          tutor_disponible?: string | null;
-        };
+          actualizacion?: string | null
+          airtable_id?: string | null
+          contacto_tutor?: string | null
+          convenio_uflo?: string | null
+          created_at?: string | null
+          descripcion_institucion?: string | null
+          direccion_completa?: string | null
+          email?: string | null
+          email_institucion?: string | null
+          estado_seguimiento?: string | null
+          estudiante_id?: string | null
+          id?: string
+          legajo?: string | null
+          localidad?: string | null
+          motivo_no_concrecion?: string | null
+          motivo_no_concrecion_detalle?: string | null
+          nombre_alumno?: string | null
+          nombre_institucion?: string | null
+          notas?: string | null
+          orientacion_sugerida?: string | null
+          referente_institucion?: string | null
+          telefono_institucion?: string | null
+          tipo_practica?: string | null
+          tutor_disponible?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "fk_solicitud_estudiante";
-            columns: ["estudiante_id"];
-            isOneToOne: false;
-            referencedRelation: "estudiantes";
-            referencedColumns: ["id"];
+            foreignKeyName: "fk_solicitud_estudiante"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       verification_attempts: {
         Row: {
-          created_at: string;
-          id: string;
-          ip_address: string;
-          legajo_input: string;
-        };
+          created_at: string
+          id: string
+          ip_address: string
+          legajo_input: string
+        }
         Insert: {
-          created_at?: string;
-          id?: string;
-          ip_address: string;
-          legajo_input: string;
-        };
+          created_at?: string
+          id?: string
+          ip_address: string
+          legajo_input: string
+        }
         Update: {
-          created_at?: string;
-          id?: string;
-          ip_address?: string;
-          legajo_input?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          id?: string
+          ip_address?: string
+          legajo_input?: string
+        }
+        Relationships: []
+      }
       whatsapp_contactos: {
         Row: {
-          chat_jid: string;
-          clasificado_por: string;
-          confidence: number | null;
-          created_at: string;
-          institucion_id: string | null;
-          last_seen_at: string | null;
-          nombre_contacto: string | null;
-          notas: string | null;
-          phone: string | null;
-          tipo: string;
-          updated_at: string;
-          validado_at: string | null;
-          validado_por: string | null;
-        };
+          chat_jid: string
+          clasificado_por: string
+          confidence: number | null
+          created_at: string
+          institucion_id: string | null
+          last_seen_at: string | null
+          nombre_contacto: string | null
+          notas: string | null
+          phone: string | null
+          tipo: string
+          updated_at: string
+          validado_at: string | null
+          validado_por: string | null
+        }
         Insert: {
-          chat_jid: string;
-          clasificado_por: string;
-          confidence?: number | null;
-          created_at?: string;
-          institucion_id?: string | null;
-          last_seen_at?: string | null;
-          nombre_contacto?: string | null;
-          notas?: string | null;
-          phone?: string | null;
-          tipo: string;
-          updated_at?: string;
-          validado_at?: string | null;
-          validado_por?: string | null;
-        };
+          chat_jid: string
+          clasificado_por: string
+          confidence?: number | null
+          created_at?: string
+          institucion_id?: string | null
+          last_seen_at?: string | null
+          nombre_contacto?: string | null
+          notas?: string | null
+          phone?: string | null
+          tipo: string
+          updated_at?: string
+          validado_at?: string | null
+          validado_por?: string | null
+        }
         Update: {
-          chat_jid?: string;
-          clasificado_por?: string;
-          confidence?: number | null;
-          created_at?: string;
-          institucion_id?: string | null;
-          last_seen_at?: string | null;
-          nombre_contacto?: string | null;
-          notas?: string | null;
-          phone?: string | null;
-          tipo?: string;
-          updated_at?: string;
-          validado_at?: string | null;
-          validado_por?: string | null;
-        };
+          chat_jid?: string
+          clasificado_por?: string
+          confidence?: number | null
+          created_at?: string
+          institucion_id?: string | null
+          last_seen_at?: string | null
+          nombre_contacto?: string | null
+          notas?: string | null
+          phone?: string | null
+          tipo?: string
+          updated_at?: string
+          validado_at?: string | null
+          validado_por?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "whatsapp_contactos_institucion_id_fkey";
-            columns: ["institucion_id"];
-            isOneToOne: false;
-            referencedRelation: "instituciones";
-            referencedColumns: ["id"];
+            foreignKeyName: "whatsapp_contactos_institucion_id_fkey"
+            columns: ["institucion_id"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       whatsapp_mensajes: {
         Row: {
-          autor: string | null;
-          chat_jid: string;
-          from_me: boolean;
-          id: string;
-          ingested_at: string;
-          institucion_id: string | null;
-          media_tipo: string | null;
-          raw: Json | null;
-          texto: string | null;
-          timestamp: string;
-        };
+          autor: string | null
+          chat_jid: string
+          from_me: boolean
+          id: string
+          ingested_at: string
+          institucion_id: string | null
+          media_tipo: string | null
+          raw: Json | null
+          texto: string | null
+          timestamp: string
+        }
         Insert: {
-          autor?: string | null;
-          chat_jid: string;
-          from_me: boolean;
-          id: string;
-          ingested_at?: string;
-          institucion_id?: string | null;
-          media_tipo?: string | null;
-          raw?: Json | null;
-          texto?: string | null;
-          timestamp: string;
-        };
+          autor?: string | null
+          chat_jid: string
+          from_me: boolean
+          id: string
+          ingested_at?: string
+          institucion_id?: string | null
+          media_tipo?: string | null
+          raw?: Json | null
+          texto?: string | null
+          timestamp: string
+        }
         Update: {
-          autor?: string | null;
-          chat_jid?: string;
-          from_me?: boolean;
-          id?: string;
-          ingested_at?: string;
-          institucion_id?: string | null;
-          media_tipo?: string | null;
-          raw?: Json | null;
-          texto?: string | null;
-          timestamp?: string;
-        };
-        Relationships: [];
-      };
-    };
+          autor?: string | null
+          chat_jid?: string
+          from_me?: boolean
+          id?: string
+          ingested_at?: string
+          institucion_id?: string | null
+          media_tipo?: string | null
+          raw?: Json | null
+          texto?: string | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
       admin_reset_password: {
-        Args: { legajo_input: string; new_password: string };
-        Returns: undefined;
-      };
+        Args: { legajo_input: string; new_password: string }
+        Returns: undefined
+      }
       anular_desaprobacion_pps: {
         Args: {
-          p_motivo: string;
-          p_nuevo_estado: string;
-          p_practica_id: string;
-        };
+          p_motivo: string
+          p_nuevo_estado: string
+          p_practica_id: string
+        }
         Returns: {
-          penalizacion_id: string;
-          practica_id: string;
-        }[];
-      };
-      archive_lanzamientos_after_start_grace: { Args: never; Returns: number };
-      auth_email: { Args: never; Returns: string };
+          penalizacion_id: string
+          practica_id: string
+        }[]
+      }
+      archive_lanzamientos_after_start_grace: { Args: never; Returns: number }
+      auth_email: { Args: never; Returns: string }
       calc_cohorte_estudiante: {
-        Args: { p_estudiante_id: string };
-        Returns: number;
-      };
-      check_fcm_token_exists: { Args: { uid: string }; Returns: boolean };
+        Args: { p_estudiante_id: string }
+        Returns: number
+      }
+      check_fcm_token_exists: { Args: { uid: string }; Returns: boolean }
       claim_password_reset_token: {
-        Args: { p_token_hash: string };
+        Args: { p_token_hash: string }
         Returns: {
-          delivery_email_hash: string;
-          estudiante_id: string;
-          request_id: string;
-          user_id: string;
-        }[];
-      };
-      clean_dirty_text: { Args: { val: string }; Returns: string };
-      cleanup_old_verification_attempts: { Args: never; Returns: undefined };
-      close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json };
+          delivery_email_hash: string
+          estudiante_id: string
+          request_id: string
+          user_id: string
+        }[]
+      }
+      clean_dirty_text: { Args: { val: string }; Returns: string }
+      cleanup_old_verification_attempts: { Args: never; Returns: undefined }
+      close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json }
       complete_password_reset: {
         Args: {
-          p_failure_code?: string;
-          p_request_id: string;
-          p_success: boolean;
-        };
-        Returns: boolean;
-      };
+          p_failure_code?: string
+          p_request_id: string
+          p_success: boolean
+        }
+        Returns: boolean
+      }
+      create_my_solicitud_ingreso_v1: {
+        Args: {
+          p_contacto_tutor?: string
+          p_convenio_uflo?: string
+          p_descripcion_institucion?: string
+          p_direccion_completa?: string
+          p_email_institucion?: string
+          p_localidad?: string
+          p_nombre_institucion: string
+          p_referente_institucion?: string
+          p_telefono_institucion?: string
+          p_tipo_practica?: string
+          p_tutor_disponible?: string
+        }
+        Returns: string
+      }
+      create_my_solicitud_modificacion_v1: {
+        Args: {
+          p_horas_nuevas?: number
+          p_planilla_asistencia_url?: string
+          p_practica_id: string
+          p_tipo_modificacion: string
+        }
+        Returns: string
+      }
+      create_my_solicitud_nueva_pps_v1: {
+        Args: {
+          p_es_online?: boolean
+          p_fecha_finalizacion: string
+          p_fecha_inicio: string
+          p_horas_estimadas: number
+          p_informe_final_url: string
+          p_institucion_id: string
+          p_nombre_institucion_manual: string
+          p_orientacion: string
+          p_planilla_asistencia_url: string
+        }
+        Returns: string
+      }
       create_password_reset_request: {
         Args: {
-          p_delivery_email_hash: string;
-          p_estudiante_id: string;
-          p_expires_at: string;
-          p_requested_ip_hash: string;
-          p_token_hash: string;
-          p_user_id: string;
-        };
-        Returns: string;
-      };
-      delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined };
-      delete_fcm_token_user: { Args: { uid: string }; Returns: boolean };
+          p_delivery_email_hash: string
+          p_estudiante_id: string
+          p_expires_at: string
+          p_requested_ip_hash: string
+          p_token_hash: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined }
+      delete_fcm_token_user: { Args: { uid: string }; Returns: boolean }
       finalize_password_reset_delivery: {
         Args: {
-          p_delivered: boolean;
-          p_failure_code?: string;
-          p_request_id: string;
-        };
-        Returns: boolean;
-      };
+          p_delivered: boolean
+          p_failure_code?: string
+          p_request_id: string
+        }
+        Returns: boolean
+      }
       finish_student_email_send: {
-        Args: { p_event_id: string; p_sent: boolean };
-        Returns: boolean;
-      };
-      get_activos_list: { Args: { p_year: number }; Returns: Json };
-      get_activos_list_impl: { Args: { p_year: number }; Returns: Json };
-      get_admin_metrics_kpis: { Args: { p_year: number }; Returns: Json };
+        Args: { p_event_id: string; p_sent: boolean }
+        Returns: boolean
+      }
+      get_activos_list: { Args: { p_year: number }; Returns: Json }
+      get_activos_list_impl: { Args: { p_year: number }; Returns: Json }
+      get_admin_metrics_kpis: { Args: { p_year: number }; Returns: Json }
       get_all_fcm_tokens: {
-        Args: never;
+        Args: never
         Returns: {
-          fcm_token: string;
-          user_id: string;
-        }[];
-      };
-      get_analytics_health: { Args: never; Returns: Json };
+          fcm_token: string
+          user_id: string
+        }[]
+      }
+      get_analytics_health: { Args: never; Returns: Json }
       get_analytics_v1: {
-        Args: { p_cutoff?: string; p_year: number };
-        Returns: Json;
-      };
+        Args: { p_cutoff?: string; p_year: number }
+        Returns: Json
+      }
       get_analytics_v2: {
-        Args: { p_cutoff?: string; p_year: number };
-        Returns: Json;
-      };
+        Args: { p_cutoff?: string; p_year: number }
+        Returns: Json
+      }
       get_consent_counts_by_launch: {
-        Args: { p_launch_ids: string[] };
-        Returns: Json;
-      };
-      get_convenios_kpis: { Args: { p_year: number }; Returns: Json };
+        Args: { p_launch_ids: string[] }
+        Returns: Json
+      }
+      get_convenios_kpis: { Args: { p_year: number }; Returns: Json }
       get_convenios_list: {
-        Args: { p_kind: string; p_year: number };
+        Args: { p_kind: string; p_year: number }
         Returns: {
-          fecha_firma: string;
-          fecha_vencimiento: string;
-          nombre: string;
-          tipo: string;
-        }[];
-      };
+          fecha_firma: string
+          fecha_vencimiento: string
+          nombre: string
+          tipo: string
+        }[]
+      }
       get_convenios_list_impl: {
-        Args: { p_kind: string; p_year: number };
+        Args: { p_kind: string; p_year: number }
         Returns: {
-          fecha_firma: string;
-          fecha_vencimiento: string;
-          nombre: string;
-          tipo: string;
-        }[];
-      };
+          fecha_firma: string
+          fecha_vencimiento: string
+          nombre: string
+          tipo: string
+        }[]
+      }
       get_convenios_por_vencer: {
-        Args: { p_days?: number };
+        Args: { p_days?: number }
         Returns: {
-          convenio_id: string;
-          dias_restantes: number;
-          fecha_firma: string;
-          fecha_vencimiento: string;
-          institucion: string;
-          institucion_id: string;
-          tipo: string;
-        }[];
-      };
+          convenio_id: string
+          dias_restantes: number
+          fecha_firma: string
+          fecha_vencimiento: string
+          institucion: string
+          institucion_id: string
+          tipo: string
+        }[]
+      }
       get_convocatoria_counts_by_launch: {
-        Args: { p_launch_ids: string[] };
-        Returns: Json;
-      };
-      get_dashboard_metrics: { Args: { target_year: number }; Returns: Json };
+        Args: { p_launch_ids: string[] }
+        Returns: Json
+      }
+      get_dashboard_metrics: { Args: { target_year: number }; Returns: Json }
       get_director_report_v1: {
-        Args: { p_snapshot_date?: string; p_year: number };
-        Returns: Json;
-      };
-      get_estudiantes_en_pps_list: { Args: { p_year: number }; Returns: Json };
+        Args: { p_snapshot_date?: string; p_year: number }
+        Returns: Json
+      }
+      get_estudiantes_en_pps_list: { Args: { p_year: number }; Returns: Json }
       get_estudiantes_en_pps_list_impl: {
-        Args: { p_year: number };
-        Returns: Json;
-      };
+        Args: { p_year: number }
+        Returns: Json
+      }
       get_finalizados_list: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_finalizados_list_impl: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_haciendo_pps_list: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_haciendo_pps_list_impl: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
-      get_heredados_count: { Args: { p_year: number }; Returns: number };
-      get_heredados_list: { Args: { p_year: number }; Returns: Json };
-      get_heredados_list_impl: { Args: { p_year: number }; Returns: Json };
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
+      get_heredados_count: { Args: { p_year: number }; Returns: number }
+      get_heredados_list: { Args: { p_year: number }; Returns: Json }
+      get_heredados_list_impl: { Args: { p_year: number }; Returns: Json }
       get_historical_launch_offer_list: {
-        Args: { p_cutoff?: string; p_year: number };
-        Returns: Json;
-      };
-      get_ingresantes_list: { Args: { p_year: number }; Returns: Json };
-      get_ingresantes_list_impl: { Args: { p_year: number }; Returns: Json };
+        Args: { p_cutoff?: string; p_year: number }
+        Returns: Json
+      }
+      get_ingresantes_list: { Args: { p_year: number }; Returns: Json }
+      get_ingresantes_list_impl: { Args: { p_year: number }; Returns: Json }
       get_interview_completion_candidates_v1: {
-        Args: never;
+        Args: never
         Returns: {
-          cohorte: number;
-          horas_especialidad: number;
-          horas_faltantes_especialidad: number;
-          horas_faltantes_total: number;
-          horas_total: number;
-          id: string;
-          legajo: string;
-          motivo: string;
-          motivo_codigo: string;
-          nombre: string;
-          orientacion_elegida: string;
-          orientaciones: number;
-          orientaciones_cubiertas: string[];
-          orientaciones_faltantes: number;
-          practicas_activas: number;
-        }[];
-      };
-      get_metrics_years: { Args: never; Returns: Json };
-      get_my_role: { Args: never; Returns: string };
+          cohorte: number
+          horas_especialidad: number
+          horas_faltantes_especialidad: number
+          horas_faltantes_total: number
+          horas_total: number
+          id: string
+          legajo: string
+          motivo: string
+          motivo_codigo: string
+          nombre: string
+          orientacion_elegida: string
+          orientaciones: number
+          orientaciones_cubiertas: string[]
+          orientaciones_faltantes: number
+          practicas_activas: number
+        }[]
+      }
+      get_metrics_years: { Args: never; Returns: Json }
+      get_my_role: { Args: never; Returns: string }
+      get_my_solicitudes_ingreso_v1: {
+        Args: never
+        Returns: {
+          actualizacion: string
+          contacto_tutor: string
+          convenio_uflo: string
+          created_at: string
+          descripcion_institucion: string
+          direccion_completa: string
+          email_institucion: string
+          estado_seguimiento: string
+          id: string
+          localidad: string
+          motivo_no_concrecion: string
+          motivo_no_concrecion_detalle: string
+          nombre_institucion: string
+          orientacion_sugerida: string
+          referente_institucion: string
+          telefono_institucion: string
+          tipo_practica: string
+          tutor_disponible: string
+        }[]
+      }
+      get_my_solicitudes_modificacion_v1: {
+        Args: never
+        Returns: {
+          comentario_rechazo: string
+          created_at: string
+          estado: string
+          horas_nuevas: number
+          id: string
+          planilla_asistencia_url: string
+          practica_id: string
+          tipo_modificacion: string
+          updated_at: string
+        }[]
+      }
+      get_my_solicitudes_nueva_pps_v1: {
+        Args: never
+        Returns: {
+          comentario_rechazo: string
+          created_at: string
+          es_online: boolean
+          estado: string
+          fecha_finalizacion: string
+          fecha_inicio: string
+          horas_estimadas: number
+          id: string
+          informe_final_url: string
+          institucion_id: string
+          nombre_institucion_manual: string
+          orientacion: string
+          planilla_asistencia_url: string
+          updated_at: string
+        }[]
+      }
       get_postulantes_seleccionados: {
-        Args: { lanzamiento_uuid: string };
+        Args: { lanzamiento_uuid: string }
         Returns: {
-          horario: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          horario: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_postulantes_seleccionados_impl: {
-        Args: { lanzamiento_uuid: string };
+        Args: { lanzamiento_uuid: string }
         Returns: {
-          horario: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          horario: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_proximos_finalizar_list: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          horas_total: number;
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          horas_total: number
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_proximos_finalizar_list_impl: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          horas_total: number;
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          horas_total: number
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_seleccionados: {
-        Args: { lanzamiento_id_input: string };
+        Args: { lanzamiento_id_input: string }
         Returns: {
-          horario: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          horario: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_seleccionados_for_launch: {
-        Args: { p_lanzamiento_id: string };
+        Args: { p_lanzamiento_id: string }
         Returns: {
-          accepted_at: string;
-          convocatoria_id: string;
-          firmo: boolean;
-          horario: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          accepted_at: string
+          convocatoria_id: string
+          firmo: boolean
+          horario: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_seleccionados_impl: {
-        Args: { lanzamiento_id_input: string };
+        Args: { lanzamiento_id_input: string }
         Returns: {
-          horario: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          horario: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_sin_pps_list: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          correo: string;
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          correo: string
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_sin_pps_list_impl: {
-        Args: { p_year: number };
+        Args: { p_year: number }
         Returns: {
-          correo: string;
-          id: string;
-          legajo: string;
-          nombre: string;
-        }[];
-      };
+          correo: string
+          id: string
+          legajo: string
+          nombre: string
+        }[]
+      }
       get_student_details_by_legajo: {
-        Args: { legajo_input: string };
+        Args: { legajo_input: string }
         Returns: {
-          correo: string;
-          dni: number;
-          id: string;
-          legajo: string;
-          must_change_password: boolean;
-          nombre: string;
-          role: string;
-          telefono: string;
-          user_id: string;
-        }[];
-      };
+          correo: string
+          dni: number
+          id: string
+          legajo: string
+          must_change_password: boolean
+          nombre: string
+          role: string
+          telefono: string
+          user_id: string
+        }[]
+      }
       get_student_email_by_legajo: {
-        Args: { legajo_input: string };
-        Returns: Json;
-      };
+        Args: { legajo_input: string }
+        Returns: Json
+      }
       get_student_for_signup: {
-        Args: { legajo_input: string };
+        Args: { legajo_input: string }
         Returns: {
-          apellido_separado: string;
-          correo: string;
-          dni: number;
-          id: string;
-          legajo: string;
-          nombre: string;
-          nombre_separado: string;
-          telefono: string;
-          user_id: string;
-        }[];
-      };
+          apellido_separado: string
+          correo: string
+          dni: number
+          id: string
+          legajo: string
+          nombre: string
+          nombre_separado: string
+          telefono: string
+          user_id: string
+        }[]
+      }
       get_student_signup_status: {
-        Args: { correo_input?: string; legajo_input: string };
+        Args: { correo_input?: string; legajo_input: string }
         Returns: {
-          apellido_separado: string;
-          correo: string;
-          dni: number;
-          estado: string;
-          id: string;
-          legajo: string;
-          nombre: string;
-          nombre_separado: string;
-          signup_status: string;
-          status_message: string;
-          telefono: string;
-          user_id: string;
-        }[];
-      };
+          apellido_separado: string
+          correo: string
+          dni: number
+          estado: string
+          id: string
+          legajo: string
+          nombre: string
+          nombre_separado: string
+          signup_status: string
+          status_message: string
+          telefono: string
+          user_id: string
+        }[]
+      }
       get_user_creation_dates: {
-        Args: never;
+        Args: never
         Returns: {
-          created_at: string;
-          user_id: string;
-        }[];
-      };
-      identity_ip_rate_limited: { Args: never; Returns: boolean };
-      increment_snooze_count: { Args: { reminder_id: string }; Returns: number };
-      is_admin: { Args: never; Returns: boolean };
-      is_staff: { Args: never; Returns: boolean };
-      mark_password_changed: { Args: never; Returns: undefined };
-      owns_storage_folder: { Args: { object_name: string }; Returns: boolean };
-      practica_computa: { Args: { p_estado: string }; Returns: boolean };
-      process_consentimiento_timeouts: { Args: never; Returns: undefined };
+          created_at: string
+          user_id: string
+        }[]
+      }
+      identity_ip_rate_limited: { Args: never; Returns: boolean }
+      increment_snooze_count: { Args: { reminder_id: string }; Returns: number }
+      is_admin: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
+      mark_password_changed: { Args: never; Returns: undefined }
+      owns_storage_folder: { Args: { object_name: string }; Returns: boolean }
+      practica_computa: { Args: { p_estado: string }; Returns: boolean }
+      process_consentimiento_timeouts: { Args: never; Returns: undefined }
       register_campus_student: {
         Args: {
-          apellido_input?: string;
-          correo_input: string;
-          dni_input: number;
-          legajo_input: string;
-          nombre_input?: string;
-          telefono_input?: string;
-          userid_input: string;
-        };
-        Returns: undefined;
-      };
+          apellido_input?: string
+          correo_input: string
+          dni_input: number
+          legajo_input: string
+          nombre_input?: string
+          telefono_input?: string
+          userid_input: string
+        }
+        Returns: undefined
+      }
       register_new_student: {
         Args: {
-          correo_input?: string;
-          dni_input?: number;
-          legajo_input: string;
-          telefono_input?: string;
-          userid_input: string;
-        };
-        Returns: undefined;
-      };
+          correo_input?: string
+          dni_input?: number
+          legajo_input: string
+          telefono_input?: string
+          userid_input: string
+        }
+        Returns: undefined
+      }
       registrar_desaprobacion_pps: {
         Args: {
-          p_causas: string[];
-          p_fecha: string;
-          p_informe_ref: string;
-          p_motivo_publico: string;
-          p_notificado_at: string;
-          p_practica_id: string;
-        };
+          p_causas: string[]
+          p_fecha: string
+          p_informe_ref: string
+          p_motivo_publico: string
+          p_notificado_at: string
+          p_practica_id: string
+        }
         Returns: {
-          penalizacion_id: string;
-          practica_id: string;
-        }[];
-      };
+          penalizacion_id: string
+          practica_id: string
+        }[]
+      }
       reserve_student_email_send: {
-        Args: { p_user_id: string };
-        Returns: string;
-      };
+        Args: { p_user_id: string }
+        Returns: string
+      }
       reset_student_password_verified: {
         Args: {
-          correo_input: string;
-          dni_input: number;
-          legajo_input: string;
-          new_password?: string;
-          telefono_input?: string;
-        };
-        Returns: undefined;
-      };
-      safe_date_cast: { Args: { val: string }; Returns: string };
-      save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean };
-      show_limit: { Args: never; Returns: number };
-      show_trgm: { Args: { "": string }; Returns: string[] };
+          correo_input: string
+          dni_input: number
+          legajo_input: string
+          new_password?: string
+          telefono_input?: string
+        }
+        Returns: undefined
+      }
+      safe_date_cast: { Args: { val: string }; Returns: string }
+      save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       verify_student_identity: {
         Args: {
-          correo_input: string;
-          dni_input: number;
-          legajo_input: string;
-          telefono_input?: string;
-        };
+          correo_input: string
+          dni_input: number
+          legajo_input: string
+          telefono_input?: string
+        }
         Returns: {
-          correo: string;
-          dni: number;
-          id: string;
-          legajo: string;
-          must_change_password: boolean;
-          nombre: string;
-          role: string;
-          telefono: string;
-          user_id: string;
-        }[];
-      };
-    };
+          correo: string
+          dni: number
+          id: string
+          legajo: string
+          must_change_password: boolean
+          nombre: string
+          role: string
+          telefono: string
+          user_id: string
+        }[]
+      }
+    }
     Enums: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
+      Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
       }
       ? R
       : never
-    : never;
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
+      Insert: infer I
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I;
+        Insert: infer I
       }
       ? I
       : never
-    : never;
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
+      Update: infer U
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U;
+        Update: infer U
       }
       ? U
       : never
-    : never;
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never;
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never;
+    : never
 
 export const Constants = {
   public: {
     Enums: {},
   },
-} as const;
+} as const

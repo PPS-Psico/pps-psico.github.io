@@ -1,7 +1,3 @@
--- Migration: Permitir la eliminación de registros de PPS desaprobadas por administradores
--- y actualizar la clave foránea en penalizaciones a ON DELETE CASCADE.
-
--- 1. Actualizar la función desencadenadora para permitir que la administración (is_admin()) pueda eliminar PPS desaprobadas.
 create or replace function public.proteger_desaprobacion_pps()
 returns trigger
 language plpgsql
@@ -37,7 +33,6 @@ begin
 end;
 $$;
 
--- 2. Cambiar la restricción FK en penalizaciones.practica_id a ON DELETE CASCADE para evitar errores de Foreign Key Constraint al borrar la práctica.
 alter table public.penalizaciones
   drop constraint if exists penalizaciones_practica_id_fkey;
 
@@ -45,4 +40,4 @@ alter table public.penalizaciones
   add constraint penalizaciones_practica_id_fkey
   foreign key (practica_id)
   references public.practicas(id)
-  on delete cascade;
+  on delete cascade;;

@@ -74,6 +74,15 @@ create table if not exists storage.buckets (
   owner_id text
 );
 
+-- Platform-owned buckets that predate the canonical migration ledger. Their
+-- objects are intentionally absent; replay only needs the catalog rows used by
+-- storage policies and by the private-bucket migration.
+insert into storage.buckets (id, name, public)
+values
+  ('documentos_finalizacion', 'documentos_finalizacion', false),
+  ('documentos_estudiantes', 'documentos_estudiantes', true)
+on conflict (id) do nothing;
+
 create table if not exists storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text references storage.buckets(id),

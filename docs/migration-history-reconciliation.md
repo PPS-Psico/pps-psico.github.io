@@ -1,20 +1,35 @@
 # Reconciliación del historial de migraciones
 
-Fecha de cierre técnico: 29 de julio de 2026. Proyecto: `qxnxtnhtbpsgzprqtrjl`.
+Fecha de última verificación: 1 de agosto de 2026. Proyecto: `qxnxtnhtbpsgzprqtrjl`.
 
 ## Resultado
 
-- Producción y repositorio contienen las mismas 111 versiones canónicas (`20260104152920`–`20260728183153`).
-- La matriz `version:name` local/remota tiene fingerprint idéntico: `f4d985c76fbee242d18b03dd9465a468`.
+- Producción y repositorio contienen las mismas 116 versiones canónicas (`20260104152920`–`20260801135057`).
+- Las primeras 111 entradas conservan el fingerprint `version:name` verificado
+  en el cierre inicial: `f4d985c76fbee242d18b03dd9465a468`.
 - Cinco statements divergentes se reconstruyeron literalmente desde producción; sus variantes locales quedaron en `supabase/reference/legacy/`.
 - Se recuperó el SQL real UTF-8 de `20260104152920`; el blob corrupto quedó preservado como referencia.
 - El estado anterior al ledger vive en `supabase/reference/bootstrap/20251217_initial_public_schema.sql`.
 - Veinte overlays cronológicos reconstruyen objetos comprobados que fueron creados fuera del ledger; nunca se registran como migraciones productivas.
 - El harness `scripts/replay-migrations.mjs` usa un único PostgreSQL 17.6 descartable, sin red ni puertos publicados, con crons desactivados y limpieza garantizada.
 
+## Actualización posterior al cierre inicial
+
+Después del cierre inicial de 111 versiones se importaron literalmente desde el
+ledger `20260729182222_make_student_documents_private`,
+`20260730120000_add_secure_solicitudes_student_rpcs` y
+`20260731120000_restore_metrics_private_wrappers`. Las migraciones
+`20260801135043_allow_admin_delete_disapproved_pps` y
+`20260801135057_stop_auto_archiving_lanzamientos` se aplicaron y verificaron el
+1 de agosto. `supabase migration list --linked` confirmó 116 pares local/remoto
+sin versiones huérfanas.
+
 ## Replay verificado
 
-`npm run check:migrations:replay` aplica 111/111 migraciones y registra solo esas 111 en `supabase_migrations.schema_migrations`. La plataforma local reproduce Auth/Storage mínimos y `pg_trgm`; no contiene datos productivos.
+El 1 de agosto, `npm run check:migrations:replay:contracts` aplicó 116/116
+migraciones y los 20 overlays en PostgreSQL 17.6. Los cuatro contratos portables
+pasaron. La plataforma local reproduce Auth/Storage mínimos y `pg_trgm`; no
+contiene datos productivos ni ejecuta los cron jobs durante el replay.
 
 `npm run check:migrations:replay:contracts` pasa estos contratos portables:
 
