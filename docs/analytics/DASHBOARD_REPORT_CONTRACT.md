@@ -116,10 +116,14 @@ la cohorte. `director-report-v1` adapta esa misma tabla a JSON.
 
 ## Comparabilidad 2024
 
-El cierre oficial 2024 es 42 ofertas, 270 vacantes finitas, 117 estudiantes que
+El cierre oficial 2024 es 42 ofertas, 270 vacantes finitas, 118 estudiantes que
 iniciaron y 32 finalizaciones. La demanda no se publica. La comparación 2025 vs.
 2024 está habilitada como puente histórico revisado: el informe aclara que seis
 ofertas 2024 no tenían un cupo finito numérico.
+
+El total de inicios se reconcilió nuevamente el 1 de agosto de 2026. Aumentó de
+117 a 118 por una práctica 2024 incorporada mediante backfill el 26 de julio de
+2026; no cambió la definición de `analytics-v2.flows.pps_started`.
 
 ## Cifras reconciliadas al 18/07/2026
 

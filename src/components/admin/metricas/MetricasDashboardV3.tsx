@@ -406,7 +406,7 @@ export function MetricasDashboardV3({
         />
       </Band>
 
-      {/* — Composición del ciclo: heredados + ingresantes nuevos — */}
+      {/* — Composición del ciclo: heredados + cohorte de primera actividad — */}
       <Band title="Composición del ciclo" cols={3} top>
         <KpiCard
           value={heredados}
@@ -423,27 +423,27 @@ export function MetricasDashboardV3({
         />
         <KpiCard
           value={metrics.matricula_generada}
-          label="Ingresantes nuevos"
-          context="Iniciaron su primera PPS este año"
+          label="Primera actividad PPS"
+          context="Su primera convocatoria o práctica registrada cae en este año"
           tone="ok"
           onClick={() =>
             drillKpi(
               "matricula_generada",
-              "Ingresantes del año",
-              `${metrics.matricula_generada} ingresaron al sistema de PPS en ${year}`
+              "Cohorte de primera actividad",
+              `${metrics.matricula_generada} registraron su primera actividad PPS en ${year}`
             )
           }
         />
         <KpiCard
           value={heredados + metrics.matricula_generada}
           label="Población del ciclo"
-          context="Heredados + ingresantes nuevos"
+          context="Heredados + cohorte de primera actividad"
           tone="accent"
           onClick={() =>
             drillKpi(
               "matricula_activa",
               "Población del ciclo",
-              `${heredados} heredados + ${metrics.matricula_generada} nuevos en ${year}`
+              `${heredados} heredados + ${metrics.matricula_generada} con primera actividad en ${year}`
             )
           }
         />

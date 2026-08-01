@@ -17,6 +17,7 @@ describe("executive report model", () => {
     );
     expect(JSON.stringify(model).toLowerCase()).not.toContain("mínimo");
     expect(model.primaryMetrics.find((metric) => metric.id === "capacity")?.value).toBe(270);
+    expect(model.primaryMetrics.find((metric) => metric.id === "started")?.value).toBe(118);
   });
 
   it("compares 2025 with the verified historical 2024 closure", () => {

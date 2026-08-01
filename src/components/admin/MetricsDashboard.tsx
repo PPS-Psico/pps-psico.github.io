@@ -310,11 +310,13 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
         {activeTab === "students" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <MetricCard
-              title={`Ingresantes ${targetYear}`}
+              title={`Primera actividad ${targetYear}`}
               value={metrics.matricula_generada}
               icon="person_add"
-              description={`Nuevos en el sistema de PPS en ${targetYear}`}
-              onClick={() => openListModal("nuevosIngresantes", `Ingresantes ${targetYear}`)}
+              description={`Primera convocatoria o práctica registrada en ${targetYear}`}
+              onClick={() =>
+                openListModal("nuevosIngresantes", `Cohorte de primera actividad ${targetYear}`)
+              }
               isLoading={false}
               className="bg-blue-50/50 border-blue-200"
             />

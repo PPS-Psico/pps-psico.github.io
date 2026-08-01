@@ -119,18 +119,22 @@ reporte.
 
 ## Última reconciliación productiva
 
-Validación actualizada el 18 de julio de 2026 contra `get_analytics_v2`:
+Validación actualizada el 1 de agosto de 2026 contra `get_analytics_v2`:
 
 | Corte      | Ofertas | Capacidad | Inicios | Finalizaciones | Postulaciones |
 | ---------- | ------: | --------: | ------: | -------------: | ------------: |
 | 31/08/2024 |      33 |       199 |     104 |             11 | No disponible |
-| 31/12/2024 |      42 |       270 |     117 |             32 | No disponible |
+| 31/12/2024 |      42 |       270 |     118 |             32 | No disponible |
 | 18/07/2025 |      35 |       195 |     105 |             17 |           661 |
 | 31/12/2025 |      81 |       552 |     197 |             56 |         1.379 |
 | 18/07/2026 |      41 |       492 |     190 |             28 |           779 |
 
 Para 2024, “capacidad” en la tabla significa las 270 vacantes de las 36 ofertas
 finitas; las seis ofertas no finitas permanecen informadas por separado.
+
+El inicio adicional respecto de la reconciliación del 18 de julio corresponde a
+una práctica 2024 incorporada mediante backfill el 26 de julio de 2026. El cambio
+es de completitud histórica y no altera la definición de la métrica.
 
 Reconciliación del recorrido de acceso al 18 de julio de 2026: cohorte de 87
 estudiantes con primera selección en el ciclo; 61 accedieron en la primera

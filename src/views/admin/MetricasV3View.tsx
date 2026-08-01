@@ -272,7 +272,7 @@ const MetricasV3View: React.FC<MetricasV3ViewProps> = ({
               <strong style={{ color: "var(--ink)" }}>
                 2024 tiene una base histórica revisada.
               </strong>{" "}
-              Las 42 ofertas, 270 vacantes finitas, 117 personas que iniciaron y 32 finalizaciones
+              Las 42 ofertas, 270 vacantes finitas, 118 personas que iniciaron y 32 finalizaciones
               constituyen el cierre oficial. La demanda —postulaciones y estudiantes postulados— no
               se reconstruyó con cobertura suficiente y por eso no se publica.
             </p>

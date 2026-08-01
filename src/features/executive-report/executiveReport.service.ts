@@ -97,7 +97,7 @@ export const testingSnapshot = (year: number, cutoffISO: string): AnalyticsSnaps
         applicants: null,
         demandAvailable: false,
         finalized: managementBaseline ? 11 : 32,
-        ppsStarted: managementBaseline ? 104 : 117,
+        ppsStarted: managementBaseline ? 104 : 118,
       },
       capacity: {
         fixedOffered: managementBaseline ? 199 : 270,
