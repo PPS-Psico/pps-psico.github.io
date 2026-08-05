@@ -8,6 +8,7 @@ import {
   FIELD_DNI_ESTUDIANTES,
   FIELD_CORREO_ESTUDIANTES,
   FIELD_TELEFONO_ESTUDIANTES,
+  FIELD_USER_ID_ESTUDIANTES,
   TABLE_NAME_INSTITUCIONES,
   FIELD_NOMBRE_INSTITUCIONES,
   TABLE_NAME_LANZAMIENTOS_PPS,
@@ -85,6 +86,12 @@ const DataIntegrityTool: React.FC = () => {
         const hasMail = isRealData(s[FIELD_CORREO_ESTUDIANTES]);
         const hasDni = isRealData(s[FIELD_DNI_ESTUDIANTES]);
         const hasTel = isRealData(s[FIELD_TELEFONO_ESTUDIANTES]);
+
+        // Nunca sobre alguien que ya se registró: 'Inactivo' le corta la
+        // inscripción con "Comunicate con coordinación", y tener cuenta es
+        // justamente la prueba de que el estado 'Nuevo (Sin cuenta)' quedó
+        // viejo. Así se desactivó a Paula Gerez (legajo 26786) en mayo 2026.
+        if (s[FIELD_USER_ID_ESTUDIANTES]) return false;
 
         return (dbStatus === "Nuevo (Sin cuenta)" || !dbStatus) && (hasMail || hasDni || hasTel);
       });

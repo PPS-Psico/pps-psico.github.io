@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchStudentData } from "../services";
 import { db } from "../lib/db";
@@ -10,19 +9,7 @@ import { logger } from "../utils/logger";
 import {
   FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES,
   FIELD_NOTAS_INTERNAS_ESTUDIANTES,
-  FIELD_ESTADO_ESTUDIANTES,
-  FIELD_DNI_ESTUDIANTES,
-  FIELD_CORREO_ESTUDIANTES,
-  FIELD_TELEFONO_ESTUDIANTES,
 } from "../constants";
-
-const hasData = (val: any): boolean => {
-  if (val === null || val === undefined) return false;
-  const str = String(val)
-    .replace(/[\[\]"']/g, "")
-    .trim();
-  return str.length > 2;
-};
 
 export const useStudentData = (legajo: string) => {
   const queryClient = useQueryClient();
@@ -89,22 +76,23 @@ export const useStudentData = (legajo: string) => {
   const studentDetails = data?.studentDetails ?? null;
   const studentId = data?.studentId ?? null;
 
-  useEffect(() => {
-    if (studentDetails && studentId && legajo !== "99999") {
-      const currentStatusInDb = studentDetails[FIELD_ESTADO_ESTUDIANTES];
-      const hasContactInfo =
-        hasData(studentDetails[FIELD_DNI_ESTUDIANTES]) ||
-        hasData(studentDetails[FIELD_CORREO_ESTUDIANTES]) ||
-        hasData(studentDetails[FIELD_TELEFONO_ESTUDIANTES]);
-
-      if (currentStatusInDb === "Nuevo (Sin cuenta)" && hasContactInfo) {
-        logger.info(`Sanando estado para legajo ${legajo}...`);
-        db.estudiantes.update(studentId, { [FIELD_ESTADO_ESTUDIANTES]: "Inactivo" }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["metricsData"] });
-        });
-      }
-    }
-  }, [studentDetails, studentId, legajo, queryClient]);
+  // Acá vivía un "saneo" de estado: si el alumno figuraba 'Nuevo (Sin cuenta)'
+  // y tenía algún dato de contacto, se le escribía 'Inactivo'. Se eliminó.
+  //
+  // 'Inactivo' no significa "perfil a medio cargar": `useConvocatorias` lo lee
+  // como cuenta deshabilitada y corta la inscripción con "Comunicate con
+  // coordinación", un cartel sin salida. El saneo dejaba alumnos en ese estado
+  // sin que nadie lo decidiera.
+  //
+  // Peor: escribía desde un camino de LECTURA y sobre la fila que estuviera
+  // cargada, no la propia. Coordinación abriendo /admin/student/:legajo para
+  // mirar un panel montaba este mismo hook y desactivaba a ese alumno de paso.
+  //
+  // Ya no hace falta: desde `harden_student_signup_flow` (14 may 2026) el alta
+  // deja al alumno en 'Activo', y `AtlasProfileView` lo reactiva cuando
+  // completa DNI + correo + teléfono. Para los pre-cargados sin cuenta sigue
+  // estando el botón de coordinación en DataIntegrityTool, con intención
+  // explícita detrás.
 
   const updateOrientation = useMutation({
     mutationFn: async (orientacion: Orientacion | "") => {
