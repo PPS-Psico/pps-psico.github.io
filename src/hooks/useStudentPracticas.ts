@@ -11,9 +11,9 @@ import { supabase } from "../lib/supabaseClient";
 import { deletePractica as deletePracticaRecord, fetchPracticas } from "../services";
 import { mockDb } from "../services/mockDb";
 import type { Practica } from "../types";
-import { normalizeStringForComparison, parseToUTCDate } from "../utils/formatters";
+import { normalizeStringForComparison } from "../utils/formatters";
 import { logger } from "../utils/logger";
-import { isPracticeDisapproved } from "../logic/studentRules";
+import { getEffectivePracticeStatus, isPracticeDisapproved } from "../logic/studentRules";
 
 export const useStudentPracticas = (legajo: string, studentId: string | null) => {
   const queryClient = useQueryClient();
@@ -85,30 +85,32 @@ export const useStudentPracticas = (legajo: string, studentId: string | null) =>
         }
       }
 
-      // --- AUTO-FIX LOGIC (Same for Mock and Prod) ---
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-
-      const updates: Promise<unknown>[] = [];
-
+      // --- Cierre por calendario (solo presentación) ---
+      // El cierre real lo hace el servidor: `public.close_finished_practicas()`,
+      // agendada a diario (migración 20260804120000). NO se intenta escribirlo
+      // desde acá: el trigger `trg_check_practica_updates` revierte `estado`
+      // para toda sesión donde `is_admin()` sea false —o sea, la del alumno—
+      // devolviendo 200 sin guardar nada. Ese UPDATE mudo fue exactamente el
+      // bug que dejó 360 prácticas terminadas marcadas "En curso".
+      //
+      // Lo que sí corresponde acá es tapar la ventana entre el fin de la PPS y
+      // la próxima corrida del cron, para que el alumno no vea "En curso" una
+      // práctica que ya terminó ayer.
+      const cerradasPorCalendario: Practica[] = [];
       for (const p of data) {
-        const status = normalizeStringForComparison(p[FIELD_ESTADO_PRACTICA]);
-        if (status === "en curso" && p[FIELD_FECHA_FIN_PRACTICAS]) {
-          const endDate = parseToUTCDate(p[FIELD_FECHA_FIN_PRACTICAS]);
-          if (endDate && endDate < now) {
-            if (legajo === "99999") {
-              await mockDb.update("practicas", p.id, { [FIELD_ESTADO_PRACTICA]: "Finalizada" });
-            } else {
-              updates.push(db.practicas.update(p.id, { [FIELD_ESTADO_PRACTICA]: "Finalizada" }));
-            }
-            // Optimistically update local
-            p[FIELD_ESTADO_PRACTICA] = "Finalizada";
-          }
-        }
+        const efectivo = getEffectivePracticeStatus(p);
+        if (efectivo === p[FIELD_ESTADO_PRACTICA]) continue;
+        p[FIELD_ESTADO_PRACTICA] = efectivo as Practica[typeof FIELD_ESTADO_PRACTICA];
+        cerradasPorCalendario.push(p);
       }
 
-      if (updates.length > 0) {
-        await Promise.all(updates);
+      // En modo testing no hay trigger ni cron, así que el mock sí se persiste.
+      if (legajo === "99999" && cerradasPorCalendario.length > 0) {
+        await Promise.all(
+          cerradasPorCalendario.map((p) =>
+            mockDb.update("practicas", p.id, { [FIELD_ESTADO_PRACTICA]: "Finalizada" })
+          )
+        );
       }
 
       if (cacheKey) {

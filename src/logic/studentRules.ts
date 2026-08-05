@@ -99,6 +99,16 @@ export const isPracticeOverdue = (practice: Practica): boolean => {
   return !!endDate && endDate < now;
 };
 
+/**
+ * Estado de la práctica para mostrar. El `estado` guardado puede quedar
+ * desactualizado en "En curso": el auto-cierre por calendario solo corre cuando
+ * el estudiante entra a su panel (ver `useStudentPracticas`), así que las vistas
+ * de admin veían "En curso" en PPS ya terminadas. La nota del informe no cambia
+ * esto: si la fecha de fin pasó, la PPS está finalizada.
+ */
+export const getEffectivePracticeStatus = (practice: Practica): string | null | undefined =>
+  isPracticeOverdue(practice) ? "Finalizada" : practice[FIELD_ESTADO_PRACTICA];
+
 // --- Aggregation Logic ---
 
 /**

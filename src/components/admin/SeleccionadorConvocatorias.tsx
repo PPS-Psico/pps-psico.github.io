@@ -8,7 +8,11 @@ import {
 } from "../../constants";
 import { useSeleccionadorLogic } from "../../hooks/useSeleccionadorLogic";
 import { supabase } from "../../lib/supabaseClient";
-import { calculateTotalHours, isPracticeDisapproved } from "../../logic/studentRules";
+import {
+  calculateTotalHours,
+  getEffectivePracticeStatus,
+  isPracticeDisapproved,
+} from "../../logic/studentRules";
 import type { EnrichedStudent } from "../../types";
 import {
   formatDate,
@@ -588,6 +592,9 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
                   <tbody>
                     {practicas.map((practica) => {
                       const desaprobada = isPracticeDisapproved(practica.estado);
+                      // El estado guardado puede seguir en "En curso" si el
+                      // estudiante no entró al panel desde que terminó la PPS.
+                      const estado = getEffectivePracticeStatus(practica);
                       return (
                         <tr key={practica.id}>
                           <td>
@@ -604,14 +611,14 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
                               className={`lv4-badge ${
                                 desaprobada
                                   ? "lv4-badge-danger-strong"
-                                  : practica.estado === "Finalizada"
+                                  : estado === "Finalizada"
                                     ? "lv4-badge-ok"
-                                    : practica.estado === "En curso"
+                                    : estado === "En curso"
                                       ? "lv4-badge-accent"
                                       : "lv4-badge-muted"
                               }`}
                             >
-                              {desaprobada ? "Desaprobada" : practica.estado || "N/A"}
+                              {desaprobada ? "Desaprobada" : estado || "N/A"}
                             </span>
                           </td>
                           <td className="center">

@@ -5,6 +5,7 @@ import {
   isPracticeActive,
   isPracticeFinished,
   isPracticeOverdue,
+  getEffectivePracticeStatus,
   getPracticePresentationStatus,
   calculateTotalHours,
   isPracticeComputable,
@@ -113,6 +114,40 @@ describe("studentRules", () => {
     it("no marca como vencida si no hay fecha de fin", () => {
       const p = makePractica({ estado: "En curso", fecha_finalizacion: null });
       expect(isPracticeOverdue(p)).toBe(false);
+    });
+  });
+
+  describe("getEffectivePracticeStatus", () => {
+    it("cierra por calendario una práctica que quedó en 'En curso'", () => {
+      const p = makePractica({ estado: "En curso", fecha_finalizacion: "2020-01-01", nota: null });
+      expect(getEffectivePracticeStatus(p)).toBe("Finalizada");
+    });
+
+    it("no depende de la nota del informe", () => {
+      const p = makePractica({
+        estado: "En curso",
+        fecha_finalizacion: "2020-01-01",
+        nota: "Sin calificar",
+      });
+      expect(getEffectivePracticeStatus(p)).toBe("Finalizada");
+    });
+
+    it("respeta el estado guardado si la PPS sigue en curso", () => {
+      const p = makePractica({ estado: "En curso", fecha_finalizacion: "2999-01-01" });
+      expect(getEffectivePracticeStatus(p)).toBe("En curso");
+    });
+
+    it("no toca los estados terminales", () => {
+      expect(
+        getEffectivePracticeStatus(
+          makePractica({ estado: "Desaprobada", fecha_finalizacion: "2020-01-01" })
+        )
+      ).toBe("Desaprobada");
+      expect(
+        getEffectivePracticeStatus(
+          makePractica({ estado: "No se pudo concretar", fecha_finalizacion: "2020-01-01" })
+        )
+      ).toBe("No se pudo concretar");
     });
   });
 
