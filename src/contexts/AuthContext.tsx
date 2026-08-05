@@ -211,24 +211,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (profile && !error) {
             const dbRole = profile[FIELD_ROLE_ESTUDIANTES] as AuthUser["role"] | undefined;
 
-            // Verificar si le faltan datos esenciales (DNI)
+            // Los tres datos que la inscripción exige (ver `useConvocatorias`).
+            // Antes acá sólo se miraba el DNI, así que a quien le faltaba el
+            // teléfono o el correo el panel lo dejaba pasar como si estuviera
+            // completo y recién se enteraba al chocar contra la inscripción,
+            // en el peor momento. Caso real: Paula Gerez (legajo 26786).
             const dniValue = profile[FIELD_DNI_ESTUDIANTES];
-            logger.info("[Auth] DNI value:", dniValue, "type:", typeof dniValue);
             const hasDni =
               dniValue !== null &&
               dniValue !== undefined &&
               dniValue !== 0 &&
               String(dniValue).trim() !== "";
+            const hasTelefono = String(profile[FIELD_TELEFONO_ESTUDIANTES] ?? "").trim() !== "";
+            const hasCorreo = String(profile[FIELD_CORREO_ESTUDIANTES] ?? "").trim() !== "";
             const isAdminRole = ["SuperUser", "Jefe", "Directivo", "AdminTester"].includes(
               dbRole || ""
             );
-            const needsDataCompletion = !hasDni && !isAdminRole;
-            logger.info("[Auth] hasDni:", hasDni, "needsDataCompletion:", needsDataCompletion);
+            const needsDataCompletion = !isAdminRole && !(hasDni && hasTelefono && hasCorreo);
+            logger.info(
+              `[Auth] datos: dni=${hasDni} tel=${hasTelefono} mail=${hasCorreo} → needsDataCompletion=${needsDataCompletion}`
+            );
 
             // Auto-activar si tiene DNI válido y está inactivo
             const currentEstado = profile.estado;
-            const hasValidData =
-              hasDni && profile[FIELD_CORREO_ESTUDIANTES] && profile[FIELD_TELEFONO_ESTUDIANTES];
+            const hasValidData = hasDni && hasCorreo && hasTelefono;
             if (hasValidData && currentEstado !== "Activo" && currentEstado !== "Finalizado") {
               logger.info("[Auth] Auto-activando estudiante:", profile.id);
               supabase
