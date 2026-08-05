@@ -1,6 +1,7 @@
 import React from "react";
 import { useIsFetching } from "@tanstack/react-query";
 import { APP_VERSION } from "../../../components/admin/HermesStatus";
+import { useWhatsappIngestHealth } from "../../../hooks/useWhatsappIngestHealth";
 import { CATEGORIES, type CatId, type CatDef, type ViewMode } from "./gestionTypes";
 
 // ─── Navegación de Gestión: Rail lateral + ViewModeTabs ─────────────────────
@@ -126,6 +127,12 @@ export const Rail: React.FC<{
 // Antes este pie mostraba un punto verde fijo con "Sincronizado" y "v3.2"
 // escritos a mano. Ahora refleja el estado real de react-query: si hay queries
 // en vuelo, si alguna falló, o si los datos están al día.
+//
+// También vigila la ingesta de WhatsApp, que es el punto ciego más caro: el
+// pipeline de backup falla en silencio y el panel seguía diciendo
+// "Sincronizado" con datos de hace tres días. Un problema de ingesta gana
+// sobre "Sincronizando…" porque es persistente: si lo dejáramos perder contra
+// el parpadeo de react-query, el aviso desaparecería justo cuando hay que verlo.
 
 const MANAGEMENT_QUERY_ROOTS = new Set([
   "gmailHilos",
@@ -137,6 +144,13 @@ const MANAGEMENT_QUERY_ROOTS = new Set([
   "whatsapp_contactos",
 ]);
 
+const TONE_VAR: Record<"ok" | "warn" | "danger" | "mute", string> = {
+  ok: "var(--ok)",
+  warn: "var(--warn)",
+  danger: "var(--danger, #c0392b)",
+  mute: "var(--ink-4)",
+};
+
 const SyncStatus: React.FC<{ collapsed: boolean; hasSyncError: boolean }> = ({
   collapsed,
   hasSyncError,
@@ -144,12 +158,22 @@ const SyncStatus: React.FC<{ collapsed: boolean; hasSyncError: boolean }> = ({
   const fetching = useIsFetching({
     predicate: (query) => MANAGEMENT_QUERY_ROOTS.has(String(query.queryKey[0])),
   });
+  const ingesta = useWhatsappIngestHealth();
+  const ingestaCaida = ingesta.estado === "error" || ingesta.estado === "atrasado";
 
   const { label, color, live } = hasSyncError
-    ? { label: "Error de sincronización", color: "var(--danger, #c0392b)", live: false }
-    : fetching
-      ? { label: "Sincronizando…", color: "var(--warn)", live: true }
-      : { label: "Sincronizado", color: "var(--ok)", live: false };
+    ? { label: "Error de sincronización", color: TONE_VAR.danger, live: false }
+    : ingestaCaida
+      ? { label: ingesta.label, color: TONE_VAR[ingesta.tone], live: false }
+      : fetching
+        ? { label: "Sincronizando…", color: TONE_VAR.warn, live: true }
+        : { label: "Sincronizado", color: TONE_VAR.ok, live: false };
+
+  // Con el rail colapsado sólo se ve el punto, así que el detalle del fallo
+  // (paso de wabdd + mensaje) tiene que viajar en el tooltip.
+  const title = ingestaCaida
+    ? [label, ingesta.ultimoErrorDetalle].filter(Boolean).join(" — ")
+    : label;
 
   return (
     <div
@@ -165,7 +189,7 @@ const SyncStatus: React.FC<{ collapsed: boolean; hasSyncError: boolean }> = ({
       <span
         className="meta"
         style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-        title={label}
+        title={title}
         role="status"
         aria-live="polite"
       >
