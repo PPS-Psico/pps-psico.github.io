@@ -57,7 +57,7 @@ function PracticeDeliveryCard({
         target="_blank"
         rel="noopener noreferrer"
         style={{ ["--area" as string]: delivery.areaColor }}
-        aria-label={`Abrir el espacio de entrega de ${delivery.practiceName} en Moodle`}
+        aria-label={`Abrir el espacio de entrega de ${delivery.practiceName} en el Campus`}
       >
         {content}
       </a>
@@ -244,7 +244,7 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ ["--area" as string]: selectedArea.color }}
-                aria-label={`Abrir la entrega de ${institution.name} en Moodle`}
+                aria-label={`Abrir la entrega de ${institution.name} en el Campus`}
               >
                 <strong>{institution.name}</strong>
                 <span className="ah-aula__delivery-foot">
@@ -256,8 +256,8 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
           </div>
 
           <p className="ah-delivery-catalog__note">
-            Cada tarjeta abre la tarea de esa institución en Moodle, donde cargás el informe final
-            y, si corresponde, la planilla firmada.
+            Cada tarjeta abre la tarea de esa institución en el Campus, donde cargás el informe
+            final y, si corresponde, la planilla firmada.
           </p>
         </div>
       </details>

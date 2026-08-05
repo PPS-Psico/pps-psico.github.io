@@ -661,7 +661,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 info
               </span>
               <div>
-                Al estar navegando dentro de <strong>Moodle</strong>, el navegador bloquea la
+                Al estar navegando dentro del <strong>Campus</strong>, el navegador bloquea la
                 instalación de aplicaciones. Abre el panel directamente ingresando a{" "}
                 <a
                   href="https://pps-psico.github.io"

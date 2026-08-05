@@ -127,7 +127,7 @@ function buildStatus(
     return {
       statusLabel: "Nota informada",
       statusDetail:
-        "Es un dato cargado en Mi Panel y no una confirmación de Moodle. Verificá allí la corrección oficial.",
+        "Es un dato cargado en Mi Panel y no una confirmación del Campus. Verificá allí la corrección oficial.",
       statusTone: "info",
     };
   }
@@ -135,7 +135,7 @@ function buildStatus(
     return {
       statusLabel: "Marcada en Mi Panel",
       statusDetail:
-        "Esta marca fue informada en Mi Panel; todavía no está verificada automáticamente con Moodle.",
+        "Esta marca fue informada en Mi Panel; todavía no está verificada automáticamente con el Campus.",
       statusTone: "info",
     };
   }
@@ -147,7 +147,7 @@ function buildStatus(
   if (practiceState.includes("curso") && practiceEnd && practiceEnd > today) {
     return {
       statusLabel: "Todavía en cursada",
-      statusDetail: `La práctica finaliza el ${formatDeadline(practiceEnd)}. Mi Panel no consulta todavía el estado de Moodle.`,
+      statusDetail: `La práctica finaliza el ${formatDeadline(practiceEnd)}. Mi Panel no consulta todavía el estado del Campus.`,
       statusTone: "neutral",
     };
   }
@@ -155,14 +155,14 @@ function buildStatus(
     return {
       statusLabel: "Estado no sincronizado",
       statusDetail:
-        "Mi Panel no puede confirmar si el informe fue entregado. Revisá el estado directamente en Moodle.",
+        "Mi Panel no puede confirmar si el informe fue entregado. Revisá el estado directamente en el Campus.",
       statusTone: "neutral",
     };
   }
 
   const deadlineMoment = deadline < today ? "fue" : "es";
   return {
-    statusLabel: "Verificar en Moodle",
+    statusLabel: "Verificar en el Campus",
     statusDetail: `Mi Panel no puede confirmar si ya entregaste. El plazo orientativo ${deadlineMoment} el ${formatDeadline(deadline)}.`,
     statusTone: "neutral",
   };

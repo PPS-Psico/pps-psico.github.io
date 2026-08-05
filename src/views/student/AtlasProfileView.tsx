@@ -392,7 +392,7 @@ const AtlasProfileView: React.FC<AtlasProfileViewProps> = ({ studentDetails, isL
                 info
               </span>
               <div>
-                Al estar dentro de <strong>Moodle</strong>, el navegador bloquea la instalación de
+                Al estar dentro del <strong>Campus</strong>, el navegador bloquea la instalación de
                 aplicaciones. Abre el panel directamente ingresando a{" "}
                 <a
                   href="https://pps-psico.github.io"

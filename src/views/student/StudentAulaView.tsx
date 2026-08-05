@@ -148,17 +148,17 @@ const sections: AulaSection[] = [
     id: "entregas",
     num: "04",
     label: "Entregas",
-    hint: "Informes a Moodle",
-    eyebrow: "Moodle",
+    hint: "Informes en el Campus",
+    eyebrow: "Campus",
     title: (
       <>
         El único salto <em>al campus.</em>
       </>
     ),
     description:
-      "Elegís tu área e institución desde acá; la carga del informe se abre directamente en Moodle.",
+      "Elegís tu área e institución desde acá; la carga del informe se abre directamente en el Campus.",
     icon: "upload",
-    pageEyebrow: "Campus PPS · Moodle",
+    pageEyebrow: "Campus PPS · Entregas",
     pageTitle: (
       <>
         Entregas de <em>informes.</em>
@@ -429,62 +429,61 @@ const faqGroups: FaqGroup[] = [
   {
     id: "inscripcion",
     label: "Inscripción",
-    subtitle: "Postulación, cupos y consentimiento.",
+    subtitle: "Convocatorias, cupos y confirmación.",
     items: [
       {
-        q: "¿Cuál es la frecuencia de lanzamiento de convocatorias?",
-        a: "Se lanzan de forma periódica a lo largo del año. Conviene revisar Mi Panel, el aula virtual y el grupo de WhatsApp de novedades.",
+        q: "¿Cada cuánto se publican nuevas convocatorias?",
+        a: "Se publican de forma periódica a lo largo del año. Revisá con frecuencia Mi Panel, el Campus y el grupo de WhatsApp de novedades.",
       },
       {
-        q: "¿Cuáles son los criterios para la selección de estudiantes?",
+        q: "¿Qué tengo que revisar antes de inscribirme?",
         a: (
           <>
-            Cuando los inscriptos superan el cupo, los criterios se aplican en este orden de
-            importancia:
+            Revisá las horas acreditables, el área y el <strong>requisito excluyente</strong> de la
+            convocatoria. Los horarios <strong>obligatorios</strong> ya aparecen seleccionados y no
+            se pueden quitar. Entre las franjas <strong>a elección</strong>, marcá solamente las que
+            realmente puedas sostener durante toda la práctica. Los cupos del turno tarde son menos
+            frecuentes y se priorizan para estudiantes que trabajan.
+          </>
+        ),
+      },
+      {
+        q: "¿Cómo se asignan los cupos cuando hay más inscriptos?",
+        a: (
+          <>
+            Cuando las postulaciones superan el cupo, los criterios se aplican en este orden:
             <ol>
               <li>
-                <strong>Cantidad de horas realizadas:</strong> es el criterio principal.
+                <strong>Cantidad de horas ya realizadas,</strong> como criterio principal.
               </li>
               <li>
-                <strong>Situación académica:</strong> avance en la carrera.
+                <strong>Situación académica</strong> y avance en la carrera.
               </li>
               <li>
-                <strong>Otros factores:</strong> orientación, disponibilidad, movilidad.
+                <strong>Orientación, disponibilidad y movilidad.</strong>
               </li>
               <li>
-                <strong>Criterios internos de la facultad,</strong> que pueden variar según
-                objetivos.
+                <strong>Criterios internos de la Facultad,</strong> según los objetivos de cada
+                convocatoria.
               </li>
             </ol>
           </>
         ),
       },
       {
-        q: "¿Cómo sé si quedé seleccionado en una convocatoria?",
+        q: "¿Cómo sé si fui seleccionado/a?",
         a: "Recibís una notificación por correo y, en Inicio > Tus resultados, ves primero tu estado personal: seleccionado/a, no seleccionado/a o resultado pendiente. La opción Ver convocados queda disponible como detalle.",
       },
       {
-        q: "¿Qué reviso antes de confirmar una inscripción?",
-        a: (
-          <>
-            Revisá las horas acreditables, el área y el <strong>requisito excluyente</strong> de la
-            tarjeta. En el formulario, los horarios marcados como <strong>obligatorios</strong> ya
-            aparecen incluidos y no se pueden quitar; entre las franjas <strong>a elección</strong>,
-            seleccioná todas las que realmente puedas sostener. Los cupos del turno tarde son menos
-            frecuentes y se priorizan para estudiantes que trabajan.
-          </>
-        ),
-      },
-      {
-        q: "¿Cuándo firmo el consentimiento digital?",
-        a: "Cuando quedás seleccionado/a y la PPS entra en etapa de confirmación, Mi Panel muestra el botón y el plazo disponible. Leé cada paso, revisá tus datos y marcá las dos declaraciones finales. Sin ese consentimiento no podés iniciar la práctica.",
+        q: "¿Cuándo tengo que aceptar el consentimiento digital?",
+        a: "Cuando quedás seleccionado/a y la PPS entra en confirmación, Mi Panel muestra el botón y el plazo disponible. Leé cada paso, revisá tus datos y aceptá las dos declaraciones finales. Sin ese consentimiento no podés iniciar la práctica.",
       },
     ],
   },
   {
     id: "desarrollo",
     label: "Desarrollo",
-    subtitle: "Cursada, ausencias y cambios.",
+    subtitle: "Horas, asistencia y cambios durante la cursada.",
     items: [
       {
         q: "¿Cuántas horas acredita mi PPS?",
@@ -499,22 +498,11 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Cómo corrijo los datos de una PPS en Mi Panel?",
-        a: (
-          <>
-            En el celular, abrí <strong>Mis prácticas</strong> y mantené presionada la tarjeta de la
-            PPS para ver las opciones de corrección, incluida la fecha de finalización. En la
-            computadora, seleccioná <strong>Corregir</strong> en la fila correspondiente. Para
-            cambiar la nota, tocá directamente el número.
-          </>
-        ),
-      },
-      {
-        q: "¿Puedo cambiar de orientación durante las PPS?",
+        q: "¿Puedo cambiar de orientación una vez iniciada la PPS?",
         a: "No. Hay que completar las horas en la orientación asignada.",
       },
       {
-        q: "¿Qué sucede si me ausento de la institución?",
+        q: "¿Qué tengo que hacer si voy a faltar?",
         a: (
           <>
             Es obligatorio <strong>avisar previamente a la institución</strong> y justificar la
@@ -538,7 +526,7 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Por qué puede desaprobarse una PPS?",
+        q: "¿En qué casos se desaprueba una PPS?",
         a: (
           <>
             Puede desaprobarse por <strong>decisión de la Facultad</strong> cuando la documentación
@@ -557,7 +545,7 @@ const faqGroups: FaqGroup[] = [
         a: "La institución puede solicitar que recuperes esas horas y extiendas el período de la PPS. Si lo solicita, debés cumplir esa indicación para obtener su aprobación. Cuando la institución da por aprobado y finalizado el recorrido, se acredita el total de horas establecido en la convocatoria, aunque las horas efectivamente realizadas hayan sido menores o mayores.",
       },
       {
-        q: "¿Qué sucede si decido continuar más tiempo en mi PPS?",
+        q: "¿Puedo extender mi PPS más allá de la fecha prevista?",
         a: (
           <>
             Hay que avisar a coordinación para actualizar el seguro. Tené en cuenta que{" "}
@@ -567,62 +555,53 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Puedo repetir una PPS?",
-        a: "No se puede repetir en la misma institución y con la misma orientación. Cada práctica debe ser una experiencia nueva para explorar distintos campos y adquirir diversas habilidades.",
+        q: "¿Cómo doy de baja una PPS antes de finalizarla?",
+        a: "Comunicalo de inmediato a la institución y a coordinación. En general, la PPS se suspende y se pierden las horas realizadas. Salvo que la interrupción responda a motivos extraordinarios debidamente justificados, la baja anticipada se considera una penalización y se tendrá en cuenta en futuras convocatorias. Coordinación evalúa cada situación junto con la institución.",
       },
       {
-        q: "¿Qué sucede si necesito dar de baja una PPS antes de finalizarla?",
-        a: "Comunicalo de inmediato a la institución y a coordinación. En general, la PPS se suspende y se pierden las horas realizadas. Salvo que la interrupción responda a motivos extraordinarios debidamente justificados, la baja anticipada se considera una penalización y se tendrá en cuenta en futuras convocatorias. Coordinación evalúa cada situación junto con la institución.",
+        q: "¿Puedo repetir una PPS?",
+        a: "No se puede repetir en la misma institución y con la misma orientación. Cada práctica debe ser una experiencia nueva para explorar distintos campos y adquirir diversas habilidades.",
       },
     ],
   },
   {
     id: "informes",
     label: "Informes",
-    subtitle: "Entrega, corrección y prórroga.",
+    subtitle: "Preparación, entrega, corrección y plazos.",
     items: [
       {
         q: "¿Hay alguna guía para elaborar informes?",
-        a: "Sí. La guía para la elaboración del informe está en Descargas, junto al reglamento de PPS.",
+        a: "Sí. En Descargas encontrás la guía para elaborar el informe y el reglamento de PPS.",
       },
       {
         q: "¿Cómo entrego un informe?",
-        a: "En Entregas aparecen primero las PPS registradas en Mi Panel. Abrí la tarjeta de la práctica para entrar a su espacio en Moodle. Si el informe que necesitás subir no corresponde a una de esas PPS, desplegá Ver todos los espacios y elegí el área y la institución. En una PPS presencial, subí también la planilla firmada.",
+        a: "Entrá en Entregas y abrí la tarjeta de la PPS. Mi Panel te lleva a su espacio en el Campus, donde cargás el informe final. Si la práctica fue presencial, subí también la planilla de asistencia firmada.",
+      },
+      {
+        q: "¿Qué hago si no encuentro el espacio de entrega de mi PPS?",
+        a: "En Entregas, desplegá Ver todos los espacios y buscá por área e institución. Esto también sirve para una PPS que gestionaste por tu cuenta. Si el espacio no aparece, escribí a coordinación para que lo habilite o te indique dónde entregar en el Campus.",
       },
       {
         q: "¿Dónde reviso si el informe quedó entregado?",
-        a: "Revisalo dentro de la tarea en Moodle. Ahí vas a encontrar el archivo enviado y el estado oficial de la entrega, la corrección y la aprobación.",
+        a: "Revisalo dentro de la tarea en el Campus. Ahí vas a encontrar el archivo enviado y el estado oficial de la entrega, la corrección y la aprobación.",
       },
       {
-        q: "¿Qué pasa si pierdo la planilla de asistencia?",
+        q: "¿Cuál es el plazo para entregar el informe?",
         a: (
           <>
-            En una PPS presencial, la <strong>planilla firmada es el único documento válido</strong>{" "}
-            que certifica la realización de la práctica y se exige para la acreditación final. Si la
-            perdés y no conservaste una copia, perdés el respaldo de esa PPS. Guardala en un lugar
-            seguro y subila junto con el informe.
+            Tenés <strong>30 días corridos</strong> desde la fecha de finalización de la PPS. Las
+            tareas del Campus no muestran un vencimiento configurado, por eso el control del plazo
+            queda de tu lado.
           </>
         ),
       },
       {
-        q: "¿Qué hago si no encuentro un espacio de entrega o realicé una PPS arreglada de forma particular?",
-        a: "Desplegá Ver todos los espacios en la pestaña Entregas y buscá por área e institución. Si tampoco figura allí, escribí a coordinación para que habilite o te indique el destino correcto en Moodle.",
-      },
-      {
-        q: "¿Debo firmar planilla en prácticas online o eventos especiales?",
+        q: "¿Qué hago si no llego a entregar el informe en el plazo?",
         a: (
           <>
-            No. En esos casos, el <strong>informe final</strong> es el elemento oficial que acredita
-            la realización de la PPS.
-          </>
-        ),
-      },
-      {
-        q: "¿Cuáles son las fechas de entrega de informe?",
-        a: (
-          <>
-            <strong>30 días corridos</strong> desde que finaliza la PPS. Registrá esa fecha: las
-            tareas del campus no traen vencimiento configurado, así que el control queda de tu lado.
+            Escribí a coordinación <strong>antes del vencimiento</strong> para solicitar una
+            prórroga. Si se aprueba, el docente corrige según su disponibilidad y ya no aplica el
+            plazo habitual de 30 días hábiles.
           </>
         ),
       },
@@ -637,15 +616,25 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué hago si mi informe no fue corregido en el plazo?",
-        a: "Si lo cargaste en plazo y pasaron los 30 días hábiles, enviá un correo a coordinación para que notifique al jefe de área.",
+        a: "Si lo entregaste en término y ya pasaron 30 días hábiles, escribí a coordinación para que notifique al jefe de área.",
       },
       {
-        q: "¿Qué hago si no llego a entregar el informe en el plazo?",
+        q: "¿Qué pasa si pierdo la planilla de asistencia?",
         a: (
           <>
-            Comunicate con coordinación <strong>antes del vencimiento</strong> para pedir una
-            prórroga. Si se aprueba, el docente corrige según disponibilidad (el plazo de 30 días no
-            aplica a entregas fuera de término).
+            En una PPS presencial, la <strong>planilla firmada es el único documento válido</strong>{" "}
+            que certifica la realización de la práctica y se exige para la acreditación final. Si la
+            perdés y no conservaste una copia, perdés el respaldo de esa PPS. Guardala y subila
+            junto con el informe.
+          </>
+        ),
+      },
+      {
+        q: "¿Necesito planilla de asistencia en una PPS online o evento especial?",
+        a: (
+          <>
+            No. En esos casos, el <strong>informe final corregido y aprobado</strong> es el
+            documento que acredita la realización de la PPS.
           </>
         ),
       },
@@ -654,19 +643,39 @@ const faqGroups: FaqGroup[] = [
   {
     id: "panel",
     label: "Mi Panel",
-    subtitle: "Acreditación final y uso de la herramienta.",
+    subtitle: "Seguimiento, acreditación y acceso.",
     items: [
       {
-        q: "¿Qué significan los estados En curso, Finalizada y Desaprobada?",
+        q: "¿Qué es Mi Panel?",
         a: (
           <>
-            <strong>En curso</strong> identifica una PPS que todavía se está realizando;{" "}
-            <strong>Finalizada</strong> indica que terminó y, en la práctica habitual, luego se
-            completa la corrección del informe. No usamos un estado separado “Aprobada”.{" "}
-            <strong>Desaprobada</strong> es la excepción: la PPS queda visible, pero no computa
-            horas ni rotaciones y no puede eliminarse del historial. Mi Panel sirve para el
-            seguimiento; la carga oficial en SAC se realiza al completar todos los requisitos del
-            ciclo, no PPS por PPS.
+            Es la herramienta para inscribirte, aceptar consentimientos, seguir tus horas y realizar
+            solicitudes de PPS. La información es <strong>referencial y editable</strong>: no
+            reemplaza el registro oficial y podés pedir correcciones desde Prácticas. En una PPS
+            presencial, tu respaldo es la <strong>planilla de asistencia firmada</strong>; en una
+            PPS online, el <strong>informe final corregido y aprobado</strong>.
+          </>
+        ),
+      },
+      {
+        q: "¿Cómo agrego una práctica que no aparece en Mi Panel?",
+        a: (
+          <>
+            Cuando finalices la PPS y tengas el informe corregido y aprobado, entrá en{" "}
+            <strong>Prácticas</strong> y elegí <strong>Cargar una PPS realizada</strong>. Completá
+            los datos y adjuntá el informe final. Si fue presencial, subí también la planilla de
+            asistencia firmada. Coordinación revisará la solicitud antes de incorporar la práctica a
+            tu panel.
+          </>
+        ),
+      },
+      {
+        q: "¿Cómo solicito una corrección en una práctica?",
+        a: (
+          <>
+            Entrá en <strong>Prácticas</strong>, buscá la PPS y seleccioná <strong>Corregir</strong>
+            . Completá los datos correctos y adjuntá la documentación que corresponda para que
+            coordinación pueda revisar el cambio.
           </>
         ),
       },
@@ -695,27 +704,6 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿De dónde sale la nota que veo en Mis Prácticas?",
-        a: (
-          <>
-            Por ahora la <strong>informás vos</strong> desde Mis Prácticas para mantener actualizado
-            tu seguimiento. Mi Panel todavía no recibe calificaciones automáticamente desde Moodle,
-            por lo que ese valor es referencial y puede ser revisado por coordinación. Si detectás
-            otra diferencia en una PPS, usá <strong>Solicitar corrección</strong> en esa práctica.
-          </>
-        ),
-      },
-      {
-        q: "¿Qué nota elijo al solicitar la acreditación?",
-        a: (
-          <>
-            Para las PPS iniciadas en <strong>2024 o antes</strong>, podés indicar una nota numérica
-            o <strong>Aprobado</strong>. Para las PPS iniciadas desde <strong>2025</strong>, la
-            calificación debe ser obligatoriamente numérica.
-          </>
-        ),
-      },
-      {
         q: "¿Cuánto demora la acreditación final?",
         a: (
           <>
@@ -723,18 +711,6 @@ const faqGroups: FaqGroup[] = [
             demorar hasta <strong>14 días hábiles</strong>. No se computan sábados, domingos,
             feriados nacionales ni los recesos universitarios de verano e invierno. Vas a recibir la
             confirmación cuando la acreditación quede registrada.
-          </>
-        ),
-      },
-      {
-        q: "¿Qué es Mi Panel?",
-        a: (
-          <>
-            Es la herramienta de gestión PPS para inscripción, solicitudes, seguimiento de horas,
-            consentimiento y acreditación. Su información es <strong>referencial y editable</strong>
-            : no constituye un registro oficial y podés solicitar correcciones desde Mis Prácticas.
-            En una PPS presencial, la <strong>planilla de asistencia firmada</strong> es tu respaldo
-            oficial; en una PPS online, lo es el <strong>informe final aprobado</strong>.
           </>
         ),
       },
@@ -749,26 +725,15 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Qué ocurre al entrar a Mi Panel desde Moodle?",
+        q: "¿Qué ocurre al entrar a Mi Panel desde el Campus?",
         a: (
           <>
-            Si todavía no tenés cuenta, Mi Panel puede precargar desde Moodle tu nombre, apellido,
-            correo y DNI. Vos completás <strong>legajo, celular y contraseña</strong>; si Moodle no
-            informa un DNI válido, también vas a poder ingresarlo. Si ya tenés una cuenta vinculada
-            y los datos del campus coinciden exactamente, Mi Panel inicia la sesión automáticamente.
-            Si falta algún dato o existe una diferencia, ingresá con legajo y contraseña o usá
+            Si todavía no tenés cuenta, Mi Panel puede precargar desde el Campus tu nombre,
+            apellido, correo y DNI. Vos completás <strong>legajo, celular y contraseña</strong>; si
+            el Campus no informa un DNI válido, también vas a poder ingresarlo. Si ya tenés una
+            cuenta vinculada y los datos coinciden, Mi Panel inicia la sesión automáticamente. Si
+            falta algún dato o existe una diferencia, ingresá con legajo y contraseña o usá
             <strong> Recuperar acceso</strong>.
-          </>
-        ),
-      },
-      {
-        q: "¿Dónde encuentro la Guía, Descargas, Preguntas y mi perfil?",
-        a: (
-          <>
-            En computadora, abrí <strong>Recursos</strong> en la barra superior para entrar a Guía
-            2026, Descargas y Preguntas. Tu perfil está dentro del menú de tu cuenta. En celular,
-            tocá <strong>Más</strong> en la barra inferior: ahí vas a encontrar esos recursos y Mi
-            perfil.
           </>
         ),
       },
@@ -788,23 +753,23 @@ const faqGroups: FaqGroup[] = [
             desde tu navegador móvil o de PC:
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>
-                <strong>Android (Chrome):</strong> Toca los tres puntos arriba a la derecha y
-                selecciona <em>"Instalar aplicación"</em> o{" "}
+                <strong>Android (Chrome):</strong> Tocá los tres puntos arriba a la derecha y
+                seleccioná <em>"Instalar aplicación"</em> o{" "}
                 <em>"Agregar a la pantalla principal"</em>.
               </li>
               <li>
-                <strong>iOS (Safari):</strong> Toca el botón <em>"Compartir"</em> (flecha hacia
-                arriba) en Safari y selecciona <em>"Agregar a Inicio"</em>.
+                <strong>iOS (Safari):</strong> Tocá el botón <em>"Compartir"</em> (flecha hacia
+                arriba) y seleccioná <em>"Agregar a Inicio"</em>.
               </li>
               <li>
-                <strong>Computadora (Chrome/Edge):</strong> Haz clic en el ícono de{" "}
+                <strong>Computadora (Chrome/Edge):</strong> Hacé clic en el ícono de{" "}
                 <em>instalación</em> en la barra de direcciones superior de la URL.
               </li>
             </ul>
             <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-              <strong>Nota importante:</strong> Si estás navegando dentro de <strong>Moodle</strong>
-              , la instalación automática está bloqueada. Abre la dirección directa en el navegador
-              de tu celular para poder realizarla.
+              <strong>Importante:</strong> Si estás navegando dentro del <strong>Campus</strong>, la
+              instalación está bloqueada. Abrí la dirección directa en el navegador de tu celular
+              para instalar Mi Panel.
             </p>
           </>
         ),
@@ -826,28 +791,21 @@ const faqGroups: FaqGroup[] = [
         q: "¿Qué pasa si no puedo acceder a Mi Panel?",
         a: "Comunicate con coordinación. En el primer acceso, legajo, DNI y correo deben coincidir con el registro académico; si algún dato falta o está desactualizado, coordinación debe corregirlo antes de vincular la cuenta.",
       },
-      {
-        q: "¿Cómo solicito una corrección en Mi Panel?",
-        a: (
-          <>
-            Desde la sección <strong>Mis Prácticas</strong>. También podés editar fechas y solicitar
-            modificaciones según corresponda.
-          </>
-        ),
-      },
     ],
   },
   {
     id: "tramites",
     label: "Trámites",
-    subtitle: "Propuestas propias y comunicación.",
+    subtitle: "Propuestas nuevas y contacto con coordinación.",
     items: [
       {
-        q: "¿Cómo propongo una institución nueva para realizar una PPS?",
+        q: "¿Cómo propongo una institución para una futura PPS?",
         a: (
           <>
-            Desde <strong>Solicitudes → Nueva solicitud de PPS</strong>, completás el formulario con
-            los datos de una institución nueva. En línea con la
+            Desde <strong>Solicitudes → Nueva solicitud de PPS</strong>, completá el formulario con
+            los datos de la institución. Este trámite es para una práctica que todavía no
+            realizaste; si necesitás incorporar una PPS ya terminada, usá{" "}
+            <strong>Prácticas → Cargar una PPS realizada</strong>. En línea con la
             <strong> filosofía integral y cooperativa de las PPS</strong>, las propuestas
             individuales deben aportar al conjunto de la comunidad académica. Requisitos:
             <ol>
@@ -871,7 +829,7 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Qué sucede si envié un correo y no tuve respuesta?",
+        q: "¿Qué hago si envié un correo y no tuve respuesta?",
         a: (
           <>
             El tiempo estimado de respuesta es de <strong>48 horas hábiles</strong>. Pasado ese

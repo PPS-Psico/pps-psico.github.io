@@ -196,7 +196,7 @@ const AcreditacionPreflightModal: React.FC<AcreditacionPreflightModalProps> = ({
                   Verificación manual de informes
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-lg">
-                  Mi Panel todavía no puede verificar las entregas de Moodle. Antes de enviar,
+                  Mi Panel todavía no puede verificar las entregas del Campus. Antes de enviar,
                   revisá en el Campus que estén{" "}
                   <strong>todos los informes corregidos y aprobados</strong>.
                 </p>

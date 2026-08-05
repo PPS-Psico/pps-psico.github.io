@@ -76,19 +76,19 @@ describe("deliveryGuide", () => {
 
     expect(deliveries[0]).toMatchObject({
       id: "practice-2",
-      statusLabel: "Verificar en Moodle",
+      statusLabel: "Verificar en el Campus",
       statusTone: "neutral",
     });
     expect(deliveries[1]).toMatchObject({
       id: "practice-1",
       deadlineLabel: "30 de jul de 2026",
-      statusLabel: "Verificar en Moodle",
+      statusLabel: "Verificar en el Campus",
       statusTone: "neutral",
     });
     expect(deliveries[0].institution?.name).toBe("Randstad");
   });
 
-  it("presenta una nota de Mi Panel como dato informado, no como estado Moodle", () => {
+  it("presenta una nota de Mi Panel como dato informado, no como estado del Campus", () => {
     const task: InformeTask = {
       convocatoriaId: "conv-1",
       practicaId: "practice-1",
