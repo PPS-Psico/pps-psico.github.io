@@ -14,10 +14,18 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
 } from "../../constants";
 import { normalizeStringForComparison } from "../../utils/formatters";
+import { getEnrollmentEligibility } from "../../logic/enrollmentEligibility";
 import type { LanzamientoPPS } from "../../types";
 
 const StudentConvocatoriasView: React.FC = () => {
-  const { lanzamientos, allLanzamientos, enrollmentMap, cancelEnrollment } = useStudentPanel();
+  const {
+    lanzamientos,
+    allLanzamientos,
+    enrollmentMap,
+    cancelEnrollment,
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
+  } = useStudentPanel();
   const { authenticatedUser } = useAuth();
   const { openSeleccionadosModal, showModal } = useModal();
   const navigate = useNavigate();
@@ -98,11 +106,16 @@ const StudentConvocatoriasView: React.FC = () => {
   const renderConv = (l: LanzamientoPPS, keySuffix: string) => {
     const enrollment = enrollmentMap.get(l.id);
     const isOpen = keySuffix.startsWith("open");
+    const { isCompleted } = getEnrollmentEligibility(l, {
+      completedLanzamientoIds,
+      completedOrientationsByInstitution,
+    });
     return (
       <StudentConvCard
         key={`${l.id}-${keySuffix}`}
         lanzamiento={l}
         enrollment={enrollment ?? null}
+        isCompleted={isCompleted}
         isOpen={isOpen}
         onOpen={() => openDetalle(l)}
         onInscribirse={() => openDetalle(l)}

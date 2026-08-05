@@ -33,6 +33,10 @@ import { formatDate, normalizeStringForComparison, parseToUTCDate } from "../../
 import { isEmbedded } from "../../utils/isEmbedded";
 import { getLocationModalityLabel, hasPhysicalAddress } from "../../utils/locationUtils";
 import { getEnrollmentNotice } from "../../utils/enrollmentCopy";
+import {
+  getCompletedEnrollmentLabel,
+  getEnrollmentEligibility,
+} from "../../logic/enrollmentEligibility";
 import type { LanzamientoPPS } from "../../types";
 import { getMandatoryLaunchSchedules } from "../../utils/scheduleRequirements";
 
@@ -91,6 +95,8 @@ const StudentConvocatoriaDetail: React.FC = () => {
     enrollmentMap,
     enrollStudent,
     cancelEnrollment,
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
     isLoading,
   } = useStudentPanel();
   const [pendingCancel, setPendingCancel] = useState(false);
@@ -280,6 +286,13 @@ const StudentConvocatoriaDetail: React.FC = () => {
     hasFiniteCapacity: cupos > 0,
   });
 
+  // Una PPS ya realizada no se puede repetir; la institución multi-orientación
+  // sigue habilitada mientras quede alguna orientación sin cursar.
+  const eligibility = getEnrollmentEligibility(lanzamiento, {
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
+  });
+
   // El CTA refleja el estado de forma reactiva: al inscribirse, enrollmentMap
   // se actualiza y el botón pasa a "Cancelar inscripción" sin salir de la página.
   const handleInscribir = () => {
@@ -314,54 +327,65 @@ const StudentConvocatoriaDetail: React.FC = () => {
 
   // CTA reutilizable: barra fija (mobile) + tarjeta de acción (escritorio).
   const renderCta = () => {
-    const primary = isSelected ? (
-      <button
-        type="button"
-        disabled
-        className="feat__cta"
-        style={{ margin: 0, opacity: 0.7, cursor: "default" }}
-      >
-        Ya estás seleccionado
-        <Icon name="check" size={16} strokeWidth={2.4} />
-      </button>
-    ) : isEnrolled ? (
-      <button
-        type="button"
-        onClick={() => setPendingCancel(true)}
-        className="feat__cta"
-        style={{ margin: 0, background: "var(--bg-sunken)", color: "var(--ink)" }}
-      >
-        Cancelar inscripción
-        <Icon name="x" size={16} strokeWidth={2.4} />
-      </button>
-    ) : isOpen ? (
-      <button
-        type="button"
-        onClick={handleInscribir}
-        disabled={enrollStudent.isPending}
-        className="feat__cta"
-        style={{
-          margin: 0,
-          background: color,
-          color: "#fff",
-          opacity: enrollStudent.isPending ? 0.75 : 1,
-        }}
-      >
-        {enrollStudent.isPending
-          ? "Inscribiendo…"
-          : `Inscribirme${cupos ? ` · ${cupos} ${cupos === 1 ? "cupo" : "cupos"}` : ""}`}
-        <Icon name="arrow" size={16} strokeWidth={2.4} />
-      </button>
-    ) : (
-      <button
-        type="button"
-        disabled
-        className="feat__cta"
-        style={{ margin: 0, opacity: 0.6, cursor: "default" }}
-      >
-        Inscripción cerrada
-      </button>
-    );
+    const primary =
+      eligibility.isCompleted && !isEnrolled ? (
+        <button
+          type="button"
+          disabled
+          className="feat__cta"
+          style={{ margin: 0, opacity: 0.65, cursor: "default" }}
+        >
+          {getCompletedEnrollmentLabel(eligibility)}
+          <Icon name="check" size={16} strokeWidth={2.4} />
+        </button>
+      ) : isSelected ? (
+        <button
+          type="button"
+          disabled
+          className="feat__cta"
+          style={{ margin: 0, opacity: 0.7, cursor: "default" }}
+        >
+          Ya estás seleccionado
+          <Icon name="check" size={16} strokeWidth={2.4} />
+        </button>
+      ) : isEnrolled ? (
+        <button
+          type="button"
+          onClick={() => setPendingCancel(true)}
+          className="feat__cta"
+          style={{ margin: 0, background: "var(--bg-sunken)", color: "var(--ink)" }}
+        >
+          Cancelar inscripción
+          <Icon name="x" size={16} strokeWidth={2.4} />
+        </button>
+      ) : isOpen ? (
+        <button
+          type="button"
+          onClick={handleInscribir}
+          disabled={enrollStudent.isPending}
+          className="feat__cta"
+          style={{
+            margin: 0,
+            background: color,
+            color: "#fff",
+            opacity: enrollStudent.isPending ? 0.75 : 1,
+          }}
+        >
+          {enrollStudent.isPending
+            ? "Inscribiendo…"
+            : `Inscribirme${cupos ? ` · ${cupos} ${cupos === 1 ? "cupo" : "cupos"}` : ""}`}
+          <Icon name="arrow" size={16} strokeWidth={2.4} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled
+          className="feat__cta"
+          style={{ margin: 0, opacity: 0.6, cursor: "default" }}
+        >
+          Inscripción cerrada
+        </button>
+      );
 
     // Si la inscripción cerró (o el estudiante ya está seleccionado), ofrecemos
     // también "Ver convocados" — la lista de seleccionados ya existe.

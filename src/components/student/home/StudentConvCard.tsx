@@ -20,6 +20,7 @@ interface StudentConvCardProps {
   onCancelarInscripcion?: () => void;
   onVerConvocados?: () => void;
   onOpen?: () => void;
+  /** El estudiante ya realizó esta PPS: no puede volver a inscribirse. */
   isCompleted?: boolean;
   /** Si la inscripción está abierta. Si es false, se ofrece "Ver convocados". */
   isOpen?: boolean;
@@ -48,6 +49,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
   onCancelarInscripcion,
   onVerConvocados,
   onOpen,
+  isCompleted = false,
   isOpen = true,
   needsConsent = false,
   onFirmarConsentimiento,
@@ -129,6 +131,9 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
             ? "Inscripción registrada"
             : "Inscripto";
   const isClosedSelected = isClosed && isSelected;
+  // PPS ya realizada: se marca en la tarjeta y el detalle bloquea el CTA. Si el
+  // alumno está inscripto/seleccionado manda ese estado, que es más específico.
+  const showCompletedTag = isCompleted && !isEnrolled && !needsConsent;
 
   return (
     <article
@@ -152,7 +157,19 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
           />
           {area}
         </span>
-        {needsConsent || isSelected || (isEnrolled && !isOpen) ? (
+        {showCompletedTag ? (
+          <span
+            className="cc__status"
+            style={{
+              color: "var(--ink-muted)",
+              background: "var(--bg-sunken)",
+              border: "1px solid var(--line)",
+              fontWeight: 600,
+            }}
+          >
+            Ya realizada
+          </span>
+        ) : needsConsent || isSelected || (isEnrolled && !isOpen) ? (
           <span
             className="cc__status"
             style={{

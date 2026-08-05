@@ -1,4 +1,6 @@
 import type { Convocatoria, LanzamientoPPS, Practica, InformeTask } from "../types";
+import { buildCompletedHistory } from "../logic/enrollmentEligibility";
+import { isPracticeFinished } from "../logic/studentRules";
 import { normalizeStringForComparison, parseToUTCDate } from "./formatters";
 import {
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
@@ -65,39 +67,8 @@ export function processAndLinkStudentData({
   });
 
   // Step 3: Identify completed practices
-  const completedLanzamientoIds = new Set<string>();
-  const completedOrientationsByInstitution = new Map<string, Set<string>>();
-  const finalizadaStatuses = ["finalizada", "pps realizada", "convenio realizado", "aprobada"];
-
-  practicas.forEach((practica) => {
-    const estadoPractica = normalizeStringForComparison(practica[FIELD_ESTADO_PRACTICA]);
-    if (finalizadaStatuses.includes(estadoPractica)) {
-      // Block by ID
-      const linkedId = practica[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] as string;
-      if (linkedId) {
-        completedLanzamientoIds.add(linkedId);
-      }
-
-      // Block by Name (Legacy & Duplicate Prevention)
-      const pNameRaw = practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
-      const pName = String(pNameRaw || "");
-      if (pName.trim()) {
-        const normalizedName = normalizeStringForComparison(pName);
-        completedLanzamientoIds.add(normalizedName);
-      }
-
-      // Track completed orientations per institution (for multi-orientation support)
-      const especialidad = String(practica[FIELD_ESPECIALIDAD_PRACTICAS] || "").trim();
-      if (pName.trim() && especialidad) {
-        const normalizedName = normalizeStringForComparison(pName);
-        const normalizedEsp = normalizeStringForComparison(especialidad);
-        if (!completedOrientationsByInstitution.has(normalizedName)) {
-          completedOrientationsByInstitution.set(normalizedName, new Set());
-        }
-        completedOrientationsByInstitution.get(normalizedName)!.add(normalizedEsp);
-      }
-    }
-  });
+  const { completedLanzamientoIds, completedOrientationsByInstitution } =
+    buildCompletedHistory(practicas);
 
   // Step 4: Generate informe tasks
   const informeTasks: InformeTask[] = [];
@@ -134,9 +105,12 @@ export function processAndLinkStudentData({
 
     if (linkedId && !processedForInforme.has(linkedId)) {
       const pps = lanzamientosMap.get(linkedId);
-      const estado = normalizeStringForComparison(practica[FIELD_ESTADO_PRACTICA]);
 
-      if (pps && pps[FIELD_INFORME_LANZAMIENTOS] && finalizadaStatuses.includes(estado)) {
+      if (
+        pps &&
+        pps[FIELD_INFORME_LANZAMIENTOS] &&
+        isPracticeFinished(practica[FIELD_ESTADO_PRACTICA])
+      ) {
         informeTasks.push({
           convocatoriaId: `practica-${practica.id}`,
           practicaId: practica.id,

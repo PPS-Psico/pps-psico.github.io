@@ -32,6 +32,11 @@ import {
 } from "../../../../utils/formatters";
 import { getMandatoryLaunchSchedules } from "../../../../utils/scheduleRequirements";
 import { getEnrollmentNotice } from "../../../../utils/enrollmentCopy";
+import {
+  getCompletedEnrollmentLabel,
+  getEnrollmentEligibility,
+  type CompletedHistory,
+} from "../../../../logic/enrollmentEligibility";
 
 interface StudentHomeAtlasProps {
   studentName: string;
@@ -41,6 +46,8 @@ interface StudentHomeAtlasProps {
   closedLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
   institutionAddressMap: Map<string, string>;
+  /** PPS ya realizadas por el estudiante: no puede volver a inscribirse. */
+  completedHistory: CompletedHistory;
   consent: { lanzamientoId: string } | null;
   onStartConsent: () => void;
   onOpenDetalle: (l: LanzamientoPPS) => void;
@@ -164,6 +171,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   closedLanzamientos,
   enrollmentMap,
   institutionAddressMap,
+  completedHistory,
   consent,
   onStartConsent,
   onOpenDetalle,
@@ -346,6 +354,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               enrollmentStatus === "seleccionado" ||
               enrollmentStatus === "adjudicado" ||
               enrollmentStatus === "en curso";
+            const eligibility = getEnrollmentEligibility(l, completedHistory);
             const closes = closesLabel(l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]);
             const direccion = (l[FIELD_DIRECCION_LANZAMIENTOS] as string) || "";
             const horarios = ((l[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS] as string) || "")
@@ -564,6 +573,11 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                         </button>
                       ) : null}
                     </div>
+                  ) : eligibility.isCompleted ? (
+                    <div className="ah-feat__enrollment-state" role="status">
+                      <AhIcon name="check" size={16} />
+                      {getCompletedEnrollmentLabel(eligibility)}
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -610,6 +624,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                 enrollmentStatus === "seleccionado" ||
                 enrollmentStatus === "adjudicado" ||
                 enrollmentStatus === "en curso";
+              const { isCompleted } = getEnrollmentEligibility(l, completedHistory);
               const periodo = [
                 fmtShort(l[FIELD_FECHA_INICIO_LANZAMIENTOS]),
                 fmtShort(l[FIELD_FECHA_FIN_LANZAMIENTOS]),
@@ -631,10 +646,17 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                       <span className="dot" />
                       <span className="ah-areabadge__mark">{areaPrimary}</span>
                     </span>
-                    <span className="ah-closes">
-                      <AhIcon name="timer" size={13} />
-                      {closes.text}
-                    </span>
+                    {isCompleted ? (
+                      <span className="ah-closes">
+                        <AhIcon name="check" size={13} />
+                        Ya realizada
+                      </span>
+                    ) : (
+                      <span className="ah-closes">
+                        <AhIcon name="timer" size={13} />
+                        {closes.text}
+                      </span>
+                    )}
                   </div>
                   <h2 className="ah-conv__name">{name}</h2>
                   <p

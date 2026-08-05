@@ -16,7 +16,8 @@ import {
 } from "../constants";
 import EmptyState from "./EmptyState";
 import { useModal } from "../contexts/ModalContext";
-import { normalizeStringForComparison, parseOrientaciones, formatDate } from "../utils/formatters";
+import { normalizeStringForComparison, formatDate } from "../utils/formatters";
+import { getEnrollmentEligibility } from "../logic/enrollmentEligibility";
 import { fetchSeleccionados } from "../services";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -85,37 +86,11 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
           ? enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]
           : null;
 
-        // Check ID match OR Full Name match (orientation-aware)
-        const ppsName = lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "";
-        const groupName = ppsName.split(" - ")[0].trim();
-        const normalizedGroupName = normalizeStringForComparison(groupName);
-        const normalizedPpsName = normalizeStringForComparison(ppsName);
-
-        const launchOrientaciones = parseOrientaciones(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
-
-        const completedOrientations =
-          completedOrientationsByInstitution.get(normalizedGroupName) ||
-          completedOrientationsByInstitution.get(normalizedPpsName) ||
-          new Set<string>();
-
-        const allOrientationsCompleted =
-          launchOrientaciones.length > 0 &&
-          launchOrientaciones.every((o) =>
-            completedOrientations.has(normalizeStringForComparison(o))
-          );
-
-        const isFullyCompleted =
-          completedLanzamientoIds.has(lanzamiento.id) ||
-          completedLanzamientoIds.has(normalizedPpsName);
-
-        const isCompleted =
-          launchOrientaciones.length > 1 ? allOrientationsCompleted : isFullyCompleted;
-
-        const completedOrientacionesList = allOrientationsCompleted
-          ? launchOrientaciones
-          : launchOrientaciones.filter((o) =>
-              completedOrientations.has(normalizeStringForComparison(o))
-            );
+        const { isCompleted, completedOrientaciones: completedOrientacionesList } =
+          getEnrollmentEligibility(lanzamiento, {
+            completedLanzamientoIds,
+            completedOrientationsByInstitution,
+          });
 
         const lanzamientoDireccion = lanzamiento[FIELD_DIRECCION_LANZAMIENTOS];
         const institutionName = lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS];

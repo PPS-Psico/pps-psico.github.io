@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type {
   CompromisoPPS,
@@ -56,6 +56,7 @@ import StudentHomeAtlas, { AhIcon } from "./home/atlas/StudentHomeAtlas";
 import StudentOnboardingCard from "./StudentOnboardingCard";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import { isPracticeDisapproved } from "../../logic/studentRules";
+import { getEnrollmentEligibility } from "../../logic/enrollmentEligibility";
 
 interface HomeViewProps {
   myEnrollments: Convocatoria[];
@@ -100,6 +101,8 @@ const HomeView: React.FC<HomeViewProps> = ({
   onNavigate,
   compromisoMap,
   allLanzamientos,
+  completedLanzamientoIds,
+  completedOrientationsByInstitution,
 }) => {
   const { authenticatedUser } = useAuth();
   const { resolvedTheme } = useTheme();
@@ -113,6 +116,11 @@ const HomeView: React.FC<HomeViewProps> = ({
     lanzamiento: LanzamientoPPS;
     enrollment: Convocatoria;
   } | null>(null);
+
+  const completedHistory = useMemo(
+    () => ({ completedLanzamientoIds, completedOrientationsByInstitution }),
+    [completedLanzamientoIds, completedOrientationsByInstitution]
+  );
 
   const handleCancelarInscripcion = (convocatoriaId: string, nombrePPS: string) => {
     setPendingCancel({ id: convocatoriaId, nombre: nombrePPS });
@@ -376,6 +384,7 @@ const HomeView: React.FC<HomeViewProps> = ({
         key={`${lanzamiento.id}-${keySuffix}`}
         lanzamiento={lanzamiento}
         enrollment={enrollment ?? null}
+        isCompleted={getEnrollmentEligibility(lanzamiento, completedHistory).isCompleted}
         isOpen={isOpen}
         onOpen={() => openDetalle(lanzamiento)}
         onVerConvocados={() => seleccionadosMutation.mutate(lanzamiento)}
@@ -417,6 +426,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           closedLanzamientos={closedLanzamientos}
           enrollmentMap={enrollmentMap}
           institutionAddressMap={institutionAddressMap}
+          completedHistory={completedHistory}
           solicitudes={solicitudes ?? []}
           consent={consentMarker}
           onStartConsent={() =>

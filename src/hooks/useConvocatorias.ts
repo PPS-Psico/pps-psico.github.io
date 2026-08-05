@@ -51,7 +51,9 @@ import {
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
   FIELD_ESTADO_ESTUDIANTES,
+  FIELD_ESTUDIANTE_LINK_PRACTICAS,
 } from "../constants";
+import { buildCompletedHistory, getEnrollmentEligibility } from "../logic/enrollmentEligibility";
 import { normalizeStringForComparison, cleanInstitutionName, safeGetId } from "../utils/formatters";
 import { logger } from "../utils/logger";
 import {
@@ -214,6 +216,24 @@ export const useConvocatorias = (
       }
 
       if (!studentId) throw new Error("No student ID");
+
+      // Un estudiante no puede repetir una PPS que ya realizó. Se valida acá
+      // (y no solo en el CTA) para que no dependa de un cache desactualizado ni
+      // se pueda saltear entrando directo al detalle de la convocatoria.
+      const practicasDelEstudiante = await db.practicas.getAll({
+        filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentId },
+      });
+      const eligibility = getEnrollmentEligibility(
+        selectedLanzamiento,
+        buildCompletedHistory(practicasDelEstudiante)
+      );
+      if (eligibility.isCompleted) {
+        throw new Error(
+          eligibility.launchOrientaciones.length > 1
+            ? "Ya cursaste todas las orientaciones de esta institución."
+            : "Ya realizaste esta PPS. No podés volver a inscribirte."
+        );
+      }
 
       logger.info("[Enrollment] Validando estudiante:", {
         legajo,

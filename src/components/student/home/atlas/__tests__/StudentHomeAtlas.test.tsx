@@ -30,6 +30,11 @@ const launch = {
   [FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS]: "2026-07-31",
 } as LanzamientoPPS;
 
+const emptyHistory = {
+  completedLanzamientoIds: new Set<string>(),
+  completedOrientationsByInstitution: new Map<string, Set<string>>(),
+};
+
 const enrollment = {
   id: "enrollment-open",
   [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: launch.id,
@@ -58,6 +63,7 @@ describe("StudentHomeAtlas en escritorio", () => {
         closedLanzamientos={[]}
         enrollmentMap={new Map()}
         institutionAddressMap={new Map()}
+        completedHistory={emptyHistory}
         consent={null}
         onStartConsent={jest.fn()}
         onOpenDetalle={jest.fn()}
@@ -85,6 +91,7 @@ describe("StudentHomeAtlas en escritorio", () => {
         closedLanzamientos={[]}
         enrollmentMap={new Map([[launch.id, enrollment]])}
         institutionAddressMap={new Map()}
+        completedHistory={emptyHistory}
         consent={null}
         onStartConsent={jest.fn()}
         onOpenDetalle={onOpenDetalle}
@@ -120,6 +127,7 @@ describe("StudentHomeAtlas en escritorio", () => {
         closedLanzamientos={[closedLaunch]}
         enrollmentMap={new Map([[closedLaunch.id, notSelectedEnrollment]])}
         institutionAddressMap={new Map()}
+        completedHistory={emptyHistory}
         consent={null}
         onStartConsent={jest.fn()}
         onOpenDetalle={jest.fn()}
