@@ -1,4 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  isValidProfile,
+  namesAgree,
+  normalizeDni,
+  normalizeEmail,
+  normalizeName,
+  pendingNameBackfill,
+} from "./identity.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -65,34 +73,31 @@ type StudentMatch = {
   user_id: string | null;
   role: string | null;
   correo: string | null;
+  nombre: string | null;
   nombre_separado: string | null;
   apellido_separado: string | null;
 };
 
-const normalizeName = (value: unknown): string =>
-  String(value ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("es")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
+/**
+ * Completa los nombres que la ficha no tiene, con los que informa el campus.
+ * Corre después de verificar la identidad y nunca bloquea el ingreso: si el
+ * update falla, el alumno entra igual y el hueco se rellena la próxima vez.
+ */
+const backfillNames = async (
+  student: StudentMatch,
+  rawFirstname: string,
+  rawLastname: string
+): Promise<void> => {
+  const updates = pendingNameBackfill(student, rawFirstname, rawLastname);
+  if (Object.keys(updates).length === 0) return;
 
-const normalizeEmail = (value: unknown): string =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase();
-
-const normalizeDni = (value: unknown): string => String(value ?? "").replace(/\D/g, "");
-
-const isValidProfile = (email: string, dni: string, firstname: string, lastname: string): boolean =>
-  email.length <= 320 &&
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-  /^\d{6,9}$/.test(dni) &&
-  firstname.length >= 2 &&
-  firstname.length <= 120 &&
-  lastname.length >= 2 &&
-  lastname.length <= 120;
+  const { error } = await admin.from("estudiantes").update(updates).eq("id", student.id);
+  if (error) {
+    console.error("[moodle-autologin] Name backfill failed:", error.message);
+    return;
+  }
+  console.log(`[moodle-autologin] Names backfilled: ${Object.keys(updates).join(", ")}`);
+};
 
 /**
  * FilterCodes no constituye identidad firmada. Para reducir el riesgo sin
@@ -111,7 +116,9 @@ const resolveCampusEntry = async (
   if (!isValidProfile(email, dni, firstname, lastname)) {
     return { reason: "invalid_profile" };
   }
-  const selection = "id, user_id, role, correo, nombre_separado, apellido_separado";
+  const rawFirstname = String(profile.firstname ?? "").trim();
+  const rawLastname = String(profile.lastname ?? "").trim();
+  const selection = "id, user_id, role, correo, nombre, nombre_separado, apellido_separado";
   const [byEmail, byDni] = await Promise.all([
     admin.from("estudiantes").select(selection).ilike("correo", email).limit(2),
     admin.from("estudiantes").select(selection).eq("dni", Number(dni)).limit(2),
@@ -140,9 +147,7 @@ const resolveCampusEntry = async (
 
   const student = emailMatches[0];
   const identityMatches =
-    normalizeEmail(student.correo) === email &&
-    normalizeName(student.nombre_separado) === firstname &&
-    normalizeName(student.apellido_separado) === lastname;
+    normalizeEmail(student.correo) === email && namesAgree(student, firstname, lastname);
 
   if (!identityMatches) return { reason: "manual_login" };
   if (!student.user_id) return { reason: "no_account" };
@@ -162,6 +167,9 @@ const resolveCampusEntry = async (
     console.warn("[moodle-autologin] Linked Auth account is not eligible");
     return { reason: "manual_login" };
   }
+
+  // Identidad verificada: recién acá se toca la ficha.
+  await backfillNames(student, rawFirstname, rawLastname);
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
