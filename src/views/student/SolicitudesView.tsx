@@ -32,6 +32,7 @@ import {
   FIELD_CORREO_ESTUDIANTES,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  isSolicitudPpsUbicacion,
 } from "../../constants";
 import { parseToUTCDate, normalizeStringForComparison } from "../../utils/formatters";
 
@@ -97,8 +98,18 @@ const SolicitudesView: React.FC = () => {
         tieneTutor?: string;
         contactoTutor?: string;
         tipoPractica?: string;
+        cantidadEstudiantes?: string;
         descripcion?: string;
       };
+
+      if (!isSolicitudPpsUbicacion(f.localidad)) {
+        throw new Error("Seleccioná una ciudad habilitada o la opción Virtual.");
+      }
+
+      const cupos = f.cantidadEstudiantes === "7+" ? 7 : Number(f.cantidadEstudiantes);
+      if (!Number.isFinite(cupos) || cupos < 3) {
+        throw new Error("La institución debe ofrecer al menos 3 cupos.");
+      }
 
       const newRecord = {
         [FIELD_LEGAJO_PPS]: studentId,

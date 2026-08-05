@@ -148,7 +148,7 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
                     <div>
                       <div className="ah-action__t">Nueva solicitud de PPS</div>
                       <div className="ah-action__d">
-                        Proponé una institución nueva con 3 cupos o más
+                        3 cupos o más · Ciudades habilitadas o virtual
                       </div>
                     </div>
                     <span className="ah-action__arrow material-icons">arrow_forward</span>
@@ -250,6 +250,10 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
                 </p>
                 <ul className="ah-empty__requirements">
                   <li>Debe ofrecer al menos 3 cupos para estudiantes.</li>
+                  <li>
+                    Debe ser virtual o estar en Cipolletti, Neuquén, General Roca, Fernández Oro o
+                    Centenario.
+                  </li>
                   <li>Debe contar con un/a profesional de Psicología que supervise la práctica.</li>
                 </ul>
                 <p className="ah-empty__hint">

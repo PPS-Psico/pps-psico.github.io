@@ -4,6 +4,7 @@ import { z } from "zod";
 import "./student/home/atlas/atlasHome.css";
 import { cleanWhatsAppNumber } from "../utils/formatters";
 import { logger } from "../utils/logger";
+import { isSolicitudPpsUbicacion, SOLICITUD_PPS_UBICACIONES } from "../constants";
 
 interface SolicitudPPSFormProps {
   isOpen: boolean;
@@ -35,7 +36,9 @@ const FormField: React.FC<{
 const solicitudSchema = z
   .object({
     nombreInstitucion: z.string().min(3, "El nombre de la institución es requerido"),
-    localidad: z.string().min(2, "La localidad es requerida"),
+    localidad: z
+      .string()
+      .refine((value) => Boolean(isSolicitudPpsUbicacion(value)), "Seleccioná una opción válida"),
     direccion: z.string().min(5, "La dirección es requerida"),
     emailInstitucion: z.string().min(1, "El email es requerido").email("Email inválido"),
     telefonoInstitucion: z.string().min(5, "El teléfono es requerido"),
@@ -74,7 +77,7 @@ const solicitudSchema = z
     }
   });
 
-type FormData = z.infer<typeof solicitudSchema>;
+type FormData = z.input<typeof solicitudSchema>;
 
 const initialData: FormData = {
   nombreInstitucion: "",
@@ -229,14 +232,25 @@ const SolicitudPPSForm: React.FC<SolicitudPPSFormProps> = ({ isOpen, onClose, on
                       placeholder="Ej: Hospital Zonal…"
                     />
                   </FormField>
-                  <FormField label="Localidad" required error={errors.localidad}>
-                    <input
-                      className="ah-textinput"
+                  <FormField
+                    label="Ciudad o modalidad"
+                    required
+                    error={errors.localidad}
+                    hint="Elegí una ciudad habilitada o Virtual."
+                  >
+                    <select
+                      className="ah-selectctrl"
                       name="localidad"
                       value={formData.localidad}
                       onChange={handleChange}
-                      placeholder="Ej: Cipolletti"
-                    />
+                    >
+                      <option value="">Seleccionar opción...</option>
+                      {SOLICITUD_PPS_UBICACIONES.map((ubicacion) => (
+                        <option key={ubicacion} value={ubicacion}>
+                          {ubicacion}
+                        </option>
+                      ))}
+                    </select>
                   </FormField>
                   <FormField label="Dirección completa" required error={errors.direccion}>
                     <input

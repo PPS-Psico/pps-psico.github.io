@@ -815,6 +815,12 @@ const faqGroups: FaqGroup[] = [
                 estudiantes de la universidad.
               </li>
               <li>
+                <strong>Ubicación habilitada:</strong> La PPS debe ser <strong>virtual</strong> o la
+                institución debe estar en{" "}
+                <strong>Cipolletti, Neuquén, General Roca, Fernández Oro o Centenario</strong>. El
+                formulario no acepta otras opciones.
+              </li>
+              <li>
                 Debe contar con un <strong>profesional de la psicología supervisando</strong> en la
                 institución (excluyente).
               </li>

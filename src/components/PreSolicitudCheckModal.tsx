@@ -49,7 +49,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                 Requisitos previos
               </h2>
               <p className="ah-cmodal__sub">
-                Verifica estas condiciones antes de iniciar una solicitud de autogestion.
+                Verificá estas condiciones antes de iniciar una solicitud de autogestión.
               </p>
             </div>
             <button type="button" className="ah-iconbtn" aria-label="Cerrar" onClick={onClose}>
@@ -68,10 +68,10 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                   </span>
                 </span>
                 <div>
-                  <h3>Supervision profesional</h3>
+                  <h3>Supervisión profesional</h3>
                   <p>
-                    La institucion debe contar con un <b>Licenciado/a en Psicologia</b> en planta
-                    que pueda ejercer el rol de tutor/a y supervisar la practica.
+                    La institución debe contar con un <b>Licenciado/a en Psicología</b> en planta
+                    que pueda ejercer el rol de tutor/a y supervisar la práctica.
                   </p>
                 </div>
               </section>
@@ -83,10 +83,26 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                   </span>
                 </span>
                 <div>
-                  <h3>Minimo 3 cupos</h3>
+                  <h3>Mínimo 3 cupos</h3>
                   <p>
-                    La institucion debe ofrecer <b>3 cupos como minimo</b>: tu cupo y al menos{" "}
-                    <b>2 cupos adicionales</b>. Si no puede ofrecerlos, no se inicia la gestion.
+                    La institución debe ofrecer <b>3 cupos como mínimo</b>: tu cupo y al menos{" "}
+                    <b>2 cupos adicionales</b>. Si no puede ofrecerlos, no se inicia la gestión.
+                  </p>
+                </div>
+              </section>
+
+              <section className="ah-precheck__item ah-precheck__item--important">
+                <span className="ah-precheck__ic">
+                  <span className="material-icons" aria-hidden>
+                    location_on
+                  </span>
+                </span>
+                <div>
+                  <h3>Ubicaciones habilitadas</h3>
+                  <p>
+                    La institución presencial debe estar en{" "}
+                    <b>Cipolletti, Neuquén, General Roca, Fernández Oro o Centenario</b>. También se
+                    aceptan propuestas de PPS <b>completamente virtuales</b>.
                   </p>
                 </div>
               </section>
@@ -99,9 +115,9 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                   <div>
                     <h3>Solo para nuevos espacios</h3>
                     <p>
-                      Este tramite abre convenios en instituciones donde{" "}
-                      <b>no tenemos oferta actual</b>. Verifica que la institucion que propones no
-                      este en el listado.
+                      Este trámite abre convenios en instituciones donde{" "}
+                      <b>no tenemos oferta actual</b>. Verificá que la institución que proponés no
+                      esté en el listado.
                     </p>
                   </div>
                 </div>
@@ -112,7 +128,7 @@ const PreSolicitudCheckModal: React.FC<PreSolicitudCheckModalProps> = ({
                       search
                     </span>
                     <input
-                      placeholder="Buscar institucion..."
+                      placeholder="Buscar institución..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />

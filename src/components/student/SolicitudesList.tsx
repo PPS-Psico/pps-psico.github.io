@@ -393,7 +393,7 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
             <PremiumActionButton
               icon="add_business"
               title="Nueva Solicitud de PPS"
-              description="Inicia un trámite de autogestión"
+              description="3 cupos o más · Ciudades habilitadas o virtual"
               onClick={onCreateSolicitud}
               colorScheme="blue"
             />

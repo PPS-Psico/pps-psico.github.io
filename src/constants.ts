@@ -4,3 +4,4 @@ export * from "./constants/commitmentConstants";
 export * from "./constants/dbConstants";
 export * from "./constants/uiConstants";
 export * from "./constants/penalties";
+export * from "./constants/solicitudPpsConstants";
