@@ -658,6 +658,20 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Puedo descargar un certificado de una PPS en curso?",
+        a: (
+          <>
+            No se emiten certificados de asistencia para una PPS en curso, porque se desarrolla en
+            varios encuentros y Mi Panel no verifica la asistencia efectiva. Si necesitás informar
+            tu asignación, entrá en <strong>Prácticas</strong>, buscá la PPS marcada como
+            <strong> En curso</strong> y elegí <strong>Resumen</strong>. Vas a poder ver e imprimir
+            un documento con tu nombre, DNI, período y horario asignado. Es exclusivamente
+            informativo: no acredita asistencia, regularidad, horas realizadas, aprobación ni
+            finalización, y no constituye una constancia oficial de UFLO Universidad.
+          </>
+        ),
+      },
+      {
         q: "¿Cómo agrego una práctica que no aparece en Mi Panel?",
         a: (
           <>

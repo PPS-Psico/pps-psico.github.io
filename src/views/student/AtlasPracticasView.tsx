@@ -13,6 +13,7 @@ import {
 import type { CriteriosCalculados, Orientacion, Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import NotaSelector from "../../components/NotaSelector";
+import { canShowPpsAssignmentSummary } from "../../components/student/PpsAssignmentSummary";
 import {
   getPracticePresentationStatus,
   isPracticeActive,
@@ -27,6 +28,7 @@ interface AtlasPracticasViewProps {
   handleNotaChange: (practicaId: string, nota: string) => Promise<void>;
   onRequestModificacion?: (practica: Practica) => void;
   onRequestNuevaPPS?: () => void;
+  onViewAssignmentSummary?: (practica: Practica) => void;
 }
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -56,6 +58,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   handleNotaChange,
   onRequestModificacion,
   onRequestNuevaPPS,
+  onViewAssignmentSummary,
 }) => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [justUpdated, setJustUpdated] = useState<string | null>(null);
@@ -447,27 +450,50 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                           </td>
                           <td className="nota">{notaCell(p)}</td>
                           <td className="ah-table__actions" style={{ textAlign: "right" }}>
-                            {onRequestModificacion && !desaprobada ? (
-                              <button
-                                type="button"
-                                className="ah-row-action"
-                                title="Solicitar corrección"
-                                aria-label={`Solicitar corrección de ${
-                                  cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
-                                  "la práctica"
-                                }`}
-                                onClick={() => onRequestModificacion(p)}
-                              >
-                                <span
-                                  className="material-icons"
-                                  style={{ fontSize: 17 }}
-                                  aria-hidden="true"
+                            <div className="ah-row-actions">
+                              {onViewAssignmentSummary && canShowPpsAssignmentSummary(p) ? (
+                                <button
+                                  type="button"
+                                  className="ah-row-action ah-row-action--summary"
+                                  title="Ver el resumen informativo imprimible"
+                                  aria-label={`Ver resumen informativo de ${
+                                    cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
+                                    "la práctica"
+                                  }`}
+                                  onClick={() => onViewAssignmentSummary(p)}
                                 >
-                                  edit
-                                </span>
-                                Corregir
-                              </button>
-                            ) : null}
+                                  <span
+                                    className="material-icons"
+                                    style={{ fontSize: 17 }}
+                                    aria-hidden="true"
+                                  >
+                                    description
+                                  </span>
+                                  Resumen
+                                </button>
+                              ) : null}
+                              {onRequestModificacion && !desaprobada ? (
+                                <button
+                                  type="button"
+                                  className="ah-row-action"
+                                  title="Solicitar corrección"
+                                  aria-label={`Solicitar corrección de ${
+                                    cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) ||
+                                    "la práctica"
+                                  }`}
+                                  onClick={() => onRequestModificacion(p)}
+                                >
+                                  <span
+                                    className="material-icons"
+                                    style={{ fontSize: 17 }}
+                                    aria-hidden="true"
+                                  >
+                                    edit
+                                  </span>
+                                  Corregir
+                                </button>
+                              ) : null}
+                            </div>
                           </td>
                         </tr>
                       );

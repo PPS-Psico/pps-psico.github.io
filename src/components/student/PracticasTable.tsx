@@ -16,6 +16,7 @@ import { logger } from "../../utils/logger";
 import EmptyState from "../EmptyState";
 import NotaSelector from "../NotaSelector";
 import { TableSkeleton } from "../Skeletons";
+import { canShowPpsAssignmentSummary } from "./PpsAssignmentSummary";
 
 interface PracticasTableProps {
   practicas: Practica[];
@@ -24,6 +25,7 @@ interface PracticasTableProps {
   onRequestModificacion?: (practica: Practica) => void;
   onDeletePractica?: (practicaId: string) => void;
   onRequestNuevaPPS?: () => void;
+  onViewAssignmentSummary?: (practica: Practica) => void;
 }
 
 // Flat editorial grade — número plano clickeable, color de marca (sin caja ni slot-machine)
@@ -106,6 +108,7 @@ const PracticaRow: React.FC<{
   onNotaChange: (id: string, nota: string) => Promise<void>;
   onRequestModificacion?: (practica: Practica) => void;
   onDeletePractica?: (id: string) => void;
+  onViewAssignmentSummary?: (practica: Practica) => void;
   isSaving: boolean;
   isSuccess: boolean;
   hasSaveError: boolean;
@@ -115,6 +118,7 @@ const PracticaRow: React.FC<{
   onNotaChange,
   onRequestModificacion,
   onDeletePractica,
+  onViewAssignmentSummary,
   isSaving,
   isSuccess,
   hasSaveError,
@@ -335,6 +339,28 @@ const PracticaRow: React.FC<{
         </div>
       </div>
 
+      {onViewAssignmentSummary && canShowPpsAssignmentSummary(practica) ? (
+        <div className="pps-summary-mobile-action">
+          <div>
+            <strong>Resumen de tu asignación</strong>
+            <span>Horario y datos listos para imprimir</span>
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onViewAssignmentSummary(practica);
+            }}
+            aria-label={`Ver resumen informativo de ${institucion}`}
+          >
+            Ver resumen
+            <span className="material-icons" aria-hidden="true">
+              arrow_forward
+            </span>
+          </button>
+        </div>
+      ) : null}
+
       {isMenuOpen && (
         <>
           <button
@@ -366,6 +392,7 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
   onRequestModificacion,
   onDeletePractica,
   onRequestNuevaPPS,
+  onViewAssignmentSummary,
 }) => {
   if (import.meta.env.DEV) {
     logger.info("[DEBUG] PracticasTable Props:", {
@@ -467,6 +494,7 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
           onNotaChange={onLocalNoteChange}
           onRequestModificacion={onRequestModificacion}
           onDeletePractica={onDeletePractica}
+          onViewAssignmentSummary={onViewAssignmentSummary}
           isSaving={savingNotaId === practica.id}
           isSuccess={justUpdatedPracticaId === practica.id}
           hasSaveError={saveErrorPracticaId === practica.id}

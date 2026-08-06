@@ -11,6 +11,13 @@ import AtlasTopbar from "../components/student/home/atlas/AtlasTopbar";
 import HomeView from "../components/student/HomeView";
 import PracticasTable from "../components/student/PracticasTable";
 import PrintableReport from "../components/student/PrintableReport";
+import {
+  buildPpsAssignmentSummary,
+  getPracticeEnrollment,
+  getPracticeLaunch,
+  PpsAssignmentSummaryModal,
+  PrintablePpsAssignmentSummary,
+} from "../components/student/PpsAssignmentSummary";
 import SolicitudModificacionModal from "../components/student/SolicitudModificacionModal";
 import SolicitudNuevaPPSModal from "../components/student/SolicitudNuevaPPSModal";
 import WelcomeBanner from "../components/student/WelcomeBanner";
@@ -233,6 +240,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [showModificacionModal, setShowModificacionModal] = useState(false);
   const [showNuevaPPSModal, setShowNuevaPPSModal] = useState(false);
   const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);
+  const [summaryPractice, setSummaryPractice] = useState<Practica | null>(null);
   const { openSolicitudPPSModal } = useModal();
   const { showToast } = useNotifications();
   const queryClient = useQueryClient();
@@ -284,6 +292,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     | "";
   const studentNameForPanel =
     studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || currentUser?.nombre || "Estudiante";
+
+  const assignmentSummary = useMemo(() => {
+    if (!summaryPractice) return null;
+    return buildPpsAssignmentSummary({
+      practice: summaryPractice,
+      student: studentDetails,
+      enrollment: getPracticeEnrollment(summaryPractice, enrollmentMap),
+      launch: getPracticeLaunch(summaryPractice, allLanzamientos),
+    });
+  }, [allLanzamientos, enrollmentMap, studentDetails, summaryPractice]);
 
   const { data: activeInstitutionsDB } = useQuery({
     queryKey: ["activeInstitutionsDB"],
@@ -471,6 +489,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           isLoading={isPracticasLoading}
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
+          onViewAssignmentSummary={setSummaryPractice}
         />
       </ErrorBoundary>
     ),
@@ -494,6 +513,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           handleNotaChange={handleNotaChange}
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
+          onViewAssignmentSummary={setSummaryPractice}
         />
       </ErrorBoundary>
     ),
@@ -738,11 +758,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         isDeletingPractica={deletePractica.isPending}
       />
       <div className="print-only">
-        <PrintableReport
-          studentDetails={studentDetails}
-          criterios={criterios}
-          practicas={practicas}
-        />
+        {assignmentSummary ? (
+          <PrintablePpsAssignmentSummary data={assignmentSummary} />
+        ) : (
+          <PrintableReport
+            studentDetails={studentDetails}
+            criterios={criterios}
+            practicas={practicas}
+          />
+        )}
       </div>
       {/* Montamos solo el árbol del viewport actual (desktop ↔ mobile) para no
           renderizar el contenido del tab por duplicado en el DOM. */}
@@ -863,6 +887,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       )}
 
       {/* Modales de corrección de prácticas */}
+      <PpsAssignmentSummaryModal
+        isOpen={!!assignmentSummary}
+        data={assignmentSummary}
+        onClose={() => setSummaryPractice(null)}
+        onPrint={() => window.print()}
+      />
+
       <SolicitudModificacionModal
         isOpen={showModificacionModal}
         onClose={() => {
