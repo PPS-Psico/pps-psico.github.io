@@ -39,6 +39,7 @@ jobs:
           supabase functions deploy moodle-autologin --project-ref "$PROJECT_REF"
           supabase functions deploy request-password-reset --project-ref "$PROJECT_REF"
           supabase functions deploy reset-password-with-token --project-ref "$PROJECT_REF"
+          supabase functions deploy send-consentimiento-final-reminders --project-ref "$PROJECT_REF"
           supabase functions deploy send-email --project-ref "$PROJECT_REF"
           supabase functions deploy send-fcm-notification --project-ref "$PROJECT_REF"
           supabase functions deploy student-login --project-ref "$PROJECT_REF"
