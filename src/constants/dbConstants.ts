@@ -158,6 +158,8 @@ export const FIELD_SELECTED_AT_CONVOCATORIAS = "selected_at";
 export const FIELD_SELECTION_DECIDED_AT_CONVOCATORIAS = "selection_decided_at";
 export const FIELD_REMINDER_SENT_AT_CONVOCATORIAS = "reminder_sent_at";
 export const FIELD_BAJA_AUTOMATICA_AT_CONVOCATORIAS = "baja_automatica_at";
+export const FIELD_FINAL_REMINDER_SENT_AT_CONVOCATORIAS = "final_reminder_sent_at";
+export const FIELD_FINAL_REMINDER_SENT_BY_CONVOCATORIAS = "final_reminder_sent_by";
 
 // Compromisos PPS
 export const FIELD_COMPROMISO_ESTUDIANTE = "estudiante_id";

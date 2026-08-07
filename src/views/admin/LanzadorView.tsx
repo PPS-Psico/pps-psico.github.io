@@ -64,6 +64,17 @@ interface LanzadorViewProps {
   isTestingMode?: boolean;
 }
 
+interface FinalReminderResponse {
+  success: boolean;
+  requested: number;
+  sent: number;
+  failed: number;
+  deadline_at: string | null;
+  failures?: Array<{ convocatoriaId: string; name: string; reason: string }>;
+  message?: string;
+  error?: string;
+}
+
 const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) => {
   const { showModal } = useModal();
   const queryClient = useQueryClient();
@@ -86,6 +97,12 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   });
   const [isCreating, setIsCreating] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [finalReminderFeedback, setFinalReminderFeedback] = useState<{
+    launchId: string;
+    tone: "ok" | "warn";
+    title: string;
+    message: string;
+  } | null>(null);
 
   // Confirmación unificada (reemplaza window.confirm) — una sola instancia de
   // ConfirmModal manejada por este estado. `onConfirm` ejecuta la acción pendiente.
@@ -454,6 +471,81 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       ),
   });
 
+  const finalReminderMutation = useMutation({
+    mutationFn: async (launchId: string) => {
+      const { data, error } = await supabase.functions.invoke(
+        "send-consentimiento-final-reminders",
+        { body: { launchId } }
+      );
+      if (error) throw error;
+
+      const result = data as FinalReminderResponse | null;
+      if (!result) throw new Error("El servidor no devolvió el resultado del envío.");
+      if (result.error) throw new Error(result.error);
+      return result;
+    },
+    onMutate: (launchId) =>
+      setFinalReminderFeedback((current) => (current?.launchId === launchId ? null : current)),
+    onSuccess: (result, launchId) => {
+      refreshLaunches();
+      const deadlineLabel = result.deadline_at
+        ? new Intl.DateTimeFormat("es-AR", {
+            timeZone: "America/Argentina/Buenos_Aires",
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+          }).format(new Date(result.deadline_at))
+        : null;
+
+      if (result.requested === 0) {
+        setFinalReminderFeedback({
+          launchId,
+          tone: "ok",
+          title: "No quedan recordatorios por enviar",
+          message: result.message || "Todos los pendientes ya recibieron el último aviso.",
+        });
+        return;
+      }
+
+      setFinalReminderFeedback({
+        launchId,
+        tone: result.failed === 0 ? "ok" : "warn",
+        title:
+          result.failed === 0
+            ? `Último recordatorio enviado a ${result.sent} estudiante${result.sent === 1 ? "" : "s"}`
+            : `Se enviaron ${result.sent} de ${result.requested} recordatorios`,
+        message:
+          result.failed === 0
+            ? `El plazo final vence ${deadlineLabel ? `el ${deadlineLabel}` : "dentro de 24 horas"}. Quienes no firmen serán dados de baja automáticamente.`
+            : `${result.failed} envío${result.failed === 1 ? " quedó" : "s quedaron"} pendiente${result.failed === 1 ? "" : "s"}. Podés volver a intentar el botón: no se duplicarán los correos ya entregados.`,
+      });
+    },
+    onError: (error: unknown, launchId) => {
+      setFinalReminderFeedback({
+        launchId,
+        tone: "warn",
+        title: "No se pudo enviar el último recordatorio",
+        message: (error as Error)?.message || "Revisá la conexión e intentá nuevamente.",
+      });
+    },
+  });
+
+  const requestFinalReminder = useCallback(
+    (launchId: string, pending: number) => {
+      setConfirmState({
+        title: "¿Enviar el último recordatorio?",
+        message: `Mi Panel enviará un correo a ${pending} estudiante${pending === 1 ? "" : "s"} pendiente${pending === 1 ? "" : "s"}. Desde ese momento tendrán 24 horas para firmar; después, el sistema dará de baja automáticamente a quienes no hayan aceptado. Durante ese plazo no podrás cerrar la nómina institucional.`,
+        confirmText: "Enviar último recordatorio",
+        type: "warning",
+        onConfirm: () => finalReminderMutation.mutate(launchId),
+      });
+    },
+    [finalReminderMutation]
+  );
+
   const requestInstitutionalListClose = useCallback(
     (launchId: string, pending: number) => {
       setConfirmState({
@@ -589,6 +681,14 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             <ConfirmacionView
               launch={selectedLaunch}
               isClosingList={closeInstitutionalListMutation.isPending}
+              isSendingFinalReminder={
+                finalReminderMutation.isPending &&
+                finalReminderMutation.variables === selectedLaunch.id
+              }
+              finalReminderFeedback={
+                finalReminderFeedback?.launchId === selectedLaunch.id ? finalReminderFeedback : null
+              }
+              onFinalReminder={(pending) => requestFinalReminder(selectedLaunch.id, pending)}
               onListaEntregada={(pending) =>
                 requestInstitutionalListClose(selectedLaunch.id, pending)
               }

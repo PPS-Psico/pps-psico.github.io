@@ -33,7 +33,14 @@ interface ConfirmacionViewProps {
   launch: LanzamientoPPS;
   onActivar: () => void;
   onListaEntregada: (pendientes: number) => void;
+  onFinalReminder: (pendientes: number) => void;
   isClosingList?: boolean;
+  isSendingFinalReminder?: boolean;
+  finalReminderFeedback?: {
+    tone: "ok" | "warn";
+    title: string;
+    message: string;
+  } | null;
 }
 
 interface ConsentRow {
@@ -45,6 +52,8 @@ interface ConsentRow {
   acceptedAt: string | null;
   bajaAt: string | null;
   selectedAt: string | null;
+  finalReminderSentAt: string | null;
+  baseDeadline: Date | null;
   deadline: Date | null;
   status: "firmo" | "pendiente" | "baja";
 }
@@ -83,7 +92,10 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   launch,
   onActivar,
   onListaEntregada,
+  onFinalReminder,
   isClosingList = false,
+  isSendingFinalReminder = false,
+  finalReminderFeedback = null,
 }) => {
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
   const [gestionOpen, setGestionOpen] = useState(false);
@@ -181,10 +193,17 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             acceptedAt: commitment?.acceptedAt ?? null,
             bajaAt: convocatoria.baja_automatica_at,
             selectedAt: convocatoria.selected_at,
-            deadline: getConsentimientoDeadline(
+            finalReminderSentAt: convocatoria.final_reminder_sent_at,
+            baseDeadline: getConsentimientoDeadline(
               fechaInicio,
               convocatoria.selected_at,
               listaEntregadaAt
+            ),
+            deadline: getConsentimientoDeadline(
+              fechaInicio,
+              convocatoria.selected_at,
+              listaEntregadaAt,
+              convocatoria.final_reminder_sent_at
             ),
             status: accepted ? "firmo" : current ? "pendiente" : "baja",
           } satisfies ConsentRow;
@@ -203,6 +222,19 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   const progress =
     selectedCurrent > 0 ? Math.round((signedRows.length / selectedCurrent) * 100) : 0;
   const schedulesToCover = groupSchedules(bajaRows);
+  const pendingWithoutFinalReminder = pendingRows.filter((row) => !row.finalReminderSentAt);
+  const finalReminderDeadline = pendingRows
+    .filter((row) => !!row.finalReminderSentAt && !!row.deadline)
+    .map((row) => row.deadline as Date)
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+  const hasActiveFinalWindow =
+    !!finalReminderDeadline && finalReminderDeadline.getTime() > Date.now();
+  const canSendFinalReminder =
+    !listaEntregadaAt &&
+    pendingWithoutFinalReminder.length > 0 &&
+    pendingWithoutFinalReminder.every(
+      (row) => !!row.baseDeadline && row.baseDeadline.getTime() >= Date.now() + 24 * 60 * 60 * 1000
+    );
   const nextDeadline = pendingRows
     .map((row) => row.deadline)
     .filter((date): date is Date => !!date)
@@ -215,24 +247,6 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
       }).format(new Date(listaEntregadaAt))
     : null;
 
-  const bulkEmailUrl = useMemo(() => {
-    const recipients = pendingRows
-      .map((row) => row.correo)
-      .filter(Boolean)
-      .join(",");
-    if (!recipients) return null;
-    const subject = `Recordatorio de consentimiento — ${launchName || "PPS"}`;
-    const deadlineCopy = nextDeadline
-      ? `El plazo actual cierra el ${formatConsentimientoDeadline(nextDeadline)}.`
-      : "Confirmá cuanto antes para conservar tu lugar.";
-    const body = `Hola, te recordamos que todavía tenés pendiente aceptar el compromiso digital de la PPS ${
-      launchName || ""
-    }. ${deadlineCopy} Ingresá a tu panel para confirmar.`;
-    return `mailto:?bcc=${encodeURIComponent(recipients)}&subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
-  }, [pendingRows, launchName, nextDeadline]);
-
   const isLoading =
     rosterQuery.isLoading ||
     compromisosQuery.isLoading ||
@@ -242,6 +256,7 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   const reminderMessage = (row: ConsentRow) =>
     `Hola ${row.nombre || ""}! Te recordamos que tenés pendiente aceptar el compromiso digital ` +
     `para la PPS${launchName ? ` en ${launchName}` : ""}. ` +
+    (row.finalReminderSentAt ? "Este es el último recordatorio. " : "") +
     (row.deadline
       ? `El plazo actual cierra el *${formatConsentimientoDeadline(row.deadline)}*. `
       : "") +
@@ -300,7 +315,10 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
           </div>
           {row.status === "pendiente" && row.deadline && (
             <div className="lv4-consent-deadline">
-              Firma habilitada hasta {formatConsentimientoDeadlineShort(row.deadline)}
+              {row.finalReminderSentAt
+                ? "Último aviso enviado · vence "
+                : "Firma habilitada hasta "}
+              {formatConsentimientoDeadlineShort(row.deadline)}
             </div>
           )}
           {row.status === "baja" && (
@@ -469,14 +487,18 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
               <strong>
                 {listaEntregadaAt
                   ? `Lista entregada el ${deliveredLabel}`
-                  : nextDeadline
-                    ? `La firma sigue abierta hasta ${formatConsentimientoDeadline(nextDeadline)}`
-                    : "Registrá la entrega cuando envíes la lista a la institución"}
+                  : hasActiveFinalWindow && finalReminderDeadline
+                    ? `Último aviso vigente hasta ${formatConsentimientoDeadline(finalReminderDeadline)}`
+                    : nextDeadline
+                      ? `La firma sigue abierta hasta ${formatConsentimientoDeadline(nextDeadline)}`
+                      : "Registrá la entrega cuando envíes la lista a la institución"}
               </strong>
               <p>
                 {listaEntregadaAt
                   ? "No se admiten nuevas firmas. Las bajas y sus vacantes quedan separadas del grupo vigente."
-                  : "El plazo cierra 24 horas antes del inicio o cuando registres la entrega de la lista, lo que ocurra primero. Activar la PPS no cierra por sí solo las firmas."}
+                  : hasActiveFinalWindow
+                    ? "El correo prometió 24 horas completas. La nómina no puede cerrarse antes de ese vencimiento; después, las faltas de firma se procesan como bajas automáticas."
+                    : "El plazo cierra 24 horas antes del inicio o cuando registres la entrega de la lista, lo que ocurra primero. Activar la PPS no cierra por sí solo las firmas."}
               </p>
             </div>
           </div>
@@ -485,7 +507,12 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
               <button
                 className="lv4-btn"
                 onClick={() => onListaEntregada(pendingRows.length)}
-                disabled={isClosingList}
+                disabled={isClosingList || hasActiveFinalWindow}
+                title={
+                  hasActiveFinalWindow && finalReminderDeadline
+                    ? `Disponible después de ${formatConsentimientoDeadline(finalReminderDeadline)}`
+                    : undefined
+                }
               >
                 <span className="material-icons" aria-hidden="true">
                   outgoing_mail
@@ -525,6 +552,16 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
           </Banner>
         )}
 
+        {finalReminderFeedback && (
+          <Banner
+            tone={finalReminderFeedback.tone}
+            icon={finalReminderFeedback.tone === "ok" ? "mark_email_read" : "warning"}
+            title={finalReminderFeedback.title}
+          >
+            {finalReminderFeedback.message}
+          </Banner>
+        )}
+
         {pendingRows.length > 0 && (
           <section className="lv4-consent-section">
             <div className="lv4-consent-section-head">
@@ -532,19 +569,34 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
                 <span className="lv4-eyebrow is-warning">Seguimiento</span>
                 <h2>En plazo ({pendingRows.length})</h2>
                 <p>
-                  Todavía conservan el lugar y pueden firmar. Contactalos antes de cerrar la nómina
-                  institucional.
+                  {pendingWithoutFinalReminder.length > 0
+                    ? "El último recordatorio se envía desde Mi Panel a quienes siguen pendientes y abre su plazo final de 24 horas antes de la baja automática."
+                    : "El último recordatorio ya fue enviado. Cada estudiante conserva su lugar hasta el vencimiento indicado."}
                 </p>
               </div>
               <div className="lv4-consent-section-actions">
-                {bulkEmailUrl && (
-                  <a className="lv4-btn" href={bulkEmailUrl}>
-                    <span className="material-icons" aria-hidden="true">
-                      forward_to_inbox
-                    </span>
-                    Recordar por email
-                  </a>
-                )}
+                <button
+                  className="lv4-btn lv4-btn-final-reminder"
+                  type="button"
+                  onClick={() => onFinalReminder(pendingWithoutFinalReminder.length)}
+                  disabled={!canSendFinalReminder || isSendingFinalReminder}
+                  title={
+                    !canSendFinalReminder && pendingWithoutFinalReminder.length > 0
+                      ? "No quedan 24 horas completas antes del cierre vigente."
+                      : undefined
+                  }
+                >
+                  <span className="material-icons" aria-hidden="true">
+                    {pendingWithoutFinalReminder.length === 0
+                      ? "mark_email_read"
+                      : "forward_to_inbox"}
+                  </span>
+                  {isSendingFinalReminder
+                    ? "Enviando…"
+                    : pendingWithoutFinalReminder.length === 0
+                      ? "Último recordatorio enviado"
+                      : `Último recordatorio por email (${pendingWithoutFinalReminder.length})`}
+                </button>
                 <button
                   className="lv4-btn"
                   onClick={() => setGestionOpen((open) => !open)}

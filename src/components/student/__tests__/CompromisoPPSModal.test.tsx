@@ -26,7 +26,12 @@ const enrollment = {
   estudiante_id: "student-1",
   lanzamiento_id: "launch-1",
   selected_at: "2026-08-05T12:00:00.000Z",
-} as never;
+};
+
+const enrollmentWithFinalReminder = {
+  ...enrollment,
+  final_reminder_sent_at: "2026-08-07T16:45:00.000Z",
+};
 
 async function reachSignatureStep() {
   const user = userEvent.setup();
@@ -40,6 +45,22 @@ async function reachSignatureStep() {
 }
 
 describe("CompromisoPPSModal", () => {
+  it("muestra el plazo individual de 24 horas del último recordatorio", () => {
+    render(
+      <CompromisoPPSModal
+        isOpen
+        onClose={jest.fn()}
+        student={student}
+        lanzamiento={lanzamiento}
+        enrollment={enrollmentWithFinalReminder as never}
+        onSubmit={jest.fn(async () => undefined)}
+      />
+    );
+
+    expect(screen.getByText(/sábado, 08 de agosto, 13:45/i)).toBeInTheDocument();
+    expect(screen.getByText(/plazo final de 24 horas/i)).toBeInTheDocument();
+  });
+
   it("mantiene el error dentro de la interfaz nueva y oculta detalles de RLS", async () => {
     const onSubmit = jest.fn(async () => {
       throw new Error('new row violates row-level security policy for table "compromisos_pps"');
@@ -51,7 +72,7 @@ describe("CompromisoPPSModal", () => {
         onClose={jest.fn()}
         student={student}
         lanzamiento={lanzamiento}
-        enrollment={enrollment}
+        enrollment={enrollment as never}
         onSubmit={onSubmit}
       />
     );
@@ -76,7 +97,7 @@ describe("CompromisoPPSModal", () => {
         onClose={onClose}
         student={student}
         lanzamiento={lanzamiento}
-        enrollment={enrollment}
+        enrollment={enrollment as never}
         onSubmit={onSubmit}
       />
     );

@@ -537,6 +537,11 @@ export type Database = {
           fecha_finalizacion: string | null
           fecha_inicio: string | null
           fecha_nacimiento: string | null
+          final_reminder_claim_token: string | null
+          final_reminder_claimed_at: string | null
+          final_reminder_claimed_by: string | null
+          final_reminder_sent_at: string | null
+          final_reminder_sent_by: string | null
           finales_adeuda: string | null
           horario_asignado: string | null
           horario_seleccionado: string | null
@@ -572,6 +577,11 @@ export type Database = {
           fecha_finalizacion?: string | null
           fecha_inicio?: string | null
           fecha_nacimiento?: string | null
+          final_reminder_claim_token?: string | null
+          final_reminder_claimed_at?: string | null
+          final_reminder_claimed_by?: string | null
+          final_reminder_sent_at?: string | null
+          final_reminder_sent_by?: string | null
           finales_adeuda?: string | null
           horario_asignado?: string | null
           horario_seleccionado?: string | null
@@ -607,6 +617,11 @@ export type Database = {
           fecha_finalizacion?: string | null
           fecha_inicio?: string | null
           fecha_nacimiento?: string | null
+          final_reminder_claim_token?: string | null
+          final_reminder_claimed_at?: string | null
+          final_reminder_claimed_by?: string | null
+          final_reminder_sent_at?: string | null
+          final_reminder_sent_by?: string | null
           finales_adeuda?: string | null
           horario_asignado?: string | null
           horario_seleccionado?: string | null
@@ -1939,6 +1954,21 @@ export type Database = {
         Returns: number
       }
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean }
+      claim_consentimiento_final_reminder_batch: {
+        Args: {
+          p_actor_user_id: string
+          p_claim_token: string
+          p_lanzamiento_id: string
+          p_requested_at: string
+        }
+        Returns: {
+          convocatoria_id: string
+          deadline_at: string
+          estudiante_correo: string
+          estudiante_nombre: string
+          pps_nombre: string
+        }[]
+      }
       claim_consentimiento_timeout_baja: {
         Args: { p_convocatoria_id: string }
         Returns: boolean
@@ -1967,6 +1997,15 @@ export type Database = {
       consentimiento_deadline: {
         Args: {
           p_fecha_inicio: string
+          p_lista_entregada_at?: string
+          p_selected_at: string
+        }
+        Returns: string
+      }
+      consentimiento_deadline_efectivo: {
+        Args: {
+          p_fecha_inicio: string
+          p_final_reminder_sent_at?: string
           p_lista_entregada_at?: string
           p_selected_at: string
         }
@@ -2041,6 +2080,14 @@ export type Database = {
           p_delivered: boolean
           p_failure_code?: string
           p_request_id: string
+        }
+        Returns: boolean
+      }
+      finish_consentimiento_final_reminder: {
+        Args: {
+          p_claim_token: string
+          p_convocatoria_id: string
+          p_sent: boolean
         }
         Returns: boolean
       }

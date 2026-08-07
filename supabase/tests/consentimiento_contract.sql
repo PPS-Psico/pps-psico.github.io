@@ -9,6 +9,7 @@ declare
   v_regular timestamptz;
   v_late timestamptz;
   v_delivery timestamptz;
+  v_final_reminder timestamptz;
 begin
   v_regular := public.consentimiento_deadline(
     '2026-08-21',
@@ -35,6 +36,16 @@ begin
   );
   if v_delivery <> '2026-08-10 18:30:00+00'::timestamptz then
     raise exception 'La entrega institucional no adelantó el cierre: %', v_delivery;
+  end if;
+
+  v_final_reminder := public.consentimiento_deadline_efectivo(
+    '2026-08-21',
+    '2026-08-05 12:00:00+00',
+    null,
+    '2026-08-07 16:45:00+00'
+  );
+  if v_final_reminder <> '2026-08-08 16:45:00+00'::timestamptz then
+    raise exception 'El último recordatorio no abrió 24 horas exactas: %', v_final_reminder;
   end if;
 end;
 $$;

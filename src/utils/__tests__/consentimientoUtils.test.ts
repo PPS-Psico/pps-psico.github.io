@@ -33,6 +33,17 @@ describe("contrato temporal del consentimiento PPS", () => {
     ).toBe("2026-08-10T18:30:00.000Z");
   });
 
+  it("otorga 24 horas exactas desde el último recordatorio", () => {
+    expect(
+      getConsentimientoDeadline(
+        "2026-08-21",
+        "2026-08-05T15:00:00.000Z",
+        null,
+        "2026-08-07T16:45:00.000Z"
+      )?.toISOString()
+    ).toBe("2026-08-08T16:45:00.000Z");
+  });
+
   it("no inventa un vencimiento sin fecha de inicio o de selección", () => {
     expect(getConsentimientoDeadline(null, "2026-08-05T15:00:00.000Z")).toBeNull();
     expect(getConsentimientoDeadline("2026-08-21", null)).toBeNull();

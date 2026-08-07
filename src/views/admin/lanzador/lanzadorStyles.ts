@@ -1197,6 +1197,13 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   .lv4-consent-section-actions { width: 100%; }
   .lv4-consent-section-actions .lv4-btn { flex: 1 1 100%; justify-content: center; }
 }
+.lv4-btn-final-reminder {
+  border-color: color-mix(in oklab, var(--warn) 48%, var(--rule-2));
+  background: var(--warn-s);
+  color: var(--warn);
+}
+.lv4-btn-final-reminder:hover { border-color: var(--warn); background: var(--warn-s); }
+.lv4-btn-final-reminder:disabled { border-color: var(--rule-2); background: var(--paper-2); color: var(--ink-4); }
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

@@ -20,13 +20,20 @@ export const parsePpsStartAtBuenosAires = (value: unknown): Date | null => {
 /**
  * Cierre del consentimiento: 24 h antes del inicio. Si la selección ocurrió
  * dentro de esas últimas 24 h, el estudiante conserva la ventana hasta el
- * comienzo mismo de la PPS.
+ * comienzo mismo de la PPS. Un último recordatorio manual reemplaza ese cierre
+ * por una ventana individual de 24 h desde el envío.
  */
 export const getConsentimientoDeadline = (
   fechaInicio: unknown,
   selectedAt: unknown,
-  listaEntregadaAt?: unknown
+  listaEntregadaAt?: unknown,
+  finalReminderSentAt?: unknown
 ): Date | null => {
+  const finalReminder = finalReminderSentAt ? new Date(String(finalReminderSentAt)) : null;
+  if (finalReminder && !Number.isNaN(finalReminder.getTime())) {
+    return new Date(finalReminder.getTime() + HOURS_24_MS);
+  }
+
   const start = parsePpsStartAtBuenosAires(fechaInicio);
   const selected = new Date(String(selectedAt ?? ""));
   if (!start || Number.isNaN(selected.getTime())) return null;

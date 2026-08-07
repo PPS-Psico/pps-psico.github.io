@@ -49,6 +49,9 @@ verify_jwt = true
 [functions.send-email]
 verify_jwt = true
 
+[functions.send-consentimiento-final-reminders]
+verify_jwt = true
+
 [functions.send-fcm-notification]
 verify_jwt = true
 

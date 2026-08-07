@@ -34,9 +34,10 @@ jest.mock("../useLaunchData", () => ({
         estado_inscripcion: "Seleccionado",
         horario_asignado: "Viernes 13:30",
         horario_seleccionado: null,
-        selected_at: "2026-08-05T12:00:00.000Z",
+        selected_at: "2099-08-05T12:00:00.000Z",
         baja_automatica_at: null,
         reminder_sent_at: null,
+        final_reminder_sent_at: null,
         created_at: null,
       },
     ],
@@ -59,17 +60,26 @@ jest.mock("../../../../lib/supabaseClient", () => {
 
 import ConfirmacionView from "../ConfirmacionView";
 
-const renderView = (onActivar: () => void, onListaEntregada = jest.fn()) => {
+const renderView = (
+  onActivar: () => void,
+  onListaEntregada = jest.fn(),
+  onFinalReminder = jest.fn()
+) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const launch = {
     id: "lanz_1",
     nombre_pps: "Hospital X",
-    fecha_inicio: "2026-08-21",
+    fecha_inicio: "2099-08-21",
     lista_estudiantes_entregada_at: null,
   } as never;
   return render(
     <QueryClientProvider client={queryClient}>
-      <ConfirmacionView launch={launch} onActivar={onActivar} onListaEntregada={onListaEntregada} />
+      <ConfirmacionView
+        launch={launch}
+        onActivar={onActivar}
+        onListaEntregada={onListaEntregada}
+        onFinalReminder={onFinalReminder}
+      />
     </QueryClientProvider>
   );
 };
@@ -94,5 +104,14 @@ describe("ConfirmacionView — transición a Activa", () => {
     fireEvent.click(await screen.findByText("Cerrar lista (1 sin firma)"));
 
     expect(onListaEntregada).toHaveBeenCalledWith(1);
+  });
+
+  it("identifica el envío como último recordatorio y pasa la cantidad pendiente", async () => {
+    const onFinalReminder = jest.fn();
+    renderView(() => {}, jest.fn(), onFinalReminder);
+
+    fireEvent.click(await screen.findByRole("button", { name: /último recordatorio por email/i }));
+
+    expect(onFinalReminder).toHaveBeenCalledWith(1);
   });
 });

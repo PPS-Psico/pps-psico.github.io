@@ -11,6 +11,7 @@ import {
 } from "../../constants/commitmentConstants";
 import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FINAL_REMINDER_SENT_AT_CONVOCATORIAS,
   FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS,
   FIELD_SELECTED_AT_CONVOCATORIAS,
 } from "../../constants";
@@ -151,9 +152,15 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
 
   const deadlineLabel = useMemo(() => {
     const selectedAt = enrollment?.[FIELD_SELECTED_AT_CONVOCATORIAS];
+    const finalReminderSentAt = enrollment?.[FIELD_FINAL_REMINDER_SENT_AT_CONVOCATORIAS];
     const fechaInicio = lanzamiento?.[FIELD_FECHA_INICIO_LANZAMIENTOS];
     const listaEntregadaAt = lanzamiento?.[FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS];
-    const deadline = getConsentimientoDeadline(fechaInicio, selectedAt, listaEntregadaAt);
+    const deadline = getConsentimientoDeadline(
+      fechaInicio,
+      selectedAt,
+      listaEntregadaAt,
+      finalReminderSentAt
+    );
     return deadline ? formatConsentimientoDeadline(deadline) : null;
   }, [enrollment, lanzamiento]);
 
@@ -246,8 +253,8 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
                   <span className="material-icons" aria-hidden>
                     schedule
                   </span>
-                  Confirmá antes del {deadlineLabel}. El plazo puede cerrar antes si Coordinación
-                  entrega la lista a la institución.
+                  Confirmá antes del {deadlineLabel}. Si recibiste el último recordatorio, ese es tu
+                  plazo final de 24 horas antes de la baja automática.
                 </div>
               ) : null}
             </div>
