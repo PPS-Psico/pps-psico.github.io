@@ -112,7 +112,14 @@ export interface SidebarEntry {
 }
 
 export type LaunchCountsMap = Record<string, { inscriptos: number; seleccionados: number }>;
-export type LaunchConsentMap = Record<string, { aceptados: number; total: number }>;
+export interface LaunchConsentCounts {
+  aceptados: number;
+  total: number;
+  pendientes?: number;
+  bajas?: number;
+  seleccionados_vigentes?: number;
+}
+export type LaunchConsentMap = Record<string, LaunchConsentCounts>;
 
 /**
  * Construye las entradas del sidebar del Lanzador a partir de los lanzamientos y
@@ -145,6 +152,8 @@ export function buildSidebarEntries(
     const totalInsc = countsByLaunch[l.id]?.inscriptos || 0;
     const totalSel = countsByLaunch[l.id]?.seleccionados || 0;
     const consent = consentByLaunch[l.id] || { aceptados: 0, total: 0 };
+    const pendientesConsent = consent.pendientes ?? Math.max(0, consent.total - consent.aceptados);
+    const bajasConsent = consent.bajas ?? 0;
     const vencida = inscripcionVencida(fechaFinInsc);
 
     const bucket: SidebarBucket = deriveBucket({
@@ -175,15 +184,12 @@ export function buildSidebarEntries(
         metaLine = `${totalInsc} candidato${totalInsc !== 1 ? "s" : ""} · ${cupos ?? "?"} cupos`;
         break;
       case "asegurar":
-        metaLine =
-          consent.total > 0
-            ? `${consent.aceptados}/${consent.total} consintieron`
-            : `${totalSel} seleccionado${totalSel !== 1 ? "s" : ""} · sin consentir`;
-        break;
       case "confirmacion":
         metaLine =
           consent.total > 0
-            ? `${consent.aceptados}/${consent.total} consintieron`
+            ? `${consent.aceptados} firmaron · ${pendientesConsent} pendiente${
+                pendientesConsent !== 1 ? "s" : ""
+              }${bajasConsent > 0 ? ` · ${bajasConsent} baja${bajasConsent !== 1 ? "s" : ""}` : ""}`
             : `${totalSel} seleccionado${totalSel !== 1 ? "s" : ""} · sala de consentimientos`;
         break;
       case "activa":

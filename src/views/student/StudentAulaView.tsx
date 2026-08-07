@@ -205,8 +205,9 @@ const guideBlocks: GuideBlock[] = [
       key: true,
       text: (
         <>
-          Si quedaste seleccionado/a, realizá el <strong>consentimiento digital</strong> antes de
-          empezar la PPS. Sin ese paso no podés iniciar la práctica.
+          Si quedaste seleccionado/a, realizá el <strong>consentimiento digital</strong> cuanto
+          antes. El plazo cierra 24 horas antes del inicio o cuando Coordinación entrega la lista a
+          la institución, si eso ocurre primero.
         </>
       ),
     },
@@ -448,6 +449,17 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Puedo volver a inscribirme en una PPS que ya realicé?",
+        a: (
+          <>
+            No. Si la práctica figura como <strong>Finalizada</strong> o
+            <strong> Convenio Realizado</strong>, Mi Panel bloquea una nueva inscripción a esa PPS.
+            Una práctica <strong>Desaprobada</strong> queda guardada con 0 horas, pero no activa
+            este bloqueo: podés volver a realizarla en una nueva edición.
+          </>
+        ),
+      },
+      {
         q: "¿Cómo se asignan los cupos cuando hay más inscriptos?",
         a: (
           <>
@@ -476,7 +488,7 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cuándo tengo que aceptar el consentimiento digital?",
-        a: "Cuando quedás seleccionado/a y la PPS entra en confirmación, Mi Panel muestra el botón y el plazo disponible. Leé cada paso, revisá tus datos y aceptá las dos declaraciones finales. Sin ese consentimiento no podés iniciar la práctica.",
+        a: "Apenas quedás seleccionado/a. Mi Panel muestra la fecha y hora exactas: el plazo cierra 24 horas antes del comienzo de la PPS o cuando Coordinación entrega la lista de estudiantes a la institución, lo que ocurra primero. Leé cada paso, revisá tus datos y aceptá las dos declaraciones finales. Sin ese consentimiento no podés iniciar la práctica.",
       },
     ],
   },
@@ -534,9 +546,10 @@ const faqGroups: FaqGroup[] = [
             favorablemente al estudiante. También puede desaprobarse por{" "}
             <strong>evaluación de la institución</strong> ante un desempeño desfavorable,
             incumplimientos, ausencias sin aviso, falta de responsabilidad, una actitud inadecuada u
-            otras dificultades profesionales. En ambos casos, la PPS aporta <strong>0 horas</strong>
-            , no suma como rotación aprobada y debe realizarse una nueva práctica. Coordinación
-            comunica el fundamento por correo.
+            otras dificultades profesionales. En ambos casos, el antecedente queda guardado como
+            <strong> Desaprobada</strong>: aporta <strong>0 horas</strong>, no suma como rotación
+            aprobada y no cambia de estado automáticamente. Podés inscribirte en una nueva edición
+            para volver a realizarla. Coordinación comunica el fundamento por correo.
           </>
         ),
       },
@@ -1175,9 +1188,9 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({
                   <p>
                     <strong>La selección todavía no habilita el inicio</strong>
                     <span>
-                      Leé y firmá el consentimiento digital dentro del plazo indicado. Ahí confirmás
-                      el horario y las condiciones de la convocatoria. Sin esa aceptación no podés
-                      comenzar la PPS.
+                      Leé y firmá el consentimiento digital cuanto antes. El plazo cierra 24 horas
+                      antes del inicio o cuando Coordinación entrega la lista a la institución, lo
+                      que ocurra primero. Sin esa aceptación no podés comenzar la PPS.
                     </span>
                   </p>
                 </aside>

@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useModal } from "../contexts/ModalContext";
 import type { Convocatoria, Estudiante, LanzamientoPPS, CompromisoPPS } from "../types";
 import {
   fetchStudentCompromisos,
@@ -17,7 +16,6 @@ export const useStudentCommitments = (
   myEnrollments: Convocatoria[]
 ) => {
   const queryClient = useQueryClient();
-  const { showModal } = useModal();
 
   const {
     data: compromisos = [],
@@ -92,13 +90,6 @@ export const useStudentCommitments = (
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["compromisos", legajo, studentId] });
-      showModal(
-        "Compromiso registrado",
-        "Tu confirmación quedó registrada. Te enviaremos una constancia por correo y podrás seguir el inicio de la PPS desde Mis prácticas."
-      );
-    },
-    onError: (error) => {
-      showModal("Error", `No se pudo registrar el compromiso: ${error.message}`);
     },
   });
 

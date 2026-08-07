@@ -122,6 +122,8 @@ export const FIELD_SELECTION_CLOSED_BY_LANZAMIENTOS = "selection_closed_by";
 // Flujo de aseguramiento: marca persistente de "seguro gestionado" (ver spec flujo-aseguramiento-pps)
 export const FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS = "seguro_gestionado_at";
 export const FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS = "seguro_gestionado_por";
+export const FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS = "lista_estudiantes_entregada_at";
+export const FIELD_LISTA_ESTUDIANTES_ENTREGADA_POR_LANZAMIENTOS = "lista_estudiantes_entregada_por";
 export const FIELD_AIRTABLE_ID = "airtable_id";
 
 // Convocatorias

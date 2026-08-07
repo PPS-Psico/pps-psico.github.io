@@ -1012,6 +1012,8 @@ export type Database = {
           id: string
           informe: string | null
           institucion_id: string | null
+          lista_estudiantes_entregada_at: string | null
+          lista_estudiantes_entregada_por: string | null
           mensaje_whatsapp: string | null
           modalidad_cupo: string
           nombre_pps: string | null
@@ -1059,6 +1061,8 @@ export type Database = {
           id?: string
           informe?: string | null
           institucion_id?: string | null
+          lista_estudiantes_entregada_at?: string | null
+          lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
           nombre_pps?: string | null
@@ -1106,6 +1110,8 @@ export type Database = {
           id?: string
           informe?: string | null
           institucion_id?: string | null
+          lista_estudiantes_entregada_at?: string | null
+          lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
           nombre_pps?: string | null
@@ -1933,6 +1939,10 @@ export type Database = {
         Returns: number
       }
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean }
+      claim_consentimiento_timeout_baja: {
+        Args: { p_convocatoria_id: string }
+        Returns: boolean
+      }
       claim_password_reset_token: {
         Args: { p_token_hash: string }
         Returns: {
@@ -1944,6 +1954,7 @@ export type Database = {
       }
       clean_dirty_text: { Args: { val: string }; Returns: string }
       cleanup_old_verification_attempts: { Args: never; Returns: undefined }
+      close_finished_practicas: { Args: never; Returns: number }
       close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json }
       complete_password_reset: {
         Args: {
@@ -1952,6 +1963,14 @@ export type Database = {
           p_success: boolean
         }
         Returns: boolean
+      }
+      consentimiento_deadline: {
+        Args: {
+          p_fecha_inicio: string
+          p_lista_entregada_at?: string
+          p_selected_at: string
+        }
+        Returns: string
       }
       create_my_solicitud_ingreso_v1: {
         Args: {
@@ -2003,6 +2022,18 @@ export type Database = {
         }
         Returns: string
       }
+      dar_baja_pps_con_penalizacion: {
+        Args: {
+          p_convocatoria_id: string
+          p_fecha_incidente?: string
+          p_notas?: string
+          p_tipo_incumplimiento: string
+        }
+        Returns: {
+          penalizacion_id: string
+          practicas_eliminadas: number
+        }[]
+      }
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined }
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean }
       finalize_password_reset_delivery: {
@@ -2039,6 +2070,21 @@ export type Database = {
       get_consent_counts_by_launch: {
         Args: { p_launch_ids: string[] }
         Returns: Json
+      }
+      get_consentimiento_timeout_candidates: {
+        Args: never
+        Returns: {
+          convocatoria_id: string
+          deadline_at: string
+          estudiante_correo: string
+          estudiante_id: string
+          estudiante_nombre: string
+          lanzamiento_id: string
+          pps_nombre: string
+          reminder_at: string
+          reminder_sent_at: string
+          selected_at: string
+        }[]
       }
       get_convenios_kpis: { Args: { p_year: number }; Returns: Json }
       get_convenios_list: {
@@ -2343,10 +2389,15 @@ export type Database = {
       increment_snooze_count: { Args: { reminder_id: string }; Returns: number }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      marcar_lista_estudiantes_entregada: {
+        Args: { p_lanzamiento_id: string }
+        Returns: string
+      }
       mark_password_changed: { Args: never; Returns: undefined }
       owns_storage_folder: { Args: { object_name: string }; Returns: boolean }
       practica_computa: { Args: { p_estado: string }; Returns: boolean }
       process_consentimiento_timeouts: { Args: never; Returns: undefined }
+      publish_scheduled_launches: { Args: never; Returns: number }
       register_campus_student: {
         Args: {
           apellido_input?: string
@@ -2401,6 +2452,44 @@ export type Database = {
       save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      submit_compromiso_pps: {
+        Args: {
+          p_acepta_compromiso: boolean
+          p_acepta_lectura: boolean
+          p_convocatoria_id: string
+          p_dni: number
+          p_firma_texto: string
+          p_lanzamiento_id: string
+          p_legajo: string
+          p_nombre_completo: string
+          p_texto_acta: string
+          p_version: string
+        }
+        Returns: {
+          accepted_at: string | null
+          acepta_compromiso: boolean
+          acepta_lectura: boolean
+          convocatoria_id: string
+          created_at: string | null
+          dni: number | null
+          estado: string
+          estudiante_id: string
+          firma_texto: string
+          id: string
+          lanzamiento_id: string
+          legajo: string
+          nombre_completo: string
+          texto_acta: string
+          updated_at: string | null
+          version: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "compromisos_pps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       verify_student_identity: {
         Args: {
           correo_input: string

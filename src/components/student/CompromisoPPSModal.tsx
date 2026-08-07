@@ -9,9 +9,18 @@ import {
   COMPROMISO_PPS_SUBTITLE,
   COMPROMISO_PPS_TITLE,
 } from "../../constants/commitmentConstants";
-import { FIELD_SELECTED_AT_CONVOCATORIAS } from "../../constants";
+import {
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS,
+  FIELD_SELECTED_AT_CONVOCATORIAS,
+} from "../../constants";
 import type { Convocatoria, Estudiante, LanzamientoPPS } from "../../types";
 import { useAccessibleDialog } from "../../hooks/useAccessibleDialog";
+import {
+  formatConsentimientoDeadline,
+  getConsentimientoDeadline,
+} from "../../utils/consentimientoUtils";
+import { getCompromisoSubmitErrorMessage } from "../../utils/compromisoErrors";
 import "./home/atlas/atlasHome.css";
 
 interface CompromisoPPSModalProps {
@@ -61,6 +70,7 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
   const [acceptedRead, setAcceptedRead] = useState(false);
   const [acceptedCommitment, setAcceptedCommitment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<CommitmentField, string>>>({});
   const contentRef = useRef<HTMLFormElement>(null);
   const dialogRef = useAccessibleDialog<HTMLDivElement>({
@@ -94,6 +104,7 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
       setAcceptedCommitment(false);
       setCurrentStep(0);
       setError(null);
+      setIsComplete(false);
       setFieldErrors({});
     }
   }, [isOpen, student]);
@@ -108,7 +119,7 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    contentRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
   }, [currentStep, isOpen]);
 
   const steps = useMemo<WizardStep[]>(
@@ -140,17 +151,11 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
 
   const deadlineLabel = useMemo(() => {
     const selectedAt = enrollment?.[FIELD_SELECTED_AT_CONVOCATORIAS];
-    if (!selectedAt) return null;
-    const deadline = new Date(new Date(String(selectedAt)).getTime() + 24 * 60 * 60 * 1000);
-    if (Number.isNaN(deadline.getTime())) return null;
-    return new Intl.DateTimeFormat("es-AR", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(deadline);
-  }, [enrollment]);
+    const fechaInicio = lanzamiento?.[FIELD_FECHA_INICIO_LANZAMIENTOS];
+    const listaEntregadaAt = lanzamiento?.[FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS];
+    const deadline = getConsentimientoDeadline(fechaInicio, selectedAt, listaEntregadaAt);
+    return deadline ? formatConsentimientoDeadline(deadline) : null;
+  }, [enrollment, lanzamiento]);
 
   if (!mounted || !shouldRender || !lanzamiento || !enrollment) return null;
 
@@ -202,9 +207,9 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
         convocatoriaId: enrollment.id,
         lanzamientoId: lanzamiento.id,
       });
-      onClose();
-    } catch {
-      setError("No pudimos registrar el consentimiento. Revisá tu conexión e intentá nuevamente.");
+      setIsComplete(true);
+    } catch (submitError) {
+      setError(getCompromisoSubmitErrorMessage(submitError));
     }
   };
 
@@ -241,7 +246,8 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
                   <span className="material-icons" aria-hidden>
                     schedule
                   </span>
-                  Confirmá antes del {deadlineLabel}
+                  Confirmá antes del {deadlineLabel}. El plazo puede cerrar antes si Coordinación
+                  entrega la lista a la institución.
                 </div>
               ) : null}
             </div>
@@ -259,237 +265,268 @@ const CompromisoPPSModal: React.FC<CompromisoPPSModalProps> = ({
             </button>
           </div>
 
-          <form ref={contentRef} onSubmit={handleSubmit} className="ah-cmodal__body">
-            <div className="ah-cmodal__steptop">
-              <div>
-                <span className="eyebrow">{activeStep.eyebrow}</span>
-                <h3 className="ah-cmodal__stitle">{activeStep.title}</h3>
-                <p className="ah-cmodal__sdesc">
-                  {currentStep === 0 ? COMPROMISO_PPS_INTRO : activeStep.description}
+          {isComplete ? (
+            <div
+              className="ah-cmodal__body ah-commitment-complete"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="ah-commitment-complete__icon" aria-hidden="true">
+                <span className="material-icons">verified_user</span>
+              </div>
+              <div className="ah-commitment-complete__copy">
+                <h3>Compromiso registrado</h3>
+                <p>
+                  Tu confirmación quedó guardada correctamente. Ya podés seguir el inicio de la PPS
+                  desde Mis prácticas.
                 </p>
               </div>
-              <div className="ah-stepnum">{currentStep + 1}</div>
-            </div>
-            <div
-              className="ah-stepbar"
-              role="progressbar"
-              aria-label="Progreso del consentimiento"
-              aria-valuemin={1}
-              aria-valuemax={steps.length}
-              aria-valuenow={currentStep + 1}
-            >
-              {steps.map((step, index) => (
-                <span key={step.id} className={index <= currentStep ? "on" : ""} />
-              ))}
-            </div>
-
-            <div
-              key={activeStep.id}
-              className="ah-stepcontent"
-              aria-live="polite"
-              style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}
-            >
-              {!isLastStep ? (
-                <>
-                  {activeStep.intro ? (
-                    <section className="ah-clause ah-clause--soft">
-                      <span className="eyebrow">Marco general</span>
-                      <p className="ah-clause__txt" style={{ marginTop: 8, color: "var(--fg)" }}>
-                        {activeStep.intro}
-                      </p>
-                    </section>
-                  ) : null}
-                  {renderClauseSections(activeStep.clauses)}
-                </>
-              ) : (
-                <>
-                  <section className="ah-clause ah-clause--soft">
-                    <h4
-                      style={{
-                        margin: "0 0 8px",
-                        font: "600 16px/1.3 var(--font-sans)",
-                        color: "var(--fg)",
-                      }}
-                    >
-                      Declaración final
-                    </h4>
-                    <p className="ah-clause__txt" style={{ marginTop: 0 }}>
-                      {COMPROMISO_PPS_DECLARACION}
-                    </p>
-                    <span
-                      style={{
-                        marginTop: 14,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 7,
-                        borderRadius: 999,
-                        background: "var(--primary-500)",
-                        color: "var(--fg-on-brand)",
-                        padding: "7px 14px",
-                        font: "600 11px/1 var(--font-mono)",
-                        letterSpacing: ".1em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      <span className="material-icons" style={{ fontSize: 15 }}>
-                        gavel
-                      </span>
-                      Aceptación digital registrada
-                    </span>
-                  </section>
-
-                  <div className="ah-signgrid">
-                    <CommitmentInput
-                      id="commitment-full-name"
-                      icon="badge"
-                      label="Nombre y apellido"
-                      value={fullName}
-                      error={fieldErrors.fullName}
-                      onChange={(value) => {
-                        setFullName(value);
-                        setFieldErrors((current) => ({ ...current, fullName: undefined }));
-                      }}
-                    />
-                    <CommitmentInput
-                      id="commitment-dni"
-                      icon="fingerprint"
-                      label="DNI"
-                      value={dni}
-                      inputMode="numeric"
-                      error={fieldErrors.dni}
-                      onChange={(value) => {
-                        setDni(value.replace(/\D/g, ""));
-                        setFieldErrors((current) => ({ ...current, dni: undefined }));
-                      }}
-                    />
-                    <CommitmentInput
-                      id="commitment-legajo"
-                      icon="school"
-                      label="Legajo"
-                      value={legajo}
-                      error={fieldErrors.legajo}
-                      onChange={(value) => {
-                        setLegajo(value);
-                        setFieldErrors((current) => ({ ...current, legajo: undefined }));
-                      }}
-                    />
-                    <CommitmentInput
-                      id="commitment-signature"
-                      icon="draw"
-                      label="Firma digital"
-                      value={signature}
-                      hint="Escribí tu nombre y apellido como firma."
-                      error={fieldErrors.signature}
-                      onChange={(value) => {
-                        setSignature(value);
-                        setFieldErrors((current) => ({ ...current, signature: undefined }));
-                      }}
-                    />
-                  </div>
-
-                  <div
-                    className="ah-clause ah-clause--soft"
-                    style={{ display: "flex", flexDirection: "column", gap: 12 }}
-                  >
-                    <label className="ah-check">
-                      <input
-                        type="checkbox"
-                        checked={acceptedRead}
-                        onChange={(event) => {
-                          setAcceptedRead(event.target.checked);
-                          setFieldErrors((current) => ({ ...current, acceptance: undefined }));
-                        }}
-                      />
-                      {COMPROMISO_PPS_CHECK_LECTURA}
-                    </label>
-                    <label className="ah-check">
-                      <input
-                        type="checkbox"
-                        checked={acceptedCommitment}
-                        onChange={(event) => {
-                          setAcceptedCommitment(event.target.checked);
-                          setFieldErrors((current) => ({ ...current, acceptance: undefined }));
-                        }}
-                      />
-                      {COMPROMISO_PPS_CHECK_COMPROMISO}
-                    </label>
-                  </div>
-
-                  {fieldErrors.acceptance ? (
-                    <div className="ah-err" role="alert" data-commitment-error="true">
-                      {fieldErrors.acceptance}
-                    </div>
-                  ) : null}
-
-                  {error && (
-                    <div className="ah-err" role="alert">
-                      {error}
-                    </div>
-                  )}
-
-                  <div className="ah-note">
-                    La confirmación digital de este documento dejará constancia formal de tu
-                    lectura, aceptación y conformidad, con fecha y hora de registro en Mi Panel.
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="ah-cmodal__foot">
-              <button
-                type="button"
-                className="ah-btn ah-btn--secondary"
-                onClick={() => {
-                  setError(null);
-                  setCurrentStep((prev) => Math.max(prev - 1, 0));
-                }}
-                disabled={currentStep === 0 || isSubmitting}
-              >
-                Anterior
+              <button type="button" className="ah-btn ah-btn--primary" onClick={onClose}>
+                Volver a Mi Panel
+                <span className="material-icons" aria-hidden="true">
+                  arrow_forward
+                </span>
               </button>
-              {!isLastStep ? (
+            </div>
+          ) : (
+            <form ref={contentRef} onSubmit={handleSubmit} className="ah-cmodal__body">
+              <div className="ah-cmodal__steptop">
+                <div>
+                  <span className="eyebrow">{activeStep.eyebrow}</span>
+                  <h3 className="ah-cmodal__stitle">{activeStep.title}</h3>
+                  <p className="ah-cmodal__sdesc">
+                    {currentStep === 0 ? COMPROMISO_PPS_INTRO : activeStep.description}
+                  </p>
+                </div>
+                <div className="ah-stepnum">{currentStep + 1}</div>
+              </div>
+              <div
+                className="ah-stepbar"
+                role="progressbar"
+                aria-label="Progreso del consentimiento"
+                aria-valuemin={1}
+                aria-valuemax={steps.length}
+                aria-valuenow={currentStep + 1}
+              >
+                {steps.map((step, index) => (
+                  <span key={step.id} className={index <= currentStep ? "on" : ""} />
+                ))}
+              </div>
+
+              <div
+                key={activeStep.id}
+                className="ah-stepcontent"
+                aria-live="polite"
+                style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}
+              >
+                {!isLastStep ? (
+                  <>
+                    {activeStep.intro ? (
+                      <section className="ah-clause ah-clause--soft">
+                        <span className="eyebrow">Marco general</span>
+                        <p className="ah-clause__txt" style={{ marginTop: 8, color: "var(--fg)" }}>
+                          {activeStep.intro}
+                        </p>
+                      </section>
+                    ) : null}
+                    {renderClauseSections(activeStep.clauses)}
+                  </>
+                ) : (
+                  <>
+                    <section className="ah-clause ah-clause--soft">
+                      <h4
+                        style={{
+                          margin: "0 0 8px",
+                          font: "600 16px/1.3 var(--font-sans)",
+                          color: "var(--fg)",
+                        }}
+                      >
+                        Declaración final
+                      </h4>
+                      <p className="ah-clause__txt" style={{ marginTop: 0 }}>
+                        {COMPROMISO_PPS_DECLARACION}
+                      </p>
+                      <span
+                        style={{
+                          marginTop: 14,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 7,
+                          borderRadius: 999,
+                          background: "var(--primary-500)",
+                          color: "var(--fg-on-brand)",
+                          padding: "7px 14px",
+                          font: "600 11px/1 var(--font-mono)",
+                          letterSpacing: ".1em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        <span className="material-icons" style={{ fontSize: 15 }}>
+                          gavel
+                        </span>
+                        Aceptación digital registrada
+                      </span>
+                    </section>
+
+                    <div className="ah-signgrid">
+                      <CommitmentInput
+                        id="commitment-full-name"
+                        icon="badge"
+                        label="Nombre y apellido"
+                        value={fullName}
+                        error={fieldErrors.fullName}
+                        onChange={(value) => {
+                          setFullName(value);
+                          setFieldErrors((current) => ({ ...current, fullName: undefined }));
+                        }}
+                      />
+                      <CommitmentInput
+                        id="commitment-dni"
+                        icon="fingerprint"
+                        label="DNI"
+                        value={dni}
+                        inputMode="numeric"
+                        error={fieldErrors.dni}
+                        onChange={(value) => {
+                          setDni(value.replace(/\D/g, ""));
+                          setFieldErrors((current) => ({ ...current, dni: undefined }));
+                        }}
+                      />
+                      <CommitmentInput
+                        id="commitment-legajo"
+                        icon="school"
+                        label="Legajo"
+                        value={legajo}
+                        error={fieldErrors.legajo}
+                        onChange={(value) => {
+                          setLegajo(value);
+                          setFieldErrors((current) => ({ ...current, legajo: undefined }));
+                        }}
+                      />
+                      <CommitmentInput
+                        id="commitment-signature"
+                        icon="draw"
+                        label="Firma digital"
+                        value={signature}
+                        hint="Escribí tu nombre y apellido como firma."
+                        error={fieldErrors.signature}
+                        onChange={(value) => {
+                          setSignature(value);
+                          setFieldErrors((current) => ({ ...current, signature: undefined }));
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      className="ah-clause ah-clause--soft"
+                      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+                    >
+                      <label className="ah-check">
+                        <input
+                          type="checkbox"
+                          checked={acceptedRead}
+                          onChange={(event) => {
+                            setAcceptedRead(event.target.checked);
+                            setFieldErrors((current) => ({ ...current, acceptance: undefined }));
+                          }}
+                        />
+                        {COMPROMISO_PPS_CHECK_LECTURA}
+                      </label>
+                      <label className="ah-check">
+                        <input
+                          type="checkbox"
+                          checked={acceptedCommitment}
+                          onChange={(event) => {
+                            setAcceptedCommitment(event.target.checked);
+                            setFieldErrors((current) => ({ ...current, acceptance: undefined }));
+                          }}
+                        />
+                        {COMPROMISO_PPS_CHECK_COMPROMISO}
+                      </label>
+                    </div>
+
+                    {fieldErrors.acceptance ? (
+                      <div className="ah-err" role="alert" data-commitment-error="true">
+                        {fieldErrors.acceptance}
+                      </div>
+                    ) : null}
+
+                    {error && (
+                      <div className="ah-err ah-commitment-error" role="alert">
+                        <span className="material-icons" aria-hidden="true">
+                          error_outline
+                        </span>
+                        <div>
+                          <strong>No pudimos registrar el compromiso</strong>
+                          <p>{error}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="ah-note">
+                      La confirmación digital de este documento dejará constancia formal de tu
+                      lectura, aceptación y conformidad, con fecha y hora de registro en Mi Panel.
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="ah-cmodal__foot">
                 <button
                   type="button"
-                  className="ah-btn ah-btn--primary"
+                  className="ah-btn ah-btn--secondary"
                   onClick={() => {
                     setError(null);
-                    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+                    setCurrentStep((prev) => Math.max(prev - 1, 0));
                   }}
-                  disabled={isSubmitting}
+                  disabled={currentStep === 0 || isSubmitting}
                 >
-                  Continuar
-                  <span className="material-icons" style={{ fontSize: 17 }}>
-                    arrow_forward
-                  </span>
+                  Anterior
                 </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="ah-btn ah-btn--primary"
-                  disabled={isSubmitting}
-                  style={isSubmitting ? { opacity: 0.75 } : undefined}
+                {!isLastStep ? (
+                  <button
+                    type="button"
+                    className="ah-btn ah-btn--primary"
+                    onClick={() => {
+                      setError(null);
+                      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    Continuar
+                    <span className="material-icons" style={{ fontSize: 17 }}>
+                      arrow_forward
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="ah-btn ah-btn--primary"
+                    disabled={isSubmitting}
+                    style={isSubmitting ? { opacity: 0.75 } : undefined}
+                  >
+                    <span className="material-icons" style={{ fontSize: 17 }}>
+                      verified_user
+                    </span>
+                    {isSubmitting ? "Registrando…" : "Confirmar participación y firmar"}
+                  </button>
+                )}
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 12,
+                    color: "var(--fg-subtle)",
+                    maxWidth: "42ch",
+                    textAlign: "right",
+                  }}
                 >
-                  <span className="material-icons" style={{ fontSize: 17 }}>
-                    verified_user
-                  </span>
-                  {isSubmitting ? "Registrando…" : "Confirmar participación y firmar"}
-                </button>
-              )}
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 12,
-                  color: "var(--fg-subtle)",
-                  maxWidth: "42ch",
-                  textAlign: "right",
-                }}
-              >
-                {isLastStep
-                  ? "Revisá tus datos y confirmá las dos declaraciones."
-                  : "Leé esta ventana y continuá."}
-              </span>
-            </div>
-          </form>
+                  {isLastStep
+                    ? "Revisá tus datos y confirmá las dos declaraciones."
+                    : "Leé esta ventana y continuá."}
+                </span>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>,

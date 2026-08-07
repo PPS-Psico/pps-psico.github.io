@@ -149,11 +149,31 @@ describe("buildSidebarEntries", () => {
       const [e] = buildSidebarEntries(
         [l],
         { [l.id]: { inscriptos: 5, seleccionados: 4 } },
-        { [l.id]: { aceptados: 2, total: 4 } }
+        { [l.id]: { aceptados: 2, total: 4, pendientes: 2, bajas: 0 } }
       );
       expect(e.bucket).toBe("confirmacion");
       expect(e.needsAction).toBe(true);
-      expect(e.metaLine).toBe("2/4 consintieron");
+      expect(e.metaLine).toBe("2 firmaron · 2 pendientes");
+    });
+
+    it("no vuelve a mostrar 25/25 cuando el roster real tiene 37 seleccionados", () => {
+      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion" });
+      const [e] = buildSidebarEntries(
+        [l],
+        { [l.id]: { inscriptos: 37, seleccionados: 37 } },
+        {
+          [l.id]: {
+            aceptados: 25,
+            total: 37,
+            pendientes: 12,
+            bajas: 0,
+            seleccionados_vigentes: 37,
+          },
+        }
+      );
+
+      expect(e.metaLine).toBe("25 firmaron · 12 pendientes");
+      expect(e.metaLine).not.toContain("25/25");
     });
 
     it("un borrador que todavía no arrancó queda fuera del pipeline", () => {

@@ -28,6 +28,7 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS,
@@ -178,7 +179,18 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
     data: consentByLaunch = {},
     isError: consentsHaveError,
     refetch: refetchConsents,
-  } = useQuery<Record<string, { aceptados: number; total: number }>>({
+  } = useQuery<
+    Record<
+      string,
+      {
+        aceptados: number;
+        total: number;
+        pendientes?: number;
+        bajas?: number;
+        seleccionados_vigentes?: number;
+      }
+    >
+  >({
     queryKey: [...launchKeys.consentCounts(launchIds), isTestingMode ? "testing" : "live"],
     queryFn: async () => {
       if (isTestingMode) {
@@ -195,7 +207,16 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         p_launch_ids: launchIds,
       });
       if (error) throw error;
-      return (data || {}) as Record<string, { aceptados: number; total: number }>;
+      return (data || {}) as Record<
+        string,
+        {
+          aceptados: number;
+          total: number;
+          pendientes?: number;
+          bajas?: number;
+          seleccionados_vigentes?: number;
+        }
+      >;
     },
     enabled: launchIds.length > 0,
   });
@@ -384,6 +405,74 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       ),
   });
 
+  const closeInstitutionalListMutation = useMutation({
+    mutationFn: async (launchId: string) => {
+      const { data: closedAt, error: closeError } = await supabase.rpc(
+        "marcar_lista_estudiantes_entregada",
+        { p_lanzamiento_id: launchId }
+      );
+      if (closeError) throw closeError;
+
+      // La Edge Function admite una sesión administrativa. La invocamos de
+      // inmediato para no esperar al próximo cron de 10 minutos; la baja se
+      // revalida bajo lock en la base antes de mutar cada caso.
+      const { data: processingResult, error: processingError } = await supabase.functions.invoke(
+        "check-consentimiento-pendientes"
+      );
+
+      return { closedAt, processingResult, processingError };
+    },
+    onSuccess: ({ closedAt, processingResult, processingError }, launchId) => {
+      queryClient.setQueryData<LanzamientoPPS[]>(launchKeys.history(isTestingMode), (current) =>
+        (current || []).map((launch) =>
+          launch.id === launchId
+            ? ({
+                ...launch,
+                [FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS]: closedAt,
+              } as LanzamientoPPS)
+            : launch
+        )
+      );
+      refreshLaunches();
+
+      const processed = (processingResult as { bajas_processed?: number } | null)?.bajas_processed;
+      showModal(
+        processingError ? "Lista cerrada; procesamiento pendiente" : "Lista institucional cerrada",
+        processingError
+          ? "La entrega quedó registrada. El cron volverá a procesar las bajas y notificaciones dentro de los próximos 10 minutos."
+          : `La entrega quedó registrada${
+              typeof processed === "number"
+                ? ` y se procesaron ${processed} baja${processed !== 1 ? "s" : ""}`
+                : ""
+            }. Ya no se admiten nuevas firmas para esta nómina.`
+      );
+    },
+    onError: (error: unknown) =>
+      showModal(
+        "No se pudo cerrar la lista",
+        (error as Error)?.message || "No se registró la entrega institucional. Intentá nuevamente."
+      ),
+  });
+
+  const requestInstitutionalListClose = useCallback(
+    (launchId: string, pending: number) => {
+      setConfirmState({
+        title: "¿La lista ya fue entregada a la institución?",
+        message:
+          pending > 0
+            ? `Hay ${pending} estudiante${pending !== 1 ? "s" : ""} sin firma. Al registrar la entrega, el plazo cierra ahora, esas asignaciones se darán de baja y sus vacantes quedarán disponibles.`
+            : "La entrega quedará registrada como cierre definitivo de la nómina. Esta marca no se puede deshacer porque representa un envío externo.",
+        confirmText:
+          pending > 0
+            ? `Cerrar lista y procesar ${pending} baja${pending !== 1 ? "s" : ""}`
+            : "Registrar entrega",
+        type: pending > 0 ? "danger" : "info",
+        onConfirm: () => closeInstitutionalListMutation.mutate(launchId),
+      });
+    },
+    [closeInstitutionalListMutation]
+  );
+
   // ── Canvas renderer ───────────────────────────────────────────────────────
   const renderCanvas = () => {
     if (isLoading) {
@@ -499,7 +588,10 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
           <div className="lv4-canvas">
             <ConfirmacionView
               launch={selectedLaunch}
-              showModal={showModal}
+              isClosingList={closeInstitutionalListMutation.isPending}
+              onListaEntregada={(pending) =>
+                requestInstitutionalListClose(selectedLaunch.id, pending)
+              }
               onActivar={() => {
                 const counts = countsByLaunch[selectedLaunch.id];
                 if (!counts) {
@@ -519,7 +611,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
                 handleChangeEstado(selectedLaunch.id, "Activa", {
                   title: "¿Activar esta PPS?",
                   message:
-                    "Pasará a estado «Activa» (en curso). Los estudiantes con el compromiso aún pendiente quedarán como reemplazos.",
+                    "Pasará a estado «Activa» (en curso). Esta acción no cierra el consentimiento: quienes estén pendientes conservan su lugar hasta 24 horas antes del inicio o hasta que registres la entrega de la lista a la institución.",
                   confirmText: "Activar PPS",
                   type: "info",
                 });

@@ -6,7 +6,6 @@ import {
 } from "../constants/commitmentConstants";
 import { supabase } from "../lib/supabaseClient";
 import type { CompromisoPPS } from "../types";
-import { Database } from "../types/supabase";
 import { stripGreeting } from "../utils/emailService";
 import { logger } from "../utils/logger";
 
@@ -33,27 +32,27 @@ export const submitCompromisoPPS = async (payload: {
   legajo: string;
   signature: string;
 }): Promise<CompromisoPPS> => {
-  const record: Database["public"]["Tables"]["compromisos_pps"]["Insert"] = {
-    [C.FIELD_COMPROMISO_ESTUDIANTE]: payload.studentId,
-    [C.FIELD_COMPROMISO_CONVOCATORIA]: payload.convocatoriaId,
-    [C.FIELD_COMPROMISO_LANZAMIENTO]: payload.lanzamientoId,
-    [C.FIELD_COMPROMISO_VERSION]: COMPROMISO_PPS_VERSION,
-    [C.FIELD_COMPROMISO_ESTADO]: "aceptado",
-    [C.FIELD_COMPROMISO_TEXTO_ACTA]: COMPROMISO_PPS_FULL_TEXT,
-    [C.FIELD_COMPROMISO_ACEPTA_LECTURA]: true,
-    [C.FIELD_COMPROMISO_ACEPTA_COMPROMISO]: true,
-    [C.FIELD_COMPROMISO_NOMBRE]: payload.fullName,
-    [C.FIELD_COMPROMISO_DNI]: payload.dni,
-    [C.FIELD_COMPROMISO_LEGAJO]: payload.legajo,
-    [C.FIELD_COMPROMISO_FIRMA]: payload.signature,
-    [C.FIELD_COMPROMISO_FECHA_ACEPTACION]: new Date().toISOString(),
-  };
+  if (payload.dni == null) {
+    throw new Error("Ingresá tu DNI para registrar el compromiso.");
+  }
 
-  const { data, error } = await supabase
-    .from("compromisos_pps")
-    .upsert(record, { onConflict: "convocatoria_id" })
-    .select()
-    .single();
+  // El estudiante_id se conserva en el payload porque el caller lo usa para
+  // reconciliar su estado, pero el servidor deriva la identidad desde
+  // auth.uid(): nunca confía en un id enviado por el navegador.
+  void payload.studentId;
+
+  const { data, error } = await supabase.rpc("submit_compromiso_pps", {
+    p_convocatoria_id: payload.convocatoriaId,
+    p_lanzamiento_id: payload.lanzamientoId,
+    p_version: COMPROMISO_PPS_VERSION,
+    p_texto_acta: COMPROMISO_PPS_FULL_TEXT,
+    p_acepta_lectura: true,
+    p_acepta_compromiso: true,
+    p_nombre_completo: payload.fullName,
+    p_dni: payload.dni,
+    p_legajo: payload.legajo,
+    p_firma_texto: payload.signature,
+  });
 
   if (error) throw error;
   return data as CompromisoPPS;

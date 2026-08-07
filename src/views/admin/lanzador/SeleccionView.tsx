@@ -249,7 +249,7 @@ const SeleccionView: React.FC<{
                       <div
                         className="lv4-horario-fill"
                         style={{
-                          width: `${Math.min(100, h.pct * 100)}%`,
+                          transform: `scaleX(${Math.min(1, h.pct)})`,
                           background: toneColor,
                         }}
                       />

@@ -103,9 +103,23 @@ function wrapEmailTemplate(bodyContent: string, accentColor = "#ea580c") {
 </html>`;
 }
 
-function buildReminderHtml(estNombre: string, ppsNombre: string, hoursLeft: number) {
+function formatDeadline(value: string) {
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    dateStyle: "full",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function buildReminderHtml(
+  estNombre: string,
+  ppsNombre: string,
+  hoursLeft: number,
+  deadlineLabel: string
+) {
   const detailRows = buildDetailRows([
     { label: "Institución / PPS", value: ppsNombre },
+    { label: "Cierre de confirmación", value: deadlineLabel },
     { label: "Horas restantes", value: hoursLeft + " horas" },
     { label: "Acción requerida", value: "Ingresar a Mi Panel y confirmar tu participación" },
   ]);
@@ -132,13 +146,14 @@ function buildReminderHtml(estNombre: string, ppsNombre: string, hoursLeft: numb
   return wrapEmailTemplate(bodyContent);
 }
 
-function buildBajaEstudianteHtml(estNombre: string, ppsNombre: string) {
+function buildBajaEstudianteHtml(estNombre: string, ppsNombre: string, deadlineLabel: string) {
   const detailRows = buildDetailRows([
     { label: "Institución / PPS", value: ppsNombre },
     {
       label: "Motivo",
-      value: "Falta de confirmación digital antes del cierre (24 h antes del inicio)",
+      value: "Falta de confirmación digital antes del cierre institucional",
     },
+    { label: "Cierre de confirmación", value: deadlineLabel },
   ]);
 
   const bodyContent = `
@@ -163,7 +178,8 @@ function buildBajaCoordinadorHtml(
   ppsNombre: string,
   selectedAt: string,
   bajaAt: string,
-  reminderEnviado: boolean
+  reminderEnviado: boolean,
+  deadlineLabel: string
 ) {
   const detailRows = buildDetailRows([
     { label: "Estudiante", value: estNombre },
@@ -171,12 +187,13 @@ function buildBajaCoordinadorHtml(
     { label: "PPS", value: ppsNombre },
     { label: "Fecha de selección", value: selectedAt || "N/A" },
     { label: "Fecha de baja", value: bajaAt },
+    { label: "Cierre de confirmación", value: deadlineLabel },
     { label: "Recordatorio enviado", value: reminderEnviado ? "Sí" : "No" },
   ]);
 
   const bodyContent = `
     <h1 style="margin: 0 0 18px 0; color: #0f172a; font-size: 24px; font-weight: 800; line-height: 1.25;">Baja automática de estudiante</h1>
-    <p style="margin: 0 0 28px 0; color: #475569; font-family: ${fontStack}; font-size: 15px; line-height: 1.7;">Se dio de baja automáticamente a un estudiante por no confirmar el compromiso digital dentro del plazo de 24 horas. Se liberó la vacante.</p>
+    <p style="margin: 0 0 28px 0; color: #475569; font-family: ${fontStack}; font-size: 15px; line-height: 1.7;">Se dio de baja automáticamente a un estudiante por no confirmar el compromiso digital antes del cierre institucional. Se liberó la vacante.</p>
     <div style="margin-bottom: 24px; border: 1px solid #dbeafe; border-radius: 12px; overflow: hidden; background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);">
       <div style="padding: 14px 20px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-family: ${fontStack}; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #1e3a8a;">Datos del estudiante</div>
       <div style="padding: 0 20px 4px 20px;">
@@ -233,43 +250,16 @@ Deno.serve(async (req) => {
     console.log("[Consentimiento] Ejecutando verificacion en " + isoNow + "...");
     const results = { reminders_sent: 0, bajas_processed: 0, errors: [] as string[] };
 
-    // Cierre del consentimiento = inicio de la PPS - 24h. Si la selección fue
-    // tardía (menos de 24h antes del inicio), el cierre pasa a ser el inicio.
-    // Recordatorio: 48h antes del cierre. Baja: al llegar al cierre.
-    const parseStart = (raw: unknown): Date | null => {
-      if (!raw) return null;
-      const s = String(raw);
-      const m = /^\d{4}-\d{2}-\d{2}/.exec(s);
-      const d = new Date(m ? s.slice(0, 10) + "T00:00:00Z" : s);
-      return isNaN(d.getTime()) ? null : d;
-    };
-
-    // Traer todos los seleccionados que aún no fueron dados de baja.
-    const { data: candidates, error: candErr } = await supabase
-      .from("convocatorias")
-      .select(
-        "id, estudiante_id, lanzamiento_id, nombre_pps, correo, fecha_inicio, selected_at, reminder_sent_at"
-      )
-      .eq("estado_inscripcion", "Seleccionado")
-      .not("selected_at", "is", null)
-      .is("baja_automatica_at", null);
+    // La base es la única fuente del plazo: interpreta la fecha de inicio en
+    // Buenos Aires y toma el evento más temprano entre 24 h antes del inicio y
+    // la entrega de la lista a la institución.
+    const { data: candidates, error: candErr } = await supabase.rpc(
+      "get_consentimiento_timeout_candidates"
+    );
 
     if (candErr) {
       console.error("[Consentimiento] Error consultando candidatos:", candErr);
       results.errors.push("Error candidatos: " + candErr.message);
-    }
-
-    // Fechas de inicio autoritativas desde el lanzamiento (fallback al snapshot).
-    const launchIds = [
-      ...new Set((candidates || []).map((c) => c.lanzamiento_id).filter(Boolean)),
-    ] as string[];
-    const startByLaunch = new Map<string, string | null>();
-    if (launchIds.length > 0) {
-      const { data: launches } = await supabase
-        .from("lanzamientos_pps")
-        .select("id, fecha_inicio")
-        .in("id", launchIds);
-      (launches || []).forEach((l) => startByLaunch.set(l.id, l.fecha_inicio));
     }
 
     console.log(
@@ -277,56 +267,32 @@ Deno.serve(async (req) => {
     );
 
     for (const conv of candidates || []) {
-      const start = parseStart(startByLaunch.get(conv.lanzamiento_id) ?? conv.fecha_inicio);
-      // Sin fecha de inicio no podemos calcular el plazo → no damos de baja.
-      if (!start) continue;
+      const deadline = new Date(conv.deadline_at);
+      if (Number.isNaN(deadline.getTime())) continue;
 
-      const selectedAt = conv.selected_at ? new Date(conv.selected_at) : null;
-      // Cierre = inicio - 24h, salvo selección tardía → cierre = inicio.
-      const deadline =
-        selectedAt && selectedAt.getTime() <= start.getTime() - 24 * MS_HOUR
-          ? new Date(start.getTime() - 24 * MS_HOUR)
-          : start;
-
-      // ¿Ya firmó? Si aceptó, no corresponde recordatorio ni baja.
-      const { data: compromiso } = await supabase
-        .from("compromisos_pps")
-        .select("id")
-        .eq("convocatoria_id", conv.id)
-        .eq("estado", "aceptado")
-        .maybeSingle();
-      if (compromiso) continue;
-
-      const { data: est } = await supabase
-        .from("estudiantes")
-        .select("nombre, correo")
-        .eq("id", conv.estudiante_id)
-        .maybeSingle();
-      const estNombre = est && est.nombre ? est.nombre : "Estudiante";
-      const estCorreo = conv.correo || (est && est.correo) || "";
-      const ppsNombre = conv.nombre_pps || "PPS";
+      const estNombre = conv.estudiante_nombre || "Estudiante";
+      const estCorreo = conv.estudiante_correo || "";
+      const ppsNombre = conv.pps_nombre || "PPS";
+      const deadlineLabel = formatDeadline(conv.deadline_at);
 
       // BAJA: ya se llegó al cierre sin confirmar.
       if (now.getTime() >= deadline.getTime()) {
-        const { error: updErr } = await supabase
-          .from("convocatorias")
-          .update({
-            estado_inscripcion: "Inscripto",
-            baja_automatica_at: new Date().toISOString(),
-          })
-          .eq("id", conv.id);
+        const { data: claimed, error: claimError } = await supabase.rpc(
+          "claim_consentimiento_timeout_baja",
+          { p_convocatoria_id: conv.convocatoria_id }
+        );
 
-        if (updErr) {
-          console.error("[Consentimiento] Error baja conv " + conv.id + ":", updErr);
-          results.errors.push("Error baja conv " + conv.id + ": " + updErr.message);
+        if (claimError) {
+          console.error(
+            "[Consentimiento] Error baja conv " + conv.convocatoria_id + ":",
+            claimError
+          );
+          results.errors.push(
+            "Error baja conv " + conv.convocatoria_id + ": " + claimError.message
+          );
           continue;
         }
-
-        await supabase
-          .from("practicas")
-          .delete()
-          .eq("estudiante_id", conv.estudiante_id)
-          .eq("lanzamiento_id", conv.lanzamiento_id);
+        if (!claimed) continue;
 
         if (estCorreo) {
           const subjectEst = "Baja automatica por falta de confirmacion - PPS: " + ppsNombre;
@@ -335,8 +301,10 @@ Deno.serve(async (req) => {
             estNombre +
             ", se dio de baja automaticamente tu asignacion a la PPS en " +
             ppsNombre +
-            " porque no confirmaste el compromiso digital antes del cierre (24 horas antes del inicio).";
-          const htmlEst = buildBajaEstudianteHtml(estNombre, ppsNombre);
+            " porque no confirmaste el compromiso digital antes del cierre institucional: " +
+            deadlineLabel +
+            ".";
+          const htmlEst = buildBajaEstudianteHtml(estNombre, ppsNombre, deadlineLabel);
           await sendEmail(supabase, estCorreo, subjectEst, textEst, htmlEst, estNombre);
         }
 
@@ -346,14 +314,17 @@ Deno.serve(async (req) => {
           estNombre +
           " de " +
           ppsNombre +
-          " por no confirmar el compromiso antes del cierre (24 horas antes del inicio).";
+          " por no confirmar el compromiso antes del cierre institucional: " +
+          deadlineLabel +
+          ".";
         const htmlCoord = buildBajaCoordinadorHtml(
           estNombre,
           estCorreo || "",
           ppsNombre,
           conv.selected_at || "",
           isoNow,
-          !!conv.reminder_sent_at
+          !!conv.reminder_sent_at,
+          deadlineLabel
         );
         await sendEmail(
           supabase,
@@ -372,7 +343,7 @@ Deno.serve(async (req) => {
       // RECORDATORIO: faltan <=48h para el cierre y aún no se envió.
       if (!conv.reminder_sent_at && now.getTime() >= deadline.getTime() - 48 * MS_HOUR) {
         if (!estCorreo) {
-          results.errors.push("Sin correo: conv " + conv.id);
+          results.errors.push("Sin correo: conv " + conv.convocatoria_id);
           continue;
         }
         const hoursLeft = Math.max(0, Math.round((deadline.getTime() - now.getTime()) / MS_HOUR));
@@ -382,15 +353,18 @@ Deno.serve(async (req) => {
           estNombre +
           ", te recordamos que fuiste seleccionado/a para la PPS en " +
           ppsNombre +
-          ". Aun no registraste tu aceptacion digital. El consentimiento queda abierto hasta 24 horas antes del inicio de la practica. Ingresa a Mi Panel y confirma tu participacion.";
-        const htmlBody = buildReminderHtml(estNombre, ppsNombre, hoursLeft);
+          ". Aun no registraste tu aceptacion digital. Confirma antes del cierre institucional: " +
+          deadlineLabel +
+          ". El plazo puede cerrar antes de las 24 horas previas al inicio si Coordinacion entrega la lista a la institucion. Ingresa a Mi Panel y confirma tu participacion.";
+        const htmlBody = buildReminderHtml(estNombre, ppsNombre, hoursLeft, deadlineLabel);
 
         const sent = await sendEmail(supabase, estCorreo, subject, textBody, htmlBody, estNombre);
         if (sent) {
           await supabase
             .from("convocatorias")
             .update({ reminder_sent_at: new Date().toISOString() })
-            .eq("id", conv.id);
+            .eq("id", conv.convocatoria_id)
+            .is("reminder_sent_at", null);
           results.reminders_sent++;
           console.log("[Consentimiento] Reminder enviado a " + estCorreo);
         }

@@ -61,7 +61,6 @@ html.dark .lv4 {
   height: calc(100vh - 60px);
   position: sticky; top: 60px;
   background: var(--paper);
-  transition: width .2s ease;
   overflow: hidden;
 }
 .lv4-aside.collapsed { width: 52px; }
@@ -340,7 +339,10 @@ html.dark .lv4 {
 .lv4-progress-track {
   flex: 1; height: 4px; border-radius: 2px; background: var(--rule-3); overflow: hidden;
 }
-.lv4-progress-fill { height: 100%; border-radius: 2px; transition: width .3s ease; }
+.lv4-progress-fill {
+  width: 100%; height: 100%; border-radius: 2px; transform: scaleX(0); transform-origin: left;
+  transition: transform .3s ease;
+}
 
 /* ── Field cards ─────────────────────────────────────────────────────────── */
 .lv4-field-card {
@@ -401,7 +403,10 @@ html.dark .lv4-wa-bubble {
 }
 .lv4-horario-label { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.3; }
 .lv4-horario-track { height: 5px; border-radius: 999px; background: var(--rule-2); overflow: hidden; position: relative; }
-.lv4-horario-fill { height: 100%; border-radius: 999px; transition: width .3s ease; }
+.lv4-horario-fill {
+  width: 100%; height: 100%; border-radius: 999px; transform: scaleX(0); transform-origin: left;
+  transition: transform .3s ease;
+}
 .lv4-horario-foot { font-size: 11.5px; color: var(--warn); margin-top: 9px; }
 
 /* ── Difusión / link box ─────────────────────────────────────────────────── */
@@ -1090,6 +1095,108 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-disapproved-roster-name strong { display: block; font-size: 12.5px; color: var(--ink); }
 .lv4-disapproved-roster-name span { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-3); }
 @media (max-width: 560px) { .lv4-form-grid { grid-template-columns: 1fr; gap: 0; } }
+
+/* ── Sala de consentimientos ─────────────────────────────────────────────── */
+.lv4-consent-progress {
+  margin: 18px 0 22px; padding: 14px 18px; border: 1px solid var(--rule-2);
+  border-radius: 12px; background: var(--paper);
+}
+.lv4-consent-progress-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px;
+}
+.lv4-consent-progress-head .lv4-eyebrow { margin: 0; }
+.lv4-consent-progress-head strong {
+  color: var(--warn); font: 600 12px/1 'JetBrains Mono', monospace;
+}
+.lv4-progress-fill { background: var(--warn); }
+.lv4-progress-fill.is-complete { background: var(--ok); }
+.lv4-consent-decision {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  margin: 22px 0 30px; padding: 18px 20px; border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--rule-2));
+  border-radius: 12px; background: var(--accent-s);
+}
+.lv4-consent-decision.is-closed {
+  border-color: color-mix(in oklab, var(--ok) 32%, var(--rule-2)); background: var(--ok-s);
+}
+.lv4-consent-decision-copy { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.lv4-consent-decision-copy > .material-icons { color: var(--accent); font-size: 21px; margin-top: 1px; }
+.lv4-consent-decision.is-closed .lv4-consent-decision-copy > .material-icons { color: var(--ok); }
+.lv4-consent-decision-copy .lv4-eyebrow { display: block; margin-bottom: 5px; color: var(--accent); }
+.lv4-consent-decision.is-closed .lv4-eyebrow { color: var(--ok); }
+.lv4-consent-decision-copy strong { display: block; color: var(--ink); font-size: 14px; line-height: 1.35; }
+.lv4-consent-decision-copy p { max-width: 680px; margin: 5px 0 0; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.lv4-consent-decision-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.lv4-consent-section { margin-bottom: 28px; }
+.lv4-consent-section > .lv4-group-head { width: 100%; }
+.lv4-consent-section-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 12px;
+}
+.lv4-consent-section-head .lv4-eyebrow { display: block; margin-bottom: 5px; }
+.lv4-eyebrow.is-warning { color: var(--warn); }
+.lv4-eyebrow.is-danger { color: #a12d2d; }
+.lv4-consent-section-head h2 { margin: 0; color: var(--ink); font-size: 20px; line-height: 1.2; }
+.lv4-consent-section-head p,
+.lv4-consent-management > p { max-width: 680px; margin: 6px 0 0; color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+.lv4-consent-section-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.lv4-consent-list { overflow: hidden; border: 1px solid var(--rule-2); border-radius: 12px; background: var(--paper); }
+.lv4-consent-list.is-pending { border-color: color-mix(in oklab, var(--warn) 40%, var(--rule-2)); }
+.lv4-consent-list.is-dropped { border-color: color-mix(in oklab, #a12d2d 38%, var(--rule-2)); }
+.lv4-insc-row.lv4-consent-row { grid-template-columns: 32px minmax(0, 1fr) auto auto; }
+.lv4-consent-person { min-width: 0; }
+.lv4-consent-name { overflow: hidden; color: var(--ink); font-size: 13.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.lv4-consent-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; color: var(--ink-3); font-size: 11.5px; }
+.lv4-consent-meta > span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.lv4-consent-meta .material-icons { font-size: 12px; }
+.lv4-consent-deadline { margin-top: 5px; color: var(--warn); font-size: 11px; font-weight: 600; }
+.lv4-consent-drop-help { margin-top: 5px; color: #a12d2d; font-size: 11px; line-height: 1.4; }
+.lv4-consent-avatar { border-color: transparent; }
+.lv4-consent-avatar.is-signed { background: var(--ok-s); color: var(--ok); }
+.lv4-consent-avatar.is-pending { background: var(--warn-s); color: var(--warn); }
+.lv4-consent-avatar.is-dropped { background: color-mix(in oklab, #a12d2d 10%, transparent); color: #a12d2d; }
+.lv4-consent-status {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; white-space: nowrap;
+}
+.lv4-consent-status .material-icons { font-size: 13px; }
+.lv4-consent-status.is-signed { background: var(--ok-s); color: var(--ok); }
+.lv4-consent-status.is-pending { background: var(--warn-s); color: var(--warn); }
+.lv4-consent-status.is-dropped { background: color-mix(in oklab, #a12d2d 10%, transparent); color: #a12d2d; }
+.lv4-consent-contact { display: flex; gap: 6px; }
+.lv4-consent-contact .lv4-icon-btn { color: var(--ink-3); text-decoration: none; }
+.lv4-consent-contact .lv4-icon-btn.is-disabled { cursor: not-allowed; opacity: .4; }
+.lv4-consent-contact .lv4-consent-whatsapp { color: #168a45; }
+.lv4-consent-contact .material-icons { font-size: 18px; }
+.lv4-consent-schedules {
+  margin-bottom: 12px; padding: 12px 14px; border: 1px solid var(--rule-2); border-radius: 10px; background: var(--paper-2);
+}
+.lv4-consent-schedules .lv4-eyebrow { display: block; margin-bottom: 8px; }
+.lv4-consent-schedules > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.lv4-consent-schedule {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px; border: 1px solid color-mix(in oklab, var(--warn) 36%, var(--rule-2));
+  border-radius: 999px; background: var(--warn-s); color: var(--ink-2); font-size: 11.5px;
+}
+.lv4-consent-schedule b {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 999px; background: var(--warn); color: var(--paper); font: 700 10px/1 'JetBrains Mono', monospace;
+}
+.lv4-disclosure { color: var(--ink-4); font-size: 16px; transform: rotate(-90deg); transition: transform .15s ease; }
+.lv4-disclosure.is-open { transform: rotate(0); }
+.lv4-consent-ok { color: var(--ok); font-size: 15px; }
+.lv4-consent-management { margin-top: 14px; }
+.lv4-consent-management > p { margin-bottom: 14px; }
+
+@media (max-width: 800px) {
+  .lv4-consent-decision, .lv4-consent-section-head { align-items: stretch; flex-direction: column; }
+  .lv4-consent-decision-actions, .lv4-consent-section-actions { flex-wrap: wrap; }
+  .lv4-consent-decision-actions .lv4-btn { flex: 1 1 auto; justify-content: center; }
+}
+@media (max-width: 620px) {
+  .lv4-insc-row.lv4-consent-row { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .lv4-consent-status { grid-column: 2; justify-self: start; }
+  .lv4-consent-contact { grid-column: 3; grid-row: 1 / span 2; }
+  .lv4-consent-section-actions { width: 100%; }
+  .lv4-consent-section-actions .lv4-btn { flex: 1 1 100%; justify-content: center; }
+}
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

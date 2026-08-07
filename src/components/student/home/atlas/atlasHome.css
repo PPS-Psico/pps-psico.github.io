@@ -3378,6 +3378,68 @@ html.dark .ah-root .ah-hl {
   padding: 12px 16px;
   font-size: 13.5px;
 }
+.ah-commitment-error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  overflow-wrap: anywhere;
+}
+.ah-commitment-error > .material-icons {
+  margin-top: 1px;
+  font-size: 19px;
+}
+.ah-commitment-error strong {
+  display: block;
+  color: var(--fg);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.ah-commitment-error p {
+  margin: 3px 0 0;
+  line-height: 1.5;
+}
+.ah-commitment-complete {
+  display: flex;
+  min-height: min(420px, 55vh);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  max-width: 640px;
+  margin-inline: auto;
+  text-align: center;
+}
+.ah-commitment-complete__icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border: 1px solid color-mix(in oklab, var(--success-500) 36%, var(--border));
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--success-500) 10%, var(--bg-elevated));
+  color: var(--success-500);
+}
+.ah-commitment-complete__icon .material-icons {
+  font-size: 31px;
+}
+.ah-commitment-complete__copy {
+  max-width: 54ch;
+}
+.ah-commitment-complete__copy h3 {
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+.ah-commitment-complete__copy p {
+  margin: 10px 0 0;
+  color: var(--fg-muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
 .ah-cmodal__foot {
   margin-top: 24px;
   border-top: 1px solid var(--border);

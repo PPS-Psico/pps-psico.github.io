@@ -1,14 +1,22 @@
 /**
- * lanzador/ConfirmacionView.tsx — Step 4 del pipeline: sala de confirmación de
- * consentimientos previa a activar la PPS. Extraído de stepViews.tsx.
+ * Step 4: sala operativa de consentimientos previa al inicio de la PPS.
+ * Separa con claridad firmas, estudiantes en plazo y bajas efectivas.
  */
 import { useQuery } from "@tanstack/react-query";
 import React, { Suspense, useMemo, useState } from "react";
-import { FIELD_NOMBRE_PPS_LANZAMIENTOS } from "../../../constants";
-import { useModal } from "../../../contexts/ModalContext";
+import {
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS,
+  FIELD_NOMBRE_PPS_LANZAMIENTOS,
+} from "../../../constants";
 import { launchKeys } from "../../../lib/launchQueryKeys";
 import { supabase } from "../../../lib/supabaseClient";
 import type { LanzamientoPPS } from "../../../types";
+import {
+  formatConsentimientoDeadline,
+  formatConsentimientoDeadlineShort,
+  getConsentimientoDeadline,
+} from "../../../utils/consentimientoUtils";
 import { getWhatsAppUrl, normalizeStringForComparison } from "../../../utils/formatters";
 import {
   Banner,
@@ -20,34 +28,80 @@ import {
   useLaunchEditor,
 } from "./shared";
 import { useLaunchRoster } from "./useLaunchData";
-const ConfirmacionView: React.FC<{
+
+interface ConfirmacionViewProps {
   launch: LanzamientoPPS;
-  showModal: ReturnType<typeof useModal>["showModal"];
   onActivar: () => void;
-}> = ({ launch, showModal, onActivar }) => {
+  onListaEntregada: (pendientes: number) => void;
+  isClosingList?: boolean;
+}
+
+interface ConsentRow {
+  id: string;
+  nombre: string | null;
+  telefono: string | null;
+  correo: string | null;
+  horario: string | null;
+  acceptedAt: string | null;
+  bajaAt: string | null;
+  selectedAt: string | null;
+  deadline: Date | null;
+  status: "firmo" | "pendiente" | "baja";
+}
+
+const initials = (name: string | null) =>
+  name
+    ? name
+        .split(" ")
+        .map((part) => part[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
+
+const formatCompactDate = (iso: string | null) => {
+  if (!iso) return "";
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : date.toLocaleDateString("es-AR", { day: "2-digit", month: "short" });
+};
+
+const groupSchedules = (rows: ConsentRow[]) => {
+  const counts = new Map<string, number>();
+  rows.forEach((row) => {
+    const schedule = row.horario?.trim() || "Sin horario asignado";
+    counts.set(schedule, (counts.get(schedule) || 0) + 1);
+  });
+  return Array.from(counts, ([horario, count]) => ({ horario, count })).sort(
+    (a, b) => b.count - a.count
+  );
+};
+
+const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
+  launch,
+  onActivar,
+  onListaEntregada,
+  isClosingList = false,
+}) => {
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
   const [gestionOpen, setGestionOpen] = useState(false);
   const [firmadosOpen, setFirmadosOpen] = useState(false);
+  const launchName = launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | null;
+  const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
+  const listaEntregadaAt = launch[FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS] as
+    | string
+    | null;
 
-  const instNombre = launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | null;
-
-  // Roster de la confirmación. OJO con dos sutilezas del flujo:
-  //  1. La DB guarda "Seleccionado" (mayúscula) → comparamos normalizado.
-  //  2. Hay BAJA AUTOMÁTICA: si un seleccionado no firma en 24h, un cron
-  //     revierte su estado a "Inscripto" y marca baja_automatica_at. Esos
-  //     estudiantes "desaparecían" del conteo de seleccionados, por eso el
-  //     coordinador veía 9 en vez de 12. Los recuperamos incluyendo a los que
-  //     tienen baja_automatica_at (= fueron seleccionados pero no firmaron).
-  // Usa el roster compartido (`useLaunchRoster`) — misma fuente que el resto
-  // del Lanzador, así sidebar/canvas/seleccionador nunca divergen.
   const rosterQuery = useLaunchRoster(launch.id);
   const { data: roster = [] } = rosterQuery;
-  const seleccionados = useMemo(
+  const selectedRoster = useMemo(
     () =>
       roster.filter(
-        (r) =>
-          normalizeStringForComparison(r.estado_inscripcion) === "seleccionado" ||
-          r.baja_automatica_at != null
+        (row) =>
+          normalizeStringForComparison(row.estado_inscripcion) === "seleccionado" ||
+          row.baja_automatica_at != null
       ),
     [roster]
   );
@@ -63,321 +117,221 @@ const ConfirmacionView: React.FC<{
       return data || [];
     },
   });
-  const { data: compromisos = [] } = compromisosQuery;
+  const compromisos = useMemo(() => compromisosQuery.data || [], [compromisosQuery.data]);
 
-  // Datos de contacto de los seleccionados (query aparte para evitar
-  // ambigüedad de FK). Traemos nombre + teléfono + correo para los botones.
-  const selEstudianteIds = seleccionados
-    .map((s) => (s as { estudiante_id?: string | null }).estudiante_id)
-    .filter(Boolean) as string[];
-  const seleccionadosInfoQuery = useQuery<
+  const studentIds = useMemo(
+    () => selectedRoster.map((row) => row.estudiante_id).filter((id): id is string => !!id),
+    [selectedRoster]
+  );
+  const studentInfoQuery = useQuery<
     Record<string, { nombre: string | null; telefono: string | null; correo: string | null }>
   >({
-    queryKey: ["seleccionadosInfo", selEstudianteIds.join(",")],
+    queryKey: ["seleccionadosInfo", studentIds.join(",")],
+    enabled: studentIds.length > 0,
     queryFn: async () => {
-      if (selEstudianteIds.length === 0) return {};
+      if (studentIds.length === 0) return {};
       const { data, error } = await supabase
         .from("estudiantes")
         .select("id, nombre, telefono, correo")
-        .in("id", selEstudianteIds);
+        .in("id", studentIds);
       if (error) throw error;
-      const map: Record<
-        string,
-        { nombre: string | null; telefono: string | null; correo: string | null }
-      > = {};
-      (data || []).forEach(
-        (e: {
-          id: string;
-          nombre: string | null;
-          telefono: string | null;
-          correo: string | null;
-        }) => {
-          map[e.id] = { nombre: e.nombre, telefono: e.telefono, correo: e.correo };
-        }
+      return Object.fromEntries(
+        (data || []).map((student) => [
+          student.id,
+          { nombre: student.nombre, telefono: student.telefono, correo: student.correo },
+        ])
       );
-      return map;
     },
-    enabled: selEstudianteIds.length > 0,
   });
-  const { data: selInfoMap = {} } = seleccionadosInfoQuery;
+  const studentInfo = useMemo(() => studentInfoQuery.data || {}, [studentInfoQuery.data]);
 
-  // Mapa convocatoria_id → compromiso (estado + fecha) para el tracker por alumno
-  const compromisoByConv = useMemo(() => {
-    const map: Record<string, { estado: string | null; accepted_at: string | null }> = {};
-    compromisos.forEach((c) => {
-      const cid = (c as { convocatoria_id?: string | null }).convocatoria_id;
-      if (cid)
-        map[cid] = {
-          estado: (c as { estado?: string | null }).estado ?? null,
-          accepted_at: (c as { accepted_at?: string | null }).accepted_at ?? null,
-        };
-    });
-    return map;
-  }, [compromisos]);
+  const compromisoByConvocatoria = useMemo(
+    () =>
+      Object.fromEntries(
+        compromisos.map((item) => [
+          item.convocatoria_id,
+          { estado: item.estado, acceptedAt: item.accepted_at },
+        ])
+      ),
+    [compromisos]
+  );
 
-  // Lista por alumno con su sub-estado: firmó / pendiente / baja automática.
-  const consentRows = useMemo(() => {
-    return seleccionados
-      .map((s) => {
-        const conv = s as {
-          id: string;
-          estudiante_id?: string | null;
-          horario_asignado?: string | null;
-          horario_seleccionado?: string | null;
-          estado_inscripcion?: string | null;
-          baja_automatica_at?: string | null;
-        };
-        // Horario: preferimos el asignado; si está vacío, caemos al que el
-        // estudiante eligió al inscribirse (horario_seleccionado).
-        const horario =
-          (conv.horario_asignado && String(conv.horario_asignado).trim()) ||
-          (conv.horario_seleccionado && String(conv.horario_seleccionado).trim()) ||
-          null;
-        const comp = compromisoByConv[conv.id];
-        const accepted = comp ? normalizeStringForComparison(comp.estado) === "aceptado" : false;
-        // Estado actual manda: si sigue "Seleccionado" está pendiente (en plazo),
-        // aunque tenga un baja_automatica_at viejo de un ciclo anterior. Si ya
-        // no está seleccionado y no firmó, es una baja efectiva.
-        const sigueSeleccionado =
-          normalizeStringForComparison(conv.estado_inscripcion) === "seleccionado";
-        const info = conv.estudiante_id ? selInfoMap[conv.estudiante_id] : undefined;
-        // status: "firmo" | "pendiente" | "baja"
-        const status: "firmo" | "pendiente" | "baja" = accepted
-          ? "firmo"
-          : sigueSeleccionado
-            ? "pendiente"
-            : "baja";
-        return {
-          id: conv.id,
-          nombre: info?.nombre ?? null,
-          telefono: info?.telefono ?? null,
-          correo: info?.correo ?? null,
-          horario,
-          accepted,
-          acceptedAt: comp?.accepted_at ?? null,
-          bajaAt: conv.baja_automatica_at ?? null,
-          status,
-        };
-      })
-      .sort((a, b) => {
-        // Orden: pendientes (en ventana) → bajas → firmados
-        const rank = { pendiente: 0, baja: 1, firmo: 2 } as const;
-        if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
-        return (a.nombre || "").localeCompare(b.nombre || "");
-      });
-  }, [seleccionados, compromisoByConv, selInfoMap]);
+  const rows = useMemo<ConsentRow[]>(
+    () =>
+      selectedRoster
+        .map((convocatoria) => {
+          const commitment = compromisoByConvocatoria[convocatoria.id];
+          const accepted = normalizeStringForComparison(commitment?.estado || "") === "aceptado";
+          const current =
+            normalizeStringForComparison(convocatoria.estado_inscripcion) === "seleccionado";
+          const info = convocatoria.estudiante_id
+            ? studentInfo[convocatoria.estudiante_id]
+            : undefined;
+          const horario =
+            convocatoria.horario_asignado?.trim() ||
+            convocatoria.horario_seleccionado?.trim() ||
+            null;
 
-  // Contadores derivados de la lista real (consistentes entre sí).
-  // "total" = todos los que alguna vez fueron seleccionados (incluye bajas).
-  const total = consentRows.length;
-  const seleccionadosVigentes = seleccionados.filter(
-    (row) => normalizeStringForComparison(row.estado_inscripcion) === "seleccionado"
-  ).length;
-  const confirmados = consentRows.filter((r) => r.status === "firmo").length;
-  const pendientes = total - confirmados; // pendientes en ventana + bajas
-  const consentPct = total > 0 ? Math.round((confirmados / total) * 100) : 0;
-  const isDataLoading =
+          return {
+            id: convocatoria.id,
+            nombre: info?.nombre ?? null,
+            telefono: info?.telefono ?? null,
+            correo: info?.correo ?? null,
+            horario,
+            acceptedAt: commitment?.acceptedAt ?? null,
+            bajaAt: convocatoria.baja_automatica_at,
+            selectedAt: convocatoria.selected_at,
+            deadline: getConsentimientoDeadline(
+              fechaInicio,
+              convocatoria.selected_at,
+              listaEntregadaAt
+            ),
+            status: accepted ? "firmo" : current ? "pendiente" : "baja",
+          } satisfies ConsentRow;
+        })
+        .sort((a, b) => {
+          const rank = { pendiente: 0, baja: 1, firmo: 2 } as const;
+          return rank[a.status] - rank[b.status] || (a.nombre || "").localeCompare(b.nombre || "");
+        }),
+    [selectedRoster, compromisoByConvocatoria, studentInfo, fechaInicio, listaEntregadaAt]
+  );
+
+  const pendingRows = rows.filter((row) => row.status === "pendiente");
+  const bajaRows = rows.filter((row) => row.status === "baja");
+  const signedRows = rows.filter((row) => row.status === "firmo");
+  const selectedCurrent = pendingRows.length + signedRows.length;
+  const progress =
+    selectedCurrent > 0 ? Math.round((signedRows.length / selectedCurrent) * 100) : 0;
+  const schedulesToCover = groupSchedules(bajaRows);
+  const nextDeadline = pendingRows
+    .map((row) => row.deadline)
+    .filter((date): date is Date => !!date)
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+  const deliveredLabel = listaEntregadaAt
+    ? new Intl.DateTimeFormat("es-AR", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "America/Argentina/Buenos_Aires",
+      }).format(new Date(listaEntregadaAt))
+    : null;
+
+  const bulkEmailUrl = useMemo(() => {
+    const recipients = pendingRows
+      .map((row) => row.correo)
+      .filter(Boolean)
+      .join(",");
+    if (!recipients) return null;
+    const subject = `Recordatorio de consentimiento — ${launchName || "PPS"}`;
+    const deadlineCopy = nextDeadline
+      ? `El plazo actual cierra el ${formatConsentimientoDeadline(nextDeadline)}.`
+      : "Confirmá cuanto antes para conservar tu lugar.";
+    const body = `Hola, te recordamos que todavía tenés pendiente aceptar el compromiso digital de la PPS ${
+      launchName || ""
+    }. ${deadlineCopy} Ingresá a tu panel para confirmar.`;
+    return `mailto:?bcc=${encodeURIComponent(recipients)}&subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+  }, [pendingRows, launchName, nextDeadline]);
+
+  const isLoading =
     rosterQuery.isLoading ||
     compromisosQuery.isLoading ||
-    (selEstudianteIds.length > 0 && seleccionadosInfoQuery.isLoading);
-  const hasDataError =
-    rosterQuery.isError || compromisosQuery.isError || seleccionadosInfoQuery.isError;
+    (studentIds.length > 0 && studentInfoQuery.isLoading);
+  const hasError = rosterQuery.isError || compromisosQuery.isError || studentInfoQuery.isError;
 
-  const iniciales = (nombre: string | null) =>
-    !nombre
-      ? "?"
-      : nombre
-          .split(" ")
-          .map((p) => p[0])
-          .filter(Boolean)
-          .slice(0, 2)
-          .join("")
-          .toUpperCase();
+  const reminderMessage = (row: ConsentRow) =>
+    `Hola ${row.nombre || ""}! Te recordamos que tenés pendiente aceptar el compromiso digital ` +
+    `para la PPS${launchName ? ` en ${launchName}` : ""}. ` +
+    (row.deadline
+      ? `El plazo actual cierra el *${formatConsentimientoDeadline(row.deadline)}*. `
+      : "") +
+    `Ingresá a tu panel y confirmá: pps.psico.uflo.edu.ar`;
 
-  const fmtAccepted = (iso: string | null) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short" });
-  };
+  const bajaMessage = (row: ConsentRow) =>
+    `Hola ${row.nombre || ""}! Te escribo de la Coordinación de PPS por la práctica${
+      launchName ? ` en ${launchName}` : ""
+    }. El sistema registró la baja porque no se confirmó el compromiso antes del cierre. ` +
+    `Si necesitás que revisemos el caso, respondeme por acá.`;
 
-  // Mensajes de WhatsApp prellenados según el estado del estudiante.
-  const reminderMsg = (nombre: string | null) =>
-    `Hola ${nombre || ""}! 👋 Te recordamos que tenés pendiente aceptar el *compromiso digital* ` +
-    `para la PPS${instNombre ? ` en ${instNombre}` : ""}. Ingresá a tu panel y confirmá: ` +
-    `pps.psico.uflo.edu.ar`;
-  const bajaMsg = (nombre: string | null) =>
-    `Hola ${nombre || ""}! Te escribo de la Coordinación de PPS por la práctica` +
-    `${instNombre ? ` en ${instNombre}` : ""}. Vi que no llegaste a confirmar el compromiso digital ` +
-    `a tiempo y el sistema te dio de baja. ¿Seguís interesado/a? Avisame y lo resolvemos.`;
-
-  // Separamos por estado: los que faltan firmar (pendientes + bajas) son la
-  // prioridad operativa; los que firmaron quedan colapsados aparte.
-  const faltanRows = consentRows.filter((r) => r.status !== "firmo");
-  const firmadosRows = consentRows.filter((r) => r.status === "firmo");
-
-  // Resumen de horarios a cubrir: agrupa a los que NO firmaron por su franja
-  // horaria, para saber qué horarios hay que reponer al seleccionar reemplazos.
-  const horariosACubrir = (() => {
-    const map = new Map<string, number>();
-    faltanRows.forEach((r) => {
-      const h = (r.horario || "").trim() || "Sin horario asignado";
-      map.set(h, (map.get(h) || 0) + 1);
-    });
-    return Array.from(map.entries())
-      .map(([horario, count]) => ({ horario, count }))
-      .sort((a, b) => b.count - a.count);
-  })();
-
-  // Metadatos visuales por estado.
-  const statusMetaFor = (row: (typeof consentRows)[number]) => {
-    if (row.status === "firmo")
-      return {
-        color: "var(--ok)",
-        bg: "var(--ok-s)",
-        icon: "verified",
-        label: `Firmó${row.acceptedAt ? ` · ${fmtAccepted(row.acceptedAt)}` : ""}`,
-      };
-    if (row.status === "baja")
-      return {
-        color: "#A12D2D",
-        bg: "rgba(161,45,45,.10)",
-        icon: "person_off",
-        label: `Baja${row.bajaAt ? ` · ${fmtAccepted(row.bajaAt)}` : ""}`,
-      };
-    return {
-      color: "var(--warn)",
-      bg: "var(--warn-s)",
-      icon: "hourglass_empty",
-      label: "Pendiente",
-    };
-  };
-
-  // Fila reutilizable (misma en ambas listas).
-  const renderRow = (row: (typeof consentRows)[number]) => {
-    const meta = statusMetaFor(row);
-    const waMessage =
-      row.status === "pendiente"
-        ? reminderMsg(row.nombre)
+  const renderRow = (row: ConsentRow) => {
+    const meta =
+      row.status === "firmo"
+        ? {
+            tone: "is-signed",
+            icon: "verified",
+            label: `Firmó${row.acceptedAt ? ` · ${formatCompactDate(row.acceptedAt)}` : ""}`,
+          }
         : row.status === "baja"
-          ? bajaMsg(row.nombre)
-          : undefined;
-    const waUrl = getWhatsAppUrl(row.telefono, waMessage);
+          ? {
+              tone: "is-dropped",
+              icon: "person_off",
+              label: `Baja${row.bajaAt ? ` · ${formatCompactDate(row.bajaAt)}` : ""}`,
+            }
+          : { tone: "is-pending", icon: "hourglass_empty", label: "En plazo" };
+    const waUrl = getWhatsAppUrl(
+      row.telefono,
+      row.status === "baja" ? bajaMessage(row) : reminderMessage(row)
+    );
+
     return (
-      <div key={row.id} className="lv4-insc-row" style={{ gap: 12 }}>
-        <div
-          className="lv4-avatar"
-          style={{ background: meta.bg, color: meta.color, borderColor: "transparent" }}
-        >
-          {iniciales(row.nombre)}
+      <div key={row.id} className="lv4-insc-row lv4-consent-row" role="listitem">
+        <div className={`lv4-avatar lv4-consent-avatar ${meta.tone}`} aria-hidden="true">
+          {initials(row.nombre)}
         </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>
-            {row.nombre ?? (
-              <span style={{ color: "var(--ink-4)", fontStyle: "italic" }}>Sin nombre</span>
-            )}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              marginTop: 2,
-              fontSize: 11.5,
-              color: "var(--ink-3)",
-            }}
-          >
+        <div className="lv4-consent-person">
+          <div className="lv4-consent-name">{row.nombre || "Sin nombre"}</div>
+          <div className="lv4-consent-meta">
             {row.horario && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <span className="material-icons" style={{ fontSize: 12 }}>
+              <span>
+                <span className="material-icons" aria-hidden="true">
                   schedule
                 </span>
                 {row.horario}
               </span>
             )}
-            {row.telefono && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <span className="material-icons" style={{ fontSize: 12 }}>
-                  call
-                </span>
-                {row.telefono}
-              </span>
-            )}
             {row.correo && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-                <span className="material-icons" style={{ fontSize: 12 }}>
+              <span>
+                <span className="material-icons" aria-hidden="true">
                   mail
                 </span>
-                <span
-                  style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: 180,
-                  }}
-                >
-                  {row.correo}
-                </span>
+                {row.correo}
               </span>
             )}
           </div>
+          {row.status === "pendiente" && row.deadline && (
+            <div className="lv4-consent-deadline">
+              Firma habilitada hasta {formatConsentimientoDeadlineShort(row.deadline)}
+            </div>
+          )}
           {row.status === "baja" && (
-            <div style={{ fontSize: 11, color: "#A12D2D", marginTop: 4, lineHeight: 1.4 }}>
-              Dado de baja automática por no firmar a tiempo. Volvé a seleccionarlo desde «Agregar o
-              cambiar seleccionados» si corresponde.
+            <div className="lv4-consent-drop-help">
+              La vacante quedó liberada. Volvé a seleccionarlo solamente si corresponde reabrir el
+              caso.
             </div>
           )}
         </div>
-
-        {/* Estado */}
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            fontSize: 11,
-            fontWeight: 600,
-            padding: "3px 10px",
-            borderRadius: 999,
-            background: meta.bg,
-            color: meta.color,
-            whiteSpace: "nowrap",
-          }}
-        >
-          <span className="material-icons" style={{ fontSize: 13 }}>
+        <span className={`lv4-consent-status ${meta.tone}`}>
+          <span className="material-icons" aria-hidden="true">
             {meta.icon}
           </span>
           {meta.label}
         </span>
-
-        {/* Contacto */}
-        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+        <div className="lv4-consent-contact">
           {waUrl ? (
             <a
-              className="lv4-icon-btn"
+              className="lv4-icon-btn lv4-consent-whatsapp"
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title={
-                row.status === "firmo"
-                  ? "Escribir por WhatsApp"
-                  : row.status === "baja"
-                    ? "Contactar (dado de baja)"
-                    : "Enviar recordatorio por WhatsApp"
-              }
-              style={{ color: "#25D366", textDecoration: "none" }}
+              aria-label={`Escribir por WhatsApp a ${row.nombre || "estudiante"}`}
             >
-              <span className="material-icons" style={{ fontSize: 18 }}>
+              <span className="material-icons" aria-hidden="true">
                 chat
               </span>
             </a>
           ) : (
-            <span
-              className="lv4-icon-btn"
-              title="Sin teléfono cargado"
-              style={{ color: "var(--ink-4)", cursor: "not-allowed", opacity: 0.5 }}
-            >
-              <span className="material-icons" style={{ fontSize: 18 }}>
+            <span className="lv4-icon-btn is-disabled" aria-label="Sin teléfono cargado">
+              <span className="material-icons" aria-hidden="true">
                 chat
               </span>
             </span>
@@ -386,20 +340,15 @@ const ConfirmacionView: React.FC<{
             <a
               className="lv4-icon-btn"
               href={`mailto:${row.correo}`}
-              title={`Enviar email a ${row.correo}`}
-              style={{ color: "var(--ink-3)", textDecoration: "none" }}
+              aria-label={`Enviar email a ${row.nombre || row.correo}`}
             >
-              <span className="material-icons" style={{ fontSize: 18 }}>
+              <span className="material-icons" aria-hidden="true">
                 mail
               </span>
             </a>
           ) : (
-            <span
-              className="lv4-icon-btn"
-              title="Sin correo cargado"
-              style={{ color: "var(--ink-4)", cursor: "not-allowed", opacity: 0.5 }}
-            >
-              <span className="material-icons" style={{ fontSize: 18 }}>
+            <span className="lv4-icon-btn is-disabled" aria-label="Sin correo cargado">
+              <span className="material-icons" aria-hidden="true">
                 mail
               </span>
             </span>
@@ -409,18 +358,12 @@ const ConfirmacionView: React.FC<{
     );
   };
 
-  if (isDataLoading) {
+  if (isLoading) {
     return (
       <div>
         <CanvasHeader
           launch={launch}
           uiState="confirmacion"
-          primaryAction={{
-            label: "Activar PPS",
-            icon: "play_circle",
-            onClick: onActivar,
-            disabled: true,
-          }}
           secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
         />
         {editModal}
@@ -431,18 +374,12 @@ const ConfirmacionView: React.FC<{
     );
   }
 
-  if (hasDataError) {
+  if (hasError) {
     return (
       <div>
         <CanvasHeader
           launch={launch}
           uiState="confirmacion"
-          primaryAction={{
-            label: "Activar PPS",
-            icon: "play_circle",
-            onClick: onActivar,
-            disabled: true,
-          }}
           secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
         />
         {editModal}
@@ -458,7 +395,7 @@ const ConfirmacionView: React.FC<{
                   void Promise.all([
                     rosterQuery.refetch(),
                     compromisosQuery.refetch(),
-                    seleccionadosInfoQuery.refetch(),
+                    studentInfoQuery.refetch(),
                   ])
                 }
               >
@@ -466,7 +403,7 @@ const ConfirmacionView: React.FC<{
               </button>
             }
           >
-            La activación queda bloqueada para evitar avanzar con datos incompletos.
+            Las acciones de cierre y activación quedan bloqueadas hasta reconciliar los datos.
           </Banner>
         </div>
       </div>
@@ -478,298 +415,226 @@ const ConfirmacionView: React.FC<{
       <CanvasHeader
         launch={launch}
         uiState="confirmacion"
-        primaryAction={{
-          label: "Activar PPS",
-          icon: "play_circle",
-          onClick: onActivar,
-          disabled: seleccionadosVigentes === 0,
-        }}
         secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
       />
       {editModal}
       <div className="lv4-canvas-body">
-        {/* Stats compromisos */}
-        <StatGrid style={{ marginBottom: 24 }}>
-          <Stat label="Seleccionados" value={total} hint="estudiantes" />
-          <Stat label="Consintieron" value={confirmados} hint="compromiso digital" tone="ok" />
+        <StatGrid>
+          <Stat label="Seleccionados vigentes" value={selectedCurrent} hint="con lugar asignado" />
+          <Stat label="Firmaron" value={signedRows.length} hint="compromiso aceptado" tone="ok" />
           <Stat
-            label="Pendientes"
-            value={pendientes}
-            hint="sin firmar"
-            tone={pendientes > 0 ? "warn" : "ok"}
+            label="En plazo"
+            value={pendingRows.length}
+            hint="pueden confirmar"
+            tone={pendingRows.length > 0 ? "warn" : "ok"}
           />
+          {bajaRows.length > 0 && (
+            <Stat label="Bajas" value={bajaRows.length} hint="vacantes liberadas" tone="warn" />
+          )}
         </StatGrid>
 
-        {/* Progreso de consentimientos */}
-        {total > 0 && (
-          <div
-            style={{
-              border: "1px solid var(--rule-2)",
-              borderRadius: 12,
-              padding: "14px 18px",
-              marginBottom: 24,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 8,
-              }}
-            >
-              <span className="lv4-eyebrow" style={{ marginBottom: 0 }}>
-                Avance de consentimientos
-              </span>
-              <span
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: consentPct === 100 ? "var(--ok)" : "var(--warn)",
-                }}
-              >
-                {confirmados}/{total} · {consentPct}%
-              </span>
+        {selectedCurrent > 0 && (
+          <div className="lv4-consent-progress">
+            <div className="lv4-consent-progress-head">
+              <span className="lv4-eyebrow">Avance sobre seleccionados vigentes</span>
+              <strong>
+                {signedRows.length}/{selectedCurrent} · {progress}%
+              </strong>
             </div>
-            <div className="lv4-progress-track">
+            <div
+              className="lv4-progress-track"
+              role="progressbar"
+              aria-label="Avance de consentimientos"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress}
+            >
               <div
-                className="lv4-progress-fill"
-                style={{
-                  width: `${consentPct}%`,
-                  background: consentPct === 100 ? "var(--ok)" : "var(--warn)",
-                }}
+                className={`lv4-progress-fill${progress === 100 ? " is-complete" : ""}`}
+                style={{ transform: `scaleX(${progress / 100})` }}
               />
             </div>
           </div>
         )}
 
-        {/* Banner estado */}
-        {total === 0 ? (
+        <section className={`lv4-consent-decision${listaEntregadaAt ? " is-closed" : ""}`}>
+          <div className="lv4-consent-decision-copy">
+            <span className="material-icons" aria-hidden="true">
+              {listaEntregadaAt ? "lock" : "fact_check"}
+            </span>
+            <div>
+              <span className="lv4-eyebrow">
+                {listaEntregadaAt ? "Nómina institucional cerrada" : "Decisión de Coordinación"}
+              </span>
+              <strong>
+                {listaEntregadaAt
+                  ? `Lista entregada el ${deliveredLabel}`
+                  : nextDeadline
+                    ? `La firma sigue abierta hasta ${formatConsentimientoDeadline(nextDeadline)}`
+                    : "Registrá la entrega cuando envíes la lista a la institución"}
+              </strong>
+              <p>
+                {listaEntregadaAt
+                  ? "No se admiten nuevas firmas. Las bajas y sus vacantes quedan separadas del grupo vigente."
+                  : "El plazo cierra 24 horas antes del inicio o cuando registres la entrega de la lista, lo que ocurra primero. Activar la PPS no cierra por sí solo las firmas."}
+              </p>
+            </div>
+          </div>
+          <div className="lv4-consent-decision-actions">
+            {!listaEntregadaAt && selectedCurrent > 0 && (
+              <button
+                className="lv4-btn"
+                onClick={() => onListaEntregada(pendingRows.length)}
+                disabled={isClosingList}
+              >
+                <span className="material-icons" aria-hidden="true">
+                  outgoing_mail
+                </span>
+                {isClosingList
+                  ? "Registrando…"
+                  : pendingRows.length > 0
+                    ? `Cerrar lista (${pendingRows.length} sin firma)`
+                    : "Registrar lista entregada"}
+              </button>
+            )}
+            <button
+              className="lv4-btn lv4-btn-primary"
+              onClick={onActivar}
+              disabled={selectedCurrent === 0}
+            >
+              <span className="material-icons" aria-hidden="true">
+                play_circle
+              </span>
+              Activar PPS
+            </button>
+          </div>
+        </section>
+
+        {rows.length === 0 && (
           <Banner
             tone="neutral"
             icon="group_add"
             title="Todavía no hay estudiantes seleccionados"
-            style={{ marginBottom: 28 }}
             action={
-              <button
-                className="lv4-btn lv4-btn-primary"
-                style={{ flexShrink: 0 }}
-                onClick={() => setGestionOpen(true)}
-              >
-                <span className="material-icons" style={{ fontSize: 14 }}>
-                  person_add
-                </span>
+              <button className="lv4-btn lv4-btn-primary" onClick={() => setGestionOpen(true)}>
                 Seleccionar estudiantes
               </button>
             }
           >
-            Elegí estudiantes de la lista de inscriptos para empezar la sala de consentimientos.
-          </Banner>
-        ) : pendientes > 0 ? (
-          <Banner
-            tone="warn"
-            icon="pending_actions"
-            title={`${pendientes} de ${total} sin firmar el compromiso`}
-            style={{ marginBottom: 28 }}
-          >
-            Seleccionaste {total} estudiante{total !== 1 ? "s" : ""} y {confirmados} firmaron.
-            Revisá abajo quiénes faltan y contactalos directo por WhatsApp o email.
-          </Banner>
-        ) : (
-          <Banner
-            tone="ok"
-            icon="check_circle"
-            title="Todos los compromisos aceptados"
-            style={{ marginBottom: 28 }}
-          >
-            Podés proceder a generar los seguros y actas.
+            Elegí estudiantes de la lista de inscriptos para iniciar los consentimientos.
           </Banner>
         )}
 
-        {/* Faltan firmar — prioridad operativa (pendientes + bajas) */}
-        {faltanRows.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
+        {pendingRows.length > 0 && (
+          <section className="lv4-consent-section">
+            <div className="lv4-consent-section-head">
               <div>
-                <div className="lv4-eyebrow" style={{ color: "var(--warn)" }}>
-                  Acción requerida
-                </div>
-                <div className="lv4-section-title">Faltan firmar ({faltanRows.length})</div>
+                <span className="lv4-eyebrow is-warning">Seguimiento</span>
+                <h2>En plazo ({pendingRows.length})</h2>
+                <p>
+                  Todavía conservan el lugar y pueden firmar. Contactalos antes de cerrar la nómina
+                  institucional.
+                </p>
               </div>
-              <button className="lv4-btn" onClick={() => setGestionOpen((o) => !o)}>
-                <span className="material-icons" style={{ fontSize: 14 }}>
-                  manage_accounts
-                </span>
-                Gestionar
-              </button>
-            </div>
-            <div
-              style={{
-                fontSize: 12.5,
-                color: "var(--ink-3)",
-                margin: "0 0 12px",
-                maxWidth: 640,
-                lineHeight: 1.5,
-              }}
-            >
-              Estudiantes que no aceptaron el compromiso digital. Los marcados como{" "}
-              <b style={{ color: "#A12D2D" }}>baja</b> ya fueron dados de baja automática por no
-              firmar en 24 h; los <b style={{ color: "var(--warn)" }}>pendientes</b> siguen en
-              plazo. Contactalos directo por WhatsApp (el mensaje ya viene escrito) o por email.
-            </div>
-
-            {/* Horarios a cubrir — qué franjas quedaron con vacante */}
-            {horariosACubrir.length > 0 && (
-              <div
-                style={{
-                  border: "1px solid var(--rule-2)",
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                  marginBottom: 14,
-                  background: "var(--paper)",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: ".08em",
-                    color: "var(--ink-3)",
-                    marginBottom: 10,
-                  }}
+              <div className="lv4-consent-section-actions">
+                {bulkEmailUrl && (
+                  <a className="lv4-btn" href={bulkEmailUrl}>
+                    <span className="material-icons" aria-hidden="true">
+                      forward_to_inbox
+                    </span>
+                    Recordar por email
+                  </a>
+                )}
+                <button
+                  className="lv4-btn"
+                  onClick={() => setGestionOpen((open) => !open)}
+                  aria-expanded={gestionOpen}
+                  aria-controls="lv4-consent-management"
                 >
-                  <span className="material-icons" style={{ fontSize: 15, color: "var(--warn)" }}>
-                    schedule
+                  <span className="material-icons" aria-hidden="true">
+                    manage_accounts
                   </span>
-                  Horarios a cubrir
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {horariosACubrir.map((h) => (
-                    <span
-                      key={h.horario}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "6px 12px",
-                        borderRadius: 999,
-                        border: "1px solid var(--warn)",
-                        background: "var(--warn-s)",
-                        fontSize: 12.5,
-                        color: "var(--ink-2)",
-                      }}
-                    >
-                      <span style={{ fontWeight: 500 }}>{h.horario}</span>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          minWidth: 20,
-                          height: 20,
-                          padding: "0 6px",
-                          borderRadius: 999,
-                          background: "var(--warn)",
-                          color: "var(--paper)",
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: 11,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {h.count}
-                      </span>
+                  Gestionar selección
+                </button>
+              </div>
+            </div>
+            <div className="lv4-consent-list is-pending" role="list">
+              {pendingRows.map(renderRow)}
+            </div>
+          </section>
+        )}
+
+        {bajaRows.length > 0 && (
+          <section className="lv4-consent-section">
+            <div className="lv4-consent-section-head">
+              <div>
+                <span className="lv4-eyebrow is-danger">Acción requerida</span>
+                <h2>Bajas ({bajaRows.length})</h2>
+                <p>
+                  Ya no integran la nómina vigente. Estas son las vacantes que sí requieren
+                  reemplazo.
+                </p>
+              </div>
+            </div>
+            {schedulesToCover.length > 0 && (
+              <div className="lv4-consent-schedules">
+                <span className="lv4-eyebrow">Horarios a cubrir</span>
+                <div>
+                  {schedulesToCover.map((item) => (
+                    <span key={item.horario} className="lv4-consent-schedule">
+                      {item.horario} <b>{item.count}</b>
                     </span>
                   ))}
                 </div>
-                <div style={{ fontSize: 11.5, color: "var(--ink-4)", marginTop: 10 }}>
-                  Al seleccionar reemplazos, priorizá estas franjas para no dejar vacantes.
-                </div>
               </div>
             )}
-
-            <div
-              style={{
-                border: "1px solid var(--warn)",
-                borderRadius: 12,
-                overflow: "hidden",
-                background: "var(--warn-s)",
-              }}
-            >
-              {faltanRows.map(renderRow)}
+            <div className="lv4-consent-list is-dropped" role="list">
+              {bajaRows.map(renderRow)}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Ya firmaron — colapsado (secundario) */}
-        {firmadosRows.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
+        {signedRows.length > 0 && (
+          <section className="lv4-consent-section">
             <button
               className="lv4-group-head"
-              style={{ width: "100%" }}
-              onClick={() => setFirmadosOpen((o) => !o)}
+              onClick={() => setFirmadosOpen((open) => !open)}
+              aria-expanded={firmadosOpen}
+              aria-controls="lv4-signed-consents"
             >
               <span className="lv4-group-label">
                 <span
-                  className="material-icons"
-                  style={{
-                    fontSize: 16,
-                    transition: "transform .15s",
-                    transform: firmadosOpen ? "rotate(0)" : "rotate(-90deg)",
-                    color: "var(--ink-4)",
-                  }}
+                  className={`material-icons lv4-disclosure${firmadosOpen ? " is-open" : ""}`}
+                  aria-hidden="true"
                 >
                   expand_more
                 </span>
-                <span className="material-icons" style={{ fontSize: 15, color: "var(--ok)" }}>
+                <span className="material-icons lv4-consent-ok" aria-hidden="true">
                   verified
                 </span>
-                {firmadosRows.length} ya firmaron
+                Firmaron ({signedRows.length})
               </span>
               <span className="lv4-group-count">{firmadosOpen ? "ocultar" : "ver"}</span>
             </button>
             {firmadosOpen && (
-              <div
-                style={{
-                  border: "1px solid var(--rule-2)",
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  marginTop: 12,
-                }}
-              >
-                {firmadosRows.map(renderRow)}
+              <div id="lv4-signed-consents" className="lv4-consent-list" role="list">
+                {signedRows.map(renderRow)}
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        {/* Gestionar seleccionados — agregar / cambiar desde inscriptos */}
-        <div style={{ marginBottom: 28 }}>
+        <section className="lv4-consent-section">
           <button
             className="lv4-group-head"
-            style={{ width: "100%" }}
-            onClick={() => setGestionOpen((o) => !o)}
+            onClick={() => setGestionOpen((open) => !open)}
+            aria-expanded={gestionOpen}
+            aria-controls="lv4-consent-management"
           >
             <span className="lv4-group-label">
               <span
-                className="material-icons"
-                style={{
-                  fontSize: 16,
-                  transition: "transform .15s",
-                  transform: gestionOpen ? "rotate(0)" : "rotate(-90deg)",
-                  color: "var(--ink-4)",
-                }}
+                className={`material-icons lv4-disclosure${gestionOpen ? " is-open" : ""}`}
+                aria-hidden="true"
               >
                 expand_more
               </span>
@@ -778,19 +643,11 @@ const ConfirmacionView: React.FC<{
             <span className="lv4-group-count">desde inscriptos</span>
           </button>
           {gestionOpen && (
-            <div style={{ marginTop: 14 }}>
-              <div
-                style={{
-                  fontSize: 12.5,
-                  color: "var(--ink-3)",
-                  marginBottom: 14,
-                  maxWidth: 640,
-                  lineHeight: 1.5,
-                }}
-              >
-                Marcá o desmarcá estudiantes de la lista de inscriptos. Los cambios se reflejan
-                arriba en la lista de seleccionados.
-              </div>
+            <div id="lv4-consent-management" className="lv4-consent-management">
+              <p>
+                Marcá o desmarcá estudiantes. La lista superior y los conteos se reconcilian
+                automáticamente.
+              </p>
               <Suspense fallback={<Loader />}>
                 <SeleccionadorConvocatorias
                   isTestingMode={false}
@@ -800,69 +657,10 @@ const ConfirmacionView: React.FC<{
               </Suspense>
             </div>
           )}
-        </div>
-
-        {/* Activar la PPS */}
-        {seleccionadosVigentes > 0 && (
-          <>
-            <div className="lv4-eyebrow" style={{ marginBottom: 8 }}>
-              Activar la PPS
-            </div>
-            <Banner
-              tone="ok"
-              icon="play_circle"
-              title={
-                pendientes > 0
-                  ? `${pendientes} compromiso${pendientes !== 1 ? "s" : ""} aún pendiente${
-                      pendientes !== 1 ? "s" : ""
-                    }`
-                  : "Todos los compromisos aceptados"
-              }
-              style={{ marginBottom: 16 }}
-            >
-              {pendientes > 0
-                ? "Podés avanzar igual: la PPS arranca con los confirmados y los pendientes pasan a la lista de reemplazos."
-                : "Activá la PPS para marcar el lanzamiento como en curso. Los estudiantes ya están listos."}
-            </Banner>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                flexWrap: "wrap",
-                marginBottom: 24,
-              }}
-            >
-              <button className="lv4-btn lv4-btn-primary" onClick={onActivar}>
-                <span className="material-icons" style={{ fontSize: 16 }}>
-                  play_circle
-                </span>
-                Activar PPS
-              </button>
-              {pendientes > 0 && (
-                <button
-                  className="lv4-btn lv4-btn-ghost"
-                  onClick={() =>
-                    showModal(
-                      "Avanzar con pendientes",
-                      "Esta acción mueve el lanzamiento a Activa aunque haya compromisos sin firmar. Los pendientes podrán ser reemplazados desde la sala de Confirmación."
-                    )
-                  }
-                >
-                  <span className="material-icons" style={{ fontSize: 16 }}>
-                    warning
-                  </span>
-                  ¿Por qué hay pendientes?
-                </button>
-              )}
-            </div>
-          </>
-        )}
+        </section>
       </div>
     </div>
   );
 };
-
-// ─── ActivaView ───────────────────────────────────────────────────────────────
 
 export default ConfirmacionView;

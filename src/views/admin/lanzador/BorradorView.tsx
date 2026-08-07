@@ -175,7 +175,7 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
                 <div
                   className="lv4-progress-fill"
                   style={{
-                    width: `${pct}%`,
+                    transform: `scaleX(${pct / 100})`,
                     background: isReady ? "var(--ok)" : "var(--accent)",
                   }}
                 />
