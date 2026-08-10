@@ -41,7 +41,6 @@ interface StudentPanelContextType {
   // Mutations and refetch functions (tipos derivados de los hooks fuente)
   updateOrientation: ReturnType<typeof useStudentData>["updateOrientation"];
   updateInternalNotes: ReturnType<typeof useStudentData>["updateInternalNotes"];
-  updateNota: ReturnType<typeof useStudentPracticas>["updateNota"];
   updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
@@ -73,14 +72,8 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     updateInternalNotes,
     refetchStudent,
   } = useStudentData(legajo);
-  const {
-    practicas,
-    isPracticasLoading,
-    practicasError,
-    updateNota,
-    updateFechaFin,
-    refetchPracticas,
-  } = useStudentPracticas(legajo, studentId);
+  const { practicas, isPracticasLoading, practicasError, updateFechaFin, refetchPracticas } =
+    useStudentPracticas(legajo, studentId);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
     useStudentSolicitudes(legajo, studentId);
   const {
@@ -151,7 +144,6 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     error,
     updateOrientation,
     updateInternalNotes,
-    updateNota,
     updateFechaFin,
     enrollStudent,
     cancelEnrollment,

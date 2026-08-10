@@ -57,9 +57,7 @@ interface StudentPanelContextType {
   // Mutations and refetch functions (tipos derivados de los hooks fuente)
   updateOrientation: ReturnType<typeof useStudentData>["updateOrientation"];
   updateInternalNotes: ReturnType<typeof useStudentData>["updateInternalNotes"];
-  updateNota: ReturnType<typeof useStudentPracticas>["updateNota"];
   updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
-  deletePractica: ReturnType<typeof useStudentPracticas>["deletePractica"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
   confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
@@ -100,9 +98,7 @@ const emptyContextValue: StudentPanelContextType = {
   error: null,
   updateOrientation: { mutate: () => {}, isPending: false } as any,
   updateInternalNotes: { mutate: () => {}, isPending: false } as any,
-  updateNota: { mutate: () => {}, isPending: false } as any,
   updateFechaFin: { mutate: () => {}, isPending: false } as any,
-  deletePractica: { mutate: () => {}, isPending: false } as any,
   enrollStudent: { mutate: () => {}, isPending: false },
   cancelEnrollment: { mutate: () => {}, isPending: false },
   confirmInforme: { mutate: () => {}, isPending: false } as any,
@@ -147,15 +143,8 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     updateInternalNotes,
     refetchStudent,
   } = useStudentData(legajo);
-  const {
-    practicas,
-    isPracticasLoading,
-    practicasError,
-    updateNota,
-    updateFechaFin,
-    deletePractica,
-    refetchPracticas,
-  } = useStudentPracticas(legajo, studentId);
+  const { practicas, isPracticasLoading, practicasError, updateFechaFin, refetchPracticas } =
+    useStudentPracticas(legajo, studentId);
   const {
     solicitudes,
     isSolicitudesLoading,
@@ -274,9 +263,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     error,
     updateOrientation,
     updateInternalNotes,
-    updateNota,
     updateFechaFin,
-    deletePractica,
     enrollStudent,
     cancelEnrollment,
     confirmInforme,

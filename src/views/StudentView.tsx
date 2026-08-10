@@ -8,6 +8,7 @@ import Auth from "../components/Auth";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { StudentPanelProvider, useStudentPanel } from "../contexts/StudentPanelContext";
+import { MoodleGradeSyncProvider } from "../contexts/MoodleGradeSyncContext";
 import type { TabId } from "../types";
 import StudentDashboard from "./StudentDashboard";
 import { PullToRefresh } from "../components/layout/MobileTransitions";
@@ -129,7 +130,9 @@ const StudentView: React.FC = () => {
 
   return (
     <StudentPanelProvider legajo={authenticatedUser?.legajo}>
-      <StudentLayout />
+      <MoodleGradeSyncProvider>
+        <StudentLayout />
+      </MoodleGradeSyncProvider>
     </StudentPanelProvider>
   );
 };

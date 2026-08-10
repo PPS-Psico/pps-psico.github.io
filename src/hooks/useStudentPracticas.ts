@@ -3,17 +3,15 @@ import {
   FIELD_ESTADO_PRACTICA,
   FIELD_ESTUDIANTE_LINK_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
-  FIELD_NOTA_PRACTICAS,
 } from "../constants";
 import { useModal } from "../contexts/ModalContext";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import { deletePractica as deletePracticaRecord, fetchPracticas } from "../services";
+import { fetchPracticas } from "../services";
 import { mockDb } from "../services/mockDb";
 import type { Practica } from "../types";
-import { normalizeStringForComparison } from "../utils/formatters";
 import { logger } from "../utils/logger";
-import { getEffectivePracticeStatus, isPracticeDisapproved } from "../logic/studentRules";
+import { getEffectivePracticeStatus } from "../logic/studentRules";
 
 export const useStudentPracticas = (legajo: string, studentId: string | null) => {
   const queryClient = useQueryClient();
@@ -143,22 +141,6 @@ export const useStudentPracticas = (legajo: string, studentId: string | null) =>
   const isPracticasInitialLoad =
     isPracticasLoading || (isPracticasFetching && practicas.length === 0);
 
-  const updateNota = useMutation({
-    mutationFn: async ({ practicaId, nota }: { practicaId: string; nota: string }) => {
-      if (legajo === "99999") {
-        await mockDb.update("practicas", practicaId, { [FIELD_NOTA_PRACTICAS]: nota });
-        return;
-      }
-
-      const valueToSend = nota === "Sin calificar" ? null : nota;
-      return db.practicas.update(practicaId, { [FIELD_NOTA_PRACTICAS]: valueToSend });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["practicas", legajo] });
-    },
-    onError: () => showModal("Error", "No se pudo actualizar la nota."),
-  });
-
   const updateFechaFin = useMutation({
     mutationFn: async ({ practicaId, fecha }: { practicaId: string; fecha: string }) => {
       if (legajo === "99999") {
@@ -173,32 +155,11 @@ export const useStudentPracticas = (legajo: string, studentId: string | null) =>
     onError: (err) => showModal("Error", `No se pudo actualizar la fecha: ${err.message}`),
   });
 
-  const deletePractica = useMutation({
-    mutationFn: async (practicaId: string) => {
-      const practica = practicas.find((item) => item.id === practicaId);
-      if (practica && isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA])) {
-        throw new Error("Una PPS desaprobada no se puede eliminar.");
-      }
-
-      if (legajo === "99999") {
-        return mockDb.delete("practicas", practicaId);
-      }
-      return deletePracticaRecord(practicaId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["practicas", legajo] });
-      showModal("Práctica Eliminada", "La práctica se ha eliminado correctamente.");
-    },
-    onError: (err) => showModal("Error", `No se pudo eliminar la práctica: ${err.message}`),
-  });
-
   return {
     practicas,
     isPracticasLoading: isPracticasInitialLoad,
     practicasError: blockingPracticasError,
-    updateNota,
     updateFechaFin,
-    deletePractica,
     refetchPracticas,
   };
 };

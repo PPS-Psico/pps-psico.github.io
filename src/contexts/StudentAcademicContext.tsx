@@ -35,7 +35,6 @@ interface StudentAcademicContextType {
   finalizacionRequest: FinalizacionPPS | null;
   isAcademicLoading: boolean;
   academicError: Error | null;
-  updateNota: ReturnType<typeof useStudentPracticas>["updateNota"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
   confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
@@ -53,14 +52,8 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
   const { studentDetails, studentId } = useStudentContextData();
   const config = useAppConfig();
 
-  const {
-    practicas,
-    isPracticasLoading,
-    practicasError,
-    updateNota,
-    updateFechaFin,
-    refetchPracticas,
-  } = useStudentPracticas(legajo, studentId);
+  const { practicas, isPracticasLoading, practicasError, updateFechaFin, refetchPracticas } =
+    useStudentPracticas(legajo, studentId);
   const { solicitudes, isSolicitudesLoading, solicitudesError, refetchSolicitudes } =
     useStudentSolicitudes(legajo, studentId);
   const {
@@ -138,7 +131,6 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     finalizacionRequest,
     isAcademicLoading,
     academicError,
-    updateNota,
     updateFechaFin,
     enrollStudent,
     cancelEnrollment,

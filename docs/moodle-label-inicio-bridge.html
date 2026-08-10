@@ -1,0 +1,502 @@
+<!-- AULA MOODLE · PPS 2026 — Etiqueta del Inicio + puente de tareas v1 -->
+<style id="pps-aula-style">
+  body.pps-rol-estudiante .secondary-navigation,
+  body.pps-rol-estudiante nav.secondary-navigation,
+  body.pps-rol-estudiante [data-region="secondary-navigation"],
+  body.userswitchedrole .secondary-navigation {
+    display: none !important;
+  }
+  #page-header::after,
+  #page-header::before,
+  header#page-header::after {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+    background-image: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    border: 0 !important;
+  }
+  #page-header {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .page-header-headings,
+  #page-header .page-header-headings,
+  #page-header h1,
+  .page-context-header {
+    display: none !important;
+  }
+  #page-content,
+  #region-main,
+  #region-main-box,
+  [role="main"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  .secondary-navigation {
+    margin-bottom: 0 !important;
+  }
+  #region-main .activitysection,
+  #region-main .course-content,
+  #region-main .section {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  body.limitedwidth #page.drawers .main-inner,
+  #page.drawers .main-inner,
+  .main-inner-wrapper,
+  #topofscroll,
+  #region-main,
+  #region-main-box,
+  #page-content,
+  .course-content,
+  #region-main .content,
+  [role="main"],
+  #page .container,
+  #page .container-fluid {
+    max-width: none !important;
+    width: auto !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  #region-main .activity,
+  #region-main .section .content,
+  #region-main ul.topics li.section .content {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  button[data-target="theme_boost-drawers-courseindex"],
+  button[data-target="theme_boost-drawers-blocks"],
+  [data-toggler="drawers"][data-action="toggle"],
+  .drawer-toggles,
+  .drawer-toggles .drawer-toggler-start,
+  .drawer-toggles .drawer-toggler-end {
+    display: none !important;
+  }
+  #page.drawers {
+    --drawer-left-width: 0px !important;
+    --drawer-right-width: 0px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  #theme_boost-drawers-blocks,
+  #theme_boost-drawers-courseindex,
+  .drawer.drawer-right,
+  .drawer.drawer-left,
+  [data-region="blocks-column"],
+  .block-region-side-post,
+  #block-region-side-post {
+    display: none !important;
+  }
+  #region-main .activity.label,
+  #region-main .activity-item {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  #region-main .activity.label .contentwithoutlink,
+  #region-main .activity-item .description {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  #pps-aula-embed {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 16px 18px;
+    background: transparent;
+    line-height: 0;
+  }
+  #pps-aula-frame {
+    width: 100%;
+    border: 1px solid rgba(20, 19, 16, 0.09);
+    display: block;
+    vertical-align: top;
+    min-height: 300px;
+    background: transparent;
+    border-radius: 22px;
+    box-shadow:
+      0 1px 2px rgba(20, 19, 16, 0.04),
+      0 18px 50px -22px rgba(20, 19, 16, 0.18);
+    overflow: hidden;
+  }
+  html,
+  body {
+    overflow-x: hidden !important;
+  }
+  #page-content,
+  #region-main {
+    overflow-x: hidden;
+  }
+</style>
+
+<div
+  id="pps-aula-embed"
+  data-course-id="{courseid}"
+  data-moodle-user-id="{userid}"
+  data-moodle-username="{username}"
+>
+  <iframe
+    id="pps-aula-frame"
+    src="https://pps-psico.github.io/?v=30&email={email}&firstname={firstname}&lastname={lastname}&idnumber={idnumber}&username={username}&phone1={phone1}&phone2={phone2}#/student"
+    title="Aula PPS 2026"
+    loading="lazy"
+    scrolling="auto"
+    allowtransparency="true"
+    allow="clipboard-write; fullscreen"
+  ></iframe>
+</div>
+
+<script>
+  (function () {
+    "use strict";
+
+    var PANEL_ORIGIN = "https://pps-psico.github.io";
+    var COURSE_ID = 3615;
+    var MAX_TASKS = 20;
+    var FETCH_TIMEOUT_MS = 10000;
+    var f = document.getElementById("pps-aula-frame");
+    var embed = document.getElementById("pps-aula-embed");
+    if (!f || !embed) return;
+
+    function panelH() {
+      return Math.max(620, Math.round(window.innerHeight * 0.92));
+    }
+
+    function cleanText(value) {
+      return String(value || "")
+        .replace(/\u00a0/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function normalizeText(value) {
+      return cleanText(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    }
+
+    function parseLocaleNumber(value) {
+      var raw = cleanText(value).replace(/\s/g, "");
+      if (!raw) return null;
+      if (raw.indexOf(",") > -1 && raw.indexOf(".") > -1) {
+        raw =
+          raw.lastIndexOf(",") > raw.lastIndexOf(".")
+            ? raw.replace(/\./g, "").replace(",", ".")
+            : raw.replace(/,/g, "");
+      } else if (raw.indexOf(",") > -1) {
+        raw = raw.replace(",", ".");
+      }
+      var result = Number(raw);
+      return Number.isFinite(result) ? result : null;
+    }
+
+    function rowsFromDocument(doc) {
+      return Array.prototype.map.call(
+        doc.querySelectorAll(".feedbacktable tr, .submissionstatustable tr, table.generaltable tr"),
+        function (row) {
+          var cells = Array.prototype.map.call(row.querySelectorAll("th, td"), function (cell) {
+            return cleanText(cell.textContent);
+          });
+          return { cells: cells, text: cleanText(cells.join(" | ")) };
+        }
+      );
+    }
+
+    function parseTaskDocument(cmid, doc) {
+      var pageText = normalizeText(doc.body ? doc.body.textContent : "");
+      var rows = rowsFromDocument(doc);
+      var gradeValue = null;
+      var gradeMax = null;
+      var gradeDisplay = null;
+      var gradedAtDisplay = null;
+      var submitted = false;
+      var explicitNotSubmitted = false;
+
+      rows.forEach(function (row) {
+        var label = normalizeText(row.cells[0]);
+        var value = cleanText(row.cells.slice(1).join(" "));
+
+        if ((label === "calificacion" || label === "grade") && value) {
+          var gradeMatch = value.match(/(-?[\d.,]+)\s*\/\s*([\d.,]+)/);
+          if (gradeMatch) {
+            gradeValue = parseLocaleNumber(gradeMatch[1]);
+            gradeMax = parseLocaleNumber(gradeMatch[2]);
+            gradeDisplay = value.slice(0, 160);
+          }
+        }
+
+        if ((label.indexOf("calificado sobre") > -1 || label.indexOf("graded on") > -1) && value) {
+          gradedAtDisplay = value.slice(0, 200);
+        }
+
+        if (label.indexOf("estado de la entrega") > -1 || label.indexOf("submission status") > -1) {
+          var state = normalizeText(value);
+          if (
+            state.indexOf("enviado para calificar") > -1 ||
+            state.indexOf("entregado") > -1 ||
+            state.indexOf("submitted for grading") > -1
+          ) {
+            submitted = true;
+          }
+          if (
+            state.indexOf("no se ha hecho ninguna entrega") > -1 ||
+            state.indexOf("no entregado") > -1 ||
+            state.indexOf("no submission") > -1
+          ) {
+            explicitNotSubmitted = true;
+          }
+        }
+      });
+
+      if (
+        gradeValue !== null &&
+        gradeMax !== null &&
+        gradeMax > 0 &&
+        gradeValue >= 0 &&
+        gradeValue <= gradeMax
+      ) {
+        return {
+          cmid: cmid,
+          status: "graded",
+          submitted: true,
+          gradeValue: gradeValue,
+          gradeMax: gradeMax,
+          gradeDisplay: gradeDisplay,
+          gradedAtDisplay: gradedAtDisplay,
+        };
+      }
+
+      if (submitted) {
+        return {
+          cmid: cmid,
+          status: "submitted",
+          submitted: true,
+          gradeValue: null,
+          gradeMax: null,
+          gradeDisplay: null,
+          gradedAtDisplay: null,
+        };
+      }
+
+      if (
+        explicitNotSubmitted ||
+        pageText.indexOf("no se ha hecho ninguna entrega") > -1 ||
+        pageText.indexOf("no submission has been made") > -1
+      ) {
+        return {
+          cmid: cmid,
+          status: "not_submitted",
+          submitted: false,
+          gradeValue: null,
+          gradeMax: null,
+          gradeDisplay: null,
+          gradedAtDisplay: null,
+        };
+      }
+
+      return {
+        cmid: cmid,
+        status: "parse_error",
+        submitted: false,
+        gradeValue: null,
+        gradeMax: null,
+        gradeDisplay: null,
+        gradedAtDisplay: null,
+      };
+    }
+
+    function noAccess(cmid) {
+      return {
+        cmid: cmid,
+        status: "no_access",
+        submitted: false,
+        gradeValue: null,
+        gradeMax: null,
+        gradeDisplay: null,
+        gradedAtDisplay: null,
+      };
+    }
+
+    function fetchTask(cmid) {
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () {
+        controller.abort();
+      }, FETCH_TIMEOUT_MS);
+
+      return fetch("/mod/assign/view.php?id=" + encodeURIComponent(cmid), {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { Accept: "text/html" },
+      })
+        .then(function (response) {
+          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          return response.text();
+        })
+        .then(function (html) {
+          if (!html) return noAccess(cmid);
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          return parseTaskDocument(cmid, doc);
+        })
+        .catch(function () {
+          return noAccess(cmid);
+        })
+        .finally(function () {
+          window.clearTimeout(timer);
+        });
+    }
+
+    function fetchTasks(cmids) {
+      var results = new Array(cmids.length);
+      var cursor = 0;
+
+      function worker() {
+        var index = cursor++;
+        if (index >= cmids.length) return Promise.resolve();
+        return fetchTask(cmids[index]).then(function (result) {
+          results[index] = result;
+          return worker();
+        });
+      }
+
+      var workers = [];
+      for (var i = 0; i < Math.min(3, cmids.length); i += 1) workers.push(worker());
+      return Promise.all(workers).then(function () {
+        return results;
+      });
+    }
+
+    function validRequest(data) {
+      if (!data || data.type !== "PPS_MOODLE_TASKS_REQUEST" || data.version !== 1) return false;
+      if (data.courseId !== COURSE_ID) return false;
+      if (
+        typeof data.requestId !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          data.requestId
+        )
+      )
+        return false;
+      if (!Array.isArray(data.cmids) || data.cmids.length < 1 || data.cmids.length > MAX_TASKS) {
+        return false;
+      }
+      return data.cmids.every(function (cmid) {
+        return Number.isSafeInteger(cmid) && cmid > 0;
+      });
+    }
+
+    function esEstudiante() {
+      var b = document.body;
+      if (b.classList.contains("userswitchedrole")) return true;
+      var nav = document.querySelector(
+        '.secondary-navigation, nav.secondary-navigation, [data-region="secondary-navigation"]'
+      );
+      if (!nav) return false;
+      if (
+        nav.querySelector(
+          'a[href*="course/edit.php"], a[href*="/admin/roles"], a[href*="/group/index.php"], a[href*="report/"], a[href*="enrol/"]'
+        )
+      )
+        return false;
+      var text = normalizeText(nav.textContent);
+      return !(
+        text.indexOf("configuraci") > -1 ||
+        text.indexOf("settings") > -1 ||
+        text.indexOf("ajustes") > -1
+      );
+    }
+
+    function aplicarRol() {
+      document.body.classList.toggle("pps-rol-estudiante", esEstudiante());
+    }
+
+    aplicarRol();
+    window.addEventListener("load", aplicarRol);
+    window.setTimeout(aplicarRol, 300);
+    window.setTimeout(aplicarRol, 800);
+    window.setTimeout(aplicarRol, 1500);
+
+    window.addEventListener("message", function (event) {
+      if (event.origin !== PANEL_ORIGIN || event.source !== f.contentWindow) return;
+      var data = event.data;
+      if (!data) return;
+
+      if (data.ppsAula && typeof data.height === "number" && data.height > 200) {
+        f.style.height = data.height + 2 + "px";
+        return;
+      }
+      if (data.ppsPanel) {
+        var height = typeof data.height === "number" && data.height > 200 ? data.height : panelH();
+        f.style.height = height + 2 + "px";
+        return;
+      }
+      if (!validRequest(data)) return;
+
+      var cmids = data.cmids.filter(function (cmid, index, all) {
+        return all.indexOf(cmid) === index;
+      });
+      fetchTasks(cmids).then(function (tasks) {
+        var moodleUserId = Number(embed.getAttribute("data-moodle-user-id"));
+        var moodleUsername = cleanText(embed.getAttribute("data-moodle-username")).replace(
+          /\D/g,
+          ""
+        );
+        f.contentWindow.postMessage(
+          {
+            type: "PPS_MOODLE_TASKS_RESULT",
+            version: 1,
+            requestId: data.requestId,
+            courseId: COURSE_ID,
+            observedAt: new Date().toISOString(),
+            moodleUserId: moodleUserId,
+            moodleUsername: moodleUsername,
+            tasks: tasks,
+          },
+          PANEL_ORIGIN
+        );
+      });
+    });
+
+    function closeBlocks() {
+      [
+        "drawer-open-blocks",
+        "drawer-open-right",
+        "show-drawer-blocks",
+        "show-drawer-right",
+        "drawer-open-index",
+        "show-drawer-left",
+      ].forEach(function (className) {
+        document.body.classList.remove(className);
+        var page = document.getElementById("page");
+        if (page) page.classList.remove(className);
+      });
+      ["theme_boost-drawers-blocks", "theme_boost-drawers-courseindex"].forEach(function (id) {
+        var drawer = document.getElementById(id);
+        if (drawer) {
+          drawer.classList.remove("show");
+          drawer.setAttribute("aria-hidden", "true");
+          var close = drawer.querySelector('[data-action="closedrawer"]');
+          if (close) close.click();
+        }
+      });
+    }
+
+    closeBlocks();
+    window.addEventListener("load", closeBlocks);
+    window.setTimeout(closeBlocks, 500);
+    window.setTimeout(closeBlocks, 1500);
+  })();
+</script>

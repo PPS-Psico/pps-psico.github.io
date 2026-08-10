@@ -5,9 +5,11 @@ import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
 } from "../../constants";
 import type { DeliveryArea, DeliveryInstitution } from "../../hooks/useAulaEntregas";
+import type { MoodleTaskLink } from "../../hooks/useMoodleTaskLinks";
 import { isPracticeDisapproved } from "../../logic/studentRules";
 import type { InformeTask, Practica } from "../../types";
 import { cleanDbValue, normalizeStringForComparison, parseToUTCDate } from "../../utils/formatters";
+import { resolveExactMoodleTaskLink } from "../../utils/moodleTaskResolution";
 
 export type DeliveryStatusTone = "neutral" | "info" | "ok" | "warn";
 
@@ -24,6 +26,7 @@ export interface GuidedDelivery {
   statusLabel: string;
   statusDetail: string;
   statusTone: DeliveryStatusTone;
+  resolutionSource: "exact" | "legacy" | "none";
 }
 
 const GENERIC_INSTITUTION_WORDS =
@@ -172,7 +175,8 @@ export function buildGuidedDeliveries(
   practicas: Practica[],
   informeTasks: InformeTask[],
   areas: DeliveryArea[],
-  now = new Date()
+  now = new Date(),
+  exactTaskLinks: MoodleTaskLink[] = []
 ): GuidedDelivery[] {
   const taskByPractice = new Map(
     informeTasks.filter((task) => task.practicaId).map((task) => [task.practicaId as string, task])
@@ -189,7 +193,21 @@ export function buildGuidedDeliveries(
         taskByPractice.get(practice.id) ??
         informeTasks.find((candidate) => namesMatch(candidate.ppsName, practiceName)) ??
         null;
-      const institution = resolveDeliveryInstitution(practiceName, task?.ppsName, areaId, areas);
+      const exactTaskLink = resolveExactMoodleTaskLink(practice, exactTaskLinks);
+      const legacyInstitution = resolveDeliveryInstitution(
+        practiceName,
+        task?.ppsName,
+        areaId,
+        areas
+      );
+      const institution = exactTaskLink
+        ? { name: exactTaskLink.name, moodleId: exactTaskLink.moodleId }
+        : legacyInstitution;
+      const resolutionSource: GuidedDelivery["resolutionSource"] = exactTaskLink
+        ? "exact"
+        : legacyInstitution
+          ? "legacy"
+          : "none";
       const endDate = parseToUTCDate(practice[FIELD_FECHA_FIN_PRACTICAS]);
       const deadline = endDate ? addDays(endDate, 30) : null;
 
@@ -204,6 +222,7 @@ export function buildGuidedDeliveries(
         deadline,
         deadlineLabel: formatDeadline(deadline),
         ...buildStatus(practice, task, deadline, now),
+        resolutionSource,
       };
     })
     .sort(

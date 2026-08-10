@@ -589,11 +589,11 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo entrego un informe?",
-        a: "Entrá en Entregas y abrí la tarjeta de la PPS. Mi Panel te lleva a su espacio en el Campus, donde cargás el informe final. Si la práctica fue presencial, subí también la planilla de asistencia firmada.",
+        a: "Entrá en Entregas y abrí la tarjeta de la PPS. Cuando la tarea está vinculada, Mi Panel usa el lanzamiento y la orientación de tu práctica para llevarte al espacio exacto del Campus. Ahí cargás el informe final y, si la práctica fue presencial, también la planilla de asistencia firmada.",
       },
       {
         q: "¿Qué hago si no encuentro el espacio de entrega de mi PPS?",
-        a: "En Entregas, desplegá Ver todos los espacios y buscá por área e institución. Esto también sirve para una PPS que gestionaste por tu cuenta. Si el espacio no aparece, escribí a coordinación para que lo habilite o te indique dónde entregar en el Campus.",
+        a: "Si la tarjeta indica Buscar espacio de entrega, todavía no hay un vínculo confirmado para esa PPS. Desplegá Ver todos los espacios y buscá por área e institución. Si tampoco aparece allí, escribí a coordinación para que habilite o vincule la tarea correcta; no entregues en una tarea parecida por tu cuenta.",
       },
       {
         q: "¿Dónde reviso si el informe quedó entregado?",
@@ -664,10 +664,24 @@ const faqGroups: FaqGroup[] = [
         a: (
           <>
             Es la herramienta para inscribirte, aceptar consentimientos, seguir tus horas y realizar
-            solicitudes de PPS. La información es <strong>referencial y editable</strong>: no
-            reemplaza el registro oficial y podés pedir correcciones desde Prácticas. En una PPS
-            presencial, tu respaldo es la <strong>planilla de asistencia firmada</strong>; en una
-            PPS online, el <strong>informe final corregido y aprobado</strong>.
+            solicitudes de PPS. Los datos administrativos son referenciales y podés pedir
+            correcciones desde Prácticas. Las <strong>calificaciones se consultan en Campus</strong>
+            y no se cargan manualmente. En una PPS presencial, tu respaldo es la{" "}
+            <strong>planilla de asistencia firmada</strong>; en una PPS online, el{" "}
+            <strong>informe final corregido y aprobado</strong>.
+          </>
+        ),
+      },
+      {
+        q: "¿Cómo aparecen mis entregas y calificaciones de Campus?",
+        a: (
+          <>
+            Abrí Mi Panel desde la página de la materia en <strong>Campus Virtual</strong>. Al
+            ingresar, el panel consulta únicamente las tareas vinculadas a tus PPS y muestra si no
+            entregaste, si el informe está en corrección o la calificación publicada por Moodle. La
+            pantalla indica la fecha de la última consulta. Si entrás por la dirección directa,
+            podés ver el último dato guardado, pero necesitás volver a abrir el panel desde Campus
+            para actualizarlo.
           </>
         ),
       },

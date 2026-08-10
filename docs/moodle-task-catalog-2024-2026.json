@@ -1,0 +1,769 @@
+{
+  "generated_at": "2026-08-10",
+  "moodle_course_id": 3615,
+  "source_url": "https://campus.uflo.edu.ar/course/view.php?id=3615",
+  "source": "Inventario DOM de las pestañas Tareas 2024, Tareas 2025 y Tareas 2026 con sesión docente.",
+  "notes": [
+    "cmid es el parámetro id de /mod/assign/view.php.",
+    "academic_year corresponde a la pestaña de Moodle, no necesariamente al año de inicio de la PPS.",
+    "El catálogo no constituye todavía una conciliación de calificaciones."
+  ],
+  "tasks": [
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "ASER",
+      "cmid": 623565,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=623565"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "C.R.E.A",
+      "cmid": 668671,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=668671"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Centro de Inclusión Social y Laboral A.Pa.Si.Do",
+      "cmid": 630832,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=630832"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Centro de Psicoterapia Corporal PATAGONIA",
+      "cmid": 631039,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=631039"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "CENTRO DE REHABILITACIÓN Y BIENESTAR EMOCIONAL (CRYBE)",
+      "cmid": 627701,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=627701"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Centro de Salud Parque Industrial",
+      "cmid": 631037,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=631037"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Informes de las Entrevistas a Psicólogos Clínicos",
+      "cmid": 263128,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=263128"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Informes PPS Asociación PENSAR",
+      "cmid": 275376,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=275376"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "LIENS",
+      "cmid": 629950,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=629950"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Mindfulness y Compasión",
+      "cmid": 635182,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=635182"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "PPS con Orientación Clínica - Fundación Tiempo",
+      "cmid": 631041,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=631041"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "PPS Gestión de emociones- CLINICA",
+      "cmid": 569009,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=569009"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Practicas Clinicas Antiguas",
+      "cmid": 614156,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=614156"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Clínica",
+      "name": "Psicoterapias Corporales",
+      "cmid": 268135,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=268135"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Educacional",
+      "name": "Colegio San José Obrero - 2",
+      "cmid": 625361,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=625361"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Educacional",
+      "name": "IFD N6",
+      "cmid": 625787,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=625787"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Educacional",
+      "name": "Informes de PPS Educacional 2024 antiguos",
+      "cmid": 522953,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=522953"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Educacional",
+      "name": "PPS Proyecto de Vida- EDUCACIONAL",
+      "cmid": 569006,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=569006"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Educacional",
+      "name": "PPS SAU",
+      "cmid": 273606,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=273606"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Educacional",
+      "name": "Practicas Educacional",
+      "cmid": 614159,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=614159"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Laboral-Comunitario",
+      "name": "Banco Provincia de Neuquén",
+      "cmid": 690928,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=690928"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Laboral-Comunitario",
+      "name": "Consumos Problemáticos",
+      "cmid": 641298,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=641298"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Laboral-Comunitario",
+      "name": "Crianza Responsable",
+      "cmid": 301534,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=301534"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Laboral-Comunitario",
+      "name": "Municipalidad de Fernández Oro - Área de Recursos Humanos",
+      "cmid": 626240,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=626240"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Laboral-Comunitario",
+      "name": "Practicas Socio-Comunitaria",
+      "cmid": 614155,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=614155"
+    },
+    {
+      "academic_year": 2024,
+      "area": "Tareas Área Laboral-Comunitario",
+      "name": "Subsecretaria de Trabajo",
+      "cmid": 623118,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=623118"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Alma Comahue",
+      "cmid": 918630,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=918630"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Apasido - 4",
+      "cmid": 877154,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=877154"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Ateneos Ulloa",
+      "cmid": 926287,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=926287"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Barriletes en Bandada - 14",
+      "cmid": 805657,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=805657"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Centro DAT",
+      "cmid": 906851,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906851"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Centro de Psicoterapia Corporal-Patagonia",
+      "cmid": 925555,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=925555"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Centro Sensus",
+      "cmid": 927369,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=927369"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Cita Salud",
+      "cmid": 946366,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=946366"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "CPAVZO",
+      "cmid": 908739,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=908739"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "CRYBE - 2",
+      "cmid": 818025,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=818025"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Entrevistas Ulloa",
+      "cmid": 920727,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=920727"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Fundación Austral - 2",
+      "cmid": 817894,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=817894"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Fundación Tiempo de Niños - 5",
+      "cmid": 805655,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=805655"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Hogar Convivencia",
+      "cmid": 946365,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=946365"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Instituto Liens - 4",
+      "cmid": 780221,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=780221"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Junta Evaluadora Centenario",
+      "cmid": 924909,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=924909"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Kano",
+      "cmid": 914852,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=914852"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Parque Industrial",
+      "cmid": 805656,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=805656"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Programa Aser - 10",
+      "cmid": 805658,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=805658"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "Relevamiento del Ejercicio Profesional en Psicología",
+      "cmid": 906164,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906164"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Clínica",
+      "name": "San Rafael",
+      "cmid": 946364,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=946364"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Colegio San José Obrero -2",
+      "cmid": 806110,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=806110"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "EIAJD N°7 - 2",
+      "cmid": 794670,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=794670"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Escuela Vida",
+      "cmid": 915629,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=915629"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "ETAP",
+      "cmid": 792855,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=792855"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "IFD 4",
+      "cmid": 907745,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=907745"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "IFD N6",
+      "cmid": 905705,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=905705"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "ISI College",
+      "cmid": 953117,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=953117"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Ministerio de Trabajo -20",
+      "cmid": 802079,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=802079"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Nuestra Señora de Fátima -4",
+      "cmid": 878269,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=878269"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Relevamiento del Ejercicio Profesional en Psicología",
+      "cmid": 906167,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906167"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Ruca Suyai",
+      "cmid": 903037,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=903037"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Supervisión de nivel inicial Alto Valle Oeste - 1",
+      "cmid": 799867,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=799867"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Educacional",
+      "name": "Virgen de Luján",
+      "cmid": 903038,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=903038"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "ACUCADES",
+      "cmid": 946363,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=946363"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Camioneros",
+      "cmid": 906141,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906141"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Camioneros",
+      "cmid": 906079,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906079"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Clínica Fava",
+      "cmid": 923396,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=923396"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Consumos Problemáticos",
+      "cmid": 795721,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=795721"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Consumos Problemáticos - 5",
+      "cmid": 752521,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=752521"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Corporate Resources",
+      "cmid": 906050,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906050"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "CPAVZO - 8",
+      "cmid": 817710,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=817710"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Guardia de Vulnerabilidad",
+      "cmid": 906061,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906061"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Hospital Lopez Lima",
+      "cmid": 927629,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=927629"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "III Jornadas de Salud Mental",
+      "cmid": 919158,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=919158"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Juan XXIII",
+      "cmid": 907748,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=907748"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Las Lilas",
+      "cmid": 925556,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=925556"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Ministerio de Trabajo - 32",
+      "cmid": 805659,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=805659"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Municipalidad de Fernández Oro - 9",
+      "cmid": 769021,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=769021"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Randstad - 4",
+      "cmid": 806963,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=806963"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Relevamiento del Ejercicio Profesional en Psicología",
+      "cmid": 906166,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=906166"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Sanatorio Juan XXIII",
+      "cmid": 903035,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=903035"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "SLB Rentada",
+      "cmid": 793540,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=793540"
+    },
+    {
+      "academic_year": 2025,
+      "area": "Tareas Área Laboral y Comunitaria",
+      "name": "Subsecretaría de Familia - Soporte a la Discapacidad",
+      "cmid": 907836,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=907836"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Apasido",
+      "cmid": 1108217,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1108217"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Centro DAT",
+      "cmid": 1093762,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1093762"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Colegio Psicólogos CPAVZO",
+      "cmid": 1162535,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162535"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Dige",
+      "cmid": 1014110,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1014110"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Fundación Austral",
+      "cmid": 1097081,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1097081"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Fundación Tiempo",
+      "cmid": 1085731,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1085731"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Liens",
+      "cmid": 1087582,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1087582"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Ruca Suyay",
+      "cmid": 1109586,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1109586"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Clínica",
+      "name": "Sensus",
+      "cmid": 1086464,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1086464"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Educacional",
+      "name": "Colegio San José Obrero de Neuquén",
+      "cmid": 1162540,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162540"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Educacional",
+      "name": "Escuela Integral de Jóvenes y Adolescentes N.° 1",
+      "cmid": 1162587,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162587"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Educacional",
+      "name": "IFD N6",
+      "cmid": 1110106,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1110106"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Educacional",
+      "name": "Ministerio de Juventud, Deportes y Cultura",
+      "cmid": 1109159,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1109159"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Educacional",
+      "name": "Ministerio de Trabajo y Desarrollo Laboral",
+      "cmid": 1162539,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162539"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Educacional",
+      "name": "Supervisión de Educación Primaria (Alto Valle Este I - Zona I)",
+      "cmid": 1166409,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1166409"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Barriletes en Bandada",
+      "cmid": 1111226,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1111226"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Colegio Psicólogos CPAVZO",
+      "cmid": 1162536,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162536"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Entrevistas a Profesionales",
+      "cmid": 1097090,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1097090"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Fundación Kano",
+      "cmid": 1179652,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1179652"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Human",
+      "cmid": 1074975,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1074975"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Juan XXIII",
+      "cmid": 1109584,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1109584"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Ministerio de Trabajo y Desarrollo Laboral",
+      "cmid": 1162538,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162538"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Municipalidad de Fernandez Oro",
+      "cmid": 1102510,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1102510"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Prevención en Colonias",
+      "cmid": 1009867,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1009867"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Randstad",
+      "cmid": 1085736,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1085736"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Ruca Suyay",
+      "cmid": 1109614,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1109614"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Subsecretaria de Ciudades Saludables y Prevención de Consumos problemáticos Neuquén",
+      "cmid": 1162537,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162537"
+    },
+    {
+      "academic_year": 2026,
+      "area": "Área Laboral / Comunitaria",
+      "name": "Subsecretaria de Emergencias y Gestión de Riesgos",
+      "cmid": 1162541,
+      "url": "https://campus.uflo.edu.ar/mod/assign/view.php?id=1162541"
+    }
+  ]
+}

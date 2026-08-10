@@ -7,11 +7,13 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../../lib/db";
+import { supabase } from "../../lib/supabaseClient";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_CODIGO_CAMPUS_LANZAMIENTOS,
 } from "../../constants";
 import Loader from "../Loader";
@@ -103,6 +105,17 @@ const getOrientations = (orientString: string): string[] => {
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
+};
+
+const getOrientationKey = (
+  orientation: string
+): "clinica" | "laboral" | "comunitaria" | "educacional" | "otra" => {
+  const value = orientation.toLowerCase();
+  if (value.includes("clin")) return "clinica";
+  if (value.includes("educ")) return "educacional";
+  if (value.includes("comun")) return "comunitaria";
+  if (value.includes("lab") || value.includes("organiz")) return "laboral";
+  return "otra";
 };
 
 const getSpacesForLaunch = (launch: LaunchRow, entregas: EntregaRow[]): EntregaRow[] => {
@@ -543,10 +556,21 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
 
       if (isTestingMode) return;
 
-      // 2. Si hay un ID de tarea y no se seleccionó una ya existente, creamos/activamos en aula_entregas
+      // 2. Sincronizar el catálogo y la relación canónica por orientación.
       for (const o of orientations) {
         const rawLink = linkMap[o];
         const taskId = rawLink ? getMoodleTaskId(rawLink) : null;
+        const orientationKey = getOrientationKey(o);
+
+        if (!taskId) {
+          const { error } = await supabase
+            .from("lanzamiento_moodle_tareas")
+            .delete()
+            .eq("lanzamiento_id", launchId)
+            .eq("orientacion_key", orientationKey);
+          if (error) throw error;
+          continue;
+        }
 
         if (taskId) {
           let area: "clinica" | "laboral" | "educacional" | "comunitaria" = "clinica";
@@ -563,20 +587,52 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           const name = baseName;
 
           const existing = entregas.find((e: EntregaRow) => String(e.moodle_id) === String(taskId));
+          let aulaEntregaId: number;
           if (existing) {
             await db.aula_entregas.update(String(existing.id), {
               activo: true,
               institucion: name,
               area,
             } as any);
+            aulaEntregaId = Number(existing.id);
           } else {
-            await db.aula_entregas.create({
+            const endYear = Number(
+              String(
+                launchRow[FIELD_FECHA_FIN_LANZAMIENTOS] ||
+                  launchRow[FIELD_FECHA_INICIO_LANZAMIENTOS] ||
+                  ""
+              ).slice(0, 4)
+            );
+            const created = await db.aula_entregas.create({
+              course_id: 3615,
+              academic_year: Number.isFinite(endYear) ? endYear : new Date().getFullYear(),
               moodle_id: taskId,
+              moodle_name: name,
               institucion: name,
               area,
               activo: true,
             } as any);
+            aulaEntregaId = Number((created as { id?: string | number } | null)?.id);
           }
+
+          if (!Number.isFinite(aulaEntregaId)) {
+            throw new Error("No se pudo resolver el registro de la tarea en el catálogo.");
+          }
+
+          const { error } = await supabase.from("lanzamiento_moodle_tareas").upsert(
+            {
+              lanzamiento_id: launchId,
+              orientacion_key: orientationKey,
+              aula_entrega_id: aulaEntregaId,
+              validation_status: "confirmed",
+              link_source: "manual",
+              rationale: "Vínculo confirmado manualmente desde InformeCampusLinker.",
+              validated_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "lanzamiento_id,orientacion_key" }
+          );
+          if (error) throw error;
         }
       }
     },
@@ -586,6 +642,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       queryClient.invalidateQueries({ queryKey: ["informeCampusLinker"] });
       queryClient.invalidateQueries({ queryKey: ["aula_entregas_list"] });
       queryClient.invalidateQueries({ queryKey: ["aula_entregas"] });
+      queryClient.invalidateQueries({ queryKey: ["lanzamiento_moodle_tareas"] });
       queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
     },
     onError: (err: unknown) =>

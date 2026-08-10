@@ -284,31 +284,52 @@ export type Database = {
       }
       aula_entregas: {
         Row: {
+          academic_year: number | null
           activo: boolean
           area: string
+          course_id: number
           created_at: string
+          gradebook_position: number | null
           id: number
           institucion: string
+          moodle_grade_item_id: number | null
+          moodle_grade_max: number | null
           moodle_id: string
+          moodle_name: string | null
           orden: number | null
+          source_synced_at: string | null
         }
         Insert: {
+          academic_year?: number | null
           activo?: boolean
           area: string
+          course_id?: number
           created_at?: string
+          gradebook_position?: number | null
           id?: never
           institucion: string
+          moodle_grade_item_id?: number | null
+          moodle_grade_max?: number | null
           moodle_id: string
+          moodle_name?: string | null
           orden?: number | null
+          source_synced_at?: string | null
         }
         Update: {
+          academic_year?: number | null
           activo?: boolean
           area?: string
+          course_id?: number
           created_at?: string
+          gradebook_position?: number | null
           id?: never
           institucion?: string
+          moodle_grade_item_id?: number | null
+          moodle_grade_max?: number | null
           moodle_id?: string
+          moodle_name?: string | null
           orden?: number | null
+          source_synced_at?: string | null
         }
         Relationships: []
       }
@@ -998,6 +1019,63 @@ export type Database = {
         }
         Relationships: []
       }
+      lanzamiento_moodle_tareas: {
+        Row: {
+          aula_entrega_id: number
+          created_at: string
+          id: number
+          lanzamiento_id: string
+          link_source: string
+          orientacion_key: string
+          rationale: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+          validation_status: string
+        }
+        Insert: {
+          aula_entrega_id: number
+          created_at?: string
+          id?: never
+          lanzamiento_id: string
+          link_source: string
+          orientacion_key: string
+          rationale?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string
+        }
+        Update: {
+          aula_entrega_id?: number
+          created_at?: string
+          id?: never
+          lanzamiento_id?: string
+          link_source?: string
+          orientacion_key?: string
+          rationale?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lanzamiento_moodle_tareas_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lanzamiento_moodle_tareas_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lanzamientos_pps: {
         Row: {
           actividades_label: string | null
@@ -1147,6 +1225,203 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      moodle_grade_observations: {
+        Row: {
+          aula_entrega_id: number
+          auth_user_id: string
+          bridge_version: string
+          cmid: number
+          confidence: string
+          course_id: number
+          estudiante_id: string
+          grade_display: string | null
+          grade_max: number | null
+          grade_value: number | null
+          graded_at_display: string | null
+          id: string
+          lanzamiento_id: string
+          moodle_user_id: number | null
+          moodle_username: string | null
+          observed_at: string
+          parser_version: string
+          payload_hash: string
+          practica_id: string
+          received_at: string
+          request_id: string
+          submitted: boolean
+          task_status: string
+        }
+        Insert: {
+          aula_entrega_id: number
+          auth_user_id: string
+          bridge_version: string
+          cmid: number
+          confidence?: string
+          course_id: number
+          estudiante_id: string
+          grade_display?: string | null
+          grade_max?: number | null
+          grade_value?: number | null
+          graded_at_display?: string | null
+          id?: string
+          lanzamiento_id: string
+          moodle_user_id?: number | null
+          moodle_username?: string | null
+          observed_at: string
+          parser_version: string
+          payload_hash: string
+          practica_id: string
+          received_at?: string
+          request_id: string
+          submitted?: boolean
+          task_status: string
+        }
+        Update: {
+          aula_entrega_id?: number
+          auth_user_id?: string
+          bridge_version?: string
+          cmid?: number
+          confidence?: string
+          course_id?: number
+          estudiante_id?: string
+          grade_display?: string | null
+          grade_max?: number | null
+          grade_value?: number | null
+          graded_at_display?: string | null
+          id?: string
+          lanzamiento_id?: string
+          moodle_user_id?: number | null
+          moodle_username?: string | null
+          observed_at?: string
+          parser_version?: string
+          payload_hash?: string
+          practica_id?: string
+          received_at?: string
+          request_id?: string
+          submitted?: boolean
+          task_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moodle_grade_observations_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_observations_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_observations_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_observations_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moodle_grade_snapshots: {
+        Row: {
+          aula_entrega_id: number
+          cmid: number
+          confidence: string
+          estudiante_id: string
+          grade_display: string | null
+          grade_max: number | null
+          grade_value: number | null
+          graded_at_display: string | null
+          lanzamiento_id: string
+          latest_observation_id: string
+          observed_at: string
+          practica_id: string
+          received_at: string
+          submitted: boolean
+          task_status: string
+        }
+        Insert: {
+          aula_entrega_id: number
+          cmid: number
+          confidence: string
+          estudiante_id: string
+          grade_display?: string | null
+          grade_max?: number | null
+          grade_value?: number | null
+          graded_at_display?: string | null
+          lanzamiento_id: string
+          latest_observation_id: string
+          observed_at: string
+          practica_id: string
+          received_at: string
+          submitted?: boolean
+          task_status: string
+        }
+        Update: {
+          aula_entrega_id?: number
+          cmid?: number
+          confidence?: string
+          estudiante_id?: string
+          grade_display?: string | null
+          grade_max?: number | null
+          grade_value?: number | null
+          graded_at_display?: string | null
+          lanzamiento_id?: string
+          latest_observation_id?: string
+          observed_at?: string
+          practica_id?: string
+          received_at?: string
+          submitted?: boolean
+          task_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moodle_grade_snapshots_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_snapshots_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_snapshots_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_snapshots_latest_observation_id_fkey"
+            columns: ["latest_observation_id"]
+            isOneToOne: false
+            referencedRelation: "moodle_grade_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_snapshots_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       moodle_probe: {
         Row: {
@@ -2240,6 +2515,25 @@ export type Database = {
         }[]
       }
       get_metrics_years: { Args: never; Returns: Json }
+      get_moodle_grade_discrepancies: {
+        Args: never
+        Returns: {
+          comparison_state: string
+          especialidad: string
+          estudiante_dni: string
+          estudiante_id: string
+          estudiante_nombre: string
+          institucion: string
+          legacy_nota: string
+          moodle_grade_display: string
+          moodle_grade_max: number
+          moodle_grade_value: number
+          moodle_status: string
+          moodle_suggested_10_scale: number
+          observed_at: string
+          practica_id: string
+        }[]
+      }
       get_my_role: { Args: never; Returns: string }
       get_my_solicitudes_ingreso_v1: {
         Args: never

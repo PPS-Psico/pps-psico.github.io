@@ -120,7 +120,6 @@ export const StudentHome: React.FC = () => {
     finalizacionRequest,
     compromisoMap,
     acceptCompromiso,
-    deletePractica,
     refetchPracticas,
   } = useStudentPanel();
 
@@ -160,10 +159,6 @@ export const StudentHome: React.FC = () => {
         practicas={practicas}
         criterios={criterios}
         onAddPPS={() => setShowNuevaPPSModal(true)}
-        onDeletePractica={async (id) => {
-          await deletePractica.mutateAsync(id);
-        }}
-        isDeletingPractica={deletePractica.isPending}
       />
       <SolicitudNuevaPPSModal
         isOpen={showNuevaPPSModal}
@@ -262,9 +257,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     isPracticasLoading,
     error,
     updateOrientation,
-    updateNota,
     updateFechaFin,
-    deletePractica,
     enrollStudent,
     cancelEnrollment,
     refetchAll,
@@ -322,11 +315,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [updateOrientation]
   );
 
-  const handleNotaChange = useCallback(
-    (practicaId: string, nota: string) =>
-      updateNota.mutateAsync({ practicaId, nota }).then(() => undefined),
-    [updateNota]
-  );
   const handleFechaFinChange = useCallback(
     (practicaId: string, fecha: string) =>
       updateFechaFin.mutateAsync({ practicaId, fecha }).then(() => undefined),
@@ -485,7 +473,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <ErrorBoundary>
         <PracticasTable
           practicas={practicas}
-          handleNotaChange={handleNotaChange}
           isLoading={isPracticasLoading}
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
@@ -493,13 +480,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         />
       </ErrorBoundary>
     ),
-    [
-      practicas,
-      handleNotaChange,
-      isPracticasLoading,
-      handleRequestModificacion,
-      handleRequestNuevaPPS,
-    ]
+    [practicas, isPracticasLoading, handleRequestModificacion, handleRequestNuevaPPS]
   );
 
   // Versión Atlas (escritorio) de Prácticas — layout 2 columnas.
@@ -510,21 +491,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           criterios={criterios}
           selectedOrientacion={selectedOrientacion}
           practicas={practicas}
-          handleNotaChange={handleNotaChange}
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
           onViewAssignmentSummary={setSummaryPractice}
         />
       </ErrorBoundary>
     ),
-    [
-      criterios,
-      selectedOrientacion,
-      practicas,
-      handleNotaChange,
-      handleRequestModificacion,
-      handleRequestNuevaPPS,
-    ]
+    [criterios, selectedOrientacion, practicas, handleRequestModificacion, handleRequestNuevaPPS]
   );
 
   // Versión Atlas (escritorio) de Perfil.
@@ -752,10 +725,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         criterios={criterios}
         solicitudes={solicitudesNueva}
         onAddPPS={() => setShowNuevaPPSModal(true)}
-        onDeletePractica={async (id) => {
-          await deletePractica.mutateAsync(id);
-        }}
-        isDeletingPractica={deletePractica.isPending}
       />
       <div className="print-only">
         {assignmentSummary ? (

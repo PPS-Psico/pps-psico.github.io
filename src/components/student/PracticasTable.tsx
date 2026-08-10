@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
@@ -6,126 +6,37 @@ import {
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_NOTA_PRACTICAS,
 } from "../../constants";
+import {
+  type MoodleGradeSnapshot,
+  useMoodleGradeSync,
+} from "../../contexts/MoodleGradeSyncContext";
 import { getPracticePresentationStatus, isPracticeDisapproved } from "../../logic/studentRules";
 import type { Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { haptics } from "../../utils/haptics";
 import { logger } from "../../utils/logger";
+import { presentMoodleGrade } from "../../utils/moodleGradePresentation";
 import EmptyState from "../EmptyState";
-import NotaSelector from "../NotaSelector";
 import { TableSkeleton } from "../Skeletons";
 import { canShowPpsAssignmentSummary } from "./PpsAssignmentSummary";
 
 interface PracticasTableProps {
   practicas: Practica[];
-  handleNotaChange: (practicaId: string, nota: string) => Promise<void>;
   isLoading?: boolean;
   onRequestModificacion?: (practica: Practica) => void;
-  onDeletePractica?: (practicaId: string) => void;
   onRequestNuevaPPS?: () => void;
   onViewAssignmentSummary?: (practica: Practica) => void;
 }
 
 // Flat editorial grade — número plano clickeable, color de marca (sin caja ni slot-machine)
-interface FlatGradeProps {
-  nota: string;
-  onClick: () => void;
-  isSaving: boolean;
-  isSuccess: boolean;
-  isOpen: boolean;
-  hasError: boolean;
-  institution: string;
-}
-
-const FlatGrade = forwardRef<HTMLButtonElement, FlatGradeProps>(
-  ({ nota, onClick, isSaving, isSuccess, isOpen, hasError, institution }, ref) => {
-    const num = parseInt(nota, 10);
-    const hasGrade = !isNaN(num);
-    const color = !hasGrade
-      ? "var(--student-ink-subtle, #94a3b8)"
-      : num >= 7
-        ? "#3CB88D" // teal · aprobado holgado
-        : num >= 4
-          ? "#B7770B" // ámbar · aprobado justo
-          : "#C0392B"; // rojo · desaprobado
-    const displayText = hasGrade ? String(num) : "Pend.";
-
-    return (
-      <button
-        ref={ref}
-        type="button"
-        disabled={isSaving}
-        aria-label={`${
-          hasError ? "Reintentar edición de" : "Editar"
-        } la nota informada por vos para ${institution}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-        title={
-          hasError ? "No se pudo guardar. Volvé a intentarlo." : "Editar la nota informada por vos"
-        }
-        className={`prow__nota min-w-11 min-h-11 inline-flex items-center justify-center rounded-lg cursor-pointer leading-none transition-[opacity,background-color] hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          isOpen ? "opacity-100 underline underline-offset-4 decoration-2" : ""
-        } ${hasError ? "text-rose-600 dark:text-rose-300 underline decoration-wavy" : ""}`}
-        style={{
-          color: hasError ? "var(--danger-600, #b42318)" : color,
-          fontFamily: hasGrade ? undefined : "var(--font-sans)",
-          fontSize: hasGrade ? undefined : 12,
-          fontWeight: hasGrade ? undefined : 700,
-          letterSpacing: hasGrade ? undefined : 0,
-          minWidth: hasGrade ? undefined : 38,
-        }}
-      >
-        {isSaving ? (
-          <span
-            role="status"
-            aria-label="Guardando nota informada"
-            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle"
-          />
-        ) : isSuccess ? (
-          <span
-            role="status"
-            aria-label="Nota guardada"
-            className="material-icons !text-2xl align-middle"
-          >
-            check
-          </span>
-        ) : (
-          displayText
-        )}
-      </button>
-    );
-  }
-);
-
-FlatGrade.displayName = "FlatGrade";
-
 const PracticaRow: React.FC<{
   practica: Practica;
-  onNotaChange: (id: string, nota: string) => Promise<void>;
+  moodleSnapshot?: MoodleGradeSnapshot;
   onRequestModificacion?: (practica: Practica) => void;
-  onDeletePractica?: (id: string) => void;
   onViewAssignmentSummary?: (practica: Practica) => void;
-  isSaving: boolean;
-  isSuccess: boolean;
-  hasSaveError: boolean;
   index: number;
-}> = ({
-  practica,
-  onNotaChange,
-  onRequestModificacion,
-  onDeletePractica,
-  onViewAssignmentSummary,
-  isSaving,
-  isSuccess,
-  hasSaveError,
-}) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [triggerRect, setTriggerRect] = useState<DOMRect>(new DOMRect(0, 0, 0, 0));
-  const triggerRef = useRef<HTMLButtonElement>(null);
+}> = ({ practica, moodleSnapshot, onRequestModificacion, onViewAssignmentSummary }) => {
   const longPressTimerRef = useRef<number | null>(null);
   const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -137,16 +48,6 @@ const PracticaRow: React.FC<{
     },
     []
   );
-
-  const handleMenuToggle = () => {
-    if (!isSaving && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setTriggerRect(rect);
-      setIsMenuOpen(true);
-    } else {
-      setIsMenuOpen(false);
-    }
-  };
 
   const rawName = practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS];
   const institucion = cleanDbValue(rawName) || "Institución desconocida";
@@ -167,13 +68,7 @@ const PracticaRow: React.FC<{
 
   const areaText = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
   const color = getAreaColor(areaText);
-  const notaActual = practica[FIELD_NOTA_PRACTICAS] || "Sin calificar";
-
-  const handleSelectGrade = (selectedNota: string) => {
-    haptics.select();
-    onNotaChange(practica.id, selectedNota);
-    setIsMenuOpen(false);
-  };
+  const campusGrade = presentMoodleGrade(moodleSnapshot);
 
   const canRequestModification = Boolean(onRequestModificacion && !disapproved);
 
@@ -290,23 +185,6 @@ const PracticaRow: React.FC<{
       </div>
 
       <div className="prow__metrics flex items-center gap-4 flex-shrink-0 self-center pr-1">
-        {/* Eliminar — solo en contextos que lo habilitan (no en el panel del alumno). */}
-        {onDeletePractica && !disapproved && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm("¿Estás seguro de que deseas eliminar esta práctica?")) {
-                onDeletePractica(practica.id);
-              }
-            }}
-            className="min-w-11 min-h-11 inline-flex items-center justify-center rounded-lg text-rose-600 dark:text-rose-300 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-            title="Eliminar práctica"
-            aria-label={`Eliminar ${institucion}`}
-          >
-            <span className="material-icons text-base">delete_outline</span>
-          </button>
-        )}
-
         <div className="prow__hs flex flex-col items-center justify-center text-center">
           <span className="display text-[22px] font-bold font-display text-slate-800 dark:text-slate-200">
             {disapproved ? 0 : practica[FIELD_HORAS_PRACTICAS] || 0}
@@ -322,19 +200,19 @@ const PracticaRow: React.FC<{
               Desaprobada
             </span>
           ) : (
-            <FlatGrade
-              ref={triggerRef}
-              nota={notaActual}
-              onClick={() => (isMenuOpen ? setIsMenuOpen(false) : handleMenuToggle())}
-              isSaving={isSaving}
-              isSuccess={isSuccess}
-              isOpen={isMenuOpen}
-              hasError={hasSaveError}
-              institution={institucion}
-            />
+            <span
+              className={`prow__nota min-w-11 min-h-11 inline-flex items-center justify-center text-center leading-tight ${
+                campusGrade?.hasGrade
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+              title={campusGrade?.detail || "Todavía no hay datos sincronizados desde Campus"}
+            >
+              {campusGrade?.compact || "Pend."}
+            </span>
           )}
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">
-            tu nota
+            Campus
           </span>
         </div>
       </div>
@@ -360,40 +238,18 @@ const PracticaRow: React.FC<{
           </button>
         </div>
       ) : null}
-
-      {isMenuOpen && (
-        <>
-          <button
-            type="button"
-            aria-label="Cerrar selector de nota"
-            className="fixed inset-0 z-40 cursor-default"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsMenuOpen(false);
-            }}
-          />
-          <NotaSelector
-            onSelect={handleSelectGrade}
-            onClose={() => setIsMenuOpen(false)}
-            currentValue={notaActual}
-            triggerRect={triggerRect}
-            triggerElement={triggerRef.current}
-          />
-        </>
-      )}
     </article>
   );
 };
 
 const PracticasTable: React.FC<PracticasTableProps> = ({
   practicas,
-  handleNotaChange,
   isLoading = false,
   onRequestModificacion,
-  onDeletePractica,
   onRequestNuevaPPS,
   onViewAssignmentSummary,
 }) => {
+  const { snapshotsByPractice } = useMoodleGradeSync();
   if (import.meta.env.DEV) {
     logger.info("[DEBUG] PracticasTable Props:", {
       practicasCount: practicas.length,
@@ -401,24 +257,6 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
       hasNuevaPPSHandler: !!onRequestNuevaPPS,
     });
   }
-
-  const [savingNotaId, setSavingNotaId] = useState<string | null>(null);
-  const [justUpdatedPracticaId, setJustUpdatedPracticaId] = useState<string | null>(null);
-  const [saveErrorPracticaId, setSaveErrorPracticaId] = useState<string | null>(null);
-
-  const onLocalNoteChange = async (practicaId: string, nota: string) => {
-    setSavingNotaId(practicaId);
-    setSaveErrorPracticaId(null);
-    try {
-      await handleNotaChange(practicaId, nota);
-      setJustUpdatedPracticaId(practicaId);
-      window.setTimeout(() => setJustUpdatedPracticaId(null), 2000);
-    } catch {
-      setSaveErrorPracticaId(practicaId);
-    } finally {
-      setSavingNotaId(null);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -491,13 +329,9 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
         <PracticaRow
           key={practica.id}
           practica={practica}
-          onNotaChange={onLocalNoteChange}
+          moodleSnapshot={snapshotsByPractice.get(practica.id)}
           onRequestModificacion={onRequestModificacion}
-          onDeletePractica={onDeletePractica}
           onViewAssignmentSummary={onViewAssignmentSummary}
-          isSaving={savingNotaId === practica.id}
-          isSuccess={justUpdatedPracticaId === practica.id}
-          hasSaveError={saveErrorPracticaId === practica.id}
           index={index}
         />
       ))}

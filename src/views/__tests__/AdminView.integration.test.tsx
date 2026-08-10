@@ -1,19 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { ModalProvider } from "../../contexts/ModalContext";
 import { useStudentPracticas } from "../../hooks/useStudentPracticas";
 import { mockDb } from "../../services/mockDb";
-import { FIELD_ESTADO_PRACTICA, FIELD_NOTA_PRACTICAS } from "../../constants";
 
 /**
- * Integración del panel de estudiante visto por un administrador.
+ * Contrato del panel estudiantil sobre prácticas.
  *
- * El flujo "admin abre el panel de un alumno y edita una nota" se apoya en
- * `useStudentPracticas`, que en modo testing (legajo "99999") opera contra
- * mockDb sobre el estudiante st_999. Probamos la carga de prácticas y la
- * edición de nota con persistencia real, sin depender del JSX.
+ * La sesión del alumno sólo carga antecedentes y puede corregir la fecha de
+ * finalización. Las notas llegan desde Moodle y el borrado queda reservado a
+ * coordinación, por lo que esas mutaciones no deben exponerse desde el hook.
  */
 
 const TEST_LEGAJO = "99999";
@@ -46,66 +44,14 @@ describe("Flujo de Panel de Administración (Integration Test)", () => {
     expect(result.current.practicas.some((p: any) => p.id === "prac_1")).toBe(true);
   });
 
-  it("permite editar la nota de una práctica y la persiste", async () => {
+  it("no expone mutaciones estudiantiles de nota ni de borrado", async () => {
     const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO, null), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.practicas.length).toBeGreaterThan(0));
 
-    const practica = result.current.practicas.find((p: any) => p.id === "prac_1")!;
-    expect(practica[FIELD_NOTA_PRACTICAS]).toBe("Sin calificar");
-
-    act(() => {
-      result.current.updateNota.mutate({ practicaId: "prac_1", nota: "10" });
-    });
-
-    // La mutation termina correctamente
-    await waitFor(() => expect(result.current.updateNota.isSuccess).toBe(true));
-
-    // Y la nota quedó persistida en la capa de datos
-    const persisted = mockDb.data.practicas.find((p) => p.id === "prac_1");
-    expect(persisted![FIELD_NOTA_PRACTICAS]).toBe("10");
-  });
-
-  it("refleja la nota actualizada al refrescar las prácticas", async () => {
-    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO, null), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.practicas.length).toBeGreaterThan(0));
-
-    act(() => {
-      result.current.updateNota.mutate({ practicaId: "prac_1", nota: "8" });
-    });
-    await waitFor(() => expect(result.current.updateNota.isSuccess).toBe(true));
-
-    await act(async () => {
-      await result.current.refetchPracticas();
-    });
-
-    await waitFor(() => {
-      const practica = result.current.practicas.find((p: any) => p.id === "prac_1");
-      expect(practica?.[FIELD_NOTA_PRACTICAS]).toBe("8");
-    });
-  });
-
-  it("impide eliminar una PPS desaprobada", async () => {
-    const storedPractice = mockDb.data.practicas.find((p) => p.id === "prac_1")!;
-    storedPractice[FIELD_ESTADO_PRACTICA] = "Desaprobada";
-
-    const { result } = renderHook(() => useStudentPracticas(TEST_LEGAJO, null), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.practicas.length).toBeGreaterThan(0));
-
-    await act(async () => {
-      await expect(result.current.deletePractica.mutateAsync("prac_1")).rejects.toThrow(
-        "Una PPS desaprobada no se puede eliminar."
-      );
-    });
-
-    expect(mockDb.data.practicas.some((p) => p.id === "prac_1")).toBe(true);
+    expect(result.current).not.toHaveProperty("updateNota");
+    expect(result.current).not.toHaveProperty("deletePractica");
   });
 });

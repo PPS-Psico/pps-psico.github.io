@@ -1,8 +1,17 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Icon, type IconName } from "../../components/student/ds";
+import {
+  type MoodleGradeSnapshot,
+  useMoodleGradeSync,
+} from "../../contexts/MoodleGradeSyncContext";
 import { MOODLE_ASSIGN, useAulaEntregas, type DeliveryArea } from "../../hooks/useAulaEntregas";
+import { useMoodleTaskLinks } from "../../hooks/useMoodleTaskLinks";
 import type { InformeTask, Practica } from "../../types";
+import {
+  formatMoodleObservationTime,
+  presentMoodleGrade,
+} from "../../utils/moodleGradePresentation";
 import { buildGuidedDeliveries, type GuidedDelivery } from "./deliveryGuide";
 
 interface StudentDeliveriesPanelProps {
@@ -21,14 +30,17 @@ const areaIcons: Partial<Record<string, IconName>> = {
 
 function PracticeDeliveryCard({
   delivery,
+  snapshot,
   onOpenDirectory,
 }: {
   delivery: GuidedDelivery;
+  snapshot?: MoodleGradeSnapshot;
   onOpenDirectory: (areaId: string | null) => void;
 }) {
   const directHref = delivery.institution
     ? `${MOODLE_ASSIGN}${delivery.institution.moodleId}`
     : null;
+  const campus = presentMoodleGrade(snapshot);
 
   const content = (
     <>
@@ -42,6 +54,15 @@ function PracticeDeliveryCard({
       <span className="ah-delivery-space__meta">
         {delivery.deadline ? `Entrega hasta el ${delivery.deadlineLabel}` : "Informe final de PPS"}
       </span>
+      {campus && (
+        <span className="ah-delivery-space__campus" data-tone={campus.tone}>
+          <span className="ah-delivery-space__campus-dot" aria-hidden />
+          <span>
+            <strong>{campus.hasGrade ? campus.compact : campus.label}</strong>
+            <small>{campus.hasGrade ? campus.label : campus.detail}</small>
+          </span>
+        </span>
+      )}
       <span className="ah-delivery-space__foot">
         <span>{directHref ? "Abrir espacio de entrega" : "Buscar espacio de entrega"}</span>
         <Icon name={directHref ? "arrow" : "search"} size={16} />
@@ -84,19 +105,33 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
   isPublic = false,
 }) => {
   const { areas } = useAulaEntregas();
+  const { snapshotsByPractice, status, errorMessage, lastObservedAt, retry } = useMoodleGradeSync();
+  const { links: exactTaskLinks, isLoading: areTaskLinksLoading } = useMoodleTaskLinks(!isPublic);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(isPublic);
   const catalogRef = useRef<HTMLDetailsElement>(null);
 
   const guidedDeliveries = useMemo(
-    () => buildGuidedDeliveries(practicas, informeTasks, areas),
-    [areas, informeTasks, practicas]
+    () => buildGuidedDeliveries(practicas, informeTasks, areas, new Date(), exactTaskLinks),
+    [areas, exactTaskLinks, informeTasks, practicas]
   );
   const selectedArea = useMemo(
     () => areas.find((area) => area.id === activeAreaId) ?? areas[0],
     [activeAreaId, areas]
   );
   const destinationCount = areas.reduce((total, area) => total + area.institutions.length, 0);
+  const lastObservedLabel = formatMoodleObservationTime(lastObservedAt);
+
+  const syncMessage =
+    status === "loading" || status === "syncing"
+      ? "Consultando tus tareas en Campus…"
+      : status === "synced"
+        ? `Campus actualizado${lastObservedLabel ? ` · ${lastObservedLabel}` : ""}`
+        : status === "error"
+          ? errorMessage || "No pudimos actualizar Campus."
+          : lastObservedLabel
+            ? `Última consulta: ${lastObservedLabel} · abrí Mi Panel desde Campus para actualizar`
+            : "Abrí Mi Panel desde Campus para sincronizar entregas y calificaciones";
 
   const openDirectory = useCallback((areaId: string | null) => {
     if (areaId) setActiveAreaId(areaId);
@@ -138,7 +173,30 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
             )}
           </header>
 
-          {isPracticasLoading ? (
+          <div className="ah-delivery-sync" data-state={status} role="status" aria-live="polite">
+            <span className="ah-delivery-sync__icon" aria-hidden>
+              <Icon
+                name={
+                  status === "synced"
+                    ? "check"
+                    : status === "error"
+                      ? "alert"
+                      : status === "loading" || status === "syncing"
+                        ? "clock"
+                        : "shield"
+                }
+                size={16}
+              />
+            </span>
+            <span>{syncMessage}</span>
+            {status === "error" && (
+              <button type="button" onClick={() => void retry()}>
+                Reintentar
+              </button>
+            )}
+          </div>
+
+          {isPracticasLoading || areTaskLinksLoading ? (
             <div
               className="ah-delivery-guide__loading"
               aria-busy="true"
@@ -153,6 +211,7 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                 <PracticeDeliveryCard
                   key={delivery.id}
                   delivery={delivery}
+                  snapshot={snapshotsByPractice.get(delivery.id)}
                   onOpenDirectory={openDirectory}
                 />
               ))}

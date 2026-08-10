@@ -79,8 +79,10 @@ export const FALLBACK_DELIVERY_AREAS: DeliveryArea[] = [
 ];
 
 interface AulaEntregaRow {
+  academic_year: number | null;
   area: string;
   institucion: string;
+  moodle_name: string | null;
   moodle_id: string;
   orden: number | null;
   activo: boolean;
@@ -93,7 +95,7 @@ function groupRows(rows: AulaEntregaRow[]): DeliveryArea[] {
   for (const row of rows) {
     if (!row.activo || !row.moodle_id) continue;
     const list = byArea.get(row.area) ?? [];
-    list.push({ name: row.institucion, moodleId: String(row.moodle_id) });
+    list.push({ name: row.moodle_name || row.institucion, moodleId: String(row.moodle_id) });
     byArea.set(row.area, list);
   }
   return [...byArea.entries()]
@@ -122,11 +124,12 @@ export function useAulaEntregas(): {
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["aula_entregas"],
     queryFn: async () => {
-      // La tabla aún no está en los tipos generados (types/supabase.ts); el
-      // cast evita el error de compilación hasta regenerarlos.
-      const { data: rows, error } = await (supabase as any)
+      const currentAcademicYear = new Date().getFullYear();
+      const { data: rows, error } = await supabase
         .from("aula_entregas")
-        .select("area, institucion, moodle_id, orden, activo")
+        .select("academic_year, area, institucion, moodle_name, moodle_id, orden, activo")
+        .eq("course_id", 3615)
+        .eq("academic_year", currentAcademicYear)
         .order("orden", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (rows ?? []) as AulaEntregaRow[];

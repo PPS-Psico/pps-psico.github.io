@@ -8,14 +8,7 @@ import type { Practica } from "../../types";
 import { logger } from "../../utils/logger";
 
 const PracticasView: React.FC = () => {
-  const {
-    practicas,
-    updateNota,
-    updateFechaFin,
-    deletePractica,
-    refetchPracticas,
-    studentDetails,
-  } = useStudentPanel();
+  const { practicas, updateFechaFin, refetchPracticas, studentDetails } = useStudentPanel();
   const [showModificacionModal, setShowModificacionModal] = useState(false);
   const [showNuevaPPSModal, setShowNuevaPPSModal] = useState(false);
   const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);
@@ -24,10 +17,6 @@ const PracticasView: React.FC = () => {
     logger.info("[DEBUG] Solicitar modificación para:", practica);
     setSelectedPractica(practica);
     setShowModificacionModal(true);
-  };
-
-  const handleDeletePractica = (practicaId: string) => {
-    deletePractica.mutate(practicaId);
   };
 
   const handleRequestNuevaPPS = () => {
@@ -63,11 +52,7 @@ const PracticasView: React.FC = () => {
       >
         <PracticasTable
           practicas={practicas}
-          handleNotaChange={(pid, n) =>
-            updateNota.mutateAsync({ practicaId: pid, nota: n }).then(() => undefined)
-          }
           onRequestModificacion={handleRequestModificacion}
-          onDeletePractica={handleDeletePractica}
           onRequestNuevaPPS={handleRequestNuevaPPS}
         />
       </PageWrapper>

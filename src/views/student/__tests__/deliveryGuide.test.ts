@@ -2,9 +2,11 @@ import {
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
   FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
 } from "../../../constants";
 import { FALLBACK_DELIVERY_AREAS } from "../../../hooks/useAulaEntregas";
+import type { MoodleTaskLink } from "../../../hooks/useMoodleTaskLinks";
 import type { InformeTask, Practica } from "../../../types";
 import {
   buildGuidedDeliveries,
@@ -56,6 +58,66 @@ describe("deliveryGuide", () => {
     );
 
     expect(institution).toBeNull();
+  });
+
+  it("prioriza el vínculo exacto lanzamiento + orientación sobre el nombre difuso", () => {
+    const links: MoodleTaskLink[] = [
+      {
+        launchId: "launch-1",
+        orientationKey: "laboral",
+        moodleId: "1162538",
+        name: "Ministerio de Trabajo y Desarrollo Laboral",
+        area: "laboral",
+        academicYear: 2026,
+      },
+    ];
+
+    const [delivery] = buildGuidedDeliveries(
+      [
+        practice({
+          [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: "launch-1",
+          [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: "Nombre que no coincide",
+          [FIELD_ESPECIALIDAD_PRACTICAS]: "Laboral",
+        }),
+      ],
+      [],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-08-05T12:00:00Z"),
+      links
+    );
+
+    expect(delivery.institution?.moodleId).toBe("1162538");
+    expect(delivery.resolutionSource).toBe("exact");
+  });
+
+  it("no reutiliza una tarea confirmada de otra orientación", () => {
+    const links: MoodleTaskLink[] = [
+      {
+        launchId: "launch-kano",
+        orientationKey: "laboral",
+        moodleId: "1179652",
+        name: "Fundación Kano",
+        area: "laboral",
+        academicYear: 2026,
+      },
+    ];
+
+    const [delivery] = buildGuidedDeliveries(
+      [
+        practice({
+          [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: "launch-kano",
+          [FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: "Nombre sin coincidencia",
+          [FIELD_ESPECIALIDAD_PRACTICAS]: "Clínica",
+        }),
+      ],
+      [],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-08-05T12:00:00Z"),
+      links
+    );
+
+    expect(delivery.institution).toBeNull();
+    expect(delivery.resolutionSource).toBe("none");
   });
 
   it("calcula el plazo sin inferir que una entrega está pendiente o vencida", () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import confetti from "canvas-confetti";
 import "../../components/student/home/atlas/atlasHome.css";
 import {
@@ -8,11 +8,11 @@ import {
   FIELD_FECHA_FIN_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_NOTA_PRACTICAS,
 } from "../../constants";
+import { useMoodleGradeSync } from "../../contexts/MoodleGradeSyncContext";
 import type { CriteriosCalculados, Orientacion, Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
-import NotaSelector from "../../components/NotaSelector";
+import { presentMoodleGrade } from "../../utils/moodleGradePresentation";
 import { canShowPpsAssignmentSummary } from "../../components/student/PpsAssignmentSummary";
 import {
   getPracticePresentationStatus,
@@ -25,7 +25,6 @@ interface AtlasPracticasViewProps {
   criterios: CriteriosCalculados;
   selectedOrientacion: Orientacion | "";
   practicas: Practica[];
-  handleNotaChange: (practicaId: string, nota: string) => Promise<void>;
   onRequestModificacion?: (practica: Practica) => void;
   onRequestNuevaPPS?: () => void;
   onViewAssignmentSummary?: (practica: Practica) => void;
@@ -55,20 +54,11 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   criterios,
   selectedOrientacion,
   practicas,
-  handleNotaChange,
   onRequestModificacion,
   onRequestNuevaPPS,
   onViewAssignmentSummary,
 }) => {
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [justUpdated, setJustUpdated] = useState<string | null>(null);
-  const [saveErrorId, setSaveErrorId] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{
-    id: string;
-    rect: DOMRect;
-    current: string;
-    trigger: HTMLButtonElement;
-  } | null>(null);
+  const { snapshotsByPractice } = useMoodleGradeSync();
 
   const hoursAcc = Math.round(criterios?.horasTotales || 0);
   const totalTarget = MIN_HOURS_TARGET;
@@ -133,86 +123,31 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     });
   }, [reqsCumplidos]);
 
-  const onLocalNota = async (id: string, nota: string) => {
-    setMenu(null);
-    setSavingId(id);
-    setSaveErrorId(null);
-    try {
-      await handleNotaChange(id, nota);
-      setJustUpdated(id);
-      window.setTimeout(() => setJustUpdated(null), 2000);
-    } catch {
-      setSaveErrorId(id);
-    } finally {
-      setSavingId(null);
-    }
-  };
-
   const notaCell = (p: Practica) => {
     const estado = normalizeStringForComparison((p[FIELD_ESTADO_PRACTICA] as string) || "");
     if (isPracticeDisapproved(estado)) {
       return <span className="ah-disapproval-grade">Desaprobada</span>;
     }
-    const raw = p[FIELD_NOTA_PRACTICAS];
-    const num = raw != null && String(raw).trim() !== "" ? Number(raw) : NaN;
-    let text = "Pend.";
-    let color = "var(--fg-subtle)";
+    const campusGrade = presentMoodleGrade(snapshotsByPractice.get(p.id));
     if (isPracticeActive(estado)) {
-      text = "en curso";
-      color = "var(--info-500)";
-    } else if (Number.isFinite(num)) {
-      text = String(raw).trim();
-      color = num >= 7 ? "var(--area-clinica)" : "var(--grade-caution, #b7791f)";
-    }
-    if (savingId === p.id) {
       return (
-        <span
-          role="status"
-          aria-label="Guardando nota informada"
-          className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent align-middle"
-          style={{ color: "var(--primary-500)" }}
-        />
-      );
-    }
-    if (justUpdated === p.id) {
-      return (
-        <span
-          role="status"
-          aria-label="Nota guardada"
-          className="material-icons"
-          style={{ color: "var(--success-500)", fontSize: 20 }}
-        >
-          check
+        <span className="nota" style={{ color: "var(--info-500)", fontSize: 12.5 }}>
+          en curso
         </span>
       );
     }
-    const inCurso = isPracticeActive(estado);
-    return inCurso ? (
-      <span className="nota" style={{ color, fontSize: 12.5, fontFamily: "var(--font-mono)" }}>
-        en curso
-      </span>
-    ) : (
-      <button
-        type="button"
-        className={`ah-nota${saveErrorId === p.id ? " is-error" : ""}`}
-        style={{ color }}
-        title={
-          saveErrorId === p.id
-            ? "No se pudo guardar. Volvé a intentarlo."
-            : "Editar la nota informada por vos"
-        }
-        aria-label={`${
-          saveErrorId === p.id ? "Reintentar edición de" : "Editar"
-        } la nota informada por vos para ${
-          cleanDbValue(p[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || "esta práctica"
-        }`}
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          setMenu({ id: p.id, rect, current: text, trigger: e.currentTarget });
+    return (
+      <span
+        className={campusGrade?.hasGrade ? "nota" : "ah-nota__pending"}
+        style={{
+          color: campusGrade?.hasGrade ? "var(--success-500)" : "var(--fg-subtle)",
+          fontSize: 12.5,
+          fontFamily: "var(--font-mono)",
         }}
+        title={campusGrade?.detail || "Todavía no hay datos sincronizados desde Campus"}
       >
-        {Number.isFinite(num) ? text : <span className="ah-nota__pending">{text}</span>}
-      </button>
+        {campusGrade?.compact || "Pend."}
+      </span>
     );
   };
 
@@ -395,7 +330,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                       <th>Período</th>
                       <th>Estado</th>
                       <th>Horas</th>
-                      <th>Tu nota</th>
+                      <th>Campus</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
@@ -517,24 +452,6 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
             )}
           </div>
         </div>
-
-        {menu && (
-          <>
-            <button
-              type="button"
-              aria-label="Cerrar selector de nota"
-              className="fixed inset-0 z-[9998] cursor-default"
-              onClick={() => setMenu(null)}
-            />
-            <NotaSelector
-              triggerRect={menu.rect}
-              currentValue={menu.current}
-              onSelect={(n) => onLocalNota(menu.id, n)}
-              onClose={() => setMenu(null)}
-              triggerElement={menu.trigger}
-            />
-          </>
-        )}
       </section>
     </div>
   );

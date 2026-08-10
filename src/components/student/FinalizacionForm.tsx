@@ -14,19 +14,13 @@ import {
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_NOTA_PRACTICAS,
   FIELD_EMPRESA_PPS_SOLICITUD,
   FIELD_SOLICITUD_ORIENTACION_SUGERIDA,
   FIELD_ESTADO_PPS,
 } from "../../constants";
 import { normalizeStringForComparison } from "../../utils/formatters";
 import {
-  computeNotaPromedio,
   computeTotalHoras,
-  isNotaPermitidaParaPps,
-  NOTA_NUMERICA_OPTIONS,
-  NOTA_TEXTO_OPTIONS,
-  permiteNotaAprobado,
   type DetallePracticaItem,
   type DetallePracticas,
 } from "../../utils/acreditacion";
@@ -40,14 +34,11 @@ interface FinalizacionFormProps {
   criterios?: CriteriosCalculados;
   solicitudes?: any[];
   onAddPPS?: () => void;
-  onDeletePractica?: (practicaId: string) => Promise<void> | void;
-  isDeletingPractica?: boolean;
 }
 
 type Step = "requisitos" | "completar" | "documentacion" | "confirmar" | "enviado";
 
 interface RowState {
-  nota: string;
   fechaFin: string; // YYYY-MM-DD
   informe: File | null;
   asistencia: File | null;
@@ -230,8 +221,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
   criterios,
   solicitudes = [],
   onAddPPS,
-  onDeletePractica,
-  isDeletingPractica = false,
 }) => {
   const { showToast } = useNotifications();
   const { resolvedTheme } = useTheme();
@@ -285,10 +274,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
       const next: Record<string, RowState> = {};
       for (const p of finalizadas) {
         const existing = prev[p.id];
-        const fechaInicio = p[FIELD_FECHA_INICIO_PRACTICAS];
-        const notaGuardada = p[FIELD_NOTA_PRACTICAS] ?? "";
         next[p.id] = existing ?? {
-          nota: isNotaPermitidaParaPps(notaGuardada, fechaInicio) ? notaGuardada : "",
           fechaFin: toDateInput(p[FIELD_FECHA_FIN_PRACTICAS]),
           informe: null,
           asistencia: null,
@@ -302,7 +288,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     const rs = rows[p.id];
     if (!rs) return false;
     const esOnline = !!p[FIELD_ES_ONLINE_PRACTICAS];
-    if (!isNotaPermitidaParaPps(rs.nota, p[FIELD_FECHA_INICIO_PRACTICAS])) return false;
     if (!rs.informe) return false;
     if (!esOnline && !rs.asistencia) return false;
     return true;
@@ -330,13 +315,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     }
     setRow(pendingFilePicker.practicaId, { [pendingFilePicker.kind]: file } as Partial<RowState>);
     setPendingFilePicker(null);
-  };
-
-  const handleDelete = async (practicaId: string) => {
-    if (!onDeletePractica) return;
-    if (!window.confirm("¿Eliminar esta PPS del trámite? Esta acción no se puede deshacer."))
-      return;
-    await onDeletePractica(practicaId);
   };
 
   const submitMutation = useMutation({
@@ -368,7 +346,9 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
           fechaInicio: p[FIELD_FECHA_INICIO_PRACTICAS] ?? null,
           fechaFinalizacion: rs.fechaFin || p[FIELD_FECHA_FIN_PRACTICAS] || null,
           esOnline,
-          nota: rs.nota,
+          // La calificación ya no se autodeclara. Se resuelve desde el snapshot Moodle
+          // durante la revisión administrativa; se conserva la clave por compatibilidad.
+          nota: "",
           informe: { url: informeUrl, filename: rs.informe!.name },
           asistencia,
         });
@@ -376,7 +356,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
 
       const detalle: DetallePracticas = {
         totalHoras: computeTotalHoras(items.map((i) => i.horas)),
-        notaPromedio: computeNotaPromedio(items.map((i) => i.nota)),
+        notaPromedio: null,
         items,
       };
 
@@ -399,11 +379,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     () => computeTotalHoras(finalizadas.map((p) => p[FIELD_HORAS_PRACTICAS])),
     [finalizadas]
   );
-  const notaPromedio = useMemo(
-    () => computeNotaPromedio(finalizadas.map((p) => rows[p.id]?.nota)),
-    [finalizadas, rows]
-  );
-
   if (!isOpen) return null;
 
   const stepIndex =
@@ -629,9 +604,9 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
             <div className="space-y-4">
               <p className="text-sm leading-relaxed" style={{ color: "var(--ink-soft)" }}>
                 Cargá por cada PPS el <strong>informe final</strong>, la{" "}
-                <strong>planilla de asistencia</strong> y la <strong>nota</strong>. Verificá que la{" "}
-                <strong>fecha de finalización</strong> sea correcta. Las PPS online no requieren
-                planilla de asistencia.
+                <strong>planilla de asistencia</strong> y verificá que la{" "}
+                <strong>fecha de finalización</strong> sea correcta. La calificación se consulta
+                directamente en Campus; las PPS online no requieren planilla de asistencia.
               </p>
 
               {finalizadas.length === 0 ? (
@@ -646,8 +621,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
                     onSetRow={(patch) => setRow(p.id, patch)}
                     onPickInforme={() => openFilePicker(p.id, "informe")}
                     onPickAsistencia={() => openFilePicker(p.id, "asistencia")}
-                    onDelete={onDeletePractica ? () => handleDelete(p.id) : undefined}
-                    isDeleting={isDeletingPractica}
                   />
                 ))
               )}
@@ -658,7 +631,6 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
             <ConfirmarStep
               count={finalizadas.length}
               totalHoras={totalHoras}
-              notaPromedio={notaPromedio}
               sugerencias={sugerencias}
               onSugerencias={setSugerencias}
             />
@@ -749,7 +721,8 @@ const RequisitosStep: React.FC<{
       </div>
     ) : (
       <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
-        Vas a cargar el informe, la planilla de asistencia y la nota de cada una de tus PPS.
+        Vas a cargar el informe y la planilla de asistencia de cada una de tus PPS. Las
+        calificaciones se consultan directamente en Campus.
       </p>
     )}
 
@@ -920,20 +893,8 @@ const PpsDocCard: React.FC<{
   onSetRow: (patch: Partial<RowState>) => void;
   onPickInforme: () => void;
   onPickAsistencia: () => void;
-  onDelete?: () => void;
-  isDeleting: boolean;
-}> = ({
-  practica,
-  row,
-  valid,
-  onSetRow,
-  onPickInforme,
-  onPickAsistencia,
-  onDelete,
-  isDeleting,
-}) => {
+}> = ({ practica, row, valid, onSetRow, onPickInforme, onPickAsistencia }) => {
   const esOnline = !!practica[FIELD_ES_ONLINE_PRACTICAS];
-  const admiteAprobado = permiteNotaAprobado(practica[FIELD_FECHA_INICIO_PRACTICAS]);
   if (!row) return null;
 
   return (
@@ -972,23 +933,11 @@ const PpsDocCard: React.FC<{
               <Icon name="check" size={18} strokeWidth={2.4} />
             </span>
           )}
-          {onDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={isDeleting}
-              className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-sunken)] disabled:opacity-40"
-              style={{ color: DANGER }}
-              aria-label="Eliminar PPS"
-            >
-              <Icon name="trash" size={16} />
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Fechas + nota */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Fechas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--ink-muted)" }}>
             Fecha inicio
@@ -1020,34 +969,6 @@ const PpsDocCard: React.FC<{
               color: "var(--ink)",
             }}
           />
-        </div>
-        <div>
-          <label className="text-[11px] font-bold block mb-1" style={{ color: "var(--ink-muted)" }}>
-            Nota {!row.nota && <span style={{ color: DANGER }}>*</span>}
-          </label>
-          <select
-            value={row.nota}
-            onChange={(e) => onSetRow({ nota: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--line-strong)",
-              color: "var(--ink)",
-            }}
-          >
-            <option value="">Elegí…</option>
-            {NOTA_NUMERICA_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-            {admiteAprobado &&
-              NOTA_TEXTO_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-          </select>
         </div>
       </div>
 
@@ -1081,16 +1002,14 @@ const PpsDocCard: React.FC<{
 const ConfirmarStep: React.FC<{
   count: number;
   totalHoras: number;
-  notaPromedio: number | null;
   sugerencias: string;
   onSugerencias: (v: string) => void;
-}> = ({ count, totalHoras, notaPromedio, sugerencias, onSugerencias }) => (
+}> = ({ count, totalHoras, sugerencias, onSugerencias }) => (
   <div className="space-y-5">
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3">
       {[
         { label: "PPS", value: String(count) },
         { label: "Horas totales", value: String(totalHoras) },
-        { label: "Nota promedio", value: notaPromedio != null ? String(notaPromedio) : "—" },
       ].map((s) => (
         <div
           key={s.label}
@@ -1133,8 +1052,9 @@ const ConfirmarStep: React.FC<{
     </div>
 
     <p className="text-xs leading-relaxed" style={{ color: "var(--ink-muted)" }}>
-      Al enviar, coordinación recibirá tu acreditación con el detalle de cada PPS. La nota promedio
-      se calcula automáticamente (redondeada) y la usamos para cargar en el SAC.
+      Al enviar, coordinación recibirá tu acreditación con el detalle de cada PPS. Las
+      calificaciones se verifican contra Campus durante la revisión antes de cargar el resultado en
+      el SAC.
     </p>
   </div>
 );

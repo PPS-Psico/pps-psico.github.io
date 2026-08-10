@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Button from "../ui/Button";
 import { useNotifications } from "../../contexts/NotificationContext";
-import { uploadSolicitudFile, submitSolicitudModificacion, deletePractica } from "../../services";
+import { uploadSolicitudFile, submitSolicitudModificacion } from "../../services";
 import type { Practica } from "../../types";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import {
@@ -26,7 +26,7 @@ interface SolicitudModificacionModalProps {
   onSuccess?: () => void;
 }
 
-type ModificacionType = "horas" | "fecha_fin" | "eliminacion" | null;
+type ModificacionType = "horas" | "fecha_fin" | null;
 
 const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   isOpen,
@@ -44,15 +44,11 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   const [planillaFile, setPlanillaFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdatingDate, setIsUpdatingDate] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const deleteDialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -65,7 +61,6 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
       setHorasNuevas("");
       setFechaFinNueva("");
       setPlanillaFile(null);
-      setShowDeleteConfirm(false);
       window.setTimeout(() => closeButtonRef.current?.focus(), 0);
 
       return () => {
@@ -78,27 +73,17 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    if (showDeleteConfirm) {
-      window.setTimeout(
-        () => deleteDialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus(),
-        0
-      );
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (showDeleteConfirm) {
-          setShowDeleteConfirm(false);
-          window.setTimeout(() => deleteTriggerRef.current?.focus(), 0);
-        } else if (!isSubmitting && !isDeleting && !isUpdatingDate) {
+        if (!isSubmitting && !isUpdatingDate) {
           onClose();
         }
         return;
       }
 
       if (event.key !== "Tab") return;
-      const activeDialog = showDeleteConfirm ? deleteDialogRef.current : dialogRef.current;
+      const activeDialog = dialogRef.current;
       const focusable = Array.from(
         activeDialog?.querySelectorAll<HTMLElement>(
           'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
@@ -124,7 +109,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isDeleting, isOpen, isSubmitting, isUpdatingDate, onClose, showDeleteConfirm]);
+  }, [isOpen, isSubmitting, isUpdatingDate, onClose]);
 
   if (!isOpen || !practica) return null;
 
@@ -247,27 +232,6 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
     }
   };
 
-  const handleDeletePractica = async () => {
-    if (!practica) return;
-    if (isDisapproved) {
-      showToast("Una PPS desaprobada no se puede eliminar.", "error");
-      setShowDeleteConfirm(false);
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      await deletePractica(practica.id);
-      showToast("PPS eliminada correctamente", "success");
-      onSuccess?.();
-      onClose();
-    } catch (error) {
-      showToast(getErrorMessage(error, "Error al eliminar la PPS"), "error");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   const handleUpdateFechaFin = async () => {
     if (!onFechaFinChange || !fechaFinNueva) return;
     if (fechaInicioInput && fechaFinNueva < fechaInicioInput) {
@@ -359,26 +323,6 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             </div>
           </button>
         ) : null}
-
-        {!isDisapproved && (
-          <button
-            ref={deleteTriggerRef}
-            onClick={() => setShowDeleteConfirm(true)}
-            className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-left transition hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/10"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                <span className="material-icons text-rose-600 dark:text-rose-400">delete</span>
-              </div>
-              <div>
-                <p className="font-bold text-slate-900 dark:text-white">Eliminar PPS</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Borrar este registro permanentemente
-                </p>
-              </div>
-            </div>
-          </button>
-        )}
       </div>
 
       <div className="flex gap-3 pt-2">
@@ -595,7 +539,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
               ref={closeButtonRef}
               type="button"
               onClick={onClose}
-              disabled={isSubmitting || isUpdatingDate || isDeleting}
+              disabled={isSubmitting || isUpdatingDate}
               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               aria-label="Cerrar edición de práctica"
             >
@@ -612,73 +556,6 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
               : renderStep2Horas()}
         </div>
       </motion.div>
-
-      {/* Modal de confirmación para eliminar */}
-      <AnimatePresence>
-        {showDeleteConfirm && !isDisapproved && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              ref={deleteDialogRef}
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="delete-practica-title"
-              aria-describedby="delete-practica-description"
-              tabIndex={-1}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 w-full max-w-md"
-            >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mx-auto mb-4">
-                  <span className="material-icons text-3xl text-rose-600 dark:text-rose-400">
-                    warning
-                  </span>
-                </div>
-                <h3
-                  id="delete-practica-title"
-                  className="text-xl font-bold text-slate-900 dark:text-white mb-2"
-                >
-                  ¿Eliminar PPS?
-                </h3>
-                <p
-                  id="delete-practica-description"
-                  className="text-slate-600 dark:text-slate-400 text-sm"
-                >
-                  Esta acción no se puede deshacer. Se eliminará permanentemente el registro de{" "}
-                  <strong>{institucion}</strong>.
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    window.setTimeout(() => deleteTriggerRef.current?.focus(), 0);
-                  }}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={handleDeletePractica}
-                  isLoading={isDeleting}
-                  className="flex-1"
-                >
-                  Sí, eliminar
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>,
     document.body
   );

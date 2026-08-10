@@ -54,8 +54,8 @@ export const uploadFinalizationFile = async (
 /**
  * Trámite de acreditación por PPS (flujo guiado nuevo).
  * Guarda el snapshot `detalle_practicas`, agrega los informes/asistencias a las
- * columnas legacy (para el ZIP y retrocompat), y hace write-through de nota +
- * fecha de finalización a cada práctica.
+ * columnas legacy (para el ZIP y retrocompat), y actualiza la fecha de finalización.
+ * La nota se resuelve desde Moodle y nunca se escribe desde el formulario estudiantil.
  */
 export const submitFinalizationRequest = async (
   studentId: string,
@@ -88,18 +88,17 @@ export const submitFinalizationRequest = async (
 
   await db.finalizacion.create(record);
 
-  // Write-through: nota + fecha de finalización a cada práctica.
+  // Write-through limitado a fecha. La calificación Moodle vive en su ledger/snapshot.
   await Promise.all(
-    detalle.items.map((item) =>
-      db.practicas
-        .update(item.practicaId, {
-          [C.FIELD_NOTA_PRACTICAS]: item.nota || null,
-          ...(item.fechaFinalizacion
-            ? { [C.FIELD_FECHA_FIN_PRACTICAS]: item.fechaFinalizacion }
-            : {}),
-        })
-        .catch((e) => logger.warn(`No se pudo actualizar la práctica ${item.practicaId}:`, e))
-    )
+    detalle.items
+      .filter((item) => item.fechaFinalizacion)
+      .map((item) =>
+        db.practicas
+          .update(item.practicaId, {
+            [C.FIELD_FECHA_FIN_PRACTICAS]: item.fechaFinalizacion,
+          })
+          .catch((e) => logger.warn(`No se pudo actualizar la práctica ${item.practicaId}:`, e))
+      )
   );
 };
 
