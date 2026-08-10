@@ -214,6 +214,19 @@
       );
     }
 
+    function meansNotSubmitted(value) {
+      var state = normalizeText(value);
+      return (
+        state.indexOf("no se ha hecho ninguna entrega") > -1 ||
+        state.indexOf("no se ha realizado ninguna entrega") > -1 ||
+        state.indexOf("no se ha realizado ningun envio") > -1 ||
+        state.indexOf("no se han realizado envios") > -1 ||
+        state.indexOf("no entregado") > -1 ||
+        state.indexOf("no submission has been made") > -1 ||
+        state.indexOf("no submissions have been made") > -1
+      );
+    }
+
     function parseTaskDocument(cmid, doc) {
       var pageText = normalizeText(doc.body ? doc.body.textContent : "");
       var rows = rowsFromDocument(doc);
@@ -250,11 +263,7 @@
           ) {
             submitted = true;
           }
-          if (
-            state.indexOf("no se ha hecho ninguna entrega") > -1 ||
-            state.indexOf("no entregado") > -1 ||
-            state.indexOf("no submission") > -1
-          ) {
+          if (meansNotSubmitted(state)) {
             explicitNotSubmitted = true;
           }
         }
@@ -290,11 +299,7 @@
         };
       }
 
-      if (
-        explicitNotSubmitted ||
-        pageText.indexOf("no se ha hecho ninguna entrega") > -1 ||
-        pageText.indexOf("no submission has been made") > -1
-      ) {
+      if (explicitNotSubmitted || meansNotSubmitted(pageText)) {
         return {
           cmid: cmid,
           status: "not_submitted",
