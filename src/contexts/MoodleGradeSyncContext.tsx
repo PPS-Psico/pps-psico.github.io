@@ -54,19 +54,16 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
   const { authenticatedUser, isSuperUserMode, isJefeMode, isDirectivoMode, isAdminTesterMode } =
     useAuth();
   const { studentId, practicas, isPracticasLoading } = useStudentPanel();
-  const { links, isLoading: areLinksLoading } = useMoodleTaskLinks(!!studentId);
   const queryClient = useQueryClient();
   const [syncStatus, setSyncStatus] = useState<MoodleGradeSyncStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const lastAutoSignatureRef = useRef<string | null>(null);
 
+  const isPrivilegedViewer = isSuperUserMode || isJefeMode || isDirectivoMode || isAdminTesterMode;
   const isOwnStudentSession =
-    !!studentId &&
-    authenticatedUser?.studentId === studentId &&
-    !isSuperUserMode &&
-    !isJefeMode &&
-    !isDirectivoMode &&
-    !isAdminTesterMode;
+    !!studentId && authenticatedUser?.studentId === studentId && !isPrivilegedViewer;
+  const canReadSnapshots = !!studentId && (isOwnStudentSession || isPrivilegedViewer);
+  const { links, isLoading: areLinksLoading } = useMoodleTaskLinks(isOwnStudentSession);
   const isInsideParentFrame =
     typeof window !== "undefined" && window.parent !== window && window.self !== window.top;
 
@@ -83,15 +80,15 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     return byCmid;
   }, [isOwnStudentSession, links, practicas]);
 
-  const practiceIds = useMemo(() => [...new Set([...assignments.values()].flat())], [assignments]);
   const snapshotsQuery = useQuery({
-    queryKey: ["moodle-grade-snapshots", studentId, practiceIds],
-    enabled: isOwnStudentSession && practiceIds.length > 0,
+    queryKey: ["moodle-grade-snapshots", studentId],
+    enabled: canReadSnapshots,
     queryFn: async () => {
+      if (!studentId) return [];
       const { data, error } = await supabase
         .from("moodle_grade_snapshots")
         .select("*")
-        .in("practica_id", practiceIds)
+        .eq("estudiante_id", studentId)
         .order("observed_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -207,13 +204,25 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
 
   const status: MoodleGradeSyncStatus = snapshotsQuery.isLoading
     ? "loading"
-    : syncStatus === "idle" && snapshotsByPractice.size > 0
-      ? "synced"
-      : syncStatus;
+    : snapshotsQuery.isError
+      ? "error"
+      : syncStatus === "idle" && snapshotsByPractice.size > 0
+        ? "synced"
+        : syncStatus;
+
+  const resolvedErrorMessage = snapshotsQuery.isError
+    ? "No pudimos leer el último registro guardado del Campus."
+    : errorMessage;
 
   const value = useMemo<MoodleGradeSyncValue>(
-    () => ({ snapshotsByPractice, status, errorMessage, lastObservedAt, retry: runSync }),
-    [errorMessage, lastObservedAt, runSync, snapshotsByPractice, status]
+    () => ({
+      snapshotsByPractice,
+      status,
+      errorMessage: resolvedErrorMessage,
+      lastObservedAt,
+      retry: runSync,
+    }),
+    [lastObservedAt, resolvedErrorMessage, runSync, snapshotsByPractice, status]
   );
 
   return (

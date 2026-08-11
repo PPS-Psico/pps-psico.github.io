@@ -50,6 +50,7 @@ import {
 } from "../constants";
 import type { AuthUser } from "../contexts/AuthContext";
 import { useAuth } from "../contexts/AuthContext";
+import { type MoodleGradeSyncStatus, useMoodleGradeSync } from "../contexts/MoodleGradeSyncContext";
 import { useModal } from "../contexts/ModalContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useStudentPanel } from "../contexts/StudentPanelContext";
@@ -70,6 +71,7 @@ import ErrorBoundary from "../components/ErrorBoundary";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { logger } from "../utils/logger";
+import { formatMoodleObservationTime } from "../utils/moodleGradePresentation";
 
 // Export individual views for Router
 export { default as StudentPracticas } from "../components/student/PracticasTable";
@@ -96,6 +98,61 @@ const SimulationBanner: React.FC<{ onExit?: () => void }> = ({ onExit }) => (
     )}
   </div>
 );
+
+const CampusSnapshotNotice: React.FC<{
+  status: MoodleGradeSyncStatus;
+  lastObservedAt: string | null;
+  snapshotCount: number;
+}> = ({ status, lastObservedAt, snapshotCount }) => {
+  const observedLabel = formatMoodleObservationTime(lastObservedAt);
+  const isLoading = status === "loading";
+  const hasSnapshot = Boolean(observedLabel && snapshotCount > 0);
+  const hasReadError = status === "error" && !hasSnapshot;
+
+  return (
+    <div
+      className="mb-5 flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200 sm:flex-row sm:items-center sm:justify-between"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex min-w-0 items-start gap-3">
+        <span
+          className={`material-icons !text-xl ${
+            hasSnapshot
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-slate-400 dark:text-slate-500"
+          }`}
+          aria-hidden="true"
+        >
+          {isLoading ? "sync" : hasSnapshot ? "cloud_done" : "cloud_off"}
+        </span>
+        <div className="min-w-0">
+          <p className="m-0 text-sm font-semibold">
+            {isLoading
+              ? "Leyendo el último registro del Campus…"
+              : hasReadError
+                ? "No pudimos leer el registro del Campus"
+                : hasSnapshot
+                  ? `Último registro del Campus · ${observedLabel}`
+                  : "Sin registros guardados del Campus"}
+          </p>
+          <p className="m-0 mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {hasSnapshot
+              ? `${snapshotCount} ${snapshotCount === 1 ? "tarea consultada" : "tareas consultadas"}. Datos del último ingreso del estudiante; abrir este panel no genera una lectura nueva.`
+              : hasReadError
+                ? "La información anterior no fue modificada. Volvé a abrir el estudiante para reintentar la lectura."
+                : "Se mostrará aquí cuando el estudiante ingrese a Mi Panel desde Moodle."}
+          </p>
+        </div>
+      </div>
+      {hasSnapshot && (
+        <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+          Solo lectura
+        </span>
+      )}
+    </div>
+  );
+};
 
 // --- COMPONENT: StudentHome (For Router Index) ---
 export const StudentHome: React.FC = () => {
@@ -225,6 +282,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   showExportButton = false,
 }) => {
   const { isSuperUserMode, isJefeMode, authenticatedUser, isAuthLoading } = useAuth();
+  const {
+    snapshotsByPractice,
+    status: moodleGradeStatus,
+    lastObservedAt: moodleLastObservedAt,
+  } = useMoodleGradeSync();
   const isMobile = useIsMobile();
   const { resolvedTheme } = useTheme();
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -500,6 +562,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     [criterios, selectedOrientacion, practicas, handleRequestModificacion, handleRequestNuevaPPS]
   );
 
+  const campusSnapshotNotice = useMemo(
+    () =>
+      isAdminViewing ? (
+        <CampusSnapshotNotice
+          status={moodleGradeStatus}
+          lastObservedAt={moodleLastObservedAt}
+          snapshotCount={snapshotsByPractice.size}
+        />
+      ) : null,
+    [isAdminViewing, moodleGradeStatus, moodleLastObservedAt, snapshotsByPractice.size]
+  );
+
   // Versión Atlas (escritorio) de Perfil.
   const atlasProfileContent = useMemo(
     () => (
@@ -544,6 +618,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         icon: "work_history",
         content: isMobile ? (
           <div className="ed" data-mode={resolvedTheme} data-accent="teal">
+            {campusSnapshotNotice}
             {!finalizacionRequest && (
               <CriteriosPanel
                 criterios={criterios}
@@ -556,7 +631,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             {practicasContent}
           </div>
         ) : (
-          atlasPracticasContent
+          <>
+            {campusSnapshotNotice}
+            {atlasPracticasContent}
+          </>
         ),
       },
       {
@@ -622,6 +700,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       showSaveConfirmation,
       practicasContent,
       atlasPracticasContent,
+      campusSnapshotNotice,
       mobileSolicitudesContent,
       atlasSolicitudesContent,
       atlasProfileContent,

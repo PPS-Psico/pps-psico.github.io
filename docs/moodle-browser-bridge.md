@@ -131,6 +131,21 @@ Cada nueva corrección Moodle vuelve a ejecutar el proceso. Una lectura demorada
 
 El formulario estudiantil de acreditación tampoco solicita ni escribe una nota. La base bloquea cambios estudiantiles sobre `practicas.nota` y elimina cualquier nota autodeclarada que intentara entrar dentro de `finalizacion_pps.detalle_practicas`.
 
+### Lectura desde el panel administrativo
+
+Al abrir `/admin/estudiantes/:legajo`, coordinación consulta
+`moodle_grade_snapshots` por el `estudiante_id` resuelto en el servidor. La vista
+de **Mis prácticas** muestra el último estado guardado de cada tarea, la nota si
+existe y la hora más reciente de observación. También aclara que se trata de una
+lectura histórica y cuántas tareas integran el registro.
+
+Abrir el estudiante como administrador no intenta usar la sesión Moodle del
+coordinador ni genera una observación nueva. La actualización ocurre únicamente
+cuando el propio estudiante entra a Mi Panel dentro del iframe del Campus; hasta
+entonces coordinación ve el último snapshot persistido. La consulta respeta RLS:
+el alumno sólo puede leer sus filas y los roles autorizados por `is_admin()`
+pueden leer el estudiante seleccionado.
+
 ## Conciliación masiva
 
 El puente de navegador es oportunista: recoge y aplica información cuando cada estudiante inicia su panel dentro de Moodle. No realiza un barrido de alumnos que no hayan ingresado. Para completar el universo histórico existen dos caminos:

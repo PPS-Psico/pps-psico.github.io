@@ -21,6 +21,7 @@ import { useAuth } from "./contexts/AuthContext";
 import { ConfigProvider } from "./contexts/ConfigContext";
 import { ErrorProvider } from "./contexts/ErrorContext";
 import { ModalProvider } from "./contexts/ModalContext";
+import { MoodleGradeSyncProvider } from "./contexts/MoodleGradeSyncContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { PwaInstallProvider } from "./contexts/PwaInstallContext";
 import { StudentPanelProvider } from "./contexts/StudentPanelContext";
@@ -70,7 +71,9 @@ const AdminStudentWrapper = () => {
   if (!legajo) return null;
   return (
     <StudentPanelProvider legajo={legajo}>
-      <StudentDashboard key={legajo} showExportButton />
+      <MoodleGradeSyncProvider>
+        <StudentDashboard key={legajo} showExportButton />
+      </MoodleGradeSyncProvider>
     </StudentPanelProvider>
   );
 };
