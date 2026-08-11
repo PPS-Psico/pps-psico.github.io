@@ -4,7 +4,7 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
-  getPenaltyScore,
+  type PenaltyType,
 } from "../../constants";
 import { useSeleccionadorLogic } from "../../hooks/useSeleccionadorLogic";
 import { supabase } from "../../lib/supabaseClient";
@@ -687,13 +687,15 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     scheduleInfo,
     isEditMode,
     handleToggle,
+    handleBajaConPenalizacion,
     handleUpdateSchedule,
   } = useSeleccionadorLogic(isTestingMode, preSelectedLaunchId);
 
   const [studentToBaja, setStudentToBaja] = useState<EnrichedStudent | null>(null);
   const [showPenalizacionModal, setShowPenalizacionModal] = useState(false);
-  const [penaltyType, setPenaltyType] = useState("Baja Anticipada");
+  const [penaltyType, setPenaltyType] = useState<PenaltyType>("Baja Anticipada");
   const [penaltyNotes, setPenaltyNotes] = useState("");
+  const [isSubmittingBaja, setIsSubmittingBaja] = useState(false);
 
   const [showPracticasModal, setShowPracticasModal] = useState(false);
   const [selectedStudentForPracticas, setSelectedStudentForPracticas] =
@@ -743,28 +745,19 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
   const handleConfirmBajaWithPenalty = async () => {
     if (!studentToBaja || !selectedLanzamiento) return;
 
+    setIsSubmittingBaja(true);
     try {
-      await handleToggle(studentToBaja);
-
-      const penaltyData = {
-        estudiante_id: studentToBaja.studentId,
-        tipo_incumplimiento: penaltyType,
-        fecha_incidente: new Date().toISOString().split("T")[0],
-        notas: penaltyNotes,
-        puntaje_penalizacion: getPenaltyScore(penaltyType),
-        convocatoria_afectada: selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS],
-        convocatoria_id: studentToBaja.enrollmentId,
-        lanzamiento_id: selectedLanzamiento.id,
-      };
-
-      await supabase.from("penalizaciones").insert([penaltyData]);
+      await handleBajaConPenalizacion(studentToBaja, penaltyType, penaltyNotes);
 
       setToastInfo({ message: "Estudiante dado de baja y penalizado", type: "success" });
       setShowPenalizacionModal(false);
       setStudentToBaja(null);
       setPenaltyNotes("");
     } catch (error) {
-      setToastInfo({ message: "Error al procesar la baja", type: "error" });
+      const message = error instanceof Error ? error.message : "Error al procesar la baja";
+      setToastInfo({ message, type: "error" });
+    } finally {
+      setIsSubmittingBaja(false);
     }
   };
 
@@ -1029,7 +1022,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
                 <select
                   className="lv4-select"
                   value={penaltyType}
-                  onChange={(e) => setPenaltyType(e.target.value)}
+                  onChange={(e) => setPenaltyType(e.target.value as PenaltyType)}
                 >
                   <option value="Baja Anticipada">Baja Anticipada (30 pts)</option>
                   <option value="Baja sobre la Fecha / Ausencia en Inicio">
@@ -1063,8 +1056,12 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               >
                 Cancelar
               </button>
-              <button className="lv4-btn lv4-btn-danger" onClick={handleConfirmBajaWithPenalty}>
-                Confirmar Baja
+              <button
+                className="lv4-btn lv4-btn-danger"
+                onClick={handleConfirmBajaWithPenalty}
+                disabled={isSubmittingBaja}
+              >
+                {isSubmittingBaja ? "Procesando..." : "Confirmar Baja"}
               </button>
             </div>
           </div>

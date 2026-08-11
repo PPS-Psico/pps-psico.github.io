@@ -5,8 +5,10 @@ export { fetchPracticas, deletePractica, updatePracticaFromSchedule } from "./pr
 export {
   fetchConvocatoriasData,
   fetchSeleccionados,
+  darBajaPpsConPenalizacion,
   toggleStudentSelection,
 } from "./convocatoriasService";
+export type { BajaPpsInput, BajaPpsResult } from "./convocatoriasService";
 
 export {
   fetchStudentCompromisos,

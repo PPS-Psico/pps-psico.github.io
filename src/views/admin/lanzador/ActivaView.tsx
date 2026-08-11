@@ -12,9 +12,9 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   getPenaltyScore,
+  type PenaltyType,
 } from "../../../constants";
 import { useSeleccionadorLogic } from "../../../hooks/useSeleccionadorLogic";
-import { supabase } from "../../../lib/supabaseClient";
 import { isPracticeDisapproved, isPracticeStatusComputable } from "../../../logic/studentRules";
 import type { EnrichedStudent, LanzamientoPPS } from "../../../types";
 import {
@@ -60,6 +60,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
     availableStudents,
     enrollNewStudent,
     handleToggle,
+    handleBajaConPenalizacion,
     isLoadingCandidates,
     toastInfo,
     setToastInfo,
@@ -68,7 +69,9 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   // 3. Estados locales para el modal de baja y búsqueda de reemplazos
   const [studentToBaja, setStudentToBaja] = useState<EnrichedStudent | null>(null);
   const [studentToDisapprove, setStudentToDisapprove] = useState<EnrichedStudent | null>(null);
-  const [penaltyType, setPenaltyType] = useState("Baja sobre la Fecha / Ausencia en Inicio");
+  const [penaltyType, setPenaltyType] = useState<PenaltyType>(
+    "Baja sobre la Fecha / Ausencia en Inicio"
+  );
   const [penaltyNotes, setPenaltyNotes] = useState("");
   const [isSubmittingBaja, setIsSubmittingBaja] = useState(false);
   const [showReplacementSearch, setShowReplacementSearch] = useState(false);
@@ -115,23 +118,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
     if (!studentToBaja) return;
     setIsSubmittingBaja(true);
     try {
-      // Deseleccionar al estudiante (lo que borra la práctica activa)
-      await handleToggle(studentToBaja);
-
-      const penaltyScore = getPenaltyScore(penaltyType);
-      const penaltyData = {
-        estudiante_id: studentToBaja.studentId,
-        tipo_incumplimiento: penaltyType,
-        fecha_incidente: new Date().toISOString().split("T")[0],
-        notas: penaltyNotes.trim() || null,
-        puntaje_penalizacion: penaltyScore,
-        convocatoria_afectada: launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS",
-        convocatoria_id: studentToBaja.enrollmentId,
-        lanzamiento_id: launch.id,
-      };
-
-      const { error } = await supabase.from("penalizaciones").insert([penaltyData]);
-      if (error) throw error;
+      await handleBajaConPenalizacion(studentToBaja, penaltyType, penaltyNotes);
 
       setToastInfo({
         message: "Estudiante dado de baja y penalización registrada.",
@@ -141,7 +128,8 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
       setPenaltyNotes("");
     } catch (e) {
       console.error("Error al procesar la baja:", e);
-      setToastInfo({ message: "Error al registrar la baja del estudiante.", type: "error" });
+      const message = e instanceof Error ? e.message : "Error al registrar la baja del estudiante.";
+      setToastInfo({ message, type: "error" });
     } finally {
       setIsSubmittingBaja(false);
     }
@@ -721,7 +709,7 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                   className="lv4-select"
                   style={{ width: "100%" }}
                   value={penaltyType}
-                  onChange={(e) => setPenaltyType(e.target.value)}
+                  onChange={(e) => setPenaltyType(e.target.value as PenaltyType)}
                 >
                   <option value="Baja sobre la Fecha / Ausencia en Inicio">
                     Baja sobre la Fecha / Ausencia en Inicio (50 pts)

@@ -17,9 +17,9 @@ import {
   fetchAllData,
   fetchPaginatedData,
   createRecord,
-  deleteRecord,
   updateRecord,
 } from "../../services/supabaseService";
+import { darBajaPpsConPenalizacion } from "../../services";
 import { mockDb } from "../../services/mockDb";
 import type { EstudianteFields, Penalizacion, AirtableRecord } from "../../types";
 import {
@@ -923,6 +923,32 @@ const AddPenaltyModal: React.FC<{
         await mockDb.create("penalizaciones", penaltyData);
         return;
       }
+
+      if (selectedPpsId && TRIGGER_TYPES.includes(penaltyType)) {
+        const ppsId = selectedPpsId;
+        const convocatoriasRes = await fetchAllData(TABLE_NAME_CONVOCATORIAS, undefined, {
+          [FIELD_LEGAJO_CONVOCATORIAS]: student.legajo,
+        });
+
+        const targetConv = convocatoriasRes.records.map(mapConvocatoria).find((c) => {
+          const ids = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
+          return (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
+        });
+
+        if (!targetConv) {
+          throw new Error(
+            "No se encontró la inscripción vinculada. No se aplicó ninguna penalización."
+          );
+        }
+
+        await darBajaPpsConPenalizacion({
+          convocatoriaId: targetConv.id,
+          tipoIncumplimiento: penaltyType,
+          notas: notes,
+        });
+        return;
+      }
+
       const penaltyResult = await createRecord(TABLE_NAME_PENALIZACIONES, penaltyData);
       if (penaltyResult.error) {
         const errorMsg =
@@ -930,44 +956,6 @@ const AddPenaltyModal: React.FC<{
             ? penaltyResult.error.error
             : penaltyResult.error.error.message;
         throw new Error(`Error al crear la penalización: ${errorMsg}`);
-      }
-
-      if (selectedPpsId && TRIGGER_TYPES.includes(penaltyType)) {
-        const ppsId = selectedPpsId;
-
-        const [convocatoriasRes, practicasRes] = await Promise.all([
-          fetchAllData(TABLE_NAME_CONVOCATORIAS, undefined, {
-            [FIELD_LEGAJO_CONVOCATORIAS]: student.legajo,
-          }),
-          fetchAllData(TABLE_NAME_PRACTICAS, undefined, {
-            [FIELD_NOMBRE_BUSQUEDA_PRACTICAS]: student.legajo,
-          }),
-        ]);
-
-        const targetConv = convocatoriasRes.records.map(mapConvocatoria).find((c) => {
-          const ids = c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
-          return (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
-        });
-
-        const targetPractica = practicasRes.records.map(mapPractica).find((p) => {
-          const ids = p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS];
-          return (Array.isArray(ids) ? ids : [ids]).includes(ppsId);
-        });
-
-        const sideEffectPromises: Promise<unknown>[] = [];
-        if (targetConv) {
-          sideEffectPromises.push(
-            updateRecord(TABLE_NAME_CONVOCATORIAS, targetConv.id, {
-              [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "No Seleccionado",
-            })
-          );
-        }
-        if (targetPractica) {
-          sideEffectPromises.push(deleteRecord(TABLE_NAME_PRACTICAS, targetPractica.id));
-        }
-        if (sideEffectPromises.length > 0) {
-          await Promise.all(sideEffectPromises);
-        }
       }
     },
     onSuccess: () => {

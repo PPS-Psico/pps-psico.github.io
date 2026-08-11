@@ -19,12 +19,19 @@ import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_DESAPROBACION_FECHA_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
+  FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_OTRA_SITUACION_CONVOCATORIAS,
   FIELD_PENALIZACION_ESTUDIANTE_LINK,
+  FIELD_PENALIZACION_TIPO,
+  FIELD_PENALIZACION_FECHA,
+  FIELD_PENALIZACION_NOTAS,
   FIELD_PENALIZACION_PUNTAJE,
+  FIELD_PENALIZACION_CONVOCATORIA_LINK,
+  FIELD_PENALIZACION_CONVOCATORIA_ID,
+  FIELD_PENALIZACION_LANZAMIENTO_ID,
   FIELD_PENALIZACION_ESTADO,
   FIELD_TELEFONO_ESTUDIANTES,
   FIELD_TERMINO_CURSAR_CONVOCATORIAS,
@@ -33,12 +40,18 @@ import {
   FIELD_DNI_ESTUDIANTES,
   FIELD_ESTADO_ESTUDIANTES,
   FIELD_USER_ID_ESTUDIANTES,
+  getPenaltyScore,
   isActivePenalty,
+  type PenaltyType,
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import { invalidateLaunchData } from "../lib/launchQueryKeys";
-import { toggleStudentSelection, updatePracticaFromSchedule } from "../services";
+import {
+  darBajaPpsConPenalizacion,
+  toggleStudentSelection,
+  updatePracticaFromSchedule,
+} from "../services";
 import { mockDb } from "../services/mockDb";
 import type {
   AirtableRecord,
@@ -49,7 +62,7 @@ import type {
   Practica,
   Penalizacion,
 } from "../types";
-import { cleanDbValue, normalizeStringForComparison } from "../utils/formatters";
+import { cleanDbValue, normalizeStringForComparison, safeGetId } from "../utils/formatters";
 import { calculateScore } from "../utils/seleccionadorScore";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
@@ -417,6 +430,63 @@ export const useSeleccionadorLogic = (
     toggleMutation.mutate(student);
   };
 
+  const handleBajaConPenalizacion = async (
+    student: EnrichedStudent,
+    tipoIncumplimiento: PenaltyType,
+    notas?: string | null
+  ) => {
+    if (!selectedLanzamiento) {
+      throw new Error("No hay una convocatoria seleccionada.");
+    }
+
+    let result: { penalizacionId: string; practicasEliminadas: number };
+
+    if (isTestingMode) {
+      await mockDb.update("convocatorias", student.enrollmentId, {
+        [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "No Seleccionado",
+      });
+
+      const practices = (await mockDb.getAll("practicas")) as Practica[];
+      const activePractices = practices.filter(
+        (practice) =>
+          safeGetId(practice[FIELD_ESTUDIANTE_LINK_PRACTICAS]) === student.studentId &&
+          safeGetId(practice[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]) === selectedLanzamiento.id &&
+          normalizeStringForComparison(practice[FIELD_ESTADO_PRACTICA]) === "en curso"
+      );
+      await Promise.all(activePractices.map((practice) => mockDb.delete("practicas", practice.id)));
+
+      const penalty = await mockDb.create("penalizaciones", {
+        [FIELD_PENALIZACION_ESTUDIANTE_LINK]: student.studentId,
+        [FIELD_PENALIZACION_TIPO]: tipoIncumplimiento,
+        [FIELD_PENALIZACION_FECHA]: new Date().toISOString().split("T")[0],
+        [FIELD_PENALIZACION_NOTAS]: notas?.trim() || null,
+        [FIELD_PENALIZACION_PUNTAJE]: getPenaltyScore(tipoIncumplimiento),
+        [FIELD_PENALIZACION_CONVOCATORIA_LINK]:
+          selectedLanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "PPS",
+        [FIELD_PENALIZACION_CONVOCATORIA_ID]: student.enrollmentId,
+        [FIELD_PENALIZACION_LANZAMIENTO_ID]: selectedLanzamiento.id,
+      });
+
+      result = {
+        penalizacionId: penalty.id,
+        practicasEliminadas: activePractices.length,
+      };
+    } else {
+      result = await darBajaPpsConPenalizacion({
+        convocatoriaId: student.enrollmentId,
+        tipoIncumplimiento,
+        notas,
+      });
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: candidatesQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ["availableStudents"] }),
+    ]);
+    invalidateLaunchData(queryClient);
+    return result;
+  };
+
   const handleUpdateSchedule = (student: EnrichedStudent, schedule: string) => {
     scheduleMutation.mutate({
       id: student.enrollmentId,
@@ -556,6 +626,7 @@ export const useSeleccionadorLogic = (
     scheduleInfo,
     isEditMode,
     handleToggle,
+    handleBajaConPenalizacion,
     handleUpdateSchedule,
     availableStudents,
     isLoadingAvailable,

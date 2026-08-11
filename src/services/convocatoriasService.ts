@@ -11,6 +11,18 @@ import {
 import { cleanSchedule, findMatchingGroupKey } from "../utils/scheduleUtils";
 import { logger } from "../utils/logger";
 
+export interface BajaPpsResult {
+  penalizacionId: string;
+  practicasEliminadas: number;
+}
+
+export interface BajaPpsInput {
+  convocatoriaId: string;
+  tipoIncumplimiento: string;
+  notas?: string | null;
+  fechaIncidente?: string;
+}
+
 function addToGrouped(
   grouped: GroupedSeleccionados,
   rawHorario: string,
@@ -331,6 +343,37 @@ export const fetchSeleccionados = async (
   return sortGrouped(grouped);
 };
 
+/**
+ * Ejecuta en una única transacción de Postgres la baja de la inscripción, la
+ * eliminación de la práctica activa y el alta de la penalización. El puntaje
+ * se resuelve en el servidor para que no dependa de valores enviados por la UI.
+ */
+export const darBajaPpsConPenalizacion = async ({
+  convocatoriaId,
+  tipoIncumplimiento,
+  notas,
+  fechaIncidente,
+}: BajaPpsInput): Promise<BajaPpsResult> => {
+  const { data, error } = await supabase.rpc("dar_baja_pps_con_penalizacion", {
+    p_convocatoria_id: convocatoriaId,
+    p_tipo_incumplimiento: tipoIncumplimiento,
+    ...(notas != null ? { p_notas: notas } : {}),
+    ...(fechaIncidente ? { p_fecha_incidente: fechaIncidente } : {}),
+  });
+
+  if (error) throw error;
+
+  const result = data?.[0];
+  if (!result) {
+    throw new Error("La base no confirmó la baja del estudiante.");
+  }
+
+  return {
+    penalizacionId: result.penalizacion_id,
+    practicasEliminadas: result.practicas_eliminadas,
+  };
+};
+
 export const toggleStudentSelection = async (
   convocatoriaId: string,
   isSelecting: boolean,
@@ -435,13 +478,18 @@ export const toggleStudentSelection = async (
     } else {
       const { data: existing } = await supabase
         .from("practicas")
-        .select("id")
+        .select(`id, ${C.FIELD_ESTADO_PRACTICA}`)
         .eq(C.FIELD_ESTUDIANTE_LINK_PRACTICAS, studentId)
         .eq(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, lanzamiento.id);
 
       if (existing && existing.length > 0) {
-        const duplicates = existing as { id: string }[];
-        for (const rec of duplicates) {
+        const activePractices = (
+          existing as { id: string; [C.FIELD_ESTADO_PRACTICA]: string | null }[]
+        ).filter(
+          (practice) =>
+            normalizeStringForComparison(practice[C.FIELD_ESTADO_PRACTICA]) === "en curso"
+        );
+        for (const rec of activePractices) {
           await db.practicas.delete(rec.id);
         }
       }
