@@ -244,7 +244,27 @@ export async function learnFromDraftEdit(params: {
   asunto?: string;
 }): Promise<void> {
   const edited = params.borradorOriginal.trim() !== params.borradorFinal.trim();
-  // Si no editó nada, igual avisamos (accion=approved) para que aprenda que estuvo OK.
+
+  // Marcar la suggestion como resuelta primero: esto es lo que saca el ✦ de la
+  // bandeja y NO puede depender de que Hermes responda. Si esto falla de verdad
+  // (red caída, RLS), preferimos que el borrador siga apareciendo antes que
+  // perderlo en silencio.
+  try {
+    const { supabase } = await import("../lib/supabaseClient");
+    const { error } = await supabase
+      .from("agent_suggestions")
+      .update({
+        estado: edited ? "edited" : "approved",
+        resolved_at: new Date().toISOString(),
+      })
+      .eq("id", params.suggestionId);
+    if (error) throw error;
+  } catch (e) {
+    logger.warn("[gmailService] no se pudo marcar el borrador como resuelto:", e);
+  }
+
+  // Cierre del loop de aprendizaje con Hermes: best-effort, nunca debe bloquear
+  // ni revertir la resolución de arriba. Si no está desplegado o tarda, no pasa nada.
   try {
     await callHermes(
       "learn_from_feedback",
@@ -257,12 +277,6 @@ export async function learnFromDraftEdit(params: {
       },
       20000
     );
-    // Marcar la suggestion como resuelta para que no reaparezca.
-    const { supabase } = await import("../lib/supabaseClient");
-    await supabase
-      .from("agent_suggestions")
-      .update({ estado: edited ? "edited" : "approved" })
-      .eq("id", params.suggestionId);
   } catch (e) {
     logger.warn("[gmailService] learnFromDraftEdit no disponible:", e);
   }

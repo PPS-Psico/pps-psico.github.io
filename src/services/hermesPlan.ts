@@ -5,8 +5,8 @@
 // estado pending) y las normaliza al shape que consume la UI. La regeneración
 // delega en el backend de Hermes vía gmailService.planToday (/tasks/plan_today).
 //
-// Shadow mode: solo SELECT + disparo de replanificación; nunca envía ni cambia
-// estados de gestión por su cuenta.
+// Shadow mode: no envía mensajes ni cambia estados de gestión por su cuenta.
+// Sólo cierra la sugerencia local cuando el operador abre una acción.
 // ──────────────────────────────────────────────────────────────────────────
 import { supabase } from "../lib/supabaseClient";
 import { planToday } from "./gmailService";
@@ -139,6 +139,29 @@ export async function getPlanDelDia(isTestingMode = false): Promise<AccionDia[]>
     (a, b) =>
       (PRIORIDAD_RANK[a.prioridad] ?? 1) - (PRIORIDAD_RANK[b.prioridad] ?? 1) || a.orden - b.orden
   );
+}
+
+/**
+ * Saca una acción del plan del día sin esperar a "Replanificar día".
+ *
+ * Antes, nada en la UI marcaba una `accion_dia` como resuelta: la única forma
+ * de que la bandeja "Hoy" bajara era regenerar el plan completo (que además
+ * descarta TODO lo pendiente, incluso lo que el operador no llegó a mirar).
+ * Al abrir una tarjeta ya se la dimos por atendida desde esta superficie — la
+ * acción real (responder, contactar) sigue su curso en el panel que se abre.
+ *
+ * Best-effort: si falla, la tarjeta simplemente reaparece en la próxima carga.
+ */
+export async function resolverAccionDia(id: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("agent_suggestions")
+      .update({ estado: "approved", resolved_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+  } catch {
+    /* noop */
+  }
 }
 
 /**

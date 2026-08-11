@@ -14,11 +14,12 @@
 // Cada tarjeta es accionable: abre el panel/modal correcto sin salir de Gestión.
 // ──────────────────────────────────────────────────────────────────────────
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   getPlanDelDia,
   regenerarPlanDelDia,
+  resolverAccionDia,
   type AccionDia,
   type AccionTipo,
 } from "../../../services/hermesPlan";
@@ -76,6 +77,8 @@ export const HermesFlow: React.FC<Props> = ({
   extraCards = [],
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const planQueryKey = ["hermesPlanDia", isTestingMode] as const;
 
   const {
     data: acciones = [],
@@ -83,7 +86,7 @@ export const HermesFlow: React.FC<Props> = ({
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["hermesPlanDia", isTestingMode],
+    queryKey: planQueryKey,
     enabled: !isTestingMode,
     staleTime: 60 * 1000,
     queryFn: () => getPlanDelDia(isTestingMode),
@@ -107,6 +110,15 @@ export const HermesFlow: React.FC<Props> = ({
   };
 
   const onAccion = (a: AccionDia) => {
+    // La tarjeta ya cumplió su función (llevar al operador a la acción); la
+    // sacamos de "Hoy" sin esperar a "Replanificar día". La acción real sigue
+    // su curso en el panel/hilo que se abre a continuación.
+    if (!isTestingMode) {
+      void resolverAccionDia(a.id);
+      queryClient.setQueryData<AccionDia[]>(planQueryKey, (old) =>
+        (old || []).filter((x) => x.id !== a.id)
+      );
+    }
     if (a.tipo === "responder_mail" && a.threadId) {
       const hilo = hilos.find((h) => h.thread_id === a.threadId);
       if (hilo) {
