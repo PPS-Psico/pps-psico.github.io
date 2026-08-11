@@ -1,39 +1,32 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../constants";
 import { supabase } from "../lib/supabaseClient";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { logger } from "../utils/logger";
 import type { MoodleOnboardingProfile } from "./useMoodleAutoLogin";
 
 /**
- * Alta guiada de un estudiante que entra desde el campus Moodle y no tiene
- * cuenta en el panel. Nombre, apellido, correo (y normalmente DNI = username
- * de Moodle) llegan del perfil del campus; el alumno completa legajo, celular
- * y contraseña.
- *
- * La vinculación con una fila precargada o la creación de una fila nueva se
- * resuelven de forma atómica en `register_campus_student`. El navegador no
- * consulta ni recibe datos personales del registro académico.
+ * Alta guiada habilitada por un ticket de un solo uso emitido dentro del aula
+ * PPS. La creación de Auth y la vinculación con la ficha se hacen en servidor;
+ * el navegador no puede registrar una cuenta directamente.
  */
-
 export type CampusOnboardingState = ReturnType<typeof useCampusOnboarding>;
 
 export const useCampusOnboarding = (profile: MoodleOnboardingProfile) => {
   const [legajo, setLegajo] = useState("");
-  // El DNI viene de Moodle; editable solo si el campus no lo inyectó.
   const [dni, setDni] = useState(profile.dni);
   const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  /** true cuando el legajo ya tiene cuenta: la salida es "iniciá sesión". */
   const [hasExistingAccount, setHasExistingAccount] = useState(false);
 
   const dniLocked = profile.dni.length >= 6;
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
     setError("");
     setHasExistingAccount(false);
     setIsLoading(true);
@@ -54,53 +47,57 @@ export const useCampusOnboarding = (profile: MoodleOnboardingProfile) => {
         throw new Error("La contraseña no puede superar los 128 caracteres.");
       if (password !== confirmPassword) throw new Error("Las contraseñas no coinciden.");
 
-      // Crear el usuario de Auth con el correo recibido desde el campus.
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { legajo: legajoClean } },
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/register-moodle-student`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          signupTicket: profile.signupTicket,
+          legajo: legajoClean,
+          dni: dniClean,
+          telefono: telefonoClean,
+          password,
+        }),
       });
-      const userId = authData?.user?.id;
 
-      if (signUpError || !userId) {
-        const msg = (signUpError?.message || "").toLowerCase();
-        if (msg.includes("already registered") || msg.includes("exists")) {
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        code?: string;
+        message?: string;
+      };
+
+      if (!response.ok || !result.ok) {
+        if (result.code === "already_registered") {
           setHasExistingAccount(true);
           throw new Error(
             "Tu correo del campus ya tiene una cuenta. Iniciá sesión o usá Recuperar Acceso."
           );
         }
-        if (msg.includes("rate limit") || msg.includes("seconds")) {
+        if (result.code === "rate_limited") {
           throw new Error("Demasiados intentos. Esperá un minuto y volvé a intentar.");
         }
+        if (result.code === "invalid_or_expired_ticket") {
+          throw new Error(
+            "La autorización del aula venció. Recargá el Aula PPS del Campus Virtual y volvé a intentarlo."
+          );
+        }
+        throw new Error(result.message || "No pudimos completar el alta. Revisá los datos.");
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setHasExistingAccount(true);
         throw new Error(
-          `No se pudo crear la cuenta: ${signUpError?.message || "verificá los datos."}`
+          "La cuenta quedó creada. Iniciá sesión con tu legajo y la contraseña que elegiste."
         );
       }
 
-      // La RPC decide en servidor si corresponde vincular una fila precargada
-      // o crear una nueva, y valida correo confirmado + DNI antes de vincular.
-      const { error: rpcError } = await supabase.rpc("register_campus_student", {
-        legajo_input: legajoClean,
-        userid_input: userId,
-        dni_input: Number(dniClean),
-        correo_input: email,
-        telefono_input: telefonoClean,
-        nombre_input: profile.firstname,
-        apellido_input: profile.lastname,
-      });
-      if (rpcError) {
-        logger.warn("[CampusOnboarding] Alta segura falló:", rpcError.message);
-        throw new Error(
-          "La cuenta se creó, pero no pudimos validar los datos con el registro académico. Revisalos o contactá a coordinación."
-        );
-      }
-
-      logger.warn(`[CampusOnboarding] Alta completada para legajo ${legajoClean}.`);
-      // La sesión ya quedó activa por signUp: AuthContext detecta SIGNED_IN,
-      // encuentra el perfil recién creado/vinculado y monta el panel solo.
-    } catch (err) {
-      setError(getErrorMessage(err));
+      logger.info(`[CampusOnboarding] Alta completada para legajo ${legajoClean}.`);
+    } catch (caughtError) {
+      setError(getErrorMessage(caughtError));
     } finally {
       setIsLoading(false);
     }

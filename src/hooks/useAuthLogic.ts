@@ -196,17 +196,6 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
     setFieldError(null);
   };
 
-  const parseVerificationDni = (value: string) => {
-    const cleanDni = value.replace(/\D/g, "").trim();
-    const parsedDni = parseInt(cleanDni, 10);
-
-    if (isNaN(parsedDni) || parsedDni === 0) {
-      throw new Error("El DNI debe ser un número válido.");
-    }
-
-    return parsedDni;
-  };
-
   const assertValidNewPassword = () => {
     if (password.length < PASSWORD_MIN_LENGTH) {
       throw new Error(`La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`);
@@ -321,85 +310,12 @@ export const useAuthLogic = ({ login, showModal: _showModal }: UseAuthLogicProps
         setIsLoading(false);
       }
     } else if (mode === "register") {
-      try {
-        if (registerStep === 1) {
-          if (!/^\d{4,8}$/.test(legajoTrimmed)) {
-            throw new Error("Ingresá tu legajo (solo números, entre 4 y 8 dígitos).");
-          }
-
-          // La pantalla pública no consulta ni precarga datos personales. La
-          // identidad se valida en servidor al vincular la cuenta autenticada.
-          setVerificationData({ dni: "", correo: "", telefono: "" });
-          setRegisterStep(2);
-          setIsLoading(false);
-          return;
-        }
-
-        if (registerStep === 2) {
-          const { dni, correo, telefono } = verificationData;
-          if (!dni || !correo || !telefono || !password)
-            throw new Error("Todos los campos son obligatorios.");
-          assertValidNewPassword();
-
-          const inputEmail = correo.trim().toLowerCase();
-          const cleanDniInt = parseVerificationDni(dni);
-
-          // Crear el usuario antes de la vinculación. La RPC valida que el
-          // correo confirmado de Auth y el DNI coincidan con la fila precargada.
-          const { data: authData, error: signUpError } = await supabase.auth.signUp({
-            email: inputEmail,
-            password: password,
-            options: { data: { legajo: legajoTrimmed } },
-          });
-
-          let userId = authData?.user?.id;
-
-          if (signUpError || !userId) {
-            logger.warn("SignUp failed:", signUpError);
-            const errorMsg = signUpError?.message || "";
-            const lowerMsg = errorMsg.toLowerCase();
-
-            if (lowerMsg.includes("already registered") || lowerMsg.includes("exists")) {
-              throw new Error(
-                "Ya existe una cuenta con este correo. Por favor, usa la opción '¿Olvidaste tu contraseña?' desde Iniciar Sesión."
-              );
-            } else if (lowerMsg.includes("password") || lowerMsg.includes("contraseña")) {
-              throw new Error(
-                `La contraseña no cumple con los requisitos del sistema: ${errorMsg}`
-              );
-            } else if (lowerMsg.includes("rate limit") || lowerMsg.includes("seconds")) {
-              throw new Error(
-                "Demasiados intentos. Por favor espera un minuto y vuelve a intentarlo."
-              );
-            } else {
-              throw new Error(
-                `No se pudo crear la cuenta: ${errorMsg || "Verifica los datos ingresados."}`
-              );
-            }
-          }
-
-          if (userId) {
-            const { error: linkError } = await supabase.rpc("register_new_student", {
-              legajo_input: legajoTrimmed,
-              userid_input: userId,
-              dni_input: cleanDniInt,
-              correo_input: inputEmail,
-              telefono_input: telefono,
-            });
-
-            if (linkError) {
-              logger.warn("Student signup link failed:", linkError.message);
-              throw new Error(
-                "La cuenta se creó, pero no pudimos validar los datos con el registro académico. Revisalos o contactá a coordinación."
-              );
-            }
-          }
-        }
-      } catch (err) {
-        setError(getErrorMessage(err));
-      } finally {
-        setIsLoading(false);
-      }
+      // El alta pública está cerrada. Este guard también bloquea cualquier
+      // estado legacy que intente forzar el modo de registro desde el cliente.
+      setMode("login");
+      setError("La creación de cuentas sólo está disponible desde el Aula PPS del Campus Virtual.");
+      setIsLoading(false);
+      return;
     } else if (mode === "recover") {
       try {
         clearLogs();

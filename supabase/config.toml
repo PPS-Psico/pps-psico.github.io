@@ -40,8 +40,14 @@ verify_jwt = true
 [functions.ingest-moodle-grade-observation]
 verify_jwt = true
 
+[functions.issue-moodle-signup-ticket]
+verify_jwt = false
+
 [functions.request-password-reset]
 verify_jwt = true
+
+[functions.register-moodle-student]
+verify_jwt = false
 
 [functions.reset-password-with-token]
 verify_jwt = true

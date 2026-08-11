@@ -1471,6 +1471,51 @@ export type Database = {
         }
         Relationships: []
       }
+      moodle_signup_tickets: {
+        Row: {
+          auth_user_id: string | null
+          course_id: number
+          email: string
+          expires_at: string
+          firstname: string
+          id: string
+          issued_at: string
+          lastname: string
+          moodle_user_id: number
+          moodle_username: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          auth_user_id?: string | null
+          course_id: number
+          email: string
+          expires_at: string
+          firstname: string
+          id?: string
+          issued_at?: string
+          lastname: string
+          moodle_user_id: number
+          moodle_username: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          auth_user_id?: string | null
+          course_id?: number
+          email?: string
+          expires_at?: string
+          firstname?: string
+          id?: string
+          issued_at?: string
+          lastname?: string
+          moodle_user_id?: number
+          moodle_username?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       password_reset_tokens: {
         Row: {
           claimed_at: string | null
@@ -2315,6 +2360,16 @@ export type Database = {
       cleanup_old_verification_attempts: { Args: never; Returns: undefined }
       close_finished_practicas: { Args: never; Returns: number }
       close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json }
+      complete_moodle_student_signup: {
+        Args: {
+          dni_input: number
+          legajo_input: string
+          telefono_input: string
+          token_hash_input: string
+          userid_input: string
+        }
+        Returns: string
+      }
       complete_password_reset: {
         Args: {
           p_failure_code?: string

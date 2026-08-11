@@ -1,4 +1,4 @@
-import { moodleTasksResultSchema } from "../moodleBridge";
+import { moodleCourseContextSchema, moodleTasksResultSchema } from "../moodleBridge";
 
 const validResult = {
   type: "PPS_MOODLE_TASKS_RESULT" as const,
@@ -43,6 +43,38 @@ describe("moodleTasksResultSchema", () => {
   it("rechaza un username Moodle que no tenga forma de DNI", () => {
     expect(
       moodleTasksResultSchema.safeParse({ ...validResult, moodleUsername: "blas" }).success
+    ).toBe(false);
+  });
+});
+
+describe("moodleCourseContextSchema", () => {
+  const validContext = {
+    type: "PPS_MOODLE_CONTEXT_RESULT",
+    version: 1,
+    requestId: "550e8400-e29b-41d4-a716-446655440000",
+    courseId: 3615,
+    moodleUserId: 32734,
+    moodleUsername: "35154584",
+    email: "blas.rivera@uflouniversidad.edu.ar",
+    firstname: "Blas",
+    lastname: "Rivera",
+    signupTicket: "a".repeat(64),
+    signupTicketExpiresAt: "2026-08-11T16:00:00.000Z",
+  };
+
+  it("acepta un comprobante completo emitido para el aula PPS", () => {
+    expect(moodleCourseContextSchema.safeParse(validContext).success).toBe(true);
+  });
+
+  it("rechaza un contexto de otro curso", () => {
+    expect(moodleCourseContextSchema.safeParse({ ...validContext, courseId: 9999 }).success).toBe(
+      false
+    );
+  });
+
+  it("rechaza un contexto sin ticket de alta válido", () => {
+    expect(
+      moodleCourseContextSchema.safeParse({ ...validContext, signupTicket: "sin-ticket" }).success
     ).toBe(false);
   });
 });

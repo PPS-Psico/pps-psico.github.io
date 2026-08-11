@@ -484,22 +484,15 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
         <div className="group pt-2">{submitBtn("Iniciar Sesión", true)}</div>
 
         <div className="au-loginjoin mt-8 flex items-center justify-center pt-8 border-t border-[var(--line)]">
-          <p className="text-[var(--ink-muted)] text-sm font-medium">
-            ¿Primera vez aquí?{" "}
-            <button
-              type="button"
-              onClick={() => setMode("register")}
-              className="font-bold text-[var(--ink)] hover:underline transition"
-            >
-              Crear cuenta de estudiante
-            </button>
+          <p className="text-[var(--ink-muted)] text-sm font-medium text-center">
+            Para crear tu cuenta, ingresá desde el Aula PPS del Campus Virtual.
           </p>
         </div>
       </form>
     </>
   );
 
-  const renderRegister = () => (
+  const _renderRegister = () => (
     <form onSubmit={handleFormSubmit} className="space-y-6 animate-fade-in-up">
       {registerStep === 1 ? (
         <>
@@ -796,7 +789,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
       case "login":
         return renderLogin();
       case "register":
-        return renderRegister();
+        return renderLogin();
       case "migration":
         return renderMigration();
       case "recover":
@@ -1038,12 +1031,7 @@ const Auth: React.FC<AuthProps> = ({ inline = false }) => {
               </>
             )}
           </button>
-          <p className="au-mfoot">
-            ¿No tenés cuenta?{" "}
-            <button type="button" onClick={() => setMode("register")}>
-              Crear cuenta
-            </button>
-          </p>
+          <p className="au-mfoot">El alta se habilita desde el Aula PPS del Campus Virtual.</p>
         </div>
       </form>
     </div>

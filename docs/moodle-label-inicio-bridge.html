@@ -145,10 +145,13 @@
   data-course-id="{courseid}"
   data-moodle-user-id="{userid}"
   data-moodle-username="{username}"
+  data-email="{email}"
+  data-firstname="{firstname}"
+  data-lastname="{lastname}"
 >
   <iframe
     id="pps-aula-frame"
-    src="https://pps-psico.github.io/?v=30&email={email}&firstname={firstname}&lastname={lastname}&idnumber={idnumber}&username={username}&phone1={phone1}&phone2={phone2}#/student"
+    src="https://pps-psico.github.io/?v=31#/student"
     title="Aula PPS 2026"
     loading="lazy"
     scrolling="auto"
@@ -162,12 +165,15 @@
     "use strict";
 
     var PANEL_ORIGIN = "https://pps-psico.github.io";
-    var COURSE_ID = 3615;
+    var TICKET_ENDPOINT =
+      "https://qxnxtnhtbpsgzprqtrjl.supabase.co/functions/v1/issue-moodle-signup-ticket";
+    var EXPECTED_COURSE_ID = 3615;
     var MAX_TASKS = 20;
     var FETCH_TIMEOUT_MS = 10000;
     var f = document.getElementById("pps-aula-frame");
     var embed = document.getElementById("pps-aula-embed");
     if (!f || !embed) return;
+    var COURSE_ID = Number(embed.getAttribute("data-course-id"));
 
     function panelH() {
       return Math.max(620, Math.round(window.innerHeight * 0.92));
@@ -185,6 +191,70 @@
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase();
+    }
+
+    function resolvedText(value) {
+      var result = cleanText(value);
+      return result && result.indexOf("{") === -1 && result.indexOf("}") === -1
+        ? result
+        : "";
+    }
+
+    function validRequestId(value) {
+      return (
+        typeof value === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          value
+        )
+      );
+    }
+
+    function validContextRequest(data) {
+      return (
+        data &&
+        data.type === "PPS_MOODLE_CONTEXT_REQUEST" &&
+        data.version === 1 &&
+        validRequestId(data.requestId)
+      );
+    }
+
+    function readMoodleContext() {
+      return {
+        courseId: COURSE_ID,
+        moodleUserId: Number(embed.getAttribute("data-moodle-user-id")),
+        moodleUsername: resolvedText(embed.getAttribute("data-moodle-username")).replace(
+          /\D/g,
+          ""
+        ),
+        email: resolvedText(embed.getAttribute("data-email")).toLowerCase(),
+        firstname: resolvedText(embed.getAttribute("data-firstname")),
+        lastname: resolvedText(embed.getAttribute("data-lastname")),
+      };
+    }
+
+    function validMoodleContext(context) {
+      return (
+        context.courseId === EXPECTED_COURSE_ID &&
+        Number.isSafeInteger(context.moodleUserId) &&
+        context.moodleUserId > 0 &&
+        /^\d{6,12}$/.test(context.moodleUsername) &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(context.email) &&
+        context.firstname.length >= 2 &&
+        context.lastname.length >= 2
+      );
+    }
+
+    function issueSignupTicket(context) {
+      return fetch(TICKET_ENDPOINT, {
+        method: "POST",
+        mode: "cors",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(context),
+      }).then(function (response) {
+        if (!response.ok) throw new Error("ticket_http_" + response.status);
+        return response.json();
+      });
     }
 
     function parseLocaleNumber(value) {
@@ -387,14 +457,8 @@
 
     function validRequest(data) {
       if (!data || data.type !== "PPS_MOODLE_TASKS_REQUEST" || data.version !== 1) return false;
-      if (data.courseId !== COURSE_ID) return false;
-      if (
-        typeof data.requestId !== "string" ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-          data.requestId
-        )
-      )
-        return false;
+      if (COURSE_ID !== EXPECTED_COURSE_ID || data.courseId !== COURSE_ID) return false;
+      if (!validRequestId(data.requestId)) return false;
       if (!Array.isArray(data.cmids) || data.cmids.length < 1 || data.cmids.length > MAX_TASKS) {
         return false;
       }
@@ -448,6 +512,43 @@
         f.style.height = height + 2 + "px";
         return;
       }
+
+      if (validContextRequest(data)) {
+        var context = readMoodleContext();
+        if (!validMoodleContext(context)) return;
+
+        issueSignupTicket(context)
+          .then(function (ticketResult) {
+            if (
+              !ticketResult ||
+              ticketResult.ok !== true ||
+              !/^[0-9a-f]{64}$/.test(ticketResult.signupTicket || "")
+            )
+              return;
+
+            f.contentWindow.postMessage(
+              {
+                type: "PPS_MOODLE_CONTEXT_RESULT",
+                version: 1,
+                requestId: data.requestId,
+                courseId: context.courseId,
+                moodleUserId: context.moodleUserId,
+                moodleUsername: context.moodleUsername,
+                email: context.email,
+                firstname: context.firstname,
+                lastname: context.lastname,
+                signupTicket: ticketResult.signupTicket,
+                signupTicketExpiresAt: ticketResult.expiresAt,
+              },
+              PANEL_ORIGIN
+            );
+          })
+          .catch(function () {
+            // Fallo cerrado: sin ticket el panel sólo permite iniciar sesión.
+          });
+        return;
+      }
+
       if (!validRequest(data)) return;
 
       var cmids = data.cmids.filter(function (cmid, index, all) {
