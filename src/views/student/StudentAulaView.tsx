@@ -623,8 +623,10 @@ const faqGroups: FaqGroup[] = [
         q: "¿Cuánto tiempo tiene el docente para corregir?",
         a: (
           <>
-            <strong>30 días hábiles</strong> desde la entrega. Cargar la nota en Mi Panel es
-            opcional.
+            <strong>30 días hábiles</strong> desde la entrega. Cuando ingresás a Mi Panel dentro del
+            Campus, el estado de tus tareas se actualiza en segundo plano. Si el Campus ya muestra
+            una calificación, Mi Panel la convierte a escala 0–10 y la incorpora automáticamente a
+            tu PPS.
           </>
         ),
       },

@@ -1,6 +1,6 @@
 begin;
 
-select plan(16);
+select plan(22);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.moodle_grade_observations'::regclass),
@@ -127,6 +127,50 @@ select is(
   ),
   2,
   'each Moodle grade table has one combined SELECT policy'
+);
+
+select ok(
+  to_regclass('private.moodle_grade_applications') is not null,
+  'automatic Moodle grade applications have an audit ledger'
+);
+
+select is(
+  has_table_privilege('authenticated', 'private.moodle_grade_applications', 'SELECT'),
+  false,
+  'authenticated cannot read the private application ledger directly'
+);
+
+select is(
+  has_table_privilege('authenticated', 'private.moodle_grade_applications', 'INSERT'),
+  false,
+  'authenticated cannot forge grade applications'
+);
+
+select is(
+  has_function_privilege(
+    'authenticated',
+    'private.apply_moodle_grade_observation()',
+    'EXECUTE'
+  ),
+  false,
+  'authenticated cannot invoke the grade application trigger helper'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.moodle_grade_observations'::regclass
+      and tgname = 'apply_moodle_grade_observation_trigger'
+      and not tgisinternal
+  ),
+  'graded observations invoke the automatic application trigger'
+);
+
+select like(
+  pg_get_functiondef('private.apply_moodle_grade_observation()'::regprocedure),
+  '%direct_legacy_ten_point%',
+  'the trigger preserves historical direct ten-point grades'
 );
 
 select * from finish();

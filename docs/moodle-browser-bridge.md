@@ -1,6 +1,6 @@
 # Puente de sesión Moodle → Mi Panel
 
-Estado: implementado en aplicación, base y Edge Function el 2026-08-10; pendiente de pegar la etiqueta versionada en Moodle y ejecutar la prueba integrada con un alumno real.
+Estado: implementado y probado de punta a punta en aplicación, base, Moodle y Edge Function. Desde el 2026-08-11 la sincronización se inicia en segundo plano al montar la sesión estudiantil dentro del iframe del Campus y aplica automáticamente las calificaciones detectadas.
 
 ## Instalación en Moodle
 
@@ -117,13 +117,23 @@ cuando una práctica legacy tiene una relación confirmada en
 `NULL` en lugar de inventar un lanzamiento. Una observación inválida se rechaza
 de manera individual para que no bloquee las restantes del mismo lote.
 
-`practicas.nota` no se actualiza desde el mensaje. Las observaciones se guardan en `moodle_grade_observations` y la última lectura por práctica en `moodle_grade_snapshots`. La actualización del legado ocurrirá sólo desde un lote de conciliación aprobado y auditable.
+La sincronización no depende de abrir **Entregas**: `MoodleGradeSyncProvider` envuelve todo el panel estudiantil y solicita las tareas confirmadas apenas terminaron de cargar la identidad, las PPS y sus vínculos. Esto ocurre en segundo plano desde Inicio. La limitación técnica se mantiene: la lectura sólo puede ejecutarse cuando Mi Panel está dentro del iframe de `campus.uflo.edu.ar`, porque el documento padre es quien posee la sesión Moodle.
+
+Cuando una observación validada llega con estado `graded`, un trigger privado actualiza `practicas.nota` dentro de la misma transacción y registra el antes/después en `private.moodle_grade_applications`. El frontend estudiantil nunca obtiene permiso de escritura sobre la nota.
+
+La conversión a la escala 0–10 del panel contempla las dos convenciones encontradas en el curso:
+
+- una nota porcentual como `80 / 100` o `83 / 100` se guarda como `8` o `8.3`;
+- una nota histórica cargada directamente como `9 / 100` se conserva como `9`;
+- otras escalas, por ejemplo `2 / 2`, se normalizan matemáticamente a `10`.
+
+Cada nueva corrección Moodle vuelve a ejecutar el proceso. Una lectura demorada nunca puede pisar una observación más reciente, y una relectura con el mismo valor queda auditada sin generar un cambio innecesario.
 
 El formulario estudiantil de acreditación tampoco solicita ni escribe una nota. La base bloquea cambios estudiantiles sobre `practicas.nota` y elimina cualquier nota autodeclarada que intentara entrar dentro de `finalizacion_pps.detalle_practicas`.
 
 ## Conciliación masiva
 
-El puente de navegador es oportunista: recoge información cuando cada estudiante abre el panel dentro de Moodle. Para completar el universo histórico existen dos caminos:
+El puente de navegador es oportunista: recoge y aplica información cuando cada estudiante inicia su panel dentro de Moodle. No realiza un barrido de alumnos que no hayan ingresado. Para completar el universo histórico existen dos caminos:
 
 1. exportación CSV/XLSX del libro de calificaciones e importación en modo dry-run;
 2. servicio web Moodle restringido, consumido por una Edge Function.
@@ -140,4 +150,4 @@ Coordinación puede consultar `get_moodle_grade_discrepancies()` para ver, sin e
 - una referencia matemática en escala 1–10;
 - fecha de observación y estado de comparación.
 
-El estado `requires_scale_decision` es intencional: hasta aprobar formalmente cómo convertir `83/100`, el reporte no lo declara igual ni distinto de una nota legacy `8`.
+El reporte usa la misma conversión que la escritura automática y devuelve `matches_moodle` o `different_from_moodle`. El ledger privado conserva `previous_note`, `applied_note`, nota y escala Moodle, regla de conversión, procedencia y fecha de observación para reconstruir cada cambio.

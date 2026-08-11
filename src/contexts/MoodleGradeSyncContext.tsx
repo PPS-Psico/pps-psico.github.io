@@ -155,7 +155,13 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
       });
       if (error) throw error;
 
-      await queryClient.invalidateQueries({ queryKey: ["moodle-grade-snapshots", studentId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["moodle-grade-snapshots", studentId] }),
+        // La Edge Function inserta la observacion y el trigger del servidor aplica
+        // una eventual correccion en practicas.nota. Revalidamos el panel para que
+        // Inicio y Practicas reflejen la nota sin que el alumno cambie de seccion.
+        queryClient.invalidateQueries({ queryKey: ["practicas"] }),
+      ]);
       setSyncStatus("synced");
     } catch (error) {
       if (error instanceof MoodleBridgeError && error.code === "not_embedded") {
