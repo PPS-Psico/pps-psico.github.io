@@ -1,4 +1,4 @@
-import { presentMoodleGrade } from "../moodleGradePresentation";
+import { isFinalMoodleGrade, presentMoodleGrade } from "../moodleGradePresentation";
 
 describe("presentMoodleGrade", () => {
   it("muestra la escala cruda de Moodle sin convertirla a 1–10", () => {
@@ -16,6 +16,17 @@ describe("presentMoodleGrade", () => {
       label: "Calificación en Campus",
       hasGrade: true,
     });
+    expect(presentation?.detail).toContain("ya no requiere nuevas consultas");
+    expect(
+      isFinalMoodleGrade({
+        task_status: "graded",
+        submitted: true,
+        grade_value: 83,
+        grade_max: 100,
+        grade_display: null,
+        observed_at: "2026-08-10T14:09:00.000Z",
+      })
+    ).toBe(true);
   });
 
   it("distingue una entrega pendiente de corrección", () => {
@@ -29,5 +40,28 @@ describe("presentMoodleGrade", () => {
         observed_at: "2026-08-10T14:09:00.000Z",
       })
     ).toMatchObject({ compact: "En corrección", hasGrade: false });
+  });
+
+  it("no cierra una tarea con entrega pendiente o calificación incompleta", () => {
+    expect(
+      isFinalMoodleGrade({
+        task_status: "submitted",
+        submitted: true,
+        grade_value: null,
+        grade_max: 100,
+        grade_display: null,
+        observed_at: "2026-08-10T14:09:00.000Z",
+      })
+    ).toBe(false);
+    expect(
+      isFinalMoodleGrade({
+        task_status: "graded",
+        submitted: true,
+        grade_value: null,
+        grade_max: 100,
+        grade_display: null,
+        observed_at: "2026-08-10T14:09:00.000Z",
+      })
+    ).toBe(false);
   });
 });

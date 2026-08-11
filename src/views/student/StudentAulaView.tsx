@@ -683,12 +683,15 @@ const faqGroups: FaqGroup[] = [
             entregaste, si el informe está en corrección o la calificación publicada por Moodle. La
             pantalla indica la fecha de la última consulta. Si entrás por la dirección directa,
             podés ver el último dato guardado, pero necesitás volver a abrir el panel desde Campus
-            para actualizarlo. Cada tarea se valida por separado: si aparece{" "}
-            <strong>Estado a revisar</strong>, esa lectura no pudo confirmarse y no modifica el
-            estado oficial que figura en Campus. Si una PPS dice{" "}
-            <strong>Espacio pendiente de vincular</strong>, Mi Panel no abre una tarea aproximada
-            por nombre: podés consultar el directorio y avisar a coordinación para que confirme el
-            vínculo correcto.
+            para actualizarlo. Cada tarea se valida por separado. Una lectura fallida nunca borra el
+            último estado confirmado: el panel conserva, por ejemplo, una entrega que ya había sido
+            detectada mientras vuelve a intentar leer su corrección en próximos ingresos. Cuando
+            Moodle publica una <strong>calificación</strong>, queda guardada como registro final, se
+            copia automáticamente a Prácticas y esa tarea deja de consultarse. Si aparece{" "}
+            <strong>Estado a revisar</strong>, todavía no existe un estado anterior suficientemente
+            confiable para mostrar. Si una PPS dice <strong>Espacio pendiente de vincular</strong>,
+            Mi Panel no abre una tarea aproximada por nombre: podés consultar el directorio y avisar
+            a coordinación para que confirme el vínculo correcto.
           </>
         ),
       },

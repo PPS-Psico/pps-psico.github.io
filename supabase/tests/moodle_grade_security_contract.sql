@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select plan(28);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.moodle_grade_observations'::regclass),
@@ -171,6 +171,51 @@ select like(
   pg_get_functiondef('private.apply_moodle_grade_observation()'::regprocedure),
   '%direct_legacy_ten_point%',
   'the trigger preserves historical direct ten-point grades'
+);
+
+select is(
+  private.moodle_grade_status_rank('graded'),
+  4::smallint,
+  'graded is the terminal Moodle snapshot state'
+);
+
+select is(
+  private.moodle_grade_status_rank('submitted'),
+  3::smallint,
+  'submitted outranks non-submission and parser failures'
+);
+
+select is(
+  private.moodle_grade_status_rank('not_submitted'),
+  2::smallint,
+  'a confirmed non-submission outranks parser failures'
+);
+
+select is(
+  has_function_privilege(
+    'authenticated',
+    'private.moodle_grade_status_rank(text)',
+    'EXECUTE'
+  ),
+  false,
+  'the private Moodle status helper is not exposed as an RPC'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.moodle_grade_snapshots'::regclass
+      and tgname = 'preserve_moodle_grade_snapshot_progress_trigger'
+      and not tgisinternal
+  ),
+  'snapshot updates invoke the monotonic progress guard'
+);
+
+select like(
+  pg_get_functiondef('private.apply_moodle_grade_observation()'::regprocedure),
+  '%a.practica_id = new.practica_id%a.cmid = new.cmid%',
+  'a previously applied practice-task grade is terminal'
 );
 
 select * from finish();

@@ -2,6 +2,7 @@ import { FIELD_ESPECIALIDAD_PRACTICAS, FIELD_LANZAMIENTO_VINCULADO_PRACTICAS } f
 import type { MoodleTaskLink } from "../hooks/useMoodleTaskLinks";
 import type { Practica } from "../types";
 import { cleanDbValue, normalizeStringForComparison } from "./formatters";
+import { isFinalMoodleGrade, type MoodleGradeLike } from "./moodleGradePresentation";
 
 export function normalizeMoodleOrientationKey(value: unknown): string | null {
   const normalized = normalizeStringForComparison(cleanDbValue(value));
@@ -41,4 +42,27 @@ export function resolveExactMoodleTaskLink(
     return exact.length === 1 ? exact[0] : null;
   }
   return launchLinks.length === 1 ? launchLinks[0] : null;
+}
+
+/**
+ * Agrupa solamente las tareas que todavía pueden avanzar. Una calificación
+ * completa es terminal y se excluye de todas las lecturas posteriores.
+ */
+export function buildPendingMoodleAssignments(
+  practices: Practica[],
+  links: MoodleTaskLink[],
+  snapshotsByPractice: ReadonlyMap<string, MoodleGradeLike>
+): Map<string, string[]> {
+  const byCmid = new Map<string, string[]>();
+
+  practices.forEach((practice) => {
+    if (isFinalMoodleGrade(snapshotsByPractice.get(practice.id))) return;
+    const task = resolveExactMoodleTaskLink(practice, links);
+    if (!task) return;
+    const practiceIds = byCmid.get(task.moodleId) ?? [];
+    practiceIds.push(practice.id);
+    byCmid.set(task.moodleId, practiceIds);
+  });
+
+  return byCmid;
 }

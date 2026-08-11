@@ -9,6 +9,13 @@ const PARSER_VERSION = "assignment-page/v1";
 const MAX_OBSERVATIONS = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TASK_STATUSES = new Set(["no_access", "not_submitted", "submitted", "graded", "parse_error"]);
+const TASK_STATUS_RANK: Record<string, number> = {
+  no_access: 1,
+  parse_error: 1,
+  not_submitted: 2,
+  submitted: 3,
+  graded: 4,
+};
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
@@ -369,15 +376,47 @@ Deno.serve(async (req) => {
       return json(origin, { error: "no_valid_observations", rejected: rejectedObservations }, 400);
     }
 
+    const candidatePracticeIds = [...new Set(observationRows.map((row) => row.practica_id))];
+    const { data: existingSnapshots, error: existingSnapshotError } = await admin
+      .from("moodle_grade_snapshots")
+      .select("practica_id, cmid, task_status, observed_at")
+      .in("practica_id", candidatePracticeIds);
+    if (existingSnapshotError) throw new Error("snapshot_lookup_failed");
+    const existingByKey = new Map(
+      (existingSnapshots ?? []).map((row) => [`${row.practica_id}:${row.cmid}`, row])
+    );
+
+    // Clientes nuevos ni siquiera solicitan estas tareas. Este filtro protege
+    // además contra pestañas antiguas todavía abiertas: una nota ya guardada no
+    // vuelve a ingresar al ledger ni a ejecutar el trigger académico.
+    const terminalSkipped = observationRows.filter(
+      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.task_status === "graded"
+    ).length;
+    const rowsToStore = observationRows.filter(
+      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.task_status !== "graded"
+    );
+
+    if (rowsToStore.length === 0) {
+      return json(origin, {
+        success: true,
+        stored: 0,
+        snapshotUpdated: 0,
+        preserved: 0,
+        skippedTerminal: terminalSkipped,
+        rejected: rejectedObservations,
+        observedAt,
+      });
+    }
+
     const { error: insertError } = await admin
       .from("moodle_grade_observations")
-      .upsert(observationRows, {
+      .upsert(rowsToStore, {
         onConflict: "request_id,practica_id,cmid",
         ignoreDuplicates: true,
       });
     if (insertError) throw new Error("observation_insert_failed");
 
-    const storedPracticeIds = [...new Set(observationRows.map((row) => row.practica_id))];
+    const storedPracticeIds = [...new Set(rowsToStore.map((row) => row.practica_id))];
     const { data: persistedData, error: persistedError } = await admin
       .from("moodle_grade_observations")
       .select("*")
@@ -404,18 +443,14 @@ Deno.serve(async (req) => {
       confidence: row.confidence,
     }));
 
-    const { data: existingSnapshots, error: existingSnapshotError } = await admin
-      .from("moodle_grade_snapshots")
-      .select("practica_id, cmid, observed_at")
-      .in("practica_id", storedPracticeIds);
-    if (existingSnapshotError) throw new Error("snapshot_lookup_failed");
-    const existingByKey = new Map(
-      (existingSnapshots ?? []).map((row) => [`${row.practica_id}:${row.cmid}`, row])
-    );
     const newestSnapshots = snapshots.filter((row) => {
       const existing = existingByKey.get(`${row.practica_id}:${row.cmid}`);
-      return !existing || Date.parse(row.observed_at) >= Date.parse(existing.observed_at);
+      if (!existing) return true;
+      if (existing.task_status === "graded") return false;
+      if (Date.parse(row.observed_at) < Date.parse(existing.observed_at)) return false;
+      return TASK_STATUS_RANK[row.task_status] >= TASK_STATUS_RANK[existing.task_status];
     });
+    const preserved = snapshots.length - newestSnapshots.length;
 
     if (newestSnapshots.length > 0) {
       const { error: snapshotError } = await admin
@@ -425,11 +460,14 @@ Deno.serve(async (req) => {
     }
 
     console.log(
-      `[moodle-grade] Stored ${snapshots.length} observation(s); rejected ${rejectedObservations.length}.`
+      `[moodle-grade] Stored ${snapshots.length}; snapshot ${newestSnapshots.length}; preserved ${preserved}; terminal ${terminalSkipped}; rejected ${rejectedObservations.length}.`
     );
     return json(origin, {
       success: true,
       stored: snapshots.length,
+      snapshotUpdated: newestSnapshots.length,
+      preserved,
+      skippedTerminal: terminalSkipped,
       rejected: rejectedObservations,
       observedAt,
     });

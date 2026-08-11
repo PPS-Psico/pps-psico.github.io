@@ -25,6 +25,24 @@ export interface MoodleGradePresentation {
   hasGrade: boolean;
 }
 
+type FinalMoodleGrade = MoodleGradeLike & {
+  task_status: "graded";
+  grade_value: number;
+  grade_max: number;
+};
+
+/** Una nota completa es terminal: queda guardada y la tarea deja de escanearse. */
+export function isFinalMoodleGrade(
+  snapshot: MoodleGradeLike | null | undefined
+): snapshot is FinalMoodleGrade {
+  return Boolean(
+    snapshot?.task_status === "graded" &&
+    snapshot.grade_value !== null &&
+    snapshot.grade_max !== null &&
+    snapshot.grade_max > 0
+  );
+}
+
 function compactNumber(value: number): string {
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(value);
 }
@@ -46,17 +64,13 @@ export function presentMoodleGrade(
 ): MoodleGradePresentation | null {
   if (!snapshot) return null;
 
-  if (
-    snapshot.task_status === "graded" &&
-    snapshot.grade_value !== null &&
-    snapshot.grade_max !== null
-  ) {
+  if (isFinalMoodleGrade(snapshot)) {
     const grade = `${compactNumber(snapshot.grade_value)} / ${compactNumber(snapshot.grade_max)}`;
     return {
       label: "Calificación en Campus",
       detail: snapshot.graded_at_display
-        ? `Corregida: ${snapshot.graded_at_display}`
-        : "La tarea ya fue corregida en Moodle.",
+        ? `Corregida: ${snapshot.graded_at_display}. Registro final guardado.`
+        : "La calificación quedó guardada y esta tarea ya no requiere nuevas consultas.",
       compact: snapshot.grade_display || grade,
       tone: "ok",
       hasGrade: true,

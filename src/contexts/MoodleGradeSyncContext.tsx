@@ -20,7 +20,7 @@ import {
 } from "../lib/moodleBridge";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/supabase";
-import { resolveExactMoodleTaskLink } from "../utils/moodleTaskResolution";
+import { buildPendingMoodleAssignments } from "../utils/moodleTaskResolution";
 
 export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_snapshots"]["Row"];
 
@@ -67,19 +67,6 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
   const isInsideParentFrame =
     typeof window !== "undefined" && window.parent !== window && window.self !== window.top;
 
-  const assignments = useMemo(() => {
-    const byCmid = new Map<string, string[]>();
-    if (!isOwnStudentSession) return byCmid;
-    practicas.forEach((practice) => {
-      const task = resolveExactMoodleTaskLink(practice, links);
-      if (!task) return;
-      const practiceIds = byCmid.get(task.moodleId) ?? [];
-      practiceIds.push(practice.id);
-      byCmid.set(task.moodleId, practiceIds);
-    });
-    return byCmid;
-  }, [isOwnStudentSession, links, practicas]);
-
   const snapshotsQuery = useQuery({
     queryKey: ["moodle-grade-snapshots", studentId],
     enabled: canReadSnapshots,
@@ -104,6 +91,14 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     }
     return result;
   }, [snapshotsQuery.data]);
+
+  const assignments = useMemo(() => {
+    if (!isOwnStudentSession || snapshotsQuery.isLoading) return new Map<string, string[]>();
+    // La primera calificación completa cierra esta tarea. El snapshot queda
+    // disponible para alumno y coordinación, pero ya no se vuelve a pedir a
+    // Moodle en cada ingreso.
+    return buildPendingMoodleAssignments(practicas, links, snapshotsByPractice);
+  }, [isOwnStudentSession, links, practicas, snapshotsByPractice, snapshotsQuery.isLoading]);
 
   const lastObservedAt = useMemo(() => {
     let latest: string | null = null;
