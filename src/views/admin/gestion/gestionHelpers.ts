@@ -35,6 +35,25 @@ import {
   type UiState,
 } from "./gestionTypes";
 
+// Sello "dd/mm" — formato que lastHistoryContactTs (useGestionConvocatorias)
+// espera para inferir el último contacto real desde historial_gestion. Es a
+// propósito distinto del sello "[06 ago]" de notas_gestion: son dos campos con
+// dueños distintos, y éste es el único que se parsea para calcular días de espera.
+export const historialStamp = (d: Date = new Date()): string =>
+  `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+// Antepone una entrada al historial de gestión (más reciente arriba, como
+// documenta lastHistoryContactTs). Usarla en toda acción de Gestión que
+// represente un contacto real, para que "Reinsistir" no se desincronice.
+export const appendHistorial = (
+  prev: string | null | undefined,
+  texto: string,
+  d: Date = new Date()
+): string => {
+  const entry = `${historialStamp(d)}: ${texto}`;
+  return prev && prev.trim() ? `${entry}\n${prev}` : entry;
+};
+
 // Slug de orientación (primera palabra, sin acentos) para data-attrs de estilo.
 export const orientSlug = (o?: string | null) =>
   o

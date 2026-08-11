@@ -30,26 +30,15 @@ import {
   type GmailAction,
 } from "../../services/gmailService";
 import type { AccionDia, SolicitudOutreach } from "../../services/hermesPlan";
-import { useInstitucionContexto } from "../../hooks/useInstitucionContexto";
-import type { ConversationEntry, HermesResumen } from "../../hooks/useInstitucionContexto";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import {
-  FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ESTADO_GESTION_LANZAMIENTOS,
-  FIELD_ORIENTACION_LANZAMIENTOS,
-  FIELD_FECHA_INICIO_LANZAMIENTOS,
-  FIELD_FECHA_FIN_LANZAMIENTOS,
-  FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
   FIELD_NOTAS_GESTION_LANZAMIENTOS,
+  FIELD_HISTORIAL_GESTION_LANZAMIENTOS,
   FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
 } from "../../constants";
-import {
-  formatDate,
-  getWhatsAppUrl,
-  normalizeStringForComparison,
-  parseToUTCDate,
-} from "../../utils/formatters";
+import { formatDate, getWhatsAppUrl, normalizeStringForComparison } from "../../utils/formatters";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { supabase } from "../../lib/supabaseClient";
 import { mockDb } from "../../services/mockDb";
@@ -57,22 +46,15 @@ import type { LanzamientoPPS } from "../../types";
 import {
   STATE_META,
   STATE_TO_DB,
-  dbToUiState,
-  CATEGORIES,
   HOY_STATES,
   HOY_ORDER,
-  nextActionFor,
   type UiState,
   type CatId,
-  type CatDef,
-  type MissingFlag,
   type BandejaItem,
   type InstitutionVM,
-  type SortKey,
-  type FilterOption,
   type ViewMode,
 } from "./gestion/gestionTypes";
-import { orientSlug, buildItems, buildInstitutions } from "./gestion/gestionHelpers";
+import { buildItems, buildInstitutions, appendHistorial } from "./gestion/gestionHelpers";
 import { CalendarView } from "./gestion/CalendarView";
 import { Rail, ViewModeTabs } from "./gestion/nav";
 import { Bandeja } from "./gestion/Bandeja";
@@ -557,8 +539,12 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   // En `mails` con un panel denso (MailPanel) → auto=expanded; en calendario
   // → auto=collapsed; resto → normal.
   const hasRichContent =
-    viewMode === "mails" &&
-    (Boolean(openMailHilo) || Boolean(openInstVm) || Boolean(openSolicitud));
+    (viewMode === "mails" &&
+      (Boolean(openMailHilo) || Boolean(openInstVm) || Boolean(openSolicitud))) ||
+    // Calendario arranca colapsado para priorizar el grid, pero al tocar un
+    // evento (que solo selecciona una institución, sin abrir nada más) la
+    // ficha tiene que expandirse — si no, el click no muestra nada.
+    (viewMode === "calendario" && Boolean(selectedKey));
   const fichaSize = useFichaSize({ mode: viewMode, hasRichContent });
   const persistSeen = useCallback((next: Set<string>) => {
     try {
@@ -977,8 +963,16 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     async (vm: InstitutionVM) => {
       const latest = vm.launches[0];
       if (!latest) return;
+      // historial_gestion es lo que useGestionConvocatorias usa como "último
+      // contacto real" para el umbral de Reinsistir — sin escribirlo acá, el
+      // reloj de espera queda atado a updated_at (que se mueve con cualquier
+      // edición, no solo con un contacto real).
       const ok = await handleSave(latest.id, {
         [FIELD_ESTADO_GESTION_LANZAMIENTOS]: STATE_TO_DB.esperandoRespuesta,
+        [FIELD_HISTORIAL_GESTION_LANZAMIENTOS]: appendHistorial(
+          latest[FIELD_HISTORIAL_GESTION_LANZAMIENTOS] as string | null,
+          "Contactada · esperando respuesta"
+        ),
       } as Partial<LanzamientoPPS>);
       setContactVm(null);
       if (ok) showToast("Marcada como “Esperando respuesta”", "schedule_send");
@@ -1045,6 +1039,14 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
         (updates as any)[FIELD_NOTAS_GESTION_LANZAMIENTOS] =
           `${prev ? prev + "\n" : ""}[${stamp}] ${note.trim()}`;
       }
+      // historial_gestion alimenta el cálculo de días de espera (Reinsistir) y el
+      // timeline de la Ficha. Todo cambio de estado es un contacto real, así que
+      // se registra acá con el mismo formato que markWaiting.
+      const historialTexto = `${STATE_META[pendingChange.newState].label}${note.trim() ? ` · ${note.trim()}` : ""}`;
+      (updates as any)[FIELD_HISTORIAL_GESTION_LANZAMIENTOS] = appendHistorial(
+        latest[FIELD_HISTORIAL_GESTION_LANZAMIENTOS] as string | null,
+        historialTexto
+      );
       const ok = await handleSave(latest.id, updates);
       setSaving(false);
       if (ok) {

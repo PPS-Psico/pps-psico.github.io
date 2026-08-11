@@ -87,9 +87,9 @@ const AdminDashboard: React.FC = () => {
         <DetectionBand
           metrics={data.detectionMetrics.map((m) => ({
             ...m,
-            onClick: () => (m.href ? navigate(m.href) : navigate("/admin/gestion?view=hermes")),
+            onClick: () => (m.href ? navigate(m.href) : navigate("/admin/gestion?view=mails")),
           }))}
-          onOpenHermes={() => navigate("/admin/gestion?view=hermes")}
+          onOpenHermes={() => navigate("/admin/gestion?view=mails")}
         />
 
         <SolicitudesBand
@@ -103,7 +103,7 @@ const AdminDashboard: React.FC = () => {
         <DraftsPreview
           drafts={data.drafts}
           total={data.totalDrafts}
-          onOpenHermes={() => navigate("/admin/gestion?view=hermes")}
+          onOpenHermes={() => navigate("/admin/gestion?view=mails")}
           onOpenDraft={(d) => {
             // Deep-link al borrador puntual: si es mail con hilo conocido, abrimos
             // ese hilo; si es WhatsApp/seguimiento, la bandeja de contactos.

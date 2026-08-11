@@ -5,6 +5,8 @@ import {
   buildItems,
   buildInstitutions,
   buildActivityLabel,
+  historialStamp,
+  appendHistorial,
 } from "../gestionHelpers";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
@@ -154,5 +156,29 @@ describe("buildInstitutions", () => {
   it("marca flags de datos faltantes cuando no hay info de institución", () => {
     const result = buildInstitutions([mkLaunch("l1", "Centro Tres")], emptyInst, []);
     expect(result[0].flags.map((f) => f.k).sort()).toEqual(["conv", "ref", "tel"]);
+  });
+});
+
+describe("historialStamp / appendHistorial", () => {
+  it("genera el sello dd/mm con ceros a la izquierda", () => {
+    expect(historialStamp(new Date(2026, 2, 5))).toBe("05/03");
+    expect(historialStamp(new Date(2026, 10, 25))).toBe("25/11");
+  });
+
+  it("antepone la entrada nueva (más reciente arriba)", () => {
+    const d = new Date(2026, 7, 6);
+    const first = appendHistorial(null, "Contactada · esperando respuesta", d);
+    expect(first).toBe("06/08: Contactada · esperando respuesta");
+
+    const second = appendHistorial(first, "Confirmada", d);
+    expect(second).toBe("06/08: Confirmada\n06/08: Contactada · esperando respuesta");
+  });
+
+  it('el formato es el que "lastHistoryContactTs" (useGestionConvocatorias) sabe parsear', () => {
+    // Contrato exacto: primera línea "dd/mm: texto" o "dd/mm/aaaa: texto".
+    // Si esto se rompe, el cálculo de días de espera (Reinsistir) se rompe con él.
+    const entry = appendHistorial(null, "Reinsistí", new Date(2026, 0, 9));
+    const [prefix] = entry.split(":");
+    expect(prefix).toMatch(/^\d{2}\/\d{2}$/);
   });
 });

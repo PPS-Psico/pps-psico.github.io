@@ -214,7 +214,7 @@ const AppRoutes = () => {
         <Route path="solicitudes" element={<SolicitudesManager />} />
         <Route
           path="recordatorios"
-          element={<Navigate to="/admin/gestion?view=agenda" replace />}
+          element={<Navigate to="/admin/gestion?view=calendario" replace />}
         />
         <Route
           path="herramientas"
