@@ -1643,6 +1643,73 @@ html.dark .mp-logo,
   text-align: center;
 }
 
+/* En celular la institución necesita el ancho completo. Las métricas pasan a
+   una segunda línea editorial para que nombres y estados reales no compitan. */
+@media (max-width: 639px) {
+  .ed .prow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px 18px;
+  }
+
+  .ed .prow > :first-child {
+    width: 100%;
+    padding-right: 0;
+  }
+
+  .ed .prow__name {
+    max-width: 100%;
+    overflow-wrap: normal;
+    text-wrap: pretty;
+    word-break: normal;
+  }
+
+  .ed .prow__dates {
+    flex-wrap: wrap;
+  }
+
+  .ed .prow__metrics {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 11px 0 0;
+    border-top: 1px solid var(--line, var(--hairline));
+  }
+
+  .ed .prow__hs {
+    min-width: 0;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .ed .prow__hs .display {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .ed .prow__campus {
+    min-width: 0;
+    max-width: min(68%, 240px);
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .ed .prow__nota {
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    justify-content: flex-end;
+    font-size: 15px;
+    font-weight: 650;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+}
+
 /* ---------- Featured convocatoria ---------- */
 .feat {
   position: relative;

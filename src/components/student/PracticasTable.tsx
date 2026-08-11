@@ -194,7 +194,7 @@ const PracticaRow: React.FC<{
           </span>
         </div>
 
-        <div className="relative flex flex-col items-center">
+        <div className="prow__campus relative flex flex-col items-center">
           {disapproved ? (
             <span className="text-xs font-semibold text-rose-700 dark:text-rose-300">
               Desaprobada
@@ -208,7 +208,7 @@ const PracticaRow: React.FC<{
               }`}
               title={campusGrade?.detail || "Todavía no hay datos sincronizados desde Campus"}
             >
-              {campusGrade?.compact || "Pend."}
+              {campusGrade?.compact || "Pendiente"}
             </span>
           )}
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">
