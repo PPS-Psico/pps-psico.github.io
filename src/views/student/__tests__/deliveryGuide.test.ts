@@ -8,11 +8,7 @@ import {
 import { FALLBACK_DELIVERY_AREAS } from "../../../hooks/useAulaEntregas";
 import type { MoodleTaskLink } from "../../../hooks/useMoodleTaskLinks";
 import type { InformeTask, Practica } from "../../../types";
-import {
-  buildGuidedDeliveries,
-  resolveDeliveryAreaId,
-  resolveDeliveryInstitution,
-} from "../deliveryGuide";
+import { buildGuidedDeliveries } from "../deliveryGuide";
 
 const practice = (overrides: Partial<Practica> = {}): Practica =>
   ({
@@ -25,41 +21,6 @@ const practice = (overrides: Partial<Practica> = {}): Practica =>
   }) as Practica;
 
 describe("deliveryGuide", () => {
-  it("usa el área para desambiguar instituciones con el mismo nombre", () => {
-    const areaId = resolveDeliveryAreaId("Clínica", FALLBACK_DELIVERY_AREAS);
-    const institution = resolveDeliveryInstitution(
-      "Relevamiento Prof.",
-      null,
-      areaId,
-      FALLBACK_DELIVERY_AREAS
-    );
-
-    expect(areaId).toBe("clinica");
-    expect(institution?.moodleId).toBe("906164");
-  });
-
-  it("no habilita coincidencias ambiguas cuando falta el área", () => {
-    const institution = resolveDeliveryInstitution(
-      "Relevamiento Prof.",
-      null,
-      null,
-      FALLBACK_DELIVERY_AREAS
-    );
-
-    expect(institution).toBeNull();
-  });
-
-  it("no cruza a otra área cuando la práctica ya tiene un área identificada", () => {
-    const institution = resolveDeliveryInstitution(
-      "Randstad",
-      null,
-      "clinica",
-      FALLBACK_DELIVERY_AREAS
-    );
-
-    expect(institution).toBeNull();
-  });
-
   it("prioriza el vínculo exacto lanzamiento + orientación sobre el nombre difuso", () => {
     const links: MoodleTaskLink[] = [
       {
@@ -120,7 +81,61 @@ describe("deliveryGuide", () => {
     expect(delivery.resolutionSource).toBe("none");
   });
 
-  it("calcula el plazo sin inferir que una entrega está pendiente o vencida", () => {
+  it("prioriza una excepción directa para una práctica legacy sin lanzamiento", () => {
+    const links: MoodleTaskLink[] = [
+      {
+        practiceId: "practice-1",
+        launchId: "",
+        orientationKey: "",
+        moodleId: "1085736",
+        name: "Randstad",
+        area: "laboral",
+        academicYear: 2026,
+      },
+    ];
+
+    const [delivery] = buildGuidedDeliveries(
+      [practice({ [FIELD_ESPECIALIDAD_PRACTICAS]: "Laboral" })],
+      [],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-08-05T12:00:00Z"),
+      links
+    );
+
+    expect(delivery.institution?.moodleId).toBe("1085736");
+    expect(delivery.resolutionSource).toBe("exact");
+  });
+
+  it("usa el único vínculo del lanzamiento cuando la práctica tiene varias orientaciones", () => {
+    const links: MoodleTaskLink[] = [
+      {
+        launchId: "launch-research",
+        orientationKey: "clinica",
+        moodleId: "614156",
+        name: "Prácticas Clínicas Antiguas",
+        area: "clinica",
+        academicYear: 2024,
+      },
+    ];
+
+    const [delivery] = buildGuidedDeliveries(
+      [
+        practice({
+          [FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: "launch-research",
+          [FIELD_ESPECIALIDAD_PRACTICAS]: "Laboral, Educacional, Comunitaria, Clínica",
+        }),
+      ],
+      [],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-08-05T12:00:00Z"),
+      links
+    );
+
+    expect(delivery.institution?.moodleId).toBe("614156");
+    expect(delivery.resolutionSource).toBe("exact");
+  });
+
+  it("no abre una tarea por similitud de nombre si falta el vínculo canónico", () => {
     const deliveries = buildGuidedDeliveries(
       [
         practice(),
@@ -147,7 +162,8 @@ describe("deliveryGuide", () => {
       statusLabel: "Verificar en el Campus",
       statusTone: "neutral",
     });
-    expect(deliveries[0].institution?.name).toBe("Randstad");
+    expect(deliveries[0].institution).toBeNull();
+    expect(deliveries[0].resolutionSource).toBe("none");
   });
 
   it("presenta una nota de Mi Panel como dato informado, no como estado del Campus", () => {

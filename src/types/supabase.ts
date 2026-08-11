@@ -1623,6 +1623,60 @@ export type Database = {
           },
         ]
       }
+      practica_moodle_tareas: {
+        Row: {
+          aula_entrega_id: number
+          created_at: string
+          id: number
+          link_source: string
+          practica_id: string
+          rationale: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+          validation_status: string
+        }
+        Insert: {
+          aula_entrega_id: number
+          created_at?: string
+          id?: never
+          link_source: string
+          practica_id: string
+          rationale?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string
+        }
+        Update: {
+          aula_entrega_id?: number
+          created_at?: string
+          id?: never
+          link_source?: string
+          practica_id?: string
+          rationale?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practica_moodle_tareas_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practica_moodle_tareas_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: true
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practicas: {
         Row: {
           airtable_id: string | null

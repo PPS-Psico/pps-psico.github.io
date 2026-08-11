@@ -6,11 +6,14 @@ import { cleanDbValue, normalizeStringForComparison } from "./formatters";
 export function normalizeMoodleOrientationKey(value: unknown): string | null {
   const normalized = normalizeStringForComparison(cleanDbValue(value));
   if (!normalized) return null;
-  if (normalized.includes("educ")) return "educacional";
-  if (normalized.includes("clinic")) return "clinica";
-  if (normalized.includes("comunit")) return "comunitaria";
-  if (normalized.includes("labor") || normalized.includes("organiz")) return "laboral";
-  return null;
+
+  const matches = new Set<string>();
+  if (normalized.includes("educ")) matches.add("educacional");
+  if (normalized.includes("clinic")) matches.add("clinica");
+  if (normalized.includes("comunit")) matches.add("comunitaria");
+  if (normalized.includes("labor") || normalized.includes("organiz")) matches.add("laboral");
+
+  return matches.size === 1 ? [...matches][0] : null;
 }
 
 /**
@@ -21,6 +24,11 @@ export function resolveExactMoodleTaskLink(
   practice: Practica,
   links: MoodleTaskLink[]
 ): MoodleTaskLink | null {
+  const practiceLinks = links.filter((link) => link.practiceId === practice.id);
+  if (practiceLinks.length > 0) {
+    return practiceLinks.length === 1 ? practiceLinks[0] : null;
+  }
+
   const launchId = cleanDbValue(practice[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]);
   if (!launchId) return null;
 

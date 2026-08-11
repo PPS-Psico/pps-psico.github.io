@@ -1,6 +1,6 @@
 # Auditoría de articulación Moodle ↔ Mi Panel (2024–2026)
 
-Fecha del relevamiento: 2026-08-10  
+Fecha de cierre: 2026-08-11
 Curso Moodle: `3615` — 2026 Práctica Profesional Supervisada
 
 ## Resultado ejecutivo
@@ -16,93 +16,121 @@ Se inventariaron directamente desde Moodle **108 tareas**:
 
 El catálogo reproducible está en [moodle-task-catalog-2024-2026.json](./moodle-task-catalog-2024-2026.json).
 
-La regla observada desde 2025 es: una tarea puede ser reutilizada por varios lanzamientos de la misma institución durante el mismo año. La institución por sí sola no alcanza como clave porque una misma institución puede tener tareas distintas por orientación. La relación canónica queda definida como:
+La relación canónica es:
 
+```text
+práctica → lanzamiento → orientación → tarea Moodle (cmid)
 ```
-año de entrega + institución normalizada + orientación → Moodle course-module id (cmid)
-```
 
-El año se toma de `fecha_finalizacion`; sólo si falta se usa `fecha_inicio`. Una vez confirmado el vínculo, la aplicación no vuelve a inferirlo por nombre: usa la relación persistida.
+Desde 2025 una misma tarea institucional puede ser reutilizada por varios
+lanzamientos del mismo año. Para siete registros legacy que no poseen un
+lanzamiento histórico confiable se usa una excepción explícita
+`práctica → tarea`; nunca se inventa un lanzamiento para hacer coincidir los
+datos.
 
-## Cobertura obtenida
+## Cobertura final
 
-Se generaron **100 relaciones** lanzamiento-orientación ↔ tarea:
+La reparación dejó:
 
-- 99 confirmadas: vínculo existente validado, coincidencia unívoca o alias institucional inequívoco.
-- 1 en revisión: Fundación Kano, orientación Clínica, apunta a la tarea 2025 `914852` aunque la PPS finaliza en 2026.
+- **509 prácticas** con su lanzamiento reconstruido y auditado de forma privada.
+- **2 orientaciones** corregidas desde el horario individual efectivamente asignado.
+- **212 vínculos lanzamiento/orientación → tarea**, todos confirmados.
+- **7 excepciones práctica → tarea**, todas confirmadas.
+- **1392 de 1400 prácticas** con una tarea exacta resoluble (**99,43 %**).
 
-Sobre las prácticas asociadas a lanzamientos cuyo año de entrega es 2025 o 2026:
+| Año de entrega | Prácticas | Tarea exacta | Pendientes |   Cobertura |
+| -------------- | --------: | -----------: | ---------: | ----------: |
+| 2024           |       365 |          365 |          0 |    100,00 % |
+| 2025           |       498 |          496 |          2 |     99,60 % |
+| 2026           |       537 |          531 |          6 |     98,88 % |
+| **Total**      |  **1400** |     **1392** |      **8** | **99,43 %** |
 
-| Año de entrega | Prácticas | Con relación confirmada | Pendientes |
-| -------------- | --------: | ----------------------: | ---------: |
-| 2025           |        35 |                      32 |          3 |
-| 2026           |       522 |                     417 |        105 |
-| **Total**      |   **557** |                 **449** |    **108** |
+Estas cifras se refieren sólo a la articulación con tareas. **No se modificó
+ninguna entrega ni ninguna nota.**
 
-Estas cifras se refieren sólo a la articulación con tareas. **No se modificó ninguna nota.**
+## Únicos pendientes reales
 
-## Pendientes que no deben inferirse
+Los ocho pendientes no son ambigüedades del algoritmo: en el curso Moodle no se
+encontró una tarea identificable para esas PPS.
 
-No aparece una tarea 2026 visible para:
+| Institución/PPS                               |  Año | Orientación | Prácticas |
+| --------------------------------------------- | ---: | ----------- | --------: |
+| Asociación Civil Pensar - AYUN                | 2025 | Educacional |         1 |
+| Escuela de Formación Cooperativa y Laboral N8 | 2025 | Educacional |         1 |
+| Refugio Gabriel Brochero                      | 2026 | Clínica     |         6 |
 
-| Institución/PPS                      | Orientación | Prácticas afectadas |
-| ------------------------------------ | ----------- | ------------------: |
-| Institución Fernando Ulloa - Ateneos | Clínica     |                  63 |
-| Asociación Civil Programa Aser       | Clínica     |                  18 |
-| Centro Evaluador Camioneros          | Laboral     |                  14 |
-| Refugio Gabriel Brochero             | Clínica     |                   6 |
+La aplicación muestra estos casos como **“Espacio pendiente de vincular”** y no
+abre una tarea aproximada por nombre o de otro año. Cuando coordinación cree o
+identifique la tarea correcta, basta confirmarla en el articulador administrativo.
 
-Además:
+## Reparaciones relevantes
 
-- 4 prácticas de Fundación Kano son Clínicas y hoy conservan un vínculo a la tarea 2025; quedan en revisión.
-- 1 práctica del Banco Provincia del Neuquén finaliza en 2025 y no tiene una tarea inequívoca en la pestaña 2025.
-- 2 prácticas de la III Jornada 2025 tienen especialidad Clínica/Laboral aunque el lanzamiento y la tarea están vinculados como Comunitaria; quedan como inconsistencia de datos y no se fuerzan a otra orientación.
-- 2024 se catalogó, pero no se enlazó automáticamente: la organización histórica usa tareas genéricas y convenciones diferentes.
+- Las PPS 2024 dejaron de caer en tareas homónimas de 2026. Por ejemplo, Colegio
+  San José Obrero 2024 resuelve el `cmid 625361`.
+- Aser, Camioneros e Institución Fernando Ulloa reutilizan las tareas anuales que
+  el libro de calificaciones permitió corroborar.
+- CPAVZO quedó separado por orientación: `908739` para Clínica y `817710` para
+  Laboral/Comunitaria.
+- Dos PPS del Ministerio de Trabajo tenían copiada toda la oferta dentro de
+  `especialidad`; el horario asignado demostraba que eran Laborales y se corrigió
+  ese dato con auditoría.
+- Las PPS legacy huérfanas de Sensus, San Rafael, Ulloa-Ateneos, Alma Comahue,
+  CRYBE y la práctica de prueba Randstad usan una excepción directa confirmada,
+  sin alterar su lanzamiento.
+- Fundación Lanna conserva la tarea `906851` indicada explícitamente por
+  coordinación; el contrato descartó la homónima 2026 que había sugerido el
+  catálogo.
 
-## Aliases confirmados
+## Comportamiento de la aplicación
 
-Se documentaron tres equivalencias que el nombre literal no resuelve:
+El estudiante sólo recibe una tarea cuando existe uno de estos dos vínculos
+confirmados:
 
-| Lanzamiento                                               | Tarea Moodle                 |    cmid |
-| --------------------------------------------------------- | ---------------------------- | ------: |
-| III Jornada Universitaria de Salud Mental (2025)          | III Jornadas de Salud Mental |  919158 |
-| Colonia de Verano - Consumos problemáticos (entrega 2026) | Prevención en Colonias       | 1009867 |
-| Asociación Civil Pensar - Barriletes (2026)               | Barriletes en Bandada        | 1111226 |
+1. una excepción directa para esa práctica; o
+2. un único vínculo de su lanzamiento y orientación.
 
-## Modelo implementado
+Se eliminó el fallback que elegía una tarea por similitud del nombre de la
+institución. Esto evita especialmente cruces entre años. Una especialidad con
+varias orientaciones sólo usa el único vínculo disponible; si hubiera más de uno,
+el caso permanece pendiente hasta contar con evidencia individual.
 
-`aula_entregas` pasa a funcionar como catálogo de tareas y suma:
+## Trazabilidad y seguridad
 
-- `course_id`
-- `academic_year`
-- `moodle_name`
-- `source_synced_at`
-- unicidad por `course_id + moodle_id`
-
-La tabla nueva `lanzamiento_moodle_tareas` representa la relación explícita. Admite varias orientaciones por lanzamiento y varios lanzamientos apuntando a la misma tarea anual. `lanzamientos_pps.codigo_tarjeta_campus` se conserva como compatibilidad legacy; no debe seguir creciendo como JSON cuando la nueva relación esté consumida por toda la aplicación.
-
-Estados de validación:
-
-- `confirmed`: puede usarse para pedir estado/nota a Moodle.
-- `review`: visible para coordinación, pero no debe actualizar una nota.
-- `rejected`: candidato descartado con trazabilidad.
+- `private.moodle_practice_link_repair_audit` conserva el antes, el después y las
+  fuentes usadas para cada lanzamiento reconstruido.
+- `private.moodle_practice_orientation_repair_audit` conserva las dos
+  correcciones de orientación y el horario asignado que las justificó.
+- `practica_moodle_tareas` guarda excepciones legacy. El estudiante sólo puede
+  leer la de una práctica propia; sólo administración puede escribirlas.
+- Sólo vínculos con `validation_status = 'confirmed'` llegan al panel o al puente
+  de notas.
 
 ## Próxima etapa: notas
 
-El orden seguro es:
+El vínculo exacto permite pedir a Moodle el estado y la calificación de la tarea
+correcta. La secuencia segura sigue siendo:
 
-1. Resolver la tarea exacta desde `practica.lanzamiento_id` y `practica.especialidad`.
-2. Leer Moodle y guardar una observación append-only con valor bruto, máximo, fecha de corrección, cmid y versión del puente.
-3. Construir el dry-run de discrepancias contra `practicas.nota`.
-4. Clasificar: iguales, panel vacío, Moodle sin nota, diferencia, tarea sin vínculo, error de acceso.
-5. Aprobar un lote.
-6. Recién entonces actualizar el valor canónico, guardando antes/después y quién aprobó.
+1. guardar observaciones Moodle append-only;
+2. generar un dry-run de discrepancias contra la nota legacy de Mi Panel;
+3. clasificar iguales, faltantes, diferencias y errores de acceso;
+4. aprobar un lote auditado;
+5. recién entonces cambiar la fuente canónica de la nota.
 
-La extracción mediante sesión del navegador sólo cubre al usuario que abre su panel en Moodle. Para una conciliación histórica completa sin esperar a cada estudiante se necesita exportar el libro de calificaciones de Moodle o habilitar un servicio web restringido.
+La sesión del navegador sólo observa al estudiante que abre su panel. Para una
+conciliación histórica completa se necesita el export del libro de calificaciones
+o un servicio web restringido de Moodle.
 
-## Fuentes y archivos relacionados
+## Implementación relacionada
 
-- [Requisitos generales de integración](./moodle-integration-requirements.md)
-- [Contrato técnico del puente de navegador](./moodle-browser-bridge.md)
-- [Catálogo exacto de tareas](./moodle-task-catalog-2024-2026.json)
-- [InformeCampusLinker.tsx](../src/components/admin/InformeCampusLinker.tsx)
+- Migraciones:
+  - `20260811114411_repair_all_moodle_linkages_2024_2026.sql`
+  - `20260811115316_repair_remaining_deterministic_practice_links.sql`
+  - `20260811120500_complete_legacy_moodle_practice_links.sql`
+  - `20260811121500_repair_assigned_practice_orientation.sql`
+  - `20260811122500_prioritize_explicit_moodle_task_urls.sql`
+  - `20260811123000_index_practica_moodle_tareas.sql`
+- Contrato SQL: `supabase/tests/moodle_linkage_repair_contract.sql`
+- Resolución frontend: `src/utils/moodleTaskResolution.ts`
+- Guía de entregas: `src/views/student/deliveryGuide.ts`
+- Articulador administrativo: `src/components/admin/InformeCampusLinker.tsx`
+- Puente de navegador: [moodle-browser-bridge.md](./moodle-browser-bridge.md)

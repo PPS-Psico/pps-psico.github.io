@@ -26,7 +26,7 @@ export interface GuidedDelivery {
   statusLabel: string;
   statusDetail: string;
   statusTone: DeliveryStatusTone;
-  resolutionSource: "exact" | "legacy" | "none";
+  resolutionSource: "exact" | "none";
 }
 
 const GENERIC_INSTITUTION_WORDS =
@@ -74,30 +74,6 @@ export function resolveDeliveryAreaId(rawArea: unknown, areas: DeliveryArea[]): 
     return areas.find((candidate) => candidate.id === "laboral")?.id ?? null;
   }
   return null;
-}
-
-export function resolveDeliveryInstitution(
-  practiceName: unknown,
-  taskName: unknown,
-  areaId: string | null,
-  areas: DeliveryArea[]
-): DeliveryInstitution | null {
-  const candidates = areas.flatMap((area) =>
-    area.institutions
-      .filter(
-        (institution) =>
-          namesMatch(practiceName, institution.name) || namesMatch(taskName, institution.name)
-      )
-      .map((institution) => ({ areaId: area.id, institution }))
-  );
-
-  const scopedCandidates = areaId
-    ? candidates.filter((candidate) => candidate.areaId === areaId)
-    : candidates;
-  const uniqueByDestination = new Map(
-    scopedCandidates.map((candidate) => [candidate.institution.moodleId, candidate.institution])
-  );
-  return uniqueByDestination.size === 1 ? [...uniqueByDestination.values()][0] : null;
 }
 
 function addDays(date: Date, days: number): Date {
@@ -194,20 +170,10 @@ export function buildGuidedDeliveries(
         informeTasks.find((candidate) => namesMatch(candidate.ppsName, practiceName)) ??
         null;
       const exactTaskLink = resolveExactMoodleTaskLink(practice, exactTaskLinks);
-      const legacyInstitution = resolveDeliveryInstitution(
-        practiceName,
-        task?.ppsName,
-        areaId,
-        areas
-      );
       const institution = exactTaskLink
         ? { name: exactTaskLink.name, moodleId: exactTaskLink.moodleId }
-        : legacyInstitution;
-      const resolutionSource: GuidedDelivery["resolutionSource"] = exactTaskLink
-        ? "exact"
-        : legacyInstitution
-          ? "legacy"
-          : "none";
+        : null;
+      const resolutionSource: GuidedDelivery["resolutionSource"] = exactTaskLink ? "exact" : "none";
       const endDate = parseToUTCDate(practice[FIELD_FECHA_FIN_PRACTICAS]);
       const deadline = endDate ? addDays(endDate, 30) : null;
 

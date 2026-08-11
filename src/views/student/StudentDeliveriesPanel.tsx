@@ -63,8 +63,17 @@ function PracticeDeliveryCard({
           </span>
         </span>
       )}
+      {!directHref && (
+        <span className="ah-delivery-space__campus" data-tone="warn">
+          <span className="ah-delivery-space__campus-dot" aria-hidden />
+          <span>
+            <strong>Espacio pendiente de vincular</strong>
+            <small>No abrimos una tarea por nombre para evitar enviarte a otro año.</small>
+          </span>
+        </span>
+      )}
       <span className="ah-delivery-space__foot">
-        <span>{directHref ? "Abrir espacio de entrega" : "Buscar espacio de entrega"}</span>
+        <span>{directHref ? "Abrir espacio de entrega" : "Ver directorio de espacios"}</span>
         <Icon name={directHref ? "arrow" : "search"} size={16} />
       </span>
     </>
@@ -91,7 +100,7 @@ function PracticeDeliveryCard({
       className="ah-delivery-space"
       style={{ ["--area" as string]: delivery.areaColor }}
       onClick={() => onOpenDirectory(delivery.areaId)}
-      aria-label={`Buscar el espacio de entrega de ${delivery.practiceName}`}
+      aria-label={`Ver el directorio de espacios para ${delivery.practiceName}`}
     >
       {content}
     </button>
