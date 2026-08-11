@@ -97,6 +97,23 @@ type TaskLinkRow = {
   } | null;
 };
 
+type PracticeTaskLinkRow = {
+  id: number;
+  practica_id: string;
+  aula_entregas: {
+    id: number;
+    course_id: number;
+    moodle_id: string;
+    moodle_grade_max: number | null;
+  } | null;
+};
+
+type ObservationRejection = {
+  practicaId: string;
+  cmid: number;
+  error: string;
+};
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin")?.replace(/\/$/, "") ?? "";
 
@@ -220,78 +237,137 @@ Deno.serve(async (req) => {
     const launchIds = [
       ...new Set(practices.map((practice) => practice.lanzamiento_id).filter(Boolean)),
     ] as string[];
-    const { data: linkData, error: linkError } = await admin
-      .from("lanzamiento_moodle_tareas")
-      .select(
-        "id, lanzamiento_id, orientacion_key, aula_entregas!inner(id, course_id, moodle_id, moodle_grade_max)"
-      )
-      .eq("validation_status", "confirmed")
-      .in("lanzamiento_id", launchIds);
-    if (linkError) throw new Error("task_link_lookup_failed");
-    const links = (linkData ?? []) as unknown as TaskLinkRow[];
+    let links: TaskLinkRow[] = [];
+    if (launchIds.length > 0) {
+      const { data: linkData, error: linkError } = await admin
+        .from("lanzamiento_moodle_tareas")
+        .select(
+          "id, lanzamiento_id, orientacion_key, aula_entregas!inner(id, course_id, moodle_id, moodle_grade_max)"
+        )
+        .eq("validation_status", "confirmed")
+        .in("lanzamiento_id", launchIds);
+      if (linkError) throw new Error("task_link_lookup_failed");
+      links = (linkData ?? []) as unknown as TaskLinkRow[];
+    }
 
-    const observationRows = await Promise.all(
+    const { data: practiceLinkData, error: practiceLinkError } = await admin
+      .from("practica_moodle_tareas")
+      .select("id, practica_id, aula_entregas!inner(id, course_id, moodle_id, moodle_grade_max)")
+      .eq("validation_status", "confirmed")
+      .in("practica_id", practiceIds);
+    if (practiceLinkError) throw new Error("practice_task_link_lookup_failed");
+    const practiceLinks = (practiceLinkData ?? []) as unknown as PracticeTaskLinkRow[];
+
+    const resolvedObservations = await Promise.all(
       normalizedInput.map(async (item) => {
-        const practice = practices.find((candidate) => candidate.id === item.practicaId);
-        if (!practice?.lanzamiento_id) throw new Error("practice_without_launch");
-        const orientation = normalizeOrientation(practice.especialidad);
-        const matchingLinks = links.filter(
-          (link) =>
-            link.lanzamiento_id === practice.lanzamiento_id &&
-            link.aula_entregas?.course_id === COURSE_ID &&
-            String(link.aula_entregas?.moodle_id) === String(item.cmid)
-        );
-        const link = orientation
-          ? matchingLinks.find((candidate) => candidate.orientacion_key === orientation)
-          : matchingLinks.length === 1
-            ? matchingLinks[0]
-            : null;
-        if (!link?.aula_entregas) throw new Error("task_not_confirmed_for_practice");
-        const configuredMax = link.aula_entregas.moodle_grade_max;
-        if (
-          item.gradeMax !== null &&
-          configuredMax !== null &&
-          Math.abs(Number(configuredMax) - item.gradeMax) > 0.001
-        ) {
-          throw new Error("grade_scale_mismatch");
+        try {
+          const practice = practices.find((candidate) => candidate.id === item.practicaId);
+          if (!practice) throw new Error("practice_not_owned");
+
+          const directLinks = practiceLinks.filter(
+            (candidate) => candidate.practica_id === practice.id && candidate.aula_entregas
+          );
+          let task: TaskLinkRow["aula_entregas"] = null;
+
+          // A confirmed practice-level override is authoritative. It exists for
+          // legacy records that intentionally have no trustworthy launch.
+          if (directLinks.length > 0) {
+            const exactDirectLinks = directLinks.filter(
+              (candidate) =>
+                candidate.aula_entregas?.course_id === COURSE_ID &&
+                String(candidate.aula_entregas?.moodle_id) === String(item.cmid)
+            );
+            if (exactDirectLinks.length !== 1) {
+              throw new Error("task_not_confirmed_for_practice");
+            }
+            task = exactDirectLinks[0].aula_entregas;
+          } else {
+            if (!practice.lanzamiento_id) throw new Error("practice_without_task_link");
+            const orientation = normalizeOrientation(practice.especialidad);
+            const matchingLinks = links.filter(
+              (link) =>
+                link.lanzamiento_id === practice.lanzamiento_id &&
+                link.aula_entregas?.course_id === COURSE_ID &&
+                String(link.aula_entregas?.moodle_id) === String(item.cmid)
+            );
+            const link = orientation
+              ? matchingLinks.find((candidate) => candidate.orientacion_key === orientation)
+              : matchingLinks.length === 1
+                ? matchingLinks[0]
+                : null;
+            task = link?.aula_entregas ?? null;
+          }
+
+          if (!task) throw new Error("task_not_confirmed_for_practice");
+          const configuredMax = task.moodle_grade_max;
+          if (
+            item.gradeMax !== null &&
+            configuredMax !== null &&
+            Math.abs(Number(configuredMax) - item.gradeMax) > 0.001
+          ) {
+            throw new Error("grade_scale_mismatch");
+          }
+          const payloadHash = await sha256({
+            requestId,
+            observedAt,
+            practicaId: item.practicaId,
+            cmid: item.cmid,
+            status: item.status,
+            submitted: item.submitted,
+            gradeValue: item.gradeValue,
+            gradeMax: item.gradeMax,
+            gradeDisplay: item.gradeDisplay,
+            gradedAtDisplay: item.gradedAtDisplay,
+          });
+          return {
+            row: {
+              observed_at: observedAt,
+              auth_user_id: user.id,
+              estudiante_id: student.id,
+              practica_id: practice.id,
+              lanzamiento_id: practice.lanzamiento_id,
+              aula_entrega_id: task.id,
+              course_id: COURSE_ID,
+              cmid: item.cmid,
+              moodle_user_id: moodleUserId,
+              moodle_username: normalizeDni(moodleUsername),
+              task_status: item.status,
+              submitted: item.submitted,
+              grade_value: item.status === "graded" ? item.gradeValue : null,
+              grade_max: item.gradeMax ?? configuredMax,
+              grade_display: item.gradeDisplay,
+              graded_at_display: item.gradedAtDisplay,
+              request_id: requestId,
+              bridge_version: bridgeVersion,
+              parser_version: PARSER_VERSION,
+              confidence: "moodle_session_observed",
+              payload_hash: payloadHash,
+            },
+            rejection: null,
+          };
+        } catch (error) {
+          const code = error instanceof Error ? error.message : "invalid_observation";
+          return {
+            row: null,
+            rejection: {
+              practicaId: item.practicaId,
+              cmid: item.cmid,
+              error: code,
+            } satisfies ObservationRejection,
+          };
         }
-        const payloadHash = await sha256({
-          requestId,
-          observedAt,
-          practicaId: item.practicaId,
-          cmid: item.cmid,
-          status: item.status,
-          submitted: item.submitted,
-          gradeValue: item.gradeValue,
-          gradeMax: item.gradeMax,
-          gradeDisplay: item.gradeDisplay,
-          gradedAtDisplay: item.gradedAtDisplay,
-        });
-        return {
-          observed_at: observedAt,
-          auth_user_id: user.id,
-          estudiante_id: student.id,
-          practica_id: practice.id,
-          lanzamiento_id: practice.lanzamiento_id,
-          aula_entrega_id: link.aula_entregas.id,
-          course_id: COURSE_ID,
-          cmid: item.cmid,
-          moodle_user_id: moodleUserId,
-          moodle_username: normalizeDni(moodleUsername),
-          task_status: item.status,
-          submitted: item.submitted,
-          grade_value: item.status === "graded" ? item.gradeValue : null,
-          grade_max: item.gradeMax ?? configuredMax,
-          grade_display: item.gradeDisplay,
-          graded_at_display: item.gradedAtDisplay,
-          request_id: requestId,
-          bridge_version: bridgeVersion,
-          parser_version: PARSER_VERSION,
-          confidence: "moodle_session_observed",
-          payload_hash: payloadHash,
-        };
       })
     );
+
+    const observationRows = resolvedObservations.flatMap((result) =>
+      result.row ? [result.row] : []
+    );
+    const rejectedObservations = resolvedObservations.flatMap((result) =>
+      result.rejection ? [result.rejection] : []
+    );
+    if (observationRows.length === 0) {
+      return json(origin, { error: "no_valid_observations", rejected: rejectedObservations }, 400);
+    }
 
     const { error: insertError } = await admin
       .from("moodle_grade_observations")
@@ -301,12 +377,13 @@ Deno.serve(async (req) => {
       });
     if (insertError) throw new Error("observation_insert_failed");
 
+    const storedPracticeIds = [...new Set(observationRows.map((row) => row.practica_id))];
     const { data: persistedData, error: persistedError } = await admin
       .from("moodle_grade_observations")
       .select("*")
       .eq("auth_user_id", user.id)
       .eq("request_id", requestId)
-      .in("practica_id", practiceIds);
+      .in("practica_id", storedPracticeIds);
     if (persistedError || !persistedData?.length) throw new Error("observation_readback_failed");
 
     const snapshots = persistedData.map((row) => ({
@@ -330,7 +407,7 @@ Deno.serve(async (req) => {
     const { data: existingSnapshots, error: existingSnapshotError } = await admin
       .from("moodle_grade_snapshots")
       .select("practica_id, cmid, observed_at")
-      .in("practica_id", practiceIds);
+      .in("practica_id", storedPracticeIds);
     if (existingSnapshotError) throw new Error("snapshot_lookup_failed");
     const existingByKey = new Map(
       (existingSnapshots ?? []).map((row) => [`${row.practica_id}:${row.cmid}`, row])
@@ -347,8 +424,15 @@ Deno.serve(async (req) => {
       if (snapshotError) throw new Error("snapshot_upsert_failed");
     }
 
-    console.log(`[moodle-grade] Stored ${snapshots.length} observation(s) for one student.`);
-    return json(origin, { success: true, stored: snapshots.length, observedAt });
+    console.log(
+      `[moodle-grade] Stored ${snapshots.length} observation(s); rejected ${rejectedObservations.length}.`
+    );
+    return json(origin, {
+      success: true,
+      stored: snapshots.length,
+      rejected: rejectedObservations,
+      observedAt,
+    });
   } catch (error) {
     const code = error instanceof Error ? error.message : "server_error";
     const clientErrors = new Set([
@@ -370,7 +454,7 @@ Deno.serve(async (req) => {
       "invalid_grade_range",
       "grade_without_graded_status",
       "practice_not_owned",
-      "practice_without_launch",
+      "practice_without_task_link",
       "task_not_confirmed_for_practice",
       "grade_scale_mismatch",
     ]);

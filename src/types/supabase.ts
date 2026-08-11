@@ -1240,7 +1240,7 @@ export type Database = {
           grade_value: number | null
           graded_at_display: string | null
           id: string
-          lanzamiento_id: string
+          lanzamiento_id: string | null
           moodle_user_id: number | null
           moodle_username: string | null
           observed_at: string
@@ -1265,7 +1265,7 @@ export type Database = {
           grade_value?: number | null
           graded_at_display?: string | null
           id?: string
-          lanzamiento_id: string
+          lanzamiento_id?: string | null
           moodle_user_id?: number | null
           moodle_username?: string | null
           observed_at: string
@@ -1290,7 +1290,7 @@ export type Database = {
           grade_value?: number | null
           graded_at_display?: string | null
           id?: string
-          lanzamiento_id?: string
+          lanzamiento_id?: string | null
           moodle_user_id?: number | null
           moodle_username?: string | null
           observed_at?: string
@@ -1343,7 +1343,7 @@ export type Database = {
           grade_max: number | null
           grade_value: number | null
           graded_at_display: string | null
-          lanzamiento_id: string
+          lanzamiento_id: string | null
           latest_observation_id: string
           observed_at: string
           practica_id: string
@@ -1360,7 +1360,7 @@ export type Database = {
           grade_max?: number | null
           grade_value?: number | null
           graded_at_display?: string | null
-          lanzamiento_id: string
+          lanzamiento_id?: string | null
           latest_observation_id: string
           observed_at: string
           practica_id: string
@@ -1377,7 +1377,7 @@ export type Database = {
           grade_max?: number | null
           grade_value?: number | null
           graded_at_display?: string | null
-          lanzamiento_id?: string
+          lanzamiento_id?: string | null
           latest_observation_id?: string
           observed_at?: string
           practica_id?: string

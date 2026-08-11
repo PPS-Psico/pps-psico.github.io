@@ -91,7 +91,8 @@ Estados permitidos: `no_access`, `not_submitted`, `submitted`, `graded`, `parse_
 
 - Aceptar resultados sólo desde `https://campus.uflo.edu.ar` y desde `window.parent`.
 - Correlacionar cada respuesta con un `requestId` vigente.
-- Pedir únicamente los cmids confirmados en `lanzamiento_moodle_tareas`.
+- Pedir únicamente los cmids confirmados en `lanzamiento_moodle_tareas` o en
+  `practica_moodle_tareas` para excepciones legacy sin lanzamiento confiable.
 - Validar forma, rangos y tipos antes de mostrar o persistir.
 - Fallar cerrado: si falta vínculo, acceso o parsing, mostrar “Consultar en Moodle”; no conservar una nota anterior como si fuera actual.
 - Separar valor bruto Moodle de la conversión al esquema 1–10 de Mi Panel.
@@ -109,6 +110,12 @@ La observación debe ser append-only e incluir como mínimo:
 - versión del puente;
 - huella del payload y datos de parsing;
 - nivel de confianza `moodle_session_observed`.
+
+`lanzamiento_id` es nullable de forma intencional en el ledger y el snapshot:
+cuando una práctica legacy tiene una relación confirmada en
+`practica_moodle_tareas`, el servidor valida esa relación directa y conserva
+`NULL` en lugar de inventar un lanzamiento. Una observación inválida se rechaza
+de manera individual para que no bloquee las restantes del mismo lote.
 
 `practicas.nota` no se actualiza desde el mensaje. Las observaciones se guardan en `moodle_grade_observations` y la última lectura por práctica en `moodle_grade_snapshots`. La actualización del legado ocurrirá sólo desde un lote de conciliación aprobado y auditable.
 

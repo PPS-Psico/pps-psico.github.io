@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(16);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.moodle_grade_observations'::regclass),
@@ -10,6 +10,30 @@ select ok(
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.moodle_grade_snapshots'::regclass),
   'moodle_grade_snapshots has RLS enabled'
+);
+
+select is(
+  (
+    select is_nullable
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'moodle_grade_observations'
+      and column_name = 'lanzamiento_id'
+  ),
+  'YES',
+  'direct practice observations may preserve a null launch'
+);
+
+select is(
+  (
+    select is_nullable
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'moodle_grade_snapshots'
+      and column_name = 'lanzamiento_id'
+  ),
+  'YES',
+  'direct practice snapshots may preserve a null launch'
 );
 
 select is(
