@@ -74,6 +74,8 @@ supabase/.temp/
 
 # Artefactos generados localmente (reportes, imagenes y paquetes)
 output/
+outputs/
+tmp/
 
 # Added by ggshield
 .cache_ggshield

@@ -31,6 +31,8 @@ export default [
       '.kiro/**',
       '.impeccable/**',
       'output/**',
+      'outputs/**',
+      'tmp/**',
       'temp_skills/**',
       'testsprite_tests/**',
       'scratch/**',
