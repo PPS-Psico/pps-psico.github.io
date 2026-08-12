@@ -192,13 +192,14 @@ describe("buildSidebarEntries", () => {
       expect(e.metaLine).not.toContain("25/25");
     });
 
-    it("un borrador que todavía no arrancó queda fuera del pipeline", () => {
+    it("un borrador que todavía no arrancó queda visible en Borradores", () => {
       const [e] = buildSidebarEntries(
         [launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Oculto" })],
         NO_COUNTS,
         NO_CONSENT
       );
-      expect(e.bucket).toBe("oculta");
+      expect(e.bucket).toBe("borrador");
+      expect(e.metaLine).toBe("Borrador · no visible para estudiantes");
       expect(e.needsAction).toBe(false);
     });
   });
@@ -228,7 +229,7 @@ describe("buildSidebarEntries", () => {
       [FIELD_FECHA_FIN_LANZAMIENTOS]: null,
     });
     const [e] = buildSidebarEntries([l], NO_COUNTS, NO_CONSENT);
-    expect(e.bucket).toBe("oculta");
+    expect(e.bucket).toBe("borrador");
   });
 
   it("procesa varias convocatorias preservando el orden de entrada", () => {
@@ -245,7 +246,7 @@ describe("buildSidebarEntries", () => {
       NO_CONSENT
     );
     expect(entries).toHaveLength(2);
-    expect(entries[0].bucket).toBe("oculta");
+    expect(entries[0].bucket).toBe("borrador");
     expect(entries[1].bucket).toBe("activa");
   });
 });

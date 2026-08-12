@@ -204,8 +204,8 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
     );
   }, [entries, query, hasQuery]);
 
-  // Sin búsqueda, el sidebar es una lista de trabajo: solo el recorrido
-  // (Abiertas → … → Activas). Las finalizadas y las que están fuera del
+  // Sin búsqueda, el sidebar es una lista de trabajo: todo el recorrido
+  // (Borradores → Abiertas → … → Activas). Las finalizadas y las que están fuera del
   // pipeline aparecen únicamente al buscar, para que una fecha mal cargada
   // nunca haga desaparecer una convocatoria sin forma de llegar a ella.
   const groups = useMemo(() => {
@@ -343,7 +343,7 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                 g.items.map((entry) => {
                   // Ya no visible para estudiantes: el menú ofrece publicarla
                   // en vez de volver a ocultarla.
-                  const isHidden = entry.bucket === "oculta";
+                  const isHidden = entry.bucket === "borrador" || entry.bucket === "oculta";
                   return (
                     <div
                       key={entry.id}

@@ -190,6 +190,9 @@ export function buildSidebarEntries(
       case "oculta":
         metaLine = "Fuera del pipeline";
         break;
+      case "borrador":
+        metaLine = "Borrador · no visible para estudiantes";
+        break;
       case "abierta":
         metaLine = `${totalInsc} inscripto${totalInsc !== 1 ? "s" : ""} · ${cupos ?? "?"} cupos`;
         break;

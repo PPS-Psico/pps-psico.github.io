@@ -38,12 +38,14 @@ export type UIState = "borrador" | "seleccion" | "seguro" | "confirmacion" | "ac
 /**
  * Categoría operativa del sidebar del Lanzador.
  *
- * Las cinco primeras son el recorrido visible. Las dos últimas NO se muestran
- * como grupo: son la forma de salir de la vista operativa (`finalizada` cuando
- * la PPS terminó, `oculta` cuando la convocatoria no está en el pipeline).
- * Siguen siendo alcanzables por el buscador del sidebar.
+ * Las seis primeras son el recorrido visible, incluido el borrador que todavía
+ * no fue publicado. Las dos últimas NO se muestran como grupo: son la forma de
+ * salir de la vista operativa (`finalizada` cuando la PPS terminó, `oculta`
+ * cuando una convocatoria cerrada no prosperó o quedó archivada). Siguen siendo
+ * alcanzables por el buscador del sidebar.
  */
 export type SidebarBucket =
+  | "borrador"
   | "abierta"
   | "seleccionar"
   | "asegurar"
@@ -70,6 +72,7 @@ export const BUCKET_META: Record<
   SidebarBucket,
   { label: string; tone: UIState; collapsedByDefault: boolean }
 > = {
+  borrador: { label: "Borradores", tone: "borrador", collapsedByDefault: false },
   abierta: { label: "Abiertas", tone: "seleccion", collapsedByDefault: false },
   seleccionar: { label: "A seleccionar", tone: "seleccion", collapsedByDefault: false },
   asegurar: { label: "A asegurar", tone: "seguro", collapsedByDefault: false },
@@ -90,15 +93,16 @@ export const BUCKET_ORDER: SidebarBucket[] = [
   "seleccionar",
   "asegurar",
   "confirmacion",
+  "borrador",
   "abierta",
   "activa",
 ];
 
 /**
  * Buckets que NO forman parte del recorrido y por lo tanto no se muestran como
- * grupo: una PPS finalizada ya no pide trabajo, y una convocatoria oculta no
- * está en el pipeline. El sidebar sí las revela cuando hay una búsqueda activa,
- * para que una fecha mal cargada no haga desaparecer nada sin salida.
+ * grupo: una PPS finalizada ya no pide trabajo, y una convocatoria cerrada sin
+ * postulantes queda fuera del pipeline. Los borradores (`estado = Oculto`) sí
+ * tienen grupo propio para que siempre se puedan revisar y publicar.
  */
 export const HIDDEN_BUCKETS: SidebarBucket[] = ["finalizada", "oculta"];
 
@@ -160,13 +164,14 @@ export interface BucketInput {
  * Clasifica un lanzamiento en exactamente un bucket. Orden de precedencia:
  *  1. finalizada          (fecha de fin pasada → sale de la vista operativa)
  *  2. activa              (arrancó y no terminó, sin importar el paso del admin)
- *  3. oculta              (no visible / archivada en DB, y todavía no arrancó)
- *  4. activa              (marcada 'Activa' en DB aunque no haya llegado su fecha)
- *  5. confirmacion        (sala de consentimientos; explícita en DB o por marca)
- *  6. hay seleccionados   → asegurar (Req 3.3/4.1)
- *  7. cerrada/vencida con inscriptos → seleccionar
- *  8. cerrada/vencida sin inscriptos → oculta (no prosperó)
- *  9. resto               → abierta
+ *  3. borrador            (estado Oculto y todavía no arrancó)
+ *  4. oculta              (archivada en DB y todavía no arrancó)
+ *  5. activa              (marcada 'Activa' en DB aunque no haya llegado su fecha)
+ *  6. confirmacion        (sala de consentimientos; explícita en DB o por marca)
+ *  7. hay seleccionados   → asegurar (Req 3.3/4.1)
+ *  8. cerrada/vencida con inscriptos → seleccionar
+ *  9. cerrada/vencida sin inscriptos → oculta (no prosperó)
+ * 10. resto               → abierta
  *
  * El calendario tiene precedencia sobre el pipeline (1 y 2). Antes "Activa"
  * dependía de un click del admin en la sala de Confirmación, así que las PPS
@@ -179,7 +184,8 @@ export function deriveBucket(input: BucketInput): SidebarBucket {
   if (timeline === "finalizada") return "finalizada";
   if (timeline === "en_curso") return "activa";
 
-  if (dbState === "borrador" || dbState === "archivada") return "oculta";
+  if (dbState === "borrador") return "borrador";
+  if (dbState === "archivada") return "oculta";
   if (dbState === "activa") return "activa";
   if (dbState === "confirmacion") return "confirmacion";
 

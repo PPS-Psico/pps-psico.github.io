@@ -111,6 +111,11 @@ describe("lanzadorState", () => {
       expect(BUCKET_ORDER[BUCKET_ORDER.length - 1]).toBe("activa");
     });
 
+    it("muestra los borradores como grupo operativo", () => {
+      expect(BUCKET_ORDER).toContain("borrador");
+      expect(BUCKET_META.borrador.label).toBe("Borradores");
+    });
+
     it("el recorrido visible no incluye lo que sale de la vista operativa", () => {
       // "Finalizadas" y "Fuera del pipeline" existen como clasificación (el
       // buscador las alcanza) pero no se listan como grupo.
