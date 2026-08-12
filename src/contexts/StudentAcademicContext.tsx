@@ -37,7 +37,6 @@ interface StudentAcademicContextType {
   academicError: Error | null;
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
-  confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
   refetchAcademic: () => void;
   updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
 }
@@ -64,7 +63,6 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     convocatoriasError,
     enrollStudent,
     cancelEnrollment,
-    confirmInforme,
     refetchConvocatorias,
     institutionAddressMap,
   } = useConvocatorias(legajo, studentId, studentDetails, isSuperUserMode);
@@ -134,7 +132,6 @@ export const StudentAcademicProvider: React.FC<{ legajo: string; children: React
     updateFechaFin,
     enrollStudent,
     cancelEnrollment,
-    confirmInforme,
     refetchAcademic,
     criterios,
     enrollmentMap,

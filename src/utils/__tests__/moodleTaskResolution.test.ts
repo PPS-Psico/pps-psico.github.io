@@ -4,7 +4,10 @@ import {
 } from "../../constants";
 import type { MoodleTaskLink } from "../../hooks/useMoodleTaskLinks";
 import type { Practica } from "../../types";
-import { buildPendingMoodleAssignments } from "../moodleTaskResolution";
+import {
+  buildPendingMoodleAssignments,
+  selectCurrentMoodleSnapshots,
+} from "../moodleTaskResolution";
 
 const links: MoodleTaskLink[] = [
   {
@@ -88,5 +91,61 @@ describe("buildPendingMoodleAssignments", () => {
     expect(buildPendingMoodleAssignments([practices[0]], links, snapshots).has("946366")).toBe(
       true
     );
+  });
+
+  it("vuelve a escanear una calificación cuya revisión fue reabierta", () => {
+    const snapshots = new Map([
+      [
+        "practice-graded",
+        {
+          task_status: "graded",
+          submitted: true,
+          grade_value: 8,
+          grade_max: 10,
+          grade_display: "8 / 10",
+          observed_at: "2026-08-11T12:00:00.000Z",
+          scan_closed: false,
+        },
+      ],
+    ]);
+
+    expect(buildPendingMoodleAssignments([practices[0]], links, snapshots).has("946366")).toBe(
+      true
+    );
+  });
+
+  it("ignora el snapshot terminal de una tarea anterior después de un remapeo", () => {
+    const remappedLinks = links.map((link) =>
+      link.launchId === "launch-graded" ? { ...link, moodleId: "999001" } : link
+    );
+    const snapshots = [
+      {
+        practica_id: "practice-graded",
+        cmid: 946366,
+        task_status: "graded",
+        submitted: true,
+        grade_value: 9,
+        grade_max: 10,
+        grade_display: "9 / 10",
+        observed_at: "2026-08-10T12:00:00.000Z",
+        scan_closed: true,
+      },
+      {
+        practica_id: "practice-graded",
+        cmid: 999001,
+        task_status: "submitted",
+        submitted: true,
+        grade_value: null,
+        grade_max: 100,
+        grade_display: null,
+        observed_at: "2026-08-12T12:00:00.000Z",
+        scan_closed: false,
+      },
+    ];
+
+    expect(
+      selectCurrentMoodleSnapshots([practices[0]], remappedLinks, snapshots).get("practice-graded")
+        ?.cmid
+    ).toBe(999001);
   });
 });

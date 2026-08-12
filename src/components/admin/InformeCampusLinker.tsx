@@ -21,6 +21,7 @@ import EmptyState from "../EmptyState";
 import Toast from "../ui/Toast";
 import { useConfirm } from "../../hooks/useConfirm";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import MoodleSyncHealthPanel from "./MoodleSyncHealthPanel";
 
 /** Áreas de PPS que puede tener un espacio del campus. */
 type AreaCampus = "clinica" | "laboral" | "educacional" | "comunitaria";
@@ -37,6 +38,7 @@ type EntregaRow = {
   moodle_id: string;
   orden?: number | null;
   activo: boolean;
+  grade_conversion_mode?: "percentage" | "direct_10" | "pass_fail";
 };
 
 const PLACEHOLDER = "https://campus.uflo.edu.ar/mod/assign/view.php?id=…";
@@ -218,6 +220,9 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
   const [editArea, setEditArea] = useState<AreaCampus>("clinica");
   const [editInstitucion, setEditInstitucion] = useState("");
   const [editActivo, setEditActivo] = useState(true);
+  const [editGradeConversionMode, setEditGradeConversionMode] = useState<
+    "percentage" | "direct_10" | "pass_fail"
+  >("percentage");
 
   // Estado para creación manual de espacios (sin lanzamiento previo)
   const [isCreatingManualSpace, setIsCreatingManualSpace] = useState(false);
@@ -429,6 +434,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
     setEditArea(row.area);
     setEditInstitucion(row.institucion);
     setEditActivo(row.activo);
+    setEditGradeConversionMode(row.grade_conversion_mode ?? "percentage");
   };
 
   const handleSelectLaunch = (row: LaunchRow) => {
@@ -657,12 +663,14 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
       area,
       institucion,
       activo,
+      gradeConversionMode,
     }: {
       id: string;
       moodleId: string;
       area: "clinica" | "laboral" | "educacional" | "comunitaria";
       institucion: string;
       activo: boolean;
+      gradeConversionMode: "percentage" | "direct_10" | "pass_fail";
     }) => {
       // 1. Guardar en aula_entregas
       await db.aula_entregas.update(id, {
@@ -670,6 +678,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
         area,
         institucion,
         activo,
+        grade_conversion_mode: gradeConversionMode,
       } as any);
 
       if (isTestingMode) return;
@@ -868,6 +877,8 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
           Nuevo Espacio Manual
         </button>
       </div>
+
+      <MoodleSyncHealthPanel enabled={!isTestingMode} />
 
       {/* Buscador e Interruptor de Pestañas */}
       <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
@@ -1346,6 +1357,28 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                     </span>
                   )}
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-1.5">
+                    Conversión de la nota
+                  </label>
+                  <select
+                    value={editGradeConversionMode}
+                    onChange={(event) =>
+                      setEditGradeConversionMode(
+                        event.target.value as "percentage" | "direct_10" | "pass_fail"
+                      )
+                    }
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition"
+                  >
+                    <option value="percentage">Porcentaje / máximo → escala 10</option>
+                    <option value="direct_10">Valor directo en escala 10</option>
+                    <option value="pass_fail">Aprobado / Desaprobado</option>
+                  </select>
+                  <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
+                    Esta regla es académica y evita inferir la escala a partir de una nota aislada.
+                  </p>
+                </div>
               </div>
 
               {/* Lista de Convocatorias del año que usan esta misma tarea */}
@@ -1389,6 +1422,7 @@ const InformeCampusLinker: React.FC<InformeCampusLinkerProps> = ({ isTestingMode
                       area: editArea,
                       institucion: editInstitucion.trim(),
                       activo: editActivo,
+                      gradeConversionMode: editGradeConversionMode,
                     });
                   }}
                   disabled={updateSpaceMutation.isPending}

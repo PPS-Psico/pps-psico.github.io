@@ -20,7 +20,10 @@ import {
 } from "../lib/moodleBridge";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/supabase";
-import { buildPendingMoodleAssignments } from "../utils/moodleTaskResolution";
+import {
+  buildPendingMoodleAssignments,
+  selectCurrentMoodleSnapshots,
+} from "../utils/moodleTaskResolution";
 
 export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_snapshots"]["Row"];
 
@@ -29,6 +32,8 @@ export type MoodleGradeSyncStatus =
   | "loading"
   | "syncing"
   | "synced"
+  | "partial"
+  | "complete"
   | "unavailable"
   | "error";
 
@@ -38,6 +43,8 @@ interface MoodleGradeSyncValue {
   errorMessage: string | null;
   lastObservedAt: string | null;
   retry: () => Promise<void>;
+  canReopenGrades: boolean;
+  reopenGrade: (practicaId: string, cmid: number, reason: string) => Promise<void>;
 }
 
 const defaultValue: MoodleGradeSyncValue = {
@@ -46,6 +53,8 @@ const defaultValue: MoodleGradeSyncValue = {
   errorMessage: null,
   lastObservedAt: null,
   retry: async () => {},
+  canReopenGrades: false,
+  reopenGrade: async () => {},
 };
 
 const MoodleGradeSyncContext = createContext<MoodleGradeSyncValue>(defaultValue);
@@ -63,7 +72,7 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
   const isOwnStudentSession =
     !!studentId && authenticatedUser?.studentId === studentId && !isPrivilegedViewer;
   const canReadSnapshots = !!studentId && (isOwnStudentSession || isPrivilegedViewer);
-  const { links, isLoading: areLinksLoading } = useMoodleTaskLinks(isOwnStudentSession);
+  const { links, isLoading: areLinksLoading } = useMoodleTaskLinks(canReadSnapshots);
   const isInsideParentFrame =
     typeof window !== "undefined" && window.parent !== window && window.self !== window.top;
 
@@ -85,12 +94,8 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
   });
 
   const snapshotsByPractice = useMemo(() => {
-    const result = new Map<string, MoodleGradeSnapshot>();
-    for (const snapshot of snapshotsQuery.data ?? []) {
-      if (!result.has(snapshot.practica_id)) result.set(snapshot.practica_id, snapshot);
-    }
-    return result;
-  }, [snapshotsQuery.data]);
+    return selectCurrentMoodleSnapshots(practicas, links, snapshotsQuery.data ?? []);
+  }, [links, practicas, snapshotsQuery.data]);
 
   const assignments = useMemo(() => {
     if (!isOwnStudentSession || snapshotsQuery.isLoading) return new Map<string, string[]>();
@@ -103,13 +108,19 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
   const lastObservedAt = useMemo(() => {
     let latest: string | null = null;
     snapshotsByPractice.forEach((snapshot) => {
-      if (!latest || snapshot.observed_at > latest) latest = snapshot.observed_at;
+      const observedAt = snapshot.last_observed_at || snapshot.observed_at;
+      if (!latest || observedAt > latest) latest = observedAt;
     });
     return latest;
   }, [snapshotsByPractice]);
 
   const runSync = useCallback(async () => {
-    if (!isOwnStudentSession || assignments.size === 0) return;
+    if (!isOwnStudentSession) return;
+    if (assignments.size === 0) {
+      setSyncStatus(practicas.length > 0 ? "complete" : "idle");
+      setErrorMessage(null);
+      return;
+    }
     if (!isInsideParentFrame) {
       setSyncStatus("unavailable");
       setErrorMessage(null);
@@ -119,33 +130,44 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     setSyncStatus("syncing");
     setErrorMessage(null);
     try {
-      const result = await requestMoodleTasks([...assignments.keys()]);
-      const observations = result.tasks.flatMap((task) =>
-        (assignments.get(String(task.cmid)) ?? []).map((practicaId) => ({
-          practicaId,
-          cmid: task.cmid,
-          status: task.status,
-          submitted: task.submitted,
-          gradeValue: task.gradeValue,
-          gradeMax: task.gradeMax,
-          gradeDisplay: task.gradeDisplay,
-          gradedAtDisplay: task.gradedAtDisplay,
-        }))
+      const cmids = [...assignments.keys()];
+      const batches = Array.from({ length: Math.ceil(cmids.length / 20) }, (_, index) =>
+        cmids.slice(index * 20, index * 20 + 20)
       );
-      if (observations.length === 0) throw new MoodleBridgeError("invalid_response");
+      let rejectedCount = 0;
 
-      const { error } = await supabase.functions.invoke("ingest-moodle-grade-observation", {
-        body: {
-          requestId: result.requestId,
-          bridgeVersion: MOODLE_BRIDGE_VERSION,
-          courseId: MOODLE_COURSE_ID,
-          observedAt: result.observedAt,
-          moodleUserId: result.moodleUserId,
-          moodleUsername: result.moodleUsername,
-          observations,
-        },
-      });
-      if (error) throw error;
+      for (const batch of batches) {
+        const result = await requestMoodleTasks(batch);
+        const observations = result.tasks.flatMap((task) =>
+          (assignments.get(String(task.cmid)) ?? []).map((practicaId) => ({
+            practicaId,
+            cmid: task.cmid,
+            status: task.status,
+            submitted: task.submitted,
+            gradeValue: task.gradeValue,
+            gradeMax: task.gradeMax,
+            gradeDisplay: task.gradeDisplay,
+            gradedAtDisplay: task.gradedAtDisplay,
+          }))
+        );
+        if (observations.length === 0) throw new MoodleBridgeError("invalid_response");
+
+        const { data, error } = await supabase.functions.invoke("ingest-moodle-grade-observation", {
+          body: {
+            requestId: result.requestId,
+            bridgeVersion: MOODLE_BRIDGE_VERSION,
+            courseId: MOODLE_COURSE_ID,
+            observedAt: result.observedAt,
+            moodleUserId: result.moodleUserId,
+            moodleUsername: result.moodleUsername,
+            observations,
+          },
+        });
+        if (error) throw error;
+        if (data && typeof data === "object" && Array.isArray(data.rejected)) {
+          rejectedCount += data.rejected.length;
+        }
+      }
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["moodle-grade-snapshots", studentId] }),
@@ -154,7 +176,14 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
         // Inicio y Practicas reflejen la nota sin que el alumno cambie de seccion.
         queryClient.invalidateQueries({ queryKey: ["practicas"] }),
       ]);
-      setSyncStatus("synced");
+      if (rejectedCount > 0) {
+        setSyncStatus("partial");
+        setErrorMessage(
+          `Campus respondió, pero ${rejectedCount} ${rejectedCount === 1 ? "tarea requiere" : "tareas requieren"} revisión. Conservamos el último estado confirmado.`
+        );
+      } else {
+        setSyncStatus("synced");
+      }
     } catch (error) {
       if (error instanceof MoodleBridgeError && error.code === "not_embedded") {
         setSyncStatus("unavailable");
@@ -168,12 +197,20 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
           : "No pudimos validar la respuesta de Campus. Reintentá desde la página del curso."
       );
     }
-  }, [assignments, isInsideParentFrame, isOwnStudentSession, queryClient, studentId]);
+  }, [
+    assignments,
+    isInsideParentFrame,
+    isOwnStudentSession,
+    practicas.length,
+    queryClient,
+    studentId,
+  ]);
 
   useEffect(() => {
     if (!isOwnStudentSession || isPracticasLoading || areLinksLoading) return;
     if (assignments.size === 0) {
-      setSyncStatus("idle");
+      setSyncStatus(practicas.length > 0 ? "complete" : "idle");
+      setErrorMessage(null);
       return;
     }
     if (!isInsideParentFrame) {
@@ -193,6 +230,7 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     isInsideParentFrame,
     isOwnStudentSession,
     isPracticasLoading,
+    practicas.length,
     runSync,
     studentId,
   ]);
@@ -209,6 +247,24 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     ? "No pudimos leer el último registro guardado del Campus."
     : errorMessage;
 
+  const reopenGrade = useCallback(
+    async (practicaId: string, cmid: number, reason: string) => {
+      if (!isPrivilegedViewer) throw new Error("Acceso restringido a coordinación.");
+      const cleanReason = reason.trim();
+      if (cleanReason.length < 8) throw new Error("Indicá un motivo de al menos 8 caracteres.");
+      const { error } = await supabase.from("moodle_grade_reopen_events").insert({
+        practica_id: practicaId,
+        cmid,
+        reason: cleanReason,
+        previous_revision: 0,
+        new_revision: 1,
+      });
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["moodle-grade-snapshots", studentId] });
+    },
+    [isPrivilegedViewer, queryClient, studentId]
+  );
+
   const value = useMemo<MoodleGradeSyncValue>(
     () => ({
       snapshotsByPractice,
@@ -216,8 +272,18 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
       errorMessage: resolvedErrorMessage,
       lastObservedAt,
       retry: runSync,
+      canReopenGrades: isPrivilegedViewer,
+      reopenGrade,
     }),
-    [lastObservedAt, resolvedErrorMessage, runSync, snapshotsByPractice, status]
+    [
+      isPrivilegedViewer,
+      lastObservedAt,
+      reopenGrade,
+      resolvedErrorMessage,
+      runSync,
+      snapshotsByPractice,
+      status,
+    ]
   );
 
   return (

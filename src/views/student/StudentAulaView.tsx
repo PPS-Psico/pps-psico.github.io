@@ -687,7 +687,11 @@ const faqGroups: FaqGroup[] = [
             último estado confirmado: el panel conserva, por ejemplo, una entrega que ya había sido
             detectada mientras vuelve a intentar leer su corrección en próximos ingresos. Cuando
             Moodle publica una <strong>calificación</strong>, queda guardada como registro final, se
-            copia automáticamente a Prácticas y esa tarea deja de consultarse. Si aparece{" "}
+            copia automáticamente a Prácticas y esa tarea deja de consultarse. La escala de cada
+            espacio está configurada por coordinación: el panel no intenta adivinar si una nota fue
+            cargada sobre 10 o sobre 100. Si el docente cambia una calificación ya publicada,
+            coordinación puede reabrir esa tarea para una nueva lectura; mientras tanto se conserva
+            la nota anterior con su fecha y procedencia. Si aparece{" "}
             <strong>Estado a revisar</strong>, todavía no existe un estado anterior suficientemente
             confiable para mostrar. Si una PPS dice <strong>Espacio pendiente de vincular</strong>,
             Mi Panel no abre una tarea aproximada por nombre: podés consultar el directorio y avisar

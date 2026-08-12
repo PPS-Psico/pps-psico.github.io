@@ -105,7 +105,13 @@ export const fetchCorrectionPanelData = async (): Promise<Map<string, InformeCor
       convocatoriaId: conv.id,
       practicaId: (practicaRecord?.id as string) || null,
       informeSubido: Boolean(conv[C.FIELD_INFORME_SUBIDO_CONVOCATORIAS]),
-      nota: (practicaRecord?.[C.FIELD_NOTA_PRACTICAS] as string) || "Sin calificar",
+      nota:
+        String(practicaRecord?.[C.FIELD_NOTA_MOODLE_PRACTICAS] ?? "") ||
+        (practicaRecord?.[C.FIELD_NOTA_FUENTE_PRACTICAS] &&
+        practicaRecord?.[C.FIELD_NOTA_FUENTE_PRACTICAS] !== "legacy"
+          ? String(practicaRecord?.[C.FIELD_NOTA_PRACTICAS] ?? "")
+          : "") ||
+        "Sin calificar",
       lanzamientoId: lId,
       orientacion: lanzamiento.orientacion,
       fechaFinalizacionPPS: lanzamiento.fecha_finalizacion,

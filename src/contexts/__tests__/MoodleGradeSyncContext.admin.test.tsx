@@ -29,7 +29,20 @@ const eqSpy = jest.fn((_column: string, _value: string) => ({ order: orderSpy })
 const selectSpy = jest.fn((_columns: string) => ({ eq: eqSpy }));
 const fromSpy = jest.fn((_table: string) => ({ select: selectSpy }));
 const requestMoodleTasksSpy = jest.fn(async (_cmids: string[]) => null);
-const useMoodleTaskLinksSpy = jest.fn((_enabled: boolean) => ({ links: [], isLoading: false }));
+const useMoodleTaskLinksSpy = jest.fn((_enabled: boolean) => ({
+  links: [
+    {
+      practiceId: "practice-1",
+      launchId: "",
+      orientationKey: "",
+      moodleId: "946366",
+      name: "Tarea de prueba",
+      area: "Clínica",
+      academicYear: 2026,
+    },
+  ],
+  isLoading: false,
+}));
 
 jest.mock("../AuthContext", () => ({
   useAuth: () => ({
@@ -99,7 +112,9 @@ describe("MoodleGradeSyncProvider — lectura administrativa", () => {
     expect(eqSpy).toHaveBeenCalledWith("estudiante_id", "student-selected");
     expect(result.current.lastObservedAt).toBe(snapshot.observed_at);
     expect(result.current.snapshotsByPractice.get("practice-1")?.grade_value).toBe(90);
-    expect(useMoodleTaskLinksSpy).toHaveBeenCalledWith(false);
+    // Coordinación necesita el vínculo vigente para no mostrar como actual un
+    // snapshot perteneciente a una tarea que luego fue remapeada.
+    expect(useMoodleTaskLinksSpy).toHaveBeenCalledWith(true);
     expect(requestMoodleTasksSpy).not.toHaveBeenCalled();
   });
 });

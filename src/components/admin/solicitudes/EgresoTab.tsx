@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FIELD_ESTUDIANTE_FINALIZACION } from "../../../constants";
 import { supabase } from "../../../lib/supabaseClient";
 import {
-  computeNotaPromedio,
+  describeFinalizationGradeSource,
+  indexFinalizationGrades,
+  useFinalizationGradeResolution,
+} from "../../../hooks/useFinalizationGradeResolution";
+import {
   computeTotalHoras,
   resolveFrecuenciaSemanal,
   type DetallePracticas,
@@ -175,6 +179,11 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
     const raw = (sol as any).detalle_practicas;
     return parseDetalle(raw);
   }, [sol]);
+  const gradeResolutionQuery = useFinalizationGradeResolution(sol.id, Boolean(detalle));
+  const gradesByPractice = useMemo(
+    () => indexFinalizationGrades(gradeResolutionQuery.data),
+    [gradeResolutionQuery.data]
+  );
 
   const totalHoras = useMemo(() => {
     if (!detalle) return null;
@@ -183,8 +192,8 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
 
   const notaPromedio = useMemo(() => {
     if (!detalle) return null;
-    return detalle.notaPromedio ?? computeNotaPromedio(detalle.items.map((i) => i.nota));
-  }, [detalle]);
+    return gradeResolutionQuery.data?.[0]?.nota_promedio ?? null;
+  }, [detalle, gradeResolutionQuery.data]);
 
   const planillaFiles = useMemo(
     () => normalizeAttachments(sol.planilla_horas_url),
@@ -608,6 +617,23 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                 </div>
               </div>
 
+              {gradeResolutionQuery.isError && (
+                <p
+                  style={{
+                    margin: 0,
+                    padding: "9px 11px",
+                    border: "1px solid var(--warn)",
+                    borderRadius: 8,
+                    color: "var(--warn)",
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  No se pudieron verificar las notas académicas. No uses el promedio para SAC hasta
+                  reintentar la consulta.
+                </p>
+              )}
+
               {/* Detail List */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {detalle.items.map((item, i) => {
@@ -656,6 +682,18 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                           {item.especialidad || "Sin orientación"} · {item.horas || 0} hs
                           {item.esOnline && " · Online"}
                         </p>
+                        {describeFinalizationGradeSource(gradesByPractice.get(item.practicaId)) && (
+                          <p
+                            style={{
+                              margin: "3px 0 0",
+                              fontSize: 10.5,
+                              color: "var(--ok)",
+                              fontWeight: 650,
+                            }}
+                          >
+                            {describeFinalizationGradeSource(gradesByPractice.get(item.practicaId))}
+                          </p>
+                        )}
                         <p
                           style={{
                             margin: "3px 0 0",
@@ -713,7 +751,7 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                             border: "1px solid var(--rule-2)",
                           }}
                         >
-                          NOTA: {item.nota || "—"}
+                          NOTA: {gradesByPractice.get(item.practicaId)?.nota || "—"}
                         </span>
 
                         {item.informe ? (

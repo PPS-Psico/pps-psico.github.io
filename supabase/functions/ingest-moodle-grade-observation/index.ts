@@ -121,8 +121,45 @@ type ObservationRejection = {
   error: string;
 };
 
+type SyncRunResult = {
+  outcome: "success" | "partial" | "noop" | "failed";
+  errorCode?: string | null;
+  accepted?: number;
+  stored?: number;
+  snapshotUpdated?: number;
+  preserved?: number;
+  skippedTerminal?: number;
+  rejected?: ObservationRejection[];
+};
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin")?.replace(/\/$/, "") ?? "";
+  const runStartedAt = Date.now();
+  let activeRunId: string | null = null;
+
+  const finishRun = async (result: SyncRunResult): Promise<void> => {
+    if (!activeRunId) return;
+    const rejected = result.rejected ?? [];
+    const { error } = await admin
+      .from("moodle_sync_runs")
+      .update({
+        completed_at: new Date().toISOString(),
+        outcome: result.outcome,
+        error_code: result.errorCode ?? null,
+        accepted_count: result.accepted ?? 0,
+        stored_count: result.stored ?? 0,
+        snapshot_updated_count: result.snapshotUpdated ?? 0,
+        preserved_count: result.preserved ?? 0,
+        skipped_terminal_count: result.skippedTerminal ?? 0,
+        rejected_count: rejected.length,
+        duration_ms: Math.max(0, Date.now() - runStartedAt),
+        details: {
+          rejected: rejected.slice(0, MAX_OBSERVATIONS),
+        },
+      })
+      .eq("request_id", activeRunId);
+    if (error) console.error(`[moodle-grade] sync run update failed: ${error.message}`);
+  };
 
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -230,6 +267,24 @@ Deno.serve(async (req) => {
         gradedAtDisplay,
       };
     });
+
+    const { error: runInsertError } = await admin.from("moodle_sync_runs").upsert(
+      {
+        request_id: requestId,
+        auth_user_id: user.id,
+        estudiante_id: student.id,
+        started_at: new Date(runStartedAt).toISOString(),
+        observed_at: observedAt,
+        bridge_version: bridgeVersion,
+        parser_version: PARSER_VERSION,
+        outcome: "pending",
+        requested_count: rawObservations.length,
+        fetched_count: normalizedInput.length,
+      },
+      { onConflict: "request_id" }
+    );
+    if (runInsertError) throw new Error("sync_run_insert_failed");
+    activeRunId = requestId;
 
     const practiceIds = [...new Set(normalizedInput.map((item) => item.practicaId))];
     const { data: practiceData, error: practiceError } = await admin
@@ -373,13 +428,20 @@ Deno.serve(async (req) => {
       result.rejection ? [result.rejection] : []
     );
     if (observationRows.length === 0) {
+      await finishRun({
+        outcome: "failed",
+        errorCode: "no_valid_observations",
+        rejected: rejectedObservations,
+      });
       return json(origin, { error: "no_valid_observations", rejected: rejectedObservations }, 400);
     }
 
     const candidatePracticeIds = [...new Set(observationRows.map((row) => row.practica_id))];
     const { data: existingSnapshots, error: existingSnapshotError } = await admin
       .from("moodle_grade_snapshots")
-      .select("practica_id, cmid, task_status, observed_at")
+      .select(
+        "practica_id, cmid, task_status, observed_at, last_observed_at, scan_closed, grade_revision"
+      )
       .in("practica_id", candidatePracticeIds);
     if (existingSnapshotError) throw new Error("snapshot_lookup_failed");
     const existingByKey = new Map(
@@ -390,13 +452,20 @@ Deno.serve(async (req) => {
     // además contra pestañas antiguas todavía abiertas: una nota ya guardada no
     // vuelve a ingresar al ledger ni a ejecutar el trigger académico.
     const terminalSkipped = observationRows.filter(
-      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.task_status === "graded"
+      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.scan_closed === true
     ).length;
     const rowsToStore = observationRows.filter(
-      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.task_status !== "graded"
+      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.scan_closed !== true
     );
 
     if (rowsToStore.length === 0) {
+      const outcome = rejectedObservations.length > 0 ? "partial" : "noop";
+      await finishRun({
+        outcome,
+        accepted: observationRows.length,
+        skippedTerminal: terminalSkipped,
+        rejected: rejectedObservations,
+      });
       return json(origin, {
         success: true,
         stored: 0,
@@ -443,29 +512,46 @@ Deno.serve(async (req) => {
       confidence: row.confidence,
     }));
 
-    const newestSnapshots = snapshots.filter((row) => {
+    const snapshotsToUpsert = snapshots.filter((row) => {
       const existing = existingByKey.get(`${row.practica_id}:${row.cmid}`);
       if (!existing) return true;
-      if (existing.task_status === "graded") return false;
-      if (Date.parse(row.observed_at) < Date.parse(existing.observed_at)) return false;
-      return TASK_STATUS_RANK[row.task_status] >= TASK_STATUS_RANK[existing.task_status];
+      if (existing.scan_closed) return false;
+      const previousObservedAt = existing.last_observed_at ?? existing.observed_at;
+      return Date.parse(row.observed_at) >= Date.parse(previousObservedAt);
     });
-    const preserved = snapshots.length - newestSnapshots.length;
+    const preserved = snapshotsToUpsert.filter((row) => {
+      const existing = existingByKey.get(`${row.practica_id}:${row.cmid}`);
+      if (!existing) return false;
+      return (
+        existing.task_status === "graded" ||
+        TASK_STATUS_RANK[row.task_status] < TASK_STATUS_RANK[existing.task_status]
+      );
+    }).length;
 
-    if (newestSnapshots.length > 0) {
+    if (snapshotsToUpsert.length > 0) {
       const { error: snapshotError } = await admin
         .from("moodle_grade_snapshots")
-        .upsert(newestSnapshots, { onConflict: "practica_id,cmid" });
+        .upsert(snapshotsToUpsert, { onConflict: "practica_id,cmid" });
       if (snapshotError) throw new Error("snapshot_upsert_failed");
     }
 
     console.log(
-      `[moodle-grade] Stored ${snapshots.length}; snapshot ${newestSnapshots.length}; preserved ${preserved}; terminal ${terminalSkipped}; rejected ${rejectedObservations.length}.`
+      `[moodle-grade] Stored ${snapshots.length}; snapshot ${snapshotsToUpsert.length}; preserved ${preserved}; terminal ${terminalSkipped}; rejected ${rejectedObservations.length}.`
     );
+    const outcome = rejectedObservations.length > 0 ? "partial" : "success";
+    await finishRun({
+      outcome,
+      accepted: observationRows.length,
+      stored: snapshots.length,
+      snapshotUpdated: snapshotsToUpsert.length,
+      preserved,
+      skippedTerminal: terminalSkipped,
+      rejected: rejectedObservations,
+    });
     return json(origin, {
       success: true,
       stored: snapshots.length,
-      snapshotUpdated: newestSnapshots.length,
+      snapshotUpdated: snapshotsToUpsert.length,
       preserved,
       skippedTerminal: terminalSkipped,
       rejected: rejectedObservations,
@@ -473,6 +559,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "server_error";
+    await finishRun({ outcome: "failed", errorCode: code });
     const clientErrors = new Set([
       "invalid_text",
       "invalid_number",

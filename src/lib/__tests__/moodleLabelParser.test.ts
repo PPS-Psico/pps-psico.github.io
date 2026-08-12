@@ -78,4 +78,37 @@ describe("lector de tareas de la etiqueta Moodle", () => {
       gradeMax: 100,
     });
   });
+
+  it.each([
+    ["0,00 / 100,00", 0],
+    ["8,00 / 100,00", 8],
+    ["100,00 / 100,00", 100],
+  ])("conserva la nota cruda %s sin inferir su escala", (display, expected) => {
+    const parseTask = loadLabelParser();
+    const taskDocument = new DOMParser().parseFromString(
+      `<table class="feedbacktable"><tr><th>Calificación</th><td>${display}</td></tr></table>`,
+      "text/html"
+    );
+
+    expect(parseTask(946366, taskDocument)).toMatchObject({
+      status: "graded",
+      submitted: true,
+      gradeValue: expected,
+      gradeMax: 100,
+    });
+  });
+
+  it("reconoce una entrega enviada para calificar aunque todavía no tenga nota", () => {
+    const parseTask = loadLabelParser();
+    const taskDocument = new DOMParser().parseFromString(
+      `<table class="submissionstatustable"><tr><th>Estado de la entrega</th><td>Enviado para calificar</td></tr><tr><th>Última modificación</th><td>martes, 11 de agosto de 2026</td></tr></table>`,
+      "text/html"
+    );
+
+    expect(parseTask(946365, taskDocument)).toMatchObject({
+      status: "submitted",
+      submitted: true,
+      gradeValue: null,
+    });
+  });
 });

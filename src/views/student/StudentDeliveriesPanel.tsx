@@ -32,10 +32,12 @@ function PracticeDeliveryCard({
   delivery,
   snapshot,
   onOpenDirectory,
+  onReopen,
 }: {
   delivery: GuidedDelivery;
   snapshot?: MoodleGradeSnapshot;
   onOpenDirectory: (areaId: string | null) => void;
+  onReopen?: (practicaId: string, cmid: number) => void;
 }) {
   const directHref = delivery.institution
     ? `${MOODLE_ASSIGN}${delivery.institution.moodleId}`
@@ -79,22 +81,18 @@ function PracticeDeliveryCard({
     </>
   );
 
-  if (directHref) {
-    return (
-      <a
-        className="ah-delivery-space"
-        href={directHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ ["--area" as string]: delivery.areaColor }}
-        aria-label={`Abrir el espacio de entrega de ${delivery.practiceName} en el Campus`}
-      >
-        {content}
-      </a>
-    );
-  }
-
-  return (
+  const card = directHref ? (
+    <a
+      className="ah-delivery-space"
+      href={directHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ ["--area" as string]: delivery.areaColor }}
+      aria-label={`Abrir el espacio de entrega de ${delivery.practiceName} en el Campus`}
+    >
+      {content}
+    </a>
+  ) : (
     <button
       type="button"
       className="ah-delivery-space"
@@ -105,6 +103,21 @@ function PracticeDeliveryCard({
       {content}
     </button>
   );
+
+  return (
+    <div className="ah-delivery-space-shell">
+      {card}
+      {snapshot?.scan_closed && onReopen && (
+        <button
+          type="button"
+          className="ah-delivery-space__reopen"
+          onClick={() => onReopen(delivery.id, snapshot.cmid)}
+        >
+          Reabrir verificación de la nota
+        </button>
+      )}
+    </div>
+  );
 }
 
 const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
@@ -114,7 +127,15 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
   isPublic = false,
 }) => {
   const { areas } = useAulaEntregas();
-  const { snapshotsByPractice, status, errorMessage, lastObservedAt, retry } = useMoodleGradeSync();
+  const {
+    snapshotsByPractice,
+    status,
+    errorMessage,
+    lastObservedAt,
+    retry,
+    canReopenGrades,
+    reopenGrade,
+  } = useMoodleGradeSync();
   const { links: exactTaskLinks, isLoading: areTaskLinksLoading } = useMoodleTaskLinks(!isPublic);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(isPublic);
@@ -136,11 +157,15 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
       ? "Consultando tus tareas en Campus…"
       : status === "synced"
         ? `Campus actualizado${lastObservedLabel ? ` · ${lastObservedLabel}` : ""}`
-        : status === "error"
-          ? errorMessage || "No pudimos actualizar Campus."
-          : lastObservedLabel
-            ? `Última consulta: ${lastObservedLabel} · abrí Mi Panel desde Campus para actualizar`
-            : "Abrí Mi Panel desde Campus para sincronizar entregas y calificaciones";
+        : status === "complete"
+          ? `Sin tareas pendientes de sincronización${lastObservedLabel ? ` · último registro ${lastObservedLabel}` : ""}`
+          : status === "partial"
+            ? errorMessage || "Campus respondió parcialmente; conservamos los estados confirmados."
+            : status === "error"
+              ? errorMessage || "No pudimos actualizar Campus."
+              : lastObservedLabel
+                ? `Última consulta: ${lastObservedLabel} · abrí Mi Panel desde Campus para actualizar`
+                : "Abrí Mi Panel desde Campus para sincronizar entregas y calificaciones";
 
   const openDirectory = useCallback((areaId: string | null) => {
     if (areaId) setActiveAreaId(areaId);
@@ -150,6 +175,23 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
       if (areaId) document.getElementById(`delivery-directory-tab-${areaId}`)?.focus();
     });
   }, []);
+
+  const handleReopenGrade = useCallback(
+    async (practicaId: string, cmid: number) => {
+      const reason = window.prompt(
+        "Motivo de la reapertura (por ejemplo: el docente corrigió nuevamente la nota):"
+      );
+      if (!reason) return;
+      try {
+        await reopenGrade(practicaId, cmid, reason);
+      } catch (error) {
+        window.alert(
+          error instanceof Error ? error.message : "No se pudo reabrir la verificación."
+        );
+      }
+    },
+    [reopenGrade]
+  );
 
   const handleAreaKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -186,9 +228,9 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
             <span className="ah-delivery-sync__icon" aria-hidden>
               <Icon
                 name={
-                  status === "synced"
+                  status === "synced" || status === "complete"
                     ? "check"
-                    : status === "error"
+                    : status === "error" || status === "partial"
                       ? "alert"
                       : status === "loading" || status === "syncing"
                         ? "clock"
@@ -198,7 +240,7 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
               />
             </span>
             <span>{syncMessage}</span>
-            {status === "error" && (
+            {(status === "error" || status === "partial") && (
               <button type="button" onClick={() => void retry()}>
                 Reintentar
               </button>
@@ -222,6 +264,7 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                   delivery={delivery}
                   snapshot={snapshotsByPractice.get(delivery.id)}
                   onOpenDirectory={openDirectory}
+                  onReopen={canReopenGrades ? handleReopenGrade : undefined}
                 />
               ))}
             </div>

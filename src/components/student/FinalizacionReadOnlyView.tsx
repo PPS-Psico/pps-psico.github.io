@@ -10,6 +10,8 @@ import {
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
+  FIELD_NOTA_MOODLE_PRACTICAS,
+  FIELD_NOTA_FUENTE_PRACTICAS,
 } from "../../constants";
 import { cleanDbValue, formatDate } from "../../utils/formatters";
 import type { CriteriosCalculados, InformeTask, Orientacion, Practica } from "../../types";
@@ -49,7 +51,10 @@ const FinalizacionReadOnlyView: React.FC<FinalizacionReadOnlyViewProps> = ({
             new Date((a[FIELD_FECHA_INICIO_PRACTICAS] as string) || 0).getTime()
         )
         .map((p) => {
-          const rawNota = p[FIELD_NOTA_PRACTICAS];
+          const gradeSource = String(p[FIELD_NOTA_FUENTE_PRACTICAS] ?? "");
+          const rawNota =
+            p[FIELD_NOTA_MOODLE_PRACTICAS] ??
+            (gradeSource && gradeSource !== "legacy" ? p[FIELD_NOTA_PRACTICAS] : null);
           const notaNum = rawNota != null && String(rawNota).trim() !== "" ? Number(rawNota) : NaN;
           const notaClean = Number.isFinite(notaNum) ? String(rawNota).trim() : null;
           return {

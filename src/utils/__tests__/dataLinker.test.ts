@@ -120,7 +120,7 @@ describe("processAndLinkStudentData", () => {
       expect(informeTasks).toHaveLength(0);
     });
 
-    it("genera tarea desde una práctica finalizada con lanzamiento que pide informe", () => {
+    it("usa el estado Moodle, no una nota legacy, para reconocer el informe", () => {
       const allLanzamientos = [
         lanz("lz3", {
           [C.FIELD_INFORME_LANZAMIENTOS]: "http://informe/3",
@@ -131,7 +131,9 @@ describe("processAndLinkStudentData", () => {
         prac("p3", {
           [C.FIELD_ESTADO_PRACTICA]: "Finalizada",
           [C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS]: "lz3",
-          [C.FIELD_NOTA_PRACTICAS]: "Aprobado",
+          [C.FIELD_NOTA_PRACTICAS]: "Aprobado legacy",
+          [C.FIELD_INFORME_ESTADO_PRACTICAS]: "calificado",
+          [C.FIELD_NOTA_MOODLE_PRACTICAS]: 8,
         }),
       ];
       const { informeTasks } = processAndLinkStudentData({
@@ -143,7 +145,8 @@ describe("processAndLinkStudentData", () => {
       expect(informeTasks[0]).toMatchObject({
         practicaId: "p3",
         ppsName: "PPS Tobar",
-        informeSubido: true, // tiene nota
+        informeSubido: true,
+        nota: "8",
       });
     });
 

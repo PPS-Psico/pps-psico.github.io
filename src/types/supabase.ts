@@ -289,6 +289,7 @@ export type Database = {
           area: string
           course_id: number
           created_at: string
+          grade_conversion_mode: string
           gradebook_position: number | null
           id: number
           institucion: string
@@ -305,6 +306,7 @@ export type Database = {
           area: string
           course_id?: number
           created_at?: string
+          grade_conversion_mode?: string
           gradebook_position?: number | null
           id?: never
           institucion: string
@@ -321,6 +323,7 @@ export type Database = {
           area?: string
           course_id?: number
           created_at?: string
+          grade_conversion_mode?: string
           gradebook_position?: number | null
           id?: never
           institucion?: string
@@ -1226,6 +1229,57 @@ export type Database = {
         }
         Relationships: []
       }
+      moodle_grade_import_batches: {
+        Row: {
+          accepted_count: number
+          completed_at: string | null
+          created_at: string
+          details: Json
+          file_name: string
+          id: string
+          observation_count: number
+          observed_at: string
+          rejected_count: number
+          requested_by: string
+          row_count: number
+          snapshot_count: number
+          source_type: string
+          status: string
+        }
+        Insert: {
+          accepted_count?: number
+          completed_at?: string | null
+          created_at?: string
+          details?: Json
+          file_name: string
+          id?: string
+          observation_count?: number
+          observed_at: string
+          rejected_count?: number
+          requested_by: string
+          row_count: number
+          snapshot_count?: number
+          source_type?: string
+          status?: string
+        }
+        Update: {
+          accepted_count?: number
+          completed_at?: string | null
+          created_at?: string
+          details?: Json
+          file_name?: string
+          id?: string
+          observation_count?: number
+          observed_at?: string
+          rejected_count?: number
+          requested_by?: string
+          row_count?: number
+          snapshot_count?: number
+          source_type?: string
+          status?: string
+        }
+        Relationships: []
+      }
       moodle_grade_observations: {
         Row: {
           aula_entrega_id: number
@@ -1333,6 +1387,47 @@ export type Database = {
           },
         ]
       }
+      moodle_grade_reopen_events: {
+        Row: {
+          cmid: number
+          id: string
+          new_revision: number
+          practica_id: string
+          previous_revision: number
+          reason: string
+          requested_at: string
+          requested_by: string
+        }
+        Insert: {
+          cmid: number
+          id?: string
+          new_revision: number
+          practica_id: string
+          previous_revision: number
+          reason: string
+          requested_at?: string
+          requested_by?: string
+        }
+        Update: {
+          cmid?: number
+          id?: string
+          new_revision?: number
+          practica_id?: string
+          previous_revision?: number
+          reason?: string
+          requested_at?: string
+          requested_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moodle_grade_reopen_events_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       moodle_grade_snapshots: {
         Row: {
           aula_entrega_id: number
@@ -1341,13 +1436,26 @@ export type Database = {
           estudiante_id: string
           grade_display: string | null
           grade_max: number | null
+          grade_revision: number
           grade_value: number | null
           graded_at_display: string | null
           lanzamiento_id: string | null
+          last_confidence: string
+          last_grade_display: string | null
+          last_grade_max: number | null
+          last_grade_value: number | null
+          last_graded_at_display: string | null
+          last_observation_id: string
+          last_observed_at: string
+          last_received_at: string
+          last_submitted: boolean
+          last_task_status: string
           latest_observation_id: string
           observed_at: string
           practica_id: string
           received_at: string
+          reopened_at: string | null
+          scan_closed: boolean
           submitted: boolean
           task_status: string
         }
@@ -1358,13 +1466,26 @@ export type Database = {
           estudiante_id: string
           grade_display?: string | null
           grade_max?: number | null
+          grade_revision?: number
           grade_value?: number | null
           graded_at_display?: string | null
           lanzamiento_id?: string | null
+          last_confidence: string
+          last_grade_display?: string | null
+          last_grade_max?: number | null
+          last_grade_value?: number | null
+          last_graded_at_display?: string | null
+          last_observation_id: string
+          last_observed_at: string
+          last_received_at: string
+          last_submitted: boolean
+          last_task_status: string
           latest_observation_id: string
           observed_at: string
           practica_id: string
           received_at: string
+          reopened_at?: string | null
+          scan_closed?: boolean
           submitted?: boolean
           task_status: string
         }
@@ -1375,13 +1496,26 @@ export type Database = {
           estudiante_id?: string
           grade_display?: string | null
           grade_max?: number | null
+          grade_revision?: number
           grade_value?: number | null
           graded_at_display?: string | null
           lanzamiento_id?: string | null
+          last_confidence?: string
+          last_grade_display?: string | null
+          last_grade_max?: number | null
+          last_grade_value?: number | null
+          last_graded_at_display?: string | null
+          last_observation_id?: string
+          last_observed_at?: string
+          last_received_at?: string
+          last_submitted?: boolean
+          last_task_status?: string
           latest_observation_id?: string
           observed_at?: string
           practica_id?: string
           received_at?: string
+          reopened_at?: string | null
+          scan_closed?: boolean
           submitted?: boolean
           task_status?: string
         }
@@ -1405,6 +1539,13 @@ export type Database = {
             columns: ["lanzamiento_id"]
             isOneToOne: false
             referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_snapshots_last_observation_fkey"
+            columns: ["last_observation_id"]
+            isOneToOne: false
+            referencedRelation: "moodle_grade_observations"
             referencedColumns: ["id"]
           },
           {
@@ -1515,6 +1656,83 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      moodle_sync_runs: {
+        Row: {
+          accepted_count: number
+          auth_user_id: string
+          bridge_version: string
+          completed_at: string | null
+          details: Json
+          duration_ms: number | null
+          error_code: string | null
+          estudiante_id: string
+          fetched_count: number
+          observed_at: string | null
+          outcome: string
+          parser_version: string
+          preserved_count: number
+          rejected_count: number
+          request_id: string
+          requested_count: number
+          skipped_terminal_count: number
+          snapshot_updated_count: number
+          started_at: string
+          stored_count: number
+        }
+        Insert: {
+          accepted_count?: number
+          auth_user_id: string
+          bridge_version: string
+          completed_at?: string | null
+          details?: Json
+          duration_ms?: number | null
+          error_code?: string | null
+          estudiante_id: string
+          fetched_count?: number
+          observed_at?: string | null
+          outcome?: string
+          parser_version: string
+          preserved_count?: number
+          rejected_count?: number
+          request_id: string
+          requested_count?: number
+          skipped_terminal_count?: number
+          snapshot_updated_count?: number
+          started_at?: string
+          stored_count?: number
+        }
+        Update: {
+          accepted_count?: number
+          auth_user_id?: string
+          bridge_version?: string
+          completed_at?: string | null
+          details?: Json
+          duration_ms?: number | null
+          error_code?: string | null
+          estudiante_id?: string
+          fetched_count?: number
+          observed_at?: string | null
+          outcome?: string
+          parser_version?: string
+          preserved_count?: number
+          rejected_count?: number
+          request_id?: string
+          requested_count?: number
+          skipped_terminal_count?: number
+          snapshot_updated_count?: number
+          started_at?: string
+          stored_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moodle_sync_runs_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       password_reset_tokens: {
         Row: {
@@ -1739,9 +1957,14 @@ export type Database = {
           fecha_inicio: string | null
           horas_realizadas: number | null
           id: string
+          informe_estado: string | null
           lanzamiento_id: string | null
           nombre_institucion: string | null
           nota: string | null
+          nota_actualizada_at: string | null
+          nota_fuente: string | null
+          nota_moodle: number | null
+          nota_moodle_cmid: number | null
           tipo_actividad: string
         }
         Insert: {
@@ -1760,9 +1983,14 @@ export type Database = {
           fecha_inicio?: string | null
           horas_realizadas?: number | null
           id?: string
+          informe_estado?: string | null
           lanzamiento_id?: string | null
           nombre_institucion?: string | null
           nota?: string | null
+          nota_actualizada_at?: string | null
+          nota_fuente?: string | null
+          nota_moodle?: number | null
+          nota_moodle_cmid?: number | null
           tipo_actividad?: string
         }
         Update: {
@@ -1781,9 +2009,14 @@ export type Database = {
           fecha_inicio?: string | null
           horas_realizadas?: number | null
           id?: string
+          informe_estado?: string | null
           lanzamiento_id?: string | null
           nombre_institucion?: string | null
           nota?: string | null
+          nota_actualizada_at?: string | null
+          nota_fuente?: string | null
+          nota_moodle?: number | null
+          nota_moodle_cmid?: number | null
           tipo_actividad?: string
         }
         Relationships: [
@@ -2578,6 +2811,20 @@ export type Database = {
           nombre: string
         }[]
       }
+      get_finalization_grade_resolution: {
+        Args: { p_finalizacion_id: string }
+        Returns: {
+          cmid: number
+          fuente: string
+          grade_display: string
+          moodle_status: string
+          nota: string
+          nota_numeric: number
+          nota_promedio: number
+          observed_at: string
+          practica_id: string
+        }[]
+      }
       get_haciendo_pps_list: {
         Args: { p_year: number }
         Returns: {
@@ -2641,6 +2888,19 @@ export type Database = {
           moodle_suggested_10_scale: number
           observed_at: string
           practica_id: string
+        }[]
+      }
+      get_moodle_sync_health: { Args: never; Returns: Json }
+      get_moodle_unlinked_practices: {
+        Args: { p_from_year?: number }
+        Returns: {
+          especialidad: string
+          estudiante_id: string
+          estudiante_nombre: string
+          fecha_inicio: string
+          institucion: string
+          practica_id: string
+          reason_code: string
         }[]
       }
       get_my_role: { Args: never; Returns: string }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   FIELD_DETALLE_PRACTICAS_FINALIZACION,
   FIELD_INFORME_FINAL_FINALIZACION,
@@ -8,12 +8,14 @@ import {
 } from "../../constants";
 import type { FinalizacionRequest } from "../../hooks/useFinalizacionLogic";
 import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
-import { supabase } from "../../lib/supabaseClient";
 import {
-  computeNotaPromedio,
-  computeTotalHoras,
-  type DetallePracticas,
-} from "../../utils/acreditacion";
+  describeFinalizationGradeSource,
+  indexFinalizationGrades,
+  type FinalizationGradeResolution,
+  useFinalizationGradeResolution,
+} from "../../hooks/useFinalizationGradeResolution";
+import { supabase } from "../../lib/supabaseClient";
+import { computeTotalHoras, type DetallePracticas } from "../../utils/acreditacion";
 import {
   Attachment,
   getNormalizationState,
@@ -83,8 +85,9 @@ const DetallePorPps: React.FC<{
   detalle: DetallePracticas;
   totalHoras: number | null;
   notaPromedio: number | null;
+  gradesByPractice: Map<string, FinalizationGradeResolution>;
   onPreview: (files: Attachment[], initialIndex: number) => void;
-}> = ({ detalle, totalHoras, notaPromedio, onPreview }) => {
+}> = ({ detalle, totalHoras, notaPromedio, gradesByPractice, onPreview }) => {
   // Lista plana de archivos (en orden de aparición) para navegar el preview.
   const files: Attachment[] = [];
   const indexOf = new Map<string, number>();
@@ -156,10 +159,15 @@ const DetallePorPps: React.FC<{
                 {item.especialidad || "—"} · {item.horas || 0} hs
                 {item.esOnline && " · Online"}
               </p>
+              {describeFinalizationGradeSource(gradesByPractice.get(item.practicaId)) && (
+                <p className="mt-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                  {describeFinalizationGradeSource(gradesByPractice.get(item.practicaId))}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                Nota: {item.nota || "—"}
+                Nota: {gradesByPractice.get(item.practicaId)?.nota || "—"}
               </span>
               <FileBtn label="Informe" icon="description" idx={indexOf.get(`informe-${i}`)} />
               {item.esOnline ? (
@@ -218,6 +226,11 @@ const RequestListItem: React.FC<{
       ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800"
       : "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800";
   const detalle = parseDetalle(request[FIELD_DETALLE_PRACTICAS_FINALIZACION]);
+  const gradeResolutionQuery = useFinalizationGradeResolution(request.id, Boolean(detalle));
+  const gradesByPractice = useMemo(
+    () => indexFinalizationGrades(gradeResolutionQuery.data),
+    [gradeResolutionQuery.data]
+  );
   const planillaHoras: Attachment[] = normalizeAttachments(
     request[FIELD_PLANILLA_HORAS_FINALIZACION]
   );
@@ -231,9 +244,8 @@ const RequestListItem: React.FC<{
   const totalHoras = detalle
     ? (detalle.totalHoras ?? computeTotalHoras(detalle.items.map((i) => i.horas)))
     : null;
-  const notaPromedio = detalle
-    ? (detalle.notaPromedio ?? computeNotaPromedio(detalle.items.map((i) => i.nota)))
-    : null;
+  const resolvedAverage = gradeResolutionQuery.data?.[0]?.nota_promedio ?? null;
+  const notaPromedio = detalle ? resolvedAverage : null;
 
   const handleDownloadZip = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -346,12 +358,21 @@ const RequestListItem: React.FC<{
       >
         <div className="overflow-hidden p-6 space-y-6">
           {detalle ? (
-            <DetallePorPps
-              detalle={detalle}
-              totalHoras={totalHoras}
-              notaPromedio={notaPromedio}
-              onPreview={onPreview}
-            />
+            <>
+              {gradeResolutionQuery.isError && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                  No se pudieron verificar las notas académicas. No uses el promedio para SAC hasta
+                  reintentar la consulta.
+                </p>
+              )}
+              <DetallePorPps
+                detalle={detalle}
+                totalHoras={totalHoras}
+                notaPromedio={notaPromedio}
+                gradesByPractice={gradesByPractice}
+                onPreview={onPreview}
+              />
+            </>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[

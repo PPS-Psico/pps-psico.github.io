@@ -12,10 +12,11 @@ import {
   FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_ESTADO_PRACTICA,
   FIELD_NOTA_PRACTICAS,
+  FIELD_INFORME_ESTADO_PRACTICAS,
+  FIELD_NOTA_MOODLE_PRACTICAS,
+  FIELD_NOTA_FUENTE_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
-  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
-  FIELD_ESPECIALIDAD_PRACTICAS,
 } from "../constants";
 
 interface LinkDataParams {
@@ -90,8 +91,18 @@ export function processAndLinkStudentData({
           ppsName: pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "Práctica",
           informeLink: pps[FIELD_INFORME_LANZAMIENTOS],
           fechaFinalizacion: pps[FIELD_FECHA_FIN_LANZAMIENTOS] || new Date().toISOString(),
-          informeSubido: !!enrollment[FIELD_INFORME_SUBIDO_CONVOCATORIAS],
-          nota: practica?.[FIELD_NOTA_PRACTICAS],
+          informeSubido:
+            !!enrollment[FIELD_INFORME_SUBIDO_CONVOCATORIAS] ||
+            ["entregado", "calificado"].includes(
+              String(practica?.[FIELD_INFORME_ESTADO_PRACTICAS] ?? "")
+            ),
+          nota:
+            practica?.[FIELD_NOTA_MOODLE_PRACTICAS] != null
+              ? String(practica[FIELD_NOTA_MOODLE_PRACTICAS])
+              : practica?.[FIELD_NOTA_FUENTE_PRACTICAS] &&
+                  practica?.[FIELD_NOTA_FUENTE_PRACTICAS] !== "legacy"
+                ? practica?.[FIELD_NOTA_PRACTICAS]
+                : null,
           fechaEntregaInforme: enrollment[FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS],
         });
         processedForInforme.add(ppsId);
@@ -120,8 +131,16 @@ export function processAndLinkStudentData({
             pps[FIELD_FECHA_FIN_LANZAMIENTOS] ||
             practica[FIELD_FECHA_FIN_PRACTICAS] ||
             new Date().toISOString(),
-          informeSubido: !!practica[FIELD_NOTA_PRACTICAS],
-          nota: practica[FIELD_NOTA_PRACTICAS],
+          informeSubido: ["entregado", "calificado"].includes(
+            String(practica[FIELD_INFORME_ESTADO_PRACTICAS] ?? "")
+          ),
+          nota:
+            practica[FIELD_NOTA_MOODLE_PRACTICAS] != null
+              ? String(practica[FIELD_NOTA_MOODLE_PRACTICAS])
+              : practica[FIELD_NOTA_FUENTE_PRACTICAS] &&
+                  practica[FIELD_NOTA_FUENTE_PRACTICAS] !== "legacy"
+                ? practica[FIELD_NOTA_PRACTICAS]
+                : null,
         });
         processedForInforme.add(linkedId);
       }

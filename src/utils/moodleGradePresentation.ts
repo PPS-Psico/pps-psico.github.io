@@ -13,6 +13,9 @@ export interface MoodleGradeLike {
   grade_display: string | null;
   graded_at_display?: string | null;
   observed_at: string;
+  scan_closed?: boolean;
+  last_task_status?: string | null;
+  last_observed_at?: string | null;
 }
 
 export type MoodleGradeTone = "neutral" | "info" | "ok" | "warn";
@@ -33,6 +36,18 @@ type FinalMoodleGrade = MoodleGradeLike & {
 
 /** Una nota completa es terminal: queda guardada y la tarea deja de escanearse. */
 export function isFinalMoodleGrade(
+  snapshot: MoodleGradeLike | null | undefined
+): snapshot is FinalMoodleGrade {
+  return Boolean(
+    snapshot?.task_status === "graded" &&
+    snapshot.grade_value !== null &&
+    snapshot.grade_max !== null &&
+    snapshot.grade_max > 0 &&
+    snapshot.scan_closed !== false
+  );
+}
+
+function hasCompleteMoodleGrade(
   snapshot: MoodleGradeLike | null | undefined
 ): snapshot is FinalMoodleGrade {
   return Boolean(
@@ -64,15 +79,18 @@ export function presentMoodleGrade(
 ): MoodleGradePresentation | null {
   if (!snapshot) return null;
 
-  if (isFinalMoodleGrade(snapshot)) {
+  if (hasCompleteMoodleGrade(snapshot)) {
     const grade = `${compactNumber(snapshot.grade_value)} / ${compactNumber(snapshot.grade_max)}`;
     return {
       label: "Calificación en Campus",
-      detail: snapshot.graded_at_display
-        ? `Corregida: ${snapshot.graded_at_display}. Registro final guardado.`
-        : "La calificación quedó guardada y esta tarea ya no requiere nuevas consultas.",
+      detail:
+        snapshot.scan_closed === false
+          ? "Coordinación reabrió la verificación. Conservamos esta nota hasta recibir una nueva corrección."
+          : snapshot.graded_at_display
+            ? `Corregida: ${snapshot.graded_at_display}. Registro final guardado.`
+            : "La calificación quedó guardada y esta tarea ya no requiere nuevas consultas.",
       compact: snapshot.grade_display || grade,
-      tone: "ok",
+      tone: snapshot.scan_closed === false ? "info" : "ok",
       hasGrade: true,
     };
   }

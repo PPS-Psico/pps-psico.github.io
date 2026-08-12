@@ -7,9 +7,12 @@ calificaciones de informes PPS, sin perder en Mi Panel el dominio que le
 corresponde: convocatorias, selección, instituciones, horas, rotación,
 consentimiento y solicitudes.
 
-Hasta que esta integración exista, las notas de `Mis Prácticas` son
-autodeclaradas por el estudiante y la aplicación no debe inferir que un informe
-fue entregado, corregido o aprobado.
+La primera etapa ya funciona mediante un puente de sesión dentro del iframe de
+Campus y una importación administrativa normalizada. Las notas dejaron de ser
+autodeclaradas: Moodle es la fuente visible, cada observación queda auditada y
+el estudiante no tiene permisos para escribir calificaciones. El servicio web
+servidor-a-servidor descrito en este documento sigue siendo el objetivo de
+mayor confianza.
 
 ## Propiedad de los datos
 
@@ -18,14 +21,15 @@ fue entregado, corregido o aprobado.
 | Convocatoria, institución, área y período PPS | Mi Panel                                 | Sin cambios                         |
 | Horas y rotación                              | Mi Panel, con validación de coordinación | Sin cambios                         |
 | Consentimiento digital                        | Mi Panel                                 | Sin cambios                         |
-| Tarea de informe y sus fechas                 | Moodle                                   | Enlace/configuración manual         |
-| Estado de entrega y archivos                  | Moodle                                   | No inferir desde Mi Panel           |
-| Nota y devolución docente                     | Moodle                                   | Nota informada por el estudiante    |
+| Tarea de informe y sus fechas                 | Moodle                                   | Vínculo confirmado en Mi Panel      |
+| Estado de entrega y archivos                  | Moodle                                   | Snapshot observado/importado        |
+| Nota y devolución docente                     | Moodle                                   | Nota Moodle auditada                |
 | Acreditación académica final                  | Circuito institucional/SAC               | Solicitud y seguimiento referencial |
 
-La interfaz debe conservar siempre la procedencia (`source`) del dato. Nunca
-debe reemplazarse silenciosamente una nota informada por el alumno por una nota
-sincronizada.
+La interfaz conserva siempre la procedencia (`source`) y la fecha del dato. Una
+nota Moodle no se reemplaza silenciosamente: la primera lectura terminal cierra
+el escaneo y cualquier nueva corrección exige una reapertura administrativa
+auditada.
 
 ## Pedido mínimo a Sistemas
 
@@ -154,8 +158,10 @@ idempotente, registrar el resultado y poder reintentarlo.
 
 ## Modelo de datos preparado para sincronización
 
-No es necesario crear estos campos hasta que Sistemas confirme el contrato, pero
-la implementación debería prever:
+La implementación actual ya separa observaciones append-only, snapshots,
+ejecuciones de sincronización, lotes de importación, reaperturas y aplicaciones
+de nota. Al incorporar la API se reutiliza ese ledger y se eleva la confianza de
+la fuente a `api_verified`. El contrato debe contemplar:
 
 - `moodle_user_id`;
 - `moodle_course_id`;
@@ -170,15 +176,15 @@ la implementación debería prever:
 - `grade_scale`;
 - `graded_at`;
 - `feedback_text`;
-- `data_source`: `student_reported | moodle | coordination`;
+- `data_source`: `moodle_session_observed | export_verified | api_verified | coordination`;
 - `synced_at`;
 - `sync_status`: `pending | synced | conflict | error`;
 - `source_updated_at`;
 - `source_version`.
 
-Las notas autodeclaradas existentes deben conservarse en un campo separado o
-quedar auditadas cuando llegue la nota Moodle. Ante una diferencia, Moodle
-prevalece visualmente y la nota del alumno queda como antecedente.
+Las notas legacy permanecen auditables, pero Moodle prevalece visualmente y en
+los flujos de finalización. Ningún dato enviado por el formulario estudiantil se
+usa como fuente académica.
 
 ## Reglas de interfaz cuando exista la API
 

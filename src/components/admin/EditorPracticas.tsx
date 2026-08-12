@@ -10,7 +10,6 @@ import {
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
-  FIELD_NOTA_PRACTICAS,
   TABLE_NAME_PRACTICAS,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
@@ -97,7 +96,6 @@ const TABLE_CONFIG = {
       type: "select" as const,
       options: ["En curso", "Finalizada", "Convenio Realizado", "No se pudo concretar"],
     },
-    { key: FIELD_NOTA_PRACTICAS, label: "Nota", type: "text" as const },
     {
       key: FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
       label: "Nombre Institución",

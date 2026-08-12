@@ -60,7 +60,6 @@ interface StudentPanelContextType {
   updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
-  confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
   acceptCompromiso: ReturnType<typeof useStudentCommitments>["acceptCompromiso"];
   refetchAll: () => void;
   refetchPracticas: () => void;
@@ -101,7 +100,6 @@ const emptyContextValue: StudentPanelContextType = {
   updateFechaFin: { mutate: () => {}, isPending: false } as any,
   enrollStudent: { mutate: () => {}, isPending: false },
   cancelEnrollment: { mutate: () => {}, isPending: false },
-  confirmInforme: { mutate: () => {}, isPending: false } as any,
   acceptCompromiso: { mutate: () => {}, isPending: false } as any,
   refetchAll: () => {},
   refetchPracticas: () => {},
@@ -161,7 +159,6 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     convocatoriasError,
     enrollStudent,
     cancelEnrollment,
-    confirmInforme,
     refetchConvocatorias,
     institutionAddressMap,
     institutionLogoMap,
@@ -266,7 +263,6 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     updateFechaFin,
     enrollStudent,
     cancelEnrollment,
-    confirmInforme,
     acceptCompromiso,
     refetchAll,
     refetchPracticas,

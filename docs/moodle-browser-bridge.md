@@ -94,7 +94,7 @@ Estados permitidos: `no_access`, `not_submitted`, `submitted`, `graded`, `parse_
 - Pedir únicamente los cmids confirmados en `lanzamiento_moodle_tareas` o en
   `practica_moodle_tareas` para excepciones legacy sin lanzamiento confiable.
 - Validar forma, rangos y tipos antes de mostrar o persistir.
-- Fallar cerrado: si falta vínculo, acceso o parsing, mostrar “Consultar en Moodle”; no conservar una nota anterior como si fuera actual.
+- Fallar cerrado: si falta vínculo, acceso o parsing, mostrar “Consultar en Moodle” sin inventar un estado. El último estado confiable se conserva con su fecha y se distingue de la última lectura fallida.
 - Separar valor bruto Moodle de la conversión al esquema 1–10 de Mi Panel.
 
 ## Persistencia implementada
@@ -119,17 +119,21 @@ de manera individual para que no bloquee las restantes del mismo lote.
 
 La sincronización no depende de abrir **Entregas**: `MoodleGradeSyncProvider` envuelve todo el panel estudiantil y solicita las tareas confirmadas apenas terminaron de cargar la identidad, las PPS y sus vínculos. Esto ocurre en segundo plano desde Inicio. La limitación técnica se mantiene: la lectura sólo puede ejecutarse cuando Mi Panel está dentro del iframe de `campus.uflo.edu.ar`, porque el documento padre es quien posee la sesión Moodle.
 
-Cuando una observación validada llega con estado `graded`, un trigger privado actualiza `practicas.nota` dentro de la misma transacción y registra el antes/después en `private.moodle_grade_applications`. El frontend estudiantil nunca obtiene permiso de escritura sobre la nota.
+Cada snapshot conserva dos vistas: el mejor estado académico confirmado y la última observación real (`last_*`). De ese modo, un timeout o un cambio transitorio de Moodle queda visible para soporte sin borrar una entrega o nota previamente confirmada. Cada ejecución también queda resumida en `moodle_sync_runs`, con cantidades aceptadas, rechazadas, preservadas, resultado y duración.
 
-La conversión a la escala 0–10 del panel contempla las dos convenciones encontradas en el curso:
+Cuando una observación validada llega con estado `graded`, un trigger privado actualiza los campos académicos separados de la práctica (`informe_estado`, `nota_moodle`, `nota_fuente`, `nota_actualizada_at` y `nota_moodle_cmid`) dentro de la misma transacción. `practicas.nota` se conserva sólo por compatibilidad con pantallas legacy. El antes/después queda en `private.moodle_grade_applications` y el frontend estudiantil nunca obtiene permiso de escritura sobre la nota.
 
-- una nota porcentual como `80 / 100` o `83 / 100` se guarda como `8` o `8.3`;
-- una nota histórica cargada directamente como `9 / 100` se conserva como `9`;
-- otras escalas, por ejemplo `2 / 2`, se normalizan matemáticamente a `10`.
+La conversión a la escala 0–10 del panel es explícita por tarea mediante `aula_entregas.grade_conversion_mode`; nunca se infiere a partir de que el número parezca bajo. Los modos admitidos son:
 
-Cada nueva corrección Moodle vuelve a ejecutar el proceso. Una lectura demorada nunca puede pisar una observación más reciente, y una relectura con el mismo valor queda auditada sin generar un cambio innecesario.
+- `percentage`: normaliza matemáticamente la nota respecto de su máximo;
+- `direct_10`: conserva una calificación ya cargada en escala 0–10 aunque Moodle muestre `/ 100`;
+- `pass_fail`: conserva `Aprobado`/`Desaprobado` y no inventa una nota numérica.
 
-El formulario estudiantil de acreditación tampoco solicita ni escribe una nota. La base bloquea cambios estudiantiles sobre `practicas.nota` y elimina cualquier nota autodeclarada que intentara entrar dentro de `finalizacion_pps.detalle_practicas`.
+La primera calificación completa cierra el escaneo de esa práctica+tarea. Si el docente cambia una nota ya publicada, coordinación debe usar **Reabrir lectura**: se registra quién y por qué la reabrió, se incrementa la revisión y se acepta exactamente una nueva calificación terminal. Una lectura demorada nunca puede pisar una observación más reciente, y la nota anterior se conserva hasta recibir la nueva lectura válida.
+
+El formulario estudiantil de acreditación tampoco solicita ni escribe una nota. La base bloquea cambios estudiantiles sobre `practicas.nota` y elimina cualquier nota autodeclarada que intentara entrar dentro de `finalizacion_pps.detalle_practicas`. Las vistas administrativas de finalización resuelven la nota y el promedio en el servidor desde la práctica/snapshot vigente, sin confiar en el JSON enviado por el alumno.
+
+El promedio para SAC sólo se informa cuando todas las PPS de la solicitud tienen una calificación numérica con procedencia Moodle o una corrección explícita de coordinación. Si falta una, el promedio queda vacío en vez de calcularse sobre un subconjunto.
 
 ### Lectura desde el panel administrativo
 
@@ -150,10 +154,10 @@ pueden leer el estudiante seleccionado.
 
 El puente de navegador es oportunista: recoge y aplica información cuando cada estudiante inicia su panel dentro de Moodle. No realiza un barrido de alumnos que no hayan ingresado. Para completar el universo histórico existen dos caminos:
 
-1. exportación CSV/XLSX del libro de calificaciones e importación en modo dry-run;
+1. exportación CSV/TSV normalizada del libro de calificaciones e importación administrativa, primero en modo dry-run y luego en modo aplicar;
 2. servicio web Moodle restringido, consumido por una Edge Function.
 
-El segundo es el objetivo definitivo y debe mantener el token fuera del frontend.
+El primer camino ya está implementado en la pantalla de salud de Campus. El archivo debe contener `dni`, `cmid`, `status` y, para notas, `grade_value` y `grade_max`. El backend vuelve a resolver estudiante, práctica, vínculo y escala; no acepta esos datos como autoridad del archivo. Cada lote conserva conteos y rechazos, pero no guarda el archivo original. El segundo camino sigue siendo el objetivo definitivo y debe mantener el token fuera del frontend.
 
 ### Reporte previo a cualquier actualización
 

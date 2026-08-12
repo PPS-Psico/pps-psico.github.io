@@ -66,3 +66,25 @@ export function buildPendingMoodleAssignments(
 
   return byCmid;
 }
+
+/**
+ * El snapshot visible debe pertenecer a la tarea confirmada vigente. Así una
+ * nota terminal de un cmid anterior no cierra una tarea que fue remapeada.
+ */
+export function selectCurrentMoodleSnapshots<
+  T extends MoodleGradeLike & { practica_id: string; cmid: number },
+>(practices: Practica[], links: MoodleTaskLink[], snapshots: T[]): Map<string, T> {
+  const snapshotsByKey = new Map<string, T>(
+    snapshots.map((snapshot) => [`${snapshot.practica_id}:${snapshot.cmid}`, snapshot] as const)
+  );
+  const result = new Map<string, T>();
+
+  practices.forEach((practice) => {
+    const task = resolveExactMoodleTaskLink(practice, links);
+    if (!task) return;
+    const snapshot = snapshotsByKey.get(`${practice.id}:${task.moodleId}`);
+    if (snapshot) result.set(practice.id, snapshot);
+  });
+
+  return result;
+}

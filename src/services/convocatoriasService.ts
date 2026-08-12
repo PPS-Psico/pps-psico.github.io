@@ -457,7 +457,8 @@ export const toggleStudentSelection = async (
           [C.FIELD_FECHA_FIN_PRACTICAS]: lanzamiento[C.FIELD_FECHA_FIN_LANZAMIENTOS],
           [C.FIELD_HORAS_PRACTICAS]: 0,
           [C.FIELD_ESTADO_PRACTICA]: "En curso",
-          [C.FIELD_NOTA_PRACTICAS]: "Sin calificar",
+          [C.FIELD_NOTA_PRACTICAS]: null,
+          [C.FIELD_INFORME_ESTADO_PRACTICAS]: null,
         };
 
         await db.practicas.create(payload as Parameters<typeof db.practicas.create>[0]);

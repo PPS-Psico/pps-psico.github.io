@@ -40,6 +40,9 @@ verify_jwt = true
 [functions.ingest-moodle-grade-observation]
 verify_jwt = true
 
+[functions.ingest-moodle-grade-export]
+verify_jwt = true
+
 [functions.issue-moodle-signup-ticket]
 verify_jwt = false
 

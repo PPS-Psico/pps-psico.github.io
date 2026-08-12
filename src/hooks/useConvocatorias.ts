@@ -5,7 +5,6 @@ import { db } from "../lib/db";
 import { mockDb } from "../services/mockDb";
 import type {
   LanzamientoPPS,
-  InformeTask,
   AppRecord,
   ConvocatoriaFields,
   Estudiante,
@@ -32,9 +31,6 @@ import {
   FIELD_CORREO_CONVOCATORIAS,
   FIELD_TELEFONO_CONVOCATORIAS,
   FIELD_DNI_CONVOCATORIAS,
-  FIELD_INFORME_SUBIDO_CONVOCATORIAS,
-  FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS,
-  FIELD_NOTA_PRACTICAS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
@@ -454,26 +450,6 @@ export const useConvocatorias = (
     },
   });
 
-  const confirmInformeMutation = useMutation({
-    mutationFn: async (task: InformeTask) => {
-      if (legajo === "99999") return;
-      if (task.practicaId && task.convocatoriaId.startsWith("practica-")) {
-        return db.practicas.update(task.practicaId, {
-          [FIELD_NOTA_PRACTICAS]: "Entregado (sin corregir)",
-        });
-      } else if (task.convocatoriaId) {
-        return db.convocatorias.update(task.convocatoriaId, {
-          [FIELD_INFORME_SUBIDO_CONVOCATORIAS]: true,
-          [FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS]: new Date().toISOString(),
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["convocatorias", legajo, studentId] });
-      queryClient.invalidateQueries({ queryKey: ["practicas", legajo] });
-    },
-  });
-
   const enrollStudent = {
     mutate: (lanzamiento: LanzamientoPPS, completedOrientaciones?: string[]) => {
       openEnrollmentForm(
@@ -501,7 +477,6 @@ export const useConvocatorias = (
       },
       isPending: cancelEnrollmentMutation.isPending,
     },
-    confirmInforme: confirmInformeMutation,
     refetchConvocatorias,
     institutionAddressMap,
     institutionLogoMap,

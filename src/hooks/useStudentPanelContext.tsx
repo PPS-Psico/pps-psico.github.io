@@ -44,7 +44,6 @@ interface StudentPanelContextType {
   updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
   enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
-  confirmInforme: ReturnType<typeof useConvocatorias>["confirmInforme"];
   refetchAll: () => void;
   refetchPracticas: () => void;
 }
@@ -84,7 +83,6 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     convocatoriasError,
     enrollStudent,
     cancelEnrollment,
-    confirmInforme,
     refetchConvocatorias,
     institutionAddressMap,
     // FIX: Pass the `studentDetails` object to the `useConvocatorias` hook as the third argument.
@@ -147,7 +145,6 @@ export const StudentPanelProvider: React.FC<{ legajo: string; children: ReactNod
     updateFechaFin,
     enrollStudent,
     cancelEnrollment,
-    confirmInforme,
     refetchAll,
     refetchPracticas,
     criterios,

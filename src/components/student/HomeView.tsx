@@ -28,6 +28,8 @@ import {
   FIELD_FECHA_FIN_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOTA_PRACTICAS,
+  FIELD_NOTA_MOODLE_PRACTICAS,
+  FIELD_NOTA_FUENTE_PRACTICAS,
   FIELD_EMPRESA_PPS_SOLICITUD,
   FIELD_ESTADO_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
@@ -356,7 +358,10 @@ const HomeView: React.FC<HomeViewProps> = ({
     .map((p) => {
       // Solo mostramos la nota si es realmente una calificación numérica.
       // Valores como "Sin calificar" o "No Entregado" no son notas → "—".
-      const rawNota = p[FIELD_NOTA_PRACTICAS];
+      const gradeSource = String(p[FIELD_NOTA_FUENTE_PRACTICAS] ?? "");
+      const rawNota =
+        p[FIELD_NOTA_MOODLE_PRACTICAS] ??
+        (gradeSource && gradeSource !== "legacy" ? p[FIELD_NOTA_PRACTICAS] : null);
       const notaNum = rawNota != null && String(rawNota).trim() !== "" ? Number(rawNota) : NaN;
       const notaClean = Number.isFinite(notaNum) ? String(rawNota).trim() : null;
       return {

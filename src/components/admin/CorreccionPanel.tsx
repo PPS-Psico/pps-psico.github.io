@@ -46,9 +46,31 @@ const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false
 
   const updateNotaMutation = useMutation({
     mutationFn: async ({ student, nota }: { student: InformeCorreccionStudent; nota: string }) => {
-      const valueToSend = nota === "Sin calificar" ? null : nota;
+      const isStatusOnly = ["Sin calificar", "No Entregado", "Entregado (sin corregir)"].includes(
+        nota
+      );
+      const valueToSend = isStatusOnly ? null : nota;
       if (student.practicaId) {
-        return db.practicas.update(student.practicaId, { nota: valueToSend });
+        const numeric =
+          valueToSend != null && /^\d+(?:[.,]\d+)?$/.test(valueToSend)
+            ? Number(valueToSend.replace(",", "."))
+            : null;
+        const informeEstado =
+          nota === "No Entregado"
+            ? "sin_entrega"
+            : nota === "Entregado (sin corregir)"
+              ? "entregado"
+              : nota === "Sin calificar"
+                ? "a_revisar"
+                : "calificado";
+        return db.practicas.update(student.practicaId, {
+          nota: valueToSend,
+          nota_moodle: numeric != null && numeric >= 0 && numeric <= 10 ? numeric : null,
+          nota_fuente: valueToSend ? "admin" : null,
+          nota_actualizada_at: new Date().toISOString(),
+          nota_moodle_cmid: null,
+          informe_estado: informeEstado,
+        });
       }
       return null;
     },

@@ -9734,6 +9734,34 @@ html.dark .ah-delivery-guide__deadline svg {
     box-shadow var(--duration-fast) var(--ease-standard);
 }
 
+.ah-delivery-space-shell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ah-delivery-space-shell > .ah-delivery-space {
+  flex: 1;
+}
+
+.ah-delivery-space__reopen {
+  width: 100%;
+  border: 1px solid var(--rule-2, #d8dde5);
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px 10px;
+  color: var(--ink-2, #455064);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ah-delivery-space__reopen:hover {
+  border-color: var(--accent, #2f6f60);
+  color: var(--accent, #2f6f60);
+}
+
 .ah-delivery-space:hover {
   transform: translateY(-2px);
   border-color: color-mix(in oklab, var(--area) 42%, var(--border));
