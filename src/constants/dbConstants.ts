@@ -13,6 +13,8 @@ export const TABLE_SOLICITUDES_NUEVA = "solicitudes_nueva_pps";
 export const TABLE_COMPROMISOS_PPS = "compromisos_pps";
 export const TABLE_CONVENIOS = "convenios";
 export const TABLE_ANALYTICS_HEALTH_CHECKS = "analytics_health_checks";
+export const TABLE_LANZAMIENTO_OPCIONES = "lanzamiento_opciones";
+export const TABLE_CONVOCATORIA_PREFERENCIAS = "convocatoria_preferencias";
 
 // Legacy Aliases for Tables (Kept for compatibility)
 export const TABLE_NAME_PPS = TABLE_PPS;
@@ -91,6 +93,7 @@ export const FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS = "cupos_disponibles";
 export const FIELD_ORIENTACION_LANZAMIENTOS = "orientacion";
 export const FIELD_FECHA_INICIO_LANZAMIENTOS = "fecha_inicio";
 export const FIELD_FECHA_FIN_LANZAMIENTOS = "fecha_finalizacion";
+export const FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS = "finalizacion_por_horas";
 export const FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS = "fecha_relanzamiento";
 export const FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS = "proximo_seguimiento";
 export const FIELD_DIRECCION_LANZAMIENTOS = "direccion";
@@ -136,6 +139,7 @@ export const FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS = "estado_inscripcion";
 export const FIELD_INFORME_SUBIDO_CONVOCATORIAS = "informe_subido";
 export const FIELD_HORARIO_FORMULA_CONVOCATORIAS = "horario_seleccionado";
 export const FIELD_HORARIO_ASIGNADO_CONVOCATORIAS = "horario_asignado";
+export const FIELD_OPCION_ASIGNADA_CONVOCATORIAS = "opcion_asignada_id";
 export const FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS = "estudiante_id";
 export const FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS = "lanzamiento_id";
 export const FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS = "fecha_entrega_informe";

@@ -24,6 +24,8 @@ import {
   FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS,
@@ -148,6 +150,8 @@ export function buildSidebarEntries(
     const cupos = l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
     const fechaInicio = l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
     const fechaFin = l[FIELD_FECHA_FIN_LANZAMIENTOS] as string | null;
+    const finalizacionPorHoras = Boolean(l[FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]);
+    const horasAcreditadas = l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] as number | null;
     const fechaFinInsc = l[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string | null;
     const totalInsc = countsByLaunch[l.id]?.inscriptos || 0;
     const totalSel = countsByLaunch[l.id]?.seleccionados || 0;
@@ -156,13 +160,22 @@ export function buildSidebarEntries(
     const bajasConsent = consent.bajas ?? 0;
     const vencida = inscripcionVencida(fechaFinInsc);
 
+    const timeline = finalizacionPorHoras
+      ? (() => {
+          const hoy = parseToUTCDate(new Date().toISOString());
+          const inicio = parseToUTCDate(fechaInicio);
+          if (!hoy || !inicio) return "desconocida" as const;
+          return inicio.getTime() > hoy.getTime() ? ("pendiente" as const) : ("en_curso" as const);
+        })()
+      : deriveTimeline(fechaInicio, fechaFin);
+
     const bucket: SidebarBucket = deriveBucket({
       dbState,
       seguroGestionadoAt,
       totalSel,
       totalInsc,
       vencida,
-      timeline: deriveTimeline(fechaInicio, fechaFin),
+      timeline,
     });
 
     // El canvas sigue el estado real de la DB: así una PPS que ya arrancó pero
@@ -197,9 +210,11 @@ export function buildSidebarEntries(
         // así que la meta lo dice en vez de mostrar la fecha de inicio.
         metaLine = !seguroGestionado
           ? "Seguro pendiente"
-          : fechaFin
-            ? `En curso · hasta ${formatDate(fechaFin)}`
-            : "Prácticas en curso";
+          : finalizacionPorHoras
+            ? `En curso · hasta completar ${horasAcreditadas || 70} h`
+            : fechaFin
+              ? `En curso · hasta ${formatDate(fechaFin)}`
+              : "Prácticas en curso";
         break;
       default:
         metaLine = fechaFin ? `Finalizó el ${formatDate(fechaFin)}` : "Finalizada";

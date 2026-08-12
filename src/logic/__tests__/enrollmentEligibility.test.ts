@@ -84,6 +84,40 @@ describe("getEnrollmentEligibility", () => {
 
     expect(getEnrollmentEligibility(makeLanzamiento(), history).isCompleted).toBe(false);
   });
+
+  it("bloquea otro dispositivo de la misma orientación en la misma institución", () => {
+    const history = makeHistory({
+      completedOrientationsByInstitution: new Map([
+        ["ministerio de trabajo", new Set(["laboral"])],
+      ]),
+    });
+    const otroDispositivo = makeLanzamiento({
+      id: "nuevo-lanzamiento",
+      nombre_pps: "Ministerio de Trabajo",
+      orientacion: "Laboral",
+    });
+
+    const result = getEnrollmentEligibility(otroDispositivo, history);
+    expect(result.isCompleted).toBe(true);
+    expect(result.availableOrientaciones).toEqual([]);
+  });
+
+  it("usa el id estable de institución aunque cambie el nombre publicado", () => {
+    const history = makeHistory({
+      completedOrientationsByInstitutionId: new Map([["inst-ministerio", new Set(["laboral"])]]),
+    });
+    const megaConvocatoria = makeLanzamiento({
+      id: "mega-2026",
+      institucion_id: "inst-ministerio",
+      nombre_pps: "Programa de Promoción del Empleo 2026",
+      orientacion: "Laboral, Educacional",
+    });
+
+    const result = getEnrollmentEligibility(megaConvocatoria, history);
+    expect(result.isCompleted).toBe(false);
+    expect(result.completedOrientaciones).toEqual(["Laboral"]);
+    expect(result.availableOrientaciones).toEqual(["Educacional"]);
+  });
 });
 
 describe("getCompletedEnrollmentLabel", () => {

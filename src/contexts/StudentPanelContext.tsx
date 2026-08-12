@@ -58,7 +58,10 @@ interface StudentPanelContextType {
   updateOrientation: ReturnType<typeof useStudentData>["updateOrientation"];
   updateInternalNotes: ReturnType<typeof useStudentData>["updateInternalNotes"];
   updateFechaFin: ReturnType<typeof useStudentPracticas>["updateFechaFin"];
-  enrollStudent: { mutate: (lanzamiento: LanzamientoPPS) => void; isPending: boolean };
+  enrollStudent: {
+    mutate: (lanzamiento: LanzamientoPPS, completedOrientaciones?: string[]) => void;
+    isPending: boolean;
+  };
   cancelEnrollment: { mutate: (convocatoriaId: string) => void; isPending: boolean };
   acceptCompromiso: ReturnType<typeof useStudentCommitments>["acceptCompromiso"];
   refetchAll: () => void;

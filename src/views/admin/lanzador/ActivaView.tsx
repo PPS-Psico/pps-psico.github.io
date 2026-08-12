@@ -9,6 +9,8 @@ import DisapprovalBadge from "../../../components/admin/DisapprovalBadge";
 import Toast from "../../../components/ui/Toast";
 import {
   FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   getPenaltyScore,
@@ -33,6 +35,8 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
   const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
   const fechaFin = launch[FIELD_FECHA_FIN_LANZAMIENTOS] as string | null;
+  const finalizacionPorHoras = Boolean(launch[FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]);
+  const horasAcreditadas = launch[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] as number | null;
 
   // 1. Estadísticas de prácticas reales
   const practicasQuery = useLaunchPracticas(launch.id);
@@ -227,7 +231,13 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
           <Stat
             label="Período"
             value={fechaInicio ? formatDate(fechaInicio) : "—"}
-            hint={fechaFin ? `hasta ${formatDate(fechaFin)}` : "sin fecha fin"}
+            hint={
+              finalizacionPorHoras
+                ? `cada estudiante completa ${horasAcreditadas || 70} h`
+                : fechaFin
+                  ? `hasta ${formatDate(fechaFin)}`
+                  : "sin fecha fin"
+            }
             size="sm"
           />
         </StatGrid>

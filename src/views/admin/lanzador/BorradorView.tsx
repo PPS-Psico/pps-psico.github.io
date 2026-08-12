@@ -11,9 +11,11 @@ import {
   FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
   FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -43,6 +45,8 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
   const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
   const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
   const fechaFin = launch[FIELD_FECHA_FIN_LANZAMIENTOS] as string | null;
+  const finalizacionPorHoras = Boolean(launch[FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]);
+  const horasAcreditadas = launch[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] as number | null;
   const fechaInicioInsc = launch[FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] as string | null;
   const fechaFinInsc = launch[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string | null;
   const descripcion = launch[FIELD_DESCRIPCION_LANZAMIENTOS] as string | null;
@@ -73,7 +77,11 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
     },
     {
       label: "Fecha fin PPS",
-      value: fechaFin ? formatDate(fechaFin) : null,
+      value: finalizacionPorHoras
+        ? `Individual · al completar ${horasAcreditadas || 70} h`
+        : fechaFin
+          ? formatDate(fechaFin)
+          : null,
       icon: "event_available",
       required: true,
     },

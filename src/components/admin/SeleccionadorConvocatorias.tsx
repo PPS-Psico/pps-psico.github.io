@@ -13,7 +13,7 @@ import {
   getEffectivePracticeStatus,
   isPracticeDisapproved,
 } from "../../logic/studentRules";
-import type { EnrichedStudent } from "../../types";
+import type { EnrichedStudent, LanzamientoOpcion } from "../../types";
 import {
   formatDate,
   getEspecialidadClasses,
@@ -267,6 +267,9 @@ const StudentRow: React.FC<{
   showScheduleSelector?: boolean;
   onShowPracticas?: (student: EnrichedStudent) => void;
   horariosDisponibles?: string[];
+  opciones?: LanzamientoOpcion[];
+  chosenOptionId?: string;
+  onOptionChoice?: (optionId: string) => void;
 }> = ({
   student,
   onToggleSelection,
@@ -277,6 +280,9 @@ const StudentRow: React.FC<{
   showScheduleSelector = true,
   onShowPracticas,
   horariosDisponibles = [],
+  opciones = [],
+  chosenOptionId,
+  onOptionChoice,
 }) => {
   const isSelected = normalizeStringForComparison(student.status) === "seleccionado";
   const isCommitmentConfirmed = isSelected && isCommitmentAccepted(student.compromisoEstado);
@@ -427,14 +433,47 @@ const StudentRow: React.FC<{
       </div>
 
       <div className="lv4-card-actions">
-        <ScheduleSelector
-          horariosSolicitados={student.horarioSeleccionado || ""}
-          horarioAsignado={student.horarioAsignado}
-          isEditMode={isEditMode}
-          onScheduleChange={(newSchedule) => onUpdateSchedule(student, newSchedule)}
-          disabled={!showScheduleSelector}
-          horariosDisponibles={horariosDisponibles}
-        />
+        {opciones.length > 0 && (
+          <label className="lv4-option-assignment">
+            <span>Dispositivo</span>
+            <select
+              className="lv4-option-assignment-select"
+              value={
+                chosenOptionId ||
+                student.opcionAsignadaId ||
+                student.opcionesPreferidas?.[0]?.id ||
+                ""
+              }
+              onChange={(event) => onOptionChoice?.(event.target.value)}
+              disabled={isSelected && !isEditMode}
+            >
+              <option value="">Elegir dispositivo</option>
+              {opciones.map((option) => {
+                const preferenceIndex = student.opcionesPreferidas?.findIndex(
+                  (preferred) => preferred.id === option.id
+                );
+                return (
+                  <option key={option.id} value={option.id}>
+                    {preferenceIndex != null && preferenceIndex >= 0
+                      ? `${preferenceIndex + 1}ª · `
+                      : ""}
+                    {option.nombre} · {option.orientacion} · {option.cupos} cupos
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+        )}
+        {opciones.length === 0 && (
+          <ScheduleSelector
+            horariosSolicitados={student.horarioSeleccionado || ""}
+            horarioAsignado={student.horarioAsignado}
+            isEditMode={isEditMode}
+            onScheduleChange={(newSchedule) => onUpdateSchedule(student, newSchedule)}
+            disabled={!showScheduleSelector}
+            horariosDisponibles={horariosDisponibles}
+          />
+        )}
 
         <button
           className={`lv4-fab ${isCommitmentConfirmed ? "confirmed" : isSelected ? "selected" : ""}`}
@@ -687,6 +726,8 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     scheduleInfo,
     isEditMode,
     handleToggle,
+    assignmentChoiceByEnrollment,
+    handleOptionChoice,
     handleBajaConPenalizacion,
     handleUpdateSchedule,
   } = useSeleccionadorLogic(isTestingMode, preSelectedLaunchId);
@@ -872,6 +913,28 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
           </div>
         )}
 
+        {(selectedLanzamiento.opciones || []).length > 0 && (
+          <div className="lv4-option-capacity-grid">
+            {selectedLanzamiento.opciones!.map((option) => {
+              const assigned = selectedCandidates.filter(
+                (student) => student.opcionAsignadaId === option.id
+              ).length;
+              return (
+                <div
+                  key={option.id}
+                  className={`lv4-option-capacity ${assigned >= option.cupos ? "is-full" : ""}`}
+                >
+                  <span>{option.nombre}</span>
+                  <strong>
+                    {assigned}/{option.cupos}
+                  </strong>
+                  <small>{option.orientacion}</small>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div
           style={{
             display: "flex",
@@ -957,6 +1020,9 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               isReviewMode={viewMode === "review"}
               isEditMode={isEditMode}
               showScheduleSelector={scheduleInfo?.showScheduleSelector ?? true}
+              opciones={selectedLanzamiento.opciones || []}
+              chosenOptionId={assignmentChoiceByEnrollment[student.enrollmentId]}
+              onOptionChoice={(optionId) => handleOptionChoice(student.enrollmentId, optionId)}
               horariosDisponibles={scheduleInfo?.horariosDisponibles ?? []}
               onShowPracticas={(student) => {
                 setSelectedStudentForPracticas(student);

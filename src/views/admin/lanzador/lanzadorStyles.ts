@@ -1204,6 +1204,50 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 }
 .lv4-btn-final-reminder:hover { border-color: var(--warn); background: var(--warn-s); }
 .lv4-btn-final-reminder:disabled { border-color: var(--rule-2); background: var(--paper-2); color: var(--ink-4); }
+
+/* Mega-convocatorias: editor de dispositivos dentro del Lanzador. */
+.lv4-option-empty {
+  display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px dashed var(--rule-2);
+  border-radius: 12px; background: var(--paper-2); color: var(--ink-3);
+}
+.lv4-option-empty > .material-icons { color: var(--accent); font-size: 22px; }
+.lv4-option-empty strong { display: block; color: var(--ink-2); font-size: 12px; }
+.lv4-option-empty span:not(.material-icons) { display: block; margin-top: 3px; font-size: 11.5px; line-height: 1.45; }
+.lv4-option-stack { display: flex; flex-direction: column; gap: 12px; }
+.lv4-option-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ink-3);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+}
+.lv4-option-summary strong { color: var(--accent); }
+.lv4-option-card { padding: 16px; border: 1px solid var(--rule-2); border-radius: 12px; background: var(--paper-2); }
+.lv4-option-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; color: var(--ink); }
+.lv4-option-card-head > strong { flex: 1; min-width: 0; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.lv4-option-index {
+  display: inline-grid; place-items: center; width: 28px; height: 24px; border-radius: 6px;
+  background: var(--accent-s); color: var(--accent); font: 700 10px/1 'JetBrains Mono', monospace;
+}
+.lv4-option-assignment { display: flex; min-width: 220px; flex: 1 1 280px; flex-direction: column; gap: 4px; }
+.lv4-option-assignment > span { color: var(--ink-4); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.lv4-option-assignment-select {
+  width: 100%; min-height: 34px; padding: 6px 30px 6px 10px; border: 1px solid var(--rule-2);
+  border-radius: 8px; background: var(--paper); color: var(--ink-2); font-size: 11.5px;
+}
+.lv4-option-assignment-select:focus { border-color: var(--accent); outline: 2px solid var(--accent-s); outline-offset: 1px; }
+.lv4-option-assignment-select:disabled { cursor: not-allowed; opacity: .62; }
+.lv4-option-capacity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 7px; margin: 0 0 16px; }
+.lv4-option-capacity {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 9px 10px;
+  border: 1px solid var(--rule-2); border-radius: 9px; background: var(--paper-2);
+}
+.lv4-option-capacity > span { overflow: hidden; color: var(--ink-2); font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.lv4-option-capacity > strong { color: var(--ok); font: 700 11px/1.3 'JetBrains Mono', monospace; }
+.lv4-option-capacity > small { grid-column: 1 / -1; color: var(--ink-4); font-size: 9.5px; text-transform: uppercase; }
+.lv4-option-capacity.is-full { border-color: color-mix(in oklab, var(--warn) 38%, var(--rule-2)); }
+.lv4-option-capacity.is-full > strong { color: var(--warn); }
+@media (max-width: 620px) {
+  .lv4-option-card { padding: 12px; }
+  .lv4-option-summary { align-items: flex-start; flex-direction: column; gap: 3px; }
+}
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

@@ -543,6 +543,45 @@ export type Database = {
           },
         ]
       }
+      convocatoria_preferencias: {
+        Row: {
+          convocatoria_id: string
+          created_at: string
+          id: string
+          opcion_id: string
+          prioridad: number
+        }
+        Insert: {
+          convocatoria_id: string
+          created_at?: string
+          id?: string
+          opcion_id: string
+          prioridad: number
+        }
+        Update: {
+          convocatoria_id?: string
+          created_at?: string
+          id?: string
+          opcion_id?: string
+          prioridad?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convocatoria_preferencias_convocatoria_id_fkey"
+            columns: ["convocatoria_id"]
+            isOneToOne: false
+            referencedRelation: "convocatorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convocatoria_preferencias_opcion_id_fkey"
+            columns: ["opcion_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamiento_opciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       convocatorias: {
         Row: {
           airtable_id: string | null
@@ -575,6 +614,7 @@ export type Database = {
           lanzamiento_id: string | null
           legajo: number | null
           nombre_pps: string | null
+          opcion_asignada_id: string | null
           orientacion: string | null
           otra_situacion_academica: string | null
           reminder_sent_at: string | null
@@ -615,6 +655,7 @@ export type Database = {
           lanzamiento_id?: string | null
           legajo?: number | null
           nombre_pps?: string | null
+          opcion_asignada_id?: string | null
           orientacion?: string | null
           otra_situacion_academica?: string | null
           reminder_sent_at?: string | null
@@ -655,6 +696,7 @@ export type Database = {
           lanzamiento_id?: string | null
           legajo?: number | null
           nombre_pps?: string | null
+          opcion_asignada_id?: string | null
           orientacion?: string | null
           otra_situacion_academica?: string | null
           reminder_sent_at?: string | null
@@ -677,6 +719,13 @@ export type Database = {
             columns: ["lanzamiento_id"]
             isOneToOne: false
             referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convocatorias_opcion_asignada_id_fkey"
+            columns: ["opcion_asignada_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamiento_opciones"
             referencedColumns: ["id"]
           },
           {
@@ -1079,6 +1128,62 @@ export type Database = {
           },
         ]
       }
+      lanzamiento_opciones: {
+        Row: {
+          activa: boolean
+          actividades: string[]
+          created_at: string
+          cupos: number
+          horarios: string[]
+          id: string
+          lanzamiento_id: string
+          nombre: string
+          orden: number
+          orientacion: string
+          requisitos: string[]
+          ubicacion: string | null
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          actividades?: string[]
+          created_at?: string
+          cupos: number
+          horarios?: string[]
+          id?: string
+          lanzamiento_id: string
+          nombre: string
+          orden?: number
+          orientacion: string
+          requisitos?: string[]
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          actividades?: string[]
+          created_at?: string
+          cupos?: number
+          horarios?: string[]
+          id?: string
+          lanzamiento_id?: string
+          nombre?: string
+          orden?: number
+          orientacion?: string
+          requisitos?: string[]
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lanzamiento_opciones_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lanzamientos_pps: {
         Row: {
           actividades_label: string | null
@@ -1100,6 +1205,7 @@ export type Database = {
           fecha_inicio_inscripcion: string | null
           fecha_publicacion: string | null
           fecha_relanzamiento: string | null
+          finalizacion_por_horas: boolean
           historial_gestion: string | null
           horario_seleccionado: string | null
           horarios_fijos: boolean | null
@@ -1149,6 +1255,7 @@ export type Database = {
           fecha_inicio_inscripcion?: string | null
           fecha_publicacion?: string | null
           fecha_relanzamiento?: string | null
+          finalizacion_por_horas?: boolean
           historial_gestion?: string | null
           horario_seleccionado?: string | null
           horarios_fijos?: boolean | null
@@ -1198,6 +1305,7 @@ export type Database = {
           fecha_inicio_inscripcion?: string | null
           fecha_publicacion?: string | null
           fecha_relanzamiento?: string | null
+          finalizacion_por_horas?: boolean
           historial_gestion?: string | null
           horario_seleccionado?: string | null
           horarios_fijos?: boolean | null
@@ -1958,6 +2066,7 @@ export type Database = {
           horas_realizadas: number | null
           id: string
           informe_estado: string | null
+          institucion_id: string | null
           lanzamiento_id: string | null
           nombre_institucion: string | null
           nota: string | null
@@ -1965,6 +2074,7 @@ export type Database = {
           nota_fuente: string | null
           nota_moodle: number | null
           nota_moodle_cmid: number | null
+          opcion_id: string | null
           tipo_actividad: string
         }
         Insert: {
@@ -1984,6 +2094,7 @@ export type Database = {
           horas_realizadas?: number | null
           id?: string
           informe_estado?: string | null
+          institucion_id?: string | null
           lanzamiento_id?: string | null
           nombre_institucion?: string | null
           nota?: string | null
@@ -1991,6 +2102,7 @@ export type Database = {
           nota_fuente?: string | null
           nota_moodle?: number | null
           nota_moodle_cmid?: number | null
+          opcion_id?: string | null
           tipo_actividad?: string
         }
         Update: {
@@ -2010,6 +2122,7 @@ export type Database = {
           horas_realizadas?: number | null
           id?: string
           informe_estado?: string | null
+          institucion_id?: string | null
           lanzamiento_id?: string | null
           nombre_institucion?: string | null
           nota?: string | null
@@ -2017,6 +2130,7 @@ export type Database = {
           nota_fuente?: string | null
           nota_moodle?: number | null
           nota_moodle_cmid?: number | null
+          opcion_id?: string | null
           tipo_actividad?: string
         }
         Relationships: [
@@ -2042,10 +2156,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "practicas_institucion_id_fkey"
+            columns: ["institucion_id"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "practicas_lanzamiento_id_fkey"
             columns: ["lanzamiento_id"]
             isOneToOne: false
             referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicas_opcion_id_fkey"
+            columns: ["opcion_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamiento_opciones"
             referencedColumns: ["id"]
           },
         ]
@@ -3097,6 +3225,60 @@ export type Database = {
       }
       identity_ip_rate_limited: { Args: never; Returns: boolean }
       increment_snooze_count: { Args: { reminder_id: string }; Returns: number }
+      inscribir_convocatoria_multiopcion: {
+        Args: {
+          p_datos?: Json
+          p_lanzamiento_id: string
+          p_opcion_ids: string[]
+        }
+        Returns: {
+          airtable_id: string | null
+          baja_automatica_at: string | null
+          certificado_trabajo: string | null
+          certificado_url: string | null
+          correo: string | null
+          created_at: string | null
+          cursando_electivas: string | null
+          cv_url: string | null
+          direccion: string | null
+          dni: number | null
+          estado_inscripcion: string | null
+          estudiante_id: string | null
+          fecha_entrega_informe: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          fecha_nacimiento: string | null
+          final_reminder_claim_token: string | null
+          final_reminder_claimed_at: string | null
+          final_reminder_claimed_by: string | null
+          final_reminder_sent_at: string | null
+          final_reminder_sent_by: string | null
+          finales_adeuda: string | null
+          horario_asignado: string | null
+          horario_seleccionado: string | null
+          horas_acreditadas: number | null
+          id: string
+          informe_subido: boolean | null
+          lanzamiento_id: string | null
+          legajo: number | null
+          nombre_pps: string | null
+          opcion_asignada_id: string | null
+          orientacion: string | null
+          otra_situacion_academica: string | null
+          reminder_sent_at: string | null
+          selected_at: string | null
+          selection_decided_at: string | null
+          telefono: string | null
+          termino_cursar: string | null
+          trabaja: boolean | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "convocatorias"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       marcar_lista_estudiantes_entregada: {
@@ -3160,6 +3342,14 @@ export type Database = {
       }
       safe_date_cast: { Args: { val: string }; Returns: string }
       save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean }
+      seleccionar_convocatoria_opcion: {
+        Args: {
+          p_convocatoria_id: string
+          p_opcion_id: string
+          p_seleccionar: boolean
+        }
+        Returns: boolean
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       submit_compromiso_pps: {

@@ -88,6 +88,9 @@ export const useSeleccionadorLogic = (
     null
   );
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [assignmentChoiceByEnrollment, setAssignmentChoiceByEnrollment] = useState<
+    Record<string, string>
+  >({});
 
   const queryClient = useQueryClient();
 
@@ -101,7 +104,7 @@ export const useSeleccionadorLogic = (
         records = (await db.lanzamientos.getAll()) as unknown as Record<string, unknown>[];
       }
 
-      return records
+      const launches = records
         .map((r) => {
           // PRE-CLEAN DATA ON FETCH
           const cleaned = { ...r };
@@ -127,6 +130,22 @@ export const useSeleccionadorLogic = (
           }
           return status === "abierta" || status === "abierto";
         });
+      if (!isTestingMode && launches.length > 0) {
+        const { data: optionRows } = await supabase
+          .from("lanzamiento_opciones")
+          .select("*")
+          .in(
+            "lanzamiento_id",
+            launches.map((launch) => launch.id)
+          )
+          .eq("activa", true)
+          .order("orden", { ascending: true });
+        return launches.map((launch) => ({
+          ...launch,
+          opciones: (optionRows || []).filter((option) => option.lanzamiento_id === launch.id),
+        }));
+      }
+      return launches;
     },
   });
 
@@ -201,6 +220,7 @@ export const useSeleccionadorLogic = (
         practicasRes: Practica[] = [],
         penaltiesRes: Penalizacion[] = [],
         compromisosRes: CompromisoLite[] = [];
+      let preferencesRes: { convocatoria_id: string; opcion_id: string; prioridad: number }[] = [];
       if (isTestingMode) {
         [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
           mockDb.getAll("estudiantes", { id: studentIds }),
@@ -209,7 +229,7 @@ export const useSeleccionadorLogic = (
         ]);
       } else {
         // Using 'in' filter for array of IDs
-        const [students, practicas, penalties, compromisos] = await Promise.all([
+        const [students, practicas, penalties, compromisos, preferences] = await Promise.all([
           db.estudiantes.getAll({ filters: { id: studentIds } }),
           db.practicas.getAll({ filters: { [FIELD_ESTUDIANTE_LINK_PRACTICAS]: studentIds } }),
           db.penalizaciones.getAll({
@@ -219,11 +239,20 @@ export const useSeleccionadorLogic = (
             .from("compromisos_pps")
             .select("convocatoria_id, estado, accepted_at")
             .eq("lanzamiento_id", launchId),
+          supabase
+            .from("convocatoria_preferencias")
+            .select("convocatoria_id, opcion_id, prioridad")
+            .in(
+              "convocatoria_id",
+              enrollments.map((enrollment) => enrollment.id)
+            )
+            .order("prioridad", { ascending: true }),
         ]);
         studentsRes = students;
         practicasRes = practicas;
         penaltiesRes = penalties;
         compromisosRes = compromisos.data || [];
+        preferencesRes = preferences.data || [];
       }
 
       const studentMap = new Map(studentsRes.map((s) => [s.id, s]));
@@ -277,6 +306,16 @@ export const useSeleccionadorLogic = (
 
           const puntajeTotal = calculateScore(enrollment, totalHoras, penalizacionAcumulada, works);
           const compromiso = compromisoMap.get(enrollment.id);
+          const preferredOptionIds = preferencesRes
+            .filter((preference) => preference.convocatoria_id === enrollment.id)
+            .sort((a, b) => a.prioridad - b.prioridad)
+            .map((preference) => preference.opcion_id);
+          const opcionesPreferidas = (selectedLanzamiento.opciones || []).filter((option) =>
+            preferredOptionIds.includes(option.id)
+          );
+          opcionesPreferidas.sort(
+            (a, b) => preferredOptionIds.indexOf(a.id) - preferredOptionIds.indexOf(b.id)
+          );
 
           return {
             enrollmentId: enrollment.id,
@@ -297,6 +336,8 @@ export const useSeleccionadorLogic = (
               enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] !== null
                 ? String(enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS])
                 : null,
+            opcionAsignadaId: enrollment.opcion_asignada_id,
+            opcionesPreferidas,
             totalHoras,
             cantPracticas,
             penalizacionAcumulada,
@@ -333,6 +374,11 @@ export const useSeleccionadorLogic = (
     mutationFn: async (student: EnrichedStudent) => {
       if (!selectedLanzamiento) return;
       const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
+      const selectedOptionId =
+        assignmentChoiceByEnrollment[student.enrollmentId] ||
+        student.opcionAsignadaId ||
+        student.opcionesPreferidas?.[0]?.id ||
+        selectedLanzamiento.opciones?.[0]?.id;
 
       if (isTestingMode) {
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -348,7 +394,8 @@ export const useSeleccionadorLogic = (
         !isCurrentlySelected,
         student.studentId,
         selectedLanzamiento,
-        student.horarioAsignado || student.horarioSeleccionado
+        student.horarioAsignado || student.horarioSeleccionado,
+        selectedOptionId
       );
       return { ...result, student };
     },
@@ -426,8 +473,24 @@ export const useSeleccionadorLogic = (
   });
 
   const handleToggle = (student: EnrichedStudent) => {
+    if (
+      normalizeStringForComparison(student.status) !== "seleccionado" &&
+      (selectedLanzamiento?.opciones || []).length > 0 &&
+      !assignmentChoiceByEnrollment[student.enrollmentId] &&
+      !student.opcionesPreferidas?.[0]?.id
+    ) {
+      setToastInfo({
+        message: "Elegí un dispositivo antes de seleccionar al estudiante.",
+        type: "error",
+      });
+      return;
+    }
     setUpdatingId(student.enrollmentId);
     toggleMutation.mutate(student);
+  };
+
+  const handleOptionChoice = (enrollmentId: string, optionId: string) => {
+    setAssignmentChoiceByEnrollment((current) => ({ ...current, [enrollmentId]: optionId }));
   };
 
   const handleBajaConPenalizacion = async (
@@ -576,6 +639,10 @@ export const useSeleccionadorLogic = (
       return { showScheduleSelector: false, horariosFijos: false, singleSchedule: false };
     }
 
+    if ((selectedLanzamiento.opciones || []).length > 0) {
+      return { showScheduleSelector: false, horariosFijos: false, singleSchedule: false };
+    }
+
     const horariosFijos = !!selectedLanzamiento[FIELD_HORARIOS_FIJOS_LANZAMIENTOS];
     const horarioSeleccionado = selectedLanzamiento[FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS];
 
@@ -626,6 +693,8 @@ export const useSeleccionadorLogic = (
     scheduleInfo,
     isEditMode,
     handleToggle,
+    assignmentChoiceByEnrollment,
+    handleOptionChoice,
     handleBajaConPenalizacion,
     handleUpdateSchedule,
     availableStudents,

@@ -461,6 +461,30 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Qué pasa si una convocatoria ofrece varios dispositivos?",
+        a: (
+          <>
+            Hacés <strong>una sola inscripción</strong> y elegís los dispositivos que realmente
+            podés sostener, ordenados por preferencia. Cada dispositivo informa su orientación,
+            horario, lugar, requisitos y cupo propio. Coordinación asigna uno de ellos respetando
+            las preferencias y la disponibilidad; inscribirte no reserva automáticamente una
+            vacante.
+          </>
+        ),
+      },
+      {
+        q: "¿Puedo elegir otra orientación dentro de la misma institución?",
+        a: (
+          <>
+            Sí, si todavía no realizaste esa orientación allí. El bloqueo se aplica por la
+            combinación <strong>institución + orientación</strong>, no por el nombre del
+            dispositivo. Por ejemplo, si ya completaste una PPS Laboral en una institución, no podés
+            elegir otro dispositivo Laboral de esa misma institución, pero sí uno Educacional
+            disponible.
+          </>
+        ),
+      },
+      {
         q: "¿Cómo se asignan los cupos cuando hay más inscriptos?",
         a: (
           <>
@@ -507,6 +531,17 @@ const faqGroups: FaqGroup[] = [
             <strong>máximo de 80 horas</strong>. Las horas no se acreditan oficialmente hasta
             completar las <strong>250</strong>; mientras tanto hay un registro interno en Mi Panel y
             tu seguimiento con la planilla.
+          </>
+        ),
+      },
+      {
+        q: "¿Qué significa que la fecha de finalización depende de las horas?",
+        a: (
+          <>
+            Significa que no hay una única fecha de cierre para todo el grupo. Cada estudiante
+            finaliza cuando completa las horas acreditables indicadas en la convocatoria. En una PPS
+            de <strong>70 horas</strong>, feriados, recuperaciones y la frecuencia asignada pueden
+            hacer que las fechas individuales sean distintas.
           </>
         ),
       },

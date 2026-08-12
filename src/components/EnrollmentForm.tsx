@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES, FIELD_TRABAJA_ESTUDIANTES } from "../constants";
 import { supabase } from "../lib/supabaseClient";
-import { Estudiante } from "../types";
+import { Estudiante, LanzamientoOpcion } from "../types";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { useTheme } from "../contexts/ThemeContext";
@@ -145,6 +145,8 @@ interface EnrollmentFormProps {
   accentColor?: string;
   creditedHours?: number;
   orientation?: string;
+  opcionesDisponibles?: LanzamientoOpcion[];
+  finalizacionPorHoras?: boolean;
 }
 
 type FormData = {
@@ -153,6 +155,7 @@ type FormData = {
   finalesAdeudados: string;
   otraSituacionAcademica: string;
   horarios: string[];
+  opciones: string[];
   certificadoLink?: string;
   trabaja: boolean;
   certificadoTrabajoFile?: File | null;
@@ -166,6 +169,7 @@ const initialFormData: FormData = {
   finalesAdeudados: "",
   otraSituacionAcademica: "",
   horarios: [],
+  opciones: [],
   certificadoLink: "",
   trabaja: false,
   certificadoTrabajoFile: null,
@@ -188,6 +192,8 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
   accentColor,
   creditedHours = 0,
   orientation = "",
+  opcionesDisponibles = [],
+  finalizacionPorHoras = false,
 }) => {
   const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState<FormData>(initialFormData);
@@ -216,11 +222,14 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
     return horariosDisponibles.filter((schedule) => mandatorySet.has(schedule));
   }, [horariosDisponibles, horariosObligatorios]);
   const mandatoryScheduleSet = useMemo(() => new Set(mandatorySchedules), [mandatorySchedules]);
+  const hasOptions = opcionesDisponibles.length > 0;
   const showHorariosSelection =
-    horariosDisponibles.length > 1 && mandatorySchedules.length < horariosDisponibles.length;
+    !hasOptions &&
+    horariosDisponibles.length > 1 &&
+    mandatorySchedules.length < horariosDisponibles.length;
   // La columna izquierda (situación laboral + horarios) solo tiene sentido si
   // hay algo que mostrar; si no, el formulario colapsa a una sola columna.
-  const hasLeftColumn = reqCertificadoTrabajo || showHorariosSelection;
+  const hasLeftColumn = reqCertificadoTrabajo || showHorariosSelection || hasOptions;
 
   useEffect(() => {
     if (isOpen) {
@@ -231,6 +240,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       setFormData({
         ...initialFormData,
         horarios: initialHorarios,
+        opciones: [],
         trabaja: works,
         existingCertificadoTrabajo: cert,
       });
@@ -247,6 +257,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
         finalesAdeudados: z.string(),
         otraSituacionAcademica: z.string(),
         horarios: z.array(z.string()),
+        opciones: z.array(z.string()),
         certificadoLink: z.string().optional(),
         trabaja: z.boolean(),
         certificadoTrabajoFile: z.any().optional(),
@@ -286,6 +297,14 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
           });
         }
 
+        if (hasOptions && data.opciones.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["opciones"],
+            message: "Elegí al menos un dispositivo.",
+          });
+        }
+
         if (data.trabaja && reqCertificadoTrabajo) {
           if (!data.certificadoTrabajoFile && !data.existingCertificadoTrabajo) {
             ctx.addIssue({
@@ -304,7 +323,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
           });
         }
       });
-  }, [showHorariosSelection, reqCertificadoTrabajo, reqCv]);
+  }, [showHorariosSelection, hasOptions, reqCertificadoTrabajo, reqCv]);
 
   const handleHorarioToggle = (horario: string) => {
     if (mandatoryScheduleSet.has(horario)) return;
@@ -313,6 +332,18 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
       return {
         ...prev,
         horarios: exists ? prev.horarios.filter((h) => h !== horario) : [...prev.horarios, horario],
+      };
+    });
+  };
+
+  const handleOptionToggle = (optionId: string) => {
+    setFormData((prev) => {
+      const exists = prev.opciones.includes(optionId);
+      return {
+        ...prev,
+        opciones: exists
+          ? prev.opciones.filter((id) => id !== optionId)
+          : [...prev.opciones, optionId],
       };
     });
   };
@@ -555,15 +586,21 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
               </span>
             ) : null}
             <span>
-              <Icon name="check" size={14} strokeWidth={2.1} />
-              {formData.horarios.length > 0
-                ? `${formData.horarios.length} ${formData.horarios.length === 1 ? "horario incluido" : "horarios incluidos"}`
-                : "Horario pendiente"}
+              <Icon name={finalizacionPorHoras ? "clock" : "check"} size={14} strokeWidth={2.1} />
+              {finalizacionPorHoras
+                ? `Finaliza al completar ${creditedHours || 70} horas`
+                : hasOptions
+                  ? formData.opciones.length > 0
+                    ? `${formData.opciones.length} ${formData.opciones.length === 1 ? "preferencia" : "preferencias"}`
+                    : "Preferencias pendientes"
+                  : formData.horarios.length > 0
+                    ? `${formData.horarios.length} ${formData.horarios.length === 1 ? "horario incluido" : "horarios incluidos"}`
+                    : "Horario pendiente"}
             </span>
           </div>
 
           {/* Banner Horario Único u horarios obligatorios */}
-          {(isSingleSchedule || mandatorySchedules.length > 0) && (
+          {!hasOptions && (isSingleSchedule || mandatorySchedules.length > 0) && (
             <div
               className="enroll-schedule flex items-start gap-3"
               style={{ background: "var(--bg-elevated)", borderBottom: "1px solid var(--line)" }}
@@ -873,6 +910,96 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                           </div>
                         </div>
                       </div>
+                    </section>
+                  )}
+
+                  {hasOptions && (
+                    <section data-error={!!errors.opciones}>
+                      <SectionHead icon="book">Elegí tus dispositivos</SectionHead>
+                      <p
+                        className="mb-3 text-xs font-medium leading-relaxed"
+                        style={{ color: "var(--ink-muted)" }}
+                      >
+                        Podés marcar más de uno. El orden en que los elijas define tu prioridad.
+                      </p>
+                      <div className="grid grid-cols-1 gap-3">
+                        {opcionesDisponibles.map((option) => {
+                          const priority = formData.opciones.indexOf(option.id);
+                          const active = priority >= 0;
+                          return (
+                            <div
+                              key={option.id}
+                              onClick={() => handleOptionToggle(option.id)}
+                              role="checkbox"
+                              tabIndex={0}
+                              aria-checked={active}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  handleOptionToggle(option.id);
+                                }
+                              }}
+                              className="cursor-pointer rounded-2xl border p-4 transition focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+                              style={{
+                                borderColor: active ? "var(--accent)" : "var(--line)",
+                                background: "var(--bg-elevated)",
+                                boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
+                              }}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h4
+                                    className="text-sm font-black"
+                                    style={{ color: "var(--ink)" }}
+                                  >
+                                    {option.nombre}
+                                  </h4>
+                                  <p
+                                    className="mt-1 text-[11px] font-bold uppercase tracking-wide"
+                                    style={{ color: "var(--accent-text)" }}
+                                  >
+                                    {option.orientacion} · {option.cupos}{" "}
+                                    {option.cupos === 1 ? "cupo" : "cupos"}
+                                  </p>
+                                </div>
+                                {active && (
+                                  <span
+                                    className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-black"
+                                    style={{
+                                      background: "var(--accent)",
+                                      color: "var(--on-accent)",
+                                    }}
+                                    aria-label={`Prioridad ${priority + 1}`}
+                                  >
+                                    {priority + 1}
+                                  </span>
+                                )}
+                              </div>
+                              {option.horarios.length > 0 && (
+                                <p
+                                  className="mt-3 text-xs font-medium leading-relaxed"
+                                  style={{ color: "var(--ink-soft)" }}
+                                >
+                                  {option.horarios.join(" · ")}
+                                </p>
+                              )}
+                              {option.requisitos.length > 0 && (
+                                <p
+                                  className="mt-2 text-[11px] leading-relaxed"
+                                  style={{ color: "var(--ink-muted)" }}
+                                >
+                                  {option.requisitos.join(" · ")}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {errors.opciones && (
+                        <p className="mt-2 ml-1 text-xs font-semibold" style={{ color: "#c0563f" }}>
+                          {errors.opciones}
+                        </p>
+                      )}
                     </section>
                   )}
 

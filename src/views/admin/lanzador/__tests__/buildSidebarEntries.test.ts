@@ -20,6 +20,8 @@ import {
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS,
 } from "../../../../constants";
 import type { LanzamientoPPS } from "../../../../types";
@@ -96,6 +98,20 @@ describe("buildSidebarEntries", () => {
       });
       const [e] = buildSidebarEntries([l], { [l.id]: { inscriptos: 40, seleccionados: 28 } }, {});
       expect(e.bucket).toBe("activa");
+    });
+
+    it("mantiene activa una PPS sin fecha global cuando cada estudiante completa sus horas", () => {
+      const l = launch({
+        [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Activa",
+        [FIELD_FECHA_INICIO_LANZAMIENTOS]: HACE_UN_MES,
+        [FIELD_FECHA_FIN_LANZAMIENTOS]: null,
+        [FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]: true,
+        [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 70,
+        [FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS]: "2026-07-01T00:00:00Z",
+      });
+      const [e] = buildSidebarEntries([l], NO_COUNTS, NO_CONSENT);
+      expect(e.bucket).toBe("activa");
+      expect(e.metaLine).toBe("En curso · hasta completar 70 h");
     });
   });
 

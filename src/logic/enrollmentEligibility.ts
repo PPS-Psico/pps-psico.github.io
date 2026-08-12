@@ -2,6 +2,8 @@ import {
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
+  FIELD_INSTITUCION_LINK_PRACTICAS,
+  FIELD_INSTITUCION_LINK_LANZAMIENTOS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -18,6 +20,8 @@ export interface CompletedHistory {
   completedLanzamientoIds: Set<string>;
   /** Orientaciones ya cursadas, por nombre de institución normalizado. */
   completedOrientationsByInstitution: Map<string, Set<string>>;
+  /** Orientaciones ya cursadas por ID estable de instituciÃ³n. */
+  completedOrientationsByInstitutionId?: Map<string, Set<string>>;
 }
 
 /**
@@ -28,6 +32,7 @@ export interface CompletedHistory {
 export const buildCompletedHistory = (practicas: Practica[]): CompletedHistory => {
   const completedLanzamientoIds = new Set<string>();
   const completedOrientationsByInstitution = new Map<string, Set<string>>();
+  const completedOrientationsByInstitutionId = new Map<string, Set<string>>();
 
   practicas.forEach((practica) => {
     if (!isPracticeFinished(practica[FIELD_ESTADO_PRACTICA])) return;
@@ -37,15 +42,23 @@ export const buildCompletedHistory = (practicas: Practica[]): CompletedHistory =
 
     // También por nombre: cada relanzamiento anual es un lanzamiento nuevo, así
     // que el cruce por ID solo no alcanza para bloquear la repetición.
-    const pName = String(practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] || "");
-    if (!pName.trim()) return;
-
-    const normalizedName = normalizeStringForComparison(pName);
-    completedLanzamientoIds.add(normalizedName);
-
     const especialidad = String(practica[FIELD_ESPECIALIDAD_PRACTICAS] || "").trim();
     if (!especialidad) return;
 
+    const institutionId = String(practica[FIELD_INSTITUCION_LINK_PRACTICAS] || "").trim();
+    if (institutionId) {
+      if (!completedOrientationsByInstitutionId.has(institutionId)) {
+        completedOrientationsByInstitutionId.set(institutionId, new Set());
+      }
+      completedOrientationsByInstitutionId
+        .get(institutionId)!
+        .add(normalizeStringForComparison(especialidad));
+    }
+
+    const pName = String(practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] || "");
+    if (!pName.trim()) return;
+    const normalizedName = normalizeStringForComparison(pName);
+    completedLanzamientoIds.add(normalizedName);
     if (!completedOrientationsByInstitution.has(normalizedName)) {
       completedOrientationsByInstitution.set(normalizedName, new Set());
     }
@@ -54,7 +67,11 @@ export const buildCompletedHistory = (practicas: Practica[]): CompletedHistory =
       .add(normalizeStringForComparison(especialidad));
   });
 
-  return { completedLanzamientoIds, completedOrientationsByInstitution };
+  return {
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
+    completedOrientationsByInstitutionId,
+  };
 };
 
 export interface EnrollmentEligibility {
@@ -64,6 +81,8 @@ export interface EnrollmentEligibility {
   completedOrientaciones: string[];
   /** Cantidad de orientaciones que ofrece el lanzamiento. */
   launchOrientaciones: string[];
+  /** Orientaciones que todavÃ­a puede elegir en esta instituciÃ³n. */
+  availableOrientaciones: string[];
 }
 
 /**
@@ -79,7 +98,11 @@ export const getEnrollmentEligibility = (
   lanzamiento: LanzamientoPPS,
   history: CompletedHistory
 ): EnrollmentEligibility => {
-  const { completedLanzamientoIds, completedOrientationsByInstitution } = history;
+  const {
+    completedLanzamientoIds,
+    completedOrientationsByInstitution,
+    completedOrientationsByInstitutionId = new Map<string, Set<string>>(),
+  } = history;
 
   const ppsName = String(lanzamiento[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "");
   // El nombre suele venir como "Institución - Orientación"; el grupo es la
@@ -90,10 +113,12 @@ export const getEnrollmentEligibility = (
 
   const launchOrientaciones = parseOrientaciones(lanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]);
 
-  const completedOrientations =
-    completedOrientationsByInstitution.get(normalizedGroupName) ||
-    completedOrientationsByInstitution.get(normalizedPpsName) ||
-    new Set<string>();
+  const institutionId = String(lanzamiento[FIELD_INSTITUCION_LINK_LANZAMIENTOS] || "").trim();
+  const completedOrientations = new Set<string>([
+    ...(institutionId ? completedOrientationsByInstitutionId.get(institutionId) || [] : []),
+    ...(completedOrientationsByInstitution.get(normalizedGroupName) || []),
+    ...(completedOrientationsByInstitution.get(normalizedPpsName) || []),
+  ]);
 
   const allOrientationsCompleted =
     launchOrientaciones.length > 0 &&
@@ -102,13 +127,20 @@ export const getEnrollmentEligibility = (
   const isFullyCompleted =
     completedLanzamientoIds.has(lanzamiento.id) || completedLanzamientoIds.has(normalizedPpsName);
 
-  const isCompleted = launchOrientaciones.length > 1 ? allOrientationsCompleted : isFullyCompleted;
+  const isCompleted =
+    launchOrientaciones.length > 1
+      ? allOrientationsCompleted
+      : allOrientationsCompleted || isFullyCompleted;
 
   const completedOrientaciones = allOrientationsCompleted
     ? launchOrientaciones
     : launchOrientaciones.filter((o) => completedOrientations.has(normalizeStringForComparison(o)));
 
-  return { isCompleted, completedOrientaciones, launchOrientaciones };
+  const availableOrientaciones = launchOrientaciones.filter(
+    (o) => !completedOrientations.has(normalizeStringForComparison(o))
+  );
+
+  return { isCompleted, completedOrientaciones, launchOrientaciones, availableOrientaciones };
 };
 
 /**

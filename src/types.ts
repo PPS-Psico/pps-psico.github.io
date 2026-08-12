@@ -12,9 +12,14 @@ export type AppRecord<T> = T & {
 
 // Map strict Database types to App types
 export type Estudiante = Tables["estudiantes"]["Row"];
+export type LanzamientoOpcion = Tables["lanzamiento_opciones"]["Row"];
+export type ConvocatoriaPreferencia = Tables["convocatoria_preferencias"]["Row"];
 export type Practica = Tables["practicas"]["Row"];
 export type SolicitudPPS = Tables["solicitudes_pps"]["Row"];
-export type LanzamientoPPS = Tables["lanzamientos_pps"]["Row"];
+export type LanzamientoPPS = Tables["lanzamientos_pps"]["Row"] & {
+  /** Dispositivos operativos de una mega-convocatoria; no cambian su grano analítico. */
+  opciones?: LanzamientoOpcion[];
+};
 export type Convocatoria = Tables["convocatorias"]["Row"];
 export type Institucion = Tables["instituciones"]["Row"] & {
   logo_url?: string | null;
@@ -143,6 +148,8 @@ export interface EnrichedStudent {
   puntajeTotal: number;
   horarioSeleccionado: string; // Horarios solicitados (originales separados por ;)
   horarioAsignado?: string; // Horario final asignado por el admin
+  opcionAsignadaId?: string | null;
+  opcionesPreferidas?: LanzamientoOpcion[];
   trabaja: boolean;
   certificadoTrabajo: string | null;
   cvUrl: string | null;
@@ -374,6 +381,8 @@ export interface EnrollmentFormData {
   finalesAdeudados: string;
   otraSituacionAcademica: string;
   horarios: string[];
+  /** IDs ordenados de dispositivos elegidos en una mega-convocatoria. */
+  opciones?: string[];
   trabaja: boolean;
   certificadoLink?: string;
   certificadoTrabajoUrl?: string;

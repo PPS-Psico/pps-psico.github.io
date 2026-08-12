@@ -13,6 +13,7 @@ import type { AirtableRecord, InstitucionFields } from "../../../types";
 import { formatDate } from "../../../utils/formatters";
 import ConvocatoriaCardPremium from "../../ConvocatoriaCardPremium";
 import type { FormData, ScheduleEntry } from "./launchForm.types";
+import type { LanzamientoOpcion } from "../../../types";
 
 interface LaunchPreviewModalProps {
   isOpen: boolean;
@@ -58,14 +59,13 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
   const validSchedules = (Array.isArray(schedules) ? schedules : []).filter((schedule) =>
     safeText(schedule?.time)
   );
-  const horariosCursada =
-    validSchedules
-      .map((schedule) => {
-        const time = safeText(schedule.time);
-        const orientation = safeText(schedule.orientacion);
-        return `${time}${isMultiOrientation && orientation ? ` [${orientation}]` : ""}`;
-      })
-      .join("; ") || "A confirmar";
+  const horariosCursada = validSchedules
+    .map((schedule) => {
+      const time = safeText(schedule.time);
+      const orientation = safeText(schedule.orientacion);
+      return `${time}${isMultiOrientation && orientation ? ` [${orientation}]` : ""}`;
+    })
+    .join("; ");
   const allSchedulesMandatory =
     validSchedules.length > 0 && validSchedules.every((schedule) => schedule.obligatorio);
   const visibleActivities = (Array.isArray(actividades) ? actividades : [])
@@ -73,6 +73,30 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
     .filter(Boolean);
   const institutionName = safeText(selectedInstitution?.[FIELD_NOMBRE_INSTITUCIONES]);
   const whatsappMessage = formData.mensajeWhatsApp || "";
+  const previewOptions: LanzamientoOpcion[] = (formData.opciones || []).map((option, index) => ({
+    id: option.clientId,
+    lanzamiento_id: "preview",
+    nombre: option.nombre,
+    orientacion: option.orientacion,
+    cupos: Number(option.cupos),
+    horarios: option.horarios
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+    actividades: option.actividades
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+    requisitos: option.requisitos
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+    ubicacion: option.ubicacion || null,
+    orden: index + 1,
+    activa: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }));
 
   const pendingItems = [
     !institutionName && "institución",
@@ -80,7 +104,7 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
     safeOrientacion.length === 0 && "orientación",
     !safeText(formData.fechaInicio) && "fecha de inicio",
     !safeText(formData.descripcion) && "descripción",
-    validSchedules.length === 0 && "horarios",
+    validSchedules.length === 0 && previewOptions.length === 0 && "horarios o dispositivos",
   ].filter((item): item is string => Boolean(item));
 
   const closeIfAllowed = () => {
@@ -196,7 +220,12 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
                   }
                   actividadesLabel={formData.actividadesLabel || "Actividades"}
                   horasAcreditadas={String(formData.horasAcreditadas || 0)}
-                  horariosCursada={horariosCursada}
+                  horariosCursada={
+                    horariosCursada ||
+                    (previewOptions.length
+                      ? `${previewOptions.length} dispositivos con horarios propios`
+                      : "A confirmar")
+                  }
                   cupo={String(formData.cuposDisponibles || "A confirmar")}
                   requisitoObligatorio={formData.requisitoObligatorio || ""}
                   archivoDescargableNombre={formData.archivoDescargableNombre}
@@ -204,13 +233,19 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
                   reqCv={formData.reqCv}
                   horariosFijos={allSchedulesMandatory}
                   fechaEncuentroInicial={formData.fechaEncuentroInicial}
+                  opciones={previewOptions}
+                  finalizacionPorHoras={formData.finalizacionPorHoras}
                   timeline={{
                     inscripcion:
                       formData.fechaInicioInscripcion && formData.fechaFinInscripcion
                         ? `${formatDate(formData.fechaInicioInscripcion)} – ${formatDate(formData.fechaFinInscripcion)}`
                         : "A definir",
                     inicio: formData.fechaInicio ? formatDate(formData.fechaInicio) : "A confirmar",
-                    fin: formData.fechaFin ? formatDate(formData.fechaFin) : "A confirmar",
+                    fin: formData.finalizacionPorHoras
+                      ? `Al completar ${formData.horasAcreditadas || 70} horas`
+                      : formData.fechaFin
+                        ? formatDate(formData.fechaFin)
+                        : "A confirmar",
                   }}
                   logoUrl={selectedInstitution?.[FIELD_LOGO_URL_INSTITUCIONES] as string}
                   invertLogo={

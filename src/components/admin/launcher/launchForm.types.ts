@@ -16,10 +16,11 @@ import {
 } from "../../../constants";
 
 export type FormData = {
-  [key: string]: string | number | undefined | null | string[] | boolean;
+  [key: string]: string | number | undefined | null | string[] | boolean | LaunchOptionDraft[];
   nombrePPS: string | undefined;
   fechaInicio: string | undefined;
   fechaFin: string | undefined;
+  finalizacionPorHoras: boolean;
   fechaEncuentroInicial: string | undefined;
   fechaInicioInscripcion: string | undefined;
   fechaFinInscripcion: string | undefined;
@@ -55,7 +56,30 @@ export type FormData = {
    * crea un registro en `convenios` con es_renovacion=true.
    */
   convenioRenovado: boolean;
+  opciones: LaunchOptionDraft[];
 };
+
+export interface LaunchOptionDraft {
+  clientId: string;
+  nombre: string;
+  orientacion: string;
+  cupos: number;
+  horarios: string;
+  actividades: string;
+  requisitos: string;
+  ubicacion: string;
+}
+
+export const createEmptyOptionDraft = (orientation = ""): LaunchOptionDraft => ({
+  clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  nombre: "",
+  orientacion: orientation,
+  cupos: 1,
+  horarios: "",
+  actividades: "",
+  requisitos: "",
+  ubicacion: "",
+});
 
 export interface ScheduleEntry {
   time: string;
@@ -67,6 +91,7 @@ export const initialState: FormData = {
   nombrePPS: "",
   fechaInicio: "",
   fechaFin: "",
+  finalizacionPorHoras: false,
   fechaEncuentroInicial: "",
   fechaInicioInscripcion: "",
   fechaFinInscripcion: "",
@@ -90,6 +115,7 @@ export const initialState: FormData = {
   horariosFijos: false,
   linkTareaCampus: "",
   convenioRenovado: false,
+  opciones: [],
 };
 
 export const mockInstitutions = [

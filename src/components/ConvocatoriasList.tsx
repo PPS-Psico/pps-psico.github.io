@@ -130,6 +130,8 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
             archivoDescargableNombre={lanzamiento.archivo_descargable_nombre || ""}
             archivoDescargableUrl={lanzamiento.archivo_descargable_url || ""}
             reqCv={lanzamiento.req_cv || false}
+            opciones={lanzamiento.opciones || []}
+            finalizacionPorHoras={lanzamiento.finalizacion_por_horas}
             timeline={{
               inscripcion:
                 lanzamiento[FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] &&
@@ -137,7 +139,9 @@ const ConvocatoriasList: React.FC<ConvocatoriasListProps> = ({
                   ? `${formatDate(lanzamiento[FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS] as string)} - ${formatDate(lanzamiento[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string)}`
                   : "Abierta",
               inicio: formatDate(lanzamiento.fecha_inicio),
-              fin: formatDate(lanzamiento.fecha_finalizacion),
+              fin: lanzamiento.finalizacion_por_horas
+                ? `Al completar ${lanzamiento.horas_acreditadas || 70} horas`
+                : formatDate(lanzamiento.fecha_finalizacion),
             }}
             status={lanzamiento[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] ?? undefined}
             estadoInscripcion={enrollmentStatus as any}

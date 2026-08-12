@@ -58,7 +58,7 @@ import StudentHomeAtlas, { AhIcon } from "./home/atlas/StudentHomeAtlas";
 import StudentOnboardingCard from "./StudentOnboardingCard";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import { isPracticeDisapproved } from "../../logic/studentRules";
-import { getEnrollmentEligibility } from "../../logic/enrollmentEligibility";
+import { buildCompletedHistory, getEnrollmentEligibility } from "../../logic/enrollmentEligibility";
 
 interface HomeViewProps {
   myEnrollments: Convocatoria[];
@@ -119,10 +119,14 @@ const HomeView: React.FC<HomeViewProps> = ({
     enrollment: Convocatoria;
   } | null>(null);
 
-  const completedHistory = useMemo(
-    () => ({ completedLanzamientoIds, completedOrientationsByInstitution }),
-    [completedLanzamientoIds, completedOrientationsByInstitution]
-  );
+  const completedHistory = useMemo(() => {
+    const { completedOrientationsByInstitutionId } = buildCompletedHistory(practicas);
+    return {
+      completedLanzamientoIds,
+      completedOrientationsByInstitution,
+      completedOrientationsByInstitutionId,
+    };
+  }, [completedLanzamientoIds, completedOrientationsByInstitution, practicas]);
 
   const handleCancelarInscripcion = (convocatoriaId: string, nombrePPS: string) => {
     setPendingCancel({ id: convocatoriaId, nombre: nombrePPS });

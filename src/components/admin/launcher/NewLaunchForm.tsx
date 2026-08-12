@@ -10,7 +10,12 @@ import type { AirtableRecord, InstitucionFields } from "../../../types";
 import { ALL_ORIENTACIONES } from "../../../types";
 import { normalizeStringForComparison } from "../../../utils/formatters";
 import { CheckRow, FormField, FormSection } from "./LaunchFormPrimitives";
-import type { FormData, ScheduleEntry } from "./launchForm.types";
+import {
+  createEmptyOptionDraft,
+  type FormData,
+  type LaunchOptionDraft,
+  type ScheduleEntry,
+} from "./launchForm.types";
 
 const orientSlug = (o: string) =>
   o
@@ -102,6 +107,53 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
   } = props;
 
   const isOnline = formData.direccion === "Modalidad Virtual";
+  const launchOptions = Array.isArray(formData.opciones) ? formData.opciones : [];
+  const hasLaunchOptions = launchOptions.length > 0;
+  const optionCapacity = launchOptions.reduce(
+    (total, option) => total + Math.max(0, Number(option.cupos) || 0),
+    0
+  );
+
+  const updateOption = <K extends keyof LaunchOptionDraft>(
+    clientId: string,
+    field: K,
+    value: LaunchOptionDraft[K]
+  ) => {
+    setFormData((prev) => {
+      const opciones = (prev.opciones || []).map((option) =>
+        option.clientId === clientId ? { ...option, [field]: value } : option
+      );
+      return {
+        ...prev,
+        opciones,
+        cuposDisponibles: opciones.reduce(
+          (total, option) => total + Math.max(0, Number(option.cupos) || 0),
+          0
+        ),
+      };
+    });
+  };
+
+  const addOption = () => {
+    setFormData((prev) => ({
+      ...prev,
+      opciones: [...(prev.opciones || []), createEmptyOptionDraft(safeOrientacion[0] || "")],
+    }));
+  };
+
+  const removeOption = (clientId: string) => {
+    setFormData((prev) => {
+      const opciones = (prev.opciones || []).filter((option) => option.clientId !== clientId);
+      return {
+        ...prev,
+        opciones,
+        cuposDisponibles:
+          opciones.length > 0
+            ? opciones.reduce((total, option) => total + Math.max(0, Number(option.cupos) || 0), 0)
+            : prev.cuposDisponibles,
+      };
+    });
+  };
 
   const toggleOrientacion = (o: string) => {
     const current = safeOrientacion;
@@ -124,11 +176,19 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
   const missingS2 = [
     !formData.fechaInicio,
     !formData.fechaInicioInscripcion || !formData.fechaFinInscripcion,
-    !formData.cuposDisponibles,
+    hasLaunchOptions ? optionCapacity <= 0 : !formData.cuposDisponibles,
     !formData.horasAcreditadas && formData.horasAcreditadas !== 0,
   ].filter(Boolean).length;
   const missingS3 = [!formData.descripcion].filter(Boolean).length;
-  const missingS4 = [schedules.filter((s) => s.time.trim()).length === 0].filter(Boolean).length;
+  const missingS4 = hasLaunchOptions
+    ? launchOptions.filter(
+        (option) =>
+          !option.nombre.trim() ||
+          !option.orientacion.trim() ||
+          Number(option.cupos) <= 0 ||
+          !option.horarios.trim()
+      ).length
+    : [schedules.filter((s) => s.time.trim()).length === 0].filter(Boolean).length;
   const missingTotal = missingS1 + missingS2 + missingS3 + missingS4;
   const ready = !!formData.nombrePPS && !!formData.fechaInicio && safeOrientacion.length > 0;
 
@@ -370,11 +430,15 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
               className="field"
               type="number"
               name="cuposDisponibles"
-              value={formData.cuposDisponibles as number}
+              value={hasLaunchOptions ? optionCapacity : (formData.cuposDisponibles as number)}
               onChange={handleChange}
               placeholder="4"
               min={1}
+              disabled={hasLaunchOptions}
             />
+            {hasLaunchOptions && (
+              <span className="meta">Se calcula sumando los cupos de los dispositivos.</span>
+            )}
           </FormField>
           <FormField label="Horas acreditadas">
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -469,6 +533,19 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
               name="fechaFin"
               value={(formData.fechaFin as string) || ""}
               onChange={handleChange}
+              disabled={formData.finalizacionPorHoras}
+            />
+            <CheckRow
+              label="Finaliza al completar las horas"
+              sublabel="Cada estudiante tendrá su propia fecha de finalización"
+              checked={formData.finalizacionPorHoras}
+              onChange={(checked) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  finalizacionPorHoras: checked,
+                  fechaFin: checked ? "" : prev.fechaFin,
+                }))
+              }
             />
           </FormField>
           <FormField label="Inscripción desde">
@@ -746,84 +823,225 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
         </FormField>
       </FormSection>
 
-      {/* ── 04 · HORARIOS ── */}
+      {/* ── 04 · DISPOSITIVOS ── */}
       <FormSection
         number="04"
-        title="Horarios y supervisores"
-        subtitle="Franjas disponibles y comisiones"
-        pending={missingS4}
+        title="Dispositivos y cupos"
+        subtitle="Destinos elegibles dentro de esta misma publicación"
+        pending={hasLaunchOptions ? missingS4 : 0}
         right={
-          <span className="lv4-schedule-help">
-            Marcá como obligatorias solo las franjas comunes
-          </span>
-        }
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {schedules.map((schedule, idx) => (
-            <div
-              key={idx}
-              className={`lv4-schedule-row${
-                isMultiOrientation && safeOrientacion.length >= 2
-                  ? " lv4-schedule-row--oriented"
-                  : ""
-              }`}
-            >
-              <input
-                className="field"
-                value={schedule.time}
-                onChange={(e) => onScheduleChange(idx, "time", e.target.value)}
-                placeholder="Ej: Lunes 9 a 12 hs · Lic. Pérez"
-              />
-              {isMultiOrientation && safeOrientacion.length >= 2 && (
-                <select
-                  className="field"
-                  value={schedule.orientacion}
-                  onChange={(e) => onScheduleChange(idx, "orientacion", e.target.value)}
-                >
-                  <option value="">Cualquiera</option>
-                  {safeOrientacion.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <label className="lv4-schedule-required">
-                <input
-                  type="checkbox"
-                  checked={schedule.obligatorio}
-                  onChange={(e) => onScheduleChange(idx, "obligatorio", e.target.checked)}
-                />
-                <span className="material-icons" aria-hidden>
-                  lock
-                </span>
-                <span>Obligatorio</span>
-              </label>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => onRemoveSchedule(idx)}
-                title="Eliminar horario"
-              >
-                <span className="material-icons" style={{ fontSize: 14 }}>
-                  delete
-                </span>
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            style={{ alignSelf: "flex-start" }}
-            onClick={onAddSchedule}
-          >
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addOption}>
             <span className="material-icons" style={{ fontSize: 14 }}>
               add
             </span>
-            Agregar franja
+            Agregar dispositivo
           </button>
-        </div>
+        }
+      >
+        {!hasLaunchOptions ? (
+          <div className="lv4-option-empty">
+            <span className="material-icons">account_tree</span>
+            <div>
+              <strong>Convocatoria simple</strong>
+              <span>
+                Agregá dispositivos cuando una publicación reúna varias áreas con cupos y requisitos
+                propios.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="lv4-option-stack">
+            <div className="lv4-option-summary">
+              <span>{launchOptions.length} dispositivos</span>
+              <strong>{optionCapacity} cupos totales</strong>
+            </div>
+            {launchOptions.map((option, index) => (
+              <div key={option.clientId} className="lv4-option-card">
+                <div className="lv4-option-card-head">
+                  <span className="lv4-option-index">{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{option.nombre.trim() || "Nuevo dispositivo"}</strong>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => removeOption(option.clientId)}
+                    title="Eliminar dispositivo"
+                  >
+                    <span className="material-icons" style={{ fontSize: 14 }}>
+                      delete
+                    </span>
+                  </button>
+                </div>
+                <div className="lf-grid-3">
+                  <FormField label="Nombre del área">
+                    <input
+                      className="field"
+                      value={option.nombre}
+                      onChange={(event) =>
+                        updateOption(option.clientId, "nombre", event.target.value)
+                      }
+                      placeholder="Ej: Área de Seguimiento y Calidad"
+                    />
+                  </FormField>
+                  <FormField label="Orientación">
+                    <select
+                      className="field"
+                      value={option.orientacion}
+                      onChange={(event) =>
+                        updateOption(option.clientId, "orientacion", event.target.value)
+                      }
+                    >
+                      <option value="">Elegir</option>
+                      {safeOrientacion.map((orientation) => (
+                        <option key={orientation} value={orientation}>
+                          {orientation}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="Cupos">
+                    <input
+                      className="field"
+                      type="number"
+                      min={1}
+                      value={option.cupos}
+                      onChange={(event) =>
+                        updateOption(option.clientId, "cupos", Number(event.target.value))
+                      }
+                    />
+                  </FormField>
+                </div>
+                <div className="lf-grid-2">
+                  <FormField label="Horarios / disponibilidad">
+                    <textarea
+                      className="field"
+                      value={option.horarios}
+                      onChange={(event) =>
+                        updateOption(option.clientId, "horarios", event.target.value)
+                      }
+                      placeholder="Una alternativa por línea"
+                      rows={3}
+                    />
+                  </FormField>
+                  <FormField label="Lugar específico">
+                    <textarea
+                      className="field"
+                      value={option.ubicacion}
+                      onChange={(event) =>
+                        updateOption(option.clientId, "ubicacion", event.target.value)
+                      }
+                      placeholder="Sede, zona o ámbito territorial"
+                      rows={3}
+                    />
+                  </FormField>
+                  <FormField label="Actividades">
+                    <textarea
+                      className="field"
+                      value={option.actividades}
+                      onChange={(event) =>
+                        updateOption(option.clientId, "actividades", event.target.value)
+                      }
+                      placeholder="Una actividad por línea"
+                      rows={4}
+                    />
+                  </FormField>
+                  <FormField label="Requisitos">
+                    <textarea
+                      className="field"
+                      value={option.requisitos}
+                      onChange={(event) =>
+                        updateOption(option.clientId, "requisitos", event.target.value)
+                      }
+                      placeholder="Un requisito por línea"
+                      rows={4}
+                    />
+                  </FormField>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </FormSection>
+
+      {/* ── 05 · HORARIOS LEGACY ── */}
+      {!hasLaunchOptions && (
+        <FormSection
+          number="05"
+          title="Horarios y supervisores"
+          subtitle="Franjas disponibles y comisiones"
+          pending={missingS4}
+          right={
+            <span className="lv4-schedule-help">
+              Marcá como obligatorias solo las franjas comunes
+            </span>
+          }
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {schedules.map((schedule, idx) => (
+              <div
+                key={idx}
+                className={`lv4-schedule-row${
+                  isMultiOrientation && safeOrientacion.length >= 2
+                    ? " lv4-schedule-row--oriented"
+                    : ""
+                }`}
+              >
+                <input
+                  className="field"
+                  value={schedule.time}
+                  onChange={(e) => onScheduleChange(idx, "time", e.target.value)}
+                  placeholder="Ej: Lunes 9 a 12 hs · Lic. Pérez"
+                />
+                {isMultiOrientation && safeOrientacion.length >= 2 && (
+                  <select
+                    className="field"
+                    value={schedule.orientacion}
+                    onChange={(e) => onScheduleChange(idx, "orientacion", e.target.value)}
+                  >
+                    <option value="">Cualquiera</option>
+                    {safeOrientacion.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <label className="lv4-schedule-required">
+                  <input
+                    type="checkbox"
+                    checked={schedule.obligatorio}
+                    onChange={(e) => onScheduleChange(idx, "obligatorio", e.target.checked)}
+                  />
+                  <span className="material-icons" aria-hidden>
+                    lock
+                  </span>
+                  <span>Obligatorio</span>
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onRemoveSchedule(idx)}
+                  title="Eliminar horario"
+                >
+                  <span className="material-icons" style={{ fontSize: 14 }}>
+                    delete
+                  </span>
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ alignSelf: "flex-start" }}
+              onClick={onAddSchedule}
+            >
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                add
+              </span>
+              Agregar franja
+            </button>
+          </div>
+        </FormSection>
+      )}
 
       {/* ── CTA ── */}
       <div className={`lv4-launch-cta ${ready ? "is-ready" : ""}`}>

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useModal } from "../contexts/ModalContext";
 import { fetchConvocatoriasData } from "../services";
 import { db } from "../lib/db";
+import { supabase } from "../lib/supabaseClient";
 import { mockDb } from "../services/mockDb";
 import type {
   LanzamientoPPS,
@@ -349,6 +350,32 @@ export const useConvocatorias = (
 
       if (existingActive) {
         throw new Error("Ya estás inscripto a esta PPS.");
+      }
+
+      if ((selectedLanzamiento.opciones || []).length > 0) {
+        const selectedOptionIds = Array.isArray(formData.opciones) ? formData.opciones : [];
+        if (selectedOptionIds.length === 0) {
+          throw new Error("Elegí al menos un dispositivo para inscribirte.");
+        }
+        const { data, error } = await supabase.rpc("inscribir_convocatoria_multiopcion", {
+          p_lanzamiento_id: selectedLanzamiento.id,
+          p_opcion_ids: selectedOptionIds,
+          p_datos: {
+            termino_cursar: formData.terminoDeCursar ? "Sí" : "No",
+            cursando_electivas: formData.cursandoElectivas ? "Sí" : "No",
+            finales_adeuda: formData.finalesAdeudados,
+            otra_situacion_academica: formData.otraSituacionAcademica,
+            trabaja: formData.trabaja,
+            certificado_trabajo:
+              formData.certificadoTrabajoUrl ||
+              studentDetails?.[FIELD_CERTIFICADO_TRABAJO_ESTUDIANTES] ||
+              "",
+            cv_url: formData.cvUrl || "",
+            legajo,
+          },
+        });
+        if (error) throw error;
+        return data as AppRecord<ConvocatoriaFields>;
       }
 
       return db.convocatorias.create(

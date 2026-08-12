@@ -34,6 +34,7 @@ import { isEmbedded } from "../../utils/isEmbedded";
 import { getLocationModalityLabel, hasPhysicalAddress } from "../../utils/locationUtils";
 import { getEnrollmentNotice } from "../../utils/enrollmentCopy";
 import {
+  buildCompletedHistory,
   getCompletedEnrollmentLabel,
   getEnrollmentEligibility,
 } from "../../logic/enrollmentEligibility";
@@ -97,6 +98,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
     cancelEnrollment,
     completedLanzamientoIds,
     completedOrientationsByInstitution,
+    practicas,
     isLoading,
   } = useStudentPanel();
   const [pendingCancel, setPendingCancel] = useState(false);
@@ -121,6 +123,10 @@ const StudentConvocatoriaDetail: React.FC = () => {
     }
     return undefined;
   }, [id, lanzamientos, allLanzamientos]);
+  const completedOrientationsByInstitutionId = useMemo(
+    () => buildCompletedHistory(practicas).completedOrientationsByInstitutionId,
+    [practicas]
+  );
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -248,6 +254,7 @@ const StudentConvocatoriaDetail: React.FC = () => {
     "Descripción de la propuesta no disponible.";
   const requisito = String(lanzamiento[FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS] || "").trim();
   const archivoUrl = (lanzamiento[FIELD_ARCHIVO_DESCARGABLE_URL] as string) || "";
+  const opciones = lanzamiento.opciones || [];
 
   const actividadesRaw = (lanzamiento as Record<string, unknown>).actividades_lista;
   const actividades: string[] = Array.isArray(actividadesRaw)
@@ -266,7 +273,13 @@ const StudentConvocatoriaDetail: React.FC = () => {
       date: fmtShort(lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS]),
       state: isStarted ? "done" : "future",
     },
-    { label: "Fin", date: fmtShort(lanzamiento[FIELD_FECHA_FIN_LANZAMIENTOS]), state: "future" },
+    {
+      label: "Fin",
+      date: lanzamiento.finalizacion_por_horas
+        ? `Al completar ${horas || 70} hs`
+        : fmtShort(lanzamiento[FIELD_FECHA_FIN_LANZAMIENTOS]),
+      state: "future",
+    },
   ];
 
   const enrollment = enrollmentMap.get(lanzamiento.id);
@@ -291,12 +304,13 @@ const StudentConvocatoriaDetail: React.FC = () => {
   const eligibility = getEnrollmentEligibility(lanzamiento, {
     completedLanzamientoIds,
     completedOrientationsByInstitution,
+    completedOrientationsByInstitutionId,
   });
 
   // El CTA refleja el estado de forma reactiva: al inscribirse, enrollmentMap
   // se actualiza y el botón pasa a "Cancelar inscripción" sin salir de la página.
   const handleInscribir = () => {
-    enrollStudent.mutate(lanzamiento);
+    enrollStudent.mutate(lanzamiento, eligibility.completedOrientaciones);
   };
   const confirmCancel = () => {
     if (enrollment) cancelEnrollment.mutate(enrollment.id);
@@ -496,77 +510,176 @@ const StudentConvocatoriaDetail: React.FC = () => {
               </div>
             ) : null}
 
-            {/* Días y horarios */}
-            <div className="detail-block">
-              <span className="eyebrow" style={{ fontSize: 10.5 }}>
-                Días y horarios
-              </span>
-              <div
-                style={{
-                  marginTop: 10,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 9,
-                }}
-              >
-                {(horarios.length > 0 ? horarios : ["A definir"]).map((h, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ flexShrink: 0, marginTop: 1, lineHeight: 0 }}>
-                      <Icon name="cal" size={16} color={color} />
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 14.5,
-                        fontWeight: 500,
-                        color: "var(--ink)",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {h}
-                    </span>
-                    {horariosObligatoriosSet.has(h) ? (
-                      <span
+            {/* Dispositivos o, para convocatorias simples, días y horarios */}
+            {opciones.length > 0 ? (
+              <div className="detail-block">
+                <span className="eyebrow" style={{ fontSize: 10.5 }}>
+                  Dispositivos disponibles
+                </span>
+                <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                  {opciones.map((option) => {
+                    const unavailable = eligibility.completedOrientaciones.some(
+                      (orientation) =>
+                        normalizeStringForComparison(orientation) ===
+                        normalizeStringForComparison(option.orientacion)
+                    );
+                    return (
+                      <article
+                        key={option.id}
                         style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          marginLeft: "auto",
-                          padding: "4px 8px",
-                          borderRadius: 999,
-                          background: "color-mix(in oklab, #c58a1b 10%, var(--bg-elevated))",
-                          color: "#9a6518",
-                          fontSize: 9.5,
-                          fontWeight: 700,
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
-                          whiteSpace: "nowrap",
+                          padding: "14px 15px",
+                          borderRadius: 14,
+                          border: "1px solid var(--line)",
+                          background: "var(--bg-elevated)",
+                          opacity: unavailable ? 0.58 : 1,
                         }}
                       >
-                        <Icon name="lock" size={11} strokeWidth={2.4} />
-                        Obligatorio
-                      </span>
-                    ) : horariosObligatorios.length > 0 ? (
-                      <span
-                        style={{
-                          marginLeft: "auto",
-                          padding: "4px 8px",
-                          borderRadius: 999,
-                          background: "var(--bg-sunken)",
-                          color: "var(--ink-muted)",
-                          fontSize: 9.5,
-                          fontWeight: 700,
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        A elección
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            justifyContent: "space-between",
+                            gap: 10,
+                          }}
+                        >
+                          <div>
+                            <strong style={{ display: "block", color: "var(--ink)", fontSize: 14 }}>
+                              {option.nombre}
+                            </strong>
+                            <span
+                              style={{
+                                display: "block",
+                                marginTop: 4,
+                                color,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                textTransform: "uppercase",
+                                letterSpacing: ".05em",
+                              }}
+                            >
+                              {option.orientacion}
+                            </span>
+                          </div>
+                          <span
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              background: "var(--bg-sunken)",
+                              color: "var(--ink-soft)",
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {unavailable
+                              ? "Orientación ya cursada"
+                              : `${option.cupos} ${option.cupos === 1 ? "cupo" : "cupos"}`}
+                          </span>
+                        </div>
+                        {option.horarios.length > 0 && (
+                          <p
+                            style={{
+                              margin: "9px 0 0",
+                              color: "var(--ink-soft)",
+                              fontSize: 12.5,
+                              lineHeight: 1.45,
+                            }}
+                          >
+                            {option.horarios.join(" · ")}
+                          </p>
+                        )}
+                        {option.actividades.length > 0 && (
+                          <ul
+                            style={{
+                              margin: "9px 0 0",
+                              paddingLeft: 18,
+                              color: "var(--ink-muted)",
+                              fontSize: 12,
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {option.actividades.map((activity) => (
+                              <li key={activity}>{activity}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="detail-block">
+                <span className="eyebrow" style={{ fontSize: 10.5 }}>
+                  Días y horarios
+                </span>
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 9,
+                  }}
+                >
+                  {(horarios.length > 0 ? horarios : ["A definir"]).map((h, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ flexShrink: 0, marginTop: 1, lineHeight: 0 }}>
+                        <Icon name="cal" size={16} color={color} />
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: 500,
+                          color: "var(--ink)",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {h}
+                      </span>
+                      {horariosObligatoriosSet.has(h) ? (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            marginLeft: "auto",
+                            padding: "4px 8px",
+                            borderRadius: 999,
+                            background: "color-mix(in oklab, #c58a1b 10%, var(--bg-elevated))",
+                            color: "#9a6518",
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            letterSpacing: ".04em",
+                            textTransform: "uppercase",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <Icon name="lock" size={11} strokeWidth={2.4} />
+                          Obligatorio
+                        </span>
+                      ) : horariosObligatorios.length > 0 ? (
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            padding: "4px 8px",
+                            borderRadius: 999,
+                            background: "var(--bg-sunken)",
+                            color: "var(--ink-muted)",
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            letterSpacing: ".04em",
+                            textTransform: "uppercase",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          A elección
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Ubicación + Archivo adjunto — tarjetas emparejadas con alto igualado
                 en escritorio. Solo van lado a lado cuando existen ambas; si hay una

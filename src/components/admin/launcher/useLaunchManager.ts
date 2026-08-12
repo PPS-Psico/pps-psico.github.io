@@ -23,6 +23,7 @@ import {
   FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
   FIELD_FECHA_INICIO_INSCRIPCION_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_PUBLICACION_LANZAMIENTOS,
@@ -196,9 +197,33 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     queryKey: ["launchHistory", isTestingMode],
     queryFn: async () => {
       if (isTestingMode) return [];
-      return db.lanzamientos.getAll({
+      const launches = await db.lanzamientos.getAll({
         sort: [{ field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "desc" }],
       });
+      if (launches.length === 0) return launches;
+
+      const { data: options, error } = await supabase
+        .from("lanzamiento_opciones")
+        .select("*")
+        .in(
+          "lanzamiento_id",
+          launches.map((launch) => launch.id)
+        )
+        .eq("activa", true)
+        .order("orden", { ascending: true });
+      if (error) throw error;
+
+      const optionsByLaunch = new Map<string, NonNullable<typeof options>>();
+      for (const option of options || []) {
+        const current = optionsByLaunch.get(option.lanzamiento_id) || [];
+        current.push(option);
+        optionsByLaunch.set(option.lanzamiento_id, current);
+      }
+
+      return launches.map((launch) => ({
+        ...launch,
+        opciones: optionsByLaunch.get(launch.id) || [],
+      }));
     },
     enabled: true,
   });
@@ -306,7 +331,46 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
         logger.info("TEST MODE: Simulating launch creation with data:", newLaunchData);
         return new Promise((resolve) => setTimeout(() => resolve(null), 1000));
       }
-      return db.lanzamientos.create(newLaunchData as LanzamientoPPS);
+      const options = Array.isArray(formData.opciones) ? formData.opciones : [];
+      const desiredState = newLaunchData[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS];
+      const createPayload =
+        options.length > 0
+          ? {
+              ...newLaunchData,
+              [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Oculto",
+            }
+          : newLaunchData;
+      const launch = await db.lanzamientos.create(createPayload as LanzamientoPPS);
+      if (options.length > 0) {
+        const toList = (value: string) =>
+          value
+            .split(/\r?\n/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+        const { error } = await supabase.from("lanzamiento_opciones").insert(
+          options.map((option, index) => ({
+            lanzamiento_id: launch.id,
+            nombre: option.nombre.trim(),
+            orientacion: option.orientacion.trim(),
+            cupos: Number(option.cupos),
+            horarios: toList(option.horarios),
+            actividades: toList(option.actividades),
+            requisitos: toList(option.requisitos),
+            ubicacion: option.ubicacion.trim() || null,
+            orden: index + 1,
+          }))
+        );
+        if (error) {
+          await db.lanzamientos.delete(launch.id).catch(() => false);
+          throw error;
+        }
+        if (desiredState && desiredState !== "Oculto") {
+          await db.lanzamientos.update(launch.id, {
+            [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: String(desiredState),
+          });
+        }
+      }
+      return launch;
     },
     onSuccess: (_data: unknown, variables: Record<string, unknown>) => {
       setToastInfo({ message: "Convocatoria procesada con éxito.", type: "success" });
@@ -693,7 +757,22 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     const horas = Number(formData.horasAcreditadas);
     const hasHours = !isNaN(horas);
 
-    if (!formData.nombrePPS || !formData.fechaInicio || !safeOrientacion.length || !hasHours) {
+    const launchOptions = Array.isArray(formData.opciones) ? formData.opciones : [];
+    const invalidOption = launchOptions.some(
+      (option) =>
+        !option.nombre.trim() ||
+        !option.orientacion.trim() ||
+        Number(option.cupos) <= 0 ||
+        !option.horarios.trim()
+    );
+
+    if (
+      !formData.nombrePPS ||
+      !formData.fechaInicio ||
+      !safeOrientacion.length ||
+      !hasHours ||
+      invalidOption
+    ) {
       setToastInfo({
         message:
           "Por favor, complete los campos requeridos (Nombre, Fecha de inicio, Orientación, Horas).",
@@ -723,7 +802,18 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
         };
       })
       .filter((schedule): schedule is { value: string; obligatorio: boolean } => schedule !== null);
-    const horarioFinal = formattedSchedules.map((schedule) => schedule.value).join("; ");
+    const optionSchedules = launchOptions.map((option) => {
+      const horarios = option.horarios
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .join(" / ");
+      return `${option.nombre.trim()} · ${horarios} [${option.orientacion.trim()}]`;
+    });
+    const horarioFinal =
+      optionSchedules.length > 0
+        ? optionSchedules.join("; ")
+        : formattedSchedules.map((schedule) => schedule.value).join("; ");
     const horariosObligatorios = formattedSchedules
       .filter((schedule) => schedule.obligatorio)
       .map((schedule) => schedule.value);
@@ -734,7 +824,10 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     const finalPayload: Record<string, unknown> = {
       [FIELD_NOMBRE_PPS_LANZAMIENTOS]: formData.nombrePPS,
       [FIELD_FECHA_INICIO_LANZAMIENTOS]: formData.fechaInicio,
-      [FIELD_FECHA_FIN_LANZAMIENTOS]: formData.fechaFin,
+      [FIELD_FECHA_FIN_LANZAMIENTOS]: formData.finalizacionPorHoras
+        ? null
+        : formData.fechaFin || null,
+      [FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]: formData.finalizacionPorHoras,
       [FIELD_ORIENTACION_LANZAMIENTOS]: safeOrientacion
         .map(
           (o) =>
@@ -744,7 +837,13 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
         )
         .join(", "),
       [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: Number(formData.horasAcreditadas),
-      [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: Number(formData.cuposDisponibles),
+      [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]:
+        launchOptions.length > 0
+          ? launchOptions.reduce(
+              (total, option) => total + Math.max(0, Number(option.cupos) || 0),
+              0
+            )
+          : Number(formData.cuposDisponibles),
       [FIELD_TIPO_ACTIVIDAD_LANZAMIENTOS]: formData.tipoActividad,
       [FIELD_MODALIDAD_CUPO_LANZAMIENTOS]: formData.modalidadCupo,
       [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: horarioFinal,

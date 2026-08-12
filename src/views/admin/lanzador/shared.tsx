@@ -16,10 +16,12 @@ import {
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_FIN_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_DESCRIPCION_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_DIRECCION_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
@@ -926,6 +928,8 @@ function buildWhatsappFromLaunch(launch: LanzamientoPPS): string {
   const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
   const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
   const fechaFin = launch[FIELD_FECHA_FIN_LANZAMIENTOS] as string | null;
+  const finalizacionPorHoras = Boolean(launch[FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]);
+  const horasAcreditadas = launch[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] as number | null;
   const fechaFinInsc = launch[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string | null;
   const descripcion = launch[FIELD_DESCRIPCION_LANZAMIENTOS] as string | null;
   const direccion = launch[FIELD_DIRECCION_LANZAMIENTOS] as string | null;
@@ -937,11 +941,18 @@ function buildWhatsappFromLaunch(launch: LanzamientoPPS): string {
   if (orientacion) lines.push(`🎓 *Orientación:* ${orientacion}`);
   if (direccion) lines.push(`📍 *Lugar:* ${direccion}`);
   if (cupos) lines.push(`👥 *Cupos:* ${cupos}`);
-  if (horario) lines.push(`🕒 *Horario:* ${horario}`);
+  if (launch.opciones?.length) {
+    lines.push("🧩 *Dispositivos y cupos:*");
+    launch.opciones.forEach((option) => {
+      lines.push(`• ${option.nombre} [${option.orientacion}] — ${option.cupos} cupos`);
+    });
+  } else if (horario) lines.push(`🕒 *Horario:* ${horario}`);
   lines.push("");
   if (fechaFinInsc) lines.push(`📅 *Inscripción hasta:* ${formatDate(fechaFinInsc)}`);
   if (fechaInicio) lines.push(`🚀 *Inicio práctica:* ${formatDate(fechaInicio)}`);
-  if (fechaFin) lines.push(`🏁 *Fin práctica:* ${formatDate(fechaFin)}`);
+  if (finalizacionPorHoras) {
+    lines.push(`🏁 *Fin práctica:* individual, al completar ${horasAcreditadas || 70} horas`);
+  } else if (fechaFin) lines.push(`🏁 *Fin práctica:* ${formatDate(fechaFin)}`);
   if (descripcion) {
     lines.push("");
     lines.push(`🎯 *Sobre la práctica:*`);

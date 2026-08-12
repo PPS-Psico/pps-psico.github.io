@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import type { Convocatoria } from "../types";
+import type { Convocatoria, LanzamientoOpcion } from "../types";
 import {
   getEspecialidadClasses,
   normalizeStringForComparison,
@@ -41,6 +41,8 @@ export interface ConvocatoriaDetailProps {
   isCompleted?: boolean;
   completedOrientaciones?: string[];
   fechaEncuentroInicial?: string;
+  opciones?: LanzamientoOpcion[];
+  finalizacionPorHoras?: boolean;
   hideCompromisoStatus?: boolean;
   /** Abre el detalle desde el primer render; útil para previsualizaciones. */
   defaultExpanded?: boolean;
@@ -74,6 +76,8 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
   isCompleted = false,
   completedOrientaciones = [],
   fechaEncuentroInicial,
+  opciones = [],
+  finalizacionPorHoras = false,
   hideCompromisoStatus = false,
   defaultExpanded = false,
 }) => {
@@ -574,6 +578,85 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
               <p className="text-slate-600 dark:text-slate-300 text-xs md:text-sm lg:text-base leading-relaxed text-justify font-medium">
                 {descripcion}
               </p>
+
+              {finalizacionPorHoras && (
+                <div className="mt-6 rounded-2xl border border-teal-200/70 bg-teal-50/80 p-4 dark:border-teal-800/50 dark:bg-teal-950/20">
+                  <div className="flex items-center gap-2 text-teal-700 dark:text-teal-300">
+                    <span className="material-icons !text-lg">hourglass_bottom</span>
+                    <strong className="text-xs uppercase tracking-wider">
+                      FinalizaciÃ³n individual
+                    </strong>
+                  </div>
+                  <p className="mt-1 text-xs font-medium leading-relaxed text-teal-900 dark:text-teal-100">
+                    La fecha de cierre es variable: la prÃ¡ctica finaliza cuando cada estudiante
+                    completa {horasAcreditadas} horas.
+                  </p>
+                </div>
+              )}
+
+              {opciones.length > 0 && (
+                <div className="mt-6 md:mt-8">
+                  <SectionHeader
+                    icon="account_tree"
+                    title="Dispositivos disponibles"
+                    color="text-indigo-400"
+                  />
+                  <div className="grid gap-3">
+                    {opciones.map((option) => (
+                      <article
+                        key={option.id}
+                        className="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/60"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <h4 className="text-sm font-black text-slate-800 dark:text-white">
+                              {option.nombre}
+                            </h4>
+                            <span
+                              className={`mt-1 inline-flex rounded-lg border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${getEspecialidadClasses(option.orientacion).tag}`}
+                            >
+                              {option.orientacion}
+                            </span>
+                          </div>
+                          <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-black text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
+                            {option.cupos} {option.cupos === 1 ? "cupo" : "cupos"}
+                          </span>
+                        </div>
+                        {option.horarios.length > 0 && (
+                          <p className="mt-3 flex gap-2 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+                            <span className="material-icons !text-base text-indigo-400">
+                              schedule
+                            </span>
+                            {option.horarios.join(" · ")}
+                          </p>
+                        )}
+                        {option.ubicacion && (
+                          <p className="mt-2 flex gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="material-icons !text-base text-rose-400">
+                              location_on
+                            </span>
+                            {option.ubicacion}
+                          </p>
+                        )}
+                        {option.actividades.length > 0 && (
+                          <ul className="mt-3 space-y-1 pl-5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                            {option.actividades.map((activity) => (
+                              <li key={activity} className="list-disc">
+                                {activity}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {option.requisitos.length > 0 && (
+                          <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                            <strong>Requisitos:</strong> {option.requisitos.join(" · ")}
+                          </div>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Requisito Excluyente / Información Importante */}
               {requisitoObligatorio && (

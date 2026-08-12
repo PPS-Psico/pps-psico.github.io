@@ -1,7 +1,13 @@
 import * as C from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import type { CompromisoPPS, Convocatoria, GroupedSeleccionados, LanzamientoPPS } from "../types";
+import type {
+  CompromisoPPS,
+  Convocatoria,
+  GroupedSeleccionados,
+  LanzamientoOpcion,
+  LanzamientoPPS,
+} from "../types";
 import {
   cleanDbValue,
   cleanInstitutionName,
@@ -141,7 +147,31 @@ export const fetchConvocatoriasData = async (
   }
 
   const allRawLanzamientos = [...visibleLaunches, ...historicalLaunches];
-  const launchesMap = new Map(allRawLanzamientos.map((l) => [l.id, l]));
+  const launchIds = allRawLanzamientos.map((launch) => launch.id);
+  let optionsByLaunch = new Map<string, LanzamientoOpcion[]>();
+  if (launchIds.length > 0) {
+    const { data: optionRows, error: optionsError } = await supabase
+      .from("lanzamiento_opciones")
+      .select("*")
+      .in("lanzamiento_id", launchIds)
+      .eq("activa", true)
+      .order("orden", { ascending: true });
+    if (optionsError) {
+      logger.warn("[Convocatorias] No se pudieron cargar los dispositivos:", optionsError);
+    } else {
+      optionsByLaunch = (optionRows || []).reduce((map, option) => {
+        const list = map.get(option.lanzamiento_id) || [];
+        list.push(option);
+        map.set(option.lanzamiento_id, list);
+        return map;
+      }, new Map<string, LanzamientoOpcion[]>());
+    }
+  }
+  const hydratedLaunches = allRawLanzamientos.map((launch) => ({
+    ...launch,
+    opciones: optionsByLaunch.get(launch.id) || [],
+  }));
+  const launchesMap = new Map(hydratedLaunches.map((l) => [l.id, l]));
 
   const hydratedEnrollments = myEnrollments.map((row) => {
     const launchId = row[C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS];
@@ -170,15 +200,17 @@ export const fetchConvocatoriasData = async (
     } as Convocatoria;
   });
 
-  const cleanedVisibleLaunches = visibleLaunches.map((l) => ({
-    ...l,
-    [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]),
-  }));
+  const cleanedVisibleLaunches = hydratedLaunches
+    .filter((launch) => visibleLaunchIds.has(launch.id))
+    .map((l) => ({
+      ...l,
+      [C.FIELD_NOMBRE_PPS_LANZAMIENTOS]: cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]),
+    }));
 
   const lanzamientos = cleanedVisibleLaunches.filter((l) => isLaunchVisibleToStudent(l));
 
   const institutionAddressMap = new Map<string, string>();
-  allRawLanzamientos.forEach((l) => {
+  hydratedLaunches.forEach((l) => {
     const name = cleanInstitutionName(l[C.FIELD_NOMBRE_PPS_LANZAMIENTOS]);
     const address = l[C.FIELD_DIRECCION_LANZAMIENTOS];
     if (name && address) {
@@ -217,7 +249,7 @@ export const fetchConvocatoriasData = async (
   return {
     lanzamientos,
     myEnrollments: hydratedEnrollments,
-    allLanzamientos: allRawLanzamientos,
+    allLanzamientos: hydratedLaunches,
     institutionAddressMap,
     institutionLogoMap,
   };
@@ -379,10 +411,25 @@ export const toggleStudentSelection = async (
   isSelecting: boolean,
   studentId: string,
   lanzamiento: LanzamientoPPS,
-  horarioAsignado?: string
+  horarioAsignado?: string,
+  opcionId?: string
 ): Promise<{ success: boolean; error?: string }> => {
   const newStatus = isSelecting ? "Seleccionado" : "Inscripto";
   try {
+    if ((lanzamiento.opciones || []).length > 0) {
+      const resolvedOptionId = opcionId || lanzamiento.opciones?.[0]?.id;
+      if (!resolvedOptionId) {
+        throw new Error("Elegí un dispositivo antes de seleccionar al estudiante.");
+      }
+      const { error } = await supabase.rpc("seleccionar_convocatoria_opcion", {
+        p_convocatoria_id: convocatoriaId,
+        p_opcion_id: resolvedOptionId,
+        p_seleccionar: isSelecting,
+      });
+      if (error) throw error;
+      return { success: true };
+    }
+
     const updatePayload: Record<string, unknown> = {
       [C.FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: newStatus,
     };

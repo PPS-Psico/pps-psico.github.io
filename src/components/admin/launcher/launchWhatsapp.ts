@@ -70,6 +70,9 @@ export function buildWhatsappMessage({
     : [];
   const safeSchedules = Array.isArray(schedules) ? schedules : [];
   const validSchedules = safeSchedules.filter((schedule) => asText(schedule?.time));
+  const validOptions = (Array.isArray(formData.opciones) ? formData.opciones : []).filter(
+    (option) => asText(option.nombre) && asText(option.orientacion) && Number(option.cupos) > 0
+  );
   const nombrePps = asText(formData.nombrePPS) || "Nueva convocatoria";
   const institucion = asText(institutionName) || nombrePps;
   const direccion = asText(formData.direccion) || "A confirmar";
@@ -80,9 +83,7 @@ export function buildWhatsappMessage({
 ✨ *Institución:* ${institucion}
 📍 *Lugar:* ${direccion}
 
-🎯 *Objetivo:* ${descripcion}
-
-📅 *Horarios:*`;
+🎯 *Objetivo:* ${descripcion}`;
 
   const formatScheduleLine = (schedule: ScheduleEntry) => {
     const time = asText(schedule?.time);
@@ -91,19 +92,42 @@ export function buildWhatsappMessage({
     return `${time}${orientationLabel}`;
   };
 
-  if (validSchedules.length > 0) {
+  if (validOptions.length > 0) {
+    message += `
+
+🧩 *Dispositivos disponibles:*`;
     message +=
       "\n" +
-      validSchedules
-        .map(
-          (schedule) =>
-            `• ${formatScheduleLine(schedule)}${
-              schedule.obligatorio ? " — *obligatorio para todos*" : " — a elección"
-            }`
-        )
+      validOptions
+        .map((option) => {
+          const schedule = option.horarios
+            .split(/\r?\n/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .join(" · ");
+          return `• *${asText(option.nombre)}* [${asText(option.orientacion)}] — ${Number(
+            option.cupos
+          )} cupos${schedule ? `\n  ${schedule}` : ""}`;
+        })
         .join("\n");
   } else {
-    message += " A confirmar";
+    message += `
+
+📅 *Horarios:*`;
+    if (validSchedules.length > 0) {
+      message +=
+        "\n" +
+        validSchedules
+          .map(
+            (schedule) =>
+              `• ${formatScheduleLine(schedule)}${
+                schedule.obligatorio ? " — *obligatorio para todos*" : " — a elección"
+              }`
+          )
+          .join("\n");
+    } else {
+      message += " A confirmar";
+    }
   }
 
   const fechaEncuentro = asText(formData.fechaEncuentroInicial);
@@ -134,8 +158,12 @@ export function buildWhatsappMessage({
   message += `
 
 📋 *Período de prácticas:* ${fechaInicio ? formatDate(fechaInicio) : "A confirmar"}${
-    fechaFin ? ` al ${formatDate(fechaFin)}` : ""
-  } (aprox.)
+    formData.finalizacionPorHoras
+      ? ` · finalización individual al completar ${acreditacion}`
+      : fechaFin
+        ? ` al ${formatDate(fechaFin)} (aprox.)`
+        : ""
+  }
 📋 *Inscripción:* ${
     fechaInicioInscripcion && fechaFinInscripcion
       ? `Desde ${formatDate(fechaInicioInscripcion)} hasta ${formatDate(fechaFinInscripcion)}`

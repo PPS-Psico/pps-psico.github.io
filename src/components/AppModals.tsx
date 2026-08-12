@@ -12,9 +12,11 @@ import {
   FIELD_REQ_CV_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
 } from "../constants";
 import { getAreaColor } from "./student/ds";
 import { getMandatoryLaunchSchedules } from "../utils/scheduleRequirements";
+import { normalizeStringForComparison } from "../utils/formatters";
 
 const AppModals: React.FC = () => {
   const isStudentView = typeof window !== "undefined" && window.location.hash.includes("/student");
@@ -58,6 +60,12 @@ const AppModals: React.FC = () => {
       : allHorarios;
   const permiteCertificado =
     !!selectedLanzamientoForEnrollment?.[FIELD_PERMITE_CERTIFICADO_LANZAMIENTOS];
+  const completedOrientationSet = new Set(
+    completedOrientacionesForEnrollment.map(normalizeStringForComparison)
+  );
+  const opcionesDisponibles = (selectedLanzamientoForEnrollment?.opciones || []).filter(
+    (option) => !completedOrientationSet.has(normalizeStringForComparison(option.orientacion))
+  );
 
   // New Config Flags
   const reqCertificadoTrabajo =
@@ -76,7 +84,11 @@ const AppModals: React.FC = () => {
   // tomamos la primera orientación y la mapeamos al color del área.
   const orientacion =
     (selectedLanzamientoForEnrollment?.[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "";
-  const accentColor = getAreaColor(orientacion.split(/[,/]/)[0].trim());
+  const orientacionesDisponibles = [
+    ...new Set(opcionesDisponibles.map((option) => option.orientacion.trim()).filter(Boolean)),
+  ];
+  const orientacionInscripcion = orientacionesDisponibles.join(", ") || orientacion;
+  const accentColor = getAreaColor(orientacionInscripcion.split(/[,/]/)[0].trim());
 
   return (
     <>
@@ -104,7 +116,11 @@ const AppModals: React.FC = () => {
         creditedHours={Number(
           selectedLanzamientoForEnrollment?.[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0
         )}
-        orientation={orientacion.split(/[,/]/)[0].trim()}
+        orientation={orientacionInscripcion}
+        opcionesDisponibles={opcionesDisponibles}
+        finalizacionPorHoras={
+          !!selectedLanzamientoForEnrollment?.[FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]
+        }
       />
 
       <SeleccionadosModal
