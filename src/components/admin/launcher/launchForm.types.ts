@@ -64,18 +64,30 @@ export interface LaunchOptionDraft {
   nombre: string;
   orientacion: string;
   cupos: number;
-  horarios: string;
+  horarios: LaunchOptionScheduleDraft[];
   actividades: string;
   requisitos: string;
   ubicacion: string;
 }
+
+export interface LaunchOptionScheduleDraft {
+  clientId: string;
+  horario: string;
+  cupos: number;
+}
+
+export const createEmptyOptionScheduleDraft = (): LaunchOptionScheduleDraft => ({
+  clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  horario: "",
+  cupos: 1,
+});
 
 export const createEmptyOptionDraft = (orientation = ""): LaunchOptionDraft => ({
   clientId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
   nombre: "",
   orientacion: orientation,
   cupos: 1,
-  horarios: "",
+  horarios: [createEmptyOptionScheduleDraft()],
   actividades: "",
   requisitos: "",
   ubicacion: "",

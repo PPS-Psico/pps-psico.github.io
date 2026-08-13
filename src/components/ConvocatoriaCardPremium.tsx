@@ -5,6 +5,7 @@ import {
   normalizeStringForComparison,
   parseOrientaciones,
 } from "../utils/formatters";
+import { getOptionCapacity, getOptionScheduleSlots } from "../utils/launchOptions";
 
 export interface ConvocatoriaDetailProps {
   id: string;
@@ -602,58 +603,73 @@ const ConvocatoriaCardPremium: React.FC<ConvocatoriaDetailProps> = ({
                     color="text-indigo-400"
                   />
                   <div className="grid gap-3">
-                    {opciones.map((option) => (
-                      <article
-                        key={option.id}
-                        className="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/60"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <h4 className="text-sm font-black text-slate-800 dark:text-white">
-                              {option.nombre}
-                            </h4>
-                            <span
-                              className={`mt-1 inline-flex rounded-lg border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${getEspecialidadClasses(option.orientacion).tag}`}
-                            >
-                              {option.orientacion}
+                    {opciones.map((option) => {
+                      const optionSchedules = getOptionScheduleSlots(option);
+                      const optionCapacity = getOptionCapacity(option);
+                      return (
+                        <article
+                          key={option.id}
+                          className="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/60"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <h4 className="text-sm font-black text-slate-800 dark:text-white">
+                                {option.nombre}
+                              </h4>
+                              <span
+                                className={`mt-1 inline-flex rounded-lg border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${getEspecialidadClasses(option.orientacion).tag}`}
+                              >
+                                {option.orientacion}
+                              </span>
+                            </div>
+                            <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-black text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
+                              {optionCapacity}{" "}
+                              {optionCapacity === 1 ? "cupo total" : "cupos totales"}
                             </span>
                           </div>
-                          <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-black text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
-                            {option.cupos} {option.cupos === 1 ? "cupo" : "cupos"}
-                          </span>
-                        </div>
-                        {option.horarios.length > 0 && (
-                          <p className="mt-3 flex gap-2 text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-                            <span className="material-icons !text-base text-indigo-400">
-                              schedule
-                            </span>
-                            {option.horarios.join(" · ")}
-                          </p>
-                        )}
-                        {option.ubicacion && (
-                          <p className="mt-2 flex gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span className="material-icons !text-base text-rose-400">
-                              location_on
-                            </span>
-                            {option.ubicacion}
-                          </p>
-                        )}
-                        {option.actividades.length > 0 && (
-                          <ul className="mt-3 space-y-1 pl-5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                            {option.actividades.map((activity) => (
-                              <li key={activity} className="list-disc">
-                                {activity}
-                              </li>
+                          <div className="mt-3 grid gap-1.5">
+                            {optionSchedules.map((schedule) => (
+                              <div
+                                key={schedule.id}
+                                className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs dark:bg-slate-800/70"
+                              >
+                                <span className="flex min-w-0 gap-2 font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+                                  <span className="material-icons !text-base text-indigo-400">
+                                    schedule
+                                  </span>
+                                  {schedule.horario}
+                                </span>
+                                <strong className="shrink-0 text-[11px] text-teal-700 dark:text-teal-300">
+                                  {schedule.cupos} {schedule.cupos === 1 ? "cupo" : "cupos"}
+                                </strong>
+                              </div>
                             ))}
-                          </ul>
-                        )}
-                        {option.requisitos.length > 0 && (
-                          <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                            <strong>Requisitos:</strong> {option.requisitos.join(" · ")}
                           </div>
-                        )}
-                      </article>
-                    ))}
+                          {option.ubicacion && (
+                            <p className="mt-2 flex gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              <span className="material-icons !text-base text-rose-400">
+                                location_on
+                              </span>
+                              {option.ubicacion}
+                            </p>
+                          )}
+                          {option.actividades.length > 0 && (
+                            <ul className="mt-3 space-y-1 pl-5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                              {option.actividades.map((activity) => (
+                                <li key={activity} className="list-disc">
+                                  {activity}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {option.requisitos.length > 0 && (
+                            <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                              <strong>Requisitos:</strong> {option.requisitos.join(" · ")}
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
                   </div>
                 </div>
               )}

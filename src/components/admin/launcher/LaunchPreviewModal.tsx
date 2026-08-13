@@ -78,11 +78,21 @@ export const LaunchPreviewModal: React.FC<LaunchPreviewModalProps> = ({
     lanzamiento_id: "preview",
     nombre: option.nombre,
     orientacion: option.orientacion,
-    cupos: Number(option.cupos),
-    horarios: option.horarios
-      .split(/\r?\n/)
-      .map((item) => item.trim())
-      .filter(Boolean),
+    cupos: option.horarios.reduce(
+      (total, schedule) => total + Math.max(0, Number(schedule.cupos) || 0),
+      0
+    ),
+    horarios: option.horarios.map((schedule) => schedule.horario.trim()).filter(Boolean),
+    franjas: option.horarios.map((schedule, scheduleIndex) => ({
+      id: schedule.clientId,
+      opcion_id: option.clientId,
+      horario: schedule.horario,
+      cupos: Number(schedule.cupos),
+      orden: scheduleIndex + 1,
+      activa: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })),
     actividades: option.actividades
       .split(/\r?\n/)
       .map((item) => item.trim())

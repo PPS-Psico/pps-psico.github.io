@@ -24,6 +24,7 @@ import { db } from "../../../lib/db";
 import type { LanzamientoPPS } from "../../../types";
 import { formatDate } from "../../../utils/formatters";
 import { logger } from "../../../utils/logger";
+import { getOptionCapacity, getOptionScheduleSlots } from "../../../utils/launchOptions";
 import { CanvasHeader, buildWhatsappFromLaunch } from "./shared";
 
 interface BorradorViewProps {
@@ -54,6 +55,15 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
   const mensajeWa =
     (launch[FIELD_MENSAJE_WHATSAPP_LANZAMIENTOS] as string | null) ||
     buildWhatsappFromLaunch(launch);
+  const opciones = launch.opciones || [];
+  const opcionesCompletas = opciones.every(
+    (option) =>
+      option.nombre.trim() &&
+      option.orientacion.trim() &&
+      getOptionScheduleSlots(option).every(
+        (schedule) => schedule.horario.trim() && schedule.cupos > 0
+      )
+  );
 
   const campos = [
     { label: "Nombre PPS", value: nombre?.trim() || null, icon: "label", required: true },
@@ -96,7 +106,22 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
       icon: "calendar_month",
     },
     { label: "Horario", value: horario, icon: "schedule" },
-    { label: "Descripción", value: descripcion ? "Definida" : null, icon: "description" },
+    {
+      label: "Descripción",
+      value: descripcion ? "Definida" : null,
+      icon: "description",
+      required: true,
+    },
+    ...(opciones.length > 0
+      ? [
+          {
+            label: "Dispositivos y franjas",
+            value: opcionesCompletas ? `${opciones.length} completos` : null,
+            icon: "account_tree",
+            required: true,
+          },
+        ]
+      : []),
   ];
 
   const requiredFields = campos.filter((campo) => campo.required);
@@ -270,6 +295,69 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
             </div>
           ))}
         </div>
+
+        <section className="lv4-draft-proposal">
+          <div className="lv4-draft-proposal-head">
+            <div>
+              <div className="lv4-section-title">Contenido que verá el estudiante</div>
+              <p>Revisá la explicación, las actividades y los cupos antes de publicar.</p>
+            </div>
+          </div>
+          <div className="lv4-draft-description">
+            <strong>Descripción de la propuesta</strong>
+            <p>{descripcion?.trim() || "Todavía no se explicó en qué consiste esta PPS."}</p>
+          </div>
+
+          {opciones.length > 0 && (
+            <div className="lv4-draft-options">
+              {opciones.map((option) => {
+                const schedules = getOptionScheduleSlots(option);
+                const optionCapacity = getOptionCapacity(option);
+                return (
+                  <article key={option.id} className="lv4-draft-option">
+                    <header>
+                      <div>
+                        <strong>{option.nombre}</strong>
+                        <span>{option.orientacion}</span>
+                      </div>
+                      <b>{optionCapacity} cupos totales</b>
+                    </header>
+                    <div className="lv4-draft-schedule-list">
+                      {schedules.map((schedule) => (
+                        <div key={schedule.id}>
+                          <span>{schedule.horario}</span>
+                          <strong>
+                            {schedule.cupos} {schedule.cupos === 1 ? "cupo" : "cupos"}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                    {option.actividades.length > 0 && (
+                      <div className="lv4-draft-option-copy">
+                        <strong>Actividades</strong>
+                        <ul>
+                          {option.actividades.map((activity) => (
+                            <li key={activity}>{activity}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {option.requisitos.length > 0 && (
+                      <div className="lv4-draft-option-copy">
+                        <strong>Requisitos</strong>
+                        <ul>
+                          {option.requisitos.map((requirement) => (
+                            <li key={requirement}>{requirement}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* WhatsApp preview */}
         <div style={{ marginBottom: 28 }}>

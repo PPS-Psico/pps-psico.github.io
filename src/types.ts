@@ -12,7 +12,11 @@ export type AppRecord<T> = T & {
 
 // Map strict Database types to App types
 export type Estudiante = Tables["estudiantes"]["Row"];
-export type LanzamientoOpcion = Tables["lanzamiento_opciones"]["Row"];
+export type LanzamientoOpcionHorario = Tables["lanzamiento_opcion_horarios"]["Row"];
+export type LanzamientoOpcion = Tables["lanzamiento_opciones"]["Row"] & {
+  /** Franjas con capacidad propia; `horarios` queda como resumen legacy. */
+  franjas?: LanzamientoOpcionHorario[];
+};
 export type ConvocatoriaPreferencia = Tables["convocatoria_preferencias"]["Row"];
 export type Practica = Tables["practicas"]["Row"];
 export type SolicitudPPS = Tables["solicitudes_pps"]["Row"];
@@ -149,7 +153,9 @@ export interface EnrichedStudent {
   horarioSeleccionado: string; // Horarios solicitados (originales separados por ;)
   horarioAsignado?: string; // Horario final asignado por el admin
   opcionAsignadaId?: string | null;
+  opcionHorarioAsignadoId?: string | null;
   opcionesPreferidas?: LanzamientoOpcion[];
+  horariosOpcionPreferidos?: LanzamientoOpcionHorario[];
   trabaja: boolean;
   certificadoTrabajo: string | null;
   cvUrl: string | null;

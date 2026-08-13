@@ -331,17 +331,6 @@ export const useConvocatorias = (
           "inscripcion cancelada"
       );
 
-      if (canceledEnrollment) {
-        logger.info(
-          "[Enrollment] Re-enrolling: Found canceled enrollment, updating:",
-          canceledEnrollment.id
-        );
-        return db.convocatorias.update(canceledEnrollment.id, {
-          [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
-          ...newRecordFields,
-        } as Parameters<typeof db.convocatorias.update>[1]);
-      }
-
       const existingActive = existingConvocatorias.find(
         (c: ConvocatoriaFields) =>
           normalizeStringForComparison(c[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]) === "inscripto" ||
@@ -353,13 +342,13 @@ export const useConvocatorias = (
       }
 
       if ((selectedLanzamiento.opciones || []).length > 0) {
-        const selectedOptionIds = Array.isArray(formData.opciones) ? formData.opciones : [];
-        if (selectedOptionIds.length === 0) {
-          throw new Error("Elegí al menos un dispositivo para inscribirte.");
+        const selectedScheduleIds = Array.isArray(formData.opciones) ? formData.opciones : [];
+        if (selectedScheduleIds.length === 0) {
+          throw new Error("Elegí al menos una franja horaria para inscribirte.");
         }
-        const { data, error } = await supabase.rpc("inscribir_convocatoria_multiopcion", {
+        const { data, error } = await supabase.rpc("inscribir_convocatoria_multiopcion_v2", {
           p_lanzamiento_id: selectedLanzamiento.id,
-          p_opcion_ids: selectedOptionIds,
+          p_horario_ids: selectedScheduleIds,
           p_datos: {
             termino_cursar: formData.terminoDeCursar ? "Sí" : "No",
             cursando_electivas: formData.cursandoElectivas ? "Sí" : "No",
@@ -376,6 +365,17 @@ export const useConvocatorias = (
         });
         if (error) throw error;
         return data as AppRecord<ConvocatoriaFields>;
+      }
+
+      if (canceledEnrollment) {
+        logger.info(
+          "[Enrollment] Re-enrolling: Found canceled enrollment, updating:",
+          canceledEnrollment.id
+        );
+        return db.convocatorias.update(canceledEnrollment.id, {
+          [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
+          ...newRecordFields,
+        } as Parameters<typeof db.convocatorias.update>[1]);
       }
 
       return db.convocatorias.create(

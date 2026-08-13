@@ -12,8 +12,10 @@ import { normalizeStringForComparison } from "../../../utils/formatters";
 import { CheckRow, FormField, FormSection } from "./LaunchFormPrimitives";
 import {
   createEmptyOptionDraft,
+  createEmptyOptionScheduleDraft,
   type FormData,
   type LaunchOptionDraft,
+  type LaunchOptionScheduleDraft,
   type ScheduleEntry,
 } from "./launchForm.types";
 
@@ -109,8 +111,13 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
   const isOnline = formData.direccion === "Modalidad Virtual";
   const launchOptions = Array.isArray(formData.opciones) ? formData.opciones : [];
   const hasLaunchOptions = launchOptions.length > 0;
+  const getOptionCapacity = (option: LaunchOptionDraft) =>
+    option.horarios.reduce(
+      (total, schedule) => total + Math.max(0, Number(schedule.cupos) || 0),
+      0
+    );
   const optionCapacity = launchOptions.reduce(
-    (total, option) => total + Math.max(0, Number(option.cupos) || 0),
+    (total, option) => total + getOptionCapacity(option),
     0
   );
 
@@ -126,19 +133,89 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
       return {
         ...prev,
         opciones,
-        cuposDisponibles: opciones.reduce(
-          (total, option) => total + Math.max(0, Number(option.cupos) || 0),
-          0
-        ),
+        cuposDisponibles: opciones.reduce((total, option) => total + option.cupos, 0),
+      };
+    });
+  };
+
+  const updateOptionSchedule = <K extends keyof LaunchOptionScheduleDraft>(
+    optionClientId: string,
+    scheduleClientId: string,
+    field: K,
+    value: LaunchOptionScheduleDraft[K]
+  ) => {
+    setFormData((prev) => {
+      const opciones = (prev.opciones || []).map((option) => {
+        if (option.clientId !== optionClientId) return option;
+        const horarios = option.horarios.map((schedule) =>
+          schedule.clientId === scheduleClientId ? { ...schedule, [field]: value } : schedule
+        );
+        return {
+          ...option,
+          horarios,
+          cupos: horarios.reduce(
+            (total, schedule) => total + Math.max(0, Number(schedule.cupos) || 0),
+            0
+          ),
+        };
+      });
+      return {
+        ...prev,
+        opciones,
+        cuposDisponibles: opciones.reduce((total, option) => total + option.cupos, 0),
+      };
+    });
+  };
+
+  const addOptionSchedule = (optionClientId: string) => {
+    setFormData((prev) => {
+      const opciones = (prev.opciones || []).map((option) => {
+        if (option.clientId !== optionClientId) return option;
+        const horarios = [...option.horarios, createEmptyOptionScheduleDraft()];
+        return {
+          ...option,
+          horarios,
+          cupos: horarios.reduce((total, schedule) => total + Number(schedule.cupos || 0), 0),
+        };
+      });
+      return {
+        ...prev,
+        opciones,
+        cuposDisponibles: opciones.reduce((total, option) => total + option.cupos, 0),
+      };
+    });
+  };
+
+  const removeOptionSchedule = (optionClientId: string, scheduleClientId: string) => {
+    setFormData((prev) => {
+      const opciones = (prev.opciones || []).map((option) => {
+        if (option.clientId !== optionClientId || option.horarios.length === 1) return option;
+        const horarios = option.horarios.filter(
+          (schedule) => schedule.clientId !== scheduleClientId
+        );
+        return {
+          ...option,
+          horarios,
+          cupos: horarios.reduce((total, schedule) => total + Number(schedule.cupos || 0), 0),
+        };
+      });
+      return {
+        ...prev,
+        opciones,
+        cuposDisponibles: opciones.reduce((total, option) => total + option.cupos, 0),
       };
     });
   };
 
   const addOption = () => {
-    setFormData((prev) => ({
-      ...prev,
-      opciones: [...(prev.opciones || []), createEmptyOptionDraft(safeOrientacion[0] || "")],
-    }));
+    setFormData((prev) => {
+      const opciones = [...(prev.opciones || []), createEmptyOptionDraft(safeOrientacion[0] || "")];
+      return {
+        ...prev,
+        opciones,
+        cuposDisponibles: opciones.reduce((total, option) => total + option.cupos, 0),
+      };
+    });
   };
 
   const removeOption = (clientId: string) => {
@@ -149,7 +226,7 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
         opciones,
         cuposDisponibles:
           opciones.length > 0
-            ? opciones.reduce((total, option) => total + Math.max(0, Number(option.cupos) || 0), 0)
+            ? opciones.reduce((total, option) => total + option.cupos, 0)
             : prev.cuposDisponibles,
       };
     });
@@ -185,8 +262,10 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
         (option) =>
           !option.nombre.trim() ||
           !option.orientacion.trim() ||
-          Number(option.cupos) <= 0 ||
-          !option.horarios.trim()
+          option.horarios.length === 0 ||
+          option.horarios.some(
+            (schedule) => !schedule.horario.trim() || Number(schedule.cupos) <= 0
+          )
       ).length
     : [schedules.filter((s) => s.time.trim()).length === 0].filter(Boolean).length;
   const missingTotal = missingS1 + missingS2 + missingS3 + missingS4;
@@ -898,30 +977,97 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
                       ))}
                     </select>
                   </FormField>
-                  <FormField label="Cupos">
+                  <FormField label="Cupo total del dispositivo">
                     <input
                       className="field"
                       type="number"
                       min={1}
-                      value={option.cupos}
-                      onChange={(event) =>
-                        updateOption(option.clientId, "cupos", Number(event.target.value))
-                      }
+                      value={getOptionCapacity(option)}
+                      disabled
                     />
+                    <span className="meta">Se calcula sumando las franjas de abajo.</span>
                   </FormField>
                 </div>
+                <div className="lv4-option-schedules">
+                  <div className="lv4-option-schedules-head">
+                    <div>
+                      <strong>Franjas horarias y cupos</strong>
+                      <span>
+                        Cada fila es una vacante distinta. Si dos horarios comparten el mismo cupo,
+                        escribilos juntos en una sola fila.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => addOptionSchedule(option.clientId)}
+                    >
+                      <span className="material-icons" style={{ fontSize: 14 }}>
+                        add
+                      </span>
+                      Agregar franja
+                    </button>
+                  </div>
+                  <div className="lv4-option-schedule-list">
+                    {option.horarios.map((schedule, scheduleIndex) => (
+                      <div key={schedule.clientId} className="lv4-option-schedule-row">
+                        <span className="lv4-option-schedule-index">
+                          {String(scheduleIndex + 1).padStart(2, "0")}
+                        </span>
+                        <label className="lv4-option-schedule-field">
+                          <span>Horario / disponibilidad</span>
+                          <input
+                            className="field"
+                            value={schedule.horario}
+                            onChange={(event) =>
+                              updateOptionSchedule(
+                                option.clientId,
+                                schedule.clientId,
+                                "horario",
+                                event.target.value
+                              )
+                            }
+                            placeholder="Ej: Viernes · 8:00 a 12:00"
+                          />
+                        </label>
+                        <label className="lv4-option-schedule-capacity">
+                          <span>Cupos</span>
+                          <input
+                            className="field"
+                            type="number"
+                            min={1}
+                            value={schedule.cupos}
+                            onChange={(event) =>
+                              updateOptionSchedule(
+                                option.clientId,
+                                schedule.clientId,
+                                "cupos",
+                                Number(event.target.value)
+                              )
+                            }
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => removeOptionSchedule(option.clientId, schedule.clientId)}
+                          disabled={option.horarios.length === 1}
+                          title={
+                            option.horarios.length === 1
+                              ? "Cada dispositivo necesita al menos una franja"
+                              : "Eliminar franja"
+                          }
+                          aria-label={`Eliminar franja ${scheduleIndex + 1}`}
+                        >
+                          <span className="material-icons" style={{ fontSize: 14 }}>
+                            delete
+                          </span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="lf-grid-2">
-                  <FormField label="Horarios / disponibilidad">
-                    <textarea
-                      className="field"
-                      value={option.horarios}
-                      onChange={(event) =>
-                        updateOption(option.clientId, "horarios", event.target.value)
-                      }
-                      placeholder="Una alternativa por línea"
-                      rows={3}
-                    />
-                  </FormField>
                   <FormField label="Lugar específico">
                     <textarea
                       className="field"

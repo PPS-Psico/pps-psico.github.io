@@ -464,11 +464,11 @@ const faqGroups: FaqGroup[] = [
         q: "¿Qué pasa si una convocatoria ofrece varios dispositivos?",
         a: (
           <>
-            Hacés <strong>una sola inscripción</strong> y elegís los dispositivos que realmente
-            podés sostener, ordenados por preferencia. Cada dispositivo informa su orientación,
-            horario, lugar, requisitos y cupo propio. Coordinación asigna uno de ellos respetando
-            las preferencias y la disponibilidad; inscribirte no reserva automáticamente una
-            vacante.
+            Hacés <strong>una sola inscripción</strong> y elegís las franjas que realmente podés
+            sostener, ordenadas por preferencia. Cada dispositivo informa su orientación, lugar,
+            actividades y requisitos; dentro de él, cada horario muestra su propio cupo.
+            Coordinación asigna una franja respetando las preferencias y la disponibilidad.
+            Inscribirte no reserva automáticamente una vacante.
           </>
         ),
       },

@@ -152,7 +152,7 @@ export const fetchConvocatoriasData = async (
   if (launchIds.length > 0) {
     const { data: optionRows, error: optionsError } = await supabase
       .from("lanzamiento_opciones")
-      .select("*")
+      .select("*, franjas:lanzamiento_opcion_horarios(*)")
       .in("lanzamiento_id", launchIds)
       .eq("activa", true)
       .order("orden", { ascending: true });
@@ -160,6 +160,7 @@ export const fetchConvocatoriasData = async (
       logger.warn("[Convocatorias] No se pudieron cargar los dispositivos:", optionsError);
     } else {
       optionsByLaunch = (optionRows || []).reduce((map, option) => {
+        option.franjas?.sort((a, b) => a.orden - b.orden);
         const list = map.get(option.lanzamiento_id) || [];
         list.push(option);
         map.set(option.lanzamiento_id, list);
@@ -412,18 +413,17 @@ export const toggleStudentSelection = async (
   studentId: string,
   lanzamiento: LanzamientoPPS,
   horarioAsignado?: string,
-  opcionId?: string
+  opcionHorarioId?: string
 ): Promise<{ success: boolean; error?: string }> => {
   const newStatus = isSelecting ? "Seleccionado" : "Inscripto";
   try {
     if ((lanzamiento.opciones || []).length > 0) {
-      const resolvedOptionId = opcionId || lanzamiento.opciones?.[0]?.id;
-      if (!resolvedOptionId) {
-        throw new Error("Elegí un dispositivo antes de seleccionar al estudiante.");
+      if (!opcionHorarioId) {
+        throw new Error("Elegí una franja horaria antes de seleccionar al estudiante.");
       }
-      const { error } = await supabase.rpc("seleccionar_convocatoria_opcion", {
+      const { error } = await supabase.rpc("seleccionar_convocatoria_opcion_horario", {
         p_convocatoria_id: convocatoriaId,
-        p_opcion_id: resolvedOptionId,
+        p_horario_id: opcionHorarioId,
         p_seleccionar: isSelecting,
       });
       if (error) throw error;

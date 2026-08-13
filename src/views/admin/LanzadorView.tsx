@@ -140,9 +140,31 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       if (isTestingMode) {
         return (await mockDb.getAll("lanzamientos_pps")) as LanzamientoPPS[];
       }
-      return db.lanzamientos.getAll({
+      const records = await db.lanzamientos.getAll({
         sort: [{ field: FIELD_FECHA_INICIO_LANZAMIENTOS, direction: "desc" }],
       });
+      if (records.length === 0) return records;
+
+      const { data: optionRows, error } = await supabase
+        .from("lanzamiento_opciones")
+        .select("*, franjas:lanzamiento_opcion_horarios(*)")
+        .in(
+          "lanzamiento_id",
+          records.map((launch) => launch.id)
+        )
+        .eq("activa", true)
+        .order("orden", { ascending: true });
+      if (error) throw error;
+
+      return records.map((launch) => ({
+        ...launch,
+        opciones: (optionRows || [])
+          .filter((option) => option.lanzamiento_id === launch.id)
+          .map((option) => ({
+            ...option,
+            franjas: (option.franjas || []).slice().sort((a, b) => a.orden - b.orden),
+          })),
+      }));
     },
   });
 

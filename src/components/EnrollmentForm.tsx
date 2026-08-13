@@ -7,6 +7,7 @@ import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAccessibleDialog } from "../hooks/useAccessibleDialog";
+import { getOptionCapacity, getOptionScheduleSlots } from "../utils/launchOptions";
 import { Icon, type IconName } from "./student/ds";
 import ConfirmModal from "./ConfirmModal";
 import "./student/home/atlas/atlasHome.css";
@@ -301,7 +302,7 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["opciones"],
-            message: "Elegí al menos un dispositivo.",
+            message: "Elegí al menos una franja horaria.",
           });
         }
 
@@ -591,8 +592,8 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                 ? `Finaliza al completar ${creditedHours || 70} horas`
                 : hasOptions
                   ? formData.opciones.length > 0
-                    ? `${formData.opciones.length} ${formData.opciones.length === 1 ? "preferencia" : "preferencias"}`
-                    : "Preferencias pendientes"
+                    ? `${formData.opciones.length} ${formData.opciones.length === 1 ? "franja elegida" : "franjas elegidas"}`
+                    : "Franjas pendientes"
                   : formData.horarios.length > 0
                     ? `${formData.horarios.length} ${formData.horarios.length === 1 ? "horario incluido" : "horarios incluidos"}`
                     : "Horario pendiente"}
@@ -915,35 +916,25 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
 
                   {hasOptions && (
                     <section data-error={!!errors.opciones}>
-                      <SectionHead icon="book">Elegí tus dispositivos</SectionHead>
+                      <SectionHead icon="book">Elegí tus franjas</SectionHead>
                       <p
                         className="mb-3 text-xs font-medium leading-relaxed"
                         style={{ color: "var(--ink-muted)" }}
                       >
-                        Podés marcar más de uno. El orden en que los elijas define tu prioridad.
+                        Podés marcar franjas de distintos dispositivos. El orden en que las elijas
+                        define tu prioridad.
                       </p>
                       <div className="grid grid-cols-1 gap-3">
                         {opcionesDisponibles.map((option) => {
-                          const priority = formData.opciones.indexOf(option.id);
-                          const active = priority >= 0;
+                          const optionSchedules = getOptionScheduleSlots(option);
+                          const optionCapacity = getOptionCapacity(option);
                           return (
                             <div
                               key={option.id}
-                              onClick={() => handleOptionToggle(option.id)}
-                              role="checkbox"
-                              tabIndex={0}
-                              aria-checked={active}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                  event.preventDefault();
-                                  handleOptionToggle(option.id);
-                                }
-                              }}
-                              className="cursor-pointer rounded-2xl border p-4 transition focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+                              className="rounded-2xl border p-4"
                               style={{
-                                borderColor: active ? "var(--accent)" : "var(--line)",
+                                borderColor: "var(--line)",
                                 background: "var(--bg-elevated)",
-                                boxShadow: active ? "inset 0 0 0 1px var(--accent)" : "none",
                               }}
                             >
                               <div className="flex items-start justify-between gap-3">
@@ -958,31 +949,70 @@ export const EnrollmentForm: React.FC<EnrollmentFormProps> = ({
                                     className="mt-1 text-[11px] font-bold uppercase tracking-wide"
                                     style={{ color: "var(--accent-text)" }}
                                   >
-                                    {option.orientacion} · {option.cupos}{" "}
-                                    {option.cupos === 1 ? "cupo" : "cupos"}
+                                    {option.orientacion} · {optionCapacity}{" "}
+                                    {optionCapacity === 1 ? "cupo total" : "cupos totales"}
                                   </p>
                                 </div>
-                                {active && (
-                                  <span
-                                    className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-black"
-                                    style={{
-                                      background: "var(--accent)",
-                                      color: "var(--on-accent)",
-                                    }}
-                                    aria-label={`Prioridad ${priority + 1}`}
-                                  >
-                                    {priority + 1}
-                                  </span>
-                                )}
                               </div>
-                              {option.horarios.length > 0 && (
-                                <p
-                                  className="mt-3 text-xs font-medium leading-relaxed"
-                                  style={{ color: "var(--ink-soft)" }}
-                                >
-                                  {option.horarios.join(" · ")}
-                                </p>
-                              )}
+                              <div className="mt-3 grid gap-2">
+                                {optionSchedules.map((schedule) => {
+                                  const priority = formData.opciones.indexOf(schedule.id);
+                                  const active = priority >= 0;
+                                  return (
+                                    <div
+                                      key={schedule.id}
+                                      onClick={() => handleOptionToggle(schedule.id)}
+                                      role="checkbox"
+                                      tabIndex={0}
+                                      aria-checked={active}
+                                      onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                          event.preventDefault();
+                                          handleOptionToggle(schedule.id);
+                                        }
+                                      }}
+                                      className="cursor-pointer rounded-xl border px-3 py-2.5 transition focus:outline-none focus-visible:[outline:2px_solid_var(--accent)] focus-visible:outline-offset-2"
+                                      style={{
+                                        borderColor: active ? "var(--accent)" : "var(--line)",
+                                        background: "var(--bg-sunken)",
+                                        boxShadow: active
+                                          ? "inset 0 0 0 1px var(--accent)"
+                                          : "none",
+                                      }}
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <p
+                                            className="text-xs font-semibold leading-relaxed"
+                                            style={{ color: "var(--ink)" }}
+                                          >
+                                            {schedule.horario}
+                                          </p>
+                                          <p
+                                            className="mt-1 text-[11px] font-bold"
+                                            style={{ color: "var(--ink-muted)" }}
+                                          >
+                                            {schedule.cupos}{" "}
+                                            {schedule.cupos === 1 ? "cupo" : "cupos"}
+                                          </p>
+                                        </div>
+                                        {active && (
+                                          <span
+                                            className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-black"
+                                            style={{
+                                              background: "var(--accent)",
+                                              color: "var(--on-accent)",
+                                            }}
+                                            aria-label={`Prioridad ${priority + 1}`}
+                                          >
+                                            {priority + 1}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                               {option.requisitos.length > 0 && (
                                 <p
                                   className="mt-2 text-[11px] leading-relaxed"

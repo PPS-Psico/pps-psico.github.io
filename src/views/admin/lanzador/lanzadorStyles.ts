@@ -1244,9 +1244,51 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-option-capacity > small { grid-column: 1 / -1; color: var(--ink-4); font-size: 9.5px; text-transform: uppercase; }
 .lv4-option-capacity.is-full { border-color: color-mix(in oklab, var(--warn) 38%, var(--rule-2)); }
 .lv4-option-capacity.is-full > strong { color: var(--warn); }
+.lv4-option-schedules {
+  margin: 14px 0; padding: 12px; border: 1px solid var(--rule-2); border-radius: 10px; background: var(--paper);
+}
+.lv4-option-schedules-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
+.lv4-option-schedules-head strong { display: block; color: var(--ink-2); font-size: 12px; }
+.lv4-option-schedules-head span:not(.material-icons) { display: block; max-width: 62ch; margin-top: 3px; color: var(--ink-4); font-size: 10.5px; line-height: 1.45; }
+.lv4-option-schedule-list { display: flex; flex-direction: column; gap: 7px; }
+.lv4-option-schedule-row {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) 92px 34px; align-items: end; gap: 8px;
+  padding: 9px; border: 1px solid var(--rule-2); border-radius: 9px; background: var(--paper-2);
+}
+.lv4-option-schedule-index {
+  display: inline-grid; place-items: center; align-self: center; width: 26px; height: 26px; border-radius: 6px;
+  background: var(--paper-3); color: var(--ink-4); font: 700 9.5px/1 'JetBrains Mono', monospace;
+}
+.lv4-option-schedule-field, .lv4-option-schedule-capacity { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.lv4-option-schedule-field > span, .lv4-option-schedule-capacity > span {
+  color: var(--ink-4); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+}
+.lv4-draft-proposal { margin: 0 0 28px; }
+.lv4-draft-proposal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
+.lv4-draft-proposal-head p { max-width: 68ch; margin: 4px 0 0; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.lv4-draft-description { padding: 15px 16px; border: 1px solid var(--rule-2); border-radius: 12px; background: var(--paper-2); }
+.lv4-draft-description > strong { color: var(--ink-2); font-size: 12px; }
+.lv4-draft-description > p { max-width: 72ch; margin: 7px 0 0; color: var(--ink-3); font-size: 12.5px; line-height: 1.65; white-space: pre-wrap; }
+.lv4-draft-options { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.lv4-draft-option { padding: 15px 16px; border: 1px solid var(--rule-2); border-radius: 12px; background: var(--paper); }
+.lv4-draft-option > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.lv4-draft-option > header > div > strong { display: block; color: var(--ink); font-size: 13px; }
+.lv4-draft-option > header > div > span { display: block; margin-top: 3px; color: var(--accent); font-size: 9.5px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+.lv4-draft-option > header > b { flex-shrink: 0; color: var(--ok); font: 700 10.5px/1.4 'JetBrains Mono', monospace; }
+.lv4-draft-schedule-list { display: grid; gap: 6px; margin-top: 11px; }
+.lv4-draft-schedule-list > div { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 8px 10px; border-radius: 8px; background: var(--paper-2); }
+.lv4-draft-schedule-list span { color: var(--ink-3); font-size: 11.5px; line-height: 1.45; }
+.lv4-draft-schedule-list strong { flex-shrink: 0; color: var(--ink-2); font-size: 10.5px; }
+.lv4-draft-option-copy { margin-top: 12px; }
+.lv4-draft-option-copy > strong { color: var(--ink-3); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; }
+.lv4-draft-option-copy ul { margin: 5px 0 0; padding-left: 18px; color: var(--ink-3); font-size: 11.5px; line-height: 1.55; }
 @media (max-width: 620px) {
   .lv4-option-card { padding: 12px; }
   .lv4-option-summary { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .lv4-option-schedules-head { align-items: stretch; flex-direction: column; }
+  .lv4-option-schedule-row { grid-template-columns: 26px minmax(0, 1fr) 76px; }
+  .lv4-option-schedule-row > .btn { grid-column: 2 / -1; justify-self: end; }
+  .lv4-draft-option > header { flex-direction: column; }
 }
 `;
 

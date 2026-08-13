@@ -23,6 +23,7 @@ import {
 } from "../../utils/formatters";
 import { logger } from "../../utils/logger";
 import { parseSchedules } from "../../utils/scheduleUtils";
+import { getOptionScheduleSlots } from "../../utils/launchOptions";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import { SecureStorageLink } from "../ui/SecureStorageLink";
@@ -435,32 +436,36 @@ const StudentRow: React.FC<{
       <div className="lv4-card-actions">
         {opciones.length > 0 && (
           <label className="lv4-option-assignment">
-            <span>Dispositivo</span>
+            <span>Franja asignada</span>
             <select
               className="lv4-option-assignment-select"
               value={
                 chosenOptionId ||
-                student.opcionAsignadaId ||
-                student.opcionesPreferidas?.[0]?.id ||
+                student.opcionHorarioAsignadoId ||
+                student.horariosOpcionPreferidos?.[0]?.id ||
                 ""
               }
               onChange={(event) => onOptionChoice?.(event.target.value)}
               disabled={isSelected && !isEditMode}
             >
-              <option value="">Elegir dispositivo</option>
-              {opciones.map((option) => {
-                const preferenceIndex = student.opcionesPreferidas?.findIndex(
-                  (preferred) => preferred.id === option.id
-                );
-                return (
-                  <option key={option.id} value={option.id}>
-                    {preferenceIndex != null && preferenceIndex >= 0
-                      ? `${preferenceIndex + 1}ª · `
-                      : ""}
-                    {option.nombre} · {option.orientacion} · {option.cupos} cupos
-                  </option>
-                );
-              })}
+              <option value="">Elegir franja</option>
+              {opciones.map((option) => (
+                <optgroup key={option.id} label={`${option.nombre} · ${option.orientacion}`}>
+                  {getOptionScheduleSlots(option).map((schedule) => {
+                    const preferenceIndex = student.horariosOpcionPreferidos?.findIndex(
+                      (preferred) => preferred.id === schedule.id
+                    );
+                    return (
+                      <option key={schedule.id} value={schedule.id}>
+                        {preferenceIndex != null && preferenceIndex >= 0
+                          ? `${preferenceIndex + 1}ª · `
+                          : ""}
+                        {schedule.horario} · {schedule.cupos} cupos
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              ))}
             </select>
           </label>
         )}
@@ -915,23 +920,27 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
 
         {(selectedLanzamiento.opciones || []).length > 0 && (
           <div className="lv4-option-capacity-grid">
-            {selectedLanzamiento.opciones!.map((option) => {
-              const assigned = selectedCandidates.filter(
-                (student) => student.opcionAsignadaId === option.id
-              ).length;
-              return (
-                <div
-                  key={option.id}
-                  className={`lv4-option-capacity ${assigned >= option.cupos ? "is-full" : ""}`}
-                >
-                  <span>{option.nombre}</span>
-                  <strong>
-                    {assigned}/{option.cupos}
-                  </strong>
-                  <small>{option.orientacion}</small>
-                </div>
-              );
-            })}
+            {selectedLanzamiento.opciones!.flatMap((option) =>
+              getOptionScheduleSlots(option).map((schedule) => {
+                const assigned = selectedCandidates.filter(
+                  (student) => student.opcionHorarioAsignadoId === schedule.id
+                ).length;
+                return (
+                  <div
+                    key={schedule.id}
+                    className={`lv4-option-capacity ${assigned >= schedule.cupos ? "is-full" : ""}`}
+                  >
+                    <span>{option.nombre}</span>
+                    <strong>
+                      {assigned}/{schedule.cupos}
+                    </strong>
+                    <small>
+                      {option.orientacion} · {schedule.horario}
+                    </small>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
 

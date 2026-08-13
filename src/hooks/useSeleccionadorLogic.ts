@@ -67,6 +67,7 @@ import { calculateScore } from "../utils/seleccionadorScore";
 import { logger } from "../utils/logger";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { calculateTotalHours, isPracticeDisapproved } from "../logic/studentRules";
+import { getOptionScheduleSlots } from "../utils/launchOptions";
 
 type CompromisoLite = {
   convocatoria_id: string | null;
@@ -133,7 +134,7 @@ export const useSeleccionadorLogic = (
       if (!isTestingMode && launches.length > 0) {
         const { data: optionRows } = await supabase
           .from("lanzamiento_opciones")
-          .select("*")
+          .select("*, franjas:lanzamiento_opcion_horarios(*)")
           .in(
             "lanzamiento_id",
             launches.map((launch) => launch.id)
@@ -142,7 +143,12 @@ export const useSeleccionadorLogic = (
           .order("orden", { ascending: true });
         return launches.map((launch) => ({
           ...launch,
-          opciones: (optionRows || []).filter((option) => option.lanzamiento_id === launch.id),
+          opciones: (optionRows || [])
+            .filter((option) => option.lanzamiento_id === launch.id)
+            .map((option) => ({
+              ...option,
+              franjas: (option.franjas || []).slice().sort((a, b) => a.orden - b.orden),
+            })),
         }));
       }
       return launches;
@@ -220,7 +226,12 @@ export const useSeleccionadorLogic = (
         practicasRes: Practica[] = [],
         penaltiesRes: Penalizacion[] = [],
         compromisosRes: CompromisoLite[] = [];
-      let preferencesRes: { convocatoria_id: string; opcion_id: string; prioridad: number }[] = [];
+      let preferencesRes: {
+        convocatoria_id: string;
+        opcion_id: string;
+        opcion_horario_id: string | null;
+        prioridad: number;
+      }[] = [];
       if (isTestingMode) {
         [studentsRes, practicasRes, penaltiesRes] = await Promise.all([
           mockDb.getAll("estudiantes", { id: studentIds }),
@@ -241,7 +252,7 @@ export const useSeleccionadorLogic = (
             .eq("lanzamiento_id", launchId),
           supabase
             .from("convocatoria_preferencias")
-            .select("convocatoria_id, opcion_id, prioridad")
+            .select("convocatoria_id, opcion_id, opcion_horario_id, prioridad")
             .in(
               "convocatoria_id",
               enrollments.map((enrollment) => enrollment.id)
@@ -316,6 +327,17 @@ export const useSeleccionadorLogic = (
           opcionesPreferidas.sort(
             (a, b) => preferredOptionIds.indexOf(a.id) - preferredOptionIds.indexOf(b.id)
           );
+          const preferredScheduleIds = preferencesRes
+            .filter((preference) => preference.convocatoria_id === enrollment.id)
+            .sort((a, b) => a.prioridad - b.prioridad)
+            .map((preference) => preference.opcion_horario_id)
+            .filter((id): id is string => Boolean(id));
+          const horariosOpcionPreferidos = (selectedLanzamiento.opciones || [])
+            .flatMap(getOptionScheduleSlots)
+            .filter((schedule) => preferredScheduleIds.includes(schedule.id));
+          horariosOpcionPreferidos.sort(
+            (a, b) => preferredScheduleIds.indexOf(a.id) - preferredScheduleIds.indexOf(b.id)
+          );
 
           return {
             enrollmentId: enrollment.id,
@@ -337,7 +359,9 @@ export const useSeleccionadorLogic = (
                 ? String(enrollment[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS])
                 : null,
             opcionAsignadaId: enrollment.opcion_asignada_id,
+            opcionHorarioAsignadoId: enrollment.opcion_horario_asignado_id,
             opcionesPreferidas,
+            horariosOpcionPreferidos,
             totalHoras,
             cantPracticas,
             penalizacionAcumulada,
@@ -374,11 +398,11 @@ export const useSeleccionadorLogic = (
     mutationFn: async (student: EnrichedStudent) => {
       if (!selectedLanzamiento) return;
       const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
-      const selectedOptionId =
+      const selectedScheduleId =
         assignmentChoiceByEnrollment[student.enrollmentId] ||
-        student.opcionAsignadaId ||
-        student.opcionesPreferidas?.[0]?.id ||
-        selectedLanzamiento.opciones?.[0]?.id;
+        student.opcionHorarioAsignadoId ||
+        student.horariosOpcionPreferidos?.[0]?.id ||
+        selectedLanzamiento.opciones?.flatMap(getOptionScheduleSlots)[0]?.id;
 
       if (isTestingMode) {
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -395,7 +419,7 @@ export const useSeleccionadorLogic = (
         student.studentId,
         selectedLanzamiento,
         student.horarioAsignado || student.horarioSeleccionado,
-        selectedOptionId
+        selectedScheduleId
       );
       return { ...result, student };
     },
@@ -477,10 +501,10 @@ export const useSeleccionadorLogic = (
       normalizeStringForComparison(student.status) !== "seleccionado" &&
       (selectedLanzamiento?.opciones || []).length > 0 &&
       !assignmentChoiceByEnrollment[student.enrollmentId] &&
-      !student.opcionesPreferidas?.[0]?.id
+      !student.horariosOpcionPreferidos?.[0]?.id
     ) {
       setToastInfo({
-        message: "Elegí un dispositivo antes de seleccionar al estudiante.",
+        message: "Elegí una franja horaria antes de seleccionar al estudiante.",
         type: "error",
       });
       return;
@@ -489,8 +513,8 @@ export const useSeleccionadorLogic = (
     toggleMutation.mutate(student);
   };
 
-  const handleOptionChoice = (enrollmentId: string, optionId: string) => {
-    setAssignmentChoiceByEnrollment((current) => ({ ...current, [enrollmentId]: optionId }));
+  const handleOptionChoice = (enrollmentId: string, scheduleId: string) => {
+    setAssignmentChoiceByEnrollment((current) => ({ ...current, [enrollmentId]: scheduleId }));
   };
 
   const handleBajaConPenalizacion = async (

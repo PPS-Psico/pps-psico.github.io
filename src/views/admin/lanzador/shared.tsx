@@ -31,6 +31,7 @@ import type { LanzamientoPPS } from "../../../types";
 import RecordEditModal from "../../../components/admin/RecordEditModal";
 import { LAUNCH_TABLE_CONFIG } from "../../../components/admin/LanzadorConvocatorias";
 import { logger } from "../../../utils/logger";
+import { getOptionCapacity, getOptionScheduleSlots } from "../../../utils/launchOptions";
 import {
   type UIState,
   type SidebarBucket,
@@ -944,7 +945,17 @@ function buildWhatsappFromLaunch(launch: LanzamientoPPS): string {
   if (launch.opciones?.length) {
     lines.push("🧩 *Dispositivos y cupos:*");
     launch.opciones.forEach((option) => {
-      lines.push(`• ${option.nombre} [${option.orientacion}] — ${option.cupos} cupos`);
+      const optionCapacity = getOptionCapacity(option);
+      lines.push(
+        `• ${option.nombre} [${option.orientacion}] — ${optionCapacity} ${
+          optionCapacity === 1 ? "cupo total" : "cupos totales"
+        }`
+      );
+      getOptionScheduleSlots(option).forEach((schedule) => {
+        lines.push(
+          `  ◦ ${schedule.horario} — ${schedule.cupos} ${schedule.cupos === 1 ? "cupo" : "cupos"}`
+        );
+      });
     });
   } else if (horario) lines.push(`🕒 *Horario:* ${horario}`);
   lines.push("");

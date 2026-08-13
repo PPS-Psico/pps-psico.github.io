@@ -18,10 +18,13 @@ Instrucciones de Diseño y Extracción:
 1. **Descripción Temática**: Genera una descripción profesional de 300-450 caracteres enfocada EXCLUSIVAMENTE en la propuesta técnica y el rol formativo.
    - PROHIBIDO incluir: dirección física, modalidad (presencial/virtual), duración, cantidad de cupos, horas acreditadas o fechas. Esta información ya aparece en otros campos.
    - ENFÓCATE EN: El propósito de la práctica, el enfoque institucional (ej: abordaje de consumos), la población atendida y lo que el estudiante aprenderá o aportará.
-2. **Actividades Impactantes**: Genera MÁXIMO 4 items para la lista de actividades. Selecciona las más representativas. Si el texto original tiene muchas más, sintetízalas narrativamente en el campo de "Descripción Temática".
+2. **Actividades Impactantes**: Genera MÁXIMO 4 items generales para la lista de actividades. Si hay varias áreas o dispositivos, conserva además las actividades particulares dentro de cada dispositivo.
 3. **Detección de Dirección**: Busca la dirección física o modalidad (ej: "Modalidad Virtual").
 4. **Detección de Orientaciones**: Identifica todas las orientaciones mencionadas (Clínica, Jurídica, Educacional, Comunitaria, Laboral, etc).
-5. **Comisiones y Horarios**: Sé extremadamente minucioso.
+5. **Dispositivos, Franjas y Cupos**: Sé extremadamente minucioso.
+   - Si el material reúne varias áreas, sedes, comisiones o dispositivos, generá un elemento separado para cada combinación con orientación o actividades propias.
+   - Cada franja debe contener su cupo. No inventes una división si el documento informa un cupo compartido entre horarios alternativos: en ese caso escribí las alternativas juntas en una única franja.
+   - La suma de las franjas de un dispositivo debe coincidir con sus vacantes informadas.
    - Si se mencionan "Comisiones" o "Grupos", incluye el nombre de la comisión en el texto del horario.
    - Formato esperado para texto: "Comisión [Nombre]: [Día y Horario]".
    - Si una comisión específica tiene una orientación asignada diferente a las demás, identifícala.
@@ -36,6 +39,14 @@ Genera un objeto JSON con:
 5. "horarios": Array de objetos [{ "texto": "Nombre Comisión: Horario", "orientacion_vinculada": "Orientación si existe" }].
 6. "direccion": Dirección detectada.
 7. "requisitoObligatorio": Cualquier requisito excluyente.
+8. "dispositivos": Array de objetos [{
+     "nombre": "Área o dispositivo",
+     "orientacion": "Orientación",
+     "ubicacion": "Lugar específico",
+     "actividades": ["Actividad"],
+     "requisitos": ["Requisito"],
+     "franjas": [{ "horario": "Frecuencia, día y franja", "cupos": 2 }]
+   }]. Si no hay dispositivos diferenciados, devolvé un array vacío.
 
 Responde SOLO con el JSON válido.
 `;
@@ -71,7 +82,10 @@ export function buildWhatsappMessage({
   const safeSchedules = Array.isArray(schedules) ? schedules : [];
   const validSchedules = safeSchedules.filter((schedule) => asText(schedule?.time));
   const validOptions = (Array.isArray(formData.opciones) ? formData.opciones : []).filter(
-    (option) => asText(option.nombre) && asText(option.orientacion) && Number(option.cupos) > 0
+    (option) =>
+      asText(option.nombre) &&
+      asText(option.orientacion) &&
+      option.horarios.some((schedule) => asText(schedule.horario) && Number(schedule.cupos) > 0)
   );
   const nombrePps = asText(formData.nombrePPS) || "Nueva convocatoria";
   const institucion = asText(institutionName) || nombrePps;
@@ -100,14 +114,22 @@ export function buildWhatsappMessage({
       "\n" +
       validOptions
         .map((option) => {
-          const schedule = option.horarios
-            .split(/\r?\n/)
-            .map((item) => item.trim())
-            .filter(Boolean)
-            .join(" · ");
-          return `• *${asText(option.nombre)}* [${asText(option.orientacion)}] — ${Number(
-            option.cupos
-          )} cupos${schedule ? `\n  ${schedule}` : ""}`;
+          const schedules = option.horarios
+            .filter((schedule) => asText(schedule.horario) && Number(schedule.cupos) > 0)
+            .map(
+              (schedule) =>
+                `  • ${asText(schedule.horario)} — ${Number(schedule.cupos)} ${
+                  Number(schedule.cupos) === 1 ? "cupo" : "cupos"
+                }`
+            )
+            .join("\n");
+          const total = option.horarios.reduce(
+            (sum, schedule) => sum + Math.max(0, Number(schedule.cupos) || 0),
+            0
+          );
+          return `• *${asText(option.nombre)}* [${asText(option.orientacion)}] — ${total} ${
+            total === 1 ? "cupo total" : "cupos totales"
+          }${schedules ? `\n${schedules}` : ""}`;
         })
         .join("\n");
   } else {

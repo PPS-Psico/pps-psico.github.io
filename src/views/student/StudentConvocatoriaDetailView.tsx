@@ -40,6 +40,7 @@ import {
 } from "../../logic/enrollmentEligibility";
 import type { LanzamientoPPS } from "../../types";
 import { getMandatoryLaunchSchedules } from "../../utils/scheduleRequirements";
+import { getOptionCapacity, getOptionScheduleSlots } from "../../utils/launchOptions";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const fmtShort = (raw?: unknown): string => {
@@ -518,6 +519,8 @@ const StudentConvocatoriaDetail: React.FC = () => {
                 </span>
                 <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                   {opciones.map((option) => {
+                    const optionSchedules = getOptionScheduleSlots(option);
+                    const optionCapacity = getOptionCapacity(option);
                     const unavailable = eligibility.completedOrientaciones.some(
                       (orientation) =>
                         normalizeStringForComparison(orientation) ===
@@ -573,21 +576,35 @@ const StudentConvocatoriaDetail: React.FC = () => {
                           >
                             {unavailable
                               ? "Orientación ya cursada"
-                              : `${option.cupos} ${option.cupos === 1 ? "cupo" : "cupos"}`}
+                              : `${optionCapacity} ${
+                                  optionCapacity === 1 ? "cupo total" : "cupos totales"
+                                }`}
                           </span>
                         </div>
-                        {option.horarios.length > 0 && (
-                          <p
-                            style={{
-                              margin: "9px 0 0",
-                              color: "var(--ink-soft)",
-                              fontSize: 12.5,
-                              lineHeight: 1.45,
-                            }}
-                          >
-                            {option.horarios.join(" · ")}
-                          </p>
-                        )}
+                        <div style={{ display: "grid", gap: 6, marginTop: 9 }}>
+                          {optionSchedules.map((schedule) => (
+                            <div
+                              key={schedule.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                justifyContent: "space-between",
+                                gap: 10,
+                                padding: "8px 10px",
+                                borderRadius: 10,
+                                background: "var(--bg-sunken)",
+                                color: "var(--ink-soft)",
+                                fontSize: 12,
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              <span>{schedule.horario}</span>
+                              <strong style={{ flexShrink: 0, color: "var(--ink)" }}>
+                                {schedule.cupos} {schedule.cupos === 1 ? "cupo" : "cupos"}
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
                         {option.actividades.length > 0 && (
                           <ul
                             style={{

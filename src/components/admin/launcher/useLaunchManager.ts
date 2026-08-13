@@ -67,6 +67,7 @@ import {
   mockInstitutions,
   mockLastLanzamiento,
   type FormData,
+  type LaunchOptionDraft,
   type ScheduleEntry,
 } from "./launchForm.types";
 import {
@@ -204,7 +205,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
 
       const { data: options, error } = await supabase
         .from("lanzamiento_opciones")
-        .select("*")
+        .select("*, franjas:lanzamiento_opcion_horarios(*)")
         .in(
           "lanzamiento_id",
           launches.map((launch) => launch.id)
@@ -215,6 +216,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
 
       const optionsByLaunch = new Map<string, NonNullable<typeof options>>();
       for (const option of options || []) {
+        option.franjas?.sort((a, b) => a.orden - b.orden);
         const current = optionsByLaunch.get(option.lanzamiento_id) || [];
         current.push(option);
         optionsByLaunch.set(option.lanzamiento_id, current);
@@ -347,22 +349,46 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
             .split(/\r?\n/)
             .map((item) => item.trim())
             .filter(Boolean);
-        const { error } = await supabase.from("lanzamiento_opciones").insert(
-          options.map((option, index) => ({
-            lanzamiento_id: launch.id,
-            nombre: option.nombre.trim(),
-            orientacion: option.orientacion.trim(),
-            cupos: Number(option.cupos),
-            horarios: toList(option.horarios),
-            actividades: toList(option.actividades),
-            requisitos: toList(option.requisitos),
-            ubicacion: option.ubicacion.trim() || null,
-            orden: index + 1,
-          }))
-        );
-        if (error) {
+        const optionRows = options.map((option, index) => ({
+          lanzamiento_id: launch.id,
+          nombre: option.nombre.trim(),
+          orientacion: option.orientacion.trim(),
+          cupos: option.horarios.reduce(
+            (total, schedule) => total + Math.max(0, Number(schedule.cupos) || 0),
+            0
+          ),
+          horarios: option.horarios.map((schedule) => schedule.horario.trim()).filter(Boolean),
+          actividades: toList(option.actividades),
+          requisitos: toList(option.requisitos),
+          ubicacion: option.ubicacion.trim() || null,
+          orden: index + 1,
+        }));
+        const { data: createdOptions, error: optionsError } = await supabase
+          .from("lanzamiento_opciones")
+          .insert(optionRows)
+          .select("id, orden");
+        if (optionsError || !createdOptions) {
           await db.lanzamientos.delete(launch.id).catch(() => false);
-          throw error;
+          throw optionsError || new Error("No se pudieron crear los dispositivos.");
+        }
+
+        const optionIdByOrder = new Map(createdOptions.map((option) => [option.orden, option.id]));
+        const scheduleRows = options.flatMap((option, optionIndex) => {
+          const optionId = optionIdByOrder.get(optionIndex + 1);
+          if (!optionId) return [];
+          return option.horarios.map((schedule, scheduleIndex) => ({
+            opcion_id: optionId,
+            horario: schedule.horario.trim(),
+            cupos: Number(schedule.cupos),
+            orden: scheduleIndex + 1,
+          }));
+        });
+        const { error: schedulesError } = await supabase
+          .from("lanzamiento_opcion_horarios")
+          .insert(scheduleRows);
+        if (schedulesError) {
+          await db.lanzamientos.delete(launch.id).catch(() => false);
+          throw schedulesError;
         }
         if (desiredState && desiredState !== "Oculto") {
           await db.lanzamientos.update(launch.id, {
@@ -521,6 +547,58 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
           parsed.orientaciones,
           ALL_ORIENTACIONES
         );
+        const detectedOptions: LaunchOptionDraft[] = Array.isArray(parsed.dispositivos)
+          ? parsed.dispositivos
+              .map(
+                (
+                  option: {
+                    nombre?: string;
+                    orientacion?: string;
+                    ubicacion?: string;
+                    actividades?: unknown;
+                    requisitos?: unknown;
+                    franjas?: unknown;
+                  },
+                  optionIndex: number
+                ) => {
+                  const orientation = normalizeDetectedOrientations(
+                    [option.orientacion],
+                    ALL_ORIENTACIONES
+                  )[0];
+                  const schedules = Array.isArray(option.franjas)
+                    ? option.franjas
+                        .map(
+                          (
+                            schedule: { horario?: unknown; cupos?: unknown },
+                            scheduleIndex: number
+                          ) => ({
+                            clientId: `ai-${optionIndex}-${scheduleIndex}-${Date.now()}`,
+                            horario:
+                              typeof schedule.horario === "string" ? schedule.horario.trim() : "",
+                            cupos: Number(schedule.cupos),
+                          })
+                        )
+                        .filter((schedule) => schedule.horario && schedule.cupos > 0)
+                    : [];
+                  if (!option.nombre?.trim() || !orientation || schedules.length === 0) return null;
+                  return {
+                    clientId: `ai-${optionIndex}-${Date.now()}`,
+                    nombre: option.nombre.trim(),
+                    orientacion: orientation,
+                    cupos: schedules.reduce((total, schedule) => total + schedule.cupos, 0),
+                    horarios: schedules,
+                    actividades: Array.isArray(option.actividades)
+                      ? option.actividades.map(String).join("\n")
+                      : "",
+                    requisitos: Array.isArray(option.requisitos)
+                      ? option.requisitos.map(String).join("\n")
+                      : "",
+                    ubicacion: option.ubicacion?.trim() || "",
+                  } satisfies LaunchOptionDraft;
+                }
+              )
+              .filter((option: LaunchOptionDraft | null): option is LaunchOptionDraft => !!option)
+          : [];
 
         setFormData((prev) => ({
           ...prev,
@@ -529,13 +607,18 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
           orientacion: detectedOrientations.length > 0 ? detectedOrientations : prev.orientacion,
           requisitoObligatorio: parsed.requisitoObligatorio || prev.requisitoObligatorio,
           actividadesLabel: parsed.actividadesLabel || prev.actividadesLabel,
+          opciones: detectedOptions.length > 0 ? detectedOptions : prev.opciones,
+          cuposDisponibles:
+            detectedOptions.length > 0
+              ? detectedOptions.reduce((total, option) => total + option.cupos, 0)
+              : prev.cuposDisponibles,
         }));
 
         if (Array.isArray(parsed.actividades) && parsed.actividades.length > 0) {
           setActividades(parsed.actividades);
         }
 
-        if (Array.isArray(parsed.horarios)) {
+        if (detectedOptions.length === 0 && Array.isArray(parsed.horarios)) {
           const detectedSchedules = parsed.horarios
             .map((h: { texto?: string; orientacion_vinculada?: string }) => ({
               time: h.texto || "",
@@ -685,6 +768,33 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       ),
     ];
 
+    const previousOptions = (lastLanzamiento.opciones || []).map((option) => ({
+      clientId: option.id,
+      nombre: option.nombre,
+      orientacion: option.orientacion,
+      cupos: option.cupos,
+      horarios:
+        option.franjas && option.franjas.length > 0
+          ? option.franjas
+              .slice()
+              .sort((a, b) => a.orden - b.orden)
+              .map((schedule) => ({
+                clientId: schedule.id,
+                horario: schedule.horario,
+                cupos: schedule.cupos,
+              }))
+          : [
+              {
+                clientId: `${option.id}-legacy`,
+                horario: option.horarios.join(" · ") || "Horario a convenir",
+                cupos: option.cupos,
+              },
+            ],
+      actividades: option.actividades.join("\n"),
+      requisitos: option.requisitos.join("\n"),
+      ubicacion: option.ubicacion || "",
+    }));
+
     setFormData((prev) => ({
       ...prev,
       orientacion: orientationList,
@@ -708,6 +818,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       horariosFijos:
         prevSchedulesList.some((schedule) => schedule.time.trim()) &&
         prevSchedulesList.every((schedule) => !schedule.time.trim() || schedule.obligatorio),
+      opciones: previousOptions,
     }));
     setSchedules(prevSchedulesList);
     setActividades(prevActivitiesList.length ? prevActivitiesList : [""]);
@@ -762,8 +873,8 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       (option) =>
         !option.nombre.trim() ||
         !option.orientacion.trim() ||
-        Number(option.cupos) <= 0 ||
-        !option.horarios.trim()
+        option.horarios.length === 0 ||
+        option.horarios.some((schedule) => !schedule.horario.trim() || Number(schedule.cupos) <= 0)
     );
 
     if (
@@ -804,9 +915,12 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       .filter((schedule): schedule is { value: string; obligatorio: boolean } => schedule !== null);
     const optionSchedules = launchOptions.map((option) => {
       const horarios = option.horarios
-        .split(/\r?\n/)
-        .map((item) => item.trim())
-        .filter(Boolean)
+        .map(
+          (schedule) =>
+            `${schedule.horario.trim()} (${Number(schedule.cupos)} ${
+              Number(schedule.cupos) === 1 ? "cupo" : "cupos"
+            })`
+        )
         .join(" / ");
       return `${option.nombre.trim()} · ${horarios} [${option.orientacion.trim()}]`;
     });
@@ -840,7 +954,13 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]:
         launchOptions.length > 0
           ? launchOptions.reduce(
-              (total, option) => total + Math.max(0, Number(option.cupos) || 0),
+              (total, option) =>
+                total +
+                option.horarios.reduce(
+                  (scheduleTotal, schedule) =>
+                    scheduleTotal + Math.max(0, Number(schedule.cupos) || 0),
+                  0
+                ),
               0
             )
           : Number(formData.cuposDisponibles),
