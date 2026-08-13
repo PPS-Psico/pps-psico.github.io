@@ -38,6 +38,7 @@ const ALL_STATES: UIState[] = [
 ];
 
 const ALL_BUCKETS: SidebarBucket[] = [
+  "borrador",
   "abierta",
   "seleccionar",
   "asegurar",

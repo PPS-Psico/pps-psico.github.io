@@ -32,6 +32,7 @@ const StudentAulaView = React.lazy(() => import("./views/student/StudentAulaView
 import StudentConvocatoriaDetailView from "./views/student/StudentConvocatoriaDetailView";
 import DataCompletionModal from "./components/student/DataCompletionModal";
 import { useRenderTrace } from "./hooks/useRenderTrace";
+import { buildEmbeddedPanelMessage } from "./utils/embeddedFrameSizing";
 
 // Views
 const StudentView = lazy(() => import("./views/StudentView"));
@@ -285,15 +286,10 @@ const App: React.FC = () => {
 
     document.documentElement.classList.add("pps-embedded");
 
-    // Reporta el alto real del contenido para que el iframe del campus crezca a
-    // su medida (scroll en la página de Moodle, sin barra interna ni recorte).
-    // Mientras hay un modal, en cambio, se omite el alto: el puente de Moodle
-    // vuelve entonces a su altura de viewport estable. Esto evita que un modal
-    // fixed quede centrado dentro de un iframe de miles de píxeles y corta la
-    // realimentación iframe -> 100vh -> iframe que generaba el scroll infinito.
-    // OJO: medimos un wrapper de contenido, NO body/documentElement: dentro de
-    // un iframe el body se estira al alto del iframe y realimenta el cálculo
-    // (crece sin parar). El wrapper mide solo el contenido y es estable.
+    // Las superficies estudiantiles informan su alto real para integrarse sin
+    // scroll interno. Las vistas operativas y los modales usan el viewport
+    // estable del puente: sus layouts dependen de 100vh y no pueden participar
+    // del autoalto sin realimentar indefinidamente el tamaño del iframe.
     const measureHeight = () => {
       const wrap = document.getElementById("pps-embed-root");
       if (wrap) return Math.ceil(wrap.getBoundingClientRect().height);
@@ -302,9 +298,12 @@ const App: React.FC = () => {
 
     const notifyParent = () => {
       try {
-        const hasBlockingLayer = document.body.style.overflow === "hidden";
         window.parent.postMessage(
-          hasBlockingLayer ? { ppsPanel: true } : { ppsPanel: true, height: measureHeight() },
+          buildEmbeddedPanelMessage({
+            hash: window.location.hash,
+            bodyOverflow: document.body.style.overflow,
+            contentHeight: measureHeight(),
+          }),
           "*"
         );
       } catch {
@@ -316,6 +315,7 @@ const App: React.FC = () => {
     const t1 = setTimeout(notifyParent, 300);
     const t2 = setTimeout(notifyParent, 1200);
     window.addEventListener("resize", notifyParent);
+    window.addEventListener("hashchange", notifyParent);
 
     // El panel es una SPA: el alto cambia al navegar tabs o cargar datos.
     let ro: ResizeObserver | undefined;
@@ -343,6 +343,7 @@ const App: React.FC = () => {
       clearTimeout(t2);
       clearInterval(iv);
       window.removeEventListener("resize", notifyParent);
+      window.removeEventListener("hashchange", notifyParent);
       if (ro) ro.disconnect();
       if (bodyObserver) bodyObserver.disconnect();
     };
