@@ -902,31 +902,97 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
         </FormField>
       </FormSection>
 
-      {/* ── 04 · DISPOSITIVOS ── */}
+      {/* ── 04 · HORARIOS Y SUPERVISORES ── */}
       <FormSection
         number="04"
-        title="Dispositivos y cupos"
-        subtitle="Destinos elegibles dentro de esta misma publicación"
-        pending={hasLaunchOptions ? missingS4 : 0}
+        title="Horarios y supervisores"
+        subtitle={
+          hasLaunchOptions
+            ? "Horario, supervisión y cupo de cada dispositivo"
+            : "Franjas disponibles y comisiones"
+        }
+        pending={missingS4}
         right={
-          <button type="button" className="btn btn-ghost btn-sm" onClick={addOption}>
-            <span className="material-icons" style={{ fontSize: 14 }}>
-              add
-            </span>
-            Agregar dispositivo
-          </button>
+          <div className="lv4-launch-section-actions">
+            {!hasLaunchOptions && (
+              <span className="lv4-schedule-help">
+                Marcá como obligatorias solo las franjas comunes
+              </span>
+            )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={addOption}>
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                add
+              </span>
+              {hasLaunchOptions ? "Agregar dispositivo" : "Organizar por dispositivos"}
+            </button>
+          </div>
         }
       >
         {!hasLaunchOptions ? (
-          <div className="lv4-option-empty">
-            <span className="material-icons">account_tree</span>
-            <div>
-              <strong>Convocatoria simple</strong>
-              <span>
-                Agregá dispositivos cuando una publicación reúna varias áreas con cupos y requisitos
-                propios.
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {schedules.map((schedule, idx) => (
+              <div
+                key={idx}
+                className={`lv4-schedule-row${
+                  isMultiOrientation && safeOrientacion.length >= 2
+                    ? " lv4-schedule-row--oriented"
+                    : ""
+                }`}
+              >
+                <input
+                  className="field"
+                  value={schedule.time}
+                  onChange={(e) => onScheduleChange(idx, "time", e.target.value)}
+                  placeholder="Ej: Lunes 9 a 12 hs · Lic. Pérez"
+                />
+                {isMultiOrientation && safeOrientacion.length >= 2 && (
+                  <select
+                    className="field"
+                    value={schedule.orientacion}
+                    onChange={(e) => onScheduleChange(idx, "orientacion", e.target.value)}
+                  >
+                    <option value="">Cualquiera</option>
+                    {safeOrientacion.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <label className="lv4-schedule-required">
+                  <input
+                    type="checkbox"
+                    checked={schedule.obligatorio}
+                    onChange={(e) => onScheduleChange(idx, "obligatorio", e.target.checked)}
+                  />
+                  <span className="material-icons" aria-hidden>
+                    lock
+                  </span>
+                  <span>Obligatorio</span>
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onRemoveSchedule(idx)}
+                  title="Eliminar horario"
+                >
+                  <span className="material-icons" style={{ fontSize: 14 }}>
+                    delete
+                  </span>
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ alignSelf: "flex-start" }}
+              onClick={onAddSchedule}
+            >
+              <span className="material-icons" style={{ fontSize: 14 }}>
+                add
               </span>
-            </div>
+              Agregar franja
+            </button>
           </div>
         ) : (
           <div className="lv4-option-stack">
@@ -950,7 +1016,7 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
                     </span>
                   </button>
                 </div>
-                <div className="lf-grid-3">
+                <div className="lf-grid-2">
                   <FormField label="Nombre del área">
                     <input
                       className="field"
@@ -977,24 +1043,14 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
                       ))}
                     </select>
                   </FormField>
-                  <FormField label="Cupo total del dispositivo">
-                    <input
-                      className="field"
-                      type="number"
-                      min={1}
-                      value={getOptionCapacity(option)}
-                      disabled
-                    />
-                    <span className="meta">Se calcula sumando las franjas de abajo.</span>
-                  </FormField>
                 </div>
                 <div className="lv4-option-schedules">
                   <div className="lv4-option-schedules-head">
                     <div>
-                      <strong>Franjas horarias y cupos</strong>
+                      <strong>Horario, supervisor y cupo</strong>
                       <span>
-                        Cada fila es una vacante distinta. Si dos horarios comparten el mismo cupo,
-                        escribilos juntos en una sola fila.
+                        Cargá el horario del dispositivo y su cupo en la misma fila. Si el cupo
+                        admite horarios alternativos, escribilos juntos.
                       </span>
                     </div>
                     <button
@@ -1107,87 +1163,6 @@ export const NewLaunchForm: React.FC<NewLaunchFormProps> = (props) => {
           </div>
         )}
       </FormSection>
-
-      {/* ── 05 · HORARIOS LEGACY ── */}
-      {!hasLaunchOptions && (
-        <FormSection
-          number="05"
-          title="Horarios y supervisores"
-          subtitle="Franjas disponibles y comisiones"
-          pending={missingS4}
-          right={
-            <span className="lv4-schedule-help">
-              Marcá como obligatorias solo las franjas comunes
-            </span>
-          }
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {schedules.map((schedule, idx) => (
-              <div
-                key={idx}
-                className={`lv4-schedule-row${
-                  isMultiOrientation && safeOrientacion.length >= 2
-                    ? " lv4-schedule-row--oriented"
-                    : ""
-                }`}
-              >
-                <input
-                  className="field"
-                  value={schedule.time}
-                  onChange={(e) => onScheduleChange(idx, "time", e.target.value)}
-                  placeholder="Ej: Lunes 9 a 12 hs · Lic. Pérez"
-                />
-                {isMultiOrientation && safeOrientacion.length >= 2 && (
-                  <select
-                    className="field"
-                    value={schedule.orientacion}
-                    onChange={(e) => onScheduleChange(idx, "orientacion", e.target.value)}
-                  >
-                    <option value="">Cualquiera</option>
-                    {safeOrientacion.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <label className="lv4-schedule-required">
-                  <input
-                    type="checkbox"
-                    checked={schedule.obligatorio}
-                    onChange={(e) => onScheduleChange(idx, "obligatorio", e.target.checked)}
-                  />
-                  <span className="material-icons" aria-hidden>
-                    lock
-                  </span>
-                  <span>Obligatorio</span>
-                </label>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => onRemoveSchedule(idx)}
-                  title="Eliminar horario"
-                >
-                  <span className="material-icons" style={{ fontSize: 14 }}>
-                    delete
-                  </span>
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              style={{ alignSelf: "flex-start" }}
-              onClick={onAddSchedule}
-            >
-              <span className="material-icons" style={{ fontSize: 14 }}>
-                add
-              </span>
-              Agregar franja
-            </button>
-          </div>
-        </FormSection>
-      )}
 
       {/* ── CTA ── */}
       <div className={`lv4-launch-cta ${ready ? "is-ready" : ""}`}>

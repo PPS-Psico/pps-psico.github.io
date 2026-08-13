@@ -1263,6 +1263,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-option-schedule-field > span, .lv4-option-schedule-capacity > span {
   color: var(--ink-4); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
+.lv4-launch-section-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .lv4-draft-proposal { margin: 0 0 28px; }
 .lv4-draft-proposal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
 .lv4-draft-proposal-head p { max-width: 68ch; margin: 4px 0 0; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
@@ -1288,6 +1289,7 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   .lv4-option-schedules-head { align-items: stretch; flex-direction: column; }
   .lv4-option-schedule-row { grid-template-columns: 26px minmax(0, 1fr) 76px; }
   .lv4-option-schedule-row > .btn { grid-column: 2 / -1; justify-self: end; }
+  .lv4-launch-section-actions { align-items: flex-start; flex-direction: column; }
   .lv4-draft-option > header { flex-direction: column; }
 }
 `;
