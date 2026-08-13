@@ -466,6 +466,11 @@ html.dark .lv4-wa-bubble {
 .lv4-card.confirmed     { background: color-mix(in oklab, var(--accent) 8%, var(--paper)); border-color: color-mix(in oklab, var(--accent) 40%, var(--rule-2)); }
 html.dark .lv4-card.selected  { background: color-mix(in oklab, var(--ok) 14%, var(--paper)); }
 html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14%, var(--paper)); }
+.lv4-card.has-options { grid-template-columns: minmax(190px, .72fr) minmax(340px, 1.6fr); align-items: start; }
+.lv4-card.has-options > .lv4-card-id { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+.lv4-card.has-options > .lv4-card-badges { grid-column: 2; grid-row: 1; }
+.lv4-card.has-options > .lv4-card-actions { grid-column: 2; grid-row: 2; width: 100%; }
+.lv4-card.has-options .lv4-option-assignment { min-width: 0; flex: 1; }
 
 .lv4-card-id {
   display: flex; align-items: center; gap: 12px; min-width: 0;
@@ -1234,6 +1239,32 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 }
 .lv4-option-assignment-select:focus { border-color: var(--accent); outline: 2px solid var(--accent-s); outline-offset: 1px; }
 .lv4-option-assignment-select:disabled { cursor: not-allowed; opacity: .62; }
+.lv4-student-preferences { flex: 1 0 100%; min-width: 0; margin-top: 6px; }
+.lv4-student-preferences-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.lv4-student-preferences-head strong { color: var(--ink-2); font-size: 11px; }
+.lv4-student-preferences-head > span { color: var(--ink-4); font-size: 10px; }
+.lv4-student-preference-list { margin: 5px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--rule-2); }
+.lv4-student-preference-list li {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 7px; padding: 6px 0;
+  border-bottom: 1px solid var(--rule-2);
+}
+.lv4-student-preference-rank { color: var(--accent); font: 700 10px/1.4 'JetBrains Mono', monospace; }
+.lv4-student-preference-copy { min-width: 0; }
+.lv4-student-preference-copy strong {
+  display: block; overflow: hidden; color: var(--ink-2); font-size: 11px; line-height: 1.3;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.lv4-student-preference-copy small {
+  display: block; overflow: hidden; margin-top: 2px; color: var(--ink-4); font-size: 9.5px;
+  line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
+}
+.lv4-student-preferences-empty { margin: 5px 0 0; color: var(--warn); font-size: 10.5px; line-height: 1.4; }
+@media (max-width: 820px) {
+  .lv4-card.has-options { grid-template-columns: minmax(0, 1fr); }
+  .lv4-card.has-options > .lv4-card-id,
+  .lv4-card.has-options > .lv4-card-badges,
+  .lv4-card.has-options > .lv4-card-actions { grid-column: 1; grid-row: auto; }
+}
 .lv4-option-capacity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 7px; margin: 0 0 16px; }
 .lv4-option-capacity {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 9px 10px;

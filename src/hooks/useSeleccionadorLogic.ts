@@ -399,10 +399,11 @@ export const useSeleccionadorLogic = (
       if (!selectedLanzamiento) return;
       const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
       const selectedScheduleId =
-        assignmentChoiceByEnrollment[student.enrollmentId] ||
-        student.opcionHorarioAsignadoId ||
-        student.horariosOpcionPreferidos?.[0]?.id ||
-        selectedLanzamiento.opciones?.flatMap(getOptionScheduleSlots)[0]?.id;
+        assignmentChoiceByEnrollment[student.enrollmentId] || student.opcionHorarioAsignadoId;
+
+      if ((selectedLanzamiento.opciones || []).length > 0 && !selectedScheduleId) {
+        throw new Error("Elegí una de las preferencias del estudiante antes de seleccionarlo.");
+      }
 
       if (isTestingMode) {
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -419,7 +420,7 @@ export const useSeleccionadorLogic = (
         student.studentId,
         selectedLanzamiento,
         student.horarioAsignado || student.horarioSeleccionado,
-        selectedScheduleId
+        selectedScheduleId ?? undefined
       );
       return { ...result, student };
     },
@@ -501,10 +502,10 @@ export const useSeleccionadorLogic = (
       normalizeStringForComparison(student.status) !== "seleccionado" &&
       (selectedLanzamiento?.opciones || []).length > 0 &&
       !assignmentChoiceByEnrollment[student.enrollmentId] &&
-      !student.horariosOpcionPreferidos?.[0]?.id
+      !student.opcionHorarioAsignadoId
     ) {
       setToastInfo({
-        message: "Elegí una franja horaria antes de seleccionar al estudiante.",
+        message: "Elegí una de las preferencias del estudiante antes de seleccionarlo.",
         type: "error",
       });
       return;

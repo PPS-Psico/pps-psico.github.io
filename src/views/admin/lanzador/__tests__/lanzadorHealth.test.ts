@@ -139,4 +139,46 @@ describe("computeHorarioHealth", () => {
     expect(out[0].faltanSeleccion).toBeNull();
     expect(out[0].selStatus).toBe("indef");
   });
+
+  it("usa cupos exactos y cuenta todas las preferencias por dispositivo", () => {
+    const out = computeHorarioHealth({
+      horarioStr: null,
+      horariosFijos: false,
+      cupos: 12,
+      optionSlots: [
+        { id: "slot-1", label: "Dispositivo uno", cupos: 2 },
+        { id: "slot-2", label: "Dispositivo dos", cupos: 10 },
+      ],
+      roster: [
+        {
+          estado_inscripcion: "Inscripto",
+          convocatoria_preferencias: [
+            { opcion_horario_id: "slot-1" },
+            { opcion_horario_id: "slot-2" },
+          ],
+        },
+        {
+          estado_inscripcion: "Seleccionado",
+          opcion_horario_asignado_id: "slot-1",
+          convocatoria_preferencias: [{ opcion_horario_id: "slot-1" }],
+        },
+      ],
+    });
+
+    expect(out[0]).toMatchObject({
+      count: 2,
+      seleccionados: 1,
+      cuposLocal: 2,
+      libres: 0,
+      faltanSeleccion: 1,
+      isEstimated: false,
+    });
+    expect(out[1]).toMatchObject({
+      count: 1,
+      seleccionados: 0,
+      cuposLocal: 10,
+      libres: 9,
+      isEstimated: false,
+    });
+  });
 });

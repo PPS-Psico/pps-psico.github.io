@@ -25,6 +25,8 @@ export interface RosterRow {
   estudiante_id: string | null;
   horario_asignado: string | null;
   horario_seleccionado: string | null;
+  opcion_horario_asignado_id: string | null;
+  convocatoria_preferencias: Array<{ opcion_horario_id: string | null }>;
   selected_at: string | null;
   baja_automatica_at: string | null;
   reminder_sent_at: string | null;
@@ -59,6 +61,8 @@ export function useLaunchRoster(launchId: string, isTestingMode = false) {
             horario_asignado: (row[FIELD_HORARIO_ASIGNADO_CONVOCATORIAS] as string | null) ?? null,
             horario_seleccionado:
               (row[FIELD_HORARIO_FORMULA_CONVOCATORIAS] as string | null) ?? null,
+            opcion_horario_asignado_id: (row.opcion_horario_asignado_id as string | null) ?? null,
+            convocatoria_preferencias: [],
             selected_at: null,
             baja_automatica_at: null,
             reminder_sent_at: null,
@@ -70,7 +74,7 @@ export function useLaunchRoster(launchId: string, isTestingMode = false) {
       const { data, error } = await supabase
         .from("convocatorias")
         .select(
-          "id, estado_inscripcion, estudiante_id, horario_asignado, horario_seleccionado, selected_at, baja_automatica_at, reminder_sent_at, final_reminder_sent_at, created_at"
+          "id, estado_inscripcion, estudiante_id, horario_asignado, horario_seleccionado, opcion_horario_asignado_id, convocatoria_preferencias(opcion_horario_id), selected_at, baja_automatica_at, reminder_sent_at, final_reminder_sent_at, created_at"
         )
         .eq("lanzamiento_id", launchId)
         .order("created_at", { ascending: false });

@@ -23,7 +23,10 @@ import {
 } from "../../utils/formatters";
 import { logger } from "../../utils/logger";
 import { parseSchedules } from "../../utils/scheduleUtils";
-import { getOptionScheduleSlots } from "../../utils/launchOptions";
+import {
+  getOptionScheduleSlots,
+  getPreferredOptionScheduleChoices,
+} from "../../utils/launchOptions";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
 import { SecureStorageLink } from "../ui/SecureStorageLink";
@@ -288,6 +291,16 @@ const StudentRow: React.FC<{
   const isSelected = normalizeStringForComparison(student.status) === "seleccionado";
   const isCommitmentConfirmed = isSelected && isCommitmentAccepted(student.compromisoEstado);
   const showCommitmentStatus = isSelected && (isReviewMode || isEditMode);
+  const preferredChoices = getPreferredOptionScheduleChoices(
+    opciones,
+    student.horariosOpcionPreferidos
+  );
+  const assignedChoice = opciones
+    .flatMap((option) => getOptionScheduleSlots(option).map((schedule) => ({ option, schedule })))
+    .find(({ schedule }) => schedule.id === student.opcionHorarioAsignadoId);
+  const assignmentIsOutsidePreferences =
+    assignedChoice &&
+    !preferredChoices.some(({ schedule }) => schedule.id === assignedChoice.schedule.id);
 
   const cardClass = isCommitmentConfirmed
     ? "lv4-card confirmed"
@@ -296,7 +309,7 @@ const StudentRow: React.FC<{
       : "lv4-card";
 
   return (
-    <div className={cardClass}>
+    <div className={`${cardClass}${opciones.length > 0 ? " has-options" : ""}`}>
       <div className="lv4-card-id">
         <div
           className={`lv4-avatar-score ${student.puntajeTotal >= 100 ? "high" : ""}`}
@@ -431,40 +444,66 @@ const StudentRow: React.FC<{
             </span>
           </div>
         )}
+
+        {opciones.length > 0 && (
+          <div className="lv4-student-preferences">
+            <div className="lv4-student-preferences-head">
+              <strong>Dispositivos elegidos</strong>
+              <span>
+                {preferredChoices.length}{" "}
+                {preferredChoices.length === 1 ? "preferencia" : "preferencias"}
+              </span>
+            </div>
+            {preferredChoices.length > 0 ? (
+              <ol className="lv4-student-preference-list">
+                {preferredChoices.map(({ option, schedule, priority }) => (
+                  <li key={schedule.id}>
+                    <span className="lv4-student-preference-rank">{priority}ª</span>
+                    <span className="lv4-student-preference-copy">
+                      <strong>{option.nombre}</strong>
+                      <small>
+                        {option.orientacion} · {schedule.horario}
+                      </small>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="lv4-student-preferences-empty">
+                Esta inscripción no tiene preferencias registradas.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="lv4-card-actions">
         {opciones.length > 0 && (
           <label className="lv4-option-assignment">
-            <span>Franja asignada</span>
+            <span>{isSelected ? "Dispositivo asignado" : "Asignar dispositivo elegido"}</span>
             <select
               className="lv4-option-assignment-select"
-              value={
-                chosenOptionId ||
-                student.opcionHorarioAsignadoId ||
-                student.horariosOpcionPreferidos?.[0]?.id ||
-                ""
-              }
+              value={chosenOptionId || student.opcionHorarioAsignadoId || ""}
               onChange={(event) => onOptionChoice?.(event.target.value)}
-              disabled={isSelected && !isEditMode}
+              disabled={(isSelected && !isEditMode) || preferredChoices.length === 0}
             >
-              <option value="">Elegir franja</option>
-              {opciones.map((option) => (
-                <optgroup key={option.id} label={`${option.nombre} · ${option.orientacion}`}>
-                  {getOptionScheduleSlots(option).map((schedule) => {
-                    const preferenceIndex = student.horariosOpcionPreferidos?.findIndex(
-                      (preferred) => preferred.id === schedule.id
-                    );
-                    return (
-                      <option key={schedule.id} value={schedule.id}>
-                        {preferenceIndex != null && preferenceIndex >= 0
-                          ? `${preferenceIndex + 1}ª · `
-                          : ""}
-                        {schedule.horario} · {schedule.cupos} cupos
-                      </option>
-                    );
-                  })}
-                </optgroup>
+              <option value="">
+                {preferredChoices.length > 0
+                  ? `Elegir entre ${preferredChoices.length} ${
+                      preferredChoices.length === 1 ? "preferencia" : "preferencias"
+                    }`
+                  : "Sin preferencias para asignar"}
+              </option>
+              {assignmentIsOutsidePreferences && assignedChoice && (
+                <option value={assignedChoice.schedule.id}>
+                  Asignación actual · {assignedChoice.option.nombre} ·{" "}
+                  {assignedChoice.schedule.horario}
+                </option>
+              )}
+              {preferredChoices.map(({ option, schedule, priority }) => (
+                <option key={schedule.id} value={schedule.id}>
+                  {priority}ª · {option.nombre} · {schedule.horario} · {schedule.cupos} cupos
+                </option>
               ))}
             </select>
           </label>

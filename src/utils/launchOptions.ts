@@ -30,3 +30,22 @@ export function getOptionScheduleSlots(option: LanzamientoOpcion): LanzamientoOp
 export function getOptionCapacity(option: LanzamientoOpcion): number {
   return getOptionScheduleSlots(option).reduce((total, schedule) => total + schedule.cupos, 0);
 }
+
+export interface PreferredOptionScheduleChoice {
+  option: LanzamientoOpcion;
+  schedule: LanzamientoOpcionHorario;
+  priority: number;
+}
+
+/** Conserva el orden elegido y excluye franjas ajenas a la inscripción. */
+export function getPreferredOptionScheduleChoices(
+  options: LanzamientoOpcion[],
+  preferredSchedules: LanzamientoOpcionHorario[] = []
+): PreferredOptionScheduleChoice[] {
+  const optionById = new Map(options.map((option) => [option.id, option]));
+
+  return preferredSchedules.flatMap((schedule, index) => {
+    const option = optionById.get(schedule.opcion_id);
+    return option ? [{ option, schedule, priority: index + 1 }] : [];
+  });
+}

@@ -3,11 +3,8 @@
  *
  * Extraído del `useMemo` inline de SeleccionView para poder testearlo aislado.
  *
- * ⚠️ IMPORTANTE sobre los cupos por franja: el modelo de datos NO guarda un
- * cupo por franja. Solo existe un cupo TOTAL del lanzamiento
- * (`cupos_disponibles`) y un string de horarios (`;`-separado). Por eso
- * `cuposLocal` es una ESTIMACIÓN pareja (`total ÷ nº de franjas`), no un dato
- * real. La UI debe mostrarlo como estimación (no afirmar "Faltan X" como exacto).
+ * Las mega-convocatorias usan cupos exactos por franja. Los lanzamientos
+ * anteriores conservan el cálculo estimado (total ÷ cantidad de franjas).
  */
 import { parseSchedules, normalizeSchedule } from "../../../utils/scheduleUtils";
 import { normalizeStringForComparison } from "../../../utils/formatters";
@@ -17,6 +14,14 @@ export interface HealthRosterRow {
   estado_inscripcion?: string | null;
   horario_asignado?: string | null;
   horario_seleccionado?: string | null;
+  opcion_horario_asignado_id?: string | null;
+  convocatoria_preferencias?: Array<{ opcion_horario_id: string | null }>;
+}
+
+export interface ExactHealthSlot {
+  id: string;
+  label: string;
+  cupos: number;
 }
 
 export interface HorarioHealthInput {
@@ -24,6 +29,7 @@ export interface HorarioHealthInput {
   horariosFijos: boolean;
   cupos: number | null;
   roster: HealthRosterRow[];
+  optionSlots?: ExactHealthSlot[];
 }
 
 export interface HorarioHealthSlot {
@@ -32,8 +38,9 @@ export interface HorarioHealthSlot {
   count: number;
   /** De esos inscriptos, cuántos están "Seleccionado". */
   seleccionados: number;
-  /** Cupo por franja ESTIMADO (total ÷ nº de franjas). `null` si no hay cupo total. */
+  /** Cupo exacto o estimado. `null` si no hay cupo total. */
   cuposLocal: number | null;
+  isEstimated: boolean;
   /** Ocupación del slot respecto al cupo estimado (0..1+). */
   pct: number;
   status: "low" | "ok" | "full";
@@ -55,24 +62,41 @@ export interface HorarioHealthSlot {
  *   inscribirse).
  */
 export function computeHorarioHealth(input: HorarioHealthInput): HorarioHealthSlot[] {
-  const { horarioStr, horariosFijos, cupos, roster } = input;
-  if (horariosFijos) return [];
+  const { horarioStr, horariosFijos, cupos, roster, optionSlots = [] } = input;
+  const hasExactSlots = optionSlots.length > 0;
+  if (horariosFijos && !hasExactSlots) return [];
 
-  const slots = parseSchedules(horarioStr);
+  const slots = hasExactSlots
+    ? optionSlots
+    : parseSchedules(horarioStr).map((label) => ({ id: null, label, cupos: null }));
   if (slots.length === 0) return [];
 
-  const cuposPorSlot = cupos ? Math.max(1, Math.round(cupos / slots.length)) : null;
+  const cuposEstimados = cupos ? Math.max(1, Math.round(cupos / slots.length)) : null;
 
   return slots.map((slot) => {
-    const norm = normalizeSchedule(slot);
-    const matching = roster.filter((r) => {
-      const h = r.horario_asignado || r.horario_seleccionado;
-      return h && normalizeSchedule(h) === norm;
+    const cuposPorSlot = hasExactSlots ? slot.cupos : cuposEstimados;
+    const norm = normalizeSchedule(slot.label);
+    const matching = roster.filter((row) => {
+      if (slot.id) {
+        return (
+          row.opcion_horario_asignado_id === slot.id ||
+          row.convocatoria_preferencias?.some(
+            (preference) => preference.opcion_horario_id === slot.id
+          )
+        );
+      }
+      const horario = row.horario_asignado || row.horario_seleccionado;
+      return horario && normalizeSchedule(horario) === norm;
     });
     const count = matching.length;
-    const seleccionados = matching.filter(
-      (r) => normalizeStringForComparison(r.estado_inscripcion as string) === "seleccionado"
-    ).length;
+    const seleccionados = roster.filter((row) => {
+      const selected =
+        normalizeStringForComparison(row.estado_inscripcion as string) === "seleccionado";
+      if (!selected) return false;
+      if (slot.id) return row.opcion_horario_asignado_id === slot.id;
+      const horario = row.horario_asignado || row.horario_seleccionado;
+      return horario && normalizeSchedule(horario) === norm;
+    }).length;
 
     const pct = cuposPorSlot ? count / cuposPorSlot : 0;
     const status: "low" | "ok" | "full" =
@@ -90,10 +114,11 @@ export function computeHorarioHealth(input: HorarioHealthInput): HorarioHealthSl
             : "falta";
 
     return {
-      label: slot,
+      label: slot.label,
       count,
       seleccionados,
       cuposLocal: cuposPorSlot,
+      isEstimated: !hasExactSlots,
       pct,
       status,
       libres,

@@ -1,5 +1,9 @@
-import type { LanzamientoOpcion } from "../../types";
-import { getOptionCapacity, getOptionScheduleSlots } from "../launchOptions";
+import type { LanzamientoOpcion, LanzamientoOpcionHorario } from "../../types";
+import {
+  getOptionCapacity,
+  getOptionScheduleSlots,
+  getPreferredOptionScheduleChoices,
+} from "../launchOptions";
 
 const option = (overrides: Partial<LanzamientoOpcion> = {}): LanzamientoOpcion =>
   ({
@@ -61,5 +65,35 @@ describe("launchOptions", () => {
     expect(schedules[0].horario).toBe("8 a 12 · 9 a 13");
     expect(schedules[0].cupos).toBe(5);
     expect(getOptionCapacity(value)).toBe(5);
+  });
+
+  it("muestra solo los dispositivos elegidos y conserva su prioridad", () => {
+    const firstOption = option({ id: "option-1", nombre: "Dispositivo uno" });
+    const secondOption = option({ id: "option-2", nombre: "Dispositivo dos" });
+    const notPreferred = option({ id: "option-3", nombre: "No elegido" });
+    const schedule = (id: string, opcionId: string): LanzamientoOpcionHorario => ({
+      id,
+      opcion_id: opcionId,
+      horario: "De 8 a 12",
+      cupos: 2,
+      orden: 1,
+      activa: true,
+      created_at: "2026-08-13T00:00:00Z",
+      updated_at: "2026-08-13T00:00:00Z",
+    });
+
+    const choices = getPreferredOptionScheduleChoices(
+      [firstOption, secondOption, notPreferred],
+      [schedule("slot-2", secondOption.id), schedule("slot-1", firstOption.id)]
+    );
+
+    expect(choices.map(({ option: preferredOption }) => preferredOption.nombre)).toEqual([
+      "Dispositivo dos",
+      "Dispositivo uno",
+    ]);
+    expect(choices.map(({ priority }) => priority)).toEqual([1, 2]);
+    expect(
+      choices.some(({ option: preferredOption }) => preferredOption.id === notPreferred.id)
+    ).toBe(false);
   });
 });

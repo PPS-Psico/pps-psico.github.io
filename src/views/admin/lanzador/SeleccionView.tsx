@@ -13,6 +13,7 @@ import {
 } from "../../../constants";
 import type { LanzamientoPPS } from "../../../types";
 import { formatDate } from "../../../utils/formatters";
+import { getOptionScheduleSlots } from "../../../utils/launchOptions";
 import { logger } from "../../../utils/logger";
 import { computeHorarioHealth } from "./lanzadorHealth";
 import {
@@ -48,10 +49,29 @@ const SeleccionView: React.FC<{
   // no existe diferenciación por franja, así que no tiene sentido mostrar la
   // "Salud por franja horaria" ni el aviso de franjas libres.
   const horariosFijos = !!launch[FIELD_HORARIOS_FIJOS_LANZAMIENTOS];
-  const horarioHealth = useMemo(
-    () => computeHorarioHealth({ horarioStr, horariosFijos, cupos, roster: inscriptos }),
-    [horarioStr, horariosFijos, cupos, inscriptos]
+  const optionHealthSlots = useMemo(
+    () =>
+      (launch.opciones || []).flatMap((option) =>
+        getOptionScheduleSlots(option).map((schedule) => ({
+          id: schedule.id,
+          label: `${option.nombre} · ${schedule.horario} [${option.orientacion}]`,
+          cupos: schedule.cupos,
+        }))
+      ),
+    [launch.opciones]
   );
+  const horarioHealth = useMemo(
+    () =>
+      computeHorarioHealth({
+        horarioStr,
+        horariosFijos,
+        cupos,
+        roster: inscriptos,
+        optionSlots: optionHealthSlots,
+      }),
+    [horarioStr, horariosFijos, cupos, inscriptos, optionHealthSlots]
+  );
+  const exactHealth = horarioHealth.some((slot) => !slot.isEstimated);
 
   // Franjas que todavía no llenaron sus cupos con inscriptos → candidatas a un
   // empujón de difusión dirigido ("avisar que quedan lugares en este día").
@@ -176,8 +196,9 @@ const SeleccionView: React.FC<{
                 lineHeight: 1.5,
               }}
             >
-              Los cupos por franja son <b>estimados</b> (total ÷ nº de franjas); el sistema no
-              define un cupo por franja. Usalos como referencia, no como número exacto.
+              {exactHealth
+                ? "Los postulantes se cuentan en cada dispositivo que eligieron. Los seleccionados se cuentan solo en el dispositivo finalmente asignado."
+                : "Los cupos por franja son estimados (total ÷ cantidad de franjas). Usalos como referencia."}
             </p>
             <div className="lv4-horario-grid">
               {horarioHealth.map((h, idx) => {
@@ -199,7 +220,7 @@ const SeleccionView: React.FC<{
                     : h.selStatus === "excedido"
                       ? `${h.seleccionados - (h.cuposLocal ?? 0)} de más`
                       : h.cuposLocal != null
-                        ? `Faltan ~${h.faltanSeleccion}`
+                        ? `Faltan ${h.isEstimated ? "~" : ""}${h.faltanSeleccion}`
                         : `${h.seleccionados} elegidos`;
                 const selIcon =
                   h.selStatus === "completo"
@@ -241,7 +262,8 @@ const SeleccionView: React.FC<{
                       </span>
                       {h.cuposLocal && (
                         <span style={{ fontSize: 12, color: "var(--ink-4)" }}>
-                          {h.count === 1 ? "inscripto" : "inscriptos"} · ~{h.cuposLocal} cupos est.
+                          {h.count === 1 ? "postulante" : "postulantes"} ·{" "}
+                          {h.isEstimated ? `~${h.cuposLocal} cupos est.` : `${h.cuposLocal} cupos`}
                         </span>
                       )}
                     </div>
@@ -281,7 +303,9 @@ const SeleccionView: React.FC<{
                     )}
                     {h.status === "low" && (
                       <div className="lv4-horario-foot">
-                        Probablemente quede vacía si no se difunde con foco en este día.
+                        {h.count === 0
+                          ? "Todavía no tiene postulantes. Conviene reforzar su difusión."
+                          : "Tiene menos postulantes que la mitad del cupo. Conviene reforzar su difusión."}
                       </div>
                     )}
                   </div>
