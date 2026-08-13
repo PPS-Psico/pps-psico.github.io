@@ -287,6 +287,10 @@ const App: React.FC = () => {
 
     // Reporta el alto real del contenido para que el iframe del campus crezca a
     // su medida (scroll en la página de Moodle, sin barra interna ni recorte).
+    // Mientras hay un modal, en cambio, se omite el alto: el puente de Moodle
+    // vuelve entonces a su altura de viewport estable. Esto evita que un modal
+    // fixed quede centrado dentro de un iframe de miles de píxeles y corta la
+    // realimentación iframe -> 100vh -> iframe que generaba el scroll infinito.
     // OJO: medimos un wrapper de contenido, NO body/documentElement: dentro de
     // un iframe el body se estira al alto del iframe y realimenta el cálculo
     // (crece sin parar). El wrapper mide solo el contenido y es estable.
@@ -298,7 +302,11 @@ const App: React.FC = () => {
 
     const notifyParent = () => {
       try {
-        window.parent.postMessage({ ppsPanel: true, height: measureHeight() }, "*");
+        const hasBlockingLayer = document.body.style.overflow === "hidden";
+        window.parent.postMessage(
+          hasBlockingLayer ? { ppsPanel: true } : { ppsPanel: true, height: measureHeight() },
+          "*"
+        );
       } catch {
         /* noop */
       }
@@ -315,6 +323,14 @@ const App: React.FC = () => {
       ro = new ResizeObserver(notifyParent);
       ro.observe(document.body);
     }
+    // El bloqueo de scroll de los diálogos cambia un estilo del body, pero no
+    // siempre altera sus dimensiones. Observamos ese atributo para avisar al
+    // padre en el mismo momento en que abre o cierra la ventana.
+    let bodyObserver: MutationObserver | undefined;
+    if (typeof MutationObserver !== "undefined") {
+      bodyObserver = new MutationObserver(notifyParent);
+      bodyObserver.observe(document.body, { attributes: true, attributeFilter: ["style"] });
+    }
     // Re-mide los primeros segundos (datos async, fuentes, imágenes).
     let n = 0;
     const iv = setInterval(() => {
@@ -328,6 +344,7 @@ const App: React.FC = () => {
       clearInterval(iv);
       window.removeEventListener("resize", notifyParent);
       if (ro) ro.disconnect();
+      if (bodyObserver) bodyObserver.disconnect();
     };
   }, []);
 
