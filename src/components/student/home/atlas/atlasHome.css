@@ -1558,6 +1558,13 @@ html.dark .ah-root .ah-conv__desc {
 .ah-feat__block {
   min-width: 0;
 }
+/* Columna que apila Ubicación + Archivo adjunto en la misma celda del grid */
+.ah-feat__stack {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
 .ah-feat__block .eyebrow {
   display: block;
   margin-bottom: 11px;

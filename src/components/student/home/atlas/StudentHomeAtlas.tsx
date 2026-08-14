@@ -20,6 +20,8 @@ import {
   FIELD_INSTITUCION_LINK_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_REQUISITO_OBLIGATORIO_LANZAMIENTOS,
+  FIELD_ARCHIVO_DESCARGABLE_NOMBRE,
+  FIELD_ARCHIVO_DESCARGABLE_URL,
   FIELD_EMPRESA_PPS_SOLICITUD,
   FIELD_ESTADO_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
@@ -160,6 +162,7 @@ const enrollmentOutcome = (status: string) => {
   }
   if (status === "no seleccionado") return "No seleccionado/a";
   if (status === "inscripto") return "Resultado pendiente";
+  if (!status) return "Convocatoria cerrada";
   return "Inscripción registrada";
 };
 
@@ -392,6 +395,10 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               : actsRaw
                 ? [String(actsRaw)]
                 : [];
+            const archivoUrl = (l[FIELD_ARCHIVO_DESCARGABLE_URL] as string) || "";
+            const archivoNombre =
+              String(l[FIELD_ARCHIVO_DESCARGABLE_NOMBRE] || "").trim() ||
+              "Documento de la convocatoria";
             const mapsUrl =
               MAPS_URL_BY_INSTITUTION_ID[institutionId] ||
               `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionPresencial)}`;
@@ -445,7 +452,7 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                     </div>
                   ) : null}
 
-                  {horarios.length > 0 || (!esOnline && direccionPresencial) ? (
+                  {horarios.length > 0 || (!esOnline && direccionPresencial) || archivoUrl ? (
                     <div className="ah-feat__meta">
                       {horarios.length > 0 ? (
                         <div className="ah-feat__block">
@@ -472,26 +479,52 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
                           </ul>
                         </div>
                       ) : null}
-                      {!esOnline && direccionPresencial ? (
-                        <div className="ah-feat__block">
-                          <span className="eyebrow">Ubicación</span>
-                          <a
-                            className="ah-feat__map"
-                            href={mapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <span className="ah-feat__ic">
-                              <span className="material-icons" aria-hidden>
-                                place
-                              </span>
-                            </span>
-                            <span className="ah-feat__map-txt">
-                              <span className="ah-feat__map-addr">{direccionPresencial}</span>
-                              <span className="ah-feat__map-hint">Abrir en Google Maps</span>
-                            </span>
-                            <AhIcon name="arrow" size={14} />
-                          </a>
+                      {(!esOnline && direccionPresencial) || archivoUrl ? (
+                        <div className="ah-feat__stack">
+                          {!esOnline && direccionPresencial ? (
+                            <div className="ah-feat__block">
+                              <span className="eyebrow">Ubicación</span>
+                              <a
+                                className="ah-feat__map"
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <span className="ah-feat__ic">
+                                  <span className="material-icons" aria-hidden>
+                                    place
+                                  </span>
+                                </span>
+                                <span className="ah-feat__map-txt">
+                                  <span className="ah-feat__map-addr">{direccionPresencial}</span>
+                                  <span className="ah-feat__map-hint">Abrir en Google Maps</span>
+                                </span>
+                                <AhIcon name="arrow" size={14} />
+                              </a>
+                            </div>
+                          ) : null}
+                          {archivoUrl ? (
+                            <div className="ah-feat__block">
+                              <span className="eyebrow">Archivo adjunto</span>
+                              <a
+                                className="ah-feat__map"
+                                href={archivoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <span className="ah-feat__ic">
+                                  <span className="material-icons" aria-hidden>
+                                    description
+                                  </span>
+                                </span>
+                                <span className="ah-feat__map-txt">
+                                  <span className="ah-feat__map-addr">{archivoNombre}</span>
+                                  <span className="ah-feat__map-hint">Descargar</span>
+                                </span>
+                                <AhIcon name="arrow" size={14} />
+                              </a>
+                            </div>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>

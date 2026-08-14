@@ -225,9 +225,10 @@ const HomeView: React.FC<HomeViewProps> = ({
     return status === "abierta" || status === "abierto";
   });
 
-  // Resultados en el Home: SOLO convocatorias en las que el estudiante se
-  // inscribió y cuya PPS todavía no comenzó. Una vez que arranca, deja de ser un
-  // resultado accionable del inicio y pasa a vivir en "Mis prácticas".
+  // Resultados en el Home: convocatorias cerradas/en confirmación cuya PPS
+  // todavía no comenzó (visibles para todos, con su lista de convocados), más
+  // cualquier otra en la que el estudiante se haya inscripto. Una vez que
+  // arranca, deja de ser un resultado accionable y pasa a "Mis prácticas".
   const openIds = new Set(openLanzamientos.map((l) => l.id));
   const notStarted = (l: LanzamientoPPS) => {
     const d = parseToUTCDate(l[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);
@@ -249,7 +250,7 @@ const HomeView: React.FC<HomeViewProps> = ({
     (allLanzamientos || []).forEach((l) => {
       if (enrollmentMap.has(l.id)) push(l);
     });
-    return out.filter((l) => enrollmentMap.has(l.id));
+    return out;
   })();
 
   const activeEnrollment = myEnrollments?.find((e) => {
