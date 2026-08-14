@@ -34,6 +34,7 @@ import {
 } from "../../../../utils/formatters";
 import { getMandatoryLaunchSchedules } from "../../../../utils/scheduleRequirements";
 import { getEnrollmentNotice } from "../../../../utils/enrollmentCopy";
+import StudentConvCard from "../StudentConvCard";
 import {
   getCompletedEnrollmentLabel,
   getEnrollmentEligibility,
@@ -155,16 +156,6 @@ const COMPLETED_SOL = [
   "concretada",
   "baja",
 ];
-
-const enrollmentOutcome = (status: string) => {
-  if (status === "seleccionado" || status === "adjudicado" || status === "en curso") {
-    return "Seleccionado/a";
-  }
-  if (status === "no seleccionado") return "No seleccionado/a";
-  if (status === "inscripto") return "Resultado pendiente";
-  if (!status) return "Convocatoria cerrada";
-  return "Inscripción registrada";
-};
 
 const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
   studentName,
@@ -774,99 +765,19 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
               style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginBottom: 28 }}
             >
               {closedLanzamientos.map((l) => {
-                const area = (l[FIELD_ORIENTACION_LANZAMIENTOS] as string) || "General";
-                const areaPrimary = area.split(/[,/]/)[0].trim();
-                const name = ((l[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "Convocatoria")
-                  .split(" - ")[0]
-                  .trim();
-                const rawDesc = (l[FIELD_DESCRIPCION_LANZAMIENTOS] as string) || "";
-                const desc = rawDesc.trim() || "Práctica profesional supervisada.";
-                const hs = Number(l[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS] || 0);
-                const cupos = Number(l[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] || 0);
-                const periodo = [
-                  fmtShort(l[FIELD_FECHA_INICIO_LANZAMIENTOS]),
-                  fmtShort(l[FIELD_FECHA_FIN_LANZAMIENTOS]),
-                ]
-                  .filter(Boolean)
-                  .join(" → ");
-                const enrollment = enrollmentMap.get(l.id);
-                const status = enrollment
-                  ? normalizeStringForComparison(
-                      (enrollment[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] as string) || ""
-                    )
-                  : "";
-                const isSelected =
-                  status === "seleccionado" || status === "adjudicado" || status === "en curso";
-                const outcome = enrollmentOutcome(status);
                 const isConsentCard = consent?.lanzamientoId === l.id;
+                const { isCompleted } = getEnrollmentEligibility(l, completedHistory);
                 return (
-                  <article
+                  <StudentConvCard
                     key={l.id}
-                    className="ah-conv"
-                    style={{
-                      ["--ac" as string]: areaVar(areaPrimary),
-                      ["--ac-ink" as string]: areaInk(areaPrimary),
-                    }}
-                  >
-                    <div className="ah-conv__top">
-                      <span className="ah-areabadge">
-                        <span className="dot" />
-                        <span className="ah-areabadge__mark">{areaPrimary}</span>
-                      </span>
-                      <span className="ah-closes">
-                        <AhIcon name={isSelected ? "check" : "lock"} size={13} />
-                        {outcome}
-                      </span>
-                    </div>
-                    <h2 className="ah-conv__name">{name}</h2>
-                    <p className="ah-conv__desc">{desc}</p>
-                    <div className="ah-conv__spacer" />
-                    <div className="ah-conv__data">
-                      <div className="ah-conv__cell">
-                        <span className="k">Horas</span>
-                        <span className="v">
-                          {hs === 0 ? "Según recorrido" : hs || "s/d"}{" "}
-                          {hs && hs > 0 ? <span className="u">hs</span> : null}
-                        </span>
-                      </div>
-                      <div className="ah-conv__cell">
-                        <span className="k">Cupos</span>
-                        <span className="v">{cupos || "s/d"}</span>
-                      </div>
-                      <div className="ah-conv__cell">
-                        <span className="k">Período</span>
-                        <span className="v">{periodo || "A definir"}</span>
-                      </div>
-                    </div>
-                    <div className="ah-conv__foot">
-                      {isConsentCard ? (
-                        <button
-                          type="button"
-                          className="ah-btn ah-btn--primary ah-btn--area"
-                          style={{ background: areaVar(areaPrimary) }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onStartConsent();
-                          }}
-                        >
-                          Firmar consentimiento
-                          <AhIcon name="arrow" size={15} />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="ah-btn ah-btn--secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onVerConvocados(l);
-                          }}
-                        >
-                          Ver convocados
-                          <AhIcon name="arrow" size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </article>
+                    lanzamiento={l}
+                    enrollment={enrollmentMap.get(l.id) ?? null}
+                    isCompleted={isCompleted}
+                    isOpen={false}
+                    pendingConsentCta={isConsentCard}
+                    onFirmarConsentimiento={isConsentCard ? onStartConsent : undefined}
+                    onVerConvocados={() => onVerConvocados(l)}
+                  />
                 );
               })}
             </div>
