@@ -70,8 +70,13 @@ export const useCampusOnboarding = (profile: MoodleOnboardingProfile) => {
       };
 
       if (!response.ok || !result.ok) {
-        if (result.code === "already_registered") {
+        // Ambos códigos se resuelven entrando, no reintentando el alta: uno
+        // porque el correo del campus ya tiene cuenta, el otro porque el legajo
+        // ya fue reclamado. Resaltamos el acceso a "iniciar sesión".
+        if (result.code === "already_registered" || result.code === "legajo_already_registered") {
           setHasExistingAccount(true);
+        }
+        if (result.code === "already_registered") {
           throw new Error(
             "Tu correo del campus ya tiene una cuenta. Iniciá sesión o usá Recuperar Acceso."
           );
@@ -79,11 +84,8 @@ export const useCampusOnboarding = (profile: MoodleOnboardingProfile) => {
         if (result.code === "rate_limited") {
           throw new Error("Demasiados intentos. Esperá un minuto y volvé a intentar.");
         }
-        if (result.code === "invalid_or_expired_ticket") {
-          throw new Error(
-            "La autorización del aula venció. Recargá el Aula PPS del Campus Virtual y volvé a intentarlo."
-          );
-        }
+        // El resto de los códigos ya llega con un texto accionable desde
+        // `register-moodle-student`; no lo duplicamos acá.
         throw new Error(result.message || "No pudimos completar el alta. Revisá los datos.");
       }
 

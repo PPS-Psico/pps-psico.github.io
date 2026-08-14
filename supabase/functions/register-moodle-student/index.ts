@@ -49,6 +49,74 @@ type SignupTicket = {
   used_at: string | null;
 };
 
+/**
+ * Traducción de cada excepción del RPC a un código estable y a un texto que le
+ * dice al alumno qué hacer. Antes todo lo que no mencionara "ticket" caía en
+ * `academic_record_mismatch`: "ese legajo ya tiene cuenta" y "los datos no
+ * coinciden" llegaban con el mismo cartel, y distinguirlos exigía leer los logs
+ * de la función. El orden importa — se aplica la primera coincidencia.
+ */
+const SIGNUP_FAILURES: ReadonlyArray<{
+  match: RegExp;
+  code: string;
+  status: number;
+  message: string;
+}> = [
+  {
+    match: /ticket|expired|consumed/i,
+    code: "invalid_or_expired_ticket",
+    status: 403,
+    message: "La autorización del Aula PPS venció. Recargá el aula y volvé a intentarlo.",
+  },
+  {
+    match: /legajo already has an account/i,
+    code: "legajo_already_registered",
+    status: 409,
+    message: "Ese legajo ya tiene una cuenta. Iniciá sesión o usá Recuperar acceso.",
+  },
+  {
+    match: /student account already linked/i,
+    code: "account_already_linked",
+    status: 409,
+    message: "Tu usuario del campus ya está vinculado a otro legajo. Escribinos para revisarlo.",
+  },
+  {
+    match: /identity already exists/i,
+    code: "duplicate_identity",
+    status: 409,
+    message:
+      "Ya existe una ficha con tu DNI o correo bajo otro legajo. Escribinos para unificarla.",
+  },
+  {
+    match: /signup identity/i,
+    code: "identity_mismatch",
+    status: 403,
+    message:
+      "El correo de tu cuenta no coincide con el del Aula PPS. Volvé a entrar desde el aula.",
+  },
+  {
+    match: /signup data/i,
+    code: "invalid_signup_data",
+    status: 400,
+    message: "Revisá los datos: el legajo y el teléfono no pueden quedar vacíos.",
+  },
+  {
+    match: /could not be linked/i,
+    code: "link_conflict",
+    status: 409,
+    message: "Otro intento de alta se adelantó. Esperá unos segundos y probá de nuevo.",
+  },
+];
+
+const FALLBACK_FAILURE = {
+  code: "signup_failed",
+  status: 400,
+  message: "No pudimos completar el alta. Volvé a intentarlo en unos minutos.",
+};
+
+const resolveSignupFailure = (rpcMessage: string) =>
+  SIGNUP_FAILURES.find((failure) => failure.match.test(rpcMessage)) ?? FALLBACK_FAILURE;
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin")?.replace(/\/$/, "") ?? "";
 
@@ -145,21 +213,16 @@ Deno.serve(async (req) => {
     });
 
     if (linkError) {
-      console.error("[register-moodle-student] Student link failed", linkError.message);
+      const failure = resolveSignupFailure(linkError.message);
+      // El mensaje crudo del RPC sólo va al log: es lo que permite reconstruir
+      // un caso concreto sin tener que reproducirlo con la alumna en línea.
+      console.error(
+        `[register-moodle-student] Student link failed (legajo=${legajo}, code=${failure.code}): ${linkError.message}`
+      );
       await admin.auth.admin.deleteUser(createdUserId);
       createdUserId = null;
 
-      if (/ticket|expired/i.test(linkError.message)) {
-        return json(origin, { code: "invalid_or_expired_ticket" }, 403);
-      }
-      return json(
-        origin,
-        {
-          code: "academic_record_mismatch",
-          message: "Los datos no coinciden con el registro académico.",
-        },
-        409
-      );
+      return json(origin, { code: failure.code, message: failure.message }, failure.status);
     }
 
     return json(origin, { ok: true });
