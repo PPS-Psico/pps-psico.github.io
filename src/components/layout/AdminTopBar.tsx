@@ -260,6 +260,7 @@ interface AdminTopBarProps {
   currentTabId: string;
   onTabChange: (id: string, path?: string) => void;
   onTabClose?: (id: string, e: React.MouseEvent) => void;
+  showMoodleTemplate?: boolean;
 }
 
 const AdminTopBar: React.FC<AdminTopBarProps> = ({
@@ -267,6 +268,7 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
   currentTabId,
   onTabChange,
   onTabClose,
+  showMoodleTemplate = true,
 }) => {
   const { logout, isSuperUserMode, isJefeMode, isDirectivoMode } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -420,14 +422,16 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
             </div>
           )}
 
-          <button
-            className="admin-icon-btn"
-            onClick={handleCopyMoodleTemplate}
-            aria-label="Copiar encabezado de marca Moodle"
-            title="Copiar encabezado de marca Moodle"
-          >
-            <span className="material-icons">school</span>
-          </button>
+          {showMoodleTemplate && (
+            <button
+              className="admin-icon-btn"
+              onClick={handleCopyMoodleTemplate}
+              aria-label="Copiar encabezado de marca Moodle"
+              title="Copiar encabezado de marca Moodle"
+            >
+              <span className="material-icons">school</span>
+            </button>
+          )}
 
           <button
             className="admin-icon-btn"

@@ -210,6 +210,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (isMounted) {
           if (profile && !error) {
             const dbRole = profile[FIELD_ROLE_ESTUDIANTES] as AuthUser["role"] | undefined;
+            let resolvedOrientations = profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]
+              ? [String(profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES])]
+              : [];
+
+            // Una jefatura puede tener más de una orientación (Cynthia: Laboral
+            // + Comunitaria). La asignación autorizada vive en DB y se resuelve
+            // por DNI; `orientacion_elegida` queda sólo como fallback de
+            // compatibilidad si el RPC no estuviera disponible.
+            if (dbRole === "Jefe") {
+              const { data: jefeAreas, error: jefeAreasError } =
+                await supabase.rpc("get_my_jefe_areas_v1");
+              if (!jefeAreasError && jefeAreas?.length) {
+                resolvedOrientations = jefeAreas.map((area) => area.area_label);
+              } else if (jefeAreasError) {
+                logger.warn(
+                  "[Auth] No se pudieron resolver las áreas de jefatura:",
+                  jefeAreasError.message
+                );
+              }
+            }
 
             // Los tres datos que la inscripción exige (ver `useConvocatorias`).
             // Antes acá sólo se miraba el DNI, así que a quien le faltaba el
@@ -254,9 +274,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               studentId: profile.id,
               legajo: profile[FIELD_LEGAJO_ESTUDIANTES] || "",
               nombre: profile[FIELD_NOMBRE_ESTUDIANTES] || "Usuario",
-              orientaciones: profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]
-                ? [profile[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES]]
-                : [],
+              orientaciones: resolvedOrientations,
               mustChangePassword: !!profile[FIELD_MUST_CHANGE_PASSWORD_ESTUDIANTES],
               needsDataCompletion,
               role: dbRole,

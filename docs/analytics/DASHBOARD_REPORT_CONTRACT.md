@@ -147,3 +147,25 @@ y 8 en acreditación.
    entrevistas;
 5. `npm run build`;
 6. revisión visual del dashboard y render completo de los PDF afectados.
+
+## Contrato adicional: jefaturas de área
+
+`get_jefe_dashboard_v1(year, cutoff)` es el contrato de lectura de Inicio,
+Informes y Panorama. Resuelve alcance por DNI en
+`private.jefe_area_assignments`; el cliente no envía orientaciones ni puede
+ampliarlas. Selva accede a Clínica, Franco a Educacional y Cynthia a Laboral más
+Comunitaria.
+
+El payload separa cuatro bloques:
+
+- `queue`: agregado reconciliable con el detalle de `reports`;
+- `reports`: una fila por práctica, ordenada por vencimiento individual a 30
+  días corridos desde la entrega;
+- `panorama`: resultado anual con fecha de corte y procedencia explícita;
+- `current`: foto operativa actual, sin comparación interanual.
+
+Para 2024 `panorama.source = historical_documented` y la oferta se reconstruye
+desde la capa histórica revisada. Para años posteriores la fuente es
+`operational_live`. Capacidad e instituciones conservan las definiciones del
+diccionario de métricas. El contrato SQL obligatorio es
+`supabase/tests/jefe_area_panel_v1_contract.sql`.

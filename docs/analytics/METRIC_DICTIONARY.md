@@ -265,6 +265,32 @@ evento o campo explícito de acreditación.
 - fuente, base temporal, completitud y comparabilidad de la capacidad;
 - versión de contrato usada en cada reporte o snapshot.
 
+## Panel de jefaturas por orientación
+
+El RPC `get_jefe_dashboard_v1` aplica el mismo vocabulario anual de
+`analytics-v2`, limitado a las orientaciones asignadas al DNI autenticado.
+
+- **PPS lanzadas:** ofertas canónicas publicadas del área y del año. Para 2024
+  usa `private.historical_launch_offers`; desde 2025 usa lanzamientos operativos
+  de tipo `pps` y excluye borradores `Oculto`.
+- **Cupos registrados:** cupos fijos documentados más participantes realizados
+  en ofertas sin cupo finito. Siempre muestra el desglose `fixed`, `realized` y
+  la cantidad de ofertas `desconocido`; no convierte estas últimas en cero.
+- **Instituciones con ofertas de PPS en [año]:** instituciones distintas dentro
+  de las ofertas del período. No se etiqueta como “instituciones activas”.
+- **Estudiantes que iniciaron:** personas distintas con fecha efectiva de inicio
+  en el año y orientación dentro del alcance del jefe.
+- **Demanda:** `applications` cuenta inscripciones y `applicants` personas
+  distintas. No se publica para 2024 si la relación histórica no está disponible.
+- **Foto actual:** prácticas activas, convocatorias abiertas e informes
+  pendientes/críticos al corte de hoy. Es un stock operativo separado y nunca se
+  compara como si fuera un resultado anual.
+
+La cola de informes usa la primera observación de entrega Moodle y, como
+fallback, `convocatorias.fecha_entrega_informe`. El seguimiento interno vence a
+los 30 días corridos; `critical` significa que ese umbral interno fue superado,
+no una declaración sobre el plazo normativo comunicado al estudiante.
+
 ## Snapshots
 
 `analytics_metric_snapshots` guarda una fila por fecha, versión y métrica. La

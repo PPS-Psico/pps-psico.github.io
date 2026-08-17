@@ -2792,6 +2792,10 @@ export type Database = {
       cleanup_old_verification_attempts: { Args: never; Returns: undefined }
       close_finished_practicas: { Args: never; Returns: number }
       close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json }
+      complete_moodle_jefe_login_v1: {
+        Args: { token_hash_input: string; userid_input: string }
+        Returns: string
+      }
       complete_moodle_student_signup: {
         Args: {
           dni_input: number
@@ -3069,6 +3073,10 @@ export type Database = {
           practicas_activas: number
         }[]
       }
+      get_jefe_dashboard_v1: {
+        Args: { p_cutoff?: string; p_year?: number }
+        Returns: Json
+      }
       get_metrics_years: { Args: never; Returns: Json }
       get_moodle_grade_discrepancies: {
         Args: never
@@ -3089,6 +3097,10 @@ export type Database = {
           practica_id: string
         }[]
       }
+      get_moodle_jefe_login_candidate_v1: {
+        Args: { token_hash_input: string }
+        Returns: Json
+      }
       get_moodle_sync_health: { Args: never; Returns: Json }
       get_moodle_unlinked_practices: {
         Args: { p_from_year?: number }
@@ -3100,6 +3112,14 @@ export type Database = {
           institucion: string
           practica_id: string
           reason_code: string
+        }[]
+      }
+      get_my_jefe_areas_v1: {
+        Args: never
+        Returns: {
+          area_key: string
+          area_label: string
+          sort_order: number
         }[]
       }
       get_my_role: { Args: never; Returns: string }
@@ -3524,6 +3544,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_jefe_report_grade_v1: {
+        Args: { p_grade: string; p_practica_id: string }
+        Returns: Json
       }
       verify_student_identity: {
         Args: {

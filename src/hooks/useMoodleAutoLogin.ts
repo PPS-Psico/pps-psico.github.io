@@ -97,6 +97,9 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
           },
           body: JSON.stringify({
             email: context.email,
+            courseId: context.courseId,
+            moodleUserId: context.moodleUserId,
+            signupTicket: context.signupTicket,
             profile: {
               firstname: context.firstname,
               lastname: context.lastname,

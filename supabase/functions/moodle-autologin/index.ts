@@ -64,8 +64,18 @@ type CampusEntryReason =
 
 type CampusEntryResult = {
   matched?: boolean;
-  reason: CampusEntryReason | "matched_strict";
+  reason: CampusEntryReason | "matched_strict" | "matched_jefe";
   token_hash?: string;
+};
+
+type JefeLoginCandidate = {
+  student_id: string;
+  profile_user_id: string | null;
+  auth_user_id: string | null;
+  auth_confirmed: boolean;
+  email: string;
+  dni: number;
+  moodle_user_id: number;
 };
 
 type StudentMatch = {
@@ -76,6 +86,115 @@ type StudentMatch = {
   nombre: string | null;
   nombre_separado: string | null;
   apellido_separado: string | null;
+};
+
+const sha256Hex = async (value: string): Promise<string> => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+/**
+ * Acceso sin formulario para las tres jefaturas autorizadas. El ticket de
+ * Moodle es de un solo uso y la base vuelve a validar DNI, Moodle user id,
+ * nombre, apellido, correo y rol antes de vincular cualquier identidad Auth.
+ * Devuelve null cuando el contexto no corresponde a una jefatura para que el
+ * flujo estudiantil existente continúe sin cambios.
+ */
+const resolveJefeCampusEntry = async (
+  signupTicket: unknown,
+  courseId: unknown,
+  moodleUserId: unknown,
+  email: string,
+  profile: MoodleProfile
+): Promise<CampusEntryResult | null> => {
+  const rawTicket = String(signupTicket ?? "")
+    .trim()
+    .toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(rawTicket)) return null;
+
+  const tokenHash = await sha256Hex(rawTicket);
+  const { data, error } = await admin.rpc("get_moodle_jefe_login_candidate_v1", {
+    token_hash_input: tokenHash,
+  });
+
+  if (error) {
+    console.error("[moodle-autologin] Jefe candidate lookup failed:", error.message);
+    return null;
+  }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+
+  const candidate = data as JefeLoginCandidate;
+  const requestMatchesTicket =
+    Number(courseId) === 3615 &&
+    Number(moodleUserId) === Number(candidate.moodle_user_id) &&
+    normalizeDni(profile.username) === String(candidate.dni) &&
+    email === normalizeEmail(candidate.email);
+
+  if (!requestMatchesTicket) {
+    console.warn("[moodle-autologin] Jefe request did not match the verified ticket");
+    return { reason: "manual_login" };
+  }
+
+  let userId = candidate.profile_user_id ?? candidate.auth_user_id;
+  let createdUserId: string | null = null;
+
+  if (!userId) {
+    const { data: createData, error: createError } = await admin.auth.admin.createUser({
+      email: candidate.email,
+      email_confirm: true,
+      app_metadata: {
+        app_role: "Jefe",
+        signup_source: "moodle_jefe_zero_touch",
+      },
+    });
+
+    if (createError || !createData.user) {
+      console.error("[moodle-autologin] Jefe Auth creation failed:", createError?.message);
+      return { reason: "manual_login" };
+    }
+
+    userId = createData.user.id;
+    createdUserId = userId;
+  } else if (!candidate.auth_confirmed) {
+    const { error: confirmError } = await admin.auth.admin.updateUserById(userId, {
+      email_confirm: true,
+      app_metadata: {
+        app_role: "Jefe",
+        signup_source: "moodle_jefe_zero_touch",
+      },
+    });
+    if (confirmError) {
+      console.error("[moodle-autologin] Jefe Auth confirmation failed:", confirmError.message);
+      return { reason: "manual_login" };
+    }
+  }
+
+  const { error: linkError } = await admin.rpc("complete_moodle_jefe_login_v1", {
+    token_hash_input: tokenHash,
+    userid_input: userId,
+  });
+
+  if (linkError) {
+    console.error("[moodle-autologin] Jefe profile link failed:", linkError.message);
+    if (createdUserId) {
+      await admin.auth.admin.deleteUser(createdUserId).catch(() => undefined);
+    }
+    return { reason: "manual_login" };
+  }
+
+  const { data: linkData, error: sessionError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: candidate.email,
+  });
+  const sessionTokenHash = linkData?.properties?.hashed_token;
+
+  if (sessionError || !sessionTokenHash) {
+    console.error("[moodle-autologin] Jefe one-time session issuance failed");
+    return { reason: "manual_login" };
+  }
+
+  console.log(`[moodle-autologin] Zero-touch Jefe login issued (dni=${candidate.dni})`);
+  return { matched: true, reason: "matched_jefe", token_hash: sessionTokenHash };
 };
 
 /**
@@ -209,6 +328,15 @@ Deno.serve(async (req) => {
     const rawProfile = (body as { profile?: unknown }).profile;
     const profile =
       rawProfile && typeof rawProfile === "object" ? (rawProfile as MoodleProfile) : {};
+
+    const jefeResult = await resolveJefeCampusEntry(
+      (body as { signupTicket?: unknown }).signupTicket,
+      (body as { courseId?: unknown }).courseId,
+      (body as { moodleUserId?: unknown }).moodleUserId,
+      email,
+      profile
+    );
+    if (jefeResult) return json(origin, jefeResult);
 
     return json(origin, await resolveCampusEntry(email, profile));
   } catch (error) {
