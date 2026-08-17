@@ -202,32 +202,18 @@ const JefeView: React.FC<JefeViewProps> = ({ previewKey }) => {
   };
 
   const renderContent = () => {
-    if (isPreview && (currentView === "practicas" || currentView === "estudiantes")) {
-      return (
-        <main className="jefe-main">
-          <section className="jefe-preview-unavailable">
-            <span className="material-icons" aria-hidden="true">
-              visibility
-            </span>
-            <p className="jefe-context-line">Previsualización segura</p>
-            <h1>{currentView === "practicas" ? "Prácticas" : "Estudiantes"}</h1>
-            <p>
-              Esta sección operativa queda bloqueada en la simulación para evitar acciones sobre
-              datos reales. Las vistas Inicio, Informes y Panorama reproducen el panel de la
-              jefatura seleccionada con información actual.
-            </p>
-            <button className="jefe-text-action" onClick={() => navigateTo("inicio")}>
-              Volver al inicio <span className="material-icons">arrow_forward</span>
-            </button>
-          </section>
-        </main>
-      );
+    if (isPreview && currentView === "practicas" && !dashboardQuery.data) {
+      return <main className="jefe-main">{renderCoreContent()}</main>;
     }
 
     if (currentView === "practicas") {
+      const orientations = isPreview
+        ? dashboardQuery.data?.profile.areas.map((area) => area.label) || []
+        : authenticatedUser?.orientaciones || [];
+
       return (
         <div className="jefe-main">
-          <ConvocatoriaManager forcedOrientations={authenticatedUser?.orientaciones || []} />
+          <ConvocatoriaManager forcedOrientations={orientations} />
         </div>
       );
     }
@@ -280,7 +266,7 @@ const JefeView: React.FC<JefeViewProps> = ({ previewKey }) => {
             visibility
           </span>
           <strong>Vista previa de {dashboardQuery.data?.profile.name || "jefatura"}</strong>
-          <span>Datos reales · sólo lectura · ninguna calificación puede modificarse</span>
+          <span>Datos reales · calificaciones en consulta · conservás tus permisos de Admin</span>
         </div>
       )}
 
@@ -306,7 +292,7 @@ const JefeView: React.FC<JefeViewProps> = ({ previewKey }) => {
           {toast}
         </div>
       )}
-      <AppModals />
+      {!isPreview && <AppModals />}
     </div>
   );
 };

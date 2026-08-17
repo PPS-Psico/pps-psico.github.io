@@ -160,7 +160,8 @@ El payload separa cuatro bloques:
 
 - `queue`: agregado reconciliable con el detalle de `reports`;
 - `reports`: una fila por práctica, ordenada por vencimiento individual a 30
-  días corridos desde la entrega;
+  días corridos desde la entrega; los casos sin calificar con más de 60 días de
+  atraso se conservan como `stale`, fuera de la cola prioritaria;
 - `panorama`: resultado anual con fecha de corte y procedencia explícita;
 - `current`: foto operativa actual, sin comparación interanual.
 
@@ -170,8 +171,11 @@ desde la capa histórica revisada. Para años posteriores la fuente es
 diccionario de métricas. El contrato SQL obligatorio es
 `supabase/tests/jefe_area_panel_v1_contract.sql`.
 
-La simulación administrativa consume `get_jefe_dashboard_preview_v2` y debe
-permanecer en modo sólo lectura. El RPC comparte el cálculo del contrato real,
-valida el rol en la base y sólo acepta claves opacas publicadas por
-`list_jefe_preview_profiles_v1`; el DNI no forma parte del contrato cliente. No
-habilita la escritura de calificaciones ni amplía orientaciones.
+La simulación administrativa consume `get_jefe_dashboard_preview_v2` para
+Inicio, Informes y Panorama. El RPC es de sólo lectura, comparte el cálculo del
+contrato real, valida el rol en la base y sólo acepta claves opacas publicadas
+por `list_jefe_preview_profiles_v1`; el DNI no forma parte del contrato cliente.
+No habilita la escritura de calificaciones ni amplía orientaciones. Dentro del
+entorno de prueba, Prácticas y Estudiantes conservan los permisos propios del
+Admin autenticado; el filtro de orientación sólo reproduce el contexto de la
+jefatura elegida y no reemplaza la autorización.

@@ -24,6 +24,7 @@ const normalizedGrade = (grade: string | null): string => {
 };
 
 const urgencyCopy = (report: JefeReport): string => {
+  if (report.urgency === "stale") return "Más de 60 días fuera del plazo";
   if (report.urgency === "critical") {
     const late = Math.abs(report.days_remaining ?? 0);
     return `${late} ${plural(late, "día")} fuera del seguimiento`;
@@ -48,29 +49,45 @@ const GradeControl: React.FC<{
   saving: boolean;
   readOnly: boolean;
   onChange: (report: JefeReport, grade: string) => Promise<void>;
-}> = ({ report, saving, readOnly, onChange }) => (
-  <label
-    className={`jefe-grade-control${readOnly ? " is-readonly" : ""}`}
-    title={readOnly ? "La previsualización no permite cambiar calificaciones" : undefined}
-  >
-    <span className="sr-only">Calificación de {report.student_name}</span>
-    <select
-      value={normalizedGrade(report.grade)}
-      disabled={saving || readOnly}
-      onChange={(event) => void onChange(report, event.target.value)}
-      aria-label={`Calificación de ${report.student_name}`}
-    >
-      {GRADE_OPTIONS.map((grade) => (
-        <option key={grade} value={grade}>
-          {grade}
-        </option>
-      ))}
-    </select>
-    <span className="material-icons" aria-hidden="true">
-      {saving ? "progress_activity" : "expand_more"}
-    </span>
-  </label>
-);
+}> = ({ report, saving, readOnly, onChange }) => {
+  const currentGrade = report.grade?.trim() || "Sin calificar";
+
+  if (readOnly) {
+    return (
+      <div
+        className="jefe-grade-readonly"
+        title="Nota registrada en el panel o sincronizada desde Moodle"
+      >
+        <span aria-hidden="true">NOTA ACTUAL</span>
+        <span className="sr-only">Nota actual de {report.student_name}:</span>
+        <strong>{currentGrade}</strong>
+      </div>
+    );
+  }
+
+  const grade = normalizedGrade(report.grade);
+
+  return (
+    <label className="jefe-grade-control">
+      <span className="sr-only">Calificación de {report.student_name}</span>
+      <select
+        value={grade}
+        disabled={saving}
+        onChange={(event) => void onChange(report, event.target.value)}
+        aria-label={`Calificación de ${report.student_name}`}
+      >
+        {GRADE_OPTIONS.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <span className="material-icons" aria-hidden="true">
+        {saving ? "progress_activity" : "expand_more"}
+      </span>
+    </label>
+  );
+};
 
 const ReportRow: React.FC<{
   report: JefeReport;
@@ -163,7 +180,8 @@ export const JefeHomePanel: React.FC<
           )}
         </p>
         <p className="jefe-hero__note">
-          El orden usa 30 días corridos desde la entrega registrada.
+          El orden usa 30 días corridos desde la entrega registrada. Los casos con más de 60 días de
+          atraso quedan como antecedentes.
         </p>
       </section>
 
@@ -263,6 +281,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
 }) => {
   const [filter, setFilter] = useState<ReportFilter>("all");
   const [search, setSearch] = useState("");
+  const [showStale, setShowStale] = useState(false);
   const [showWaiting, setShowWaiting] = useState(false);
   const [showCorrected, setShowCorrected] = useState(false);
 
@@ -283,6 +302,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
   }, [data.reports, filter, search]);
 
   const waiting = data.reports.filter((report) => report.report_status === "waiting");
+  const stale = data.reports.filter((report) => report.report_status === "stale");
   const corrected = data.reports.filter((report) => report.report_status === "corrected");
 
   const filterItems: { id: ReportFilter; label: string; count: number }[] = [
@@ -300,7 +320,10 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
             Informes · {data.profile.areas.map((area) => area.label).join(" + ")}
           </p>
           <h1>Cola de corrección</h1>
-          <p>Prioridad individual calculada desde la fecha de entrega de cada estudiante.</p>
+          <p>
+            Prioridad calculada desde cada entrega. Los atrasos mayores a 60 días quedan fuera de
+            esta cola.
+          </p>
         </div>
         <div className="jefe-heading-number">
           <strong>{data.queue.pending}</strong>
@@ -336,7 +359,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
         <span>ESTUDIANTE / PPS</span>
         <span>ENTREGA</span>
         <span>SEGUIMIENTO</span>
-        <span>CALIFICACIÓN</span>
+        <span>{readOnly ? "NOTA ACTUAL" : "CALIFICACIÓN"}</span>
       </div>
       <div className="jefe-report-list jefe-report-list--ledger">
         {pending.length > 0 ? (
@@ -358,6 +381,30 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
       </div>
 
       <div className="jefe-archive-lists">
+        <details open={showStale} onToggle={(event) => setShowStale(event.currentTarget.open)}>
+          <summary>
+            <span>
+              <strong>Entregas antiguas</strong>
+              <small>
+                Superaron 60 días de atraso y quedan como antecedentes, fuera de los pendientes.
+              </small>
+            </span>
+            <b>{stale.length}</b>
+          </summary>
+          <div className="jefe-corrected-list">
+            {stale.slice(0, 100).map((report) => (
+              <ReportRow
+                key={report.practica_id}
+                report={report}
+                saving={savingId === report.practica_id}
+                readOnly={readOnly}
+                onGrade={onGrade}
+                compact
+              />
+            ))}
+            {stale.length > 100 && <p>Se muestran los primeros 100 de {stale.length}.</p>}
+          </div>
+        </details>
         <details open={showWaiting} onToggle={(event) => setShowWaiting(event.currentTarget.open)}>
           <summary>
             <span>

@@ -69,6 +69,42 @@ begin
     raise exception 'La cola agregada no reconcilia con el detalle';
   end if;
 
+  if private.jefe_report_status_v1(
+    false,
+    true,
+    date '2026-06-18',
+    date '2026-08-17'
+  ) <> 'pending' then
+    raise exception 'A los 60 días exactos el informe debe seguir pendiente';
+  end if;
+
+  if private.jefe_report_status_v1(
+    false,
+    true,
+    date '2026-06-17',
+    date '2026-08-17'
+  ) <> 'stale' then
+    raise exception 'A partir del día 61 el informe debe pasar a stale';
+  end if;
+
+  if exists (
+    select 1
+    from private.jefe_report_rows_v1(array['clinica', 'educacional', 'laboral', 'comunitaria'])
+    where report_status = 'pending'
+      and days_remaining < -60
+  ) then
+    raise exception 'Una entrega con más de 60 días de atraso no debe seguir pendiente';
+  end if;
+
+  if exists (
+    select 1
+    from private.jefe_report_rows_v1(array['clinica', 'educacional', 'laboral', 'comunitaria'])
+    where report_status = 'stale'
+      and (days_remaining is null or days_remaining >= -60)
+  ) then
+    raise exception 'El estado stale sólo corresponde después de 60 días de atraso';
+  end if;
+
   if has_table_privilege('authenticated', 'private.jefe_area_assignments', 'select')
      or has_table_privilege('anon', 'private.jefe_area_assignments', 'select') then
     raise exception 'Las asignaciones privadas no deben ser consultables desde el cliente';
@@ -99,6 +135,11 @@ begin
   end if;
 
   if has_function_privilege('authenticated', 'private.jefe_report_rows_v1(text[])', 'execute')
+     or has_function_privilege(
+       'authenticated',
+       'private.jefe_report_status_v1(boolean,boolean,date,date)',
+       'execute'
+     )
      or has_function_privilege('authenticated', 'private.jefe_annual_offers_v1(text[],integer,date)', 'execute')
      or has_function_privilege('authenticated', 'private.build_jefe_dashboard_v1(bigint,text[],integer,date)', 'execute')
      or has_function_privilege('authenticated', 'private.require_jefe_preview_access_v1()', 'execute') then

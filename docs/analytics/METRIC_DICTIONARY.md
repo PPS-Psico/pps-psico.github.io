@@ -293,7 +293,10 @@ una métrica nueva: sólo habilita una lectura de prueba para `SuperUser` y
 La cola de informes usa la primera observación de entrega Moodle y, como
 fallback, `convocatorias.fecha_entrega_informe`. El seguimiento interno vence a
 los 30 días corridos; `critical` significa que ese umbral interno fue superado,
-no una declaración sobre el plazo normativo comunicado al estudiante.
+no una declaración sobre el plazo normativo comunicado al estudiante. Una
+entrega sin calificación sale de la cola prioritaria cuando acumula más de 60
+días de atraso respecto de ese vencimiento: se conserva con estado `stale` como
+antecedente, pero no integra `pending`, `critical` ni la foto operativa.
 
 ## Snapshots
 

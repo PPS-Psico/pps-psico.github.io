@@ -3,13 +3,14 @@ export type JefeArea = {
   label: string;
 };
 
-export type JefeReportStatus = "pending" | "waiting" | "corrected";
+export type JefeReportStatus = "pending" | "waiting" | "stale" | "corrected";
 export type JefeReportUrgency =
   | "critical"
   | "soon"
   | "on_time"
   | "undated"
   | "waiting"
+  | "stale"
   | "corrected";
 
 export type JefeReport = {

@@ -6,6 +6,7 @@ import {
   FIELD_FECHA_RELANZAMIENTO_LANZAMIENTOS,
   FIELD_HISTORIAL_GESTION_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
+  FIELD_ORIENTACION_LANZAMIENTOS,
   FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
   TABLE_NAME_INSTITUCIONES,
   TABLE_NAME_LANZAMIENTOS_PPS,
@@ -24,6 +25,7 @@ type LoadingState = "initial" | "loading" | "loaded" | "error";
 export type FilterType = "all" | "vencidas" | "enGestion" | "confirmadas" | "demoradas";
 
 const MS_PER_DAY = 1000 * 3600 * 24;
+const EMPTY_ORIENTATIONS: string[] = [];
 
 // Lista de estados de gestión que el flujo reconoce explícitamente. Cualquier
 // otro valor en una PPS finalizada es un estado "no clasificado": lo seguimos
@@ -109,6 +111,7 @@ interface UseGestionConvocatoriasProps {
 }
 
 export const useGestionConvocatorias = ({
+  forcedOrientations = EMPTY_ORIENTATIONS,
   isTestingMode = false,
   initialFilter = "all",
 }: UseGestionConvocatoriasProps) => {
@@ -312,12 +315,24 @@ export const useGestionConvocatorias = ({
 
     // Client-side search filtering (replaces server-side)
     const searchNormalized = normalizeStringForComparison(debouncedSearch);
+    const normalizedOrientations = forcedOrientations
+      .map((orientation) => normalizeStringForComparison(orientation))
+      .filter(Boolean);
+    const scopedLaunches =
+      normalizedOrientations.length === 0
+        ? lanzamientos
+        : lanzamientos.filter((pps) => {
+            const orientation = normalizeStringForComparison(
+              pps[FIELD_ORIENTACION_LANZAMIENTOS] || ""
+            );
+            return normalizedOrientations.some((allowed) => orientation.includes(allowed));
+          });
     const searchFiltered = searchNormalized
-      ? lanzamientos.filter((pps) => {
+      ? scopedLaunches.filter((pps) => {
           const name = normalizeStringForComparison(pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] || "");
           return name.includes(searchNormalized);
         })
-      : lanzamientos;
+      : scopedLaunches;
 
     // Nuevas categorías basadas en flujo de contacto
     const porContactar: (LanzamientoPPS & {
@@ -549,7 +564,7 @@ export const useGestionConvocatorias = ({
       activasEnCurso: activasEnCurso.sort((a, b) => (a.daysLeft || 999) - (b.daysLeft || 999)),
       activasIndefinidas,
     };
-  }, [lanzamientos, debouncedSearch]);
+  }, [lanzamientos, debouncedSearch, forcedOrientations]);
 
   return {
     lanzamientos,

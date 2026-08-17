@@ -65,7 +65,7 @@ const AdminTestingView: React.FC = () => {
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {activeTabId === "jefe"
-                ? "Datos reales protegidos en modo sólo lectura."
+                ? "Datos reales con calificaciones en consulta."
                 : "Datos aislados de producción."}
             </p>
           </div>
@@ -139,7 +139,8 @@ const AdminTestingView: React.FC = () => {
                   Previsualizar una jefatura
                 </p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Usa datos reales del área, pero bloquea calificaciones y acciones operativas.
+                  Reproduce el alcance de cada jefatura. Como Admin podés usar Prácticas y
+                  Estudiantes; las notas se muestran sin edición.
                 </p>
               </div>
               <label className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300">
