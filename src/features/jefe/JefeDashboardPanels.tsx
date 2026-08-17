@@ -46,13 +46,17 @@ const UrgencyBadge: React.FC<{ report: JefeReport }> = ({ report }) => (
 const GradeControl: React.FC<{
   report: JefeReport;
   saving: boolean;
+  readOnly: boolean;
   onChange: (report: JefeReport, grade: string) => Promise<void>;
-}> = ({ report, saving, onChange }) => (
-  <label className="jefe-grade-control">
+}> = ({ report, saving, readOnly, onChange }) => (
+  <label
+    className={`jefe-grade-control${readOnly ? " is-readonly" : ""}`}
+    title={readOnly ? "La previsualización no permite cambiar calificaciones" : undefined}
+  >
     <span className="sr-only">Calificación de {report.student_name}</span>
     <select
       value={normalizedGrade(report.grade)}
-      disabled={saving}
+      disabled={saving || readOnly}
       onChange={(event) => void onChange(report, event.target.value)}
       aria-label={`Calificación de ${report.student_name}`}
     >
@@ -71,9 +75,10 @@ const GradeControl: React.FC<{
 const ReportRow: React.FC<{
   report: JefeReport;
   saving: boolean;
+  readOnly: boolean;
   onGrade: (report: JefeReport, grade: string) => Promise<void>;
   compact?: boolean;
-}> = ({ report, saving, onGrade, compact = false }) => (
+}> = ({ report, saving, readOnly, onGrade, compact = false }) => (
   <article
     className={`jefe-report-row jefe-report-row--${report.urgency}${compact ? " is-compact" : ""}`}
   >
@@ -103,7 +108,7 @@ const ReportRow: React.FC<{
           <span className="jefe-icon-link__label">Abrir informe</span>
         </a>
       )}
-      <GradeControl report={report} saving={saving} onChange={onGrade} />
+      <GradeControl report={report} saving={saving} readOnly={readOnly} onChange={onGrade} />
     </div>
   </article>
 );
@@ -111,12 +116,13 @@ const ReportRow: React.FC<{
 type CommonPanelProps = {
   data: JefeDashboardData;
   savingId: string | null;
+  readOnly?: boolean;
   onGrade: (report: JefeReport, grade: string) => Promise<void>;
 };
 
 export const JefeHomePanel: React.FC<
   CommonPanelProps & { onNavigate: (view: "informes" | "panorama") => void }
-> = ({ data, savingId, onGrade, onNavigate }) => {
+> = ({ data, savingId, readOnly = false, onGrade, onNavigate }) => {
   const pending = data.reports.filter((report) => report.report_status === "pending").slice(0, 5);
   const firstName = data.profile.name.trim().split(/\s+/)[0] || "";
   const hour = new Date().getHours();
@@ -179,6 +185,7 @@ export const JefeHomePanel: React.FC<
                   key={report.practica_id}
                   report={report}
                   saving={savingId === report.practica_id}
+                  readOnly={readOnly}
                   onGrade={onGrade}
                   compact
                 />
@@ -248,7 +255,12 @@ export const JefeHomePanel: React.FC<
 
 type ReportFilter = "all" | "critical" | "soon" | "on_time";
 
-export const JefeReportsPanel: React.FC<CommonPanelProps> = ({ data, savingId, onGrade }) => {
+export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
+  data,
+  savingId,
+  readOnly = false,
+  onGrade,
+}) => {
   const [filter, setFilter] = useState<ReportFilter>("all");
   const [search, setSearch] = useState("");
   const [showWaiting, setShowWaiting] = useState(false);
@@ -333,6 +345,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({ data, savingId, o
               key={report.practica_id}
               report={report}
               saving={savingId === report.practica_id}
+              readOnly={readOnly}
               onGrade={onGrade}
             />
           ))
@@ -380,6 +393,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({ data, savingId, o
                 key={report.practica_id}
                 report={report}
                 saving={savingId === report.practica_id}
+                readOnly={readOnly}
                 onGrade={onGrade}
                 compact
               />

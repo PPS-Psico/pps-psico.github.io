@@ -17,6 +17,11 @@ begin
     raise exception 'Cynthia debe tener Laboral y Comunitaria';
   end if;
 
+  if (select count(distinct preview_key) from private.jefe_area_assignments) <> 3
+     or exists (select 1 from private.jefe_area_assignments where preview_key is null) then
+    raise exception 'Cada jefatura debe tener una clave opaca de simulación';
+  end if;
+
   if (select count(*) from private.jefe_moodle_identities) <> 3 then
     raise exception 'Se esperaban tres identidades Moodle de jefatura';
   end if;
@@ -70,13 +75,50 @@ begin
   end if;
 
   if has_function_privilege('anon', 'public.get_jefe_dashboard_v1(integer,date)', 'execute')
-     or has_function_privilege('anon', 'public.update_jefe_report_grade_v1(uuid,text)', 'execute') then
+     or has_function_privilege('anon', 'public.update_jefe_report_grade_v1(uuid,text)', 'execute')
+     or has_function_privilege('anon', 'public.get_jefe_dashboard_preview_v1(bigint,integer,date)', 'execute')
+     or has_function_privilege('anon', 'public.get_jefe_dashboard_preview_v2(uuid,integer,date)', 'execute')
+     or has_function_privilege('anon', 'public.list_jefe_preview_profiles_v1()', 'execute') then
     raise exception 'Los RPC de jefatura no deben estar disponibles para anon';
   end if;
 
+  if has_function_privilege(
+    'authenticated',
+    'public.get_jefe_dashboard_preview_v1(bigint,integer,date)',
+    'execute'
+  ) or not has_function_privilege(
+    'authenticated',
+    'public.get_jefe_dashboard_preview_v2(uuid,integer,date)',
+    'execute'
+  ) or not has_function_privilege(
+    'authenticated',
+    'public.list_jefe_preview_profiles_v1()',
+    'execute'
+  ) then
+    raise exception 'El cliente debe usar sólo la vista previa protegida por clave opaca';
+  end if;
+
   if has_function_privilege('authenticated', 'private.jefe_report_rows_v1(text[])', 'execute')
-     or has_function_privilege('authenticated', 'private.jefe_annual_offers_v1(text[],integer,date)', 'execute') then
+     or has_function_privilege('authenticated', 'private.jefe_annual_offers_v1(text[],integer,date)', 'execute')
+     or has_function_privilege('authenticated', 'private.build_jefe_dashboard_v1(bigint,text[],integer,date)', 'execute')
+     or has_function_privilege('authenticated', 'private.require_jefe_preview_access_v1()', 'execute') then
     raise exception 'Los helpers con áreas arbitrarias deben quedar privados';
+  end if;
+
+  if pg_get_functiondef(
+    'private.get_jefe_dashboard_preview_v2_impl(uuid,integer,date)'::regprocedure
+  ) not like '%require_jefe_preview_access_v1%' then
+    raise exception 'La vista previa debe validar el rol en la base de datos';
+  end if;
+
+  if pg_get_functiondef('private.require_jefe_preview_access_v1()'::regprocedure)
+     like '%auth.users%' then
+    raise exception 'La autorización de simulación no debe depender de excepciones por email';
+  end if;
+
+  if pg_get_functiondef('private.get_jefe_dashboard_v1_impl(integer,date)'::regprocedure)
+     not like '%build_jefe_dashboard_v1%' then
+    raise exception 'La vista real y la simulación deben compartir el mismo cálculo';
   end if;
 
   if has_function_privilege('authenticated', 'public.get_moodle_jefe_login_candidate_v1(text)', 'execute')
@@ -101,7 +143,9 @@ begin
     raise exception 'La procedencia jefe_panel debe ser válida para la carga de notas';
   end if;
 
-  if pg_get_functiondef('private.get_jefe_dashboard_v1_impl(integer,date)'::regprocedure)
+  if pg_get_functiondef(
+    'private.build_jefe_dashboard_v1(bigint,text[],integer,date)'::regprocedure
+  )
      not like '%en proceso%' then
     raise exception 'La foto actual debe incluir prácticas legacy En proceso';
   end if;

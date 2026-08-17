@@ -98,4 +98,10 @@ export type JefeDashboardData = {
   };
 };
 
+export type JefePreviewProfile = {
+  preview_key: string;
+  name: string;
+  area_labels: string[];
+};
+
 export type JefeViewId = "inicio" | "informes" | "panorama" | "practicas" | "estudiantes";

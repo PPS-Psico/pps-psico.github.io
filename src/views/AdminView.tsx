@@ -41,7 +41,7 @@ const MOBILE_TAB_IDS = new Set(["dashboard", "lanzador", "gestion"]);
 
 const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
   const { preferences } = useAdminPreferences();
-  const { logout } = useAuth();
+  const { logout, isSuperUserMode } = useAuth();
   const { showModal } = useModal();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -106,6 +106,9 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
           path: "/admin/herramientas",
         }
       );
+      if (!isTestingMode && isSuperUserMode) {
+        baseTabs.push({ id: "testing", label: "Simular", icon: "science", path: "/testing" });
+      }
     }
 
     // Dynamic Student Tab (desktop only)
@@ -119,7 +122,7 @@ const AdminView: React.FC<AdminViewProps> = ({ isTestingMode = false }) => {
     }
 
     return baseTabs;
-  }, [isTestingMode, currentTabId, params.legajo, location.pathname, isMobile]);
+  }, [isTestingMode, isSuperUserMode, currentTabId, params.legajo, location.pathname, isMobile]);
 
   const handleTabChange = (tabId: string, path?: string) => {
     if (isTestingMode) {

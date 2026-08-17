@@ -261,6 +261,7 @@ interface AdminTopBarProps {
   onTabChange: (id: string, path?: string) => void;
   onTabClose?: (id: string, e: React.MouseEvent) => void;
   showMoodleTemplate?: boolean;
+  previewMode?: boolean;
 }
 
 const AdminTopBar: React.FC<AdminTopBarProps> = ({
@@ -269,13 +270,14 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
   onTabChange,
   onTabClose,
   showMoodleTemplate = true,
+  previewMode = false,
 }) => {
   const { logout, isSuperUserMode, isJefeMode, isDirectivoMode } = useAuth();
   const { theme, setTheme } = useTheme();
   const { unreadCount, showToast } = useNotifications();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
-  const showNotifications = isSuperUserMode || isJefeMode || isDirectivoMode;
+  const showNotifications = !previewMode && (isSuperUserMode || isJefeMode || isDirectivoMode);
 
   const handleCopyMoodleTemplate = () => {
     const templateHtml = `<div style="max-width:720px;border:1px solid #ECEAE2;border-radius:18px;overflow:hidden;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B0F19;">
@@ -394,7 +396,7 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
 
         {/* Controls */}
         <div className="admin-topbar-right">
-          {isSuperUserMode && (
+          {isSuperUserMode && !previewMode && (
             <span className="admin-pill">
               <span className="material-icons" style={{ fontSize: 14 }}>
                 shield

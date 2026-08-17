@@ -22,7 +22,11 @@ import {
   JefeReportsPanel,
 } from "../features/jefe/JefeDashboardPanels";
 import "../features/jefe/jefePanel.css";
-import { fetchJefeDashboard, updateJefeReportGrade } from "../features/jefe/jefeService";
+import {
+  fetchJefeDashboard,
+  fetchJefeDashboardPreview,
+  updateJefeReportGrade,
+} from "../features/jefe/jefeService";
 import type { JefeReport, JefeViewId } from "../features/jefe/types";
 import type { AirtableRecord, EstudianteFields } from "../types";
 import StudentDashboard from "./StudentDashboard";
@@ -45,7 +49,11 @@ const NAV_ITEMS = [
 
 type SelectedStudent = { legajo: string; nombre: string };
 
-const JefeView: React.FC = () => {
+type JefeViewProps = {
+  previewKey?: string;
+};
+
+const JefeView: React.FC<JefeViewProps> = ({ previewKey }) => {
   const { authenticatedUser } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,15 +61,17 @@ const JefeView: React.FC = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(null);
+  const isPreview = previewKey != null;
 
   const rawView = searchParams.get("view") as JefeViewId | null;
   const currentView: JefeViewId = rawView && VALID_VIEWS.has(rawView) ? rawView : "inicio";
 
   const dashboardQuery = useQuery({
-    queryKey: ["jefe-dashboard-v1", year],
-    queryFn: () => fetchJefeDashboard(year),
+    queryKey: ["jefe-dashboard-v1", isPreview ? "preview" : "self", previewKey ?? null, year],
+    queryFn: () =>
+      previewKey != null ? fetchJefeDashboardPreview(previewKey, year) : fetchJefeDashboard(year),
     staleTime: 60_000,
-    placeholderData: keepPreviousData,
+    placeholderData: isPreview ? undefined : keepPreviousData,
   });
 
   const navItems = useMemo(
@@ -84,6 +94,10 @@ const JefeView: React.FC = () => {
 
   const handleGrade = useCallback(
     async (report: JefeReport, grade: string) => {
+      if (isPreview) {
+        setToast("Modo de previsualización: no se guardó ningún cambio.");
+        return;
+      }
       setSavingId(report.practica_id);
       setToast(null);
       try {
@@ -97,7 +111,7 @@ const JefeView: React.FC = () => {
         setSavingId(null);
       }
     },
-    [queryClient]
+    [isPreview, queryClient]
   );
 
   const openStudent = useCallback((student: AirtableRecord<EstudianteFields>) => {
@@ -158,13 +172,21 @@ const JefeView: React.FC = () => {
         <JefeHomePanel
           data={data}
           savingId={savingId}
+          readOnly={isPreview}
           onGrade={handleGrade}
           onNavigate={navigateTo}
         />
       );
     }
     if (currentView === "informes") {
-      return <JefeReportsPanel data={data} savingId={savingId} onGrade={handleGrade} />;
+      return (
+        <JefeReportsPanel
+          data={data}
+          savingId={savingId}
+          readOnly={isPreview}
+          onGrade={handleGrade}
+        />
+      );
     }
     if (currentView === "panorama") {
       return (
@@ -180,6 +202,28 @@ const JefeView: React.FC = () => {
   };
 
   const renderContent = () => {
+    if (isPreview && (currentView === "practicas" || currentView === "estudiantes")) {
+      return (
+        <main className="jefe-main">
+          <section className="jefe-preview-unavailable">
+            <span className="material-icons" aria-hidden="true">
+              visibility
+            </span>
+            <p className="jefe-context-line">Previsualización segura</p>
+            <h1>{currentView === "practicas" ? "Prácticas" : "Estudiantes"}</h1>
+            <p>
+              Esta sección operativa queda bloqueada en la simulación para evitar acciones sobre
+              datos reales. Las vistas Inicio, Informes y Panorama reproducen el panel de la
+              jefatura seleccionada con información actual.
+            </p>
+            <button className="jefe-text-action" onClick={() => navigateTo("inicio")}>
+              Volver al inicio <span className="material-icons">arrow_forward</span>
+            </button>
+          </section>
+        </main>
+      );
+    }
+
     if (currentView === "practicas") {
       return (
         <div className="jefe-main">
@@ -218,6 +262,7 @@ const JefeView: React.FC = () => {
           currentTabId={currentView}
           onTabChange={(id) => navigateTo(id as JefeViewId)}
           showMoodleTemplate={false}
+          previewMode={isPreview}
         />
       </div>
 
@@ -228,6 +273,16 @@ const JefeView: React.FC = () => {
         </div>
         <span>{mobileLabel}</span>
       </header>
+
+      {isPreview && (
+        <div className="jefe-preview-notice" role="status">
+          <span className="material-icons" aria-hidden="true">
+            visibility
+          </span>
+          <strong>Vista previa de {dashboardQuery.data?.profile.name || "jefatura"}</strong>
+          <span>Datos reales · sólo lectura · ninguna calificación puede modificarse</span>
+        </div>
+      )}
 
       {renderContent()}
 

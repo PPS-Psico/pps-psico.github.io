@@ -269,6 +269,10 @@ evento o campo explícito de acreditación.
 
 El RPC `get_jefe_dashboard_v1` aplica el mismo vocabulario anual de
 `analytics-v2`, limitado a las orientaciones asignadas al DNI autenticado.
+`get_jefe_dashboard_preview_v2` reutiliza exactamente ese cálculo y no define
+una métrica nueva: sólo habilita una lectura de prueba para `SuperUser` y
+`AdminTester`. El cliente elige entre claves opacas obtenidas de
+`list_jefe_preview_profiles_v1`; no recibe ni envía el DNI.
 
 - **PPS lanzadas:** ofertas canónicas publicadas del área y del año. Para 2024
   usa `private.historical_launch_offers`; desde 2025 usa lanzamientos operativos

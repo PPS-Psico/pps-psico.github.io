@@ -3073,6 +3073,14 @@ export type Database = {
           practicas_activas: number
         }[]
       }
+      get_jefe_dashboard_preview_v1: {
+        Args: { p_cutoff?: string; p_dni: number; p_year: number }
+        Returns: Json
+      }
+      get_jefe_dashboard_preview_v2: {
+        Args: { p_cutoff?: string; p_preview_key: string; p_year: number }
+        Returns: Json
+      }
       get_jefe_dashboard_v1: {
         Args: { p_cutoff?: string; p_year?: number }
         Returns: Json
@@ -3428,6 +3436,14 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      list_jefe_preview_profiles_v1: {
+        Args: never
+        Returns: {
+          area_labels: string[]
+          name: string
+          preview_key: string
+        }[]
+      }
       marcar_lista_estudiantes_entregada: {
         Args: { p_lanzamiento_id: string }
         Returns: string

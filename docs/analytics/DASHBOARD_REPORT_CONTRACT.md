@@ -169,3 +169,9 @@ desde la capa histórica revisada. Para años posteriores la fuente es
 `operational_live`. Capacidad e instituciones conservan las definiciones del
 diccionario de métricas. El contrato SQL obligatorio es
 `supabase/tests/jefe_area_panel_v1_contract.sql`.
+
+La simulación administrativa consume `get_jefe_dashboard_preview_v2` y debe
+permanecer en modo sólo lectura. El RPC comparte el cálculo del contrato real,
+valida el rol en la base y sólo acepta claves opacas publicadas por
+`list_jefe_preview_profiles_v1`; el DNI no forma parte del contrato cliente. No
+habilita la escritura de calificaciones ni amplía orientaciones.
