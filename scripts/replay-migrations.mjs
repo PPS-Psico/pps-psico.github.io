@@ -31,6 +31,7 @@ const portableContracts = [
   "director_report_v1_contract.sql",
   "interview_completion_candidates_v1_contract.sql",
   "selection_close_contract.sql",
+  "online_practice_classification_contract.sql",
 ];
 
 function redact(value = "") {

@@ -1323,6 +1323,15 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   .lv4-launch-section-actions { align-items: flex-start; flex-direction: column; }
   .lv4-draft-option > header { flex-direction: column; }
 }
+.lv4-student-preference-list li {
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+}
+.lv4-student-preference-capacity {
+  justify-self: end; color: var(--ok); font: 700 9.5px/1.3 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+.lv4-student-preference-capacity.is-full { color: var(--warn); }
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

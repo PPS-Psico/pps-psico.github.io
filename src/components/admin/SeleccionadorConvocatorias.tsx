@@ -24,8 +24,10 @@ import {
 import { logger } from "../../utils/logger";
 import { parseSchedules } from "../../utils/scheduleUtils";
 import {
+  getOptionScheduleCapacities,
   getOptionScheduleSlots,
   getPreferredOptionScheduleChoices,
+  type OptionScheduleCapacity,
 } from "../../utils/launchOptions";
 import EmptyState from "../EmptyState";
 import Loader from "../Loader";
@@ -272,6 +274,7 @@ const StudentRow: React.FC<{
   onShowPracticas?: (student: EnrichedStudent) => void;
   horariosDisponibles?: string[];
   opciones?: LanzamientoOpcion[];
+  scheduleCapacityById?: Record<string, OptionScheduleCapacity>;
   chosenOptionId?: string;
   onOptionChoice?: (optionId: string) => void;
 }> = ({
@@ -285,6 +288,7 @@ const StudentRow: React.FC<{
   onShowPracticas,
   horariosDisponibles = [],
   opciones = [],
+  scheduleCapacityById = {},
   chosenOptionId,
   onOptionChoice,
 }) => {
@@ -456,17 +460,32 @@ const StudentRow: React.FC<{
             </div>
             {preferredChoices.length > 0 ? (
               <ol className="lv4-student-preference-list">
-                {preferredChoices.map(({ option, schedule, priority }) => (
-                  <li key={schedule.id}>
-                    <span className="lv4-student-preference-rank">{priority}ª</span>
-                    <span className="lv4-student-preference-copy">
-                      <strong>{option.nombre}</strong>
-                      <small>
-                        {option.orientacion} · {schedule.horario}
-                      </small>
-                    </span>
-                  </li>
-                ))}
+                {preferredChoices.map(({ option, schedule, priority }) => {
+                  const capacity = scheduleCapacityById[schedule.id];
+                  const isFull = capacity?.remaining === 0;
+
+                  return (
+                    <li key={schedule.id}>
+                      <span className="lv4-student-preference-rank">{priority}ª</span>
+                      <span className="lv4-student-preference-copy">
+                        <strong>{option.nombre}</strong>
+                        <small>
+                          {option.orientacion} · {schedule.horario}
+                        </small>
+                      </span>
+                      {capacity && (
+                        <span
+                          className={`lv4-student-preference-capacity${isFull ? " is-full" : ""}`}
+                          title={`${capacity.assigned} asignados de ${capacity.total} cupos`}
+                        >
+                          {isFull
+                            ? `Completo · 0 de ${capacity.total}`
+                            : `${capacity.remaining} de ${capacity.total} libres`}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             ) : (
               <p className="lv4-student-preferences-empty">
@@ -813,6 +832,18 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
     };
   }, [selectedCandidates]);
 
+  const scheduleCapacityById = React.useMemo(
+    () =>
+      getOptionScheduleCapacities(
+        selectedLanzamiento?.opciones || [],
+        selectedCandidates.map(
+          (student) =>
+            assignmentChoiceByEnrollment[student.enrollmentId] || student.opcionHorarioAsignadoId
+        )
+      ),
+    [assignmentChoiceByEnrollment, selectedCandidates, selectedLanzamiento?.opciones]
+  );
+
   const handleToggleWithPenalty = (student: EnrichedStudent) => {
     const isCurrentlySelected = normalizeStringForComparison(student.status) === "seleccionado";
 
@@ -961,17 +992,16 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
           <div className="lv4-option-capacity-grid">
             {selectedLanzamiento.opciones!.flatMap((option) =>
               getOptionScheduleSlots(option).map((schedule) => {
-                const assigned = selectedCandidates.filter(
-                  (student) => student.opcionHorarioAsignadoId === schedule.id
-                ).length;
+                const capacity = scheduleCapacityById[schedule.id];
+                const assigned = capacity?.assigned || 0;
                 return (
                   <div
                     key={schedule.id}
-                    className={`lv4-option-capacity ${assigned >= schedule.cupos ? "is-full" : ""}`}
+                    className={`lv4-option-capacity ${capacity?.remaining === 0 ? "is-full" : ""}`}
                   >
                     <span>{option.nombre}</span>
                     <strong>
-                      {assigned}/{schedule.cupos}
+                      {assigned}/{capacity?.total ?? schedule.cupos}
                     </strong>
                     <small>
                       {option.orientacion} · {schedule.horario}
@@ -1069,6 +1099,7 @@ const SeleccionadorConvocatorias: React.FC<SeleccionadorProps> = ({
               isEditMode={isEditMode}
               showScheduleSelector={scheduleInfo?.showScheduleSelector ?? true}
               opciones={selectedLanzamiento.opciones || []}
+              scheduleCapacityById={scheduleCapacityById}
               chosenOptionId={assignmentChoiceByEnrollment[student.enrollmentId]}
               onOptionChoice={(optionId) => handleOptionChoice(student.enrollmentId, optionId)}
               horariosDisponibles={scheduleInfo?.horariosDisponibles ?? []}

@@ -16,6 +16,7 @@ import {
 } from "../utils/formatters";
 import { cleanSchedule, findMatchingGroupKey } from "../utils/scheduleUtils";
 import { logger } from "../utils/logger";
+import { isOnlinePpsDirection } from "../utils/practiceModality";
 
 export interface BajaPpsResult {
   penalizacionId: string;
@@ -506,6 +507,9 @@ export const toggleStudentSelection = async (
           [C.FIELD_ESTADO_PRACTICA]: "En curso",
           [C.FIELD_NOTA_PRACTICAS]: null,
           [C.FIELD_INFORME_ESTADO_PRACTICAS]: null,
+          [C.FIELD_ES_ONLINE_PRACTICAS]: isOnlinePpsDirection(
+            lanzamiento[C.FIELD_DIRECCION_LANZAMIENTOS]
+          ),
         };
 
         await db.practicas.create(payload as Parameters<typeof db.practicas.create>[0]);

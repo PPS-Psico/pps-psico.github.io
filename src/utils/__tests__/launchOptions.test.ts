@@ -1,6 +1,7 @@
 import type { LanzamientoOpcion, LanzamientoOpcionHorario } from "../../types";
 import {
   getOptionCapacity,
+  getOptionScheduleCapacities,
   getOptionScheduleSlots,
   getPreferredOptionScheduleChoices,
 } from "../launchOptions";
@@ -65,6 +66,51 @@ describe("launchOptions", () => {
     expect(schedules[0].horario).toBe("8 a 12 · 9 a 13");
     expect(schedules[0].cupos).toBe(5);
     expect(getOptionCapacity(value)).toBe(5);
+  });
+
+  it("calcula los cupos restantes por franja con las asignaciones seleccionadas", () => {
+    const value = option({
+      franjas: [
+        {
+          id: "slot-1",
+          opcion_id: "option-1",
+          horario: "Mañana",
+          cupos: 3,
+          orden: 1,
+          activa: true,
+          created_at: "2026-08-13T00:00:00Z",
+          updated_at: "2026-08-13T00:00:00Z",
+        },
+        {
+          id: "slot-2",
+          opcion_id: "option-1",
+          horario: "Tarde",
+          cupos: 1,
+          orden: 2,
+          activa: true,
+          created_at: "2026-08-13T00:00:00Z",
+          updated_at: "2026-08-13T00:00:00Z",
+        },
+      ],
+    });
+
+    expect(
+      getOptionScheduleCapacities([value], ["slot-1", "slot-1", "slot-2", "desconocido", null])
+    ).toEqual({
+      "slot-1": { total: 3, assigned: 2, remaining: 1 },
+      "slot-2": { total: 1, assigned: 1, remaining: 0 },
+    });
+  });
+
+  it("nunca informa cupos restantes negativos si una franja queda excedida", () => {
+    const value = option({ cupos: 1 });
+    const legacyId = `${value.id}-legacy`;
+
+    expect(getOptionScheduleCapacities([value], [legacyId, legacyId])[legacyId]).toEqual({
+      total: 1,
+      assigned: 2,
+      remaining: 0,
+    });
   });
 
   it("muestra solo los dispositivos elegidos y conserva su prioridad", () => {

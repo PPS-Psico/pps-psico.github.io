@@ -205,10 +205,10 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
     );
   }, [entries, query, hasQuery]);
 
-  // Sin búsqueda, el sidebar es una lista de trabajo: todo el recorrido
-  // (Borradores → Abiertas → … → Activas). Las finalizadas y las que están fuera del
-  // pipeline aparecen únicamente al buscar, para que una fecha mal cargada
-  // nunca haga desaparecer una convocatoria sin forma de llegar a ella.
+  // Sin búsqueda, el sidebar muestra solo el recorrido operativo desde la
+  // inscripción abierta. Borradores, finalizadas y convocatorias fuera del
+  // pipeline aparecen únicamente al buscar: siguen accesibles sin sumar ruido
+  // a la lista de trabajo cotidiana.
   const groups = useMemo(() => {
     const visibles = hasQuery ? [...BUCKET_ORDER, ...HIDDEN_BUCKETS] : BUCKET_ORDER;
     return visibles

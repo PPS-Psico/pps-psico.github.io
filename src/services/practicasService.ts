@@ -4,6 +4,7 @@ import type { Practica } from "../types";
 import { cleanDbValue } from "../utils/formatters";
 import { logger } from "../utils/logger";
 import { isPracticeDisapproved } from "../logic/studentRules";
+import { isOnlinePpsDirection } from "../utils/practiceModality";
 
 export const fetchPracticas = async (
   studentId: string,
@@ -79,10 +80,10 @@ export const fetchPracticas = async (
 
     updatedRow[C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] = finalName;
 
-    // Modalidad online: persistida en la práctica o derivada del lanzamiento
-    // (direccion === "Modalidad Virtual", checkbox del Lanzador).
+    // Modalidad online: persistida en la práctica o derivada del lanzamiento.
+    // Los registros históricos también usan "Online" como dirección.
     updatedRow[C.FIELD_ES_ONLINE_PRACTICAS] =
-      row[C.FIELD_ES_ONLINE_PRACTICAS] === true || lanzamiento?.direccion === "Modalidad Virtual";
+      row[C.FIELD_ES_ONLINE_PRACTICAS] === true || isOnlinePpsDirection(lanzamiento?.direccion);
 
     return updatedRow;
   });

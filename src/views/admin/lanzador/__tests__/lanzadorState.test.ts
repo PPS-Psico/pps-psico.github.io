@@ -111,17 +111,19 @@ describe("lanzadorState", () => {
       expect(BUCKET_ORDER[BUCKET_ORDER.length - 1]).toBe("activa");
     });
 
-    it("muestra los borradores como grupo operativo", () => {
-      expect(BUCKET_ORDER).toContain("borrador");
+    it("oculta los borradores del listado normal y los conserva para la búsqueda", () => {
+      expect(BUCKET_ORDER).not.toContain("borrador");
+      expect(HIDDEN_BUCKETS).toContain("borrador");
       expect(BUCKET_META.borrador.label).toBe("Borradores");
     });
 
     it("el recorrido visible no incluye lo que sale de la vista operativa", () => {
-      // "Finalizadas" y "Fuera del pipeline" existen como clasificación (el
-      // buscador las alcanza) pero no se listan como grupo.
+      // Borradores, finalizadas y fuera del pipeline existen como clasificación
+      // (el buscador los alcanza) pero no se listan como grupo.
+      expect(BUCKET_ORDER).not.toContain("borrador");
       expect(BUCKET_ORDER).not.toContain("finalizada");
       expect(BUCKET_ORDER).not.toContain("oculta");
-      expect(HIDDEN_BUCKETS).toEqual(["finalizada", "oculta"]);
+      expect(HIDDEN_BUCKETS).toEqual(["borrador", "finalizada", "oculta"]);
       // Y ningún bucket puede estar en las dos listas a la vez.
       HIDDEN_BUCKETS.forEach((b) => expect(BUCKET_ORDER).not.toContain(b));
     });

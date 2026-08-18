@@ -38,11 +38,10 @@ export type UIState = "borrador" | "seleccion" | "seguro" | "confirmacion" | "ac
 /**
  * Categoría operativa del sidebar del Lanzador.
  *
- * Las seis primeras son el recorrido visible, incluido el borrador que todavía
- * no fue publicado. Las dos últimas NO se muestran como grupo: son la forma de
- * salir de la vista operativa (`finalizada` cuando la PPS terminó, `oculta`
- * cuando una convocatoria cerrada no prosperó o quedó archivada). Siguen siendo
- * alcanzables por el buscador del sidebar.
+ * Las categorías operativas desde la inscripción abierta hasta la PPS activa
+ * forman el recorrido visible. Borradores, finalizadas y convocatorias fuera del
+ * pipeline quedan fuera del listado normal, pero siguen siendo alcanzables por
+ * el buscador del sidebar.
  */
 export type SidebarBucket =
   | "borrador"
@@ -93,18 +92,17 @@ export const BUCKET_ORDER: SidebarBucket[] = [
   "seleccionar",
   "asegurar",
   "confirmacion",
-  "borrador",
   "abierta",
   "activa",
 ];
 
 /**
- * Buckets que NO forman parte del recorrido y por lo tanto no se muestran como
- * grupo: una PPS finalizada ya no pide trabajo, y una convocatoria cerrada sin
- * postulantes queda fuera del pipeline. Los borradores (`estado = Oculto`) sí
- * tienen grupo propio para que siempre se puedan revisar y publicar.
+ * Buckets que no forman parte del listado normal. Los borradores se recuperan
+ * por búsqueda cuando hace falta continuar su edición; una PPS finalizada ya no
+ * pide trabajo y una convocatoria cerrada sin postulantes queda fuera del
+ * pipeline.
  */
-export const HIDDEN_BUCKETS: SidebarBucket[] = ["finalizada", "oculta"];
+export const HIDDEN_BUCKETS: SidebarBucket[] = ["borrador", "finalizada", "oculta"];
 
 /**
  * Dónde está parado el lanzamiento en el calendario. Es el eje que manda sobre

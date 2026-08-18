@@ -685,7 +685,9 @@ const faqGroups: FaqGroup[] = [
         a: (
           <>
             No. En esos casos, el <strong>informe final corregido y aprobado</strong> es el
-            documento que acredita la realización de la PPS.
+            documento que acredita la realización de la PPS y el formulario de acreditación no debe
+            pedirte una planilla. Si una práctica virtual figura como presencial, solicitá la
+            corrección desde Mis Prácticas antes de enviar el trámite.
           </>
         ),
       },
