@@ -53,8 +53,8 @@ const AdminTestingView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up pb-20">
-      {/* Header Sticky para cambiar de rol fácilmente */}
-      <div className="sticky top-20 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* El selector de superficie permanece en el flujo para no tapar los controles de cada vista. */}
+      <div className="relative z-10 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-600 dark:text-amber-400">
             <span className="material-icons">science</span>
