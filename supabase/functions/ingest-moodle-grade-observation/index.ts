@@ -130,6 +130,7 @@ type SyncRunResult = {
   preserved?: number;
   skippedTerminal?: number;
   rejected?: ObservationRejection[];
+  insertError?: string;
 };
 
 Deno.serve(async (req) => {
@@ -155,6 +156,7 @@ Deno.serve(async (req) => {
         duration_ms: Math.max(0, Date.now() - runStartedAt),
         details: {
           rejected: rejected.slice(0, MAX_OBSERVATIONS),
+          ...(result.insertError ? { insertError: result.insertError } : {}),
         },
       })
       .eq("request_id", activeRunId);
@@ -483,7 +485,22 @@ Deno.serve(async (req) => {
         onConflict: "request_id,practica_id,cmid",
         ignoreDuplicates: true,
       });
-    if (insertError) throw new Error("observation_insert_failed");
+    if (insertError) {
+      const insertErrorDetail = `${insertError.code ?? ""} ${insertError.message}`.trim();
+      console.error(`[moodle-grade] observation_insert_failed: ${insertErrorDetail}`, {
+        code: insertError.code,
+        details: insertError.details,
+        hint: insertError.hint,
+        practiceIds: rowsToStore.map((row) => row.practica_id),
+      });
+      await finishRun({
+        outcome: "failed",
+        errorCode: "observation_insert_failed",
+        rejected: rejectedObservations,
+        insertError: insertErrorDetail,
+      });
+      return json(origin, { error: "observation_insert_failed" }, 500);
+    }
 
     const storedPracticeIds = [...new Set(rowsToStore.map((row) => row.practica_id))];
     const { data: persistedData, error: persistedError } = await admin
