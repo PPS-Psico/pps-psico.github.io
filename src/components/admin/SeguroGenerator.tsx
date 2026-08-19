@@ -12,10 +12,12 @@ import {
   FIELD_FECHA_FIN_LANZAMIENTOS,
   FIELD_FECHA_INICIO_CONVOCATORIAS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
+  FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS,
   FIELD_HORARIO_ASIGNADO_CONVOCATORIAS,
   FIELD_HORARIO_FORMULA_CONVOCATORIAS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
+  FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS,
   FIELD_LEGAJO_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
@@ -36,6 +38,8 @@ import {
   marcarAseguramiento,
   revertirAseguramiento,
   buildClipboardText,
+  buildSeguroPeriod,
+  normalizeSeguroText,
 } from "../../services/aseguramientoService";
 import {
   formatDate,
@@ -522,11 +526,12 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
 
           // Si hay horario_asignado, usarlo primero (es el horario final)
           // Sino, usar la lógica anterior
-          const horario =
+          const horario = normalizeSeguroText(
             horarioAsignado ||
-            (isFixed
-              ? horarioLanzamiento || "A definir"
-              : horarioSolicitado || horarioLanzamiento || "A definir");
+              (isFixed
+                ? horarioLanzamiento || "A definir"
+                : horarioSolicitado || horarioLanzamiento || "A definir")
+          );
 
           const orientacion =
             ppsData?.[FIELD_ORIENTACION_LANZAMIENTOS] ||
@@ -543,7 +548,12 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
             apellido = split.apellido;
           }
 
-          const periodoValue = `Del ${formatDate(fechaInicio)} al ${formatDate(fechaFin)}`;
+          const periodoValue = buildSeguroPeriod({
+            fechaInicio,
+            fechaFin,
+            finalizacionPorHoras: Boolean(ppsData?.[FIELD_FINALIZACION_POR_HORAS_LANZAMIENTOS]),
+            horasAcreditadas: ppsData?.[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS],
+          });
 
           let tutor = "N/A";
           const normOrientacion = normalizeStringForComparison(orientacion);

@@ -19,6 +19,8 @@ import {
   isSeguroGestionado,
   buildClipboardText,
   buildHeader,
+  buildSeguroPeriod,
+  normalizeSeguroText,
   type UIState,
   type BucketInput,
   type ClipboardStudent,
@@ -305,18 +307,46 @@ describe("aseguramientoService — property-based", () => {
           expect(fields).toHaveLength(7);
           const s = students[i];
           expect(fields).toEqual([
-            s.apellido,
-            s.nombre,
-            s.dni,
-            s.legajo,
-            s.cargo,
-            s.lugarCompleto,
-            s.duracionCompleta,
+            normalizeSeguroText(s.apellido),
+            normalizeSeguroText(s.nombre),
+            normalizeSeguroText(s.dni),
+            normalizeSeguroText(s.legajo),
+            normalizeSeguroText(s.cargo),
+            normalizeSeguroText(s.lugarCompleto),
+            normalizeSeguroText(s.duracionCompleta),
           ]);
         });
       }),
       { numRuns: 100 }
     );
+  });
+
+  it("corrige el separador mojibake antes de copiar al Excel", () => {
+    const text = buildClipboardText([
+      {
+        apellido: "P\u00e9rez",
+        nombre: "Ana",
+        dni: "123",
+        legajo: "456",
+        cargo: "Estudiante",
+        lugarCompleto: "Ministerio",
+        duracionCompleta: "Horario: KIMUN \u00c2\u00b7 2 veces por semana",
+      },
+    ]);
+
+    expect(text).toContain("KIMUN \u00b7 2 veces por semana");
+    expect(text).not.toContain("\u00c2\u00b7");
+  });
+
+  it("describe las PPS que finalizan al completar horas sin mostrar N/A", () => {
+    expect(
+      buildSeguroPeriod({
+        fechaInicio: "2026-08-25",
+        fechaFin: null,
+        finalizacionPorHoras: true,
+        horasAcreditadas: 70,
+      })
+    ).toBe("Del 25/08/2026 hasta completar 70 horas");
   });
 
   it("Property 8: el encabezado contiene institución, fecha y cantidad de seleccionados", () => {

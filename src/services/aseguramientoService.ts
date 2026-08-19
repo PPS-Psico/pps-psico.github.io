@@ -28,7 +28,7 @@ import {
   FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS,
 } from "../constants";
 import { db } from "../lib/db";
-import { parseToUTCDate } from "../utils/formatters";
+import { formatDate, parseToUTCDate } from "../utils/formatters";
 
 // ── Tipos compartidos ─────────────────────────────────────────────────────────
 
@@ -263,17 +263,57 @@ export interface ClipboardStudent {
 }
 
 /**
+ * Corrige el mojibake conocido que dejaron algunas RPCs al concatenar el
+ * separador de dispositivo y franja. Se mantiene como defensa en el cliente
+ * para que registros legacy nunca vuelvan a llegar rotos al Excel.
+ */
+export function normalizeSeguroText(value: string): string {
+  return value.replaceAll("\u00c2\u00b7", "\u00b7");
+}
+
+function toClipboardField(value: string): string {
+  return normalizeSeguroText(value).replace(/[\t\r\n]+/g, " ");
+}
+
+/**
  * Arma el texto a copiar al portapapeles: una fila por estudiante, 7 campos
  * separados por tabulación en orden fijo, filas unidas por salto de línea.
  */
 export function buildClipboardText(students: ClipboardStudent[]): string {
   return students
     .map((s) =>
-      [s.apellido, s.nombre, s.dni, s.legajo, s.cargo, s.lugarCompleto, s.duracionCompleta].join(
-        "\t"
-      )
+      [s.apellido, s.nombre, s.dni, s.legajo, s.cargo, s.lugarCompleto, s.duracionCompleta]
+        .map(toClipboardField)
+        .join("\t")
     )
     .join("\n");
+}
+
+export interface SeguroPeriodInput {
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  finalizacionPorHoras?: boolean;
+  horasAcreditadas?: number | string | null;
+}
+
+/** Construye el periodo legible que exige la planilla de seguro ART. */
+export function buildSeguroPeriod({
+  fechaInicio,
+  fechaFin,
+  finalizacionPorHoras = false,
+  horasAcreditadas,
+}: SeguroPeriodInput): string {
+  const inicio = formatDate(fechaInicio);
+
+  if (finalizacionPorHoras) {
+    const horas = Number(horasAcreditadas);
+    const totalHoras = Number.isFinite(horas) && horas > 0 ? horas : 70;
+    return `Del ${inicio} hasta completar ${totalHoras} horas`;
+  }
+
+  if (fechaFin) return `Del ${inicio} al ${formatDate(fechaFin)}`;
+
+  return `Desde ${inicio}, finalizaci\u00f3n a definir`;
 }
 
 export interface SeguroHeader {
