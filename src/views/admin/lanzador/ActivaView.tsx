@@ -2,7 +2,7 @@
  * lanzador/ActivaView.tsx — Vista del estado "activa" (DB 'Activa').
  * PPS en curso: Roster de estudiantes en curso (bajas y reemplazos) y estadísticas.
  */
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import DesaprobacionPPSModal from "../../../components/admin/DesaprobacionPPSModal";
 import DisapprovalBadge from "../../../components/admin/DisapprovalBadge";
@@ -18,6 +18,7 @@ import {
 } from "../../../constants";
 import { useSeleccionadorLogic } from "../../../hooks/useSeleccionadorLogic";
 import { isPracticeDisapproved, isPracticeStatusComputable } from "../../../logic/studentRules";
+import { supabase } from "../../../lib/supabaseClient";
 import type { EnrichedStudent, LanzamientoPPS } from "../../../types";
 import {
   formatDate,
@@ -25,7 +26,8 @@ import {
   normalizeStringForComparison,
 } from "../../../utils/formatters";
 import { Banner, CanvasHeader, Loader, Stat, StatGrid, useLaunchEditor } from "./shared";
-import { useLaunchPracticas } from "./useLaunchData";
+import { useLaunchMoodleTaskUnits, useLaunchPracticas } from "./useLaunchData";
+import { LanzadorMoodleAutomationCard } from "./LanzadorMoodleAutomationCard";
 
 const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> = ({
   launch,
@@ -41,6 +43,8 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   // 1. Estadísticas de prácticas reales
   const practicasQuery = useLaunchPracticas(launch.id);
   const { data: practicas = [] } = practicasQuery;
+  const moodleUnitsQuery = useLaunchMoodleTaskUnits(launch.id);
+  const moodleUnits = moodleUnitsQuery.data ?? [];
 
   const totalHoras = practicas.reduce(
     (sum, p) =>
@@ -69,6 +73,27 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
     toastInfo,
     setToastInfo,
   } = useSeleccionadorLogic(false, launch.id);
+
+  const retryMoodleIntentMutation = useMutation({
+    mutationFn: async (intentId: string) => {
+      const { data, error } = await supabase.rpc("request_moodle_task_reconcile_v1", {
+        p_intent_id: intentId,
+      });
+      if (error) throw error;
+      if (!data) throw new Error("La unidad no admite una nueva reconciliación automática.");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["launch-moodle-units", launch.id] });
+      setToastInfo({ message: "La unidad Moodle volvió a quedar en cola.", type: "success" });
+    },
+    onError: (error: unknown) => {
+      setToastInfo({
+        message:
+          error instanceof Error ? error.message : "No se pudo volver a encolar la unidad Moodle.",
+        type: "error",
+      });
+    },
+  });
 
   // 3. Estados locales para el modal de baja y búsqueda de reemplazos
   const [studentToBaja, setStudentToBaja] = useState<EnrichedStudent | null>(null);
@@ -241,6 +266,65 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
             size="sm"
           />
         </StatGrid>
+        <div className="lv4-moodle-stack">
+          <span className="lv4-eyebrow">Informes y tareas de Campus</span>
+          {moodleUnitsQuery.isLoading ? (
+            <Banner tone="neutral" icon="sync" title="Cargando unidades de entrega">
+              Consultando el padrón y los vínculos verificados de este lanzamiento.
+            </Banner>
+          ) : moodleUnitsQuery.isError ? (
+            <Banner
+              tone="warn"
+              icon="cloud_off"
+              title="No se pudo cargar el seguimiento de informes"
+              action={
+                <button className="lv4-btn" onClick={() => void moodleUnitsQuery.refetch()}>
+                  Reintentar
+                </button>
+              }
+            >
+              No se muestran conteos estimados: recuperá el contrato canónico antes de operar.
+            </Banner>
+          ) : moodleUnits.length === 0 ? (
+            <Banner tone="neutral" icon="link_off" title="Sin unidad Moodle confirmada">
+              En 2026 solo se adoptan tareas históricas con un vínculo confirmado. No se crea ni se
+              asigna una tarea por parecido de nombre.
+            </Banner>
+          ) : (
+            moodleUnits.map((unit) => (
+              <LanzadorMoodleAutomationCard
+                key={unit.intent_id}
+                orientationKey={unit.orientacion_key}
+                cmid={unit.cmid}
+                courseId={unit.course_id}
+                stableKey={unit.stable_key}
+                mode={unit.mode}
+                status={unit.provisioning_status}
+                desiredOpenAt={unit.desired_open_at}
+                desiredDueAt={unit.desired_due_at}
+                totalExpected={Number(unit.total_expected)}
+                totalSubmitted={Number(unit.total_submitted)}
+                totalMissing={Number(unit.total_missing)}
+                totalUnderReview={Number(unit.total_under_review)}
+                totalRevisionRequired={Number(unit.total_revision_required)}
+                totalPassed={Number(unit.total_passed)}
+                totalFailed={Number(unit.total_failed)}
+                totalWaived={Number(unit.total_waived)}
+                totalSettled={Number(unit.total_settled)}
+                lastVerifiedAt={unit.last_verified_at}
+                onRetryReconcile={
+                  unit.mode === "dedicated"
+                    ? async () => retryMoodleIntentMutation.mutateAsync(unit.intent_id)
+                    : undefined
+                }
+                isReconciling={
+                  retryMoodleIntentMutation.isPending &&
+                  retryMoodleIntentMutation.variables === unit.intent_id
+                }
+              />
+            ))
+          )}
+        </div>
 
         {isLoadingCandidates ? (
           <Loader />

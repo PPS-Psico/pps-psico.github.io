@@ -301,6 +301,28 @@ sale de la cola prioritaria cuando acumula más de 60 días de atraso respecto d
 ese vencimiento: se conserva con estado `stale` como antecedente, pero no integra
 `pending`, `critical` ni la foto operativa.
 
+### Métricas operativas por unidad Moodle v2
+
+Estas métricas no son resultados anuales de `analytics-v2`; describen una unidad
+`(lanzamiento, orientación)` al corte de la consulta y deben reconciliar agregado
+contra participante:
+
+- **Esperados (`total_expected`)**: membresías activas con estado `expected`.
+- **Entregados (`total_submitted`)**: esperados con evidencia Moodle de entrega o
+  estado local confirmado `Entregado/Calificado`.
+- **Faltantes (`total_missing`)**: esperados sin esa evidencia.
+- **En corrección (`total_under_review`)**: entregados sin una calificación
+  terminal observada.
+- **Reentrega (`total_revision_required`)**: calificados por debajo del umbral
+  explícito de la tarea; no equivale a desaprobación definitiva.
+- **Aprobados (`total_passed`)**: calificación aprobatoria según `percentage`,
+  `direct_10` o `pass_fail`.
+- **Resueltos (`total_settled`)**: excepción terminal o aprobación verificada
+  cuando la práctica ya terminó. Una nota futura no adelanta el fin operativo.
+
+Los retirados y reemplazados se conservan como historia pero no integran el
+denominador activo. La fuente es `get_moodle_task_unit_summaries_v1`.
+
 ## Snapshots
 
 `analytics_metric_snapshots` guarda una fila por fecha, versión y métrica. La

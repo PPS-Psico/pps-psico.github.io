@@ -134,3 +134,18 @@ o un servicio web restringido de Moodle.
 - Guía de entregas: `src/views/student/deliveryGuide.ts`
 - Articulador administrativo: `src/components/admin/InformeCampusLinker.tsx`
 - Puente de navegador: [moodle-browser-bridge.md](./moodle-browser-bridge.md)
+
+## Backfill canónico Moodle v2 · 20 de agosto de 2026
+
+La migración `20260820101000_backfill_legacy_moodle_task_intents.sql` proyectó
+los vínculos confirmados exactos al nuevo modelo sin modificar Moodle:
+
+- 212 intenciones `legacy_shared`;
+- 1.409 filas de padrón esperado/histórico;
+- 0 participantes asignados a una orientación incompatible;
+- 0 vínculos asignados cuando había más de una unidad candidata;
+- 3 prácticas históricas contradictorias dejadas como backlog manual.
+
+El backfill permite orientación nula únicamente cuando el lanzamiento posee una
+sola unidad inequívoca. No usa semejanza de nombres ni fuerza las tres
+excepciones restantes.

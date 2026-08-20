@@ -59,3 +59,15 @@ No se falsean `analytics_v2_historical_contract.sql` (requiere dataset 2024) ni 
 No ejecutar `db push`, `migration repair`, `db reset --linked` ni estos SQL de referencia contra producción. Para limpiar el replay basta eliminar su contenedor descartable; el harness lo hace incluso ante error. No se requiere Preview Branch paga ni `restore-backup`.
 
 CI ejecuta el chequeo liviano `npm run check:migrations`. El replay completo queda como validación local/manual por el costo de descargar e inicializar la imagen PostgreSQL; el comando es reproducible y no necesita secretos.
+
+## Migraciones Moodle v2 aplicadas · 20 de agosto de 2026
+
+- `20260820100000_create_moodle_task_intents_and_participants.sql`: tablas
+  públicas/privadas, RLS, índices, helpers, RPC, leases, resumen y triggers.
+- `20260820101000_backfill_legacy_moodle_task_intents.sql`: backfill exacto
+  2024–2026 sin mutar tareas del Campus.
+- `20260820110500_harden_moodle_v2_advisors.sql`: índices de FKs y policies
+  explícitas `service_role` para los ledgers privados.
+
+Después de aplicarlas se regeneró `src/types/supabase.ts`. El contrato
+`supabase/tests/moodle_v2_schema_contract.sql` pasó contra el schema productivo.

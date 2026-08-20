@@ -7,6 +7,13 @@ Documento de trabajo de la Sesion 2 del plan maestro.
 Fecha de relevamiento: 2026-04-09
 Proyecto Supabase auditado: `qxnxtnhtbpsgzprqtrjl`
 
+Actualización 2026-08-20: Moodle v2 agrega dos tablas públicas de sólo lectura
+con RLS por unidad y dos ledgers en `private` con RLS y acceso exclusivo de
+`service_role`. Las wrappers públicas de reconciliación/escritura son
+`SECURITY INVOKER`; validan coordinación en helpers `SECURITY DEFINER` privados
+con `search_path = ''`. `anon` no posee ejecución ni escritura. Jefes,
+directivos y estudiantes sólo pueden leer el alcance que les corresponde.
+
 Fuentes usadas:
 
 - MCP Supabase: `list_tables`, `list_migrations`, `get_advisors`, `execute_sql`

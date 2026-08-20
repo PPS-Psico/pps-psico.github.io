@@ -1332,6 +1332,68 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   white-space: nowrap;
 }
 .lv4-student-preference-capacity.is-full { color: var(--warn); }
+
+/* ── Moodle task automation ─────────────────────────────────────────────── */
+.lv4-badge-neutral { background: var(--paper-3); color: var(--ink-3); }
+.lv4-moodle-card {
+  margin: 0 0 18px; padding: 18px; border: 1px solid var(--rule-2);
+  border-radius: 12px; background: var(--paper);
+}
+.lv4-moodle-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+}
+.lv4-moodle-title { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.lv4-moodle-title > .material-icons { margin-top: 1px; color: var(--accent); font-size: 21px; }
+.lv4-moodle-title .lv4-eyebrow { display: block; margin-bottom: 4px; }
+.lv4-moodle-title h3 { margin: 0; color: var(--ink); font-size: 16px; line-height: 1.3; }
+.lv4-moodle-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.lv4-moodle-badges .lv4-badge { font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase; }
+.lv4-moodle-explanation { margin: 9px 0 14px 31px; color: var(--ink-3); font-size: 11.5px; line-height: 1.5; }
+.lv4-moodle-facts {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+  overflow: hidden; border: 1px solid var(--rule-2); border-radius: 10px; background: var(--rule-2);
+}
+.lv4-moodle-facts > div { min-width: 0; padding: 11px 12px; background: var(--paper-2); }
+.lv4-moodle-facts span:first-child {
+  display: block; margin-bottom: 5px; color: var(--ink-4); font-size: 9px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+.lv4-moodle-facts strong, .lv4-moodle-facts code, .lv4-moodle-facts a {
+  display: block; overflow: hidden; color: var(--ink-2); font-size: 11.5px; line-height: 1.45;
+  text-decoration: none; text-overflow: ellipsis;
+}
+.lv4-moodle-facts code { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.lv4-moodle-facts a { color: var(--accent); font-weight: 650; }
+.lv4-moodle-facts a:hover { text-decoration: underline; }
+.lv4-moodle-metrics {
+  display: grid; grid-template-columns: repeat(7, minmax(72px, 1fr)); gap: 8px; margin-top: 10px;
+}
+.lv4-moodle-metrics > div {
+  display: flex; min-width: 0; flex-direction: column; gap: 2px; padding: 9px 10px;
+  border-radius: 9px; background: var(--paper-2);
+}
+.lv4-moodle-metrics strong { color: var(--ink); font: 700 15px/1.2 'JetBrains Mono', monospace; }
+.lv4-moodle-metrics span { color: var(--ink-4); font-size: 9.5px; line-height: 1.3; }
+.lv4-moodle-metrics .is-warning { background: var(--warn-s); }
+.lv4-moodle-metrics .is-warning strong { color: var(--warn); }
+.lv4-moodle-metrics .is-success { background: var(--ok-s); }
+.lv4-moodle-metrics .is-success strong { color: var(--ok); }
+.lv4-moodle-exceptions { margin: 10px 0 0; color: var(--ink-3); font-size: 10.5px; line-height: 1.45; }
+.lv4-moodle-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.lv4-moodle-actions .material-icons { font-size: 16px; }
+.lv4-moodle-stack { margin-bottom: 24px; }
+.lv4-moodle-stack > .lv4-eyebrow { display: block; margin-bottom: 9px; }
+@media (max-width: 900px) {
+  .lv4-moodle-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lv4-moodle-metrics { grid-template-columns: repeat(4, minmax(72px, 1fr)); }
+}
+@media (max-width: 560px) {
+  .lv4-moodle-head { flex-direction: column; }
+  .lv4-moodle-badges { justify-content: flex-start; }
+  .lv4-moodle-explanation { margin-left: 0; }
+  .lv4-moodle-facts { grid-template-columns: 1fr; }
+  .lv4-moodle-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

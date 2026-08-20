@@ -1915,6 +1915,212 @@ export type Database = {
           },
         ]
       }
+      moodle_task_expected_participants: {
+        Row: {
+          active_from: string
+          active_to: string | null
+          created_at: string
+          created_by: string | null
+          estudiante_id: string
+          id: string
+          intent_id: string
+          membership_status: string
+          practica_id: string
+          reason_code: string | null
+          reason_note: string | null
+          replaces_participant_id: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          active_from?: string
+          active_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          estudiante_id: string
+          id?: string
+          intent_id: string
+          membership_status?: string
+          practica_id: string
+          reason_code?: string | null
+          reason_note?: string | null
+          replaces_participant_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          active_from?: string
+          active_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          estudiante_id?: string
+          id?: string
+          intent_id?: string
+          membership_status?: string
+          practica_id?: string
+          reason_code?: string | null
+          reason_note?: string | null
+          replaces_participant_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moodle_task_expected_participants_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_task_expected_participants_intent_id_fkey"
+            columns: ["intent_id"]
+            isOneToOne: false
+            referencedRelation: "moodle_task_intents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_task_expected_participants_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_task_expected_participants_replaces_participant_id_fkey"
+            columns: ["replaces_participant_id"]
+            isOneToOne: false
+            referencedRelation: "moodle_task_expected_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moodle_task_intents: {
+        Row: {
+          attempt_count: number
+          aula_entrega_id: number | null
+          created_at: string
+          description_template_version: string
+          desired_config_hash: string
+          desired_cutoff_at: string | null
+          desired_description_html: string | null
+          desired_due_at: string | null
+          desired_grade_max: number
+          desired_grade_mode: string
+          desired_name: string
+          desired_open_at: string | null
+          desired_section_key: string | null
+          desired_visibility: string
+          id: string
+          lanzamiento_id: string
+          last_attempt_at: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          last_observed_at: string | null
+          last_verified_at: string | null
+          lease_expires_at: string | null
+          lease_token: string | null
+          mode: string
+          monitoring_status: string
+          next_reconcile_at: string | null
+          next_scan_at: string | null
+          observed_config: Json | null
+          observed_config_hash: string | null
+          orientacion_key: string
+          provisioning_evidence: Json | null
+          provisioning_status: string
+          stable_key: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          aula_entrega_id?: number | null
+          created_at?: string
+          description_template_version?: string
+          desired_config_hash: string
+          desired_cutoff_at?: string | null
+          desired_description_html?: string | null
+          desired_due_at?: string | null
+          desired_grade_max?: number
+          desired_grade_mode?: string
+          desired_name: string
+          desired_open_at?: string | null
+          desired_section_key?: string | null
+          desired_visibility?: string
+          id?: string
+          lanzamiento_id: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_observed_at?: string | null
+          last_verified_at?: string | null
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          mode: string
+          monitoring_status?: string
+          next_reconcile_at?: string | null
+          next_scan_at?: string | null
+          observed_config?: Json | null
+          observed_config_hash?: string | null
+          orientacion_key: string
+          provisioning_evidence?: Json | null
+          provisioning_status?: string
+          stable_key: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          aula_entrega_id?: number | null
+          created_at?: string
+          description_template_version?: string
+          desired_config_hash?: string
+          desired_cutoff_at?: string | null
+          desired_description_html?: string | null
+          desired_due_at?: string | null
+          desired_grade_max?: number
+          desired_grade_mode?: string
+          desired_name?: string
+          desired_open_at?: string | null
+          desired_section_key?: string | null
+          desired_visibility?: string
+          id?: string
+          lanzamiento_id?: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_observed_at?: string | null
+          last_verified_at?: string | null
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          mode?: string
+          monitoring_status?: string
+          next_reconcile_at?: string | null
+          next_scan_at?: string | null
+          observed_config?: Json | null
+          observed_config_hash?: string | null
+          orientacion_key?: string
+          provisioning_evidence?: Json | null
+          provisioning_status?: string
+          stable_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moodle_task_intents_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_task_intents_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_reset_tokens: {
         Row: {
           claimed_at: string | null
@@ -2791,6 +2997,55 @@ export type Database = {
         Args: { p_convocatoria_id: string }
         Returns: boolean
       }
+      claim_moodle_task_intent_lease_v1: {
+        Args: {
+          p_batch_size?: number
+          p_lease_seconds?: number
+          p_worker_token?: string
+        }
+        Returns: {
+          attempt_count: number
+          aula_entrega_id: number | null
+          created_at: string
+          description_template_version: string
+          desired_config_hash: string
+          desired_cutoff_at: string | null
+          desired_description_html: string | null
+          desired_due_at: string | null
+          desired_grade_max: number
+          desired_grade_mode: string
+          desired_name: string
+          desired_open_at: string | null
+          desired_section_key: string | null
+          desired_visibility: string
+          id: string
+          lanzamiento_id: string
+          last_attempt_at: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          last_observed_at: string | null
+          last_verified_at: string | null
+          lease_expires_at: string | null
+          lease_token: string | null
+          mode: string
+          monitoring_status: string
+          next_reconcile_at: string | null
+          next_scan_at: string | null
+          observed_config: Json | null
+          observed_config_hash: string | null
+          orientacion_key: string
+          provisioning_evidence: Json | null
+          provisioning_status: string
+          stable_key: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "moodle_task_intents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_password_reset_token: {
         Args: { p_token_hash: string }
         Returns: {
@@ -2825,6 +3080,26 @@ export type Database = {
           p_success: boolean
         }
         Returns: boolean
+      }
+      confirm_moodle_task_intent_v1: {
+        Args: {
+          p_cmid: number
+          p_course_id: number
+          p_evidence?: Json
+          p_intent_id: string
+          p_lease_token: string
+          p_observed_cutoff_at: string
+          p_observed_description_html: string
+          p_observed_due_at: string
+          p_observed_grade_max: number
+          p_observed_grade_mode: string
+          p_observed_name: string
+          p_observed_open_at: string
+          p_observed_section_key: string
+          p_observed_stable_key: string
+          p_observed_visibility: string
+        }
+        Returns: Json
       }
       consentimiento_deadline: {
         Args: {
@@ -3142,6 +3417,34 @@ export type Database = {
         Returns: Json
       }
       get_moodle_sync_health: { Args: never; Returns: Json }
+      get_moodle_task_unit_summaries_v1: {
+        Args: { p_launch_id?: string; p_orientation?: string }
+        Returns: {
+          cmid: number
+          course_id: number
+          desired_due_at: string
+          desired_open_at: string
+          intent_id: string
+          lanzamiento_id: string
+          last_error_message: string
+          last_verified_at: string
+          mode: string
+          monitoring_status: string
+          nombre_pps: string
+          orientacion_key: string
+          provisioning_status: string
+          stable_key: string
+          total_expected: number
+          total_failed: number
+          total_missing: number
+          total_passed: number
+          total_revision_required: number
+          total_settled: number
+          total_submitted: number
+          total_under_review: number
+          total_waived: number
+        }[]
+      }
       get_moodle_unlinked_practices: {
         Args: { p_from_year?: number }
         Returns: {
@@ -3485,6 +3788,10 @@ export type Database = {
       practica_computa: { Args: { p_estado: string }; Returns: boolean }
       process_consentimiento_timeouts: { Args: never; Returns: undefined }
       publish_scheduled_launches: { Args: never; Returns: number }
+      reconcile_moodle_task_intents_v1: {
+        Args: { p_launch_id?: string }
+        Returns: Json
+      }
       register_campus_student: {
         Args: {
           apellido_input?: string
@@ -3521,6 +3828,10 @@ export type Database = {
           practica_id: string
         }[]
       }
+      request_moodle_task_reconcile_v1: {
+        Args: { p_intent_id: string }
+        Returns: boolean
+      }
       reserve_student_email_send: {
         Args: { p_user_id: string }
         Returns: string
@@ -3550,6 +3861,15 @@ export type Database = {
           p_convocatoria_id: string
           p_horario_id: string
           p_seleccionar: boolean
+        }
+        Returns: boolean
+      }
+      set_moodle_expected_participant_exception_v1: {
+        Args: {
+          p_new_status: string
+          p_participant_id: string
+          p_reason_code: string
+          p_reason_note?: string
         }
         Returns: boolean
       }

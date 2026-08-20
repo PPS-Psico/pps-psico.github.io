@@ -5,6 +5,7 @@ import {
   MoodleBridgeError,
   requestJefeMoodleTasks,
 } from "../../lib/moodleBridge";
+import { buildJefeMoodleBatches } from "./jefeMoodleBatches";
 import { fetchJefeMoodleSyncTasks, syncJefeMoodleReports } from "./jefeService";
 import type { JefeMoodleSyncState, JefeMoodleSyncStatus } from "./types";
 
@@ -58,24 +59,55 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
     setSyncStatus("syncing");
     setErrorMessage(null);
     try {
-      const bridgeResult = await requestJefeMoodleTasks(tasks.map((task) => task.cmid));
       const academicYears = new Set(tasks.map((task) => task.academic_year));
       if (academicYears.size !== 1) throw new MoodleBridgeError("invalid_response");
 
-      const failed = bridgeResult.tasks.filter((task) => task.status !== "ok").length;
-      const persisted = await syncJefeMoodleReports(
-        tasks[0].academic_year,
-        bridgeResult,
-        previewKey
-      );
-      setAccepted(persisted.accepted);
-      setAmbiguous(persisted.ambiguous);
-      setUnmatched(persisted.unmatched);
-      setFailedTasks(failed);
-      setLastObservedAt(persisted.observed_at);
+      const batches = buildJefeMoodleBatches(tasks.map((task) => task.cmid));
+      let acceptedTotal = 0;
+      let ambiguousTotal = 0;
+      let unmatchedTotal = 0;
+      let invalidTotal = 0;
+      let failedTotal = 0;
+      let successfulBatches = 0;
+      let latestObservedAt: string | null = null;
+      let lastBatchError: unknown = null;
+
+      for (const batch of batches) {
+        try {
+          const bridgeResult = await requestJefeMoodleTasks(batch);
+          const persisted = await syncJefeMoodleReports(
+            tasks[0].academic_year,
+            bridgeResult,
+            previewKey
+          );
+          successfulBatches += 1;
+          failedTotal += bridgeResult.tasks.filter((task) => task.status !== "ok").length;
+          acceptedTotal += persisted.accepted;
+          ambiguousTotal += persisted.ambiguous;
+          unmatchedTotal += persisted.unmatched;
+          invalidTotal += persisted.invalid;
+          if (!latestObservedAt || persisted.observed_at > latestObservedAt) {
+            latestObservedAt = persisted.observed_at;
+          }
+        } catch (error) {
+          if (error instanceof MoodleBridgeError && error.code === "not_embedded") throw error;
+          failedTotal += batch.length;
+          lastBatchError = error;
+        }
+      }
+
+      if (successfulBatches === 0)
+        throw lastBatchError ?? new MoodleBridgeError("invalid_response");
+
+      setAccepted(acceptedTotal);
+      setAmbiguous(ambiguousTotal);
+      setUnmatched(unmatchedTotal);
+      setFailedTasks(failedTotal);
+      setLastObservedAt(latestObservedAt);
 
       await queryClient.invalidateQueries({ queryKey: ["jefe-dashboard-v1"] });
-      const isPartial = failed > 0 || persisted.ambiguous > 0 || persisted.invalid > 0;
+      const isPartial =
+        failedTotal > 0 || ambiguousTotal > 0 || unmatchedTotal > 0 || invalidTotal > 0;
       setSyncStatus(isPartial ? "partial" : "synced");
     } catch (error) {
       if (error instanceof MoodleBridgeError && error.code === "not_embedded") {

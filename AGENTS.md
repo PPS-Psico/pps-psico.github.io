@@ -200,6 +200,17 @@ Pipeline visible en el sidebar/pipeline del Lanzador (definido en `src/services/
 3. A las 24hs sin aceptar → baja automatica + email al estudiante + email al coordinador
 4. Cron: pg_cron cada 10 min → Edge Function `check-consentimiento-pendientes`
 
+### Automatizacion Moodle v2
+
+- La unidad de entrega es `(lanzamiento_id, orientacion_key)`, no sólo el lanzamiento.
+- 2024–2026 usa `legacy_shared`: observar vínculos confirmados, nunca adoptar por nombre ni reconfigurar tareas históricas.
+- Desde 2027 usa `dedicated`: una tarea exclusiva por unidad con `stable_key` en el `ID number` de Moodle.
+- `moodle_task_intents` declara lo deseado y `moodle_task_expected_participants` define quién debe entregar; los conteos nunca usan el total bruto de Moodle.
+- La activación reconcilia datos locales mediante triggers, pero no espera ni llama a Moodle. El worker externo reclama un lease y sólo confirma si toda la configuración coincide.
+- La lectura anual de jefatura se conserva por tareas únicas de año+orientación y el frontend la divide en lotes secuenciales de 4.
+- El planner TypeScript no es el worker de navegador. No declarar creación automática operativa hasta probar el agente real en dry-run y piloto.
+- Contratos y estado: `docs/moodle-v2/contracts.md`, `docs/moodle-v2/workboard.md` y `docs/moodle-task-automation-runbook.md`.
+
 ## Errores conocidos y soluciones
 
 | Problema                                  | Solucion                                                                                |

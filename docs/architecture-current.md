@@ -43,6 +43,27 @@ políticas JWT, consumidores, secretos y legado remoto está en
 - herramientas administrativas;
 - backups y recuperacion.
 
+## Automatización de tareas e informes Moodle v2
+
+La unidad canónica de entrega es `lanzamiento + orientación`. Supabase mantiene
+la intención en `moodle_task_intents` y el padrón que debe entregar en
+`moodle_task_expected_participants`; Moodle aporta la actividad observada, la
+entrega real y la calificación.
+
+Durante 2026 las tareas confirmadas conviven como `legacy_shared`: pueden estar
+reutilizadas y nunca se reconfiguran automáticamente. Los lanzamientos desde
+2027 generan intenciones `dedicated`, una por unidad, con clave estable, hash de
+configuración y lease exclusivo. El escritor de navegador todavía no está
+conectado: la base y el planner están listos, pero ninguna activación llama a
+Moodle dentro de su transacción.
+
+Jefatura lee las tareas únicas del año y sus orientaciones en lotes secuenciales
+de 4. Los resultados válidos se conservan aunque otro lote falle. El resumen
+operativo se obtiene de `get_moodle_task_unit_summaries_v1` y calcula sus
+denominadores desde el padrón esperado, no desde todos los usuarios visibles en
+Moodle. Véanse [los contratos activos](./moodle-v2/contracts.md) y el
+[runbook](./moodle-task-automation-runbook.md).
+
 ## Estado de la documentacion heredada
 
 - Airtable aparece en archivos heredados y tipos legacy, pero no debe leerse como backend principal actual.

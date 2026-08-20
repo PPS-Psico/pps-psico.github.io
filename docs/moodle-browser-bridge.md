@@ -208,3 +208,17 @@ Coordinación puede consultar `get_moodle_grade_discrepancies()` para ver, sin e
 - fecha de observación y estado de comparación.
 
 El reporte usa la misma conversión que la escritura automática y devuelve `matches_moodle` o `different_from_moodle`. El ledger privado conserva `previous_note`, `applied_note`, nota y escala Moodle, regla de conversión, procedencia y fecha de observación para reconstruir cada cambio.
+
+## Actualización 2026-08-20 · lotes de jefatura y aprovisionamiento
+
+La jefatura conserva el barrido de todas las tareas únicas confirmadas del año y
+sus orientaciones. El cliente ya no entrega las 13 actividades en una sola
+solicitud: las divide secuencialmente en lotes de 4. Cada lote válido se persiste
+por separado; un timeout posterior no revierte lo ya observado y el resultado se
+muestra como parcial.
+
+Este puente continúa siendo de **lectura de entregas/notas**. El nuevo contrato
+de aprovisionamiento (`moodle_task_intents`, lease y confirmación de hash) está
+activo en Supabase, pero todavía no existe un agente navegador conectado que
+cree o modifique tareas. No confundir el planner puro de TypeScript con ese
+worker operativo.

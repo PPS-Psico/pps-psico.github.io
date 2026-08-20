@@ -184,6 +184,11 @@ sus filas se aplica a una PPS. Sólo después de persistir las observaciones se 
 `get_jefe_dashboard_v1`, por lo que la cola vuelve a calcular fecha de entrega,
 plazo y nota con el estado recién observado.
 
+La implementación solicita esas tareas en lotes secuenciales de 4. El alcance
+anual no se recorta por fecha porque una actividad 2026 puede representar varios
+relanzamientos. Un lote fallido no invalida observaciones ya persistidas: el
+cliente conserva los datos confirmados y expone estado parcial.
+
 La simulación administrativa consume `get_jefe_dashboard_preview_v2` para
 Inicio, Informes y Panorama. El RPC es de sólo lectura, comparte el cálculo del
 contrato real, valida el rol en la base y sólo acepta claves opacas publicadas

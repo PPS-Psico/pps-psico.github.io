@@ -98,3 +98,52 @@ export function useLaunchPracticas(launchId: string) {
     },
   });
 }
+
+export interface MoodleTaskUnitSummary {
+  intent_id: string;
+  lanzamiento_id: string;
+  nombre_pps: string | null;
+  orientacion_key: string;
+  mode: "legacy_shared" | "dedicated";
+  stable_key: string;
+  provisioning_status:
+    | "pending"
+    | "claimed"
+    | "reconciling"
+    | "verified"
+    | "needs_attention"
+    | "error"
+    | "disabled"
+    | "cancelled";
+  monitoring_status: "not_started" | "hot" | "cold" | "settled" | "needs_attention";
+  cmid: number | null;
+  course_id: number | null;
+  desired_open_at: string | null;
+  desired_due_at: string | null;
+  last_verified_at: string | null;
+  last_error_message: string | null;
+  total_expected: number;
+  total_submitted: number;
+  total_missing: number;
+  total_under_review: number;
+  total_revision_required: number;
+  total_passed: number;
+  total_failed: number;
+  total_waived: number;
+  total_settled: number;
+}
+
+/** Resumen canónico por unidad (lanzamiento + orientación), nunca una fila arbitraria. */
+export function useLaunchMoodleTaskUnits(launchId: string) {
+  return useQuery<MoodleTaskUnitSummary[]>({
+    queryKey: ["launch-moodle-units", launchId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_moodle_task_unit_summaries_v1", {
+        p_launch_id: launchId,
+      });
+      if (error) throw error;
+      return (data ?? []) as MoodleTaskUnitSummary[];
+    },
+    enabled: Boolean(launchId),
+  });
+}

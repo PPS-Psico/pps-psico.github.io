@@ -27,6 +27,25 @@ const formatSubmissionDate = (value: string): string => {
 
 const plural = (count: number, one: string, many = `${one}s`) => (count === 1 ? one : many);
 
+const URGENCY_ORDER: Record<JefeReport["urgency"], number> = {
+  critical: 0,
+  soon: 1,
+  on_time: 2,
+  undated: 3,
+  stale: 4,
+  waiting: 5,
+  corrected: 6,
+};
+
+const compareReportPriority = (left: JefeReport, right: JefeReport): number => {
+  const urgency = URGENCY_ORDER[left.urgency] - URGENCY_ORDER[right.urgency];
+  if (urgency !== 0) return urgency;
+  const leftDays = left.days_remaining ?? Number.POSITIVE_INFINITY;
+  const rightDays = right.days_remaining ?? Number.POSITIVE_INFINITY;
+  if (leftDays !== rightDays) return leftDays - rightDays;
+  return (left.submitted_at ?? "").localeCompare(right.submitted_at ?? "");
+};
+
 const normalizedGrade = (grade: string | null): string => {
   if (!grade) return "Sin calificar";
   if (grade.toLocaleLowerCase("es").includes("desaprob")) return "Desaprobado";
@@ -154,7 +173,10 @@ type CommonPanelProps = {
 export const JefeHomePanel: React.FC<
   CommonPanelProps & { onNavigate: (view: "informes" | "panorama") => void }
 > = ({ data, savingId, readOnly = false, onGrade, onNavigate }) => {
-  const pending = data.reports.filter((report) => report.report_status === "pending").slice(0, 5);
+  const pending = data.reports
+    .filter((report) => report.report_status === "pending")
+    .sort(compareReportPriority)
+    .slice(0, 5);
   const firstName = data.profile.name.trim().split(/\s+/)[0] || "";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 20 ? "Buenas tardes" : "Buenas noches";
@@ -314,16 +336,16 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
 
   const pending = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("es");
-    return data.reports.filter((report) => {
-      if (report.report_status !== "pending") return false;
-      if (filter !== "all") {
-        if (report.urgency !== filter) return false;
-      }
-      if (!term) return true;
-      return `${report.student_name} ${report.pps_name} ${report.orientation}`
-        .toLocaleLowerCase("es")
-        .includes(term);
-    });
+    return data.reports
+      .filter((report) => {
+        if (report.report_status !== "pending") return false;
+        if (filter !== "all" && report.urgency !== filter) return false;
+        if (!term) return true;
+        return `${report.student_name} ${report.pps_name} ${report.orientation}`
+          .toLocaleLowerCase("es")
+          .includes(term);
+      })
+      .sort(compareReportPriority);
   }, [data.reports, filter, search]);
 
   const waiting = data.reports.filter((report) => report.report_status === "waiting");

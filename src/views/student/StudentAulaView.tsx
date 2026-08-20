@@ -276,7 +276,7 @@ const guideBlocks: GuideBlock[] = [
       {
         lead: "30 días",
         title: "Corrección docente",
-        detail: "Hábiles del docente para devolver tu informe corregido.",
+        detail: "Corridos desde la entrega real para el seguimiento de la corrección.",
       },
     ],
     note: {
@@ -354,9 +354,9 @@ const editorialClosingSteps = [
   },
   {
     num: "02",
-    lead: "30 días hábiles",
+    lead: "30 días corridos",
     title: "Revisión académica",
-    text: "Es el plazo del equipo docente para corregir y devolver el informe.",
+    text: "Se cuentan desde la fecha real de entrega registrada en Campus.",
   },
   {
     num: "03",
@@ -638,9 +638,12 @@ const faqGroups: FaqGroup[] = [
         q: "¿Cuál es el plazo para entregar el informe?",
         a: (
           <>
-            Tenés <strong>30 días corridos</strong> desde la fecha de finalización de la PPS. Las
-            tareas del Campus no muestran un vencimiento configurado, por eso el control del plazo
-            queda de tu lado.
+            Tenés <strong>30 días corridos</strong> desde la fecha de finalización de tu práctica.
+            En las tareas exclusivas automatizadas, Campus muestra la apertura 7 días antes y el
+            vencimiento a las 23:59 hs (hora de Argentina), sin bloquear una entrega tardía. Durante
+            la transición 2026 algunas PPS siguen usando tareas compartidas y esas fechas pueden no
+            verse en Campus: el plazo académico igualmente se mantiene. Si una tarea histórica
+            bloquea el envío, escribí a coordinación.
           </>
         ),
       },
@@ -649,25 +652,39 @@ const faqGroups: FaqGroup[] = [
         a: (
           <>
             Escribí a coordinación <strong>antes del vencimiento</strong> para solicitar una
-            prórroga. Si se aprueba, el docente corrige según su disponibilidad y ya no aplica el
-            plazo habitual de 30 días hábiles.
+            prórroga. Las tareas exclusivas nuevas admiten el envío tardío y lo dejan registrado;
+            una tarea histórica puede tener otra configuración. La entrega fuera de término sin
+            prórroga previa queda sujeta a la disponibilidad de corrección del equipo docente.
           </>
         ),
       },
       {
-        q: "¿Cuánto tiempo tiene el docente para corregir?",
+        q: "¿Cuánto tiempo tiene la jefatura de área para corregir mi informe?",
         a: (
           <>
-            <strong>30 días hábiles</strong> desde la entrega. Cuando ingresás a Mi Panel dentro del
-            Campus, el estado de tus tareas se actualiza en segundo plano. Si el Campus ya muestra
-            una calificación, Mi Panel la convierte a escala 0–10 y la incorpora automáticamente a
-            tu PPS.
+            El plazo de seguimiento para la corrección es de <strong>30 días corridos</strong>{" "}
+            contados desde la <strong>fecha real en que enviaste la entrega</strong> en el Campus
+            (no desde el fin de la práctica). Cuando ingresás a Mi Panel dentro del Campus Virtual,
+            el panel intenta actualizar las tareas vinculadas y conserva el último dato confirmado
+            si Campus no responde. La pantalla te avisa si tenés que reintentar.
+          </>
+        ),
+      },
+      {
+        q: "¿Qué significa si mi informe figura con 'Reentrega solicitada'?",
+        a: (
+          <>
+            Significa que la corrección registrada no alcanza la aprobación definitiva. Entrá a la
+            actividad en Campus y revisá la devolución. Si la tarea permite un nuevo intento,
+            adjuntá allí la versión corregida; si no aparece esa opción, escribí a coordinación para
+            que la jefatura habilite la reentrega. El nuevo estado se mostrará después de una
+            sincronización confirmada.
           </>
         ),
       },
       {
         q: "¿Qué hago si mi informe no fue corregido en el plazo?",
-        a: "Si lo entregaste en término y ya pasaron 30 días hábiles, escribí a coordinación para que notifique al jefe de área.",
+        a: "Si pasaron más de 30 días corridos desde tu entrega y el informe continúa en corrección, escribí a coordinación indicando la PPS y la fecha de entrega para coordinar con la jefatura de área.",
       },
       {
         q: "¿Qué pasa si pierdo la planilla de asistencia?",
