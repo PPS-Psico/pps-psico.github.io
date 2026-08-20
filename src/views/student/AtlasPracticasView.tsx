@@ -339,6 +339,16 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                       const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
                       const desaprobada = isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA]);
                       const presentationStatus = getPracticePresentationStatus(p);
+                      const horasReales = Number(p[FIELD_HORAS_PRACTICAS] || 0);
+                      // Mientras está en curso, mostramos al menos las horas que
+                      // vale la PPS (piso informativo) sin tocar horas_realizadas,
+                      // que sigue siendo lo que cuenta para la acreditación.
+                      const horasMostradas = isPracticeActive(p[FIELD_ESTADO_PRACTICA])
+                        ? Math.max(
+                            horasReales,
+                            Number((p as { horasObjetivo?: number | null }).horasObjetivo || 0)
+                          )
+                        : horasReales;
                       return (
                         <tr key={p.id}>
                           <td className="name">
@@ -374,13 +384,13 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                             {desaprobada ? (
                               <span
                                 className="ah-hours-not-counted"
-                                title={`${Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs registradas; no computan para la acreditación`}
+                                title={`${horasReales} hs registradas; no computan para la acreditación`}
                               >
                                 <b>0 hs</b>
                                 <small>no computan</small>
                               </span>
                             ) : (
-                              `${Number(p[FIELD_HORAS_PRACTICAS] || 0)} hs`
+                              `${horasMostradas} hs`
                             )}
                           </td>
                           <td className="nota">{notaCell(p)}</td>

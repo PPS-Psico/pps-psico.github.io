@@ -1,7 +1,7 @@
 import { isFinalMoodleGrade, presentMoodleGrade } from "../moodleGradePresentation";
 
 describe("presentMoodleGrade", () => {
-  it("muestra la escala cruda de Moodle sin convertirla a 1–10", () => {
+  it("convierte la escala de Moodle a 1–10 redondeada", () => {
     const presentation = presentMoodleGrade({
       task_status: "graded",
       submitted: true,
@@ -12,7 +12,7 @@ describe("presentMoodleGrade", () => {
     });
 
     expect(presentation).toMatchObject({
-      compact: "83,00 / 100,00",
+      compact: "8",
       label: "Calificación en Campus",
       hasGrade: true,
     });
@@ -78,7 +78,7 @@ describe("presentMoodleGrade", () => {
 
     expect(isFinalMoodleGrade(snapshot)).toBe(false);
     expect(presentMoodleGrade(snapshot)).toMatchObject({
-      compact: "8 / 10",
+      compact: "8",
       hasGrade: true,
       tone: "info",
     });

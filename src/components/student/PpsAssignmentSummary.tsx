@@ -217,20 +217,6 @@ export const PpsAssignmentSummaryModal: React.FC<PpsAssignmentSummaryModalProps>
             </div>
 
             <SummaryFields data={data} compact />
-
-            <section className="pps-summary-scope" aria-labelledby="pps-summary-scope-title">
-              <span className="material-icons" aria-hidden="true">
-                info
-              </span>
-              <div>
-                <h3 id="pps-summary-scope-title">Qué informa y qué no</h3>
-                <p>
-                  Refleja la asignación administrativa y el cronograma registrado al momento de
-                  generarlo. No certifica asistencia efectiva, regularidad, horas realizadas,
-                  aprobación ni finalización de la PPS.
-                </p>
-              </div>
-            </section>
           </div>
 
           <footer className="pps-summary-modal__footer">

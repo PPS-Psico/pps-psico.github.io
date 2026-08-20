@@ -21,7 +21,8 @@ export const fetchPracticas = async (
               orientacion,
               fecha_inicio,
               fecha_finalizacion,
-              direccion
+              direccion,
+              horas_acreditadas
           )
       `
     )
@@ -44,6 +45,7 @@ export const fetchPracticas = async (
     fecha_inicio: string | null;
     fecha_finalizacion: string | null;
     direccion: string | null;
+    horas_acreditadas: number | null;
   };
 
   type RawPracticaRow = Practica & {
@@ -84,6 +86,13 @@ export const fetchPracticas = async (
     // Los registros históricos también usan "Online" como dirección.
     updatedRow[C.FIELD_ES_ONLINE_PRACTICAS] =
       row[C.FIELD_ES_ONLINE_PRACTICAS] === true || isOnlinePpsDirection(lanzamiento?.direccion);
+
+    // Horas que vale la PPS según el lanzamiento (no las horas ya cumplidas).
+    // Sólo importa mientras está "En curso": ahí sirve de piso para mostrar
+    // algo más útil que 0 antes de que se cargue el avance real — sin tocar
+    // horas_realizadas, que es lo que cuenta para la acreditación.
+    (updatedRow as Practica & { horasObjetivo?: number | null }).horasObjetivo =
+      lanzamiento?.horas_acreditadas ?? null;
 
     return updatedRow;
   });
