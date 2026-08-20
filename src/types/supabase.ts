@@ -2007,6 +2007,7 @@ export type Database = {
           desired_due_at: string | null
           desired_grade_max: number
           desired_grade_mode: string
+          desired_grading_due_at: string | null
           desired_name: string
           desired_open_at: string | null
           desired_section_key: string | null
@@ -2043,6 +2044,7 @@ export type Database = {
           desired_due_at?: string | null
           desired_grade_max?: number
           desired_grade_mode?: string
+          desired_grading_due_at?: string | null
           desired_name: string
           desired_open_at?: string | null
           desired_section_key?: string | null
@@ -2079,6 +2081,7 @@ export type Database = {
           desired_due_at?: string | null
           desired_grade_max?: number
           desired_grade_mode?: string
+          desired_grading_due_at?: string | null
           desired_name?: string
           desired_open_at?: string | null
           desired_section_key?: string | null
@@ -3014,6 +3017,7 @@ export type Database = {
           desired_due_at: string | null
           desired_grade_max: number
           desired_grade_mode: string
+          desired_grading_due_at: string | null
           desired_name: string
           desired_open_at: string | null
           desired_section_key: string | null

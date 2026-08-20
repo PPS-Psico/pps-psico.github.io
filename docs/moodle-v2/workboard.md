@@ -22,11 +22,23 @@ producción.
 | WP-09 Seguridad y QA        | `IN_PROGRESS`          | RLS, grants, contrato SQL y tipos generados                                   | gates completos y revisión de advisors                                      |
 | WP-10 Release y operación   | `IN_PROGRESS`          | plan, contratos y documentación central                                       | commit/push y validación funcional en Campus                                |
 
+## Deuda declarada
+
+`desired_grading_due_at` existe en la tabla, en el contrato TypeScript y en el
+planner, pero **todavía no participa** de `private.moodle_v2_config_hash` ni de
+la firma de `confirm_moodle_task_intent_v1`. Fue deliberado: incluirlo en el
+hash cambiaría el `desired_config_hash` de las 212 intenciones legacy vigentes
+y la regla de on-conflict las pasaría a `needs_attention` en la próxima
+reconciliación, sin beneficio mientras no exista ninguna intención
+`dedicated`. Ambos cambios corresponden al mismo trabajo que construya el
+worker de escritura, que es quien va a observar y reportar el campo.
+
 ## Próxima secuencia obligatoria
 
 1. Validar en el simulador admin que 13 tareas ejecutan `4 + 4 + 4 + 1` sin
    timeout global y que un fallo deja estado parcial.
-2. Elegir una plantilla Moodle y registrar todas sus opciones materiales.
+2. Elegir una plantilla Moodle y registrar todas sus opciones materiales,
+   incluyendo Recordarme calificar en.
 3. Conectar un worker en dry-run a `claim_moodle_task_intent_lease_v1`.
 4. Ejecutar piloto `dedicated` sin entregas previas; nunca sobre una tarea 2026
    compartida.

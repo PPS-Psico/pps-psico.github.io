@@ -37,6 +37,13 @@ needs_attention | error | disabled | cancelled`;
 needs_attention`;
 - configuración material completa: nombre, HTML, apertura, vencimiento, corte,
   modo/escala de nota, sección, visibilidad y versión de plantilla;
+- `desired_grading_due_at timestamptz`: el `gradingduedate` de Moodle
+  ("Recordarme calificar en"), con invariante
+  `desired_grading_due_at >= desired_due_at`. Se calcula como vencimiento + 30
+  días, que es el plazo de corrección en término. **No es opcional**: Moodle
+  rechaza el guardado si falta o si es anterior al vencimiento, y el rechazo no
+  se muestra arriba del formulario. Todavía no participa de
+  `private.moodle_v2_config_hash` ni de `confirm_moodle_task_intent_v1`;
 - `desired_config_hash`, `observed_config_hash`, evidencia, errores, lease y
   timestamps de reconciliación/lectura.
 

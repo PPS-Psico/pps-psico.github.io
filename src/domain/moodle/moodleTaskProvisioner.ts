@@ -20,6 +20,8 @@ export interface DesiredTaskConfig {
   desiredOpenAt?: string | null;
   desiredDueAt?: string | null;
   desiredCutoffAt?: string | null;
+  /** Moodle gradingduedate. Debe ser >= desiredDueAt o Moodle rechaza el guardado sin aviso. */
+  desiredGradingDueAt?: string | null;
   desiredGradeMode: MoodleGradeConversionMode;
   desiredGradeMax: number;
   desiredSectionKey?: string | null;
@@ -35,6 +37,7 @@ export interface ObservedMoodleActivity {
   allowSubmissionsFromDate?: number | null;
   dueDate?: number | null;
   cutoffDate?: number | null;
+  gradingDueDate?: number | null;
   gradeMode: MoodleGradeConversionMode;
   gradeMax: number;
   sectionKey?: string | null;
@@ -70,6 +73,7 @@ type ComparableConfig = {
   openAt: string;
   dueAt: string;
   cutoffAt: string;
+  gradingDueAt: string;
   gradeMode: MoodleGradeConversionMode;
   gradeMax: number;
   sectionKey: string;
@@ -93,6 +97,7 @@ const fromDesired = (config: DesiredTaskConfig): ComparableConfig => ({
   openAt: toIso(config.desiredOpenAt),
   dueAt: toIso(config.desiredDueAt),
   cutoffAt: toIso(config.desiredCutoffAt),
+  gradingDueAt: toIso(config.desiredGradingDueAt),
   gradeMode: config.desiredGradeMode,
   gradeMax: config.desiredGradeMax,
   sectionKey: config.desiredSectionKey ?? "",
@@ -110,6 +115,7 @@ const fromObserved = (
   openAt: unixToIso(activity.allowSubmissionsFromDate),
   dueAt: unixToIso(activity.dueDate),
   cutoffAt: unixToIso(activity.cutoffDate),
+  gradingDueAt: unixToIso(activity.gradingDueDate),
   gradeMode: activity.gradeMode,
   gradeMax: activity.gradeMax,
   sectionKey: activity.sectionKey ?? "",
@@ -147,6 +153,7 @@ function collectMismatches(desired: DesiredTaskConfig, observed: ObservedMoodleA
   if (actual.openAt !== expected.openAt) mismatches.push("open_at");
   if (actual.dueAt !== expected.dueAt) mismatches.push("due_at");
   if (actual.cutoffAt !== expected.cutoffAt) mismatches.push("cutoff_at");
+  if (actual.gradingDueAt !== expected.gradingDueAt) mismatches.push("grading_due_at");
   if (actual.gradeMode !== expected.gradeMode) mismatches.push("grade_mode");
   if (Math.abs(actual.gradeMax - expected.gradeMax) > 0.001) mismatches.push("grade_max");
   if (actual.sectionKey !== expected.sectionKey) mismatches.push("section_key");
@@ -155,11 +162,40 @@ function collectMismatches(desired: DesiredTaskConfig, observed: ObservedMoodleA
   return mismatches;
 }
 
+/**
+ * Moodle rechaza el guardado si gradingduedate es anterior a la fecha de
+ * entrega, y el rechazo es silencioso para un agente: el formulario vuelve a
+ * mostrarse sin cartel arriba. Verificado a mano en el curso 3615 el
+ * 2026-08-20. Emitir un plan que Moodle no puede aceptar haría que el agente
+ * reintente para siempre, así que se detiene antes de intentarlo.
+ */
+export function findUnsatisfiableDateRule(config: DesiredTaskConfig): string | null {
+  const due = toIso(config.desiredDueAt);
+  const gradingDue = toIso(config.desiredGradingDueAt);
+  if (!due) return null;
+  if (!gradingDue) return "missing_grading_due_at";
+  return Date.parse(gradingDue) < Date.parse(due) ? "grading_due_before_due" : null;
+}
+
 export function planTaskProvisioning(
   desired: DesiredTaskConfig,
   observedActivities: ObservedMoodleActivity[]
 ): ProvisioningPlan {
   const configHash = computeConfigHash(desired);
+
+  const unsatisfiable = findUnsatisfiableDateRule(desired);
+  if (unsatisfiable && desired.mode === "dedicated") {
+    return {
+      action: "needs_attention",
+      intentId: desired.intentId,
+      stableKey: desired.stableKey,
+      reason:
+        'Moodle rechazaría estas fechas: "Recordarme calificar en" no puede ser anterior a la fecha de entrega.',
+      configHash,
+      driftDetected: true,
+      driftDetails: [unsatisfiable],
+    };
+  }
 
   if (desired.mode === "legacy_shared") {
     if (!desired.linkedCmid) {
