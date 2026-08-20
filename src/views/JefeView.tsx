@@ -27,7 +27,8 @@ import {
   fetchJefeDashboardPreview,
   updateJefeReportGrade,
 } from "../features/jefe/jefeService";
-import type { JefeReport, JefeViewId } from "../features/jefe/types";
+import type { JefeMoodleSyncState, JefeReport, JefeViewId } from "../features/jefe/types";
+import { useJefeMoodleSync } from "../features/jefe/useJefeMoodleSync";
 import type { AirtableRecord, EstudianteFields } from "../types";
 import StudentDashboard from "./StudentDashboard";
 
@@ -53,6 +54,70 @@ type JefeViewProps = {
   previewKey?: string;
 };
 
+const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync }) => {
+  if (sync.status === "idle") return null;
+
+  const observedLabel = sync.lastObservedAt
+    ? new Intl.DateTimeFormat("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Argentina/Buenos_Aires",
+      }).format(new Date(sync.lastObservedAt))
+    : null;
+
+  let icon = "sync";
+  let title = "Preparando la actualización de informes";
+  let detail = "Buscando las tareas del año para tu orientación.";
+  if (sync.status === "syncing") {
+    icon = "sync";
+    title = "Actualizando informes desde Campus";
+    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea" : "tareas"} únicas del año, sin repetir relanzamientos.`;
+  } else if (sync.status === "synced") {
+    icon = "cloud_done";
+    title = "Informes actualizados";
+    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea revisada" : "tareas revisadas"}${sync.accepted > 0 ? ` · ${sync.accepted} entregas vinculadas` : ""}${sync.unmatched > 0 ? ` · ${sync.unmatched} filas sin PPS coincidente` : ""}${observedLabel ? ` · ${observedLabel}` : ""}.`;
+  } else if (sync.status === "partial") {
+    icon = "rule";
+    title = "Actualización parcial";
+    const issues = [
+      sync.failedTasks > 0 ? `${sync.failedTasks} tareas no se pudieron leer` : null,
+      sync.ambiguous > 0 ? `${sync.ambiguous} entregas con prácticas duplicadas` : null,
+      sync.unmatched > 0 ? `${sync.unmatched} filas sin PPS coincidente` : null,
+    ].filter(Boolean);
+    detail = issues.join(" · ") || "Algunas filas requieren revisión.";
+  } else if (sync.status === "complete") {
+    icon = "task_alt";
+    title = "No hay tareas Moodle para sincronizar este año";
+    detail = "La orientación no tiene vínculos confirmados pendientes de lectura.";
+  } else if (sync.status === "unavailable") {
+    icon = "cloud_off";
+    title = "Mostrando el último estado guardado";
+    detail = "La actualización automática se ejecuta al abrir este panel dentro del Campus.";
+  } else if (sync.status === "error") {
+    icon = "sync_problem";
+    title = "No pudimos actualizar los informes";
+    detail = sync.errorMessage || "Conservamos el último estado confirmado.";
+  }
+
+  const canRetry = sync.status === "error" || sync.status === "partial";
+  return (
+    <div className={`jefe-sync-notice jefe-sync-notice--${sync.status}`} role="status">
+      <span className="material-icons" aria-hidden="true">
+        {icon}
+      </span>
+      <div>
+        <strong>{title}</strong>
+        <span>{detail}</span>
+      </div>
+      {canRetry && (
+        <button type="button" onClick={() => void sync.retry()}>
+          Reintentar
+        </button>
+      )}
+    </div>
+  );
+};
+
 const JefeView: React.FC<JefeViewProps> = ({ previewKey }) => {
   const { authenticatedUser } = useAuth();
   const queryClient = useQueryClient();
@@ -62,6 +127,7 @@ const JefeView: React.FC<JefeViewProps> = ({ previewKey }) => {
   const [toast, setToast] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<SelectedStudent | null>(null);
   const isPreview = previewKey != null;
+  const moodleSync = useJefeMoodleSync(true, previewKey);
 
   const rawView = searchParams.get("view") as JefeViewId | null;
   const currentView: JefeViewId = rawView && VALID_VIEWS.has(rawView) ? rawView : "inicio";
@@ -269,6 +335,8 @@ const JefeView: React.FC<JefeViewProps> = ({ previewKey }) => {
           <span>Datos reales · calificaciones en consulta · conservás tus permisos de Admin</span>
         </div>
       )}
+
+      <JefeMoodleSyncNotice sync={moodleSync} />
 
       {renderContent()}
 

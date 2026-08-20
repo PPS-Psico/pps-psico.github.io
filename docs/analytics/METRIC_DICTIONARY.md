@@ -290,13 +290,16 @@ una métrica nueva: sólo habilita una lectura de prueba para `SuperUser` y
   pendientes/críticos al corte de hoy. Es un stock operativo separado y nunca se
   compara como si fuera un resultado anual.
 
-La cola de informes usa la primera observación de entrega Moodle y, como
-fallback, `convocatorias.fecha_entrega_informe`. El seguimiento interno vence a
-los 30 días corridos; `critical` significa que ese umbral interno fue superado,
-no una declaración sobre el plazo normativo comunicado al estudiante. Una
-entrega sin calificación sale de la cola prioritaria cuando acumula más de 60
-días de atraso respecto de ese vencimiento: se conserva con estado `stale` como
-antecedente, pero no integra `pending`, `critical` ni la foto operativa.
+La cola de informes usa el timestamp de entrega mostrado por Moodle y, como
+fallback, `convocatorias.fecha_entrega_informe`. `observed_at` sólo indica cuándo
+Mi Panel leyó Moodle y no puede reemplazar la fecha de entrega. Si ninguna fuente
+confiable aporta la fecha, el informe permanece pendiente con urgencia `undated`
+y se separa de `on_time`. El seguimiento interno vence a los 30 días corridos;
+`critical` significa que ese umbral interno fue superado, no una declaración
+sobre el plazo normativo comunicado al estudiante. Una entrega sin calificación
+sale de la cola prioritaria cuando acumula más de 60 días de atraso respecto de
+ese vencimiento: se conserva con estado `stale` como antecedente, pero no integra
+`pending`, `critical` ni la foto operativa.
 
 ## Snapshots
 

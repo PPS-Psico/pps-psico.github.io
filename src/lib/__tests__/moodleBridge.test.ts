@@ -1,4 +1,8 @@
-import { moodleCourseContextSchema, moodleTasksResultSchema } from "../moodleBridge";
+import {
+  jefeMoodleTasksResultSchema,
+  moodleCourseContextSchema,
+  moodleTasksResultSchema,
+} from "../moodleBridge";
 
 const validResult = {
   type: "PPS_MOODLE_TASKS_RESULT" as const,
@@ -17,6 +21,8 @@ const validResult = {
       gradeMax: 100,
       gradeDisplay: "83,00 / 100,00",
       gradedAtDisplay: "lunes, 10 de agosto de 2026, 11:09",
+      submittedAt: "2026-07-21T04:12:00.000Z",
+      submittedAtDisplay: "martes, 21 de julio de 2026, 01:12",
     },
   ],
 };
@@ -36,6 +42,22 @@ describe("moodleTasksResultSchema", () => {
     const candidate = {
       ...validResult,
       tasks: [{ ...validResult.tasks[0], gradeValue: 101 }],
+    };
+    expect(moodleTasksResultSchema.safeParse(candidate).success).toBe(false);
+  });
+
+  it("rechaza una fecha de entrega en una tarea no entregada", () => {
+    const candidate = {
+      ...validResult,
+      tasks: [
+        {
+          ...validResult.tasks[0],
+          status: "not_submitted",
+          submitted: false,
+          gradeValue: null,
+          gradeMax: null,
+        },
+      ],
     };
     expect(moodleTasksResultSchema.safeParse(candidate).success).toBe(false);
   });
@@ -76,5 +98,71 @@ describe("moodleCourseContextSchema", () => {
     expect(
       moodleCourseContextSchema.safeParse({ ...validContext, signupTicket: "sin-ticket" }).success
     ).toBe(false);
+  });
+});
+
+describe("jefeMoodleTasksResultSchema", () => {
+  const validJefeResult = {
+    type: "PPS_MOODLE_JEFE_TASKS_RESULT",
+    version: 1,
+    requestId: "550e8400-e29b-41d4-a716-446655440000",
+    courseId: 3615,
+    observedAt: "2026-08-19T22:00:00.000Z",
+    moodleUserId: 2338,
+    moodleUsername: "34052382",
+    tasks: [
+      {
+        cmid: 1109159,
+        status: "ok",
+        errorCode: null,
+        rows: [
+          {
+            moodleUserId: 10970,
+            moodleUsername: "44684830",
+            email: "olivasantiago531@gmail.com",
+            status: "submitted",
+            submitted: true,
+            gradeValue: null,
+            gradeMax: null,
+            gradeDisplay: null,
+            gradedAtDisplay: null,
+            submittedAt: "2026-07-21T04:12:00.000Z",
+            submittedAtDisplay: "martes, 21 de julio de 2026, 01:12",
+          },
+        ],
+      },
+    ],
+  };
+
+  it("acepta una entrega de la tabla anual de la jefatura", () => {
+    expect(jefeMoodleTasksResultSchema.safeParse(validJefeResult).success).toBe(true);
+  });
+
+  it("rechaza filas de una tarea que Moodle no pudo leer", () => {
+    const candidate = {
+      ...validJefeResult,
+      tasks: [{ ...validJefeResult.tasks[0], status: "no_access" }],
+    };
+    expect(jefeMoodleTasksResultSchema.safeParse(candidate).success).toBe(false);
+  });
+
+  it("rechaza una nota sin escala verificable", () => {
+    const candidate = {
+      ...validJefeResult,
+      tasks: [
+        {
+          ...validJefeResult.tasks[0],
+          rows: [
+            {
+              ...validJefeResult.tasks[0].rows[0],
+              status: "graded",
+              gradeValue: 80,
+              gradeMax: null,
+            },
+          ],
+        },
+      ],
+    };
+    expect(jefeMoodleTasksResultSchema.safeParse(candidate).success).toBe(false);
   });
 });

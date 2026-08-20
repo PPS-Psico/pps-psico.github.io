@@ -1,5 +1,7 @@
 import { supabase } from "../../lib/supabaseClient";
 import type { JefeDashboardData, JefePreviewProfile } from "./types";
+import type { JefeMoodleTasksResult } from "../../lib/moodleBridge";
+import type { JefeMoodleSyncResult, JefeMoodleSyncTask } from "./types";
 
 const dateForYear = (year: number): string => {
   const now = new Date();
@@ -54,4 +56,44 @@ export const updateJefeReportGrade = async (practicaId: string, grade: string): 
   });
 
   if (error) throw error;
+};
+
+export const fetchJefeMoodleSyncTasks = async (
+  previewKey?: string
+): Promise<JefeMoodleSyncTask[]> => {
+  const { data, error } = previewKey
+    ? await supabase.rpc("get_jefe_moodle_sync_tasks_preview_v1", {
+        p_preview_key: previewKey,
+      })
+    : await supabase.rpc("get_jefe_moodle_sync_tasks_v1");
+  if (error) throw error;
+  return (data ?? []) as JefeMoodleSyncTask[];
+};
+
+export const syncJefeMoodleReports = async (
+  academicYear: number,
+  result: JefeMoodleTasksResult,
+  previewKey?: string
+): Promise<JefeMoodleSyncResult> => {
+  const commonArgs = {
+    p_request_id: result.requestId,
+    p_course_id: result.courseId,
+    p_academic_year: academicYear,
+    p_observed_at: result.observedAt,
+    p_actor_moodle_user_id: result.moodleUserId,
+    p_actor_moodle_username: result.moodleUsername,
+    p_tasks: result.tasks,
+  };
+  const { data, error } = previewKey
+    ? await supabase.rpc("sync_jefe_moodle_reports_preview_v1", {
+        p_preview_key: previewKey,
+        ...commonArgs,
+      })
+    : await supabase.rpc("sync_jefe_moodle_reports_v1", commonArgs);
+
+  if (error) throw error;
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("La sincronización Moodle devolvió una respuesta vacía.");
+  }
+  return data as unknown as JefeMoodleSyncResult;
 };

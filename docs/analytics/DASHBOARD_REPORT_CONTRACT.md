@@ -160,8 +160,10 @@ El payload separa cuatro bloques:
 
 - `queue`: agregado reconciliable con el detalle de `reports`;
 - `reports`: una fila por práctica, ordenada por vencimiento individual a 30
-  días corridos desde la entrega; los casos sin calificar con más de 60 días de
-  atraso se conservan como `stale`, fuera de la cola prioritaria;
+  días corridos desde el timestamp real de entrega Moodle; `observed_at` nunca
+  se presenta como entrega y los casos todavía sin fecha verificable se separan
+  como `undated`; los casos sin calificar con más de 60 días de atraso se
+  conservan como `stale`, fuera de la cola prioritaria;
 - `panorama`: resultado anual con fecha de corte y procedencia explícita;
 - `current`: foto operativa actual, sin comparación interanual.
 
@@ -170,6 +172,17 @@ desde la capa histórica revisada. Para años posteriores la fuente es
 `operational_live`. Capacidad e instituciones conservan las definiciones del
 diccionario de métricas. El contrato SQL obligatorio es
 `supabase/tests/jefe_area_panel_v1_contract.sql`.
+
+Al ingresar una jefatura desde el iframe del Campus, el cliente consulta
+`get_jefe_moodle_sync_tasks_v1()` y barre una vez cada `cmid` catalogado del año
+académico corriente para sus orientaciones. La unidad de lectura es la **tarea
+Moodle única**, no la práctica ni el lanzamiento: una tarea reutilizada por
+varios relanzamientos se descarga una sola vez. El servidor resuelve las filas
+por `cmid + DNI`, vuelve a comprobar año y alcance de área, y omite las
+coincidencias ambiguas; una tarea aún no vinculada puede leerse, pero ninguna de
+sus filas se aplica a una PPS. Sólo después de persistir las observaciones se invalida
+`get_jefe_dashboard_v1`, por lo que la cola vuelve a calcular fecha de entrega,
+plazo y nota con el estado recién observado.
 
 La simulación administrativa consume `get_jefe_dashboard_preview_v2` para
 Inicio, Informes y Panorama. El RPC es de sólo lectura, comparte el cálculo del

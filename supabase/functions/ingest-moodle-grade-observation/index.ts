@@ -5,7 +5,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 const APP_ORIGIN = "https://pps-psico.github.io";
 const COURSE_ID = 3615;
 const BRIDGE_VERSION = "pps-moodle-bridge/v1";
-const PARSER_VERSION = "assignment-page/v1";
+const PARSER_VERSION = "assignment-page/v2";
 const MAX_OBSERVATIONS = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TASK_STATUSES = new Set(["no_access", "not_submitted", "submitted", "graded", "parse_error"]);
@@ -247,6 +247,8 @@ Deno.serve(async (req) => {
       const gradeMax = finiteNumber(raw.gradeMax);
       const gradeDisplay = boundedText(raw.gradeDisplay, 160);
       const gradedAtDisplay = boundedText(raw.gradedAtDisplay, 200);
+      const submittedAt = boundedText(raw.submittedAt, 40);
+      const submittedAtDisplay = boundedText(raw.submittedAtDisplay, 200);
       if (!practicaId || !UUID_RE.test(practicaId)) throw new Error("invalid_practice");
       if (!cmid || !Number.isInteger(cmid) || cmid <= 0) throw new Error("invalid_cmid");
       if (!status || !TASK_STATUSES.has(status)) throw new Error("invalid_status");
@@ -258,11 +260,21 @@ Deno.serve(async (req) => {
       } else if (gradeValue !== null) {
         throw new Error("grade_without_graded_status");
       }
+      const submitted = raw.submitted === true || status === "graded" || status === "submitted";
+      if (submittedAt) {
+        const submittedMs = Date.parse(submittedAt);
+        if (Number.isNaN(submittedMs)) throw new Error("invalid_submitted_at");
+        if (!submitted || submittedMs > observedMs + 5 * 60_000) {
+          throw new Error("invalid_submitted_at");
+        }
+      }
       return {
         practicaId,
         cmid,
         status,
-        submitted: raw.submitted === true || status === "graded" || status === "submitted",
+        submitted,
+        submittedAt,
+        submittedAtDisplay,
         gradeValue,
         gradeMax,
         gradeDisplay,
@@ -382,6 +394,8 @@ Deno.serve(async (req) => {
             gradeMax: item.gradeMax,
             gradeDisplay: item.gradeDisplay,
             gradedAtDisplay: item.gradedAtDisplay,
+            submittedAt: item.submittedAt,
+            submittedAtDisplay: item.submittedAtDisplay,
           });
           return {
             row: {
@@ -397,6 +411,8 @@ Deno.serve(async (req) => {
               moodle_username: normalizeDni(moodleUsername),
               task_status: item.status,
               submitted: item.submitted,
+              submitted_at: item.submittedAt,
+              submitted_at_display: item.submittedAtDisplay,
               grade_value: item.status === "graded" ? item.gradeValue : null,
               grade_max: item.gradeMax ?? configuredMax,
               grade_display: item.gradeDisplay,
@@ -520,6 +536,8 @@ Deno.serve(async (req) => {
       aula_entrega_id: row.aula_entrega_id,
       task_status: row.task_status,
       submitted: row.submitted,
+      submitted_at: row.submitted_at,
+      submitted_at_display: row.submitted_at_display,
       grade_value: row.grade_value,
       grade_max: row.grade_max,
       grade_display: row.grade_display,
@@ -586,6 +604,7 @@ Deno.serve(async (req) => {
       "invalid_moodle_user",
       "invalid_moodle_username",
       "invalid_observed_at",
+      "invalid_submitted_at",
       "stale_observation",
       "invalid_observation_count",
       "invalid_observation",

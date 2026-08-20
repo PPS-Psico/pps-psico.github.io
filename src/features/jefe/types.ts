@@ -37,6 +37,7 @@ export type JefeQueueSummary = {
   critical: number;
   soon: number;
   on_time: number;
+  undated: number;
   waiting: number;
   corrected: number;
 };
@@ -103,6 +104,51 @@ export type JefePreviewProfile = {
   preview_key: string;
   name: string;
   area_labels: string[];
+};
+
+export type JefeMoodleSyncTask = {
+  academic_year: number;
+  course_id: number;
+  cmid: number;
+  task_name: string;
+  area_keys: string[];
+};
+
+export type JefeMoodleSyncResult = {
+  success: boolean;
+  academic_year: number;
+  task_count: number;
+  rows_received: number;
+  accepted: number;
+  stored: number;
+  snapshot_updated: number;
+  ambiguous: number;
+  unmatched: number;
+  invalid: number;
+  observed_at: string;
+  already_processed?: boolean;
+};
+
+export type JefeMoodleSyncStatus =
+  | "idle"
+  | "loading"
+  | "syncing"
+  | "synced"
+  | "partial"
+  | "complete"
+  | "unavailable"
+  | "error";
+
+export type JefeMoodleSyncState = {
+  status: JefeMoodleSyncStatus;
+  taskCount: number;
+  accepted: number;
+  ambiguous: number;
+  unmatched: number;
+  failedTasks: number;
+  lastObservedAt: string | null;
+  errorMessage: string | null;
+  retry: () => Promise<void>;
 };
 
 export type JefeViewId = "inicio" | "informes" | "panorama" | "practicas" | "estudiantes";

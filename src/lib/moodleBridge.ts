@@ -37,8 +37,13 @@ export const moodleTaskResultSchema = z
     gradeMax: z.number().finite().positive().nullable(),
     gradeDisplay: z.string().trim().max(160).nullable(),
     gradedAtDisplay: z.string().trim().max(200).nullable(),
+    submittedAt: z.string().datetime({ offset: true }).nullable().optional(),
+    submittedAtDisplay: z.string().trim().max(200).nullable().optional(),
   })
   .superRefine((task, ctx) => {
+    if (!task.submitted && task.submittedAt) {
+      ctx.addIssue({ code: "custom", message: "Una tarea no entregada no puede tener fecha." });
+    }
     if (task.status !== "graded") return;
     if (task.gradeValue === null || task.gradeMax === null || task.gradeValue > task.gradeMax) {
       ctx.addIssue({ code: "custom", message: "La calificación Moodle no es válida." });
@@ -58,6 +63,68 @@ export const moodleTasksResultSchema = z.object({
 
 export type MoodleTaskResult = z.infer<typeof moodleTaskResultSchema>;
 export type MoodleTasksResult = z.infer<typeof moodleTasksResultSchema>;
+
+const jefeSubmissionRowSchema = z
+  .object({
+    moodleUserId: z.number().int().positive(),
+    moodleUsername: z.string().regex(/^\d{6,12}$/),
+    email: z.string().trim().email().max(320).nullable(),
+    status: z.enum(["submitted", "graded"]),
+    submitted: z.literal(true),
+    gradeValue: z.number().finite().nonnegative().nullable(),
+    gradeMax: z.number().finite().positive().nullable(),
+    gradeDisplay: z.string().trim().max(160).nullable(),
+    gradedAtDisplay: z.string().trim().max(200).nullable(),
+    submittedAt: z.string().datetime({ offset: true }).nullable(),
+    submittedAtDisplay: z.string().trim().max(200).nullable(),
+  })
+  .superRefine((row, ctx) => {
+    if (row.status === "graded") {
+      if (row.gradeValue === null || row.gradeMax === null || row.gradeValue > row.gradeMax) {
+        ctx.addIssue({ code: "custom", message: "La calificación Moodle no es válida." });
+      }
+      return;
+    }
+    if (row.gradeValue !== null || row.gradeMax !== null) {
+      ctx.addIssue({ code: "custom", message: "Una entrega sin nota no puede incluir escala." });
+    }
+  });
+
+const jefeTaskScanSchema = z.object({
+  cmid: z.number().int().positive(),
+  status: z.enum(["ok", "no_access", "parse_error"]),
+  errorCode: z.string().trim().max(80).nullable(),
+  rows: z.array(jefeSubmissionRowSchema).max(500),
+});
+
+export const jefeMoodleTasksResultSchema = z
+  .object({
+    type: z.literal("PPS_MOODLE_JEFE_TASKS_RESULT"),
+    version: z.literal(1),
+    requestId: z.string().uuid(),
+    courseId: z.literal(MOODLE_COURSE_ID),
+    observedAt: z.string().datetime({ offset: true }),
+    moodleUserId: z.number().int().positive(),
+    moodleUsername: z.string().regex(/^\d{6,12}$/),
+    tasks: z.array(jefeTaskScanSchema).min(1).max(20),
+  })
+  .superRefine((result, ctx) => {
+    const totalRows = result.tasks.reduce((total, task) => total + task.rows.length, 0);
+    if (totalRows > 1000) {
+      ctx.addIssue({ code: "custom", message: "La respuesta Moodle excede el límite de filas." });
+    }
+    result.tasks.forEach((task, index) => {
+      if (task.status !== "ok" && task.rows.length > 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["tasks", index, "rows"],
+          message: "Una tarea no leída no puede incluir entregas.",
+        });
+      }
+    });
+  });
+
+export type JefeMoodleTasksResult = z.infer<typeof jefeMoodleTasksResultSchema>;
 
 export class MoodleBridgeError extends Error {
   constructor(public readonly code: "not_embedded" | "timeout" | "invalid_response") {
@@ -168,6 +235,65 @@ export async function requestMoodleTasks(
     window.parent.postMessage(
       {
         type: "PPS_MOODLE_TASKS_REQUEST",
+        version: 1,
+        requestId,
+        courseId: MOODLE_COURSE_ID,
+        cmids,
+      },
+      MOODLE_ORIGIN
+    );
+  });
+}
+
+export async function requestJefeMoodleTasks(
+  rawCmids: Array<string | number>,
+  timeoutMs = 45_000
+): Promise<JefeMoodleTasksResult> {
+  if (!isEmbeddedInMoodle()) throw new MoodleBridgeError("not_embedded");
+
+  const cmids = [...new Set(rawCmids.map(String))]
+    .filter((value) => /^\d+$/.test(value))
+    .map(Number)
+    .filter((value) => Number.isSafeInteger(value) && value > 0)
+    .slice(0, 20);
+  if (cmids.length === 0) throw new MoodleBridgeError("invalid_response");
+
+  const requestId = createRequestId();
+
+  return new Promise<JefeMoodleTasksResult>((resolve, reject) => {
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onMessage);
+      window.clearTimeout(timeout);
+      callback();
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== MOODLE_ORIGIN || event.source !== window.parent) return;
+      const candidate = jefeMoodleTasksResultSchema.safeParse(event.data);
+      if (!candidate.success || candidate.data.requestId !== requestId) return;
+      const requested = new Set(cmids);
+      const returned = new Set(candidate.data.tasks.map((task) => task.cmid));
+      if (
+        candidate.data.tasks.some((task) => !requested.has(task.cmid)) ||
+        returned.size !== requested.size ||
+        [...requested].some((cmid) => !returned.has(cmid))
+      ) {
+        finish(() => reject(new MoodleBridgeError("invalid_response")));
+        return;
+      }
+      finish(() => resolve(candidate.data));
+    };
+    const timeout = window.setTimeout(
+      () => finish(() => reject(new MoodleBridgeError("timeout"))),
+      timeoutMs
+    );
+
+    window.addEventListener("message", onMessage);
+    window.parent.postMessage(
+      {
+        type: "PPS_MOODLE_JEFE_TASKS_REQUEST",
         version: 1,
         requestId,
         courseId: MOODLE_COURSE_ID,

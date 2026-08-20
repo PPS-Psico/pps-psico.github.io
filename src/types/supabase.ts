@@ -1473,6 +1473,8 @@ export type Database = {
           received_at: string
           request_id: string
           submitted: boolean
+          submitted_at: string | null
+          submitted_at_display: string | null
           task_status: string
         }
         Insert: {
@@ -1498,6 +1500,8 @@ export type Database = {
           received_at?: string
           request_id: string
           submitted?: boolean
+          submitted_at?: string | null
+          submitted_at_display?: string | null
           task_status: string
         }
         Update: {
@@ -1523,6 +1527,8 @@ export type Database = {
           received_at?: string
           request_id?: string
           submitted?: boolean
+          submitted_at?: string | null
+          submitted_at_display?: string | null
           task_status?: string
         }
         Relationships: [
@@ -1626,6 +1632,8 @@ export type Database = {
           reopened_at: string | null
           scan_closed: boolean
           submitted: boolean
+          submitted_at: string | null
+          submitted_at_display: string | null
           task_status: string
         }
         Insert: {
@@ -1656,6 +1664,8 @@ export type Database = {
           reopened_at?: string | null
           scan_closed?: boolean
           submitted?: boolean
+          submitted_at?: string | null
+          submitted_at_display?: string | null
           task_status: string
         }
         Update: {
@@ -1686,6 +1696,8 @@ export type Database = {
           reopened_at?: string | null
           scan_closed?: boolean
           submitted?: boolean
+          submitted_at?: string | null
+          submitted_at_display?: string | null
           task_status?: string
         }
         Relationships: [
@@ -3085,6 +3097,26 @@ export type Database = {
         Args: { p_cutoff?: string; p_year?: number }
         Returns: Json
       }
+      get_jefe_moodle_sync_tasks_preview_v1: {
+        Args: { p_preview_key: string }
+        Returns: {
+          academic_year: number
+          area_keys: string[]
+          cmid: number
+          course_id: number
+          task_name: string
+        }[]
+      }
+      get_jefe_moodle_sync_tasks_v1: {
+        Args: never
+        Returns: {
+          academic_year: number
+          area_keys: string[]
+          cmid: number
+          course_id: number
+          task_name: string
+        }[]
+      }
       get_metrics_years: { Args: never; Returns: Json }
       get_moodle_grade_discrepancies: {
         Args: never
@@ -3560,6 +3592,31 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      sync_jefe_moodle_reports_preview_v1: {
+        Args: {
+          p_academic_year: number
+          p_actor_moodle_user_id: number
+          p_actor_moodle_username: string
+          p_course_id: number
+          p_observed_at: string
+          p_preview_key: string
+          p_request_id: string
+          p_tasks: Json
+        }
+        Returns: Json
+      }
+      sync_jefe_moodle_reports_v1: {
+        Args: {
+          p_academic_year: number
+          p_actor_moodle_user_id: number
+          p_actor_moodle_username: string
+          p_course_id: number
+          p_observed_at: string
+          p_request_id: string
+          p_tasks: Json
+        }
+        Returns: Json
       }
       update_jefe_report_grade_v1: {
         Args: { p_grade: string; p_practica_id: string }

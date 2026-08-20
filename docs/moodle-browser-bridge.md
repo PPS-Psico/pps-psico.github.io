@@ -68,13 +68,42 @@ Versión inicial propuesta: `pps-moodle-bridge/v1`.
       "gradeValue": 83,
       "gradeMax": 100,
       "gradeDisplay": "83,00 / 100,00",
-      "gradedAtDisplay": "lunes, 10 de agosto de 2026, 11:09"
+      "gradedAtDisplay": "lunes, 10 de agosto de 2026, 11:09",
+      "submittedAt": "2026-07-21T04:12:00.000Z",
+      "submittedAtDisplay": "martes, 21 de julio de 2026, 01:12"
     }
   ]
 }
 ```
 
 Estados permitidos: `no_access`, `not_submitted`, `submitted`, `graded`, `parse_error`.
+
+### Barrido anual de jefatura
+
+El panel de Jefe usa un mensaje separado. El iframe sólo envía los `cmid`
+devueltos por `get_jefe_moodle_sync_tasks_v1()` o, dentro del simulador Admin,
+por `get_jefe_moodle_sync_tasks_preview_v1(preview_key)`; el documento padre abre
+`action=grading&perpage=-1&status=submitted`, extrae únicamente las columnas
+necesarias de la tabla y nunca devuelve archivos ni HTML completo.
+
+```json
+{
+  "type": "PPS_MOODLE_JEFE_TASKS_REQUEST",
+  "version": 1,
+  "requestId": "uuid-aleatorio",
+  "courseId": 3615,
+  "cmids": [1109159, 1110106]
+}
+```
+
+Cada fila de `PPS_MOODLE_JEFE_TASKS_RESULT` incluye el `cmid`, DNI/usuario
+Moodle del estudiante, estado, nota bruta y la fecha real de última modificación
+de la entrega. El resultado identifica además al usuario Moodle que realizó la
+lectura. `sync_jefe_moodle_reports_v1` verifica la identidad de la jefatura real.
+En el simulador, `sync_jefe_moodle_reports_preview_v1` exige un rol
+`SuperUser`/`AdminTester`, vuelve a resolver la clave opaca seleccionada y limita
+el lote a sus áreas y tareas antes de persistir. Ambos caminos comparten la misma
+resolución cerrada por `cmid + DNI`; una coincidencia ambigua no se aplica.
 
 ## Reglas del documento padre Moodle
 
@@ -104,6 +133,7 @@ La observación debe ser append-only e incluir como mínimo:
 - estudiante, práctica, lanzamiento y cmid;
 - Moodle user id observado;
 - estado de entrega;
+- fecha real de entrega mostrada por Moodle y su texto original;
 - `grade_value`, `grade_max` y texto original;
 - fecha de calificación;
 - `observed_at`;
@@ -152,7 +182,15 @@ pueden leer el estudiante seleccionado.
 
 ## Conciliación masiva
 
-El puente de navegador es oportunista: recoge y aplica información cuando cada estudiante inicia su panel dentro de Moodle. No realiza un barrido de alumnos que no hayan ingresado. Para completar el universo histórico existen dos caminos:
+La sesión estudiantil sigue siendo oportunista, pero la jefatura ya realiza un
+barrido automático de las tareas únicas del año corriente de sus orientaciones.
+Esto cubre relanzamientos que reutilizan la misma tarea sin repetir solicitudes:
+el backend asocia cada entrega a su práctica mediante `cmid + DNI`. Las
+coincidencias duplicadas se informan y quedan sin aplicar para evitar asignar
+una entrega al relanzamiento equivocado.
+
+Para completar años históricos o trabajar sin una sesión Moodle de jefatura se
+mantienen dos caminos:
 
 1. exportación CSV/TSV normalizada del libro de calificaciones e importación administrativa, primero en modo dry-run y luego en modo aplicar;
 2. servicio web Moodle restringido, consumido por una Edge Function.

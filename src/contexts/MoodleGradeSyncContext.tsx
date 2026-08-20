@@ -148,6 +148,8 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
             gradeMax: task.gradeMax,
             gradeDisplay: task.gradeDisplay,
             gradedAtDisplay: task.gradedAtDisplay,
+            submittedAt: task.submittedAt ?? null,
+            submittedAtDisplay: task.submittedAtDisplay ?? null,
           }))
         );
         if (observations.length === 0) throw new MoodleBridgeError("invalid_response");

@@ -169,6 +169,7 @@
       "https://qxnxtnhtbpsgzprqtrjl.supabase.co/functions/v1/issue-moodle-signup-ticket";
     var EXPECTED_COURSE_ID = 3615;
     var MAX_TASKS = 20;
+    var MAX_JEFE_ROWS = 1000;
     var FETCH_TIMEOUT_MS = 10000;
     var f = document.getElementById("pps-aula-frame");
     var embed = document.getElementById("pps-aula-embed");
@@ -195,17 +196,13 @@
 
     function resolvedText(value) {
       var result = cleanText(value);
-      return result && result.indexOf("{") === -1 && result.indexOf("}") === -1
-        ? result
-        : "";
+      return result && result.indexOf("{") === -1 && result.indexOf("}") === -1 ? result : "";
     }
 
     function validRequestId(value) {
       return (
         typeof value === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-          value
-        )
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
       );
     }
 
@@ -222,10 +219,7 @@
       return {
         courseId: COURSE_ID,
         moodleUserId: Number(embed.getAttribute("data-moodle-user-id")),
-        moodleUsername: resolvedText(embed.getAttribute("data-moodle-username")).replace(
-          /\D/g,
-          ""
-        ),
+        moodleUsername: resolvedText(embed.getAttribute("data-moodle-username")).replace(/\D/g, ""),
         email: resolvedText(embed.getAttribute("data-email")).toLowerCase(),
         firstname: resolvedText(embed.getAttribute("data-firstname")),
         lastname: resolvedText(embed.getAttribute("data-lastname")),
@@ -272,6 +266,83 @@
       return Number.isFinite(result) ? result : null;
     }
 
+    function parseMoodleSubmissionDate(value) {
+      var display = cleanText(value);
+      if (!display) return null;
+
+      var normalized = normalizeText(display);
+      var months = {
+        enero: 1,
+        january: 1,
+        febrero: 2,
+        february: 2,
+        marzo: 3,
+        march: 3,
+        abril: 4,
+        april: 4,
+        mayo: 5,
+        may: 5,
+        junio: 6,
+        june: 6,
+        julio: 7,
+        july: 7,
+        agosto: 8,
+        august: 8,
+        septiembre: 9,
+        september: 9,
+        setiembre: 9,
+        octubre: 10,
+        october: 10,
+        noviembre: 11,
+        november: 11,
+        diciembre: 12,
+        december: 12,
+      };
+      var match = normalized.match(
+        /(\d{1,2})\s+(?:de\s+)?([a-z]+)\s+(?:de\s+)?(\d{4})[^\d]+(\d{1,2}):(\d{2})(?:\s*([ap])\.?\s*m\.?)?/
+      );
+      if (!match || !months[match[2]]) return null;
+
+      var day = Number(match[1]);
+      var month = months[match[2]];
+      var year = Number(match[3]);
+      var hour = Number(match[4]);
+      var minute = Number(match[5]);
+      var meridiem = match[6] || "";
+      if (meridiem === "p" && hour < 12) hour += 12;
+      if (meridiem === "a" && hour === 12) hour = 0;
+      if (
+        year < 2020 ||
+        year > 2100 ||
+        day < 1 ||
+        day > 31 ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59
+      ) {
+        return null;
+      }
+
+      var pad = function (number) {
+        return String(number).padStart(2, "0");
+      };
+      var argentinaTime =
+        year +
+        "-" +
+        pad(month) +
+        "-" +
+        pad(day) +
+        "T" +
+        pad(hour) +
+        ":" +
+        pad(minute) +
+        ":00-03:00";
+      var parsed = new Date(argentinaTime);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return { iso: parsed.toISOString(), display: display.slice(0, 200) };
+    }
+
     function rowsFromDocument(doc) {
       return Array.prototype.map.call(
         doc.querySelectorAll(".feedbacktable tr, .submissionstatustable tr, table.generaltable tr"),
@@ -304,6 +375,8 @@
       var gradeMax = null;
       var gradeDisplay = null;
       var gradedAtDisplay = null;
+      var submittedAt = null;
+      var submittedAtDisplay = null;
       var submitted = false;
       var explicitNotSubmitted = false;
 
@@ -337,6 +410,19 @@
             explicitNotSubmitted = true;
           }
         }
+
+        if (
+          label === "ultima modificacion" ||
+          label === "last modified" ||
+          label.indexOf("fecha de envio") > -1 ||
+          label.indexOf("submission date") > -1
+        ) {
+          var parsedSubmissionDate = parseMoodleSubmissionDate(value);
+          if (parsedSubmissionDate) {
+            submittedAt = parsedSubmissionDate.iso;
+            submittedAtDisplay = parsedSubmissionDate.display;
+          }
+        }
       });
 
       if (
@@ -354,6 +440,8 @@
           gradeMax: gradeMax,
           gradeDisplay: gradeDisplay,
           gradedAtDisplay: gradedAtDisplay,
+          submittedAt: submittedAt,
+          submittedAtDisplay: submittedAtDisplay,
         };
       }
 
@@ -366,6 +454,8 @@
           gradeMax: null,
           gradeDisplay: null,
           gradedAtDisplay: null,
+          submittedAt: submittedAt,
+          submittedAtDisplay: submittedAtDisplay,
         };
       }
 
@@ -378,6 +468,8 @@
           gradeMax: null,
           gradeDisplay: null,
           gradedAtDisplay: null,
+          submittedAt: null,
+          submittedAtDisplay: null,
         };
       }
 
@@ -389,6 +481,8 @@
         gradeMax: null,
         gradeDisplay: null,
         gradedAtDisplay: null,
+        submittedAt: null,
+        submittedAtDisplay: null,
       };
     }
 
@@ -401,6 +495,8 @@
         gradeMax: null,
         gradeDisplay: null,
         gradedAtDisplay: null,
+        submittedAt: null,
+        submittedAtDisplay: null,
       };
     }
 
@@ -452,6 +548,221 @@
       for (var i = 0; i < Math.min(3, cmids.length); i += 1) workers.push(worker());
       return Promise.all(workers).then(function () {
         return results;
+      });
+    }
+
+    function directCells(row) {
+      return Array.prototype.filter.call(row.children || [], function (cell) {
+        return cell.tagName === "TD" || cell.tagName === "TH";
+      });
+    }
+
+    function findHeaderIndex(headers, alternatives) {
+      for (var i = 0; i < headers.length; i += 1) {
+        var header = normalizeText(headers[i]);
+        for (var j = 0; j < alternatives.length; j += 1) {
+          if (header.indexOf(alternatives[j]) > -1) return i;
+        }
+      }
+      return -1;
+    }
+
+    function jefeTaskFailure(cmid, status, errorCode) {
+      return { cmid: cmid, status: status, errorCode: errorCode, rows: [] };
+    }
+
+    function parseJefeGradingDocument(cmid, doc) {
+      var table = doc.querySelector("table#submissions");
+      if (!table || !table.tBodies || table.tBodies.length === 0) {
+        var emptyPageText = normalizeText(doc.body ? doc.body.textContent : "");
+        if (
+          emptyPageText.indexOf("nada que mostrar") > -1 ||
+          emptyPageText.indexOf("nothing to display") > -1 ||
+          emptyPageText.indexOf("no hay entregas") > -1
+        ) {
+          return { cmid: cmid, status: "ok", errorCode: null, rows: [] };
+        }
+        return jefeTaskFailure(cmid, "parse_error", "submissions_table_missing");
+      }
+
+      var headerRow = table.tHead && table.tHead.rows.length ? table.tHead.rows[0] : null;
+      if (!headerRow) {
+        return jefeTaskFailure(cmid, "parse_error", "submissions_header_missing");
+      }
+      var headers = directCells(headerRow).map(function (cell) {
+        return cleanText(cell.textContent);
+      });
+      var usernameIndex = findHeaderIndex(headers, ["nombre de usuario", "username"]);
+      var emailIndex = findHeaderIndex(headers, ["direccion de correo", "email address"]);
+      var statusIndex = findHeaderIndex(headers, ["estado", "status"]);
+      var gradeIndex = findHeaderIndex(headers, ["calificacion", "grade"]);
+      var submittedAtIndex = findHeaderIndex(headers, [
+        "ultima modificacion (entrega)",
+        "last modified (submission)",
+      ]);
+      var gradedAtIndex = findHeaderIndex(headers, [
+        "ultima modificacion (calificacion)",
+        "last modified (grade)",
+      ]);
+
+      if (usernameIndex < 0 || statusIndex < 0 || submittedAtIndex < 0) {
+        return jefeTaskFailure(cmid, "parse_error", "required_columns_missing");
+      }
+
+      var rows = [];
+      var tableRows = Array.prototype.slice.call(table.tBodies[0].children || []);
+      tableRows.forEach(function (row) {
+        if (!row || row.tagName !== "TR") return;
+        var cells = directCells(row);
+        if (cells.length <= Math.max(usernameIndex, statusIndex, submittedAtIndex)) return;
+
+        var moodleUsername = cleanText(cells[usernameIndex].textContent).replace(/\D/g, "");
+        if (!/^\d{6,12}$/.test(moodleUsername)) return;
+
+        var statusText = normalizeText(cells[statusIndex].textContent);
+        var submitted =
+          statusText.indexOf("enviado para calificar") > -1 ||
+          statusText.indexOf("entregado") > -1 ||
+          statusText.indexOf("submitted for grading") > -1;
+
+        var gradeValue = null;
+        var gradeMax = null;
+        var gradeDisplay = null;
+        if (gradeIndex >= 0 && cells[gradeIndex]) {
+          var gradeText = cleanText(cells[gradeIndex].textContent);
+          var gradeMatch = gradeText.match(/(-?[\d.,]+)\s*\/\s*([\d.,]+)/);
+          if (gradeMatch) {
+            gradeValue = parseLocaleNumber(gradeMatch[1]);
+            gradeMax = parseLocaleNumber(gradeMatch[2]);
+            if (
+              gradeValue === null ||
+              gradeMax === null ||
+              gradeMax <= 0 ||
+              gradeValue < 0 ||
+              gradeValue > gradeMax
+            ) {
+              gradeValue = null;
+              gradeMax = null;
+            } else {
+              gradeDisplay = cleanText(gradeMatch[0]).slice(0, 160);
+              submitted = true;
+            }
+          }
+        }
+        if (!submitted) return;
+
+        var parsedSubmissionDate = parseMoodleSubmissionDate(
+          cleanText(cells[submittedAtIndex].textContent)
+        );
+        var classMatch = cleanText(row.className).match(/(?:^|\s)user(\d+)(?:\s|$)/);
+        var profileLink = row.querySelector('a[href*="/user/view.php?id="]');
+        var hrefMatch = profileLink
+          ? String(profileLink.getAttribute("href") || "").match(/[?&]id=(\d+)/)
+          : null;
+        var moodleUserId = Number(classMatch ? classMatch[1] : hrefMatch ? hrefMatch[1] : 0);
+        if (!Number.isSafeInteger(moodleUserId) || moodleUserId <= 0) return;
+
+        var email =
+          emailIndex >= 0 && cells[emailIndex] ? cleanText(cells[emailIndex].textContent) : "";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) email = null;
+        var gradedAtDisplay =
+          gradedAtIndex >= 0 && cells[gradedAtIndex]
+            ? cleanText(cells[gradedAtIndex].textContent)
+            : "";
+        if (!gradedAtDisplay || gradedAtDisplay === "-") gradedAtDisplay = null;
+
+        rows.push({
+          moodleUserId: moodleUserId,
+          moodleUsername: moodleUsername,
+          email: email,
+          status: gradeValue !== null ? "graded" : "submitted",
+          submitted: true,
+          gradeValue: gradeValue,
+          gradeMax: gradeMax,
+          gradeDisplay: gradeDisplay,
+          gradedAtDisplay: gradedAtDisplay ? gradedAtDisplay.slice(0, 200) : null,
+          submittedAt: parsedSubmissionDate ? parsedSubmissionDate.iso : null,
+          submittedAtDisplay: parsedSubmissionDate ? parsedSubmissionDate.display : null,
+        });
+      });
+
+      if (rows.length > 500) return jefeTaskFailure(cmid, "parse_error", "task_row_limit");
+      return { cmid: cmid, status: "ok", errorCode: null, rows: rows };
+    }
+
+    function fetchJefeTask(cmid) {
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () {
+        controller.abort();
+      }, FETCH_TIMEOUT_MS);
+      var url =
+        "/mod/assign/view.php?id=" +
+        encodeURIComponent(cmid) +
+        "&action=grading&perpage=-1&status=submitted";
+
+      return fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { Accept: "text/html" },
+      })
+        .then(function (response) {
+          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          return response.text();
+        })
+        .then(function (html) {
+          if (!html) return jefeTaskFailure(cmid, "no_access", "grading_page_unavailable");
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          return parseJefeGradingDocument(cmid, doc);
+        })
+        .catch(function () {
+          return jefeTaskFailure(cmid, "no_access", "grading_page_unavailable");
+        })
+        .finally(function () {
+          window.clearTimeout(timer);
+        });
+    }
+
+    function fetchJefeTasks(cmids) {
+      var results = new Array(cmids.length);
+      var cursor = 0;
+
+      function worker() {
+        var index = cursor++;
+        if (index >= cmids.length) return Promise.resolve();
+        return fetchJefeTask(cmids[index]).then(function (result) {
+          results[index] = result;
+          return worker();
+        });
+      }
+
+      var workers = [];
+      for (var i = 0; i < Math.min(2, cmids.length); i += 1) workers.push(worker());
+      return Promise.all(workers).then(function () {
+        var total = 0;
+        return results.map(function (task) {
+          total += task.rows.length;
+          if (total > MAX_JEFE_ROWS) {
+            return jefeTaskFailure(task.cmid, "parse_error", "response_row_limit");
+          }
+          return task;
+        });
+      });
+    }
+
+    function validJefeRequest(data) {
+      if (!data || data.type !== "PPS_MOODLE_JEFE_TASKS_REQUEST" || data.version !== 1) {
+        return false;
+      }
+      if (COURSE_ID !== EXPECTED_COURSE_ID || data.courseId !== COURSE_ID) return false;
+      if (!validRequestId(data.requestId)) return false;
+      if (!Array.isArray(data.cmids) || data.cmids.length < 1 || data.cmids.length > MAX_TASKS) {
+        return false;
+      }
+      return data.cmids.every(function (cmid) {
+        return Number.isSafeInteger(cmid) && cmid > 0;
       });
     }
 
@@ -546,6 +857,31 @@
           .catch(function () {
             // Fallo cerrado: sin ticket el panel sólo permite iniciar sesión.
           });
+        return;
+      }
+
+      if (validJefeRequest(data)) {
+        var jefeCmids = data.cmids.filter(function (cmid, index, all) {
+          return all.indexOf(cmid) === index;
+        });
+        fetchJefeTasks(jefeCmids).then(function (tasks) {
+          f.contentWindow.postMessage(
+            {
+              type: "PPS_MOODLE_JEFE_TASKS_RESULT",
+              version: 1,
+              requestId: data.requestId,
+              courseId: COURSE_ID,
+              observedAt: new Date().toISOString(),
+              moodleUserId: Number(embed.getAttribute("data-moodle-user-id")),
+              moodleUsername: cleanText(embed.getAttribute("data-moodle-username")).replace(
+                /\D/g,
+                ""
+              ),
+              tasks: tasks,
+            },
+            PANEL_ORIGIN
+          );
+        });
         return;
       }
 

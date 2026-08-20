@@ -13,6 +13,18 @@ const formatDate = (value: string | null): string => {
     .replace(".", "");
 };
 
+const formatSubmissionDate = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Sin fecha";
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "America/Argentina/Buenos_Aires",
+  })
+    .format(date)
+    .replace(".", "");
+};
+
 const plural = (count: number, one: string, many = `${one}s`) => (count === 1 ? one : many);
 
 const normalizedGrade = (grade: string | null): string => {
@@ -107,8 +119,10 @@ const ReportRow: React.FC<{
       </span>
     </div>
     <div className="jefe-report-row__date">
-      <span>ENTREGADO</span>
-      <strong>{formatDate(report.submitted_at)}</strong>
+      <span>{report.submitted_at ? "ENTREGADO" : "FECHA DE ENTREGA"}</span>
+      <strong>
+        {report.submitted_at ? formatSubmissionDate(report.submitted_at) : "No sincronizada"}
+      </strong>
     </div>
     <UrgencyBadge report={report} />
     <div className="jefe-report-row__actions">
@@ -178,6 +192,14 @@ export const JefeHomePanel: React.FC<
               {data.queue.soon === 1 ? "llega" : "llegan"} al plazo esta semana.
             </span>
           )}
+          {data.queue.undated > 0 && (
+            <>
+              {" "}
+              <span>
+                {data.queue.undated} {plural(data.queue.undated, "entrega")} sin fecha verificable.
+              </span>
+            </>
+          )}
         </p>
         <p className="jefe-hero__note">
           El orden usa 30 días corridos desde la entrega registrada. Los casos con más de 60 días de
@@ -235,6 +257,11 @@ export const JefeHomePanel: React.FC<
             <strong>{data.queue.on_time}</strong>
             <p>Seguimiento interno normal</p>
           </div>
+          <div className="jefe-status-item jefe-status-item--undated">
+            <span>SIN FECHA</span>
+            <strong>{data.queue.undated}</strong>
+            <p>Requieren sincronizar la fecha real</p>
+          </div>
         </aside>
       </div>
 
@@ -271,7 +298,7 @@ export const JefeHomePanel: React.FC<
   );
 };
 
-type ReportFilter = "all" | "critical" | "soon" | "on_time";
+type ReportFilter = "all" | "critical" | "soon" | "on_time" | "undated";
 
 export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
   data,
@@ -290,9 +317,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
     return data.reports.filter((report) => {
       if (report.report_status !== "pending") return false;
       if (filter !== "all") {
-        const matchesOnTime =
-          filter === "on_time" && (report.urgency === "on_time" || report.urgency === "undated");
-        if (!matchesOnTime && report.urgency !== filter) return false;
+        if (report.urgency !== filter) return false;
       }
       if (!term) return true;
       return `${report.student_name} ${report.pps_name} ${report.orientation}`
@@ -310,6 +335,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
     { id: "critical", label: "Críticos", count: data.queue.critical },
     { id: "soon", label: "Esta semana", count: data.queue.soon },
     { id: "on_time", label: "En plazo", count: data.queue.on_time },
+    { id: "undated", label: "Sin fecha", count: data.queue.undated },
   ];
 
   return (

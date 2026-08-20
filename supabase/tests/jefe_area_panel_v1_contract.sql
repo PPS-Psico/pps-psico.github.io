@@ -8,6 +8,7 @@ declare
   v_expected_fixed integer;
   v_report_total integer;
   v_report_parts integer;
+  v_queue jsonb;
 begin
   if (select count(*) from private.jefe_area_assignments) <> 4 then
     raise exception 'Se esperaban cuatro asignaciones área/DNI';
@@ -87,6 +88,68 @@ begin
     raise exception 'A partir del día 61 el informe debe pasar a stale';
   end if;
 
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'moodle_grade_observations'
+      and column_name = 'submitted_at'
+  ) or not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'moodle_grade_snapshots'
+      and column_name = 'submitted_at'
+  ) then
+    raise exception 'El ledger y el snapshot deben conservar la fecha real de entrega Moodle';
+  end if;
+
+  if pg_get_functiondef('private.jefe_report_rows_v1(text[])'::regprocedure)
+       like '%min(o.observed_at)%'
+     or pg_get_functiondef('private.jefe_report_rows_v1(text[])'::regprocedure)
+       not like '%min(o.submitted_at)%' then
+    raise exception 'La cola no debe confundir la fecha de observación con la fecha de entrega';
+  end if;
+
+  v_queue := private.reconcile_jefe_report_queue_v1(jsonb_build_object(
+    'reports', jsonb_build_array(
+      jsonb_build_object('report_status', 'pending', 'urgency', 'on_time'),
+      jsonb_build_object('report_status', 'pending', 'urgency', 'undated')
+    )
+  )) -> 'queue';
+
+  if (v_queue ->> 'pending')::integer <> 2
+     or (v_queue ->> 'on_time')::integer <> 1
+     or (v_queue ->> 'undated')::integer <> 1 then
+    raise exception 'Las entregas sin fecha deben reconciliar separadas de las entregas en plazo';
+  end if;
+
+  if exists (select 1 from public.estudiantes where dni = 44684830)
+     and not exists (
+       select 1
+       from private.jefe_report_rows_v1(array['educacional']) r
+       join public.estudiantes e on e.id = r.estudiante_id
+       where e.dni = 44684830
+         and r.pps_name = 'Ministerio de Juventud, Deportes y Cultura'
+         and r.submitted_at = timestamptz '2026-07-21 01:12:00-03'
+         and r.deadline_at = date '2026-08-20'
+     ) then
+    raise exception 'La entrega informada de Santiago debe vencer el 20/08/2026';
+  end if;
+
+  if exists (select 1 from public.estudiantes where dni = 44684830)
+     and not exists (
+       select 1
+       from private.jefe_report_rows_v1(array['educacional']) r
+       join public.estudiantes e on e.id = r.estudiante_id
+       where e.dni = 44684830
+         and r.pps_name = 'Instituto de Formación Docente N6'
+         and r.submitted_at = timestamptz '2026-08-04 15:17:00-03'
+         and r.deadline_at = date '2026-09-03'
+     ) then
+    raise exception 'La segunda entrega de Santiago debe conservar la fecha real del 04/08/2026';
+  end if;
+
   if exists (
     select 1
     from private.jefe_report_rows_v1(array['clinica', 'educacional', 'laboral', 'comunitaria'])
@@ -112,6 +175,22 @@ begin
 
   if has_function_privilege('anon', 'public.get_jefe_dashboard_v1(integer,date)', 'execute')
      or has_function_privilege('anon', 'public.update_jefe_report_grade_v1(uuid,text)', 'execute')
+     or has_function_privilege('anon', 'public.get_jefe_moodle_sync_tasks_v1()', 'execute')
+     or has_function_privilege(
+       'anon',
+       'public.sync_jefe_moodle_reports_v1(uuid,bigint,integer,timestamptz,bigint,text,jsonb)',
+       'execute'
+     )
+     or has_function_privilege(
+       'anon',
+       'public.get_jefe_moodle_sync_tasks_preview_v1(uuid)',
+       'execute'
+     )
+     or has_function_privilege(
+       'anon',
+       'public.sync_jefe_moodle_reports_preview_v1(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)',
+       'execute'
+     )
      or has_function_privilege('anon', 'public.get_jefe_dashboard_preview_v1(bigint,integer,date)', 'execute')
      or has_function_privilege('anon', 'public.get_jefe_dashboard_preview_v2(uuid,integer,date)', 'execute')
      or has_function_privilege('anon', 'public.list_jefe_preview_profiles_v1()', 'execute') then
@@ -140,10 +219,28 @@ begin
        'private.jefe_report_status_v1(boolean,boolean,date,date)',
        'execute'
      )
+     or has_function_privilege(
+       'authenticated',
+       'private.reconcile_jefe_report_queue_v1(jsonb)',
+       'execute'
+     )
      or has_function_privilege('authenticated', 'private.jefe_annual_offers_v1(text[],integer,date)', 'execute')
      or has_function_privilege('authenticated', 'private.build_jefe_dashboard_v1(bigint,text[],integer,date)', 'execute')
      or has_function_privilege('authenticated', 'private.require_jefe_preview_access_v1()', 'execute') then
     raise exception 'Los helpers con áreas arbitrarias deben quedar privados';
+  end if;
+
+  if has_function_privilege(
+       'authenticated',
+       'private.get_jefe_moodle_sync_tasks_for_areas_v1(text[])',
+       'execute'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)',
+       'execute'
+     ) then
+    raise exception 'El cliente no debe poder elegir áreas arbitrarias para sincronizar Moodle';
   end if;
 
   if pg_get_functiondef(
@@ -160,6 +257,96 @@ begin
   if pg_get_functiondef('private.get_jefe_dashboard_v1_impl(integer,date)'::regprocedure)
      not like '%build_jefe_dashboard_v1%' then
     raise exception 'La vista real y la simulación deben compartir el mismo cálculo';
+  end if;
+
+  if not has_function_privilege(
+       'authenticated', 'public.get_jefe_moodle_sync_tasks_v1()', 'execute'
+     )
+     or not has_function_privilege(
+       'authenticated',
+       'public.sync_jefe_moodle_reports_v1(uuid,bigint,integer,timestamptz,bigint,text,jsonb)',
+       'execute'
+     )
+     or not has_function_privilege(
+       'authenticated', 'private.get_jefe_moodle_sync_tasks_v1_impl()', 'execute'
+     )
+     or not has_function_privilege(
+       'authenticated',
+       'private.sync_jefe_moodle_reports_v1_impl(uuid,bigint,integer,timestamptz,bigint,text,jsonb)',
+       'execute'
+     )
+     or not has_function_privilege(
+       'authenticated',
+       'public.get_jefe_moodle_sync_tasks_preview_v1(uuid)',
+       'execute'
+     )
+     or not has_function_privilege(
+       'authenticated',
+       'public.sync_jefe_moodle_reports_preview_v1(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)',
+       'execute'
+     ) then
+    raise exception 'La jefatura y el simulador necesitan los RPC protegidos del barrido Moodle anual';
+  end if;
+
+  if (
+       select p.prosecdef
+       from pg_proc p
+       where p.oid = 'public.get_jefe_moodle_sync_tasks_v1()'::regprocedure
+     )
+     or (
+       select p.prosecdef
+       from pg_proc p
+       where p.oid =
+         'public.sync_jefe_moodle_reports_v1(uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+     )
+     or (
+       select p.prosecdef
+       from pg_proc p
+       where p.oid = 'public.get_jefe_moodle_sync_tasks_preview_v1(uuid)'::regprocedure
+     )
+     or (
+       select p.prosecdef
+       from pg_proc p
+       where p.oid =
+         'public.sync_jefe_moodle_reports_preview_v1(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+     ) then
+    raise exception 'Los RPC públicos del barrido Moodle deben ser SECURITY INVOKER';
+  end if;
+
+  if pg_get_functiondef(
+       'private.get_jefe_moodle_sync_tasks_for_areas_v1(text[])'::regprocedure
+     ) not like '%ae.academic_year = v_year%'
+     or pg_get_functiondef(
+       'private.get_jefe_moodle_sync_tasks_for_areas_v1(text[])'::regprocedure
+     ) not like '%group by t.course_id, t.cmid%' then
+    raise exception 'El barrido Moodle debe limitarse al año corriente y deduplicar por tarea';
+  end if;
+
+  if pg_get_functiondef(
+       'private.get_jefe_moodle_sync_tasks_v1_impl()'::regprocedure
+     ) not like '%get_jefe_moodle_sync_tasks_for_areas_v1%' then
+    raise exception 'La jefatura real y la simulada deben compartir el catálogo anual de tareas';
+  end if;
+
+  if pg_get_functiondef(
+       'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+     ) not like '%c.candidate_count = 1%'
+     or pg_get_functiondef(
+       'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+     ) not like '%Jefe Moodle identity not configured%' then
+    raise exception 'La ingesta de jefatura debe fallar cerrado ante mapeos o identidades ambiguas';
+  end if;
+
+  if pg_get_functiondef(
+       'private.get_jefe_moodle_sync_tasks_preview_v1_impl(uuid)'::regprocedure
+     ) not like '%require_jefe_preview_access_v1%'
+     or pg_get_functiondef(
+       'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+     ) not like '%jefe_area_year_preview%'
+     or pg_get_functiondef(
+       'private.sync_jefe_moodle_reports_v1_impl(uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+     ) not like '%sync_jefe_moodle_reports_scoped_v1_impl%' then
+    raise exception 'El simulador debe compartir la ingesta anual y revalidar Admin + preview_key';
   end if;
 
   if has_function_privilege('authenticated', 'public.get_moodle_jefe_login_candidate_v1(text)', 'execute')

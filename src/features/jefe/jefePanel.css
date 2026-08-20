@@ -250,6 +250,10 @@
   color: var(--jefe-ok);
   border-color: color-mix(in oklab, var(--jefe-ok) 45%, var(--jefe-rule));
 }
+.jefe-urgency--undated {
+  color: var(--jefe-ink-3);
+  border-color: var(--jefe-rule-strong);
+}
 .jefe-urgency--stale {
   color: var(--jefe-ink-3);
   border-color: var(--jefe-rule);
@@ -362,6 +366,57 @@
 .jefe-preview-notice > span:last-child {
   color: var(--jefe-ink-3);
 }
+.jefe-sync-notice {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px max(24px, calc((100vw - 1180px) / 2));
+  border-bottom: 1px solid var(--jefe-rule);
+  background: color-mix(in oklab, var(--jefe-paper-2) 72%, transparent);
+  color: var(--jefe-ink-2);
+  font-size: 11px;
+}
+.jefe-sync-notice > .material-icons {
+  color: var(--jefe-accent);
+  font-size: 18px;
+}
+.jefe-sync-notice--syncing > .material-icons {
+  animation: jefe-sync-spin 1.2s linear infinite;
+}
+.jefe-sync-notice--partial > .material-icons,
+.jefe-sync-notice--error > .material-icons {
+  color: var(--jefe-warn);
+}
+.jefe-sync-notice > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.jefe-sync-notice strong {
+  color: var(--jefe-ink);
+  font-weight: 750;
+}
+.jefe-sync-notice > div > span {
+  color: var(--jefe-ink-3);
+}
+.jefe-sync-notice button {
+  margin-left: auto;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  padding: 3px 0;
+  background: transparent;
+  color: var(--jefe-ink-2);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+@keyframes jefe-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .jefe-status-rail {
   border-left: 1px solid var(--jefe-rule);
   padding-left: 28px;
@@ -402,6 +457,9 @@
 }
 .jefe-status-item--ok strong {
   color: var(--jefe-ok);
+}
+.jefe-status-item--undated strong {
+  color: var(--jefe-ink-3);
 }
 
 .jefe-panorama-peek {
@@ -908,7 +966,7 @@
   }
   .jefe-status-rail {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
   }
   .jefe-status-rail > .jefe-context-line {
@@ -1028,6 +1086,17 @@
     width: 100%;
     padding-left: 25px;
   }
+  .jefe-sync-notice {
+    align-items: flex-start;
+    padding: 11px 16px;
+  }
+  .jefe-sync-notice > div {
+    display: grid;
+    gap: 2px;
+  }
+  .jefe-sync-notice button {
+    align-self: center;
+  }
   .jefe-hero {
     margin-bottom: 40px;
   }
@@ -1084,7 +1153,7 @@
     min-width: 126px;
   }
   .jefe-status-rail {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
   .jefe-status-item strong {
