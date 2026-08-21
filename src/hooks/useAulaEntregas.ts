@@ -95,7 +95,13 @@ function groupRows(rows: AulaEntregaRow[]): DeliveryArea[] {
   for (const row of rows) {
     if (!row.activo || !row.moodle_id) continue;
     const list = byArea.get(row.area) ?? [];
-    list.push({ name: row.moodle_name || row.institucion, moodleId: String(row.moodle_id) });
+    // El alumno ve la institucion, nunca el rotulo interno de la tarea.
+    // moodle_name lleva el nombre canonico verboso que usa coordinacion para
+    // distinguir relanzamientos; queda como respaldo por si falta la institucion.
+    list.push({
+      name: row.institucion || row.moodle_name || "Espacio de entrega",
+      moodleId: String(row.moodle_id),
+    });
     byArea.set(row.area, list);
   }
   return [...byArea.entries()]
