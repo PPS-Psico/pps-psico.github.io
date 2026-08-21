@@ -1279,6 +1279,7 @@ export type Database = {
           lista_estudiantes_entregada_por: string | null
           mensaje_whatsapp: string | null
           modalidad_cupo: string
+          moodle_pilot_dedicated: boolean
           nombre_pps: string | null
           notas_gestion: string | null
           orientacion: string | null
@@ -1329,6 +1330,7 @@ export type Database = {
           lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
+          moodle_pilot_dedicated?: boolean
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null
@@ -1379,6 +1381,7 @@ export type Database = {
           lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
+          moodle_pilot_dedicated?: boolean
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null
@@ -2007,6 +2010,7 @@ export type Database = {
           desired_due_at: string | null
           desired_grade_max: number
           desired_grade_mode: string
+          desired_grading_due_at: string | null
           desired_name: string
           desired_open_at: string | null
           desired_section_key: string | null
@@ -2043,6 +2047,7 @@ export type Database = {
           desired_due_at?: string | null
           desired_grade_max?: number
           desired_grade_mode?: string
+          desired_grading_due_at?: string | null
           desired_name: string
           desired_open_at?: string | null
           desired_section_key?: string | null
@@ -2079,6 +2084,7 @@ export type Database = {
           desired_due_at?: string | null
           desired_grade_max?: number
           desired_grade_mode?: string
+          desired_grading_due_at?: string | null
           desired_name?: string
           desired_open_at?: string | null
           desired_section_key?: string | null
@@ -3014,6 +3020,7 @@ export type Database = {
           desired_due_at: string | null
           desired_grade_max: number
           desired_grade_mode: string
+          desired_grading_due_at: string | null
           desired_name: string
           desired_open_at: string | null
           desired_section_key: string | null

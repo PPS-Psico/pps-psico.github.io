@@ -58,10 +58,6 @@ function hasCompleteMoodleGrade(
   );
 }
 
-function compactNumber(value: number): string {
-  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(value);
-}
-
 export function formatMoodleObservationTime(value: string | null): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -80,7 +76,7 @@ export function presentMoodleGrade(
   if (!snapshot) return null;
 
   if (hasCompleteMoodleGrade(snapshot)) {
-    const grade = `${compactNumber(snapshot.grade_value)} / ${compactNumber(snapshot.grade_max)}`;
+    const scaledGrade = Math.round((snapshot.grade_value / snapshot.grade_max) * 10);
     return {
       label: "Calificación en Campus",
       detail:
@@ -89,7 +85,7 @@ export function presentMoodleGrade(
           : snapshot.graded_at_display
             ? `Corregida: ${snapshot.graded_at_display}. Registro final guardado.`
             : "La calificación quedó guardada y esta tarea ya no requiere nuevas consultas.",
-      compact: snapshot.grade_display || grade,
+      compact: String(scaledGrade),
       tone: snapshot.scan_closed === false ? "info" : "ok",
       hasGrade: true,
     };

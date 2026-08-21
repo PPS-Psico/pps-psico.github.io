@@ -67,6 +67,24 @@ válida.
 
 ## 5. Futuro worker dedicado
 
+### Regla de fechas que no se puede omitir
+
+Antes de guardar cualquier tarea, el worker debe setear **Recordarme calificar
+en** (`gradingduedate`) en una fecha **posterior o igual a la fecha de entrega**.
+Moodle valida las fechas entre sí y rechaza el guardado si no se cumple, pero
+el rechazo es indistinguible del éxito para un agente: el formulario se vuelve
+a mostrar sin cartel arriba y el mensaje queda al pie del bloque
+Disponibilidad. El campo trae un default cercano al día de creación, así que
+cualquier tarea con entrega a meses vista lo viola por defecto.
+
+Verificado a mano en el curso 3615 el 2026-08-20. De ahí salen dos reglas:
+
+1. `planTaskProvisioning` devuelve `needs_attention` con
+   `grading_due_before_due` o `missing_grading_due_at` antes de intentar un
+   guardado que Moodle no puede aceptar.
+2. Nunca marcar una tarea como creada sin releerla y confirmar `cmid`, nombre y
+   fechas. "Hice clic en Guardar" no es evidencia de nada.
+
 Antes de habilitar escrituras reales, el worker debe:
 
 1. reclamar como máximo 20 intenciones con token propio;

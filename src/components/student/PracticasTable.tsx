@@ -11,7 +11,11 @@ import {
   type MoodleGradeSnapshot,
   useMoodleGradeSync,
 } from "../../contexts/MoodleGradeSyncContext";
-import { getPracticePresentationStatus, isPracticeDisapproved } from "../../logic/studentRules";
+import {
+  getPracticePresentationStatus,
+  isPracticeActive,
+  isPracticeDisapproved,
+} from "../../logic/studentRules";
 import type { Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { haptics } from "../../utils/haptics";
@@ -69,6 +73,16 @@ const PracticaRow: React.FC<{
   const areaText = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
   const color = getAreaColor(areaText);
   const campusGrade = presentMoodleGrade(moodleSnapshot);
+  const horasReales = Number(practica[FIELD_HORAS_PRACTICAS] || 0);
+  // Mientras está en curso, mostramos al menos las horas que vale la PPS
+  // (piso informativo) sin tocar horas_realizadas, que sigue siendo lo que
+  // cuenta para la acreditación.
+  const horasMostradas = isPracticeActive(practica[FIELD_ESTADO_PRACTICA])
+    ? Math.max(
+        horasReales,
+        Number((practica as { horasObjetivo?: number | null }).horasObjetivo || 0)
+      )
+    : horasReales;
 
   const canRequestModification = Boolean(onRequestModificacion && !disapproved);
 
@@ -187,7 +201,7 @@ const PracticaRow: React.FC<{
       <div className="prow__metrics flex items-center gap-4 flex-shrink-0 self-center pr-1">
         <div className="prow__hs flex flex-col items-center justify-center text-center">
           <span className="display text-[22px] font-bold font-display text-slate-800 dark:text-slate-200">
-            {disapproved ? 0 : practica[FIELD_HORAS_PRACTICAS] || 0}
+            {disapproved ? 0 : horasMostradas}
           </span>
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400">
             hs

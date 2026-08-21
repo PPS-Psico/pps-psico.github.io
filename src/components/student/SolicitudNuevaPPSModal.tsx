@@ -23,6 +23,17 @@ interface LanzamientoLite {
   [key: string]: unknown;
 }
 
+const VALID_ORIENTATIONS = ["Clínica", "Educacional", "Laboral", "Comunitaria"];
+
+/** Se queda con una única orientación válida de un string que puede traer varias
+ * juntas (ej. "Laboral, Educacional" en instituciones con más de un área). */
+function matchSingleOrientation(raw: string): string {
+  const parsed = raw.trim();
+  const exactMatch = VALID_ORIENTATIONS.find((o) => o.toLowerCase() === parsed.toLowerCase());
+  if (exactMatch) return exactMatch;
+  return VALID_ORIENTATIONS.find((o) => parsed.toLowerCase().includes(o.toLowerCase())) || "";
+}
+
 interface SolicitudNuevaPPSModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -147,11 +158,17 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
       );
       const ultimoLanzamiento = sortedLanzamientos[0];
 
-      // Autocompletar orientación
+      // Autocompletar orientación. El lanzamiento puede traer varias orientaciones
+      // juntas (institución con más de un área); matchSingleOrientation se queda
+      // con una sola válida en vez de guardar el string combinado tal cual.
       if (ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS]) {
-        const val = ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS] as string;
-        setOrientacion(val);
-        orientacionAutocompletada = val;
+        const val = matchSingleOrientation(
+          String(ultimoLanzamiento[FIELD_ORIENTACION_LANZAMIENTOS])
+        );
+        if (val) {
+          setOrientacion(val);
+          orientacionAutocompletada = val;
+        }
       }
 
       // Autocompletar horas
@@ -170,19 +187,9 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
 
     // Si no se pudo obtener orientación del lanzamiento, intentar desde los metadatos de la institución
     if (!orientacionAutocompletada && institucionSeleccionada.orientaciones) {
-      const parsedOri = String(institucionSeleccionada.orientaciones).trim();
-      const validOrientations = ["Clínica", "Educacional", "Laboral", "Comunitaria"];
-
-      const exactMatch = validOrientations.find((o) => o.toLowerCase() === parsedOri.toLowerCase());
-      if (exactMatch) {
-        setOrientacion(exactMatch);
-      } else {
-        const found = validOrientations.find((o) =>
-          parsedOri.toLowerCase().includes(o.toLowerCase())
-        );
-        if (found) {
-          setOrientacion(found);
-        }
+      const found = matchSingleOrientation(String(institucionSeleccionada.orientaciones));
+      if (found) {
+        setOrientacion(found);
       }
     }
   }, [institucionSeleccionada, lanzamientosDeInstitucion, isOpen]);

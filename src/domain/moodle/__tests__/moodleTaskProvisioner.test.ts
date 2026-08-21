@@ -1,5 +1,6 @@
 import {
   computeConfigHash,
+  findUnsatisfiableDateRule,
   planTaskProvisioning,
   verifyObservedMoodleActivity,
   type DesiredTaskConfig,
@@ -20,6 +21,7 @@ describe("moodleTaskProvisioner", () => {
     desiredOpenAt: "2027-06-24T03:00:00.000Z",
     desiredDueAt: "2027-08-01T02:59:59.000Z",
     desiredCutoffAt: null,
+    desiredGradingDueAt: "2027-08-31T02:59:59.000Z",
     desiredGradeMode: "direct_10",
     desiredGradeMax: 10,
     desiredSectionKey: "informes-clinica",
@@ -35,6 +37,7 @@ describe("moodleTaskProvisioner", () => {
     allowSubmissionsFromDate: Date.parse(desired.desiredOpenAt!) / 1000,
     dueDate: Date.parse(desired.desiredDueAt!) / 1000,
     cutoffDate: null,
+    gradingDueDate: Math.floor(Date.parse("2027-08-31T02:59:59.000Z") / 1000),
     gradeMode: "direct_10",
     gradeMax: 10,
     sectionKey: "informes-clinica",
@@ -114,5 +117,73 @@ describe("moodleTaskProvisioner", () => {
     });
     expect(result.verified).toBe(false);
     expect(result.mismatches).toEqual(expect.arrayContaining(["cutoff_at", "visibility"]));
+  });
+});
+
+describe("gradingduedate (Recordarme calificar en)", () => {
+  // Moodle rechaza el guardado si esta fecha es anterior a la de entrega, y no
+  // muestra el error arriba del formulario. Verificado a mano en el curso 3615.
+  const base = {
+    intentId: "11111111-1111-1111-1111-111111111111",
+    launchId: "22222222-2222-2222-2222-222222222222",
+    courseId: 3615,
+    orientationKey: "laboral",
+    mode: "dedicated" as const,
+    stableKey: "PPS:22222222-2222-2222-2222-222222222222:laboral",
+    desiredName: "Informe final PPS · Ministerio · Laboral",
+    descriptionTemplateVersion: "v1",
+    desiredOpenAt: "2026-12-03T03:00:00.000Z",
+    desiredDueAt: "2027-01-09T02:59:59.000Z",
+    desiredGradeMode: "percentage" as const,
+    desiredGradeMax: 100,
+    desiredVisibility: "visible" as const,
+  };
+
+  it("acepta una fecha de corrección posterior a la entrega", () => {
+    expect(
+      findUnsatisfiableDateRule({ ...base, desiredGradingDueAt: "2027-02-08T02:59:59.000Z" })
+    ).toBeNull();
+  });
+
+  it("detecta el caso que Moodle rechaza en silencio", () => {
+    expect(
+      findUnsatisfiableDateRule({ ...base, desiredGradingDueAt: "2026-09-03T03:00:00.000Z" })
+    ).toBe("grading_due_before_due");
+  });
+
+  it("exige el campo cuando hay fecha de entrega", () => {
+    expect(findUnsatisfiableDateRule(base)).toBe("missing_grading_due_at");
+  });
+
+  it("no propone crear una tarea que Moodle no podría guardar", () => {
+    const plan = planTaskProvisioning(
+      { ...base, desiredGradingDueAt: "2026-09-03T03:00:00.000Z" },
+      []
+    );
+    expect(plan.action).toBe("needs_attention");
+    expect(plan.driftDetails).toContain("grading_due_before_due");
+  });
+
+  it("cuenta grading_due_at como divergencia de configuración", () => {
+    const desired = { ...base, desiredGradingDueAt: "2027-02-08T02:59:59.000Z" };
+    const plan = planTaskProvisioning(desired, [
+      {
+        cmid: 1222569,
+        courseId: 3615,
+        idNumber: base.stableKey,
+        name: base.desiredName,
+        introHtml: "",
+        allowSubmissionsFromDate: Math.floor(Date.parse(base.desiredOpenAt) / 1000),
+        dueDate: Math.floor(Date.parse(base.desiredDueAt) / 1000),
+        cutoffDate: null,
+        gradingDueDate: null,
+        gradeMode: "percentage",
+        gradeMax: 100,
+        sectionKey: "",
+        visible: true,
+      },
+    ]);
+    expect(plan.action).toBe("update_config");
+    expect(plan.driftDetails).toContain("grading_due_at");
   });
 });
