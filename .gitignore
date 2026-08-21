@@ -80,3 +80,4 @@ tmp/
 # Added by ggshield
 .cache_ggshield
 .moodle-worker-lease.json
+.observado-*.json
