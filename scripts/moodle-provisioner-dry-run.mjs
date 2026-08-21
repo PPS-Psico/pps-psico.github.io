@@ -44,6 +44,19 @@ const fmt = (iso) =>
 const esc = (s) =>
   String(s ?? "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]);
 
+const AREA_BANNER = {
+  clinica: "Área Clínica",
+  laboral: "Área Laboral / Comunitaria",
+  comunitaria: "Área Laboral / Comunitaria",
+  educacional: "Área Educacional",
+};
+
+const DISPONIBILIDAD_LABEL = {
+  visible: "Mostrar en la pagina del curso",
+  hidden: "Ocultar en la pagina del curso",
+  stealth: "Hacerlo disponible pero no mostrarlo en la pagina del curso (stealth)",
+};
+
 function buildDescriptionHtml(row) {
   const periodo = [row.fecha_inicio, row.fecha_finalizacion]
     .filter(Boolean)
@@ -131,10 +144,16 @@ for (const row of data ?? []) {
   console.log(`    Fecha limite              DESHABILITADA (se aceptan entregas tarde)`);
   console.log(`    Recordarme calificar en   ${fmt(row.desired_grading_due_at)}`);
   console.log(`    Calificacion maxima       ${row.desired_grade_max} (${row.desired_grade_mode})`);
-  console.log(
-    `    Disponibilidad            ${row.desired_visibility === "hidden" ? "Ocultar" : "Mostrar"} en la pagina del curso`
-  );
+  console.log(`    Disponibilidad            ${DISPONIBILIDAD_LABEL[row.desired_visibility] ?? row.desired_visibility}`);
   console.log(`    Tipos de entrega          Archivos enviados (texto en linea apagado)`);
+  const banner = AREA_BANNER[row.orientacion_key];
+  console.log("\n  Donde crearla en Moodle:");
+  console.log(`    Pestaña / seccion         Tareas 2026 (course=${COURSE_ID}, section=1)`);
+  console.log(
+    banner
+      ? `    Banner                    despues del ultimo item bajo "${banner}", antes del banner siguiente`
+      : `    Banner                    sin mapear para orientacion "${row.orientacion_key}": preguntale a Blas donde va antes de crear`
+  );
   console.log("\n  Descripcion (formato HTML):");
   console.log("    " + buildDescriptionHtml(flat));
   console.log("");
