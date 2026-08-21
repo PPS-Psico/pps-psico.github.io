@@ -690,7 +690,7 @@
       return { cmid: cmid, status: "ok", errorCode: null, rows: rows };
     }
 
-    function fetchJefeTask(cmid) {
+    function fetchJefeGradingPage(cmid, page) {
       var controller = new AbortController();
       var timer = window.setTimeout(function () {
         controller.abort();
@@ -698,7 +698,8 @@
       var url =
         "/mod/assign/view.php?id=" +
         encodeURIComponent(cmid) +
-        "&action=grading&perpage=-1&status=submitted";
+        "&action=grading&perpage=100&status=submitted" +
+        (page > 0 ? "&page=" + page : "");
 
       return fetch(url, {
         method: "GET",
@@ -723,6 +724,48 @@
         .finally(function () {
           window.clearTimeout(timer);
         });
+    }
+
+    var JEFE_GRADING_PAGE_SIZE = 100;
+    var JEFE_GRADING_MAX_PAGES = 24;
+
+    // La tabla de calificaciones pagina del lado del servidor aunque se pida
+    // perpage=-1: con tareas de mas de ~100 entregas quedan filas fuera. Se
+    // recorren las paginas de 100 hasta una corta, deduplicando por identidad
+    // de usuario. Si una pagina posterior falla de acceso pero ya hay datos,
+    // se conserva lo recolectado en vez de descartar el barrido completo.
+    function fetchJefeTask(cmid) {
+      var page = 0;
+      var seen = {};
+      var collected = [];
+
+      function step() {
+        return fetchJefeGradingPage(cmid, page).then(function (result) {
+          if (result.status !== "ok") {
+            if (collected.length > 0 && result.errorCode === "grading_page_unavailable") {
+              return { cmid: cmid, status: "ok", errorCode: null, rows: collected };
+            }
+            return result;
+          }
+          (result.rows || []).forEach(function (row) {
+            var key = row.moodleUserId + "|" + row.moodleUsername;
+            if (!seen[key]) {
+              seen[key] = true;
+              collected.push(row);
+            }
+          });
+          if ((result.rows || []).length < JEFE_GRADING_PAGE_SIZE) {
+            return { cmid: cmid, status: "ok", errorCode: null, rows: collected };
+          }
+          page += 1;
+          if (page >= JEFE_GRADING_MAX_PAGES) {
+            return { cmid: cmid, status: "ok", errorCode: null, rows: collected };
+          }
+          return step();
+        });
+      }
+
+      return step();
     }
 
     function fetchJefeTasks(cmids) {
