@@ -81,6 +81,16 @@ query = previewLaunchId
   : query.eq("mode", "dedicated").in("provisioning_status", ["pending", "error"]);
 
 const { data, error } = await query;
+
+// Las intenciones en needs_attention NO son reclamables: el claim solo toma
+// pending/error o leases vencidos. Si no se las mostrara aca, una tarea trabada
+// desapareceria del radar y la rutina informaria "nada que hacer" mientras algo
+// quedo a medias. Van aparte porque piden una decision humana, no un reintento.
+const { data: stuck } = await supabase
+  .from("moodle_task_intents")
+  .select("id, desired_name, orientacion_key, last_error_code, last_error_message")
+  .eq("mode", "dedicated")
+  .in("provisioning_status", ["needs_attention", "disabled"]);
 if (error) {
   console.error("No se pudo consultar las intenciones:", error.message);
   process.exitCode = 1;
@@ -95,12 +105,10 @@ console.log("Sin escrituras: no toca Moodle, no reclama leases, no modifica Supa
 if (!data.length) {
   console.log("No hay nada que aprovisionar.");
   if (!previewLaunchId) {
-    console.log(
-      "Es lo esperado hoy: todas las intenciones estan en legacy_shared y a esas\n" +
-        "el planificador nunca les propone crear nada. Para darle trabajo real al\n" +
-        "worker hay que convertir un lanzamiento a dedicated (el piloto).\n" +
-        "Podes inspeccionar un candidato con: --preview <lanzamiento_id>"
-    );
+    console.log("Las intenciones legacy_shared nunca generan trabajo: sus tareas ya");
+    console.log("existen y no se tocan. Para sumar una PPS al modelo nuevo hay que");
+    console.log("marcarla con lanzamientos_pps.moodle_pilot_dedicated y reconciliar.");
+    console.log("Podes inspeccionar un candidato con: --preview <lanzamiento_id>");
   }
 }
 
@@ -131,6 +139,20 @@ for (const row of data ?? []) {
   console.log("    " + buildDescriptionHtml(flat));
   console.log("");
 }
+if (stuck?.length) {
+  console.log("─".repeat(72));
+  console.log(`ATENCION: ${stuck.length} intencion(es) trabadas.`);
+  console.log("El worker NO puede reclamarlas solo. Necesitan una decision y luego");
+  console.log("reabrirse con request_moodle_task_reconcile_v1(<intentId>).");
+  console.log("");
+  for (const st of stuck) {
+    console.log(`  ${st.desired_name} (${st.orientacion_key})`);
+    console.log(`    intentId ${st.id}`);
+    console.log(`    motivo   ${st.last_error_code ?? "-"}: ${st.last_error_message ?? "-"}
+`);
+  }
+}
+
 if (data?.length) {
   console.log("─".repeat(72));
   console.log(`${data.length} unidad(es). Nada fue escrito.\n`);
