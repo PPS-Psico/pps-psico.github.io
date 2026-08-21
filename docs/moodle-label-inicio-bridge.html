@@ -698,7 +698,7 @@
       var url =
         "/mod/assign/view.php?id=" +
         encodeURIComponent(cmid) +
-        "&action=grading&perpage=100&status=submitted" +
+        "&action=grading&perpage=100" +
         (page > 0 ? "&page=" + page : "");
 
       return fetch(url, {
