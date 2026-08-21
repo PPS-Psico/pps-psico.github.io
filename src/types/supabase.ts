@@ -1279,6 +1279,7 @@ export type Database = {
           lista_estudiantes_entregada_por: string | null
           mensaje_whatsapp: string | null
           modalidad_cupo: string
+          moodle_pilot_dedicated: boolean
           nombre_pps: string | null
           notas_gestion: string | null
           orientacion: string | null
@@ -1329,6 +1330,7 @@ export type Database = {
           lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
+          moodle_pilot_dedicated?: boolean
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null
@@ -1379,6 +1381,7 @@ export type Database = {
           lista_estudiantes_entregada_por?: string | null
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
+          moodle_pilot_dedicated?: boolean
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null
