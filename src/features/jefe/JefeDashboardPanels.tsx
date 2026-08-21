@@ -55,7 +55,7 @@ const normalizedGrade = (grade: string | null): string => {
 };
 
 const urgencyCopy = (report: JefeReport): string => {
-  if (report.urgency === "stale") return "Más de 60 días fuera del plazo";
+  if (report.urgency === "stale") return "Más de 90 días fuera del plazo";
   if (report.urgency === "critical") {
     const late = Math.abs(report.days_remaining ?? 0);
     return `${late} ${plural(late, "día")} fuera del seguimiento`;
@@ -224,7 +224,7 @@ export const JefeHomePanel: React.FC<
           )}
         </p>
         <p className="jefe-hero__note">
-          El orden usa 30 días corridos desde la entrega registrada. Los casos con más de 60 días de
+          El orden usa 30 días corridos desde la entrega registrada. Los casos con más de 90 días de
           atraso quedan como antecedentes.
         </p>
       </section>
@@ -369,7 +369,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
           </p>
           <h1>Cola de corrección</h1>
           <p>
-            Prioridad calculada desde cada entrega. Los atrasos mayores a 60 días quedan fuera de
+            Prioridad calculada desde cada entrega. Los atrasos mayores a 90 días quedan fuera de
             esta cola.
           </p>
         </div>
@@ -434,7 +434,7 @@ export const JefeReportsPanel: React.FC<CommonPanelProps> = ({
             <span>
               <strong>Entregas antiguas</strong>
               <small>
-                Superaron 60 días de atraso y quedan como antecedentes, fuera de los pendientes.
+                Superaron 90 días de atraso y quedan como antecedentes, fuera de los pendientes.
               </small>
             </span>
             <b>{stale.length}</b>

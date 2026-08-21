@@ -19,6 +19,8 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
   const [accepted, setAccepted] = useState(0);
   const [ambiguous, setAmbiguous] = useState(0);
   const [unmatched, setUnmatched] = useState(0);
+  const [deduplicated, setDeduplicated] = useState(0);
+  const [unmatchedExternal, setUnmatchedExternal] = useState(0);
   const [failedTasks, setFailedTasks] = useState(0);
   const [lastObservedAt, setLastObservedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -66,6 +68,8 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       let acceptedTotal = 0;
       let ambiguousTotal = 0;
       let unmatchedTotal = 0;
+      let unmatchedExternalTotal = 0;
+      let deduplicatedTotal = 0;
       let invalidTotal = 0;
       let failedTotal = 0;
       let successfulBatches = 0;
@@ -85,6 +89,8 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
           acceptedTotal += persisted.accepted;
           ambiguousTotal += persisted.ambiguous;
           unmatchedTotal += persisted.unmatched;
+          unmatchedExternalTotal += persisted.unmatched_external ?? 0;
+          deduplicatedTotal += persisted.deduplicated ?? 0;
           invalidTotal += persisted.invalid;
           if (!latestObservedAt || persisted.observed_at > latestObservedAt) {
             latestObservedAt = persisted.observed_at;
@@ -102,12 +108,15 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       setAccepted(acceptedTotal);
       setAmbiguous(ambiguousTotal);
       setUnmatched(unmatchedTotal);
+      setDeduplicated(deduplicatedTotal);
+      setUnmatchedExternal(unmatchedExternalTotal);
       setFailedTasks(failedTotal);
       setLastObservedAt(latestObservedAt);
 
       await queryClient.invalidateQueries({ queryKey: ["jefe-dashboard-v1"] });
+      const internalUnmatched = Math.max(0, unmatchedTotal - unmatchedExternalTotal);
       const isPartial =
-        failedTotal > 0 || ambiguousTotal > 0 || unmatchedTotal > 0 || invalidTotal > 0;
+        failedTotal > 0 || ambiguousTotal > 0 || internalUnmatched > 0 || invalidTotal > 0;
       setSyncStatus(isPartial ? "partial" : "synced");
     } catch (error) {
       if (error instanceof MoodleBridgeError && error.code === "not_embedded") {
@@ -171,6 +180,8 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
     accepted,
     ambiguous,
     unmatched,
+    unmatchedInternal: Math.max(0, unmatched - unmatchedExternal),
+    deduplicated,
     failedTasks,
     lastObservedAt,
     errorMessage: tasksQuery.isError

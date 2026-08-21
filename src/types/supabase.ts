@@ -3403,6 +3403,8 @@ export type Database = {
       get_moodle_grade_discrepancies: {
         Args: never
         Returns: {
+          academic_year: number
+          cmid: number
           comparison_state: string
           especialidad: string
           estudiante_dni: string

@@ -124,6 +124,8 @@ export type JefeMoodleSyncResult = {
   snapshot_updated: number;
   ambiguous: number;
   unmatched: number;
+  unmatched_external?: number;
+  deduplicated?: number;
   invalid: number;
   observed_at: string;
   already_processed?: boolean;
@@ -145,6 +147,8 @@ export type JefeMoodleSyncState = {
   accepted: number;
   ambiguous: number;
   unmatched: number;
+  unmatchedInternal: number;
+  deduplicated: number;
   failedTasks: number;
   lastObservedAt: string | null;
   errorMessage: string | null;

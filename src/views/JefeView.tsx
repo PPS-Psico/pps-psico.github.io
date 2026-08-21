@@ -75,14 +75,14 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
   } else if (sync.status === "synced") {
     icon = "cloud_done";
     title = "Informes actualizados";
-    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea revisada" : "tareas revisadas"}${sync.accepted > 0 ? ` · ${sync.accepted} entregas vinculadas` : ""}${sync.unmatched > 0 ? ` · ${sync.unmatched} filas sin PPS coincidente` : ""}${observedLabel ? ` · ${observedLabel}` : ""}.`;
+    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea revisada" : "tareas revisadas"}${sync.accepted > 0 ? ` · ${sync.accepted} entregas vinculadas` : ""}${sync.deduplicated > 0 ? ` · ${sync.deduplicated} asignadas a la práctica más reciente` : ""}${sync.unmatchedInternal > 0 ? ` · ${sync.unmatchedInternal} filas sin PPS coincidente` : ""}${observedLabel ? ` · ${observedLabel}` : ""}.`;
   } else if (sync.status === "partial") {
     icon = "rule";
     title = "Actualización parcial";
     const issues = [
       sync.failedTasks > 0 ? `${sync.failedTasks} tareas no se pudieron leer` : null,
       sync.ambiguous > 0 ? `${sync.ambiguous} entregas con prácticas duplicadas` : null,
-      sync.unmatched > 0 ? `${sync.unmatched} filas sin PPS coincidente` : null,
+      sync.unmatchedInternal > 0 ? `${sync.unmatchedInternal} filas sin PPS coincidente` : null,
     ].filter(Boolean);
     detail = issues.join(" · ") || "Algunas filas requieren revisión.";
   } else if (sync.status === "complete") {
