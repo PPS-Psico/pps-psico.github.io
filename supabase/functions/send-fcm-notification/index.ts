@@ -5,6 +5,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const ADMIN_ROLES = new Set(["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"]);
+// Un solo lugar para el dominio de la app, igual que en las funciones de
+// consentimiento. Se apunta a la raiz y no a `/#/student` porque estas push
+// tambien le llegan a admins, y la app ya redirige segun el rol.
+const APP_URL = (Deno.env.get("APP_URL") || "https://pps-psico.github.io").replace(/\/$/, "");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,7 +80,17 @@ function base64Url(input: Uint8Array): string {
   return encodeBase64(input).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
+// El access token de Google vale una hora. Antes se renegociaba uno por CADA
+// token FCM, o sea dos viajes de red por destinatario en vez de uno. Con el
+// cache, un envio a N dispositivos hace 1 handshake + N envios.
+let cachedAccessToken: { value: string; expiresAt: number } | null = null;
+
 async function getAccessToken(): Promise<string> {
+  // Margen de 60s para no usar un token que expira en pleno envio.
+  if (cachedAccessToken && cachedAccessToken.expiresAt - 60_000 > Date.now()) {
+    return cachedAccessToken.value;
+  }
+
   const serviceAccount = getServiceAccount();
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(
@@ -125,8 +139,12 @@ async function getAccessToken(): Promise<string> {
     }),
   });
   if (!response.ok) throw new Error(`FCM token exchange failed (${response.status})`);
-  const result = (await response.json()) as { access_token?: string };
+  const result = (await response.json()) as { access_token?: string; expires_in?: number };
   if (!result.access_token) throw new Error("FCM token exchange returned no access token");
+  cachedAccessToken = {
+    value: result.access_token,
+    expiresAt: Date.now() + (result.expires_in ?? 3600) * 1000,
+  };
   return result.access_token;
 }
 
@@ -135,7 +153,7 @@ async function sendToToken(
   title: string,
   body: string,
   data: Record<string, string>
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; invalidToken?: boolean }> {
   try {
     const serviceAccount = getServiceAccount();
     const accessToken = await getAccessToken();
@@ -156,15 +174,26 @@ async function sendToToken(
               content_type: data.type || "message",
               title,
               body,
-              url: "https://pps-psico.github.io/",
+              url: APP_URL + "/",
               ...data,
             },
-            webpush: { fcm_options: { link: "https://pps-psico.github.io/" } },
+            webpush: { fcm_options: { link: APP_URL + "/" } },
           },
         }),
       }
     );
-    if (!response.ok) return { success: false, error: `FCM responded ${response.status}` };
+    if (!response.ok) {
+      // 404 (UNREGISTERED en FCM v1) y 410 significan que ese dispositivo ya no
+      // existe: el navegador se desinstalo, se limpio el storage o se revoco el
+      // permiso. Sin borrarlos, la tabla `fcm_tokens` crece para siempre y cada
+      // envio los reintenta uno por uno.
+      const isGone = response.status === 404 || response.status === 410;
+      return {
+        success: false,
+        error: `FCM responded ${response.status}`,
+        invalidToken: isGone,
+      };
+    }
     return { success: true };
   } catch (error) {
     console.error("[FCM] Send failed:", error);
@@ -231,10 +260,31 @@ Deno.serve(async (req: Request) => {
 
     let sent = 0;
     const errors: string[] = [];
+    const deadTokens: string[] = [];
     for (const token of tokens) {
       const result = await sendToToken(token, title, messageBody, customData);
       if (result.success) sent += 1;
-      else errors.push(result.error ?? "Unknown error");
+      else {
+        errors.push(result.error ?? "Unknown error");
+        if (result.invalidToken) deadTokens.push(token);
+      }
+    }
+
+    // Purga de dispositivos que ya no existen. Se hace en un solo DELETE al
+    // final y no corta la respuesta si falla: el envio ya ocurrio y la limpieza
+    // es mantenimiento, no parte del resultado.
+    let purged = 0;
+    if (deadTokens.length > 0) {
+      const { error: purgeError } = await supabase
+        .from("fcm_tokens")
+        .delete()
+        .in("fcm_token", deadTokens);
+      if (purgeError) {
+        console.error("[FCM] No se pudieron purgar tokens muertos:", purgeError.message);
+      } else {
+        purged = deadTokens.length;
+        console.log(`[FCM] Purgados ${purged} token(s) sin dispositivo`);
+      }
     }
 
     return json({
@@ -242,6 +292,7 @@ Deno.serve(async (req: Request) => {
       sent,
       failed: errors.length,
       total: tokens.length,
+      purged_tokens: purged,
       errors: errors.length ? errors : undefined,
     });
   } catch (error) {
