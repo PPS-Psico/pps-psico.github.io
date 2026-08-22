@@ -8,6 +8,7 @@ import {
 } from "../../constants";
 import { useSeleccionadorLogic } from "../../hooks/useSeleccionadorLogic";
 import { supabase } from "../../lib/supabaseClient";
+import { classifyDbError } from "../../lib/dbError";
 import {
   calculateTotalHours,
   getEffectivePracticeStatus,
@@ -595,7 +596,7 @@ const PracticasModal: React.FC<PracticasModalProps> = ({ student, isOpen, onClos
 
       if (error) {
         logger.error("Error en consulta:", error);
-        throw error;
+        throw classifyDbError(error, { table: "practicas", operation: "practicasDelEstudiante" });
       }
 
       logger.info("Prácticas encontradas:", data);

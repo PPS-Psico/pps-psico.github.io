@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FIELD_CORREO_ESTUDIANTES, TABLE_ESTUDIANTES } from "../../constants/dbConstants";
 import { supabase } from "../../lib/supabaseClient";
+import { runQuery } from "../../lib/dbQuery";
 import { invalidateLaunchData } from "../../lib/launchQueryKeys";
 import { DISAPPROVAL_CC, sendSmartEmail } from "../../utils/emailService";
 import { cleanDbValue, formatDate } from "../../utils/formatters";
@@ -67,16 +68,18 @@ const DesaprobacionPPSModal: React.FC<DesaprobacionPPSModalProps> = ({
   const practicesQuery = useQuery({
     queryKey: ["practicesForDisapproval", student.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("practicas")
-        .select(
-          "id, lanzamiento_id, nombre_institucion, fecha_inicio, fecha_finalizacion, estado, horas_realizadas, lanzamiento:lanzamientos_pps!fk_practica_lanzamiento(nombre_pps)"
-        )
-        .eq("estudiante_id", student.id)
-        .eq("tipo_actividad", "pps")
-        .neq("estado", "Desaprobada")
-        .order("fecha_inicio", { ascending: false });
-      if (error) throw error;
+      const data = await runQuery(
+        supabase
+          .from("practicas")
+          .select(
+            "id, lanzamiento_id, nombre_institucion, fecha_inicio, fecha_finalizacion, estado, horas_realizadas, lanzamiento:lanzamientos_pps!fk_practica_lanzamiento(nombre_pps)"
+          )
+          .eq("estudiante_id", student.id)
+          .eq("tipo_actividad", "pps")
+          .neq("estado", "Desaprobada")
+          .order("fecha_inicio", { ascending: false }),
+        { table: "practicas", operation: "practicasParaDesaprobar" }
+      );
       return data || [];
     },
     enabled: isOpen,

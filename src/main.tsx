@@ -55,6 +55,7 @@ if (import.meta.env.DEV && !isVisualBaseline) {
 // @ts-ignore
 import "@fontsource/material-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { classifyDbError, isRetryable } from "./lib/dbError";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "./index.css";
 import "./styles/foundations.css";
@@ -113,7 +114,20 @@ if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.p
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // Reintentar solo lo que puede mejorar solo. Un "no tenés permisos" o una
+      // sesión vencida no cambian por insistir: reintentarlos solo demora el
+      // mensaje que la persona necesita ver.
+      retry: (failureCount, error) => failureCount < 1 && isRetryable(error),
+      // Con la sesión vencida NINGUNA query del panel puede responder, y de las
+      // ~120 llamadas a `useQuery` sólo un puñado renderiza estado de error: el
+      // resto mostraría listas vacías y la persona creería que sus datos
+      // desaparecieron. En ese caso puntual conviene escalar al ErrorBoundary,
+      // que dice qué pasó y ofrece recargar.
+      //
+      // Deliberadamente NO se escala nada más: un fallo de permisos en un solo
+      // widget no justifica tumbar la página entera, y los errores de red se
+      // reintentan solos.
+      throwOnError: (error) => classifyDbError(error).kind === "session-expired",
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 2, // 2 minutes - data remains "fresh" preventing immediate refetch
       gcTime: 1000 * 60 * 10, // 10 minutes - keep unused data in cache before garbage collecting

@@ -1,9 +1,7 @@
 import * as supabaseService from "../services/supabaseService";
 import type { SortSpec, QueryFilters } from "../services/supabaseService";
-import type { AppErrorResponse } from "../types";
 import type { Database } from "../types/supabase";
-import { supabase } from "./supabaseClient";
-import { logger } from "../utils/logger";
+import { classifyDbError, DbError } from "./dbError";
 import {
   mapEstudiante,
   mapPractica,
@@ -37,9 +35,11 @@ function createTableInterface<TName extends TableName, TAppRecord>(
         options?.filters,
         options?.sort
       );
+      // Antes esto devolvia `[]` y logueaba un warn. Una consulta fallida y una
+      // tabla vacia quedaban indistinguibles, asi que la UI mostraba "no hay
+      // datos" ante una caida de red o una sesion vencida.
       if (error) {
-        logger.warn(`Fetch warning in ${tableName}:`, error);
-        return [];
+        throw classifyDbError(error, { table: tableName, operation: "getAll" });
       }
       return records.map(mapper);
     },
@@ -56,7 +56,9 @@ function createTableInterface<TName extends TableName, TAppRecord>(
         options?.maxRecords,
         options?.sort
       );
-      if (error) return [];
+      if (error) {
+        throw classifyDbError(error, { table: tableName, operation: "get" });
+      }
       return records.map(mapper);
     },
 
@@ -70,7 +72,7 @@ function createTableInterface<TName extends TableName, TAppRecord>(
         sort?: SortSpec;
         filters?: QueryFilters;
       }
-    ): Promise<{ records: TAppRecord[]; total: number; error: AppErrorResponse | null }> => {
+    ): Promise<{ records: TAppRecord[]; total: number }> => {
       const { records, total, error } = await supabaseService.fetchPaginatedData(
         tableName,
         page,
@@ -81,20 +83,35 @@ function createTableInterface<TName extends TableName, TAppRecord>(
         options?.sort,
         options?.filters
       );
-      return { records: records.map(mapper), total, error };
+      // Antes devolvia el error dentro del objeto y cada call-site decidia si
+      // mirarlo. Ahora lanza, como el resto de la capa.
+      if (error) {
+        throw classifyDbError(error, { table: tableName, operation: "getPage" });
+      }
+      return { records: records.map(mapper), total };
     },
 
     create: async (fields: Tables[TName]["Insert"]): Promise<TAppRecord> => {
       const { record, error } = await supabaseService.createRecord(tableName, fields);
-      if (error) throw error;
-      if (!record) throw new Error("Create failed, no record returned");
+      if (error) throw classifyDbError(error, { table: tableName, operation: "create" });
+      if (!record) {
+        throw new DbError("unknown", "La creacion no devolvio ningun registro", {
+          table: tableName,
+          operation: "create",
+        });
+      }
       return mapper(record);
     },
 
     update: async (recordId: string, fields: Tables[TName]["Update"]): Promise<TAppRecord> => {
       const { record, error } = await supabaseService.updateRecord(tableName, recordId, fields);
-      if (error) throw error;
-      if (!record) throw new Error("Update failed, no record returned");
+      if (error) throw classifyDbError(error, { table: tableName, operation: "update" });
+      if (!record) {
+        throw new DbError("unknown", "La actualizacion no devolvio ningun registro", {
+          table: tableName,
+          operation: "update",
+        });
+      }
       return mapper(record);
     },
 
@@ -105,13 +122,13 @@ function createTableInterface<TName extends TableName, TAppRecord>(
         tableName,
         records
       );
-      if (error) throw error;
+      if (error) throw classifyDbError(error, { table: tableName, operation: "updateMany" });
       return (updatedRecords || []).map(mapper);
     },
 
     delete: async (recordId: string) => {
       const { success, error } = await supabaseService.deleteRecord(tableName, recordId);
-      if (error) throw error;
+      if (error) throw classifyDbError(error, { table: tableName, operation: "delete" });
       return success;
     },
   };

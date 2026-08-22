@@ -10,6 +10,7 @@ import React, { useState, useMemo, useEffect, lazy } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { db } from "../../../lib/db";
 import { supabase } from "../../../lib/supabaseClient";
+import { runCount, runMutation } from "../../../lib/dbQuery";
 import {
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
@@ -721,12 +722,18 @@ function useLaunchEditor(launch: LanzamientoPPS, onRefresh?: () => void) {
 
         if (changed.length > 0) {
           // Contar prácticas vinculadas (= estudiantes seleccionados con práctica creada).
-          const { count } = await supabase
-            .from("practicas")
-            .select("id", { count: "exact", head: true })
-            .eq(FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, recordId);
+          // `runCount` en vez de descartar el error: antes, si esta query
+          // fallaba, `count` quedaba undefined y el prompt de propagacion
+          // simplemente no aparecia, como si no hubiera practicas vinculadas.
+          const count = await runCount(
+            supabase
+              .from("practicas")
+              .select("id", { count: "exact", head: true })
+              .eq(FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, recordId),
+            { table: "practicas", operation: "contarPracticasDelLanzamiento" }
+          );
 
-          if (count && count > 0) {
+          if (count > 0) {
             const practicaFields: Record<string, unknown> = {};
             changed.forEach((f) => {
               practicaFields[f.practicaKey] = fields[f.launchKey] ?? null;
@@ -748,11 +755,13 @@ function useLaunchEditor(launch: LanzamientoPPS, onRefresh?: () => void) {
     if (!prompt) return;
     setPropagating(true);
     try {
-      const { error } = await supabase
-        .from("practicas")
-        .update(prompt.practicaFields)
-        .eq(FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, launch.id);
-      if (error) throw error;
+      await runMutation(
+        supabase
+          .from("practicas")
+          .update(prompt.practicaFields)
+          .eq(FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, launch.id),
+        { table: "practicas", operation: "propagarCamposDelLanzamiento" }
+      );
       await invalidatePracticas();
       onRefresh?.();
     } catch (e) {

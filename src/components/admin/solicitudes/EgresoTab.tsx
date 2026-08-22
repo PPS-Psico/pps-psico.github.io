@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FIELD_ESTUDIANTE_FINALIZACION } from "../../../constants";
 import { supabase } from "../../../lib/supabaseClient";
+import { runQuery } from "../../../lib/dbQuery";
 import {
   describeFinalizationGradeSource,
   indexFinalizationGrades,
@@ -241,13 +242,18 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
       if (!sId || !expanded) return;
       setLoadingPrac(true);
       try {
-        const { data, error } = await supabase
-          .from("practicas")
-          .select("*, lanzamientos_pps(nombre_pps, horas_acreditadas, orientacion)")
-          .eq("estudiante_id", sId)
-          .maybeSingle();
+        // Antes el error se descartaba con `if (!error && data ...)`: la
+        // práctica simplemente no aparecía y no quedaba rastro de por qué.
+        const data = await runQuery(
+          supabase
+            .from("practicas")
+            .select("*, lanzamientos_pps(nombre_pps, horas_acreditadas, orientacion)")
+            .eq("estudiante_id", sId)
+            .maybeSingle(),
+          { table: "practicas", operation: "practicaDelEgreso" }
+        );
 
-        if (!error && data && active) {
+        if (data && active) {
           setPractice(data);
         }
       } catch (e) {
@@ -273,13 +279,16 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
       if (!sId || !expanded || practicaIds.length === 0) return;
 
       try {
-        const { data: practicas, error: errPracticas } = await supabase
-          .from("practicas")
-          .select(
-            "id, lanzamiento_id, lanzamiento:lanzamientos_pps!fk_practica_lanzamiento(horario_seleccionado)"
-          )
-          .in("id", practicaIds);
-        if (errPracticas || !practicas || !active) return;
+        const practicas = await runQuery(
+          supabase
+            .from("practicas")
+            .select(
+              "id, lanzamiento_id, lanzamiento:lanzamientos_pps!fk_practica_lanzamiento(horario_seleccionado)"
+            )
+            .in("id", practicaIds),
+          { table: "practicas", operation: "horariosDeLasPracticas" }
+        );
+        if (!practicas || !active) return;
 
         const lanzamientoIds = practicas
           .map((p) => p.lanzamiento_id)
@@ -288,11 +297,15 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
         // Horario de la inscripción del alumno: más específico que el del lanzamiento.
         const horarioPorLanzamiento = new Map<string, string>();
         if (lanzamientoIds.length > 0) {
-          const { data: inscripciones } = await supabase
-            .from("convocatorias")
-            .select("lanzamiento_id, horario_asignado, horario_seleccionado")
-            .eq("estudiante_id", sId)
-            .in("lanzamiento_id", lanzamientoIds);
+          // El error de esta query ni siquiera se destructuraba antes.
+          const inscripciones = await runQuery(
+            supabase
+              .from("convocatorias")
+              .select("lanzamiento_id, horario_asignado, horario_seleccionado")
+              .eq("estudiante_id", sId)
+              .in("lanzamiento_id", lanzamientoIds),
+            { table: "convocatorias", operation: "horarioDeInscripcion" }
+          );
           inscripciones?.forEach((ins) => {
             const horario = getHorarioEfectivo(ins);
             if (ins.lanzamiento_id && horario) {

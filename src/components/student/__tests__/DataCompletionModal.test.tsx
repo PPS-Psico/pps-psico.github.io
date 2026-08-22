@@ -11,9 +11,9 @@ import React from "react";
  */
 
 let perfil: Record<string, unknown> = {};
-const updateSpy = jest.fn((_payload: Record<string, unknown>) => ({
-  eq: async () => ({ error: null }),
-}));
+// La escritura pasa por el wrapper tipado (`db.estudiantes.update`), no por el
+// cliente crudo: se mockea ahí. La lectura sigue yendo por `supabase`.
+const updateSpy = jest.fn((_id: string, _payload: Record<string, unknown>) => ({}));
 
 jest.mock("../../../lib/supabaseClient", () => ({
   supabase: {
@@ -21,8 +21,15 @@ jest.mock("../../../lib/supabaseClient", () => ({
       select: () => ({
         eq: () => ({ single: async () => ({ data: perfil, error: null }) }),
       }),
-      update: (payload: Record<string, unknown>) => updateSpy(payload),
     }),
+  },
+}));
+
+jest.mock("../../../lib/db", () => ({
+  db: {
+    estudiantes: {
+      update: async (id: string, payload: Record<string, unknown>) => updateSpy(id, payload),
+    },
   },
 }));
 
@@ -65,6 +72,7 @@ describe("DataCompletionModal", () => {
 
     await waitFor(() => expect(onComplete).toHaveBeenCalled());
     expect(updateSpy).toHaveBeenCalledWith(
+      "est-1",
       expect.objectContaining({ telefono: "2994567890", estado: "Activo" })
     );
   });
@@ -77,7 +85,7 @@ describe("DataCompletionModal", () => {
     await userEvent.click(screen.getByRole("button", { name: /guardar/i }));
 
     await waitFor(() => expect(updateSpy).toHaveBeenCalled());
-    expect(updateSpy.mock.calls[0][0]).not.toHaveProperty("estado");
+    expect(updateSpy.mock.calls[0][1]).not.toHaveProperty("estado");
   });
 
   it("rechaza un celular demasiado corto, como un legajo pegado por error", async () => {

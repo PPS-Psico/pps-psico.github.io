@@ -159,15 +159,11 @@ const EditorEstudiantes: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMod
       const filters: Record<string, unknown> = {};
       if (filterEstado) filters[FIELD_ESTADO_ESTUDIANTES] = filterEstado;
 
-      const { records, total, error } = await db.estudiantes.getPage(currentPage, itemsPerPage, {
+      const { records, total } = await db.estudiantes.getPage(currentPage, itemsPerPage, {
         searchTerm: debouncedSearch,
         searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES],
         filters,
       });
-      if (error) {
-        const msg = typeof error.error === "string" ? error.error : error.error?.message;
-        throw new Error(msg || "Error al cargar estudiantes");
-      }
 
       // Enriquecer con horas totales para visibilidad inmediata
       const studentIds = records.map((r) => r.id);

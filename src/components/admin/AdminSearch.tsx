@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { db } from "../../lib/db";
+import { getDbErrorMessage } from "../../lib/dbError";
+import { logger } from "../../utils/logger";
 import { FIELD_LEGAJO_ESTUDIANTES, FIELD_NOMBRE_ESTUDIANTES } from "../../constants";
 import type { EstudianteFields, AirtableRecord } from "../../types";
 
@@ -42,6 +44,7 @@ const AdminSearch: React.FC<AdminSearchProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<AirtableRecord<EstudianteFields>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -72,15 +75,23 @@ const AdminSearch: React.FC<AdminSearchProps> = ({
         return;
       }
 
-      const { records, error } = await db.estudiantes.getPage(1, 20, {
-        searchTerm: term,
-        searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES],
-      });
-
-      if (!error) {
+      try {
+        const { records } = await db.estudiantes.getPage(1, 20, {
+          searchTerm: term,
+          searchFields: [FIELD_NOMBRE_ESTUDIANTES, FIELD_LEGAJO_ESTUDIANTES],
+        });
+        setSearchError(null);
         setResults(records as unknown as AirtableRecord<EstudianteFields>[]);
+      } catch (error) {
+        // Antes el error se descartaba en silencio: quedaban los resultados
+        // viejos en pantalla o el cartel "No se encontraron resultados", que
+        // es una respuesta falsa. Ahora se distingue "no hay" de "fallo".
+        logger.error("[AdminSearch] Falló la búsqueda de estudiantes:", error);
+        setResults([]);
+        setSearchError(getDbErrorMessage(error));
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     },
     [onSearchChange, isTestingMode]
   );
@@ -161,6 +172,10 @@ const AdminSearch: React.FC<AdminSearchProps> = ({
             <div className="p-4 flex items-center justify-center text-slate-500 dark:text-slate-400 text-sm">
               <div className="border-2 border-slate-200 dark:border-slate-600 border-t-blue-500 rounded-full w-4 h-4 animate-spin mr-2"></div>
               Buscando...
+            </div>
+          ) : searchError ? (
+            <div className="p-4 text-center text-sm text-red-600 dark:text-red-400">
+              {searchError}
             </div>
           ) : results.length > 0 ? (
             <ul>

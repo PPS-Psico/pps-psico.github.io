@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { runQuery } from "../../lib/dbQuery";
+import { db } from "../../lib/db";
 import {
   FIELD_CORREO_ESTUDIANTES,
   FIELD_DNI_ESTUDIANTES,
@@ -46,11 +48,25 @@ const DataCompletionModal: React.FC<DataCompletionModalProps> = ({
   useEffect(() => {
     let activo = true;
     (async () => {
-      const { data, error: fetchError } = await supabase
-        .from("estudiantes")
-        .select("dni, telefono, correo, estado")
-        .eq("id", studentId)
-        .single();
+      let data: {
+        dni: string | null;
+        telefono: string | null;
+        correo: string | null;
+        estado: string | null;
+      } | null = null;
+      let fetchError: unknown = null;
+      try {
+        data = await runQuery(
+          supabase
+            .from("estudiantes")
+            .select("dni, telefono, correo, estado")
+            .eq("id", studentId)
+            .single(),
+          { table: "estudiantes", operation: "leerPerfilParaCompletar" }
+        );
+      } catch (error) {
+        fetchError = error;
+      }
 
       if (!activo) return;
       if (fetchError || !data) {
@@ -119,11 +135,8 @@ const DataCompletionModal: React.FC<DataCompletionModalProps> = ({
       setIsLoading(true);
       setError("");
       try {
-        const { error: updateError } = await supabase
-          .from("estudiantes")
-          .update(updates)
-          .eq("id", studentId);
-        if (updateError) throw updateError;
+        // Escritura por `id`: entra en el wrapper tipado, no hace falta ir crudo.
+        await db.estudiantes.update(studentId, updates);
         onComplete();
       } catch (err) {
         setError(getErrorMessage(err, "Error al guardar los datos"));

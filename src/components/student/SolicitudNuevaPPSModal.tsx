@@ -9,6 +9,7 @@ import {
 import { useNotifications } from "../../contexts/NotificationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { supabase } from "../../lib/supabaseClient";
+import { runQuery } from "../../lib/dbQuery";
 import { submitSolicitudNuevaPPS, uploadSolicitudFile } from "../../services";
 import type { Institucion, LanzamientoPPS } from "../../types";
 import { Icon } from "./ds";
@@ -73,10 +74,12 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const { data: instituciones = [] } = useQuery({
     queryKey: ["instituciones"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("instituciones")
-        .select("id, nombre, orientaciones")
-        .order("nombre");
+      // El error no se destructuraba: si fallaba, el alumno veía la lista de
+      // instituciones vacía como si no hubiera ninguna.
+      const data = await runQuery(
+        supabase.from("instituciones").select("id, nombre, orientaciones").order("nombre"),
+        { table: "instituciones", operation: "institucionesParaSolicitud" }
+      );
       return data || [];
     },
     enabled: isOpen,
@@ -85,12 +88,15 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const { data: lanzamientos = [] } = useQuery<LanzamientoLite[]>({
     queryKey: ["lanzamientos_pps"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("lanzamientos_pps")
-        .select(
-          "id, institucion_id, cupos_disponibles, horas_acreditadas, orientacion, es_online, created_at"
-        )
-        .order("created_at", { ascending: false });
+      const data = await runQuery(
+        supabase
+          .from("lanzamientos_pps")
+          .select(
+            "id, institucion_id, cupos_disponibles, horas_acreditadas, orientacion, es_online, created_at"
+          )
+          .order("created_at", { ascending: false }),
+        { table: "lanzamientos_pps", operation: "lanzamientosParaSolicitud" }
+      );
       return (data as unknown as LanzamientoLite[]) || [];
     },
     enabled: isOpen,

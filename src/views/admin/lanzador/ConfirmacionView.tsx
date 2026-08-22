@@ -11,6 +11,7 @@ import {
 } from "../../../constants";
 import { launchKeys } from "../../../lib/launchQueryKeys";
 import { supabase } from "../../../lib/supabaseClient";
+import { classifyDbError } from "../../../lib/dbError";
 import type { LanzamientoPPS } from "../../../types";
 import {
   formatConsentimientoDeadline,
@@ -125,7 +126,11 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
         .from("compromisos_pps")
         .select("estado, convocatoria_id, accepted_at")
         .eq("lanzamiento_id", launch.id);
-      if (error) throw error;
+      if (error)
+        throw classifyDbError(error, {
+          table: "compromisos_pps",
+          operation: "compromisosDelLanzamiento",
+        });
       return data || [];
     },
   });
@@ -146,7 +151,11 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
         .from("estudiantes")
         .select("id, nombre, telefono, correo")
         .in("id", studentIds);
-      if (error) throw error;
+      if (error)
+        throw classifyDbError(error, {
+          table: "estudiantes",
+          operation: "contactosDeSeleccionados",
+        });
       return Object.fromEntries(
         (data || []).map((student) => [
           student.id,

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { runMutation } from "../lib/dbQuery";
 import { useAuth } from "../contexts/AuthContext";
 import Toast from "./ui/Toast";
 import { logger } from "../utils/logger";
@@ -58,15 +59,21 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen }) => 
 
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
-          const { error: directError } = await (supabase as any)
-            .from("estudiantes")
-            .update({ must_change_password: false })
-            .eq("user_id", userData.user.id);
-
-          if (directError) {
+          try {
+            // El `as any` que había acá sobraba: `must_change_password` sí está
+            // en los tipos generados, así que el cast solo tapaba el chequeo.
+            await runMutation(
+              supabase
+                .from("estudiantes")
+                .update({ must_change_password: false })
+                .eq("user_id", userData.user.id),
+              { table: "estudiantes", operation: "marcarPasswordCambiada" }
+            );
+          } catch (directError) {
+            // No se propaga a propósito: Auth ya actualizó la contraseña, y
+            // bloquear al usuario acá sería peor que seguir. El estado local
+            // cubre esta sesión.
             logger.error("Fallo crítico al actualizar estado en DB:", directError);
-            // No lanzamos error aquí para no bloquear al usuario, ya que el Auth sí se actualizó.
-            // El estado local lo salvará por esta sesión.
           }
         }
       }

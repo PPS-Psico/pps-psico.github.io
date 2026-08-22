@@ -16,6 +16,7 @@ import {
 } from "../../../constants";
 import { launchKeys } from "../../../lib/launchQueryKeys";
 import { supabase } from "../../../lib/supabaseClient";
+import { runQuery } from "../../../lib/dbQuery";
 import { mockDb } from "../../../services/mockDb";
 
 /** Fila del roster de inscripciones (`convocatorias`) de un lanzamiento. */
@@ -71,14 +72,16 @@ export function useLaunchRoster(launchId: string, isTestingMode = false) {
           }));
       }
 
-      const { data, error } = await supabase
-        .from("convocatorias")
-        .select(
-          "id, estado_inscripcion, estudiante_id, horario_asignado, horario_seleccionado, opcion_horario_asignado_id, convocatoria_preferencias(opcion_horario_id), selected_at, baja_automatica_at, reminder_sent_at, final_reminder_sent_at, created_at"
-        )
-        .eq("lanzamiento_id", launchId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+      const data = await runQuery(
+        supabase
+          .from("convocatorias")
+          .select(
+            "id, estado_inscripcion, estudiante_id, horario_asignado, horario_seleccionado, opcion_horario_asignado_id, convocatoria_preferencias(opcion_horario_id), selected_at, baja_automatica_at, reminder_sent_at, final_reminder_sent_at, created_at"
+          )
+          .eq("lanzamiento_id", launchId)
+          .order("created_at", { ascending: false }),
+        { table: "convocatorias", operation: "useLaunchRoster" }
+      );
       return (data || []) as RosterRow[];
     },
   });
@@ -89,11 +92,13 @@ export function useLaunchPracticas(launchId: string) {
   return useQuery<LaunchPracticaRow[]>({
     queryKey: launchKeys.practicas(launchId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("practicas")
-        .select("id, estado, horas_realizadas")
-        .eq("lanzamiento_id", launchId);
-      if (error) throw error;
+      const data = await runQuery(
+        supabase
+          .from("practicas")
+          .select("id, estado, horas_realizadas")
+          .eq("lanzamiento_id", launchId),
+        { table: "practicas", operation: "useLaunchPracticas" }
+      );
       return (data || []) as LaunchPracticaRow[];
     },
   });

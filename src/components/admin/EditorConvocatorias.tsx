@@ -158,11 +158,10 @@ const EditorConvocatorias: React.FC<{ isTestingMode?: boolean }> = ({ isTestingM
       if (filterLanzamientoId)
         filters[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] = filterLanzamientoId;
 
-      const { records, total, error } = await db.convocatorias.getPage(currentPage, itemsPerPage, {
+      const { records, total } = await db.convocatorias.getPage(currentPage, itemsPerPage, {
         filters,
         sort: { field: "created_at", direction: "desc" },
       });
-      if (error) throw error;
 
       // Enriquecer datos (Nombre estudiante y Nombre PPS)
       const studentIds = records

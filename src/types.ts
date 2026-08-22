@@ -69,6 +69,12 @@ export type AirtableRecord<T> = AppRecord<T>;
 export interface AppError {
   type: string;
   message: string;
+  /**
+   * Codigo original de Postgres/PostgREST (`42501`, `23505`, `PGRST301`, ...).
+   * Sin esto no se puede distinguir un rechazo de RLS de una caida de red, que
+   * es lo que necesita `classifyDbError` en `lib/dbError.ts`.
+   */
+  code?: string;
 }
 
 export interface AppErrorResponse {

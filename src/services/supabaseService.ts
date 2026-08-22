@@ -107,7 +107,7 @@ export const fetchPaginatedData = async <T extends TableName>(
       return {
         records: [],
         total: 0,
-        error: { error: { type: "SUPABASE_ERROR", message: error.message } },
+        error: { error: { type: "SUPABASE_ERROR", message: error.message, code: error.code } },
       };
 
     return {
@@ -183,6 +183,7 @@ export const fetchAllData = async <T extends TableName>(
             error: {
               type: "SUPABASE_ERROR",
               message: lastError ? toErrorMessage(lastError) : "Network error",
+              code: (lastError as { code?: string } | undefined)?.code,
             },
           },
         };
@@ -223,7 +224,13 @@ export const fetchData = async <T extends TableName>(
     } catch (e) {
       return {
         records: [],
-        error: { error: { type: "SUPABASE_ERROR", message: toErrorMessage(e) } },
+        error: {
+          error: {
+            type: "SUPABASE_ERROR",
+            message: toErrorMessage(e),
+            code: (e as { code?: string } | null)?.code,
+          },
+        },
       };
     }
   }
@@ -248,7 +255,10 @@ export const createRecord = async <T extends TableName>(
       .select()
       .single();
     if (error)
-      return { record: null, error: { error: { type: "CREATE_ERROR", message: error.message } } };
+      return {
+        record: null,
+        error: { error: { type: "CREATE_ERROR", message: error.message, code: error.code } },
+      };
 
     return { record: data as unknown as Database["public"]["Tables"][T]["Row"], error: null };
   } catch (e) {
@@ -281,7 +291,10 @@ export const updateRecord = async <T extends TableName>(
       .maybeSingle();
 
     if (error) {
-      return { record: null, error: { error: { type: "UPDATE_ERROR", message: error.message } } };
+      return {
+        record: null,
+        error: { error: { type: "UPDATE_ERROR", message: error.message, code: error.code } },
+      };
     }
 
     return { record: data as unknown as Database["public"]["Tables"][T]["Row"], error: null };
@@ -341,7 +354,10 @@ export const deleteRecord = async <T extends TableName>(
       .eq("id", recordId as any);
 
     if (error)
-      return { success: false, error: { error: { type: "DELETE_ERROR", message: error.message } } };
+      return {
+        success: false,
+        error: { error: { type: "DELETE_ERROR", message: error.message, code: error.code } },
+      };
 
     if (count === 0) {
       return {

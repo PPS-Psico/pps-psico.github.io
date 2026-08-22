@@ -296,10 +296,9 @@ const EditorPracticas: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMode 
       // MODO REAL: Consultar base de datos
       const filters = buildRealFilters();
 
-      const { records, total, error } = await db.practicas.getPage(currentPage, itemsPerPage, {
+      const { records, total } = await db.practicas.getPage(currentPage, itemsPerPage, {
         filters,
       });
-      if (error) throw error;
 
       const studentIds = records
         .map((r) => {

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import { classifyDbError } from "../../../lib/dbError";
 import { cleanWhatsAppNumber } from "../../../utils/formatters";
 import { logger } from "../../../utils/logger";
 import { timeAgo } from "./helpers";
@@ -33,7 +34,14 @@ const PanelHermesIngreso: React.FC<{
           .eq("nombre_institucion", sol.nombre_institucion)
           .limit(3);
 
-        if (!error && data && active) {
+        // El error se descartaba: el panel mostraba "sin PPS anteriores"
+        // tanto si no había como si la consulta falló.
+        if (error)
+          throw classifyDbError(error, {
+            table: "practicas",
+            operation: "ppsAnterioresDeLaInstitucion",
+          });
+        if (data && active) {
           setPpsAnteriores(data);
         }
       } catch (e) {

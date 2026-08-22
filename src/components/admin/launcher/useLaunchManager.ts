@@ -50,6 +50,8 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../../constants/configConsta
 import { useConfirm } from "../../../hooks/useConfirm";
 import { db } from "../../../lib/db";
 import { supabase } from "../../../lib/supabaseClient";
+import { runMutation } from "../../../lib/dbQuery";
+import { getDbErrorMessage } from "../../../lib/dbError";
 import { uploadInstitutionLogo } from "../../../services";
 import { crearConvenio } from "../../../services/conveniosService";
 import { generateWithGemini } from "../../../services/geminiService";
@@ -467,13 +469,21 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
   const deleteLaunchMutation = useMutation({
     mutationFn: async (id: string) => {
       if (isTestingMode) return null;
-      const { error: err1 } = await supabase
-        .from("convocatorias")
-        .delete()
-        .eq("lanzamiento_id", id);
-      if (err1) logger.warn("Error deleting convocatorias:", err1);
-      const { error: err2 } = await supabase.from("practicas").delete().eq("lanzamiento_id", id);
-      if (err2) logger.warn("Error deleting practicas:", err2);
+
+      // Las FK de `convocatorias` y `practicas` hacia `lanzamientos_pps` son
+      // NO ACTION: Postgres ya impide que queden filas huerfanas, porque
+      // rechaza el borrado del lanzamiento si todavia hay hijos. Lo que faltaba
+      // era cortar aca. Antes cada fallo era un `logger.warn` y se seguia igual,
+      // asi que el admin terminaba viendo una violacion de clave foranea --
+      // sintoma -- en vez del motivo real, por ejemplo RLS negando el borrado.
+      await runMutation(supabase.from("convocatorias").delete().eq("lanzamiento_id", id), {
+        table: "convocatorias",
+        operation: "borrarInscripcionesDelLanzamiento",
+      });
+      await runMutation(supabase.from("practicas").delete().eq("lanzamiento_id", id), {
+        table: "practicas",
+        operation: "borrarPracticasDelLanzamiento",
+      });
       return db.lanzamientos.delete(id);
     },
     onSuccess: () => {
@@ -483,8 +493,10 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       queryClient.invalidateQueries({ queryKey: ["allPracticas"] });
     },
     onError: (error: Error) => {
-      const msg = error?.message || "Error desconocido";
-      setToastInfo({ message: `Error al eliminar: ${msg}`, type: "error" });
+      // El detalle tecnico va al log; al admin se le muestra el mensaje del
+      // contrato, que ya distingue permisos de red o de datos relacionados.
+      logger.error("[Lanzador] Falló el borrado del lanzamiento:", error);
+      setToastInfo({ message: `Error al eliminar: ${getDbErrorMessage(error)}`, type: "error" });
     },
   });
 
