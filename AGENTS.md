@@ -10,7 +10,7 @@ Este archivo documenta convenciones, flujos de trabajo y decisiones arquitectoni
 - **Hosting**: GitHub Pages (build estatico)
 - **DB**: Supabase (Postgres) con RLS
 - **Auth**: Supabase Auth con roles (estudiante, admin, directivo, jefe)
-- **Notificaciones**: Firebase Cloud Messaging + OneSignal
+- **Notificaciones**: Firebase Cloud Messaging (FCM), tabla `fcm_tokens`. OneSignal se descartó: sus edge functions (`send-push`, `onesignal-verify`) y su tabla `push_subscriptions` ya no existen. Si aparece una referencia a OneSignal en el código o en un doc, es residuo: borrala.
 - **Project ID**: `qxnxtnhtbpsgzprqtrjl`
 
 ## Comandos
@@ -80,14 +80,20 @@ src/
   contexts/        # React Contexts (Auth, Modal, StudentPanel)
   constants/       # Constantes y campos de DB (dbConstants.ts)
   hooks/           # Custom hooks (useSeleccionadorLogic, useConvocatorias, etc.)
-  services/        # Capa de datos (dataService.ts, supabaseService.ts)
+  services/        # Capa de datos por dominio (convocatoriasService.ts,
+                   # solicitudesService.ts, supabaseService.ts, ...). No existe
+                   # un dataService.ts: se dividio por dominio hace tiempo.
   types/           # Tipos TypeScript (supabase.ts = autogenerado, types.ts = app)
   utils/           # Utilidades (formatters, scheduleUtils, emailService)
   views/           # Paginas principales (StudentView, AdminView, etc.)
   lib/             # DB wrapper (db.ts), supabase client
 supabase/
   functions/       # Edge Functions (Deno)
-  migrations/      # SQL migrations (referencia local, se aplican via MCP)
+  migrations/      # SQL migrations. NO usar `supabase db push`: se aplican con
+                   # `supabase db query --linked` y la version se registra a
+                   # mano en `supabase_migrations.schema_migrations`. Por eso el
+                   # archivo puede quedar desfasado del estado real: ante la
+                   # duda, consultar la base viva y no el repo.
 ```
 
 ### Convenciones

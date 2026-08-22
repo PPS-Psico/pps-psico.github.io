@@ -1,38 +1,44 @@
 # Inventario canónico de Supabase Edge Functions
 
-Última verificación: 28 de julio de 2026. Proyecto: `qxnxtnhtbpsgzprqtrjl`.
+Última verificación: 22 de agosto de 2026. Proyecto: `qxnxtnhtbpsgzprqtrjl`.
 La fuente local está en `supabase/functions/` y la política JWT en `supabase/config.toml`.
 
 ## Reglas de despliegue
 
-- `.github/workflows/deploy-edge-functions.yml` despliega 13 funciones canónicas al fusionar a `main`.
-- `restore-backup` es canónica pero permanece en hold manual por ser destructiva.
-- `send-push` y `onesignal-verify` son legado remoto; no se retiran sin aprobación explícita.
+- `.github/workflows/deploy-edge-functions.yml` despliega las 19 funciones canónicas al fusionar a `main`.
+- Desplegado y repo coinciden: 19 y 19. Si esa cuenta deja de dar, hay drift.
+- `send-push` y `onesignal-verify` fueron **eliminadas el 2026-08-22**. Eran legado de la etapa OneSignal (FCM → VAPID → OneSignal → FCM), leían la tabla `push_subscriptions` que ya no existe y ningún cliente las invocaba. La fuente vive en git en `59e2f08^`.
+- **Todo lo agendado se dispara desde `pg_cron`, nunca desde GitHub Actions.** El secreto se lee de `vault.decrypted_secrets` en cada corrida, asi que rotarlo no rompe nada. `automated-backup.yml` existia y mandaba una copia del `CRON_SECRET` guardada aparte en GitHub: al rotarse el secreto el 2026-07-27, esa copia quedo vieja y el backup estuvo 26 dias caido devolviendo 401. Se elimino el workflow y el backup pasó a `pg_cron` (`automated-backup-daily`, 02:00 UTC) el 2026-08-22. Si alguna vez hace falta agendar algo nuevo, va en `pg_cron`.
 - Se usan imports directos de `esm.sh`; no se permiten `deno.json`, import maps ni JSR en la fuente efectiva.
 - `verify_jwt = false` solo se admite con autenticación interna de cron o para un endpoint público deliberado.
 
 ## Estado productivo verificado
 
-| Función                           | Versión | JWT | Estado                                             |
-| --------------------------------- | ------: | :-: | -------------------------------------------------- |
-| `automated-backup`                |     v19 | no  | canónica; autenticación `X-API-Key` o sesión admin |
-| `check-consentimiento-pendientes` |     v15 | no  | canónica; cron cada 10 min                         |
-| `generate-content`                |     v20 | sí  | canónica                                           |
-| `health-check`                    |     v15 | no  | pública; solo estado estático                      |
-| `hermes-proxy`                    |      v4 | sí  | canónica; roles `admin`/`SuperUser` y allowlist    |
-| `launch-scheduler`                |     v31 | no  | canónica; cron cada 10 min                         |
-| `list-backups`                    |     v13 | sí  | canónica                                           |
-| `moodle-autologin`                |     v10 | sí  | canónica; autologin estricto solo para alumnos     |
-| `request-password-reset`          |      v4 | sí  | canónica                                           |
-| `reset-password-with-token`       |      v4 | sí  | canónica                                           |
-| `restore-backup`                  |     v10 | sí  | manual/hold; no auto-deploy                        |
-| `send-email`                      |     v42 | sí  | canónica                                           |
-| `send-fcm-notification`           |     v44 | sí  | canónica; autorización server-side                 |
-| `student-login`                   |      v3 | sí  | canónica                                           |
-| `send-push`                       |     v42 | sí  | legacy remoto; sin consumidor activo confirmado    |
-| `onesignal-verify`                |      v9 | sí  | legacy remoto; sin consumidor activo confirmado    |
+| Función                               | Versión | JWT | Estado                                             |
+| ------------------------------------- | ------: | :-: | -------------------------------------------------- |
+| `automated-backup`                    |     v22 | no  | canónica; autenticación `X-API-Key` o sesión admin |
+| `check-consentimiento-pendientes`     |     v20 | no  | canónica; cron cada 10 min                         |
+| `generate-content`                    |     v23 | sí  | canónica                                           |
+| `health-check`                        |     v15 | no  | pública; chequea DB, storage y frescura del backup |
+| `hermes-proxy`                        |      v7 | sí  | canónica; roles `admin`/`SuperUser` y allowlist    |
+| `ingest-moodle-grade-export`          |      v2 | sí  | canónica                                           |
+| `ingest-moodle-grade-observation`     |     v11 | sí  | canónica                                           |
+| `issue-moodle-signup-ticket`          |      v2 | no  | canónica                                           |
+| `launch-scheduler`                    |     v34 | no  | canónica; disparo manual (el cron lo hace en SQL)  |
+| `list-backups`                        |     v16 | sí  | canónica                                           |
+| `moodle-autologin`                    |     v16 | sí  | canónica; autologin estricto solo para alumnos     |
+| `register-moodle-student`             |      v5 | no  | canónica                                           |
+| `request-password-reset`              |      v8 | sí  | canónica                                           |
+| `reset-password-with-token`           |      v7 | sí  | canónica                                           |
+| `restore-backup`                      |     v10 | sí  | canónica; **desplegada es de feb-2026**, ver nota  |
+| `send-consentimiento-final-reminders` |      v4 | sí  | canónica; disparo manual desde el Lanzador         |
+| `send-email`                          |     v46 | sí  | canónica                                           |
+| `send-fcm-notification`               |     v47 | sí  | canónica; autorización server-side                 |
+| `student-login`                       |      v6 | sí  | canónica                                           |
 
-Supabase todavía informa `import_map=true` para `automated-backup`, `generate-content` y `list-backups`, con rutas de versiones antiguas. `get_edge_function` confirmó que los paquetes efectivos actuales contienen solo `index.ts` con imports `esm.sh`; se trata de metadata histórica. `restore-backup` conserva su paquete remoto anterior porque no fue desplegada.
+Supabase todavía informa `import_map=true` para `automated-backup`, `generate-content` y `list-backups`, con rutas de versiones antiguas. `get_edge_function` confirmó que los paquetes efectivos actuales contienen solo `index.ts` con imports `esm.sh`; se trata de metadata histórica.
+
+**Nota sobre `restore-backup` e `ingest-moodle-grade-export`**: hasta el 2026-08-22 ninguna de las dos estaba en la lista de despliegue del workflow, pese a estar declaradas en `config.toml`. Se agregaron. Consecuencia: lo desplegado de `restore-backup` es la v10 del 2026-02-12, seis meses más viejo que el repo. El próximo merge a `main` lo va a actualizar.
 
 ## Verificación posterior al despliegue
 

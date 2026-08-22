@@ -153,12 +153,23 @@ El detalle de lo ya hecho está en `internal-professionalization-plan.md`
 1. **Rotar 3 secretos expuestos** (estuvieron en el repo o en el chat → comprometidos):
    - PAT de Supabase (`sbp_...`) → revocar en https://supabase.com/dashboard/account/tokens
      y actualizar `SUPABASE_ACCESS_TOKEN` en `~/.kiro/settings/mcp.json`.
-   - Token de Todoist (estaba hardcodeado en `todoistDirectService.ts`).
+   - Token de Todoist (estaba hardcodeado en `todoistDirectService.ts`). **La integración
+     con Todoist se eliminó por completo el 2026-08-22** (servicios, hook, doc y el SQL de
+     `todoist_tasks` que nunca se había aplicado), así que revocarlo ya no rompe nada. El
+     token sigue en el historial de git. De paso: si la cuenta de Todoist sigue abierta,
+     conviene cerrarla — igual que la de OneSignal, abajo.
    - Token interno de Hermes (estaba hardcodeado en `AdminDashboard.tsx`).
    - Tras rotar: setear los nuevos valores como env vars (`.env` local + secrets de CI/GitHub).
-2. **Login del MCP de Aikido** (SAST) → abrir la URL de la región y autorizar; luego el
+2. **Revisar y cerrar la cuenta de OneSignal.** El 2026-08-22 se eliminó todo rastro de
+   OneSignal del proyecto: las edge functions `send-push` y `onesignal-verify` (desplegadas
+   y activas desde febrero, sin código en el repo y leyendo la tabla `push_subscriptions`
+   que ya no existe), el paquete `react-onesignal`, los secrets `VITE_ONESIGNAL_*` de
+   GitHub y las menciones en la doc. Push es **FCM only**. Queda pendiente del lado humano:
+   si la cuenta de OneSignal sigue viva, ahí hay datos de suscriptores en un tercero que ya
+   no se usa, y posiblemente un plan activo.
+3. **Login del MCP de Aikido** (SAST) → abrir la URL de la región y autorizar; luego el
    agente corre `aikido_full_scan` sobre lo modificado.
-3. **(Opcional) Login del MCP de Supabase** vía OAuth, o ya quedó el server por token
+4. **(Opcional) Login del MCP de Supabase** vía OAuth, o ya quedó el server por token
    configurado en `mcp.json` (funciona al reconectar).
 
 ## 🟠 P1 — Base de datos (vía advisors; aditivo/seguro lo hace el agente)
@@ -270,7 +281,21 @@ Notas de método para componentes JSX:
   por vista (Borrador/Seleccion/Seguro/Activa/Archivada). ConfirmacionView ya está aparte.
 - **Componentes admin grandes restantes** (`GestionView` ~1400, `WhatsAppContactClassifier`
   ~1400, `SeguroGenerator` ~1100, `ConvocatoriaManager` ~840) — extraer subcomponentes/hooks.
-- **`dataService`/orquestación** — ya se redujo; seguir moviendo lógica de negocio fuera de JSX.
+- **Orquestación en servicios** — seguir moviendo lógica de negocio fuera del JSX. (Nota: no
+  existe ningún `dataService.ts`; la capa está dividida por dominio — `convocatoriasService`,
+  `solicitudesService`, `conveniosService`, `supabaseService`.)
+- **~115 `useQuery` sin estado de error.** De ~120 llamadas, sólo 5 renderizan el error. Desde
+  el 2026-08-22 la capa de datos ya lanza `DbError` clasificado (`lib/dbError.ts`) y React
+  Query lo captura, pero si el componente no lo muestra la persona igual ve una lista vacía:
+  el silencio se corrió de la capa de datos a la UI. La salida prolija **no** es parchear 115
+  lugares sino un componente compartido tipo `<QueryState>` que unifique cargando / error /
+  vacío. Único caso ya escalado al `ErrorBoundary`: sesión vencida (`throwOnError` en
+  `main.tsx`), porque ahí ninguna query puede responder y todos los paneles quedarían vacíos.
+- **22 `.from()` en componentes sobre tablas sin capa de datos** — `whatsapp_contactos`,
+  `whatsapp_mensajes`, `agent_suggestions`, `email_templates`, `gmail_hilos`,
+  `lanzamiento_opciones`. No alcanza con moverlos: hay que **crear los services de esos
+  dominios**, que hoy no existen. Los que sí tenían wrapper o eran queries complejas ya se
+  migraron a `db.*` o a `runQuery`/`runCount`/`runMutation` (`lib/dbQuery.ts`).
 
 ## 🔵 P4 — Tests (red de seguridad)
 
