@@ -1,6 +1,7 @@
 // hermes-proxy — puente servidor entre el panel y el backend Hermes.
 // El token machine-to-machine vive sólo en los secretos de Supabase.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { hasRole, HERMES_ROLES } from "../_shared/roles.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -30,8 +31,6 @@ const ALLOWED_TASKS: Record<string, { path: string; timeoutMs: number }> = {
   learn_from_feedback: { path: "/tasks/learn_from_feedback", timeoutMs: 20000 },
   daily_brief_from_db: { path: "/tasks/daily_brief_from_db", timeoutMs: 60000 },
 };
-
-const ADMIN_ROLES = new Set(["admin", "SuperUser"]);
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -64,7 +63,8 @@ Deno.serve(async (req: Request) => {
     console.error("[hermes-proxy] No se pudo verificar el rol:", roleError.message);
     return json({ ok: false, error: "No se pudo verificar tu autorización." }, 500);
   }
-  if (!userData?.role || !ADMIN_ROLES.has(userData.role)) {
+  // Sólo `admin` y `SuperUser`: ver `HERMES_ROLES` en `_shared/roles.ts`.
+  if (!hasRole(userData?.role, HERMES_ROLES)) {
     return json({ ok: false, error: "No tenés permisos para operar Hermes." }, 403);
   }
   if (!HERMES_TOKEN) {

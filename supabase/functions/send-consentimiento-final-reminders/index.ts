@@ -1,8 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ADMIN_ROLES } from "../_shared/roles.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const ADMIN_ROLES = new Set(["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"]);
 // Mismo patron que `check-consentimiento-pendientes`: el dominio sale de una env
 // var y el fallback es el que sirve GitHub Pages hoy. El valor anterior
 // (pps.psico.uflo.edu.ar) dejo de resolver, asi que el boton "Ingresar y firmar"

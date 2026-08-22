@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ADMIN_ROLES } from "../_shared/roles.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -9,7 +10,6 @@ const corsHeaders = {
 };
 
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
-const ADMIN_ROLES = new Set(["admin", "SuperUser", "Jefe", "Directivo", "AdminTester"]);
 
 /**
  * Dos identidades válidas: el cron (secreto en X-API-Key) o una sesión

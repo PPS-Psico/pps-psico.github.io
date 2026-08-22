@@ -64,3 +64,29 @@ jobs:
           supabase functions deploy send-email --project-ref "$PROJECT_REF"
           supabase functions deploy send-fcm-notification --project-ref "$PROJECT_REF"
           supabase functions deploy student-login --project-ref "$PROJECT_REF"
+
+      # Smoke test posterior al deploy.
+      #
+      # `deno check` valida los tipos, pero no puede probar que el CLI empaquete
+      # bien los módulos de `_shared/`: eso sólo se sabe al desplegar. Si un
+      # import compartido no llegara al bundle, la función igual se desplegaría
+      # y fallaría al arrancar (BOOT_ERROR) — o sea, en silencio.
+      #
+      # `health-check` es el canario ideal: es pública, importa de `_shared/` y
+      # devuelve JSON siempre. Se valida que arranque y responda con un `status`,
+      # no el código HTTP: 503 es una respuesta legítima suya (avisa que algo
+      # está degradado, por ejemplo un backup vencido) y significa que la función
+      # booteó bien, que es lo que se está probando acá.
+      - name: Smoke test (la función bootea y responde)
+        run: |
+          body=$(curl --silent --show-error --max-time 30 \
+            "https://${PROJECT_REF}.supabase.co/functions/v1/health-check")
+
+          echo "Respuesta: ${body}"
+
+          if ! echo "${body}" | grep -q '"status"'; then
+            echo "::error::health-check no devolvió un JSON con 'status'. Probable BOOT_ERROR: revisar que los imports de _shared/ hayan entrado al bundle."
+            exit 1
+          fi
+
+          echo "La función booteó y respondió correctamente."
