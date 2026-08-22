@@ -728,13 +728,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "convocatorias_lanzamiento_id_fkey"
-            columns: ["lanzamiento_id"]
-            isOneToOne: false
-            referencedRelation: "lanzamientos_pps"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "convocatorias_opcion_asignada_id_fkey"
             columns: ["opcion_asignada_id"]
             isOneToOne: false
@@ -2448,13 +2441,6 @@ export type Database = {
             columns: ["institucion_id"]
             isOneToOne: false
             referencedRelation: "instituciones"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "practicas_lanzamiento_id_fkey"
-            columns: ["lanzamiento_id"]
-            isOneToOne: false
-            referencedRelation: "lanzamientos_pps"
             referencedColumns: ["id"]
           },
           {
