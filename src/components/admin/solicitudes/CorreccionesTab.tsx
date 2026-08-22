@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import QueryState, { type QueryLike } from "../../QueryState";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   approveSolicitudModificacion,
@@ -61,7 +62,7 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
   const queryClient = useQueryClient();
 
   // Fetch modificaciones
-  const { data: solicitudesModificacion = [], isLoading: loadingMod } = useQuery<CorreccionItem[]>({
+  const modQuery = useQuery<CorreccionItem[]>({
     queryKey: ["solicitudes_modificacion", isTestingMode],
     queryFn: async () =>
       (await fetchAllSolicitudesModificacion(
@@ -71,11 +72,14 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
   });
 
   // Fetch nuevas pps
-  const { data: solicitudesNuevas = [], isLoading: loadingNuevas } = useQuery<CorreccionItem[]>({
+  const nuevasQuery = useQuery<CorreccionItem[]>({
     queryKey: ["solicitudes_nueva_pps", isTestingMode],
     queryFn: async () =>
       (await fetchAllSolicitudesNuevaPPS(undefined, isTestingMode)) as unknown as CorreccionItem[],
   });
+
+  const solicitudesModificacion = useMemo(() => modQuery.data ?? [], [modQuery.data]);
+  const solicitudesNuevas = useMemo(() => nuevasQuery.data ?? [], [nuevasQuery.data]);
 
   const allList = useMemo(() => {
     const mods = solicitudesModificacion.map((s) => ({
@@ -119,43 +123,63 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
     onError: (e) => onToast(getErrorMessage(e, "Error al aprobar"), "error"),
   });
 
-  if (loadingMod || loadingNuevas) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
-        <Loader />
-      </div>
-    );
-  }
+  /*
+    La lista combina DOS consultas. Antes, si una fallaba, su mitad se caia en
+    silencio: el admin veia solo las solicitudes del otro tipo creyendo que
+    estaban todas. Datos parciales presentados como completos es peor que una
+    lista vacia, asi que basta con que una falle para mostrar el error.
+  */
+  const listaQuery: QueryLike<CorreccionItem[]> = {
+    isPending: modQuery.isPending || nuevasQuery.isPending,
+    isError: modQuery.isError || nuevasQuery.isError,
+    error: modQuery.error ?? nuevasQuery.error,
+    data: modQuery.isPending || nuevasQuery.isPending ? undefined : allList,
+    refetch: () => {
+      void modQuery.refetch();
+      void nuevasQuery.refetch();
+    },
+  };
 
   return (
     <div>
-      {allList.length === 0 ? (
-        <EmptyState
-          icon="inbox"
-          title="Sin solicitudes"
-          msg="No hay solicitudes de modificaciones ni de cargas de PPS."
-        />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {allList.map((sol) => (
-            <CorreccionCardItem
-              key={sol.id}
-              sol={sol}
-              expanded={expandedId === sol.id}
-              onToggle={() => onToggle(sol.id)}
-              onToast={onToast}
-              onReject={onReject}
-              onApprove={async (id, notas) => {
-                if (sol.tipo_solicitud === "modificacion") {
-                  approveModMutation.mutate({ id, notas });
-                } else {
-                  approveNuevaMutation.mutate({ id, notas });
-                }
-              }}
+      <QueryState
+        query={listaQuery}
+        loading={
+          <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
+            <Loader />
+          </div>
+        }
+      >
+        {(lista) =>
+          lista.length === 0 ? (
+            <EmptyState
+              icon="inbox"
+              title="Sin solicitudes"
+              msg="No hay solicitudes de modificaciones ni de cargas de PPS."
             />
-          ))}
-        </div>
-      )}
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {lista.map((sol) => (
+                <CorreccionCardItem
+                  key={sol.id}
+                  sol={sol}
+                  expanded={expandedId === sol.id}
+                  onToggle={() => onToggle(sol.id)}
+                  onToast={onToast}
+                  onReject={onReject}
+                  onApprove={async (id, notas) => {
+                    if (sol.tipo_solicitud === "modificacion") {
+                      approveModMutation.mutate({ id, notas });
+                    } else {
+                      approveNuevaMutation.mutate({ id, notas });
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )
+        }
+      </QueryState>
     </div>
   );
 };

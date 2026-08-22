@@ -14,6 +14,7 @@ import { db } from "../../lib/db";
 import { fetchConveniosPorVencer, crearConvenio } from "../../services/conveniosService";
 import { FIELD_NOMBRE_INSTITUCIONES } from "../../constants";
 import Loader from "../Loader";
+import QueryState from "../QueryState";
 import Toast from "../ui/Toast";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { injectPremiumMotion } from "./premiumMotion";
@@ -73,7 +74,7 @@ const ConveniosPorVencerPanel: React.FC<{ isTestingMode?: boolean }> = ({
     enabled: !isTestingMode,
   });
 
-  const { data: porVencer = [], isLoading } = useQuery({
+  const porVencerQuery = useQuery({
     queryKey: ["conveniosPorVencer", isTestingMode],
     queryFn: () => fetchConveniosPorVencer(90),
     enabled: !isTestingMode,
@@ -169,43 +170,56 @@ const ConveniosPorVencerPanel: React.FC<{ isTestingMode?: boolean }> = ({
             fueron renovados.
           </p>
         </div>
-        {isLoading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
-            <Loader />
-          </div>
-        ) : porVencer.length === 0 ? (
-          <div className="cpv-empty">
-            <span className="material-icons">check_circle</span>
-            No hay convenios por vencer en los próximos 90 días.
-          </div>
-        ) : (
-          <table className="cpv-table">
-            <thead>
-              <tr>
-                <th>Institución</th>
-                <th>Tipo</th>
-                <th>Firma</th>
-                <th>Vence</th>
-                <th>Restan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {porVencer.map((c) => (
-                <tr key={c.convenio_id}>
-                  <td>{getGroupName(c.institucion || "—")}</td>
-                  <td style={{ textTransform: "capitalize" }}>{c.tipo}</td>
-                  <td>{formatDate(c.fecha_firma)}</td>
-                  <td>{formatDate(c.fecha_vencimiento)}</td>
-                  <td>
-                    <span className={`cpv-pill ${c.dias_restantes <= 30 ? "warn" : ""}`}>
-                      {c.dias_restantes} días
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        {/*
+          El vacío de este panel es un tilde verde diciendo "está todo bien". Si
+          la consulta fallaba, el admin veía exactamente eso y se perdía
+          convenios venciéndose creyendo lo contrario. `QueryState` separa los
+          tres casos; el cartel de vacío se mantiene igual.
+        */}
+        <QueryState
+          query={porVencerQuery}
+          loading={
+            <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
+              <Loader />
+            </div>
+          }
+        >
+          {(porVencer) =>
+            porVencer.length === 0 ? (
+              <div className="cpv-empty">
+                <span className="material-icons">check_circle</span>
+                No hay convenios por vencer en los próximos 90 días.
+              </div>
+            ) : (
+              <table className="cpv-table">
+                <thead>
+                  <tr>
+                    <th>Institución</th>
+                    <th>Tipo</th>
+                    <th>Firma</th>
+                    <th>Vence</th>
+                    <th>Restan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {porVencer.map((c) => (
+                    <tr key={c.convenio_id}>
+                      <td>{getGroupName(c.institucion || "—")}</td>
+                      <td style={{ textTransform: "capitalize" }}>{c.tipo}</td>
+                      <td>{formatDate(c.fecha_firma)}</td>
+                      <td>{formatDate(c.fecha_vencimiento)}</td>
+                      <td>
+                        <span className={`cpv-pill ${c.dias_restantes <= 30 ? "warn" : ""}`}>
+                          {c.dias_restantes} días
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </QueryState>
       </section>
     </div>
   );

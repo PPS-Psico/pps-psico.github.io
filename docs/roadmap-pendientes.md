@@ -284,13 +284,24 @@ Notas de método para componentes JSX:
 - **Orquestación en servicios** — seguir moviendo lógica de negocio fuera del JSX. (Nota: no
   existe ningún `dataService.ts`; la capa está dividida por dominio — `convocatoriasService`,
   `solicitudesService`, `conveniosService`, `supabaseService`.)
-- **~115 `useQuery` sin estado de error.** De ~120 llamadas, sólo 5 renderizan el error. Desde
-  el 2026-08-22 la capa de datos ya lanza `DbError` clasificado (`lib/dbError.ts`) y React
-  Query lo captura, pero si el componente no lo muestra la persona igual ve una lista vacía:
-  el silencio se corrió de la capa de datos a la UI. La salida prolija **no** es parchear 115
-  lugares sino un componente compartido tipo `<QueryState>` que unifique cargando / error /
-  vacío. Único caso ya escalado al `ErrorBoundary`: sesión vencida (`throwOnError` en
-  `main.tsx`), porque ahí ninguna query puede responder y todos los paneles quedarían vacíos.
+- **🔶 `useQuery` sin estado de error — herramienta lista, migración en curso.** De ~120
+  llamadas, sólo 5 renderizaban el error. La capa de datos ya lanza `DbError` clasificado
+  (`lib/dbError.ts`) y React Query lo captura, pero si el componente no lo muestra la persona
+  igual ve una lista vacía: el silencio se había corrido de la capa de datos a la UI.
+  - ✅ **`components/QueryState.tsx`** (8 tests) cablea el resultado de una query a los
+    `Loader` / `ErrorState` / `EmptyState` que ya existían. El texto sale de
+    `getDbErrorMessage`, y el botón "Reintentar" aparece **sólo** si `isRetryable` — ofrecerlo
+    ante un "no tenés permisos" es mentirle a quien lo va a apretar tres veces.
+  - ✅ Migrados: `ConveniosPorVencerPanel` (su vacío era un tilde verde diciendo "está todo
+    bien": si la consulta fallaba, se perdían convenios venciéndose creyendo lo contrario) y
+    `CorreccionesTab` (combina dos consultas; si una fallaba, esa mitad de la lista se caía en
+    silencio y el admin veía datos parciales como completos).
+  - ⬜ **Falta el resto.** El patrón es mecánico: pasar el objeto de la query entero en vez de
+    destructurar `data`/`isLoading`, envolver el bloque en `<QueryState>` y dejar el cartel de
+    vacío existente dentro de `children` para no cambiar el diseño. Para combinar N consultas
+    se arma un `QueryLike` a mano (ver `CorreccionesTab`).
+  - Único caso escalado al `ErrorBoundary`: sesión vencida (`throwOnError` en `main.tsx`),
+    porque ahí ninguna query puede responder y todos los paneles quedarían vacíos.
 - **22 `.from()` en componentes sobre tablas sin capa de datos** — `whatsapp_contactos`,
   `whatsapp_mensajes`, `agent_suggestions`, `email_templates`, `gmail_hilos`,
   `lanzamiento_opciones`. No alcanza con moverlos: hay que **crear los services de esos
