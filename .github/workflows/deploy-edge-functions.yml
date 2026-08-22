@@ -22,6 +22,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # El chequeo va ANTES del deploy a propósito: si una función no compila o
+      # quedó fuera de la lista de abajo, la publicación se frena en vez de
+      # dejar producción a medias. Hasta el 2026-08-22 nada miraba estas
+      # funciones — ni tsc (sólo cubre `src`), ni ESLint (las ignora), ni tests.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Edge Functions
+        run: npm run check:functions
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
