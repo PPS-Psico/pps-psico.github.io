@@ -26,7 +26,6 @@ Este directorio concentra documentacion vigente y util para operar o evolucionar
 - [edge-functions-inventory.md](./edge-functions-inventory.md): catálogo canónico, JWT, consumidores y secretos.
 - [BACKUP_SYSTEM.md](./BACKUP_SYSTEM.md): backup y restauracion.
 - [PUSH_NOTIFICATIONS_SETUP.md](./PUSH_NOTIFICATIONS_SETUP.md): push notifications.
-- [TODOIST_INTEGRACION.md](./TODOIST_INTEGRACION.md): estado real de la integracion con Todoist.
 
 ## Que ya no usamos como fuente de verdad
 

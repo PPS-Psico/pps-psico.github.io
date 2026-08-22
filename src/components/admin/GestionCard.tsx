@@ -10,7 +10,6 @@ import {
 } from "../../constants";
 import { useAuth } from "../../contexts/AuthContext";
 import ReminderService from "../../services/reminderService";
-import TodoistService from "../../services/todoistDirectService";
 import type { LanzamientoPPS } from "../../types";
 import { getEspecialidadClasses, parseToUTCDate } from "../../utils/formatters";
 import ContactModal from "./ContactModal";
@@ -60,7 +59,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
     const [history, setHistory] = useState(pps.historial_gestion || "");
     const [newLogEntry, setNewLogEntry] = useState("");
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-    const [todoistSuccess, setTodoistSuccess] = useState(false);
     const [reminderSuccess, setReminderSuccess] = useState(false);
     const [nextCheckDate, setNextCheckDate] = useState(() => {
       const val = pps[FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS] || "";
@@ -147,7 +145,8 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
       );
     }, [status, notes, relaunchDate, nextCheckDate, pps, newLogEntry]);
 
-    // Handle Save con integración a Todoist
+    // Guarda los cambios de gestión y, si se confirma un relanzamiento, crea
+    // los recordatorios internos.
     const handleSave = async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!hasChanges) return;
@@ -207,23 +206,6 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
         setIsExpanded(false);
       } else {
         setIsJustSaved(false);
-      }
-    };
-
-    const handleManualTodoist = async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      try {
-        await TodoistService.createLanzamientoTask(
-          pps[FIELD_NOMBRE_PPS_LANZAMIENTOS] ?? "",
-          relaunchDate || "Pendiente",
-          notes,
-          2,
-          institution?.phone ?? undefined
-        );
-        setTodoistSuccess(true);
-        setTimeout(() => setTodoistSuccess(false), 3000);
-      } catch (error) {
-        logger.error("Error Todoist:", error);
       }
     };
 
@@ -493,28 +475,16 @@ const GestionCard: React.FC<GestionCardProps> = React.memo(
                 </div>
 
                 {/* Feedback de acciones */}
-                {(reminderSuccess || todoistSuccess) && (
+                {reminderSuccess && (
                   <div className="flex flex-col gap-2 mt-2">
-                    {reminderSuccess && (
-                      <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg animate-fade-in">
-                        <span className="material-icons !text-purple-600 !text-sm">
-                          notifications_active
-                        </span>
-                        <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                          Recordatorios creados
-                        </span>
-                      </div>
-                    )}
-                    {todoistSuccess && (
-                      <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg animate-fade-in">
-                        <span className="material-icons !text-emerald-600 !text-sm">
-                          check_circle
-                        </span>
-                        <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                          Tarea enviada a Todoist
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg animate-fade-in">
+                      <span className="material-icons !text-purple-600 !text-sm">
+                        notifications_active
+                      </span>
+                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                        Recordatorios creados
+                      </span>
+                    </div>
                   </div>
                 )}
 

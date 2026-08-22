@@ -64,8 +64,6 @@ Copia `.env.example` a `.env` y completa los valores necesarios.
 - `VITE_SENTRY_DSN`
 - `VITE_ENABLE_MONITORING_IN_DEV`
 - `VITE_VAPID_PUBLIC_KEY`
-- `VITE_ONESIGNAL_APP_ID`
-- `VITE_ONESIGNAL_SAFARI_WEB_ID`
 - `VITE_APP_VERSION`
 
 ### Variables legacy
