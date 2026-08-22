@@ -81,3 +81,9 @@ tmp/
 .cache_ggshield
 .moodle-worker-lease.json
 .observado-*.json
+
+# Playwright (e2e)
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/

@@ -45,6 +45,15 @@ jobs:
       - name: Run tests
         run: npm test -- --ci
 
+      # Los e2e corren contra una Supabase falsa (ver playwright.config.ts): no
+      # tocan producción ni crean inscripciones reales. Sólo Chromium, que es lo
+      # único que usan, para no bajar tres navegadores en cada corrida.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: npm run test:e2e
+
       - name: Build application with env vars
         run: npm run build
         env:

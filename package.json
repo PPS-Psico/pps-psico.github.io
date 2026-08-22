@@ -13,6 +13,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css,md}\"",
     "type-check": "tsc --noEmit",
     "check:functions": "node ./scripts/check-edge-functions.mjs",
+    "test:e2e": "playwright test",
     "check:migrations": "node ./scripts/check-migrations.mjs",
     "check:migrations:replay": "node ./scripts/replay-migrations.mjs",
     "check:migrations:replay:contracts": "node ./scripts/replay-migrations.mjs --contracts",
@@ -63,6 +64,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.4.0",
     "@commitlint/config-conventional": "^20.4.0",
+    "@playwright/test": "^1.62.1",
     "@storybook/addon-links": "^10.4.6",
     "@storybook/react-vite": "^10.4.6",
     "@tanstack/react-query-devtools": "^5.51.11",
