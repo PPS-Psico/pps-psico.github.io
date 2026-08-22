@@ -1,5 +1,7 @@
 import { createTransport } from "npm:nodemailer";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sha256Hex } from "../_shared/hash.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 declare const EdgeRuntime:
   | {
@@ -46,27 +48,12 @@ const json = (body: unknown, status = 200) =>
     headers: responseHeaders,
   });
 
-const sha256Hex = async (value: string): Promise<string> => {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-};
-
 const randomHex = (byteLength: number): string =>
   Array.from(crypto.getRandomValues(new Uint8Array(byteLength)))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
-
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 
 const maskEmail = (email: string): string => {
   const [user, domain] = email.split("@");

@@ -7,6 +7,7 @@ import {
   normalizeName,
   pendingNameBackfill,
 } from "./identity.ts";
+import { sha256Hex } from "../_shared/hash.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -86,11 +87,6 @@ type StudentMatch = {
   nombre: string | null;
   nombre_separado: string | null;
   apellido_separado: string | null;
-};
-
-const sha256Hex = async (value: string): Promise<string> => {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
 /**

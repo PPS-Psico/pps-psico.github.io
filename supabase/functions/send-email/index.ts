@@ -1,6 +1,7 @@
 import { createTransport } from "npm:nodemailer";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ADMIN_ROLES } from "../_shared/roles.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -74,14 +75,6 @@ const authenticate = async (req: Request): Promise<Principal | null> => {
     verifiedEmail,
   };
 };
-
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 
 const isReasonableEmail = (value: string): boolean =>
   value.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);

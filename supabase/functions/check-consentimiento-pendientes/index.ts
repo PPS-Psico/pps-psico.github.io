@@ -1,12 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ADMIN_ROLES } from "../_shared/roles.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  // Incluye `x-api-key` porque esta función lo acepta para el disparo por cron.
+  // Sin declararlo acá, un preflight del navegador que mande ese header falla:
+  // hoy no pasa porque sólo la llama pg_cron, pero le mordería a quien agregue
+  // un botón de disparo manual en el panel.
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
@@ -39,15 +44,6 @@ const panelUrl = APP_URL + "/#/student";
 
 const fontStack =
   "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 function buildDetailRows(rows: { label: string; value: string }[]) {
   return rows
