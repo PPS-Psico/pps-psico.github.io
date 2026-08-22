@@ -67,9 +67,24 @@ export function buildPendingMoodleAssignments(
   return byCmid;
 }
 
+/** Cuánto informa un snapshot: una nota manda sobre una entrega sin corregir. */
+function moodleSnapshotPriority(snapshot: MoodleGradeLike): number {
+  if (snapshot.task_status === "graded") return 3;
+  if (snapshot.task_status === "submitted" || snapshot.submitted) return 2;
+  if (snapshot.task_status === "not_submitted") return 1;
+  return 0;
+}
+
 /**
  * El snapshot visible debe pertenecer a la tarea confirmada vigente. Así una
  * nota terminal de un cmid anterior no cierra una tarea que fue remapeada.
+ *
+ * Una misma tarea de Moodle puede cubrir dos PPS del mismo alumno: en Fundación
+ * Tiempo, Adultos y Niños se entregan como dos archivos dentro de un único
+ * espacio, que registra una sola entrega y una sola nota. El ledger guarda ese
+ * dato contra una sola de las prácticas, así que la otra aparecía sin nota para
+ * siempre. Cuando la práctica no tiene snapshot propio se usa el de la tarea,
+ * limitado a prácticas de esta misma lista (el llamador ya acota por alumno).
  */
 export function selectCurrentMoodleSnapshots<
   T extends MoodleGradeLike & { practica_id: string; cmid: number },
@@ -77,12 +92,31 @@ export function selectCurrentMoodleSnapshots<
   const snapshotsByKey = new Map<string, T>(
     snapshots.map((snapshot) => [`${snapshot.practica_id}:${snapshot.cmid}`, snapshot] as const)
   );
+
+  const practiceIds = new Set(practices.map((practice) => practice.id));
+  const bestByCmid = new Map<string, T>();
+  snapshots.forEach((snapshot) => {
+    if (!practiceIds.has(snapshot.practica_id)) return;
+    const key = String(snapshot.cmid);
+    const current = bestByCmid.get(key);
+    if (
+      !current ||
+      moodleSnapshotPriority(snapshot) > moodleSnapshotPriority(current) ||
+      (moodleSnapshotPriority(snapshot) === moodleSnapshotPriority(current) &&
+        snapshot.observed_at > current.observed_at)
+    ) {
+      bestByCmid.set(key, snapshot);
+    }
+  });
+
   const result = new Map<string, T>();
 
   practices.forEach((practice) => {
     const task = resolveExactMoodleTaskLink(practice, links);
     if (!task) return;
-    const snapshot = snapshotsByKey.get(`${practice.id}:${task.moodleId}`);
+    const snapshot =
+      snapshotsByKey.get(`${practice.id}:${task.moodleId}`) ??
+      bestByCmid.get(String(task.moodleId));
     if (snapshot) result.set(practice.id, snapshot);
   });
 

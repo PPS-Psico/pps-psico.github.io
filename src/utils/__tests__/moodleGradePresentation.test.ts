@@ -29,6 +29,100 @@ describe("presentMoodleGrade", () => {
     ).toBe(true);
   });
 
+  it("no reescala una tarea configurada sobre 100 que se califica en escala 10", () => {
+    // Caso real: 92 notas quedaron guardadas como "8,00 / 100,00" y similares
+    // en tareas con grade_conversion_mode = direct_10. Dividirlas por el máximo
+    // las mostraba todas como 1, sin importar si eran 7, 8, 9 o 10.
+    const gradesOnTenScale = [7, 8, 9, 10];
+    for (const value of gradesOnTenScale) {
+      expect(
+        presentMoodleGrade({
+          task_status: "graded",
+          submitted: true,
+          grade_value: value,
+          grade_max: 100,
+          grade_display: `${value},00 / 100,00`,
+          observed_at: "2026-08-10T14:09:00.000Z",
+          grade_conversion_mode: "direct_10",
+        })
+      ).toMatchObject({ compact: String(value), hasGrade: true });
+    }
+  });
+
+  it("sigue reescalando cuando la tarea informa un porcentaje real", () => {
+    expect(
+      presentMoodleGrade({
+        task_status: "graded",
+        submitted: true,
+        grade_value: 80,
+        grade_max: 100,
+        grade_display: "80,00 / 100,00",
+        observed_at: "2026-08-10T14:09:00.000Z",
+        grade_conversion_mode: "percentage",
+      })
+    ).toMatchObject({ compact: "8", hasGrade: true });
+  });
+
+  it("lee como escala 1–10 un valor que prorrateado caería bajo el mínimo", () => {
+    // "10,00 / 100,00" en una tarea sobre 100: como no existe una nota menor a
+    // 4, el 10 sólo puede ser un diez cargado en escala 1–10.
+    expect(
+      presentMoodleGrade({
+        task_status: "graded",
+        submitted: true,
+        grade_value: 10,
+        grade_max: 100,
+        grade_display: "10,00 / 100,00",
+        observed_at: "2026-08-10T14:09:00.000Z",
+        grade_conversion_mode: "percentage",
+      })
+    ).toMatchObject({ compact: "10", hasGrade: true });
+  });
+
+  it("nunca muestra un 0 como si fuera la nota del estudiante", () => {
+    const presentation = presentMoodleGrade({
+      task_status: "graded",
+      submitted: true,
+      grade_value: 0,
+      grade_max: 100,
+      grade_display: "0,00 / 100,00",
+      observed_at: "2026-08-10T14:09:00.000Z",
+      grade_conversion_mode: "percentage",
+    });
+
+    expect(presentation).toMatchObject({ compact: "Revisar", hasGrade: false, tone: "warn" });
+    expect(presentation?.detail).toContain("no es una nota posible");
+  });
+
+  it("no rescata un porcentaje bajo que sí es centesimal", () => {
+    // 39/100 se queda debajo del piso pero tampoco es una nota de escala 1–10.
+    expect(
+      presentMoodleGrade({
+        task_status: "graded",
+        submitted: true,
+        grade_value: 39,
+        grade_max: 100,
+        grade_display: "39,00 / 100,00",
+        observed_at: "2026-08-10T14:09:00.000Z",
+        grade_conversion_mode: "percentage",
+      })
+    ).toMatchObject({ compact: "Revisar", hasGrade: false });
+  });
+
+  it("muestra aprobado/desaprobado cuando la tarea no lleva nota numérica", () => {
+    expect(
+      presentMoodleGrade({
+        task_status: "graded",
+        submitted: true,
+        grade_value: 1,
+        grade_max: 100,
+        grade_display: "1,00 / 100,00",
+        observed_at: "2026-08-10T14:09:00.000Z",
+        grade_conversion_mode: "pass_fail",
+      })
+    ).toMatchObject({ compact: "Aprobada", hasGrade: true });
+  });
+
   it("distingue una entrega pendiente de corrección", () => {
     expect(
       presentMoodleGrade({

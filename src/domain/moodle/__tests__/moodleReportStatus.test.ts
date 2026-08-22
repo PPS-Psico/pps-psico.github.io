@@ -24,6 +24,15 @@ describe("moodleReportStatus", () => {
       expect(isPassingGrade(4, 0, "percentage")).toBe(false);
     });
 
+    it("aprueba una nota 1–10 cargada en una tarea configurada sobre 100", () => {
+      // No existe una nota menor a 4: un 10 sobre 100 es un diez mal cargado,
+      // no un diez por ciento. Antes caía en "reentrega solicitada".
+      expect(isPassingGrade(10, 100, "percentage")).toBe(true);
+      expect(isPassingGrade(8, 100, "percentage")).toBe(true);
+      expect(isPassingGrade(0, 100, "percentage")).toBe(false);
+      expect(isPassingGrade(3, 100, "percentage")).toBe(false);
+    });
+
     it("uses the explicit pass/fail contract", () => {
       expect(isPassingGrade(1, 2, "pass_fail")).toBe(true);
       expect(isPassingGrade(0, 2, "pass_fail")).toBe(false);

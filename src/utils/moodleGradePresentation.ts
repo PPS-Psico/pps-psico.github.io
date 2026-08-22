@@ -1,3 +1,8 @@
+import {
+  readMoodleGrade,
+  type MoodleGradeConversionMode,
+} from "../domain/moodle/moodleReportStatus";
+
 export type MoodleGradeStatus =
   | "no_access"
   | "not_submitted"
@@ -16,6 +21,8 @@ export interface MoodleGradeLike {
   scan_closed?: boolean;
   last_task_status?: string | null;
   last_observed_at?: string | null;
+  /** Contrato de escala de la tarea, tomado de aula_entregas. */
+  grade_conversion_mode?: MoodleGradeConversionMode | null;
 }
 
 export type MoodleGradeTone = "neutral" | "info" | "ok" | "warn";
@@ -76,7 +83,38 @@ export function presentMoodleGrade(
   if (!snapshot) return null;
 
   if (hasCompleteMoodleGrade(snapshot)) {
-    const scaledGrade = Math.round((snapshot.grade_value / snapshot.grade_max) * 10);
+    const reading = readMoodleGrade(
+      snapshot.grade_value,
+      snapshot.grade_max,
+      snapshot.grade_conversion_mode ?? "percentage"
+    );
+
+    if (reading.kind === "pass_fail") {
+      return {
+        label: "Calificación en Campus",
+        detail: reading.passed
+          ? "La tarea se corrige por aprobado/desaprobado y quedó aprobada."
+          : "La tarea se corrige por aprobado/desaprobado y no quedó aprobada.",
+        compact: reading.passed ? "Aprobada" : "No aprobada",
+        tone: reading.passed ? "ok" : "warn",
+        hasGrade: true,
+      };
+    }
+
+    // Nunca mostramos un número imposible como si fuera la nota: en PPS no
+    // existe una calificación por debajo de 4, así que un 0 en Campus señala
+    // una corrección incompleta o mal cargada, no un resultado del estudiante.
+    if (reading.kind === "unusable") {
+      return {
+        label: "Calificación a revisar",
+        detail: `Campus informa "${snapshot.grade_display ?? snapshot.grade_value}", que no es una nota posible. Verificá la corrección en Moodle.`,
+        compact: "Revisar",
+        tone: "warn",
+        hasGrade: false,
+      };
+    }
+
+    const scaledGrade = reading.value;
     return {
       label: "Calificación en Campus",
       detail:

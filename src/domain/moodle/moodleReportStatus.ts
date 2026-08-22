@@ -81,21 +81,74 @@ const normalizeLabel = (value: string | null | undefined): string =>
 const isFiniteNumber = (value: number | null | undefined): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
+/** Nota mínima de aprobación en la escala 1–10. */
+export const MOODLE_PASSING_GRADE = 4;
+
+/**
+ * Cómo debe leerse el número que informa Moodle.
+ *
+ * `unusable` no es "desaprobado": es "esto no es una nota". En PPS un informe
+ * insuficiente se rehace, nunca se califica por debajo de 4, así que un valor
+ * que cae debajo de ese piso delata un problema de carga y no un resultado.
+ */
+export type MoodleGradeReading =
+  | { kind: "score"; value: number }
+  | { kind: "pass_fail"; passed: boolean }
+  | { kind: "unusable" };
+
+const UNUSABLE: MoodleGradeReading = { kind: "unusable" };
+
+/**
+ * Interpreta la nota de Moodle según el contrato de escala de la tarea.
+ * Es la única fuente de verdad: la usan tanto la aprobación como la pantalla,
+ * para que el número que ve el estudiante y su estado no puedan discrepar.
+ *
+ * En tareas `percentage` hay un caso extra. Varias quedaron configuradas sobre
+ * 100 pero el docente cargó la nota en escala 1–10 ("10,00 / 100,00" para un
+ * diez). Como nada por debajo de 4 es una nota posible, un valor entre 4 y 10
+ * que al prorratearse caería debajo del piso se lee en escala 1–10; cualquier
+ * otro caso queda como `unusable` para que alguien lo revise.
+ */
+export function readMoodleGrade(
+  gradeValue: number | null | undefined,
+  gradeMax: number | null | undefined = 10,
+  mode: MoodleGradeConversionMode = "percentage"
+): MoodleGradeReading {
+  if (!isFiniteNumber(gradeValue)) return UNUSABLE;
+
+  if (mode === "pass_fail") return { kind: "pass_fail", passed: gradeValue > 0 };
+
+  // El piso se compara contra el valor crudo: un 3,99 no puede redondearse
+  // hasta convertirse en un 4 aprobado.
+  if (mode === "direct_10") {
+    return gradeValue >= MOODLE_PASSING_GRADE && gradeValue <= 10
+      ? { kind: "score", value: Math.round(gradeValue) }
+      : UNUSABLE;
+  }
+
+  if (!isFiniteNumber(gradeMax) || gradeMax <= 0 || gradeValue < 0 || gradeValue > gradeMax) {
+    return UNUSABLE;
+  }
+
+  // El umbral se evalúa sin redondear: un 39/100 no puede volverse un 4.
+  const prorated = (gradeValue / gradeMax) * 10;
+  if (prorated >= MOODLE_PASSING_GRADE) return { kind: "score", value: Math.round(prorated) };
+  if (gradeValue >= MOODLE_PASSING_GRADE && gradeValue <= 10) {
+    return { kind: "score", value: Math.round(gradeValue) };
+  }
+  return UNUSABLE;
+}
+
 /** Uses the explicit scale contract stored on aula_entregas. */
 export function isPassingGrade(
   gradeValue: number | null | undefined,
   gradeMax: number | null | undefined = 10,
   mode: MoodleGradeConversionMode = "percentage"
 ): boolean {
-  if (!isFiniteNumber(gradeValue)) return false;
-
-  if (mode === "pass_fail") return gradeValue > 0;
-  if (mode === "direct_10") return gradeValue >= 4 && gradeValue <= 10;
-
-  if (!isFiniteNumber(gradeMax) || gradeMax <= 0 || gradeValue < 0 || gradeValue > gradeMax) {
-    return false;
-  }
-  return (gradeValue / gradeMax) * 10 >= 4;
+  const reading = readMoodleGrade(gradeValue, gradeMax, mode);
+  if (reading.kind === "pass_fail") return reading.passed;
+  if (reading.kind === "score") return reading.value >= MOODLE_PASSING_GRADE;
+  return false;
 }
 
 function hasReachedDate(value: string | null | undefined, referenceDate: Date): boolean {

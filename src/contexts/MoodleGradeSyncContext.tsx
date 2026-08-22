@@ -18,6 +18,7 @@ import {
   MoodleBridgeError,
   requestMoodleTasks,
 } from "../lib/moodleBridge";
+import type { MoodleGradeConversionMode } from "../domain/moodle/moodleReportStatus";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/supabase";
 import {
@@ -25,7 +26,14 @@ import {
   selectCurrentMoodleSnapshots,
 } from "../utils/moodleTaskResolution";
 
-export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_snapshots"]["Row"];
+/**
+ * El snapshot no guarda la escala de la tarea: vive en `aula_entregas`. Sin
+ * ella no se puede interpretar una nota como "8,00 / 100,00", que según el
+ * contrato de la tarea puede valer 8 o 0,8.
+ */
+export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_snapshots"]["Row"] & {
+  grade_conversion_mode: MoodleGradeConversionMode | null;
+};
 
 export type MoodleGradeSyncStatus =
   | "idle"
@@ -83,11 +91,20 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
       if (!studentId) return [];
       const { data, error } = await supabase
         .from("moodle_grade_snapshots")
-        .select("*")
+        .select("*, aula_entregas(grade_conversion_mode)")
         .eq("estudiante_id", studentId)
         .order("observed_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((row) => {
+        const { aula_entregas: task, ...snapshot } = row as typeof row & {
+          aula_entregas: { grade_conversion_mode: string | null } | null;
+        };
+        return {
+          ...snapshot,
+          grade_conversion_mode:
+            (task?.grade_conversion_mode as MoodleGradeConversionMode | null) ?? null,
+        } as MoodleGradeSnapshot;
+      });
     },
     staleTime: 60_000,
     retry: 1,
