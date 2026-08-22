@@ -6,7 +6,7 @@ import {
   FIELD_HORAS_ACREDITADAS_LANZAMIENTOS,
   FIELD_ORIENTACION_LANZAMIENTOS,
 } from "../../constants/dbConstants";
-import { useNotifications } from "../../contexts/NotificationContext";
+import { useToast } from "../../contexts/NotificationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { supabase } from "../../lib/supabaseClient";
 import { runQuery } from "../../lib/dbQuery";
@@ -48,7 +48,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   studentId,
   onSuccess,
 }) => {
-  const { showToast } = useNotifications();
+  const { showToast } = useToast();
   const { resolvedTheme } = useTheme();
 
   // Estados del formulario

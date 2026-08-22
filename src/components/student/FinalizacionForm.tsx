@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitFinalizationRequest, uploadFinalizationFile } from "../../services";
-import { useNotifications } from "../../contexts/NotificationContext";
+import { useToast } from "../../contexts/NotificationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { logger } from "../../utils/logger";
 import { Icon } from "./ds";
@@ -222,7 +222,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
   solicitudes = [],
   onAddPPS,
 }) => {
-  const { showToast } = useNotifications();
+  const { showToast } = useToast();
   const { resolvedTheme } = useTheme();
   const queryClient = useQueryClient();
 

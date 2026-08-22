@@ -4,6 +4,8 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
@@ -77,6 +79,21 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+/*
+  `showToast` va en su propio contexto a propósito.
+
+  De los 7 consumidores, 5 usan ÚNICAMENTE `showToast` — que es un `useCallback`
+  con dependencias vacías, o sea estable para siempre. Aun así se re-renderizaban
+  cada vez que llegaba una notificación nueva, porque compartían el contexto con
+  la bandeja. Con el contexto separado, su valor nunca cambia de identidad y esos
+  componentes dejan de re-renderizarse por completo.
+*/
+interface ToastContextType {
+  showToast: (message: string, type: "success" | "error" | "warning") => void;
+}
+
+const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { authenticatedUser, isSuperUserMode, isJefeMode, isDirectivoMode } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -87,6 +104,24 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Persistencia Local: Set de IDs leídos
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
+  /*
+    Espejo en ref del set de leídos.
+
+    El efecto que arma la bandeja consulta 6 tablas y necesita saber qué está
+    leído para marcar cada aviso. Antes lo tomaba del estado y por eso lo tenía
+    en sus dependencias: marcar UNA notificación como leída creaba un Set nuevo,
+    cambiaba la referencia y volvía a consultar las 6 tablas enteras. Y encima
+    ocurría mientras `markAsRead` navegaba al link del aviso.
+
+    Leyéndolo por ref, el efecto ve siempre el valor actual sin depender de él.
+    Lo que sí debe esperar es la carga inicial desde localStorage, y para eso
+    está `readIdsLoadedFor`, que cambia una sola vez por usuario.
+  */
+  const readIdsRef = useRef<Set<string>>(readNotificationIds);
+  /* Mismo motivo que `readIdsRef`: los handlers necesitan la bandeja actual sin
+     depender de ella. */
+  const notificationsRef = useRef<AppNotification[]>([]);
+  const [readIdsLoadedFor, setReadIdsLoadedFor] = useState<string | null>(null);
 
   // Push notification state
   const pushSupported = "Notification" in window && "serviceWorker" in navigator;
@@ -108,13 +143,19 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          setReadNotificationIds(new Set(parsed));
+          const restored = new Set<string>(parsed);
+          readIdsRef.current = restored;
+          setReadNotificationIds(restored);
         }
       }
     } catch (e) {
       logger.warn("Error cargando notificaciones leídas del storage", e);
+    } finally {
+      // Se marca cargado incluso si no había nada guardado: la bandeja tiene
+      // que armarse igual, y este es el disparador de esa primera carga.
+      setReadIdsLoadedFor(userId);
     }
-  }, [authenticatedUser, STORAGE_KEY]);
+  }, [authenticatedUser, STORAGE_KEY, userId]);
 
   // 0.5. CHECK PUSH SUBSCRIPTION STATUS
   useEffect(() => {
@@ -133,14 +174,20 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [authenticatedUser, pushSupported]);
 
   // Helper para guardar en storage
-  const persistReadIds = (newSet: Set<string>) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-    setReadNotificationIds(newSet);
-  };
+  const persistReadIds = useCallback(
+    (newSet: Set<string>) => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
+      readIdsRef.current = newSet;
+      setReadNotificationIds(newSet);
+    },
+    [STORAGE_KEY]
+  );
 
   // 1. LOAD PENDING NOTIFICATIONS & GENERATE REMINDERS
   useEffect(() => {
     if (!authenticatedUser) return;
+    // Sin los leídos cargados, todo se marcaría como no leído.
+    if (readIdsLoadedFor !== userId) return;
 
     const fetchNotificationsAndReminders = async () => {
       try {
@@ -167,7 +214,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 timestamp: new Date(req.created_at ?? ""),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes?tab=ingreso",
-                isRead: readNotificationIds.has(notifId),
+                isRead: readIdsRef.current.has(notifId),
               });
             });
           }
@@ -204,7 +251,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 timestamp: new Date(req.created_at ?? ""),
                 type: "acreditacion",
                 link: "/admin/solicitudes?tab=egreso",
-                isRead: readNotificationIds.has(notifId),
+                isRead: readIdsRef.current.has(notifId),
               });
             });
           }
@@ -237,7 +284,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 timestamp: new Date(mod.created_at ?? ""),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes",
-                isRead: readNotificationIds.has(notifId),
+                isRead: readIdsRef.current.has(notifId),
               });
             });
           }
@@ -276,7 +323,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 timestamp: new Date(req.created_at ?? ""),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes",
-                isRead: readNotificationIds.has(notifId),
+                isRead: readIdsRef.current.has(notifId),
               });
             });
           }
@@ -320,7 +367,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               timestamp: new Date(analyticsHealth[FIELD_CHECKED_AT_ANALYTICS_HEALTH]),
               type: "info",
               link: "/admin/metrics",
-              isRead: readNotificationIds.has(notifId),
+              isRead: readIdsRef.current.has(notifId),
             });
           }
         } else if (isStudent) {
@@ -347,7 +394,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 timestamp: new Date(l.created_at ?? ""),
                 type: "lanzamiento",
                 link: "/student",
-                isRead: readNotificationIds.has(notifId),
+                isRead: readIdsRef.current.has(notifId),
               });
             });
           }
@@ -367,7 +414,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               timestamp: new Date(reminder.due_date),
               type: "recordatorio",
               link: "/admin",
-              isRead: readNotificationIds.has(notifId),
+              isRead: readIdsRef.current.has(notifId),
             });
           });
         }
@@ -380,7 +427,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     };
 
     fetchNotificationsAndReminders();
-  }, [isAdmin, isStudent, authenticatedUser, readNotificationIds]);
+  }, [isAdmin, isStudent, authenticatedUser, readIdsLoadedFor, userId]);
 
   // 2. LISTEN FOR NEW EVENTS (REALTIME)
   useEffect(() => {
@@ -554,31 +601,45 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3")
         .play()
         .catch(() => {});
-    } catch (e) {}
+    } catch {}
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-    const newSet = new Set<string>(readNotificationIds);
-    newSet.add(id);
-    persistReadIds(newSet);
-    const target = notifications.find((n) => n.id === id);
-    if (target && target.link) navigate(target.link);
-  };
+  /*
+    Los tres handlers leen la bandeja y los leídos por ref en vez de por estado.
+    Si dependieran del estado cambiarían de identidad en cada render y el
+    `useMemo` del value no serviría de nada -- que es justo lo que ESLint marca.
+    Así quedan estables y los consumidores sólo se re-renderizan cuando cambia
+    algo que de verdad les importa.
+  */
+  const markAsRead = useCallback(
+    (id: string) => {
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      const newSet = new Set<string>(readIdsRef.current);
+      newSet.add(id);
+      persistReadIds(newSet);
+      const target = notificationsRef.current.find((n) => n.id === id);
+      if (target && target.link) navigate(target.link);
+    },
+    [navigate, persistReadIds]
+  );
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    const newSet = new Set<string>(readNotificationIds);
-    notifications.forEach((n) => newSet.add(n.id));
+    const newSet = new Set<string>(readIdsRef.current);
+    notificationsRef.current.forEach((n) => newSet.add(n.id));
     persistReadIds(newSet);
-  };
+  }, [persistReadIds]);
 
-  const clearNotifications = () => {
+  const clearNotifications = useCallback(() => {
     markAllAsRead();
     setNotifications([]);
-  };
+  }, [markAllAsRead]);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
 
   // Actualizar el Badge del icono de la PWA según las notificaciones no leídas
   useEffect(() => {
@@ -633,34 +694,65 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, [showToast]);
 
-  return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        markAsRead,
-        markAllAsRead,
-        clearNotifications,
-        showToast,
-        // Push notification methods
-        isPushSupported: pushSupported,
-        isPushEnabled: pushEnabled,
-        isPushLoading: pushLoading,
-        subscribeToPush,
-        unsubscribeFromPush,
-      }}
-    >
-      {children}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-          duration={5000}
-        />
-      )}
-    </NotificationContext.Provider>
+  // `showToast` es estable, así que este valor nunca cambia de identidad.
+  const toastValue = useMemo(() => ({ showToast }), [showToast]);
+
+  const notificationValue = useMemo(
+    () => ({
+      notifications,
+      unreadCount,
+      markAsRead,
+      markAllAsRead,
+      clearNotifications,
+      showToast,
+      isPushSupported: pushSupported,
+      isPushEnabled: pushEnabled,
+      isPushLoading: pushLoading,
+      subscribeToPush,
+      unsubscribeFromPush,
+    }),
+    [
+      notifications,
+      unreadCount,
+      markAsRead,
+      markAllAsRead,
+      clearNotifications,
+      showToast,
+      pushSupported,
+      pushEnabled,
+      pushLoading,
+      subscribeToPush,
+      unsubscribeFromPush,
+    ]
   );
+
+  return (
+    <ToastContext.Provider value={toastValue}>
+      <NotificationContext.Provider value={notificationValue}>
+        {children}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+            duration={5000}
+          />
+        )}
+      </NotificationContext.Provider>
+    </ToastContext.Provider>
+  );
+};
+
+/**
+ * Para componentes que sólo necesitan avisar algo. No se suscribe a la bandeja,
+ * así que no se re-renderiza cuando llegan notificaciones.
+ */
+export const useToast = () => {
+  const context = useContext(ToastContext);
+  if (context === undefined) {
+    throw new Error("useToast must be used within a NotificationProvider");
+  }
+  return context;
 };
 
 export const useNotifications = () => {

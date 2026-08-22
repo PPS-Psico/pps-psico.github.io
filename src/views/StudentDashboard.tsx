@@ -52,7 +52,7 @@ import type { AuthUser } from "../contexts/AuthContext";
 import { useAuth } from "../contexts/AuthContext";
 import { type MoodleGradeSyncStatus, useMoodleGradeSync } from "../contexts/MoodleGradeSyncContext";
 import { useModal } from "../contexts/ModalContext";
-import { useNotifications } from "../contexts/NotificationContext";
+import { useToast } from "../contexts/NotificationContext";
 import { useStudentPanel } from "../contexts/StudentPanelContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { db } from "../lib/db";
@@ -299,7 +299,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);
   const [summaryPractice, setSummaryPractice] = useState<Practica | null>(null);
   const { openSolicitudPPSModal } = useModal();
-  const { showToast } = useNotifications();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
 
   const currentUser = user || authenticatedUser;

@@ -7,7 +7,7 @@ import FinalizacionForm from "../../components/student/FinalizacionForm";
 import { useStudentPanel } from "../../contexts/StudentPanelContext";
 import { useModal } from "../../contexts/ModalContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { useNotifications } from "../../contexts/NotificationContext";
+import { useToast } from "../../contexts/NotificationContext";
 import { db } from "../../lib/db";
 import {
   FIELD_LEGAJO_PPS,
@@ -41,7 +41,7 @@ const SolicitudesView: React.FC = () => {
     useStudentPanel();
   const { openSolicitudPPSModal } = useModal();
   const { authenticatedUser } = useAuth();
-  const { showToast } = useNotifications();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);

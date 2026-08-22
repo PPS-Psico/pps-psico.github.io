@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import Button from "../ui/Button";
-import { useNotifications } from "../../contexts/NotificationContext";
+import { useToast } from "../../contexts/NotificationContext";
 import { uploadSolicitudFile, submitSolicitudModificacion } from "../../services";
 import type { Practica } from "../../types";
 import { getErrorMessage } from "../../utils/getErrorMessage";
@@ -36,7 +36,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   onFechaFinChange,
   onSuccess,
 }) => {
-  const { showToast } = useNotifications();
+  const { showToast } = useToast();
   const [step, setStep] = useState<1 | 2>(1);
   const [tipoModificacion, setTipoModificacion] = useState<ModificacionType>(null);
   const [horasNuevas, setHorasNuevas] = useState<string>("");
