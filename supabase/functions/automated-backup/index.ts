@@ -67,6 +67,12 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Vive fuera del try porque el catch lo necesita para marcar como fallido
+  // SOLO este backup. Antes el catch hacia `.eq("status", "running")`, que
+  // pisaba cualquier otro backup en curso (por ejemplo el cron y uno manual
+  // disparado a mano al mismo tiempo).
+  let historyId: string | null = null;
+
   try {
     // 1. Obtener configuración de backup
     const { data: config, error: configError } = await supabase
@@ -100,10 +106,16 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to create history record: ${historyError.message}`);
     }
 
+    historyId = historyRecord.id;
+
     // 3. Realizar backup de cada tabla
     const backupData: BackupData = {};
     let totalRecords = 0;
     const backedUpTables: string[] = [];
+    // Una tabla que falla no puede pasar desapercibida: sin esto el backup se
+    // guardaba igual y se marcaba "completed", asi que un snapshot al que le
+    // falta `practicas` entera figuraba como bueno en el historial.
+    const failedTables: { table: string; error: string }[] = [];
 
     for (const tableName of config.include_tables) {
       try {
@@ -111,6 +123,7 @@ Deno.serve(async (req: Request) => {
 
         if (tableError) {
           console.error(`Error backing up ${tableName}:`, tableError);
+          failedTables.push({ table: tableName, error: tableError.message });
           continue;
         }
 
@@ -121,8 +134,16 @@ Deno.serve(async (req: Request) => {
         console.log(`✅ Backed up ${tableName}: ${tableData?.length || 0} records`);
       } catch (err) {
         console.error(`Failed to backup ${tableName}:`, err);
+        failedTables.push({
+          table: tableName,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
       }
     }
+
+    // El backup esta completo solo si TODAS las tablas configuradas entraron.
+    const isComplete = failedTables.length === 0;
+    const failureSummary = failedTables.map((f) => `${f.table} (${f.error})`).join("; ");
 
     // 4. Preparar archivo de backup
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -134,6 +155,10 @@ Deno.serve(async (req: Request) => {
           tables: backedUpTables,
           record_count: totalRecords,
           version: "1.0",
+          // El archivo se describe a si mismo: quien lo restaure mas adelante
+          // tiene que poder ver que le faltan tablas sin depender del historial.
+          complete: isComplete,
+          failed_tables: failedTables,
         },
         data: backupData,
       },
@@ -168,7 +193,8 @@ Deno.serve(async (req: Request) => {
     await supabase
       .from("backup_history")
       .update({
-        status: "completed",
+        status: isComplete ? "completed" : "failed",
+        error_message: isComplete ? null : `Tablas sin respaldar: ${failureSummary}`,
         tables_backed_up: backedUpTables,
         storage_path: uploadData?.path || fileName,
         file_size_bytes: new Blob([backupContent]).size,
@@ -177,38 +203,59 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", historyRecord.id);
 
-    // 8. Actualizar último backup en configuración
-    await supabase
-      .from("backup_config")
-      .update({ last_backup_at: new Date().toISOString() })
-      .eq("id", config.id);
+    // 8. Actualizar último backup en configuración.
+    // Solo si esta completo: `last_backup_at` es la senal de "hasta cuando
+    // estoy cubierto", y un backup al que le faltan tablas no cubre.
+    if (isComplete) {
+      await supabase
+        .from("backup_config")
+        .update({ last_backup_at: new Date().toISOString() })
+        .eq("id", config.id);
+    }
 
-    // 9. Limpiar backups antiguos (mantener máximo 3: diario, semanal, mensual)
-    await cleanupOldBackups(config.storage_bucket);
+    // 9. Limpiar backups antiguos (mantener máximo 3: diario, semanal, mensual).
+    // Nunca se limpia a partir de un backup incompleto: seria borrar snapshots
+    // buenos para hacerle lugar a uno malo.
+    if (isComplete) {
+      await cleanupOldBackups(config.storage_bucket);
+    } else {
+      console.warn("[automated-backup] Backup incompleto: se omite la limpieza de antiguos.");
+    }
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: "Backup completed successfully",
+        success: isComplete,
+        message: isComplete
+          ? "Backup completed successfully"
+          : `Backup incompleto: ${failureSummary}`,
         backup_id: historyRecord.id,
         file_name: fileName,
         tables_backed_up: backedUpTables,
+        failed_tables: failedTables,
         record_count: totalRecords,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      // 500 si falto alguna tabla: el workflow corta con exit 1 y la corrida
+      // queda en rojo en vez de pasar en silencio.
+      {
+        status: isComplete ? 200 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   } catch (error) {
     console.error("Backup error:", error);
 
-    // Actualizar historial con error
-    await supabase
-      .from("backup_history")
-      .update({
-        status: "failed",
-        error_message: error instanceof Error ? error.message : "Unknown error",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("status", "running");
+    // Actualizar historial con error, acotado a ESTE backup. Si todavia no
+    // llegamos a crear el registro (`historyId` nulo), no hay nada que marcar.
+    if (historyId) {
+      await supabase
+        .from("backup_history")
+        .update({
+          status: "failed",
+          error_message: error instanceof Error ? error.message : "Unknown error",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", historyId);
+    }
 
     return new Response(
       JSON.stringify({

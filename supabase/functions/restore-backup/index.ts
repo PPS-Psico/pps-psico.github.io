@@ -191,7 +191,10 @@ Deno.serve(async (req: Request) => {
 
     await supabase.from("backup_history").insert({
       backup_type: "manual",
-      status: successCount === tablesToRestore.length ? "completed" : "completed",
+      // Una restauracion parcial se registra como `failed`: el historial es lo
+      // unico que queda para saber si el backup sirvio, y "casi completo" no
+      // sirve. Vocabulario alineado con `automated-backup` (running/completed/failed).
+      status: successCount === tablesToRestore.length ? "completed" : "failed",
       tables_backed_up: tablesToRestore,
       metadata: {
         action: "restore",

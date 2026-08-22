@@ -47,6 +47,30 @@ interface BackupFile {
   backup_type: string;
 }
 
+// Cuantos dias de atraso tolera cada frecuencia antes de dar por hecho que el
+// backup automatico dejo de correr. Un dia de gracia sobre la cadencia propia.
+const STALE_AFTER_DAYS: Record<BackupConfig["frequency"], number> = {
+  hourly: 1,
+  daily: 2,
+  weekly: 9,
+  monthly: 33,
+};
+
+/**
+ * El panel mostraba solo la fecha del ultimo backup. Una fecha suelta no dice
+ * nada: en julio de 2026 el backup estuvo 26 dias caido (el `CRON_SECRET` de
+ * GitHub quedo viejo tras rotarlo en Supabase) y la pantalla seguia mostrando
+ * una fecha con toda naturalidad. Lo que hace falta ver es la ANTIGUEDAD.
+ */
+const getBackupStaleness = (config: BackupConfig | null) => {
+  if (!config?.enabled) return null;
+  if (!config.last_backup_at) return { days: null as number | null, stale: true };
+  const days = Math.floor(
+    (Date.now() - new Date(config.last_backup_at).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  return { days, stale: days > (STALE_AFTER_DAYS[config.frequency] ?? 2) };
+};
+
 const BackupManager: React.FC = () => {
   const [config, setConfig] = useState<BackupConfig | null>(null);
   const [backups, setBackups] = useState<BackupFile[]>([]);
@@ -484,6 +508,37 @@ const BackupManager: React.FC = () => {
             <div className="dbe-cell-strong" style={{ marginTop: 2 }}>
               {config?.last_backup_at ? formatDate(config.last_backup_at) : "Nunca"}
             </div>
+            {(() => {
+              const staleness = getBackupStaleness(config);
+              if (!staleness) return null;
+              if (!staleness.stale) {
+                return (
+                  <div style={{ marginTop: 2, fontSize: 12, color: "var(--ink-3)" }}>
+                    {staleness.days === 0 ? "Hoy" : `Hace ${staleness.days} día(s)`}
+                  </div>
+                );
+              }
+              return (
+                <div
+                  style={{
+                    marginTop: 3,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "var(--danger, #dc2626)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span className="material-icons" style={{ fontSize: 14 }}>
+                    error_outline
+                  </span>
+                  {staleness.days === null
+                    ? "Nunca se ejecutó"
+                    : `Hace ${staleness.days} días — el backup automático no está corriendo`}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
