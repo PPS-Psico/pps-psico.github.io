@@ -90,6 +90,9 @@ if (errors.length > 0) {
 // `--node-modules-dir=auto` es necesario porque `send-email` y
 // `request-password-reset` importan `npm:nodemailer`; sin eso Deno no lo
 // resuelve y falla por dependencias, no por el código.
+// `--no-lock` evita que quede un `deno.lock` de 7900 líneas: con
+// `node-modules-dir=auto`, Deno lockea TODO el árbol npm del frontend, que ya
+// está en `package-lock.json` y se desactualizaría con cada cambio de deps.
 const targets = onDisk.map((name) => `supabase/functions/${name}/index.ts`);
 
 // Se invoca el entrypoint del paquete `deno` con node en vez de el shim de
@@ -104,7 +107,7 @@ if (!existsSync(denoEntry)) {
 
 const result = spawnSync(
   process.execPath,
-  [denoEntry, "check", "--node-modules-dir=auto", ...targets],
+  [denoEntry, "check", "--node-modules-dir=auto", "--no-lock", ...targets],
   { stdio: "inherit" }
 );
 
