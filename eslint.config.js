@@ -28,6 +28,7 @@ export default [
       '__ANTIGRAVITY_PROBE__.txt',
       '.storybook/**',
       '.agent/**',
+      '.claude/**',
       '.kiro/**',
       '.impeccable/**',
       'output/**',
@@ -42,7 +43,7 @@ export default [
     ]
   },
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'e2e/**/*.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
