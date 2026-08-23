@@ -756,13 +756,19 @@ const StudentHomeAtlas: React.FC<StudentHomeAtlasProps> = ({
         {/* Resultados propios; la nómina completa queda como detalle secundario. */}
         {closedLanzamientos.length > 0 ? (
           <>
-            <div className="ah-sechead">
+            <div
+              className={
+                "ah-sechead ah-sechead--results" +
+                (closedLanzamientos.length === 1 ? " is-single" : "")
+              }
+            >
               <h2 className="ah-section-label">Tus resultados</h2>
               <span className="n">{String(closedLanzamientos.length).padStart(2, "0")}</span>
             </div>
             <div
-              className="ah-convs"
-              style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginBottom: 28 }}
+              className={
+                "ah-convs ah-convs--results" + (closedLanzamientos.length === 1 ? " is-single" : "")
+              }
             >
               {closedLanzamientos.map((l) => {
                 const isConsentCard = consent?.lanzamientoId === l.id;

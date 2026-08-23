@@ -1,11 +1,14 @@
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { lazy, ReactNode, Suspense, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useModal } from "../../contexts/ModalContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { isEmbedded } from "../../utils/isEmbedded";
 import { logger } from "../../utils/logger";
-import AppHeader from "./Header";
+
+// El login y las vistas con topbar propia nunca muestran el header legacy.
+// Cargarlo bajo demanda evita evaluar su árbol de motion en esas entradas.
+const AppHeader = lazy(() => import("./Header"));
 
 interface LayoutProps {
   children: ReactNode;
@@ -124,11 +127,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           // el AppHeader queda solo para mobile y solo cuando ya hay sesión.
           authenticatedUser && (
             <div className="md:hidden">
-              <AppHeader />
+              <Suspense fallback={null}>
+                <AppHeader />
+              </Suspense>
             </div>
           )
         ) : (
-          <AppHeader />
+          <Suspense fallback={null}>
+            <AppHeader />
+          </Suspense>
         ))}
 
       {/* El contenido conserva los gutters de cada experiencia. El shell aporta

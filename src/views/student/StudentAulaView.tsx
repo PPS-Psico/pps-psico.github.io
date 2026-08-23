@@ -624,15 +624,15 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo entrego un informe?",
-        a: "Entrá en Entregas y abrí la tarjeta de la PPS. Cuando la tarea está vinculada, Mi Panel usa el lanzamiento y la orientación de tu práctica para llevarte al espacio exacto del Campus. Ahí cargás el informe final y, si la práctica fue presencial, también la planilla de asistencia firmada.",
+        a: "Entrá en Entregas y, dentro de Te falta subir, abrí el espacio de tu PPS. Cuando la tarea está vinculada, Mi Panel usa el lanzamiento y la orientación de tu práctica para llevarte al espacio exacto del Campus. Ahí cargás el informe final y, si la práctica fue presencial, también la planilla de asistencia firmada. Al volver, elegí Actualizar estado para consultar nuevamente.",
       },
       {
         q: "¿Qué hago si no encuentro el espacio de entrega de mi PPS?",
-        a: "Si la tarjeta indica Buscar espacio de entrega, todavía no hay un vínculo confirmado para esa PPS. Desplegá Ver todos los espacios y buscá por área e institución. Si tampoco aparece allí, escribí a coordinación para que habilite o vincule la tarea correcta; no entregues en una tarea parecida por tu cuenta.",
+        a: "Si la entrega indica Buscar espacio de entrega, todavía no hay un vínculo confirmado para esa PPS. Desplegá Buscar otro espacio de entrega y revisá el directorio por área e institución. Si tampoco aparece allí, escribí a coordinación para que habilite o vincule la tarea correcta; no entregues en una tarea parecida por tu cuenta.",
       },
       {
         q: "¿Dónde reviso si el informe quedó entregado?",
-        a: "Revisalo dentro de la tarea en el Campus. Ahí vas a encontrar el archivo enviado y el estado oficial de la entrega, la corrección y la aprobación.",
+        a: "Entregas muestra el último estado que Mi Panel pudo leer de la tarea: pendiente, en corrección o calificada. Para forzar una lectura nueva, abrí Mi Panel desde Campus Virtual y elegí Actualizar. El archivo enviado y el estado oficial siempre se confirman dentro de la tarea en Campus.",
       },
       {
         q: "¿Cuál es el plazo para entregar el informe?",
@@ -1076,29 +1076,43 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({
         {section ? (
           /* Pestaña propia del panel: encabezado de página con la misma
              articulación que las vistas nativas (.ah-pagehead). */
-          <section
-            className={
-              "ah-pagehead ah-aula__hero ah-aula__hero--solo" +
-              (activeSection === "guia" ? " ah-aula__hero--guide" : "")
-            }
-          >
-            <div className="ah-aula__hero-copy">
-              <span className="eyebrow">{selectedSection.pageEyebrow}</span>
-              <h1 className="ah-aula__title">{selectedSection.pageTitle}</h1>
-              <p className="ah-aula__lead">{selectedSection.pageLead}</p>
-            </div>
-            {activeSection === "guia" && (
-              <figure className="ah-aula__journey-art">
-                <img
-                  src={`${import.meta.env.BASE_URL}campus-pps-recorrido.png`}
-                  alt="Recorrido de la PPS en siete etapas: equipo, acceso, inscripción, compromiso, documentación, entregas y finalización."
-                  width="1915"
-                  height="821"
-                  decoding="async"
-                />
-              </figure>
-            )}
-          </section>
+          activeSection === "entregas" ? (
+            <section className="ah-pagehead ah-aula__hero ah-aula__hero--solo ah-aula__hero--deliveries">
+              <div className="ah-aula__hero-copy">
+                <span className="eyebrow">Tus notas</span>
+                <h1 className="sd-page-title">
+                  Tus <em>entregas.</em>
+                </h1>
+                <p className="sd-page-lead">
+                  Seguí tus informes finales y su corrección directamente desde el Campus.
+                </p>
+              </div>
+            </section>
+          ) : (
+            <section
+              className={
+                "ah-pagehead ah-aula__hero ah-aula__hero--solo" +
+                (activeSection === "guia" ? " ah-aula__hero--guide" : "")
+              }
+            >
+              <div className="ah-aula__hero-copy">
+                <span className="eyebrow">{selectedSection.pageEyebrow}</span>
+                <h1 className="ah-aula__title">{selectedSection.pageTitle}</h1>
+                <p className="ah-aula__lead">{selectedSection.pageLead}</p>
+              </div>
+              {activeSection === "guia" && (
+                <figure className="ah-aula__journey-art">
+                  <img
+                    src={`${import.meta.env.BASE_URL}campus-pps-recorrido.png`}
+                    alt="Recorrido de la PPS en siete etapas: equipo, acceso, inscripción, compromiso, documentación, entregas y finalización."
+                    width="1915"
+                    height="821"
+                    decoding="async"
+                  />
+                </figure>
+              )}
+            </section>
+          )
         ) : (
           <>
             <section className="ah-pagehead ah-aula__hero ah-aula__hero--solo">

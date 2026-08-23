@@ -131,6 +131,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
             ? "Inscripción registrada"
             : "Inscripto";
   const isClosedSelected = isClosed && isSelected;
+  const isClosedRejected = isClosed && enrollmentStatus === "no seleccionado";
   // PPS ya realizada: se marca en la tarjeta y el detalle bloquea el CTA. Si el
   // alumno está inscripto/seleccionado manda ese estado, que es más específico.
   const showCompletedTag = isCompleted && !isEnrolled && !needsConsent;
@@ -171,13 +172,17 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
           </span>
         ) : needsConsent || isSelected || (isEnrolled && !isOpen) ? (
           <span
-            className="cc__status"
-            style={{
-              color: areaTextColor,
-              background: "transparent",
-              border: `1px solid ${color}`,
-              fontWeight: 600,
-            }}
+            className={`cc__status${isClosedRejected ? " cc__status--negative" : ""}`}
+            style={
+              isClosedRejected
+                ? undefined
+                : {
+                    color: areaTextColor,
+                    background: "transparent",
+                    border: `1px solid ${color}`,
+                    fontWeight: 600,
+                  }
+            }
           >
             {statusText}
           </span>
@@ -189,7 +194,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
         )}
       </div>
 
-      <div className="cc__name">{shortName}</div>
+      <h3 className="cc__name">{shortName}</h3>
 
       {start && end ? (
         <div className="cc__when">
@@ -294,8 +299,7 @@ export const StudentConvCard: React.FC<StudentConvCardProps> = ({
                 e.stopPropagation();
                 onVerConvocados?.();
               }}
-              className="cc__cta"
-              style={{ background: "var(--bg-sunken)", color: "var(--ink-soft)" }}
+              className="cc__cta cc__cta--secondary"
             >
               Ver convocados
               <Icon name="arrow" size={15} strokeWidth={2.4} />

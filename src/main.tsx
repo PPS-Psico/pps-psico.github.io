@@ -56,10 +56,19 @@ if (import.meta.env.DEV && !isVisualBaseline) {
 import "@fontsource/material-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { classifyDbError, isRetryable } from "./lib/dbError";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "./index.css";
 import "./styles/foundations.css";
 import "./styles/orientation-colors.css";
+
+// Las Devtools no forman parte del producto entregado. El import dinámico queda
+// eliminado por Vite en producción y evita sumar su runtime al arranque real.
+const ReactQueryDevtools = import.meta.env.DEV
+  ? React.lazy(() =>
+      import("@tanstack/react-query-devtools").then((module) => ({
+        default: module.ReactQueryDevtools,
+      }))
+    )
+  : null;
 
 // --- REACT RESILIENCE PATCH ---
 if (typeof Node === "function" && Node.prototype) {
@@ -160,7 +169,11 @@ root.render(
       <AuthProvider>
         <App />
       </AuthProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {ReactQueryDevtools && (
+        <React.Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </React.Suspense>
+      )}
     </QueryClientProvider>
   </React.StrictMode>
 );

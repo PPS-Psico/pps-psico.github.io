@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { usePwaInstall } from "../contexts/PwaInstallContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -69,10 +68,8 @@ const InstallPWA: React.FC = () => {
         pointerEvents: "none",
       }}
     >
-      <motion.div
-        initial={{ y: 130, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      <div
+        className="animate-fade-in-up"
         style={{
           pointerEvents: "auto",
           display: "flex",
@@ -174,7 +171,7 @@ const InstallPWA: React.FC = () => {
             close
           </span>
         </button>
-      </motion.div>
+      </div>
     </div>
   );
 };

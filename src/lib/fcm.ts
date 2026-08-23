@@ -3,8 +3,8 @@
  * Handles subscription, unsubscription, and token management
  */
 
-import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getMessaging, getToken, deleteToken, onMessage, type Messaging } from "firebase/messaging";
+import type { FirebaseApp } from "firebase/app";
+import type { Messaging } from "firebase/messaging";
 import { firebaseConfig, vapidKey } from "./firebaseConfig";
 import { supabase } from "./supabaseClient";
 import { logger } from "../utils/logger";
@@ -16,11 +16,23 @@ let messaging: Messaging | null = null;
 let cachedToken: string | null = null;
 let isGettingToken = false;
 let tokenPromise: Promise<string | null> | null = null;
+let firebaseModulesPromise: Promise<{
+  appModule: typeof import("firebase/app");
+  messagingModule: typeof import("firebase/messaging");
+}> | null = null;
 // Una vez que getToken() falla (p. ej. "AbortError: push service error"), no
 // reintentamos automáticamente en cada refresh de sesión de Supabase: eso es lo
 // que generaba el spam de errores en consola. Sólo se reintenta cuando el usuario
 // activa explícitamente las notificaciones (subscribeToFCM pasa forceRetry=true).
 let tokenFetchFailed = false;
+
+const loadFirebaseModules = () => {
+  firebaseModulesPromise ??= Promise.all([
+    import("firebase/app"),
+    import("firebase/messaging"),
+  ]).then(([appModule, messagingModule]) => ({ appModule, messagingModule }));
+  return firebaseModulesPromise;
+};
 
 const isPushSupported = (): boolean => {
   if (!("serviceWorker" in navigator)) return false;
@@ -41,8 +53,9 @@ export const initializeFCM = async () => {
       return { app: null, messaging: null };
     }
     if (!app) {
-      app = initializeApp(firebaseConfig);
-      messaging = getMessaging(app);
+      const { appModule, messagingModule } = await loadFirebaseModules();
+      app = appModule.initializeApp(firebaseConfig);
+      messaging = messagingModule.getMessaging(app);
       logger.info("[FCM] Firebase initialized successfully");
     }
     return { app, messaging };
@@ -85,6 +98,8 @@ export const getFCMToken = async (forceRetry = false): Promise<string | null> =>
         return null;
       }
 
+      const { messagingModule } = await loadFirebaseModules();
+
       // Request notification permission first
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
@@ -93,7 +108,7 @@ export const getFCMToken = async (forceRetry = false): Promise<string | null> =>
       }
 
       // Get FCM token
-      const token = await getToken(messaging, { vapidKey });
+      const token = await messagingModule.getToken(messaging, { vapidKey });
 
       if (token) {
         logger.info("[FCM] Token obtained:", token.substring(0, 20) + "...");
@@ -201,7 +216,8 @@ export const subscribeToFCM = async (
     // Foreground messages can be used for in-app UI updates if needed
     const { messaging } = await initializeFCM();
     if (messaging) {
-      onMessage(messaging, (payload) => {
+      const { messagingModule } = await loadFirebaseModules();
+      messagingModule.onMessage(messaging, (payload) => {
         logger.info("[FCM] Message received in foreground:", payload);
         // In foreground, FCM doesn't show notifications automatically
         // You can add custom in-app UI here if needed
@@ -234,7 +250,8 @@ export const unsubscribeFromFCM = async (): Promise<{
     }
 
     // Delete token
-    await deleteToken(messaging);
+    const { messagingModule } = await loadFirebaseModules();
+    await messagingModule.deleteToken(messaging);
     logger.info("[FCM] Token deleted");
 
     // Clear cache

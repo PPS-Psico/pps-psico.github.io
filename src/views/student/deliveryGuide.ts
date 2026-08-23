@@ -1,7 +1,10 @@
 import {
+  FIELD_ES_ONLINE_PRACTICAS,
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
   FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_FECHA_INICIO_PRACTICAS,
+  FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
 } from "../../constants";
 import type { DeliveryArea, DeliveryInstitution } from "../../hooks/useAulaEntregas";
@@ -21,8 +24,13 @@ export interface GuidedDelivery {
   areaColor: string;
   institution: DeliveryInstitution | null;
   task: InformeTask | null;
+  startDate: Date | null;
+  endDate: Date | null;
   deadline: Date | null;
   deadlineLabel: string;
+  hours: number | null;
+  isOnline: boolean;
+  academicYear: number | null;
   statusLabel: string;
   statusDetail: string;
   statusTone: DeliveryStatusTone;
@@ -174,8 +182,11 @@ export function buildGuidedDeliveries(
         ? { name: exactTaskLink.name, moodleId: exactTaskLink.moodleId }
         : null;
       const resolutionSource: GuidedDelivery["resolutionSource"] = exactTaskLink ? "exact" : "none";
+      const startDate = parseToUTCDate(practice[FIELD_FECHA_INICIO_PRACTICAS]);
       const endDate = parseToUTCDate(practice[FIELD_FECHA_FIN_PRACTICAS]);
       const deadline = endDate ? addDays(endDate, 30) : null;
+      const rawHours = Number(practice[FIELD_HORAS_PRACTICAS]);
+      const hours = Number.isFinite(rawHours) && rawHours > 0 ? rawHours : null;
 
       return {
         id: practice.id,
@@ -185,8 +196,17 @@ export function buildGuidedDeliveries(
         areaColor: area?.color || "var(--primary-500)",
         institution,
         task,
+        startDate,
+        endDate,
         deadline,
         deadlineLabel: formatDeadline(deadline),
+        hours,
+        isOnline: Boolean(practice[FIELD_ES_ONLINE_PRACTICAS]),
+        academicYear:
+          exactTaskLink?.academicYear ??
+          endDate?.getUTCFullYear() ??
+          startDate?.getUTCFullYear() ??
+          null,
         ...buildStatus(practice, task, deadline, now),
         resolutionSource,
       };

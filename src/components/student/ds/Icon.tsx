@@ -32,6 +32,8 @@ export type IconName =
   | "plus"
   | "trash"
   | "alert"
+  | "external"
+  | "refresh"
   | "x";
 
 interface IconProps {
@@ -209,6 +211,19 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M12 3l9 16H3l9-16z" />
       <path d="M12 10v4" />
       <circle cx="12" cy="17" r="0.5" fill="currentColor" />
+    </>
+  ),
+  external: (
+    <>
+      <path d="M15 4h5v5" />
+      <path d="m10 14 10-10" />
+      <path d="M20 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h6" />
+    </>
+  ),
+  refresh: (
+    <>
+      <path d="M20 11a8 8 0 1 0 1.1 4" />
+      <path d="M20 4v7h-7" />
     </>
   ),
   x: (

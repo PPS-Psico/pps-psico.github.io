@@ -19,6 +19,7 @@
     "check:migrations:replay:contracts": "node ./scripts/replay-migrations.mjs --contracts",
     "visual:baseline": "node ./scripts/capture-visual-baseline.mjs",
     "visual:baseline:check": "node ./scripts/capture-visual-baseline.mjs --check",
+    "perf:benchmark": "node ./scripts/performance-benchmark.mjs",
     "preview": "vite preview",
     "test": "npx jest",
     "prep-github": "node ./scripts/prepare-deploy.js",

@@ -6,7 +6,6 @@ import {
   Routes,
   useLocation,
   useNavigate,
-  useParams,
   useSearchParams,
 } from "react-router-dom";
 import Auth from "./components/Auth";
@@ -21,16 +20,11 @@ import { useAuth } from "./contexts/AuthContext";
 import { ConfigProvider } from "./contexts/ConfigContext";
 import { ErrorProvider } from "./contexts/ErrorContext";
 import { ModalProvider } from "./contexts/ModalContext";
-import { MoodleGradeSyncProvider } from "./contexts/MoodleGradeSyncContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { PwaInstallProvider } from "./contexts/PwaInstallContext";
-import { StudentPanelProvider } from "./contexts/StudentPanelContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import PracticasView from "./views/student/PracticasView";
 // Aula pública: lazy — no forma parte del flujo logueado y así no pesa en el bundle inicial.
 const StudentAulaView = React.lazy(() => import("./views/student/StudentAulaView"));
-import StudentConvocatoriaDetailView from "./views/student/StudentConvocatoriaDetailView";
-import DataCompletionModal from "./components/student/DataCompletionModal";
 import { useRenderTrace } from "./hooks/useRenderTrace";
 import { buildEmbeddedPanelMessage } from "./utils/embeddedFrameSizing";
 
@@ -42,6 +36,10 @@ const StudentHome = lazy(() =>
 );
 const SolicitudesView = lazy(() => import("./views/student/SolicitudesView"));
 const StudentProfileView = lazy(() => import("./views/student/StudentProfileView"));
+const StudentConvocatoriaDetailView = lazy(
+  () => import("./views/student/StudentConvocatoriaDetailView")
+);
+const DataCompletionModal = lazy(() => import("./components/student/DataCompletionModal"));
 
 const AdminView = lazy(() => import("./views/AdminView"));
 const AdminDashboard = lazy(() => import("./components/admin/AdminDashboard"));
@@ -54,6 +52,7 @@ const JefeView = lazy(() => import("./views/JefeView"));
 const DirectivoView = lazy(() => import("./views/DirectivoView"));
 const ReporteroView = lazy(() => import("./views/ReporteroView"));
 const AdminTestingView = lazy(() => import("./views/AdminTestingView"));
+const AdminStudentRoute = lazy(() => import("./views/admin/AdminStudentRoute"));
 
 // Resetea el scroll al tope cuando cambia la ruta. React Router no restaura el
 // scroll por defecto: al abrir el detalle de una convocatoria (u otra ruta) se
@@ -65,18 +64,6 @@ const ScrollToTop: React.FC = () => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
   return null;
-};
-
-const AdminStudentWrapper = () => {
-  const { legajo } = useParams();
-  if (!legajo) return null;
-  return (
-    <StudentPanelProvider legajo={legajo}>
-      <MoodleGradeSyncProvider>
-        <StudentDashboard key={legajo} showExportButton />
-      </MoodleGradeSyncProvider>
-    </StudentPanelProvider>
-  );
 };
 
 const StudentWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -225,7 +212,7 @@ const AppRoutes = () => {
             />
           }
         />
-        <Route path="estudiantes/:legajo" element={<AdminStudentWrapper />} />
+        <Route path="estudiantes/:legajo" element={<AdminStudentRoute />} />
       </Route>
 
       <Route
