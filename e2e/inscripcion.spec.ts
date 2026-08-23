@@ -35,47 +35,46 @@ test.describe("Inscripción a una convocatoria", () => {
     await expect(page.getByText(LANZAMIENTO.nombre_pps).first()).toBeVisible({ timeout: 15_000 });
   });
 
-  /*
-    PENDIENTE. El click en "Inscribirme" no dispara todavía el RPC en el harness.
-    Lo averiguado hasta acá, para que quien lo retome no empiece de cero:
-
-      - El botón aparece y está habilitado; el click ocurre sin error.
-      - La inscripción NO es un INSERT: va por el RPC
-        `inscribir_convocatoria_multiopcion_v2`, que resuelve cupo y horario del
-        lado de la base.
-      - El "multiopcion" del nombre delata que falta un paso: el alumno elige una
-        opción de horario antes. Falta mockear `lanzamiento_opciones` /
-        `lanzamiento_opcion_horarios` y seleccionar una en la UI.
-      - Al hacer click, la tarjeta se expande en la misma vista en lugar de
-        navegar a una ruta de detalle, así que los selectores tienen que
-        buscar dentro de esa tarjeta.
-
-    Se deja como `fixme` y no se borra: el andamiaje ya está y esto es la
-    continuación natural. Un test en rojo permanente enseña a ignorar el rojo.
-  */
-  test.fixme("al inscribirse se registra la convocatoria del alumno", async ({ page }) => {
+  test("completar el formulario deja la inscripción registrada", async ({ page }) => {
     await entrar(page);
 
+    // La tarjeta se despliega en la misma vista; no hay ruta de detalle aparte.
     await page.getByText(LANZAMIENTO.nombre_pps).first().click();
-
-    const boton = page.getByRole("button", { name: /inscribirme/i });
-    await expect(boton).toBeVisible({ timeout: 15_000 });
-    await boton.click();
+    await page.getByRole("button", { name: /inscribirme/i }).click();
 
     /*
-      La inscripción no es un INSERT sino un RPC: `inscribir_convocatoria_multiopcion_v2`,
-      que resuelve cupo y opción de horario del lado de la base. Se afirma sobre
-      esa llamada y no sobre un cartel de éxito, que es la diferencia entre
-      "parece que anduvo" y "quedó anotada".
+      "Inscribirme" no inscribe: abre el formulario de inscripción, que pide
+      situación laboral y estado académico. Se elige "No trabajo" a propósito,
+      porque la otra opción exige adjuntar un certificado y eso metería una
+      subida de archivo en un test que no es sobre eso.
+    */
+    await page.getByRole("button", { name: /no trabajo/i }).click();
+    await page.getByRole("button", { name: /solo debo finales/i }).click();
+    /*
+      Responder "solo debo finales" despliega un segundo campo obligatorio. Sus
+      opciones son `div role="radio"`, no botones, así que hay que buscarlas por
+      ese rol: con `getByRole("button")` no aparecen.
+    */
+    await page.getByRole("radio", { name: "Solo TIF/PPS" }).click();
+    await page.getByRole("button", { name: /confirmar inscripción/i }).click();
+
+    /*
+      Se afirma sobre la escritura y no sobre un cartel de éxito: es la
+      diferencia entre "parece que anduvo" y "quedó anotada".
+
+      Este lanzamiento no tiene franjas horarias, así que la inscripción va por
+      `db.convocatorias.create` -> POST a la tabla. Con franjas iría por el RPC
+      `inscribir_convocatoria_multiopcion_v2`, que es otro camino y merece su
+      propio test.
     */
     await expect
-      .poll(() => escrituras.filter((e) => e.table.includes("inscribir_convocatoria")), {
+      .poll(() => escrituras.filter((e) => e.table === "convocatorias" && e.method === "POST"), {
         timeout: 15_000,
       })
       .not.toHaveLength(0);
 
-    // Y que le mande el lanzamiento correcto, no otro.
-    const llamada = escrituras.find((e) => e.table.includes("inscribir_convocatoria"));
-    expect(JSON.stringify(llamada?.body)).toContain(LANZAMIENTO.id);
+    // Y que quede atada al lanzamiento correcto, no a otro.
+    const inscripcion = escrituras.find((e) => e.table === "convocatorias");
+    expect(JSON.stringify(inscripcion?.body)).toContain(LANZAMIENTO.id);
   });
 });
