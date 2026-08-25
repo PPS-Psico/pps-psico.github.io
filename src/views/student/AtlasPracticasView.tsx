@@ -13,6 +13,7 @@ import { useMoodleGradeSync } from "../../contexts/MoodleGradeSyncContext";
 import type { CriteriosCalculados, Orientacion, Practica } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { presentMoodleGrade } from "../../utils/moodleGradePresentation";
+import { resolveGradeReadiness } from "../../domain/finalizacion/gradeReadiness";
 import { canShowPpsAssignmentSummary } from "../../components/student/PpsAssignmentSummary";
 import {
   getPracticePresentationStatus,
@@ -128,7 +129,8 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     if (isPracticeDisapproved(estado)) {
       return <span className="ah-disapproval-grade">Desaprobada</span>;
     }
-    const campusGrade = presentMoodleGrade(snapshotsByPractice.get(p.id));
+    const snapshot = snapshotsByPractice.get(p.id);
+    const campusGrade = presentMoodleGrade(snapshot);
     if (isPracticeActive(estado)) {
       return (
         <span className="nota" style={{ color: "var(--info-500)", fontSize: 12.5 }}>
@@ -136,6 +138,26 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
         </span>
       );
     }
+
+    // Sin lectura de Campus la nota igual puede estar registrada en el panel
+    // (PPS previas a la integracion, o cargadas por coordinacion). Mostrar
+    // "Pend." en ese caso le decia al alumno que faltaba corregir algo que ya
+    // estaba corregido. Se distingue de la verificada por color y tooltip.
+    if (!snapshot) {
+      const registrada = resolveGradeReadiness(p);
+      if (registrada.ready && registrada.nota) {
+        return (
+          <span
+            className="nota"
+            style={{ color: "var(--ink)", fontSize: 12.5, fontFamily: "var(--font-mono)" }}
+            title="Calificación registrada en Mi Panel. No está verificada contra Campus."
+          >
+            {registrada.nota}
+          </span>
+        );
+      }
+    }
+
     return (
       <span
         className={campusGrade?.hasGrade ? "nota" : "ah-nota__pending"}

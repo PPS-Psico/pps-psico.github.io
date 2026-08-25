@@ -5,6 +5,12 @@ import { submitFinalizationRequest, uploadFinalizationFile } from "../../service
 import { useToast } from "../../contexts/NotificationContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { logger } from "../../utils/logger";
+import {
+  collectGradeIssues,
+  resolveGradeReadiness,
+  type GradeIssue,
+  type GradeReadiness,
+} from "../../domain/finalizacion/gradeReadiness";
 import { Icon } from "./ds";
 import {
   FIELD_ES_ONLINE_PRACTICAS,
@@ -293,7 +299,17 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     return true;
   };
 
-  const allRowsValid = finalizadas.length > 0 && finalizadas.every(isRowValid);
+  // La nota no se autodeclara: se resuelve desde Campus. Una PPS desaprobada o
+  // con una calificacion ilegible corta el envio; una nota que todavia no llego
+  // se avisa en detalle (ver ENFORCE_MISSING_GRADE en el modulo de dominio).
+  const gradeReadinessById = useMemo(
+    () => new Map(finalizadas.map((p) => [p.id, resolveGradeReadiness(p)] as const)),
+    [finalizadas]
+  );
+  const gradeIssues = useMemo(() => collectGradeIssues(finalizadas), [finalizadas]);
+
+  const allRowsValid =
+    finalizadas.length > 0 && gradeIssues.blocking.length === 0 && finalizadas.every(isRowValid);
 
   const setRow = (practicaId: string, patch: Partial<RowState>) => {
     setRows((prev) => ({ ...prev, [practicaId]: { ...prev[practicaId], ...patch } }));
@@ -609,6 +625,8 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
                 directamente en Campus; las PPS online no requieren planilla de asistencia.
               </p>
 
+              <GradeIssuesNotice issues={gradeIssues} />
+
               {finalizadas.length === 0 ? (
                 <EmptyPps onAddPPS={onAddPPS} />
               ) : (
@@ -617,6 +635,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
                     key={p.id}
                     practica={p}
                     row={rows[p.id]}
+                    readiness={gradeReadinessById.get(p.id)}
                     valid={isRowValid(p)}
                     onSetRow={(patch) => setRow(p.id, patch)}
                     onPickInforme={() => openFilePicker(p.id, "informe")}
@@ -886,14 +905,109 @@ const CompletarStep: React.FC<{
   );
 };
 
+type IssueTone = "block" | "warn";
+
+const ISSUE_STYLES: Record<IssueTone, { bg: string; line: string; text: string }> = {
+  block: {
+    bg: "var(--danger-tint, #fdecec)",
+    line: "var(--danger-line, #edb4b4)",
+    text: "var(--danger-text, #8d2323)",
+  },
+  warn: {
+    bg: "var(--warn-tint, #fdf1e3)",
+    line: "var(--warn-line, #e8c89a)",
+    text: "var(--warn-text, #8a5a00)",
+  },
+};
+
+const IssueBlock: React.FC<{
+  tone: IssueTone;
+  title: string;
+  intro: string;
+  issues: GradeIssue[];
+  footer?: string;
+}> = ({ tone, title, intro, issues, footer }) => {
+  const palette = ISSUE_STYLES[tone];
+  return (
+    <div
+      className="rounded-2xl p-4 sm:p-5 space-y-3"
+      style={{ background: palette.bg, border: `1px solid ${palette.line}` }}
+    >
+      <div className="flex items-start gap-2.5">
+        <span style={{ color: palette.text }} className="flex-shrink-0 mt-0.5">
+          <Icon name="alert" size={18} strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0">
+          <h4 className="text-sm font-bold" style={{ color: palette.text }}>
+            {title}
+          </h4>
+          <p className="text-xs leading-relaxed mt-1" style={{ color: "var(--ink-soft)" }}>
+            {intro}
+          </p>
+        </div>
+      </div>
+
+      <ul className="space-y-1.5 pl-1">
+        {issues.map(({ practica, readiness }) => (
+          <li key={practica.id} className="text-xs leading-relaxed" style={{ color: "var(--ink)" }}>
+            <strong>{practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]}</strong>{" "}
+            <span style={{ color: "var(--ink-muted)" }}>· {readiness.detail}</span>
+          </li>
+        ))}
+      </ul>
+
+      {footer && (
+        <p className="text-xs leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+          {footer}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const GradeIssuesNotice: React.FC<{
+  issues: { blocking: GradeIssue[]; warnings: GradeIssue[] };
+}> = ({ issues }) => (
+  <>
+    {issues.blocking.length > 0 && (
+      <IssueBlock
+        tone="block"
+        title={
+          issues.blocking.length === 1
+            ? "Hay una PPS que no puede acreditarse"
+            : `Hay ${issues.blocking.length} PPS que no pueden acreditarse`
+        }
+        intro="Para acreditar, todas las PPS tienen que estar corregidas y aprobadas. No se puede enviar la solicitud mientras alguna siga así."
+        issues={issues.blocking}
+        footer="Escribile a coordinación para resolverlo antes de continuar."
+      />
+    )}
+
+    {issues.warnings.length > 0 && (
+      <IssueBlock
+        tone="warn"
+        title={
+          issues.warnings.length === 1
+            ? "Falta la nota de una PPS"
+            : `Faltan las notas de ${issues.warnings.length} PPS`
+        }
+        intro="La acreditación necesita que estén todas corregidas. Podés enviar igual, pero coordinación va a pedir estas notas antes de cerrar el trámite."
+        issues={issues.warnings}
+        footer="Si ya te corrigieron en Campus y sigue apareciendo acá, avisale a coordinación: puede ser una PPS que comparte el espacio de entrega con otra."
+      />
+    )}
+  </>
+);
+
 const PpsDocCard: React.FC<{
   practica: Practica;
   row?: RowState;
+  readiness?: GradeReadiness;
   valid: boolean;
   onSetRow: (patch: Partial<RowState>) => void;
   onPickInforme: () => void;
   onPickAsistencia: () => void;
-}> = ({ practica, row, valid, onSetRow, onPickInforme, onPickAsistencia }) => {
+}> = ({ practica, row, readiness, valid, onSetRow, onPickInforme, onPickAsistencia }) => {
   const esOnline = !!practica[FIELD_ES_ONLINE_PRACTICAS];
   if (!row) return null;
 
@@ -920,6 +1034,19 @@ const PpsDocCard: React.FC<{
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {readiness && (
+            <span
+              title={readiness.detail}
+              className="text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap"
+              style={
+                readiness.ready
+                  ? { background: "var(--tint)", color: "var(--accent-text)" }
+                  : { background: "var(--warn-tint, #fdf1e3)", color: "var(--warn-text, #8a5a00)" }
+              }
+            >
+              {readiness.ready ? `Nota ${readiness.nota}` : readiness.label}
+            </span>
+          )}
           {esOnline && (
             <span
               className="text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap"

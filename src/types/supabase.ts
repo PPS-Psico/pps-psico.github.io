@@ -1246,6 +1246,7 @@ export type Database = {
           archivo_descargable_nombre: string | null
           archivo_descargable_url: string | null
           codigo_tarjeta_campus: string | null
+          consentimiento_requerido: boolean
           created_at: string | null
           cupos_disponibles: number | null
           descripcion_larga: string | null
@@ -1297,6 +1298,7 @@ export type Database = {
           archivo_descargable_nombre?: string | null
           archivo_descargable_url?: string | null
           codigo_tarjeta_campus?: string | null
+          consentimiento_requerido?: boolean
           created_at?: string | null
           cupos_disponibles?: number | null
           descripcion_larga?: string | null
@@ -1348,6 +1350,7 @@ export type Database = {
           archivo_descargable_nombre?: string | null
           archivo_descargable_url?: string | null
           codigo_tarjeta_campus?: string | null
+          consentimiento_requerido?: boolean
           created_at?: string | null
           cupos_disponibles?: number | null
           descripcion_larga?: string | null
@@ -1454,6 +1457,7 @@ export type Database = {
           confidence: string
           course_id: number
           estudiante_id: string
+          feedback_comment: string | null
           grade_display: string | null
           grade_max: number | null
           grade_value: number | null
@@ -1481,6 +1485,7 @@ export type Database = {
           confidence?: string
           course_id: number
           estudiante_id: string
+          feedback_comment?: string | null
           grade_display?: string | null
           grade_max?: number | null
           grade_value?: number | null
@@ -1508,6 +1513,7 @@ export type Database = {
           confidence?: string
           course_id?: number
           estudiante_id?: string
+          feedback_comment?: string | null
           grade_display?: string | null
           grade_max?: number | null
           grade_value?: number | null
@@ -1605,6 +1611,7 @@ export type Database = {
           cmid: number
           confidence: string
           estudiante_id: string
+          feedback_comment: string | null
           grade_display: string | null
           grade_max: number | null
           grade_revision: number
@@ -1637,6 +1644,7 @@ export type Database = {
           cmid: number
           confidence: string
           estudiante_id: string
+          feedback_comment?: string | null
           grade_display?: string | null
           grade_max?: number | null
           grade_revision?: number
@@ -1669,6 +1677,7 @@ export type Database = {
           cmid?: number
           confidence?: string
           estudiante_id?: string
+          feedback_comment?: string | null
           grade_display?: string | null
           grade_max?: number | null
           grade_revision?: number
@@ -3298,11 +3307,13 @@ export type Database = {
         Args: { p_finalizacion_id: string }
         Returns: {
           cmid: number
+          feedback_comment: string
           fuente: string
           grade_display: string
           moodle_status: string
           nota: string
           nota_numeric: number
+          nota_panel: string
           nota_promedio: number
           observed_at: string
           practica_id: string

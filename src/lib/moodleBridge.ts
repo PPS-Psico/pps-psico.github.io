@@ -37,6 +37,10 @@ export const moodleTaskResultSchema = z
     gradeMax: z.number().finite().positive().nullable(),
     gradeDisplay: z.string().trim().max(160).nullable(),
     gradedAtDisplay: z.string().trim().max(200).nullable(),
+    // Cuando una tarea recibe dos informes, la catedra reparte ahi la nota de
+    // cada PPS ("Clinica de Ninos: 7 (Siete)"). Opcional: las etiquetas viejas
+    // del Campus no lo envian.
+    feedbackComment: z.string().trim().max(2000).nullable().optional(),
     submittedAt: z.string().datetime({ offset: true }).nullable().optional(),
     submittedAtDisplay: z.string().trim().max(200).nullable().optional(),
   })
