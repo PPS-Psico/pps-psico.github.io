@@ -375,6 +375,7 @@
       var gradeMax = null;
       var gradeDisplay = null;
       var gradedAtDisplay = null;
+      var feedbackComment = null;
       var submittedAt = null;
       var submittedAtDisplay = null;
       var submitted = false;
@@ -395,6 +396,18 @@
 
         if ((label.indexOf("calificado sobre") > -1 || label.indexOf("graded on") > -1) && value) {
           gradedAtDisplay = value.slice(0, 200);
+        }
+
+        // En las tareas que reciben dos informes (Fundacion Tiempo, Ateneos
+        // Ulloa) la nota de cada PPS vive aca y no en el numero: la catedra
+        // escribe "Clinica de Ninos: 7 (Siete)". Se guarda tal cual, sin
+        // interpretar, para que coordinacion pueda repartirla.
+        if (
+          (label.indexOf("comentarios de retroalimentacion") > -1 ||
+            label.indexOf("feedback comments") > -1) &&
+          value
+        ) {
+          feedbackComment = value.slice(0, 2000);
         }
 
         if (label.indexOf("estado de la entrega") > -1 || label.indexOf("submission status") > -1) {
@@ -440,6 +453,7 @@
           gradeMax: gradeMax,
           gradeDisplay: gradeDisplay,
           gradedAtDisplay: gradedAtDisplay,
+          feedbackComment: feedbackComment,
           submittedAt: submittedAt,
           submittedAtDisplay: submittedAtDisplay,
         };
@@ -454,6 +468,7 @@
           gradeMax: null,
           gradeDisplay: null,
           gradedAtDisplay: null,
+          feedbackComment: feedbackComment,
           submittedAt: submittedAt,
           submittedAtDisplay: submittedAtDisplay,
         };

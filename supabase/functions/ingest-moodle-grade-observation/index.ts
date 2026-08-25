@@ -247,6 +247,7 @@ Deno.serve(async (req) => {
       const gradeMax = finiteNumber(raw.gradeMax);
       const gradeDisplay = boundedText(raw.gradeDisplay, 160);
       const gradedAtDisplay = boundedText(raw.gradedAtDisplay, 200);
+      const feedbackComment = boundedText(raw.feedbackComment, 2000);
       const submittedAt = boundedText(raw.submittedAt, 40);
       const submittedAtDisplay = boundedText(raw.submittedAtDisplay, 200);
       if (!practicaId || !UUID_RE.test(practicaId)) throw new Error("invalid_practice");
@@ -279,6 +280,7 @@ Deno.serve(async (req) => {
         gradeMax,
         gradeDisplay,
         gradedAtDisplay,
+        feedbackComment,
       };
     });
 
@@ -394,6 +396,7 @@ Deno.serve(async (req) => {
             gradeMax: item.gradeMax,
             gradeDisplay: item.gradeDisplay,
             gradedAtDisplay: item.gradedAtDisplay,
+            feedbackComment: item.feedbackComment,
             submittedAt: item.submittedAt,
             submittedAtDisplay: item.submittedAtDisplay,
           });
@@ -417,6 +420,7 @@ Deno.serve(async (req) => {
               grade_max: item.gradeMax ?? configuredMax,
               grade_display: item.gradeDisplay,
               graded_at_display: item.gradedAtDisplay,
+              feedback_comment: item.feedbackComment,
               request_id: requestId,
               bridge_version: bridgeVersion,
               parser_version: PARSER_VERSION,
@@ -458,7 +462,7 @@ Deno.serve(async (req) => {
     const { data: existingSnapshots, error: existingSnapshotError } = await admin
       .from("moodle_grade_snapshots")
       .select(
-        "practica_id, cmid, task_status, observed_at, last_observed_at, scan_closed, grade_revision"
+        "practica_id, cmid, task_status, observed_at, last_observed_at, scan_closed, grade_revision, grade_value, grade_max"
       )
       .in("practica_id", candidatePracticeIds);
     if (existingSnapshotError) throw new Error("snapshot_lookup_failed");
@@ -466,22 +470,38 @@ Deno.serve(async (req) => {
       (existingSnapshots ?? []).map((row) => [`${row.practica_id}:${row.cmid}`, row])
     );
 
-    // Clientes nuevos ni siquiera solicitan estas tareas. Este filtro protege
-    // además contra pestañas antiguas todavía abiertas: una nota ya guardada no
-    // vuelve a ingresar al ledger ni a ejecutar el trigger académico.
-    const terminalSkipped = observationRows.filter(
-      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.scan_closed === true
-    ).length;
-    const rowsToStore = observationRows.filter(
-      (row) => existingByKey.get(`${row.practica_id}:${row.cmid}`)?.scan_closed !== true
-    );
+    // Evita que una relectura identica vuelva a entrar al ledger y dispare el
+    // trigger academico. El criterio es que la observacion NO traiga informacion
+    // nueva; antes se descartaba por `scan_closed`, que se activa apenas Moodle
+    // califica y por lo tanto tapaba las recorrecciones: si la catedra cambiaba
+    // la nota, el panel no volvia a enterarse nunca. La proteccion de una nota
+    // ya establecida vive en el trigger, que respeta `nota_fuente`.
+    const sameNumber = (a: unknown, b: unknown) =>
+      a === null || a === undefined || b === null || b === undefined
+        ? a == null && b == null
+        : Number(a) === Number(b);
+    const carriesNothingNew = (row: {
+      practica_id: string;
+      cmid: number;
+      [k: string]: unknown;
+    }) => {
+      const existing = existingByKey.get(`${row.practica_id}:${row.cmid}`);
+      if (!existing) return false;
+      return (
+        existing.task_status === row.task_status &&
+        sameNumber(existing.grade_value, row.grade_value) &&
+        sameNumber(existing.grade_max, row.grade_max)
+      );
+    };
+    const unchangedSkipped = observationRows.filter(carriesNothingNew).length;
+    const rowsToStore = observationRows.filter((row) => !carriesNothingNew(row));
 
     if (rowsToStore.length === 0) {
       const outcome = rejectedObservations.length > 0 ? "partial" : "noop";
       await finishRun({
         outcome,
         accepted: observationRows.length,
-        skippedTerminal: terminalSkipped,
+        skippedTerminal: unchangedSkipped,
         rejected: rejectedObservations,
       });
       return json(origin, {
@@ -489,7 +509,7 @@ Deno.serve(async (req) => {
         stored: 0,
         snapshotUpdated: 0,
         preserved: 0,
-        skippedTerminal: terminalSkipped,
+        skippedTerminal: unchangedSkipped,
         rejected: rejectedObservations,
         observedAt,
       });
@@ -542,6 +562,7 @@ Deno.serve(async (req) => {
       grade_max: row.grade_max,
       grade_display: row.grade_display,
       graded_at_display: row.graded_at_display,
+      feedback_comment: row.feedback_comment,
       observed_at: row.observed_at,
       received_at: row.received_at,
       confidence: row.confidence,
@@ -550,7 +571,6 @@ Deno.serve(async (req) => {
     const snapshotsToUpsert = snapshots.filter((row) => {
       const existing = existingByKey.get(`${row.practica_id}:${row.cmid}`);
       if (!existing) return true;
-      if (existing.scan_closed) return false;
       const previousObservedAt = existing.last_observed_at ?? existing.observed_at;
       return Date.parse(row.observed_at) >= Date.parse(previousObservedAt);
     });
@@ -571,7 +591,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(
-      `[moodle-grade] Stored ${snapshots.length}; snapshot ${snapshotsToUpsert.length}; preserved ${preserved}; terminal ${terminalSkipped}; rejected ${rejectedObservations.length}.`
+      `[moodle-grade] Stored ${snapshots.length}; snapshot ${snapshotsToUpsert.length}; preserved ${preserved}; sin cambios ${unchangedSkipped}; rejected ${rejectedObservations.length}.`
     );
     const outcome = rejectedObservations.length > 0 ? "partial" : "success";
     await finishRun({
@@ -580,7 +600,7 @@ Deno.serve(async (req) => {
       stored: snapshots.length,
       snapshotUpdated: snapshotsToUpsert.length,
       preserved,
-      skippedTerminal: terminalSkipped,
+      skippedTerminal: unchangedSkipped,
       rejected: rejectedObservations,
     });
     return json(origin, {
@@ -588,7 +608,7 @@ Deno.serve(async (req) => {
       stored: snapshots.length,
       snapshotUpdated: snapshotsToUpsert.length,
       preserved,
-      skippedTerminal: terminalSkipped,
+      skippedTerminal: unchangedSkipped,
       rejected: rejectedObservations,
       observedAt,
     });

@@ -753,19 +753,41 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                        <span
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            padding: "3px 7px",
-                            borderRadius: 6,
-                            background: "var(--paper-2)",
-                            color: "var(--ink-2)",
-                            border: "1px solid var(--rule-2)",
-                          }}
-                        >
-                          NOTA: {gradesByPractice.get(item.practicaId)?.nota || "—"}
-                        </span>
+                        {(() => {
+                          // Una nota sin procedencia no puede usarse para el
+                          // promedio, pero mostrarla como "—" escondia que el
+                          // panel SI tiene un valor registrado. Se distingue por
+                          // texto y tooltip en vez de ocultarse.
+                          const row = gradesByPractice.get(item.practicaId);
+                          const verificada = row?.nota ?? null;
+                          const registrada = row?.nota_panel ?? null;
+                          const sinVerificar = !verificada && Boolean(registrada);
+                          return (
+                            <span
+                              title={
+                                verificada
+                                  ? (describeFinalizationGradeSource(row) ??
+                                    "Calificación verificada.")
+                                  : sinVerificar
+                                    ? "Nota registrada en el panel, sin verificar contra Campus. No cuenta para el promedio."
+                                    : "Todavía no hay calificación para esta PPS."
+                              }
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "3px 7px",
+                                borderRadius: 6,
+                                background: "var(--paper-2)",
+                                color: sinVerificar ? "var(--ink-3, var(--ink-2))" : "var(--ink-2)",
+                                border: "1px solid var(--rule-2)",
+                                fontStyle: sinVerificar ? "italic" : undefined,
+                              }}
+                            >
+                              NOTA: {verificada ?? registrada ?? "—"}
+                              {sinVerificar ? " · sin verificar" : ""}
+                            </span>
+                          );
+                        })()}
 
                         {item.informe ? (
                           <button
