@@ -154,6 +154,7 @@ export const FIELD_MODALIDAD_CUPO_LANZAMIENTOS = "modalidad_cupo";
 export const FIELD_FECHA_ENCUENTRO_INICIAL_LANZAMIENTOS = "fecha_encuentro_inicial";
 export const FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS = "selection_closed_at";
 export const FIELD_SELECTION_CLOSED_BY_LANZAMIENTOS = "selection_closed_by";
+export const FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS = "consentimiento_requerido";
 // Flujo de aseguramiento: marca persistente de "seguro gestionado" (ver spec flujo-aseguramiento-pps)
 export const FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS = "seguro_gestionado_at";
 export const FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS = "seguro_gestionado_por";

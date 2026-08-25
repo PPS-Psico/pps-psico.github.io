@@ -207,8 +207,10 @@ const guideBlocks: GuideBlock[] = [
         <>
           Si quedaste seleccionado/a, realizá el <strong>consentimiento digital</strong> cuanto
           antes. El plazo cierra 24 horas antes del inicio o cuando Coordinación entrega la lista a
-          la institución, si eso ocurre primero. Si recibís un último recordatorio, tendrás 24 horas
-          desde ese envío antes de la baja automática.
+          la institución, si eso ocurre primero. Si la mesa se cierra el mismo día en que comienza
+          la PPS o después, el consentimiento se omite: tu lugar queda vigente sin firma, correo ni
+          baja automática. Si recibís un último recordatorio, tendrás 24 horas desde ese envío antes
+          de la baja automática.
         </>
       ),
     },
@@ -513,7 +515,7 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cuándo tengo que aceptar el consentimiento digital?",
-        a: "Apenas quedás seleccionado/a. Mi Panel muestra la fecha y hora exactas: normalmente el plazo cierra 24 horas antes del comienzo de la PPS o cuando Coordinación entrega la lista de estudiantes a la institución, lo que ocurra primero. Si recibís un correo identificado como último recordatorio, tendrás 24 horas desde ese envío para firmar; cumplido ese plazo, el sistema dará de baja automáticamente tu selección y liberará la vacante. Leé cada paso, revisá tus datos y aceptá las dos declaraciones finales.",
+        a: "Apenas quedás seleccionado/a. Mi Panel muestra la fecha y hora exactas: normalmente el plazo cierra 24 horas antes del comienzo de la PPS o cuando Coordinación entrega la lista de estudiantes a la institución, lo que ocurra primero. Si la mesa se cierra el mismo día en que comienza la PPS o después, el consentimiento se omite y tu lugar queda vigente sin firma, correo ni baja automática. Si recibís un correo identificado como último recordatorio, tendrás 24 horas desde ese envío para firmar; cumplido ese plazo, el sistema dará de baja automáticamente tu selección y liberará la vacante. Leé cada paso, revisá tus datos y aceptá las dos declaraciones finales.",
       },
     ],
   },
@@ -1287,9 +1289,10 @@ const StudentAulaView: React.FC<StudentAulaViewProps> = ({
                     <span>
                       Leé y firmá el consentimiento digital cuanto antes. El plazo cierra 24 horas
                       antes del inicio o cuando Coordinación entrega la lista a la institución, lo
-                      que ocurra primero. Un último recordatorio abre tu plazo final de 24 horas y,
-                      si vence sin firma, produce la baja automática. Sin esa aceptación no podés
-                      comenzar la PPS.
+                      que ocurra primero. Si la mesa cierra el mismo día del inicio o después, el
+                      consentimiento se omite y el lugar queda vigente sin firma ni baja automática.
+                      Un último recordatorio abre tu plazo final de 24 horas y, si vence sin firma,
+                      produce la baja automática cuando el consentimiento sí corresponde.
                     </span>
                   </p>
                 </aside>

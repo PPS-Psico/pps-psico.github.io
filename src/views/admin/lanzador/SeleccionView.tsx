@@ -6,6 +6,7 @@
 import React, { Suspense, useMemo, useState } from "react";
 import {
   FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS,
+  FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS,
   FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS,
   FIELD_HORARIOS_FIJOS_LANZAMIENTOS,
@@ -13,6 +14,7 @@ import {
 } from "../../../constants";
 import type { LanzamientoPPS } from "../../../types";
 import { formatDate } from "../../../utils/formatters";
+import { isConsentimientoRequiredOnClose } from "../../../utils/consentimientoUtils";
 import { getOptionScheduleSlots } from "../../../utils/launchOptions";
 import { logger } from "../../../utils/logger";
 import { computeHorarioHealth } from "./lanzadorHealth";
@@ -36,6 +38,9 @@ const SeleccionView: React.FC<{
 }> = ({ launch, onCerrarInscripcion, isTestingMode = false }) => {
   const cupos = launch[FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS] as number | null;
   const fechaFin = launch[FIELD_FECHA_FIN_INSCRIPCION_LANZAMIENTOS] as string | null;
+  const consentimientoRequeridoAlCerrar = isConsentimientoRequiredOnClose(
+    launch[FIELD_FECHA_INICIO_LANZAMIENTOS]
+  );
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
 
   const rosterQuery = useLaunchRoster(launch.id, isTestingMode);
@@ -413,7 +418,9 @@ const SeleccionView: React.FC<{
           >
             Marcá los estudiantes que van a cursar la PPS. Podés hacerlo ahora y revisar antes de
             cerrar la inscripción. Cuando termines, usá <b>Cerrar inscripción</b> arriba para
-            confirmar y enviar los consentimientos.
+            {consentimientoRequeridoAlCerrar
+              ? " confirmar y enviar los consentimientos."
+              : " confirmar la nómina sin consentimiento ni correo automático, porque la PPS empieza hoy o ya comenzó."}
           </div>
           <Suspense fallback={<Loader />}>
             <SeleccionadorConvocatorias

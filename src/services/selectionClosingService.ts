@@ -26,6 +26,11 @@ export interface QueuedSelectionClose {
   notificationTask: Promise<void>;
 }
 
+const closeRequiresConsent = (closeResult: unknown): boolean => {
+  if (!closeResult || typeof closeResult !== "object") return true;
+  return (closeResult as { consentimiento_requerido?: unknown }).consentimiento_requerido !== false;
+};
+
 const defaultDependencies: SelectionClosingDependencies = {
   closeSelection: async (launchId) => {
     const { data, error } = await supabase.rpc("close_selection", {
@@ -38,7 +43,9 @@ const defaultDependencies: SelectionClosingDependencies = {
 };
 
 /**
- * Cierra la mesa de forma atómica y encola la notificación de seleccionados.
+ * Cierra la mesa de forma atómica y, cuando la base determina que corresponde
+ * consentimiento, encola la notificación de seleccionados. Un cierre el mismo
+ * día del inicio queda sin correo ni push de consentimiento.
  *
  * El cierre de base se espera y propaga errores. Las notificaciones quedan en
  * una tarea separada para no bloquear la transición visual del Lanzador. La
@@ -55,10 +62,12 @@ export async function closeSelectionAndQueueNotifications(
     throw new Error(closeResponse.error.message);
   }
 
-  const notificationTask = dependencies.fetchCandidates(launch.id).then(async (candidates) => {
-    if (candidates.length === 0) return;
-    await dependencies.notifyCandidates(launch, candidates);
-  });
+  const notificationTask = closeRequiresConsent(closeResponse.data)
+    ? dependencies.fetchCandidates(launch.id).then(async (candidates) => {
+        if (candidates.length === 0) return;
+        await dependencies.notifyCandidates(launch, candidates);
+      })
+    : Promise.resolve();
 
   return {
     closeResult: closeResponse.data,

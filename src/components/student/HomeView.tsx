@@ -10,6 +10,7 @@ import type {
   FinalizacionPPS,
 } from "../../types";
 import {
+  FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
   FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
   FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
@@ -328,6 +329,7 @@ const HomeView: React.FC<HomeViewProps> = ({
         (lanzamientos || []).find((l) => l.id === lanzamientoId) ||
         (allLanzamientos || []).find((l) => l.id === lanzamientoId);
       if (!lanzamiento) continue;
+      if (lanzamiento[FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS] === false) continue;
       // El consentimiento es PREVIO al inicio: solo lo pedimos para una PPS que
       // todavía no arrancó. Si ya inició (o terminó), no corresponde firmarlo.
       const inicioDate = parseToUTCDate(lanzamiento[FIELD_FECHA_INICIO_LANZAMIENTOS] as string);

@@ -5,6 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import React, { Suspense, useMemo, useState } from "react";
 import {
+  FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
   FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
@@ -106,6 +107,7 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   const listaEntregadaAt = launch[FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS] as
     | string
     | null;
+  const consentimientoRequerido = launch[FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS] !== false;
 
   const rosterQuery = useLaunchRoster(launch.id);
   const { data: roster = [] } = rosterQuery;
@@ -432,6 +434,65 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
           >
             Las acciones de cierre y activación quedan bloqueadas hasta reconciliar los datos.
           </Banner>
+        </div>
+      </div>
+    );
+  }
+
+  if (!consentimientoRequerido) {
+    const seleccionadosVigentes = selectedRoster.filter(
+      (row) => normalizeStringForComparison(row.estado_inscripcion) === "seleccionado"
+    ).length;
+
+    return (
+      <div>
+        <CanvasHeader
+          launch={launch}
+          uiState="confirmacion"
+          secondaryActions={[{ label: "Editar datos", icon: "edit", onClick: openEdit }]}
+        />
+        {editModal}
+        <div className="lv4-canvas-body">
+          <StatGrid>
+            <Stat
+              label="Seleccionados vigentes"
+              value={seleccionadosVigentes}
+              hint="sin firma requerida"
+              tone="ok"
+            />
+            <Stat label="Consentimientos" value={0} hint="omitidos por cierre tardío" />
+          </StatGrid>
+          <Banner tone="neutral" icon="event_busy" title="Consentimiento no requerido">
+            La mesa cerró el mismo día en que comienza la PPS o después. No se envían correos de
+            consentimiento, recordatorios ni bajas automáticas; los lugares seleccionados quedan
+            vigentes.
+          </Banner>
+          <section className="lv4-consent-decision is-closed">
+            <div className="lv4-consent-decision-copy">
+              <span className="material-icons" aria-hidden="true">
+                verified
+              </span>
+              <div>
+                <span className="lv4-eyebrow">Decisión automática de cierre</span>
+                <strong>La nómina puede continuar sin firmas digitales</strong>
+                <p>
+                  Podés activar la PPS directamente cuando estén resueltos los pasos operativos.
+                </p>
+              </div>
+            </div>
+            <div className="lv4-consent-decision-actions">
+              <button
+                className="lv4-btn lv4-btn-primary"
+                onClick={onActivar}
+                disabled={seleccionadosVigentes === 0}
+              >
+                <span className="material-icons" aria-hidden="true">
+                  play_circle
+                </span>
+                Activar PPS
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     );

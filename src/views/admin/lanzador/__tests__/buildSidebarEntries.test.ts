@@ -192,6 +192,24 @@ describe("buildSidebarEntries", () => {
       expect(e.metaLine).not.toContain("25/25");
     });
 
+    it("explica cuando el consentimiento fue omitido por cierre el día de inicio", () => {
+      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion" });
+      const [e] = buildSidebarEntries(
+        [l],
+        { [l.id]: { inscriptos: 25, seleccionados: 25 } },
+        {
+          [l.id]: {
+            aceptados: 25,
+            total: 25,
+            pendientes: 0,
+            requerido: false,
+          },
+        }
+      );
+
+      expect(e.metaLine).toBe("Consentimiento omitido · 25 seleccionados");
+    });
+
     it("un borrador que todavía no arrancó queda visible en Borradores", () => {
       const [e] = buildSidebarEntries(
         [launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Oculto" })],

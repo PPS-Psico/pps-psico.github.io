@@ -120,6 +120,7 @@ export interface LaunchConsentCounts {
   pendientes?: number;
   bajas?: number;
   seleccionados_vigentes?: number;
+  requerido?: boolean;
 }
 export type LaunchConsentMap = Record<string, LaunchConsentCounts>;
 
@@ -202,11 +203,13 @@ export function buildSidebarEntries(
       case "asegurar":
       case "confirmacion":
         metaLine =
-          consent.total > 0
-            ? `${consent.aceptados} firmaron · ${pendientesConsent} pendiente${
-                pendientesConsent !== 1 ? "s" : ""
-              }${bajasConsent > 0 ? ` · ${bajasConsent} baja${bajasConsent !== 1 ? "s" : ""}` : ""}`
-            : `${totalSel} seleccionado${totalSel !== 1 ? "s" : ""} · sala de consentimientos`;
+          consent.requerido === false
+            ? `Consentimiento omitido · ${totalSel} seleccionado${totalSel !== 1 ? "s" : ""}`
+            : consent.total > 0
+              ? `${consent.aceptados} firmaron · ${pendientesConsent} pendiente${
+                  pendientesConsent !== 1 ? "s" : ""
+                }${bajasConsent > 0 ? ` · ${bajasConsent} baja${bajasConsent !== 1 ? "s" : ""}` : ""}`
+              : `${totalSel} seleccionado${totalSel !== 1 ? "s" : ""} · sala de consentimientos`;
         break;
       case "activa":
         // Una PPS corriendo sin seguro es lo más urgente que puede haber acá,
@@ -225,8 +228,8 @@ export function buildSidebarEntries(
 
     const needsAction =
       bucket === "seleccionar" ||
-      (bucket === "asegurar" && consent.aceptados < consent.total) ||
-      (bucket === "asegurar" && consent.total === 0) ||
+      (bucket === "asegurar" && consent.requerido !== false && consent.aceptados < consent.total) ||
+      (bucket === "asegurar" && consent.requerido !== false && consent.total === 0) ||
       bucket === "confirmacion" ||
       (bucket === "activa" && !seguroGestionado);
 

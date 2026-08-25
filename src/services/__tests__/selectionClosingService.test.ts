@@ -58,6 +58,21 @@ describe("closeSelectionAndQueueNotifications", () => {
     expect(dependencies.notifyCandidates).not.toHaveBeenCalled();
   });
 
+  it("omite correo y push cuando el cierre no requiere consentimiento", async () => {
+    const dependencies = buildDependencies({
+      closeSelection: jest.fn(async () => ({
+        data: { selected: 1, not_selected: 0, consentimiento_requerido: false },
+        error: null,
+      })),
+    });
+
+    const result = await closeSelectionAndQueueNotifications(launch, dependencies);
+    await result.notificationTask;
+
+    expect(dependencies.fetchCandidates).not.toHaveBeenCalled();
+    expect(dependencies.notifyCandidates).not.toHaveBeenCalled();
+  });
+
   it("no consulta candidatos si falla el cierre atómico", async () => {
     const dependencies = buildDependencies({
       closeSelection: jest.fn(async () => ({
