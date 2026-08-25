@@ -150,7 +150,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
           <span
             className="nota"
             style={{ color: "var(--ink)", fontSize: 12.5, fontFamily: "var(--font-mono)" }}
-            title="Calificación registrada en Mi Panel. No está verificada contra Campus."
+            title={registrada.detail}
           >
             {registrada.nota}
           </span>
