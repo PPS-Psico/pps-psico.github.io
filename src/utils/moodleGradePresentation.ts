@@ -23,6 +23,12 @@ export interface MoodleGradeLike {
   last_observed_at?: string | null;
   /** Contrato de escala de la tarea, tomado de aula_entregas. */
   grade_conversion_mode?: MoodleGradeConversionMode | null;
+  /**
+   * La lectura vino de la PPS hermana porque comparten el espacio de entrega.
+   * Sirve para saber que se entrego, nunca para atribuir una nota: en esas
+   * tareas el numero de Moodle no es la nota de ninguna de las dos.
+   */
+  inheritedFromSharedTask?: boolean;
 }
 
 export type MoodleGradeTone = "neutral" | "info" | "ok" | "warn";
@@ -81,6 +87,20 @@ export function presentMoodleGrade(
   snapshot: MoodleGradeLike | null | undefined
 ): MoodleGradePresentation | null {
   if (!snapshot) return null;
+
+  // La entrega es real -el informe entro por el espacio compartido- pero la
+  // nota de esta PPS no esta en el numero de Moodle, sino en el comentario de
+  // retroalimentacion, donde la catedra reparte una por informe.
+  if (snapshot.inheritedFromSharedTask) {
+    return {
+      label: "Entrega compartida con otra PPS",
+      detail:
+        "El informe se entregó en un espacio que recibe dos PPS. La nota de cada una está en el comentario de la tarea, no en el número.",
+      compact: "Ver comentario",
+      tone: "info",
+      hasGrade: false,
+    };
+  }
 
   if (hasCompleteMoodleGrade(snapshot)) {
     const reading = readMoodleGrade(
