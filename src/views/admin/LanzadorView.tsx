@@ -40,6 +40,7 @@ import { closeSelectionAndQueueNotifications } from "../../services";
 import { mockDb } from "../../services/mockDb";
 import type { LanzamientoPPS } from "../../types";
 import { normalizeStringForComparison } from "../../utils/formatters";
+import { isConsentimientoRequiredOnClose } from "../../utils/consentimientoUtils";
 import { logger } from "../../utils/logger";
 // Estilos scoped (.lv4) — importar este módulo inyecta el CSS una sola vez.
 import ConfirmModal from "../../components/ConfirmModal";
@@ -227,6 +228,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         pendientes?: number;
         bajas?: number;
         seleccionados_vigentes?: number;
+        requerido?: boolean;
       }
     >
   >({
@@ -254,6 +256,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
           pendientes?: number;
           bajas?: number;
           seleccionados_vigentes?: number;
+          requerido?: boolean;
         }
       >;
     },
@@ -669,7 +672,10 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
             />
           </div>
         );
-      case "seleccion":
+      case "seleccion": {
+        const consentimientoRequerido = isConsentimientoRequiredOnClose(
+          selectedLaunch[FIELD_FECHA_INICIO_LANZAMIENTOS]
+        );
         return (
           <div className="lv4-canvas">
             <SeleccionView
@@ -678,15 +684,19 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
               onCerrarInscripcion={() =>
                 handleChangeEstado(selectedLaunch.id, "Cerrado", {
                   title: "¿Cerrar la mesa de inscripción?",
-                  message:
-                    "Ya no se podrán anotar más estudiantes ni modificar las selecciones actuales, y se enviarán automáticamente los correos de confirmación a los estudiantes seleccionados.",
-                  confirmText: "Cerrar y notificar",
+                  message: consentimientoRequerido
+                    ? "Ya no se podrán anotar más estudiantes ni modificar las selecciones actuales. Se abrirá el consentimiento y se enviarán automáticamente los correos a quienes quedaron seleccionados."
+                    : "La PPS empieza hoy o ya comenzó. La mesa se cerrará sin consentimiento, sin correo automático y sin bajas por falta de firma.",
+                  confirmText: consentimientoRequerido
+                    ? "Cerrar y notificar"
+                    : "Cerrar sin consentimiento",
                   type: "warning",
                 })
               }
             />
           </div>
         );
+      }
       case "seguro":
         return (
           <div className="lv4-canvas">

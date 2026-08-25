@@ -8,6 +8,7 @@ do $$
 declare
   v_regular timestamptz;
   v_late timestamptz;
+  v_after_start timestamptz;
   v_delivery timestamptz;
   v_final_reminder timestamptz;
 begin
@@ -29,6 +30,15 @@ begin
     raise exception 'Cierre de selección tardía incorrecto: %', v_late;
   end if;
 
+  v_after_start := public.consentimiento_deadline(
+    '2026-08-24',
+    '2026-08-24 13:42:00+00',
+    null
+  );
+  if v_after_start <> '2026-08-25 13:42:00+00'::timestamptz then
+    raise exception 'La selección posterior al inicio nació vencida: %', v_after_start;
+  end if;
+
   v_delivery := public.consentimiento_deadline(
     '2026-08-21',
     '2026-08-05 12:00:00+00',
@@ -46,6 +56,56 @@ begin
   );
   if v_final_reminder <> '2026-08-08 16:45:00+00'::timestamptz then
     raise exception 'El último recordatorio no abrió 24 horas exactas: %', v_final_reminder;
+  end if;
+end;
+$$;
+
+select set_config('pps_test.same_day_launch_id', gen_random_uuid()::text, true);
+select set_config('pps_test.future_launch_id', gen_random_uuid()::text, true);
+
+insert into public.lanzamientos_pps (
+  id, nombre_pps, orientacion, fecha_inicio, fecha_finalizacion,
+  estado_convocatoria, tipo_actividad, modalidad_cupo
+) values
+  (
+    current_setting('pps_test.same_day_launch_id')::uuid,
+    '[TEST] Cierre mismo día',
+    'Clínica',
+    (now() at time zone 'America/Argentina/Buenos_Aires')::date::text,
+    ((now() at time zone 'America/Argentina/Buenos_Aires')::date + 30)::text,
+    'Abierta',
+    'pps',
+    'fijo'
+  ),
+  (
+    current_setting('pps_test.future_launch_id')::uuid,
+    '[TEST] Cierre anticipado',
+    'Clínica',
+    ((now() at time zone 'America/Argentina/Buenos_Aires')::date + 1)::text,
+    ((now() at time zone 'America/Argentina/Buenos_Aires')::date + 30)::text,
+    'Abierta',
+    'pps',
+    'fijo'
+  );
+
+do $$
+declare
+  v_same_day jsonb;
+  v_future jsonb;
+begin
+  v_same_day := public.close_selection(
+    current_setting('pps_test.same_day_launch_id')::uuid
+  );
+  v_future := public.close_selection(
+    current_setting('pps_test.future_launch_id')::uuid
+  );
+
+  if (v_same_day ->> 'consentimiento_requerido')::boolean is distinct from false then
+    raise exception 'El cierre del mismo día abrió consentimiento: %', v_same_day;
+  end if;
+
+  if (v_future ->> 'consentimiento_requerido')::boolean is distinct from true then
+    raise exception 'El cierre anticipado omitió consentimiento: %', v_future;
   end if;
 end;
 $$;

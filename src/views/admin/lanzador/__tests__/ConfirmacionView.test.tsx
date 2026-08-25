@@ -63,7 +63,8 @@ import ConfirmacionView from "../ConfirmacionView";
 const renderView = (
   onActivar: () => void,
   onListaEntregada = jest.fn(),
-  onFinalReminder = jest.fn()
+  onFinalReminder = jest.fn(),
+  consentimientoRequerido = true
 ) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const launch = {
@@ -71,6 +72,7 @@ const renderView = (
     nombre_pps: "Hospital X",
     fecha_inicio: "2099-08-21",
     lista_estudiantes_entregada_at: null,
+    consentimiento_requerido: consentimientoRequerido,
   } as never;
   return render(
     <QueryClientProvider client={queryClient}>
@@ -113,5 +115,13 @@ describe("ConfirmacionView — transición a Activa", () => {
     fireEvent.click(await screen.findByRole("button", { name: /último recordatorio por email/i }));
 
     expect(onFinalReminder).toHaveBeenCalledWith(1);
+  });
+
+  it("muestra la omisión y oculta acciones de firma cuando cerró el día de inicio", async () => {
+    renderView(() => {}, jest.fn(), jest.fn(), false);
+
+    expect(await screen.findByText(/La mesa cerró el mismo día/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Último recordatorio por email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Cerrar lista/i)).not.toBeInTheDocument();
   });
 });

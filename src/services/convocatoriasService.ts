@@ -12,6 +12,7 @@ import {
   cleanDbValue,
   cleanInstitutionName,
   normalizeStringForComparison,
+  parseToUTCDate,
   safeGetId,
 } from "../utils/formatters";
 import { cleanSchedule, findMatchingGroupKey } from "../utils/scheduleUtils";
@@ -63,8 +64,7 @@ function sortGrouped(grouped: GroupedSeleccionados): GroupedSeleccionados {
  * @param now Fecha de referencia (inyectable para tests). Por defecto `new Date()`.
  */
 export function isLaunchVisibleToStudent(l: LanzamientoPPS, now: Date = new Date()): boolean {
-  const today0 = new Date(now);
-  today0.setHours(0, 0, 0, 0);
+  const today0 = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
   const estadoConv = normalizeStringForComparison(l[C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
   const estadoGestion = l[C.FIELD_ESTADO_GESTION_LANZAMIENTOS];
@@ -82,8 +82,7 @@ export function isLaunchVisibleToStudent(l: LanzamientoPPS, now: Date = new Date
   // día en que comienza, AUNQUE ya esté archivada (el archivado puede ocurrir
   // manualmente o automáticamente). Solo ocultamos archivadas cuyo inicio ya pasó.
   const inicioRaw = l[C.FIELD_FECHA_INICIO_LANZAMIENTOS];
-  const inicioDate = inicioRaw ? new Date(inicioRaw) : null;
-  if (inicioDate) inicioDate.setHours(0, 0, 0, 0);
+  const inicioDate = parseToUTCDate(inicioRaw as string | null | undefined);
   const startNotPast = inicioDate ? inicioDate >= today0 : false;
   const notArchivedOrUpcoming = estadoGestion !== "Archivado" || startNotPast;
 

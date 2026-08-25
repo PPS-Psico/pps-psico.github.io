@@ -43,6 +43,15 @@ describe("isLaunchVisibleToStudent", () => {
     expect(isLaunchVisibleToStudent(l, NOW)).toBe(true);
   });
 
+  it("muestra una Cerrada durante su mismo día de inicio en Buenos Aires", () => {
+    const l = makeLaunch({
+      [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion",
+      [C.FIELD_FECHA_INICIO_LANZAMIENTOS]: "2026-06-16",
+    });
+    const mediodiaBuenosAires = new Date("2026-06-16T12:00:00-03:00");
+    expect(isLaunchVisibleToStudent(l, mediodiaBuenosAires)).toBe(true);
+  });
+
   it("oculta una Cerrada cuyo inicio ya pasó", () => {
     const l = makeLaunch({
       [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrada",
