@@ -762,16 +762,23 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                           const verificada = row?.nota ?? null;
                           const registrada = row?.nota_panel ?? null;
                           const sinVerificar = !verificada && Boolean(registrada);
+                          // En una tarea compartida el número de Moodle no es la
+                          // nota de ninguna de las dos PPS: la cátedra las reparte
+                          // en el comentario. Se avisa y se muestra el comentario.
+                          const compartida = row?.tarea_compartida === true;
+                          const comentario = row?.feedback_comment?.trim() || null;
+                          const base = verificada
+                            ? (describeFinalizationGradeSource(row) ?? "Calificación verificada.")
+                            : sinVerificar
+                              ? "Nota registrada en el panel, sin verificar contra Campus. No cuenta para el promedio."
+                              : "Todavía no hay calificación para esta PPS.";
+                          const aviso = compartida
+                            ? `\n\nEsta PPS comparte el espacio de entrega con otra: el número de Campus no es su nota. Confirmá contra el comentario de la cátedra.\n\n` +
+                              (comentario ? `Comentario de la cátedra:\n${comentario}` : "")
+                            : "";
                           return (
                             <span
-                              title={
-                                verificada
-                                  ? (describeFinalizationGradeSource(row) ??
-                                    "Calificación verificada.")
-                                  : sinVerificar
-                                    ? "Nota registrada en el panel, sin verificar contra Campus. No cuenta para el promedio."
-                                    : "Todavía no hay calificación para esta PPS."
-                              }
+                              title={base + aviso}
                               style={{
                                 fontSize: 10,
                                 fontWeight: 700,
@@ -785,6 +792,7 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                             >
                               NOTA: {verificada ?? registrada ?? "—"}
                               {sinVerificar ? " · sin verificar" : ""}
+                              {compartida ? " · compartida" : ""}
                             </span>
                           );
                         })()}

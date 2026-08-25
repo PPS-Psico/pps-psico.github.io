@@ -114,10 +114,29 @@ export function selectCurrentMoodleSnapshots<
   practices.forEach((practice) => {
     const task = resolveExactMoodleTaskLink(practice, links);
     if (!task) return;
-    const snapshot =
-      snapshotsByKey.get(`${practice.id}:${task.moodleId}`) ??
-      bestByCmid.get(String(task.moodleId));
-    if (snapshot) result.set(practice.id, snapshot);
+    const own = snapshotsByKey.get(`${practice.id}:${task.moodleId}`);
+    if (own) {
+      result.set(practice.id, own);
+      return;
+    }
+
+    // Cuando una tarea recibe dos informes -Fundacion Tiempo, Ateneos Ulloa-
+    // Moodle guarda una sola entrega y la observacion queda contra una sola de
+    // las practicas. La hermana hereda que SE ENTREGO, porque es cierto, pero
+    // nunca el numero: en esa tarea el numero no es la nota de ninguna de las
+    // dos (la catedra reparte las notas en el comentario, y suelen diferir).
+    // Antes se heredaba entero y el panel repetia la misma nota en las dos
+    // filas. Son 189 pares (alumno, tarea) en esa situacion.
+    const shared = bestByCmid.get(String(task.moodleId));
+    if (!shared) return;
+    result.set(practice.id, {
+      ...shared,
+      grade_value: null,
+      grade_max: null,
+      grade_display: null,
+      graded_at_display: null,
+      inheritedFromSharedTask: true,
+    } as T);
   });
 
   return result;

@@ -3,6 +3,7 @@ import {
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
 } from "../../constants";
 import type { MoodleTaskLink } from "../../hooks/useMoodleTaskLinks";
+import type { MoodleGradeLike } from "../moodleGradePresentation";
 import type { Practica } from "../../types";
 import {
   buildPendingMoodleAssignments,
@@ -114,10 +115,16 @@ describe("buildPendingMoodleAssignments", () => {
     );
   });
 
-  it("comparte la nota entre dos PPS que entregan en la misma tarea de Moodle", () => {
+  it("hereda la entrega entre dos PPS de la misma tarea, pero nunca la nota", () => {
     // Caso real (Juan Emilio Serrano, Fundación Tiempo): Adultos y Niños son
     // dos prácticas distintas que entregan en un único espacio de Moodle. La
     // nota queda registrada contra una sola y la otra aparecía como "Pend.".
+    //
+    // Heredar la entrega es correcto -el informe efectivamente entró-, pero
+    // heredar el número no: en estas tareas Moodle tiene un solo campo de nota
+    // y la cátedra reparte las notas reales en el comentario, que suelen
+    // diferir (Ariel Nahuelcheo: Adultos 8, Niños 9, con 90/100 en el número).
+    // Antes el panel mostraba el mismo valor en las dos filas.
     const sharedLinks: MoodleTaskLink[] = [
       {
         launchId: "launch-adultos",
@@ -148,7 +155,7 @@ describe("buildPendingMoodleAssignments", () => {
         [FIELD_ESPECIALIDAD_PRACTICAS]: "Clínica",
       },
     ] as unknown as Practica[];
-    const snapshots = [
+    const snapshots: (MoodleGradeLike & { practica_id: string; cmid: number })[] = [
       {
         practica_id: "practica-adultos",
         cmid: 1085731,
@@ -163,8 +170,18 @@ describe("buildPendingMoodleAssignments", () => {
     ];
 
     const resolved = selectCurrentMoodleSnapshots(sharedPractices, sharedLinks, snapshots);
+
+    // La que tiene la observación propia conserva todo.
     expect(resolved.get("practica-adultos")?.grade_value).toBe(90);
-    expect(resolved.get("practica-ninos")?.grade_value).toBe(90);
+    expect(resolved.get("practica-adultos")?.inheritedFromSharedTask).toBeUndefined();
+
+    // La hermana sabe que se entregó, pero no se le atribuye ninguna nota.
+    const ninos = resolved.get("practica-ninos");
+    expect(ninos?.submitted).toBe(true);
+    expect(ninos?.task_status).toBe("graded");
+    expect(ninos?.grade_value).toBeNull();
+    expect(ninos?.grade_display).toBeNull();
+    expect(ninos?.inheritedFromSharedTask).toBe(true);
   });
 
   it("no toma prestado el snapshot de una práctica ajena a la lista", () => {

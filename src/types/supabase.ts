@@ -3317,6 +3317,7 @@ export type Database = {
           nota_promedio: number
           observed_at: string
           practica_id: string
+          tarea_compartida: boolean
         }[]
       }
       get_haciendo_pps_list: {
