@@ -6,7 +6,14 @@ import {
   approveSolicitudNuevaPPS,
   fetchAllSolicitudesModificacion,
   fetchAllSolicitudesNuevaPPS,
+  resolveSolicitudBajaPps,
+  type ResolveSolicitudBajaInput,
 } from "../../../services";
+import {
+  getPpsWithdrawalReasonLabel,
+  getWithdrawalPenaltySuggestion,
+} from "../../../constants/withdrawalConstants";
+import { getPenaltyScore, type PenaltyType } from "../../../constants/penalties";
 import { getErrorMessage } from "../../../utils/getErrorMessage";
 import Loader from "../../Loader";
 import { SecureStorageLink } from "../../ui/SecureStorageLink";
@@ -24,6 +31,14 @@ interface CorreccionItem {
   comentario_rechazo?: string | null;
   tipo_modificacion?: string;
   horas_nuevas?: number | null;
+  motivo_baja?: string | null;
+  motivo_baja_detalle?: string | null;
+  fecha_inicio_snapshot?: string | null;
+  nombre_pps_snapshot?: string | null;
+  penalizacion_id?: string | null;
+  tipo_penalizacion_aplicada?: string | null;
+  puntaje_penalizacion_aplicado?: number | null;
+  resuelta_at?: string | null;
   horas_estimadas?: number | null;
   orientacion?: string | null;
   fecha_inicio?: string | null;
@@ -32,7 +47,12 @@ interface CorreccionItem {
   planilla_asistencia_url?: string | null;
   informe_final_url?: string | null;
   estudiante?: { nombre?: string | null; legajo?: string | null } | null;
-  practica?: { nombre_institucion?: string | null; horas_realizadas?: number | null } | null;
+  practica?: {
+    nombre_institucion?: string | null;
+    horas_realizadas?: number | null;
+    fecha_inicio?: string | null;
+    estado?: string | null;
+  } | null;
   institucion?: { nombre?: string | null } | null;
   [key: string]: unknown;
 }
@@ -123,6 +143,23 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
     onError: (e) => onToast(getErrorMessage(e, "Error al aprobar"), "error"),
   });
 
+  const resolveBajaMutation = useMutation({
+    mutationFn: resolveSolicitudBajaPps,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion"] });
+      queryClient.invalidateQueries({ queryKey: ["practicas"] });
+      queryClient.invalidateQueries({ queryKey: ["allPenalizedStudents"] });
+      queryClient.invalidateQueries({ queryKey: ["penaltyPpsRoster"] });
+      queryClient.invalidateQueries({ queryKey: ["convocatorias"] });
+      onToast(
+        result.estado === "aprobada"
+          ? "Baja aprobada y penalización registrada."
+          : "Solicitud de baja rechazada."
+      );
+    },
+    onError: (e) => onToast(getErrorMessage(e, "Error al resolver la solicitud de baja"), "error"),
+  });
+
   /*
     La lista combina DOS consultas. Antes, si una fallaba, su mitad se caia en
     silencio: el admin veia solo las solicitudes del otro tipo creyendo que
@@ -167,6 +204,7 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
                   onToggle={() => onToggle(sol.id)}
                   onToast={onToast}
                   onReject={onReject}
+                  onResolveBaja={(input) => resolveBajaMutation.mutateAsync(input)}
                   onApprove={async (id, notas) => {
                     if (sol.tipo_solicitud === "modificacion") {
                       approveModMutation.mutate({ id, notas });
@@ -192,6 +230,7 @@ interface CorreccionCardItemProps {
   onToast: (msg: string) => void;
   onReject: (sol: CorreccionItem) => void;
   onApprove: (id: string, notas?: string) => Promise<void>;
+  onResolveBaja: (input: ResolveSolicitudBajaInput) => Promise<unknown>;
 }
 
 const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
@@ -201,10 +240,23 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
   onToast: _onToast,
   onReject,
   onApprove,
+  onResolveBaja,
 }) => {
   const isMod = sol.tipo_solicitud === "modificacion";
+  const isWithdrawal = isMod && sol.tipo_modificacion === "eliminacion";
   const [adminNotes, setAdminNotes] = useState(sol.notas_admin || "");
   const [loading, setLoading] = useState(false);
+  const penaltySuggestion = useMemo(
+    () =>
+      getWithdrawalPenaltySuggestion(
+        sol.created_at,
+        sol.fecha_inicio_snapshot || sol.practica?.fecha_inicio
+      ),
+    [sol.created_at, sol.fecha_inicio_snapshot, sol.practica?.fecha_inicio]
+  );
+  const [penaltyType, setPenaltyType] = useState<PenaltyType>(penaltySuggestion.type);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const getVisuals = (est: string) => {
     const e = (est || "").toLowerCase();
@@ -224,12 +276,29 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
     }
   };
 
+  const handleResolveWithdrawal = async (decision: "aprobar" | "rechazar") => {
+    if (decision === "rechazar" && !rejectReason.trim()) return;
+    setLoading(true);
+    try {
+      await onResolveBaja({
+        solicitudId: sol.id,
+        decision,
+        tipoIncumplimiento: decision === "aprobar" ? penaltyType : undefined,
+        notasAdmin: adminNotes,
+        comentarioRechazo: decision === "rechazar" ? rejectReason : undefined,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getTipoModTitle = () => {
     if (!isMod) return "Carga de PPS";
     const mapping: Record<string, string> = {
       horas: "Horas de la práctica",
       fechas: "Período y cronograma",
       institucion: "Reasignación institucional",
+      eliminacion: "Baja de la práctica",
     };
     return `Modificación · ${mapping[sol.tipo_modificacion ?? ""] || "Práctica"}`;
   };
@@ -329,11 +398,13 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
           >
             <span className="material-icons" style={{ fontSize: 19 }}>
               {isMod
-                ? sol.tipo_modificacion === "horas"
-                  ? "schedule"
-                  : sol.tipo_modificacion === "fechas"
-                    ? "event"
-                    : "business"
+                ? sol.tipo_modificacion === "eliminacion"
+                  ? "person_remove"
+                  : sol.tipo_modificacion === "horas"
+                    ? "schedule"
+                    : sol.tipo_modificacion === "fechas"
+                      ? "event"
+                      : "business"
                 : "note_add"}
             </span>
           </div>
@@ -370,7 +441,7 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
               </span>
               <span className="meta" style={{ fontSize: 11.5 }}>
                 {isMod
-                  ? sol.practica?.nombre_institucion
+                  ? sol.practica?.nombre_institucion || sol.nombre_pps_snapshot
                   : sol.institucion?.nombre || sol.nombre_institucion_manual}
               </span>
             </div>
@@ -421,9 +492,91 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
           {/* Info grid */}
           <div>
             <div className="label" style={{ marginBottom: 10 }}>
-              {isMod ? "PPS a modificar" : "PPS propuesta"}
+              {isWithdrawal ? "Solicitud de baja" : isMod ? "PPS a modificar" : "PPS propuesta"}
             </div>
-            {isMod ? (
+            {isWithdrawal ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                    gap: 8,
+                  }}
+                >
+                  <DataItem
+                    label="PPS"
+                    value={sol.nombre_pps_snapshot || sol.practica?.nombre_institucion || "—"}
+                  />
+                  <DataItem
+                    label="Solicitud recibida"
+                    value={new Date(sol.created_at).toLocaleString("es-AR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  />
+                  <DataItem
+                    label="Inicio de la PPS"
+                    value={
+                      sol.fecha_inicio_snapshot || sol.practica?.fecha_inicio
+                        ? new Date(
+                            `${sol.fecha_inicio_snapshot || sol.practica?.fecha_inicio}T12:00:00`
+                          ).toLocaleDateString("es-AR")
+                        : "Sin fecha registrada"
+                    }
+                  />
+                  <DataItem
+                    label="Motivo informado"
+                    value={getPpsWithdrawalReasonLabel(sol.motivo_baja)}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    background: "var(--paper)",
+                    border: "1px solid var(--rule-2)",
+                  }}
+                >
+                  <div className="label" style={{ fontSize: 9.5, marginBottom: 5 }}>
+                    Fundamentación del estudiante
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.55 }}>
+                    {sol.motivo_baja_detalle || "Sin detalle registrado."}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "11px 14px",
+                    borderRadius: 10,
+                    background: "var(--warn-soft)",
+                    color: "var(--ink-2)",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700 }}>{penaltySuggestion.label}</div>
+                    <div style={{ fontSize: 11.5, marginTop: 2 }}>
+                      Sugerencia automática: {penaltySuggestion.type}
+                    </div>
+                  </div>
+                  <strong style={{ color: "var(--warn)", whiteSpace: "nowrap" }}>
+                    {penaltySuggestion.score} pts
+                  </strong>
+                </div>
+
+                {sol.estado === "aprobada" && sol.tipo_penalizacion_aplicada && (
+                  <DataItem
+                    label="Resolución aplicada"
+                    value={`${sol.tipo_penalizacion_aplicada} · ${sol.puntaje_penalizacion_aplicado ?? 0} pts`}
+                  />
+                )}
+              </div>
+            ) : isMod ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <DataItem label="Institución" value={sol.practica?.nombre_institucion} />
@@ -494,61 +647,63 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
           </div>
 
           {/* Attached docs */}
-          <div>
-            <div className="label" style={{ marginBottom: 8 }}>
-              Documentos de respaldo adjuntos
-            </div>
-            {docsList.length > 0 ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {docsList.map((d, i) => (
-                  <SecureStorageLink
-                    key={i}
-                    href={signedDocs[d.url] || d.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="press"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      padding: "8px 11px",
-                      borderRadius: 8,
-                      border: "1px solid var(--rule-2)",
-                      background: "var(--paper)",
-                      textDecoration: "none",
-                    }}
-                  >
-                    <span
-                      className="material-icons"
-                      style={{ fontSize: 15, color: "var(--ink-4)" }}
+          {!isWithdrawal && (
+            <div>
+              <div className="label" style={{ marginBottom: 8 }}>
+                Documentos de respaldo adjuntos
+              </div>
+              {docsList.length > 0 ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {docsList.map((d, i) => (
+                    <SecureStorageLink
+                      key={i}
+                      href={signedDocs[d.url] || d.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="press"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "8px 11px",
+                        borderRadius: 8,
+                        border: "1px solid var(--rule-2)",
+                        background: "var(--paper)",
+                        textDecoration: "none",
+                      }}
                     >
-                      description
-                    </span>
-                    <span style={{ fontSize: 11.5, color: "var(--ink-2)" }}>{d.filename}</span>
-                  </SecureStorageLink>
-                ))}
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  background: "var(--crit-soft)",
-                  color: "var(--crit)",
-                  fontSize: 12,
-                  fontWeight: 500,
-                }}
-              >
-                <span className="material-icons" style={{ fontSize: 15 }}>
-                  error
-                </span>
-                El alumno no adjuntó documentación de respaldo en esta corrección.
-              </div>
-            )}
-          </div>
+                      <span
+                        className="material-icons"
+                        style={{ fontSize: 15, color: "var(--ink-4)" }}
+                      >
+                        description
+                      </span>
+                      <span style={{ fontSize: 11.5, color: "var(--ink-2)" }}>{d.filename}</span>
+                    </SecureStorageLink>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    background: "var(--crit-soft)",
+                    color: "var(--crit)",
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  <span className="material-icons" style={{ fontSize: 15 }}>
+                    error
+                  </span>
+                  El alumno no adjuntó documentación de respaldo en esta corrección.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Rejection comments */}
           {sol.estado === "rechazada" && sol.comentario_rechazo && (
@@ -610,34 +765,130 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
                 />
               </div>
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button
-                  onClick={() => onReject(sol)}
-                  className="btn btn-sm press"
-                  style={{ color: "var(--crit)", borderColor: "#B23A4833" }}
-                >
-                  <span className="material-icons" style={{ fontSize: 15 }}>
-                    close
-                  </span>
-                  Rechazar
-                </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={loading}
-                  className="btn btn-sm press"
-                  style={{
-                    background: "var(--ok)",
-                    color: "var(--paper)",
-                    borderColor: "var(--ok)",
-                    opacity: loading ? 0.5 : 1,
-                  }}
-                >
-                  <span className="material-icons" style={{ fontSize: 15 }}>
-                    check_circle
-                  </span>
-                  {isMod ? "Aprobar cambio" : "Aprobar y crear PPS"}
-                </button>
-              </div>
+              {isWithdrawal ? (
+                <>
+                  <div>
+                    <label
+                      className="label"
+                      style={{ display: "block", marginBottom: 6, fontSize: 9.5 }}
+                    >
+                      Penalización al aprobar
+                    </label>
+                    <select
+                      value={penaltyType}
+                      onChange={(event) => setPenaltyType(event.target.value as PenaltyType)}
+                      className="field"
+                      disabled={loading}
+                    >
+                      <option value="Baja Anticipada">Baja anticipada · 30 pts</option>
+                      <option value="Baja sobre la Fecha / Ausencia en Inicio">
+                        Baja sobre la fecha · 50 pts
+                      </option>
+                      <option value="Abandono durante la PPS">
+                        Abandono durante la PPS · 70 pts
+                      </option>
+                      <option value="Baja Administrativa / Sin Penalización">
+                        Baja administrativa · 0 pts
+                      </option>
+                    </select>
+                    <div className="meta" style={{ fontSize: 11, marginTop: 5 }}>
+                      Selección actual: {getPenaltyScore(penaltyType)} puntos. La fecha sugiere{" "}
+                      {penaltySuggestion.score}; podés corregirla si el caso lo justifica.
+                    </div>
+                  </div>
+
+                  {showRejectForm && (
+                    <div>
+                      <label
+                        className="label"
+                        style={{ display: "block", marginBottom: 6, fontSize: 9.5 }}
+                      >
+                        Motivo del rechazo
+                      </label>
+                      <textarea
+                        value={rejectReason}
+                        onChange={(event) => setRejectReason(event.target.value)}
+                        placeholder="Explicá por qué no corresponde procesar la baja..."
+                        rows={2}
+                        className="field"
+                        style={{ fontSize: 13, minHeight: 0 }}
+                      />
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      justifyContent: "flex-end",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        if (!showRejectForm) {
+                          setShowRejectForm(true);
+                          return;
+                        }
+                        void handleResolveWithdrawal("rechazar");
+                      }}
+                      disabled={loading || (showRejectForm && !rejectReason.trim())}
+                      className="btn btn-sm press"
+                      style={{ color: "var(--crit)", borderColor: "var(--crit)" }}
+                    >
+                      <span className="material-icons" style={{ fontSize: 15 }}>
+                        close
+                      </span>
+                      {showRejectForm ? "Confirmar rechazo" : "Rechazar"}
+                    </button>
+                    <button
+                      onClick={() => void handleResolveWithdrawal("aprobar")}
+                      disabled={loading}
+                      className="btn btn-sm press"
+                      style={{
+                        background: "var(--ok)",
+                        color: "var(--paper)",
+                        borderColor: "var(--ok)",
+                        opacity: loading ? 0.5 : 1,
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: 15 }}>
+                        check_circle
+                      </span>
+                      Aprobar baja y aplicar {getPenaltyScore(penaltyType)} pts
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => onReject(sol)}
+                    className="btn btn-sm press"
+                    style={{ color: "var(--crit)", borderColor: "var(--crit)" }}
+                  >
+                    <span className="material-icons" style={{ fontSize: 15 }}>
+                      close
+                    </span>
+                    Rechazar
+                  </button>
+                  <button
+                    onClick={handleApprove}
+                    disabled={loading}
+                    className="btn btn-sm press"
+                    style={{
+                      background: "var(--ok)",
+                      color: "var(--paper)",
+                      borderColor: "var(--ok)",
+                      opacity: loading ? 0.5 : 1,
+                    }}
+                  >
+                    <span className="material-icons" style={{ fontSize: 15 }}>
+                      check_circle
+                    </span>
+                    {isMod ? "Aprobar cambio" : "Aprobar y crear PPS"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

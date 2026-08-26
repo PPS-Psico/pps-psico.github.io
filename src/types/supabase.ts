@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -2621,49 +2621,106 @@ export type Database = {
       solicitudes_modificacion_pps: {
         Row: {
           comentario_rechazo: string | null
+          convocatoria_id: string | null
           created_at: string | null
           estado: string
+          estado_practica_snapshot: string | null
           estudiante_id: string
+          fecha_inicio_snapshot: string | null
           horas_nuevas: number | null
           id: string
+          lanzamiento_id: string | null
+          motivo_baja: string | null
+          motivo_baja_detalle: string | null
+          nombre_pps_snapshot: string | null
           notas_admin: string | null
+          penalizacion_id: string | null
           planilla_asistencia_url: string | null
-          practica_id: string
+          practica_id: string | null
+          puntaje_penalizacion_aplicado: number | null
+          resuelta_at: string | null
+          resuelta_por: string | null
           tipo_modificacion: string
+          tipo_penalizacion_aplicada: string | null
           updated_at: string | null
         }
         Insert: {
           comentario_rechazo?: string | null
+          convocatoria_id?: string | null
           created_at?: string | null
           estado?: string
+          estado_practica_snapshot?: string | null
           estudiante_id: string
+          fecha_inicio_snapshot?: string | null
           horas_nuevas?: number | null
           id?: string
+          lanzamiento_id?: string | null
+          motivo_baja?: string | null
+          motivo_baja_detalle?: string | null
+          nombre_pps_snapshot?: string | null
           notas_admin?: string | null
+          penalizacion_id?: string | null
           planilla_asistencia_url?: string | null
-          practica_id: string
+          practica_id?: string | null
+          puntaje_penalizacion_aplicado?: number | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
           tipo_modificacion: string
+          tipo_penalizacion_aplicada?: string | null
           updated_at?: string | null
         }
         Update: {
           comentario_rechazo?: string | null
+          convocatoria_id?: string | null
           created_at?: string | null
           estado?: string
+          estado_practica_snapshot?: string | null
           estudiante_id?: string
+          fecha_inicio_snapshot?: string | null
           horas_nuevas?: number | null
           id?: string
+          lanzamiento_id?: string | null
+          motivo_baja?: string | null
+          motivo_baja_detalle?: string | null
+          nombre_pps_snapshot?: string | null
           notas_admin?: string | null
+          penalizacion_id?: string | null
           planilla_asistencia_url?: string | null
-          practica_id?: string
+          practica_id?: string | null
+          puntaje_penalizacion_aplicado?: number | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
           tipo_modificacion?: string
+          tipo_penalizacion_aplicada?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "solicitudes_modificacion_pps_convocatoria_id_fkey"
+            columns: ["convocatoria_id"]
+            isOneToOne: false
+            referencedRelation: "convocatorias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "solicitudes_modificacion_pps_estudiante_id_fkey"
             columns: ["estudiante_id"]
             isOneToOne: false
             referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_modificacion_pps_lanzamiento_id_fkey"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_modificacion_pps_penalizacion_id_fkey"
+            columns: ["penalizacion_id"]
+            isOneToOne: false
+            referencedRelation: "penalizaciones"
             referencedColumns: ["id"]
           },
           {
@@ -3117,6 +3174,14 @@ export type Database = {
           p_final_reminder_sent_at?: string
           p_lista_entregada_at?: string
           p_selected_at: string
+        }
+        Returns: string
+      }
+      create_my_solicitud_baja_pps_v1: {
+        Args: {
+          p_motivo_baja: string
+          p_motivo_baja_detalle: string
+          p_practica_id: string
         }
         Returns: string
       }
@@ -3852,6 +3917,20 @@ export type Database = {
           telefono_input?: string
         }
         Returns: undefined
+      }
+      resolver_solicitud_baja_pps_v1: {
+        Args: {
+          p_comentario_rechazo?: string
+          p_decision: string
+          p_notas_admin?: string
+          p_solicitud_id: string
+          p_tipo_incumplimiento?: string
+        }
+        Returns: {
+          estado: string
+          penalizacion_id: string
+          practicas_eliminadas: number
+        }[]
       }
       safe_date_cast: { Args: { val: string }; Returns: string }
       save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean }

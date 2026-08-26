@@ -200,7 +200,10 @@ export const useActivityFeed = (isTestingMode = false) => {
           items.push({
             id: `mod-${m.id}`,
             type: "correction",
-            title: "Solicitud de Corrección",
+            title:
+              m.tipo_modificacion === "eliminacion"
+                ? "Solicitud de Baja de PPS"
+                : "Solicitud de Corrección",
             description: status,
             timestamp: date,
             user: name,

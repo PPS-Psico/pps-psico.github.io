@@ -187,7 +187,7 @@ const PracticaRow: React.FC<{
           </span>
           {pendingWithdrawal ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-              <span className="material-icons !text-[13px]" aria-hidden="true">
+              <span className="material-icons !text-sm" aria-hidden="true">
                 pending_actions
               </span>
               Baja solicitada {formatDate(pendingWithdrawal.created_at)}

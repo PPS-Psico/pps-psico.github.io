@@ -6,8 +6,14 @@ import {
   FIELD_ESTADO_PPS,
   FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
+  getPpsWithdrawalReasonLabel,
 } from "../../constants";
-import type { CriteriosCalculados, FinalizacionPPS, SolicitudPPS } from "../../types";
+import type {
+  CriteriosCalculados,
+  FinalizacionPPS,
+  SolicitudModificacionPPS,
+  SolicitudPPS,
+} from "../../types";
 import { formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import FinalizationStatusCard from "../../components/student/FinalizationStatusCard";
 
@@ -17,6 +23,7 @@ interface AtlasSolicitudesViewProps {
   onRequestFinalization?: () => void;
   criterios?: CriteriosCalculados;
   finalizacionRequest?: FinalizacionPPS | null;
+  solicitudesModificacion?: SolicitudModificacionPPS[];
 }
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -62,12 +69,43 @@ const SolRow: React.FC<{ sol: SolicitudPPS }> = ({ sol }) => {
   );
 };
 
+const WithdrawalRow: React.FC<{ request: SolicitudModificacionPPS }> = ({ request }) => {
+  const status = normalizeStringForComparison(request.estado);
+  const statusLabel =
+    status === "aprobada" ? "Baja aprobada" : status === "rechazada" ? "Rechazada" : "Pendiente";
+  const requestDate = request.created_at ? fmtShort(request.created_at) : "fecha no disponible";
+  const reason = getPpsWithdrawalReasonLabel(request.motivo_baja);
+  const appliedPenalty = request.tipo_penalizacion_aplicada
+    ? ` · ${request.tipo_penalizacion_aplicada} (${request.puntaje_penalizacion_aplicado ?? 0} pts)`
+    : "";
+
+  return (
+    <div className="ah-sol">
+      <div className="min-w-0">
+        <div className="ah-sol__name">Baja · {request.nombre_pps_snapshot || "PPS"}</div>
+        <div className="ah-sol__sub">
+          Solicitada {requestDate} · {reason}
+          {appliedPenalty}
+        </div>
+        {status === "rechazada" && request.comentario_rechazo ? (
+          <div className="ah-sol__sub">Motivo del rechazo: {request.comentario_rechazo}</div>
+        ) : null}
+      </div>
+      <span className={`ah-badge ah-badge--${toneFor(statusLabel)}`}>
+        <span className="dot" />
+        {statusLabel}
+      </span>
+    </div>
+  );
+};
+
 const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
   solicitudes,
   onCreateSolicitud,
   onRequestFinalization,
   criterios,
   finalizacionRequest,
+  solicitudesModificacion = [],
 }) => {
   const isAccreditationReady = criterios
     ? criterios.cumpleHorasTotales &&
@@ -105,7 +143,21 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
     return { active: a, history: h };
   }, [solicitudes]);
 
-  const isEmpty = active.length === 0 && history.length === 0 && !finalizacionRequest;
+  const withdrawalRequests = useMemo(
+    () =>
+      solicitudesModificacion
+        .filter((request) => request.tipo_modificacion === "eliminacion")
+        .sort(
+          (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        ),
+    [solicitudesModificacion]
+  );
+
+  const isEmpty =
+    active.length === 0 &&
+    history.length === 0 &&
+    withdrawalRequests.length === 0 &&
+    !finalizacionRequest;
 
   return (
     <div className="ah-root ah-unified">
@@ -214,6 +266,22 @@ const AtlasSolicitudesView: React.FC<AtlasSolicitudesViewProps> = ({
                   <div className="ah-sols">
                     {active.map((sol) => (
                       <SolRow key={sol.id} sol={sol} />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {withdrawalRequests.length > 0 && (
+              <>
+                <div className="ah-sechead">
+                  <h6>Solicitudes de baja</h6>
+                  <span className="n">{String(withdrawalRequests.length).padStart(2, "0")}</span>
+                </div>
+                <div className="ah-card">
+                  <div className="ah-sols">
+                    {withdrawalRequests.map((request) => (
+                      <WithdrawalRow key={request.id} request={request} />
                     ))}
                   </div>
                 </div>

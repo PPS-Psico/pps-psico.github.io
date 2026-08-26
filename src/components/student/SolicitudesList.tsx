@@ -7,8 +7,14 @@ import {
   FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_NOTAS_PPS,
   FIELD_ULTIMA_ACTUALIZACION_PPS,
+  getPpsWithdrawalReasonLabel,
 } from "../../constants";
-import type { CriteriosCalculados, FinalizacionPPS, SolicitudPPS } from "../../types";
+import type {
+  CriteriosCalculados,
+  FinalizacionPPS,
+  SolicitudModificacionPPS,
+  SolicitudPPS,
+} from "../../types";
 import { formatDate, getStatusVisuals, normalizeStringForComparison } from "../../utils/formatters";
 import EmptyState from "../EmptyState";
 import FinalizationStatusCard from "./FinalizationStatusCard";
@@ -19,6 +25,7 @@ interface SolicitudesListProps {
   onRequestFinalization?: () => void;
   criterios?: CriteriosCalculados;
   finalizacionRequest?: FinalizacionPPS | null;
+  solicitudesModificacion?: SolicitudModificacionPPS[];
 }
 
 // 3D Tilt Card Component for SolicitudItem
@@ -199,7 +206,7 @@ const SolicitudItem: React.FC<{ solicitud: SolicitudPPS; index?: number }> = ({
               <motion.div
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                 animate={{ opacity: 1, height: "auto", marginTop: 16 }}
-                className="p-3 bg-red-50/50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30 text-sm text-slate-600 dark:text-slate-300 leading-relaxed overflow-hidden"
+                className="p-3 bg-red-50/50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30 text-sm text-red-800 dark:text-red-200 leading-relaxed overflow-hidden"
               >
                 <div className="flex gap-2">
                   <span className="material-icons !text-sm text-rose-500 mt-0.5">info</span>
@@ -333,6 +340,7 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
   onRequestFinalization,
   criterios,
   finalizacionRequest,
+  solicitudesModificacion = [],
 }) => {
   const isAccreditationReady = criterios
     ? criterios.cumpleHorasTotales &&
@@ -371,6 +379,10 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
     if (!onRequestFinalization) return;
     onRequestFinalization();
   };
+
+  const withdrawalRequests = solicitudesModificacion
+    .filter((request) => request.tipo_modificacion === "eliminacion")
+    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
   return (
     <div className="space-y-6">
@@ -418,6 +430,55 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
       )}
 
       {/* Active List */}
+      {withdrawalRequests.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="pl-1 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Solicitudes de baja ({withdrawalRequests.length})
+          </h3>
+          <div className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
+            {withdrawalRequests.map((request) => {
+              const status = normalizeStringForComparison(request.estado);
+              const statusLabel =
+                status === "aprobada"
+                  ? "Baja aprobada"
+                  : status === "rechazada"
+                    ? "Rechazada"
+                    : "Pendiente";
+              return (
+                <div
+                  key={request.id}
+                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-900 dark:text-white">
+                      {request.nombre_pps_snapshot || "PPS"}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                      {getPpsWithdrawalReasonLabel(request.motivo_baja)} · solicitada el{" "}
+                      {formatDate(request.created_at)}
+                    </p>
+                    {request.tipo_penalizacion_aplicada ? (
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {request.tipo_penalizacion_aplicada} ·{" "}
+                        {request.puntaje_penalizacion_aplicado ?? 0} puntos
+                      </p>
+                    ) : null}
+                    {status === "rechazada" && request.comentario_rechazo ? (
+                      <p className="mt-2 text-xs leading-relaxed text-rose-700 dark:text-rose-300">
+                        Motivo del rechazo: {request.comentario_rechazo}
+                      </p>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {statusLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {activeRequests.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
@@ -452,15 +513,18 @@ const SolicitudesList: React.FC<SolicitudesListProps> = ({
       )}
 
       {/* Empty State */}
-      {activeRequests.length === 0 && historyRequests.length === 0 && !finalizacionRequest && (
-        <EmptyState
-          type="no-solicitudes"
-          title="Sin Solicitudes"
-          message="No tienes trámites de PPS registrados actualmente."
-          className="mt-8"
-          size="md"
-        />
-      )}
+      {activeRequests.length === 0 &&
+        historyRequests.length === 0 &&
+        withdrawalRequests.length === 0 &&
+        !finalizacionRequest && (
+          <EmptyState
+            type="no-solicitudes"
+            title="Sin Solicitudes"
+            message="No tienes trámites de PPS registrados actualmente."
+            className="mt-8"
+            size="md"
+          />
+        )}
     </div>
   );
 };

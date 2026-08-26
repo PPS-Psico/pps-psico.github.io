@@ -236,6 +236,19 @@ export const FIELD_SOLICITUD_CONTACTO_TUTOR = "contacto_tutor";
 export const FIELD_SOLICITUD_TIPO_PRACTICA = "tipo_practica";
 export const FIELD_SOLICITUD_DESCRIPCION = "descripcion_institucion";
 
+// Solicitudes de modificación / baja de PPS
+export const FIELD_SOLICITUD_MODIFICACION_TIPO = "tipo_modificacion";
+export const FIELD_SOLICITUD_MODIFICACION_ESTADO = "estado";
+export const FIELD_SOLICITUD_MODIFICACION_PRACTICA = "practica_id";
+export const FIELD_SOLICITUD_MODIFICACION_MOTIVO_BAJA = "motivo_baja";
+export const FIELD_SOLICITUD_MODIFICACION_MOTIVO_BAJA_DETALLE = "motivo_baja_detalle";
+export const FIELD_SOLICITUD_MODIFICACION_FECHA_INICIO = "fecha_inicio_snapshot";
+export const FIELD_SOLICITUD_MODIFICACION_NOMBRE_PPS = "nombre_pps_snapshot";
+export const FIELD_SOLICITUD_MODIFICACION_RESUELTA_AT = "resuelta_at";
+export const FIELD_SOLICITUD_MODIFICACION_PENALIZACION = "penalizacion_id";
+export const FIELD_SOLICITUD_MODIFICACION_TIPO_PENALIZACION = "tipo_penalizacion_aplicada";
+export const FIELD_SOLICITUD_MODIFICACION_PUNTAJE = "puntaje_penalizacion_aplicado";
+
 // Auth
 export const FIELD_LEGAJO_AUTH = "legajo";
 export const FIELD_NOMBRE_AUTH = "nombre";

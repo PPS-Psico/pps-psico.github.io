@@ -1,8 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchSolicitudes, fetchSolicitudesNuevaPPSByStudent } from "../services";
+import {
+  fetchSolicitudes,
+  fetchSolicitudesModificacionByStudent,
+  fetchSolicitudesNuevaPPSByStudent,
+} from "../services";
 import { mockDb } from "../services/mockDb";
 import { FIELD_LEGAJO_PPS, FIELD_ESTADO_PPS } from "../constants";
-import type { SolicitudPPS, SolicitudNuevaPPS } from "../types";
+import type { SolicitudModificacionPPS, SolicitudPPS, SolicitudNuevaPPS } from "../types";
 
 export const useStudentSolicitudes = (legajo: string, studentId: string | null) => {
   const {
@@ -57,6 +61,24 @@ export const useStudentSolicitudes = (legajo: string, studentId: string | null) 
     refetchOnWindowFocus: true,
   });
 
+  const {
+    data: solicitudesModificacion = [],
+    isLoading: isSolicitudesModificacionLoading,
+    error: solicitudesModificacionError,
+    refetch: refetchSolicitudesModificacion,
+  } = useQuery<SolicitudModificacionPPS[]>({
+    queryKey: ["solicitudes_modificacion_student", studentId],
+    queryFn: async () => {
+      if (!studentId) return [];
+      return (await fetchSolicitudesModificacionByStudent(
+        studentId
+      )) as unknown as SolicitudModificacionPPS[];
+    },
+    enabled: !!studentId,
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: true,
+  });
+
   return {
     solicitudes,
     isSolicitudesLoading,
@@ -66,5 +88,9 @@ export const useStudentSolicitudes = (legajo: string, studentId: string | null) 
     isSolicitudesNuevaLoading,
     solicitudesNuevaError,
     refetchSolicitudesNueva,
+    solicitudesModificacion,
+    isSolicitudesModificacionLoading,
+    solicitudesModificacionError,
+    refetchSolicitudesModificacion,
   };
 };

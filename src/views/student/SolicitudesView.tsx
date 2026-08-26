@@ -37,8 +37,14 @@ import {
 import { parseToUTCDate, normalizeStringForComparison } from "../../utils/formatters";
 
 const SolicitudesView: React.FC = () => {
-  const { solicitudes, studentDetails, criterios, allLanzamientos, finalizacionRequest } =
-    useStudentPanel();
+  const {
+    solicitudes,
+    solicitudesModificacion,
+    studentDetails,
+    criterios,
+    allLanzamientos,
+    finalizacionRequest,
+  } = useStudentPanel();
   const { openSolicitudPPSModal } = useModal();
   const { authenticatedUser } = useAuth();
   const { showToast } = useToast();
@@ -178,6 +184,7 @@ const SolicitudesView: React.FC = () => {
           onRequestFinalization={() => setIsFinalizationModalOpen(true)}
           criterios={criterios}
           finalizacionRequest={finalizacionRequest}
+          solicitudesModificacion={solicitudesModificacion}
         />
       </PageWrapper>
 

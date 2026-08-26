@@ -28,9 +28,17 @@ export interface FinalizacionWithStudent extends FinalizacionPPSFields {
 export interface SolicitudModificacion {
   id: string;
   estudiante_id: string;
-  practica_id: string;
+  practica_id: string | null;
   tipo_modificacion: string;
   horas_nuevas: number | null;
+  motivo_baja: string | null;
+  motivo_baja_detalle: string | null;
+  fecha_inicio_snapshot: string | null;
+  nombre_pps_snapshot: string | null;
+  penalizacion_id: string | null;
+  tipo_penalizacion_aplicada: string | null;
+  puntaje_penalizacion_aplicado: number | null;
+  resuelta_at: string | null;
   planilla_asistencia_url: string | null;
   estado: string;
   comentario_rechazo: string | null;
@@ -47,6 +55,8 @@ export interface SolicitudModificacion {
     nombre_institucion: string | null;
     horas_realizadas: number | null;
     especialidad: string | null;
+    fecha_inicio: string | null;
+    estado: string | null;
   } | null;
 }
 

@@ -20,6 +20,7 @@ export {
   fetchSolicitudes,
   uploadSolicitudFile,
   submitSolicitudModificacion,
+  submitSolicitudBajaPps,
   submitSolicitudNuevaPPS,
   fetchSolicitudesModificacionByStudent,
   fetchSolicitudesNuevaPPSByStudent,
@@ -27,9 +28,11 @@ export {
   fetchAllSolicitudesNuevaPPS,
   approveSolicitudModificacion,
   rejectSolicitudModificacion,
+  resolveSolicitudBajaPps,
   approveSolicitudNuevaPPS,
   rejectSolicitudNuevaPPS,
 } from "./solicitudesService";
+export type { ResolveSolicitudBajaInput } from "./solicitudesService";
 
 export {
   fetchFinalizacionRequest,

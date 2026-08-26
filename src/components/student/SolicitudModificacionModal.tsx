@@ -3,7 +3,11 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import Button from "../ui/Button";
 import { useToast } from "../../contexts/NotificationContext";
-import { uploadSolicitudFile, submitSolicitudModificacion } from "../../services";
+import {
+  uploadSolicitudFile,
+  submitSolicitudBajaPps,
+  submitSolicitudModificacion,
+} from "../../services";
 import type { Practica } from "../../types";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 import {
@@ -13,9 +17,13 @@ import {
   FIELD_ESTADO_PRACTICA,
   FIELD_FECHA_FIN_PRACTICAS,
   FIELD_FECHA_INICIO_PRACTICAS,
+  PPS_WITHDRAWAL_DETAIL_MAX_LENGTH,
+  PPS_WITHDRAWAL_DETAIL_MIN_LENGTH,
+  PPS_WITHDRAWAL_REASONS,
+  type PpsWithdrawalReason,
 } from "../../constants";
 import { cleanDbValue, formatDate } from "../../utils/formatters";
-import { isPracticeDisapproved } from "../../logic/studentRules";
+import { isPracticeActive, isPracticeDisapproved } from "../../logic/studentRules";
 
 interface SolicitudModificacionModalProps {
   isOpen: boolean;
@@ -26,7 +34,7 @@ interface SolicitudModificacionModalProps {
   onSuccess?: () => void;
 }
 
-type ModificacionType = "horas" | "fecha_fin" | null;
+type ModificacionType = "horas" | "fecha_fin" | "baja" | null;
 
 const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   isOpen,
@@ -41,6 +49,9 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   const [tipoModificacion, setTipoModificacion] = useState<ModificacionType>(null);
   const [horasNuevas, setHorasNuevas] = useState<string>("");
   const [fechaFinNueva, setFechaFinNueva] = useState<string>("");
+  const [motivoBaja, setMotivoBaja] = useState<PpsWithdrawalReason | "">("");
+  const [motivoBajaDetalle, setMotivoBajaDetalle] = useState("");
+  const [bajaAcknowledged, setBajaAcknowledged] = useState(false);
   const [planillaFile, setPlanillaFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdatingDate, setIsUpdatingDate] = useState(false);
@@ -60,6 +71,9 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
       setTipoModificacion(null);
       setHorasNuevas("");
       setFechaFinNueva("");
+      setMotivoBaja("");
+      setMotivoBajaDetalle("");
+      setBajaAcknowledged(false);
       setPlanillaFile(null);
       window.setTimeout(() => closeButtonRef.current?.focus(), 0);
 
@@ -118,6 +132,7 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
   const horasActuales = practica[FIELD_HORAS_PRACTICAS] || 0;
   const orientacion = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
   const isDisapproved = isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]);
+  const isActive = isPracticeActive(practica[FIELD_ESTADO_PRACTICA]);
   const fechaInicio = practica[FIELD_FECHA_INICIO_PRACTICAS];
   const fechaFinActual = practica[FIELD_FECHA_FIN_PRACTICAS];
   const toDateInputValue = (value: unknown) => {
@@ -251,6 +266,39 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
     }
   };
 
+  const handleSubmitBaja = async () => {
+    if (!studentId || !practica) return;
+    const detalle = motivoBajaDetalle.trim();
+
+    if (!motivoBaja) {
+      showToast("Elegí el motivo principal de la baja.", "error");
+      return;
+    }
+    if (detalle.length < PPS_WITHDRAWAL_DETAIL_MIN_LENGTH) {
+      showToast(
+        `Contanos el motivo con al menos ${PPS_WITHDRAWAL_DETAIL_MIN_LENGTH} caracteres.`,
+        "error"
+      );
+      return;
+    }
+    if (!bajaAcknowledged) {
+      showToast("Confirmá que comprendés cómo se evaluará la solicitud.", "error");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await submitSolicitudBajaPps(studentId, practica.id, motivoBaja, detalle);
+      showToast("Solicitud de baja enviada a Coordinación.", "success");
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      showToast(getErrorMessage(error, "No se pudo enviar la solicitud de baja"), "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
@@ -318,6 +366,40 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Actual: {formatDate(fechaFinActual)}
+                </p>
+              </div>
+            </div>
+          </button>
+        ) : null}
+
+        {isActive ? (
+          <button
+            type="button"
+            onClick={() => {
+              setTipoModificacion("baja");
+              setStep(2);
+            }}
+            className={`w-full p-4 rounded-xl border-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+              tipoModificacion === "baja"
+                ? "border-rose-500 bg-rose-50 dark:bg-rose-950/25"
+                : "border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-800"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center">
+                <span
+                  className="material-icons text-rose-700 dark:text-rose-300"
+                  aria-hidden="true"
+                >
+                  person_remove
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-slate-900 dark:text-white">
+                  Solicitar baja de esta PPS
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Coordinación revisará el motivo y la fecha de tu pedido
                 </p>
               </div>
             </div>
@@ -510,6 +592,118 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
     </div>
   );
 
+  const renderStep2Baja = () => {
+    const detailLength = motivoBajaDetalle.length;
+    const detailIsValid = motivoBajaDetalle.trim().length >= PPS_WITHDRAWAL_DETAIL_MIN_LENGTH;
+
+    return (
+      <div className="space-y-5">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900 dark:bg-rose-950/25">
+          <div className="flex items-start gap-3">
+            <span className="material-icons text-rose-700 dark:text-rose-300" aria-hidden="true">
+              info
+            </span>
+            <div className="min-w-0 text-sm leading-relaxed text-rose-900 dark:text-rose-100">
+              <p className="font-bold">La PPS seguirá activa hasta que Coordinación resuelva.</p>
+              <p className="mt-1">
+                La evaluación toma la fecha y hora de este pedido. Una baja anterior al inicio tiene
+                una penalización menor que una baja durante la práctica; los motivos excepcionales
+                pueden revisarse sin penalización.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label
+            htmlFor="solicitud-baja-motivo"
+            className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            Motivo principal <span className="text-rose-600">*</span>
+          </label>
+          <select
+            id="solicitud-baja-motivo"
+            value={motivoBaja}
+            onChange={(event) => setMotivoBaja(event.target.value as PpsWithdrawalReason | "")}
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-900 focus:border-transparent focus:ring-2 focus:ring-rose-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+          >
+            <option value="">Seleccioná un motivo</option>
+            {PPS_WITHDRAWAL_REASONS.map((reason) => (
+              <option key={reason.value} value={reason.value}>
+                {reason.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-baseline justify-between gap-4">
+            <label
+              htmlFor="solicitud-baja-detalle"
+              className="text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Explicá el motivo <span className="text-rose-600">*</span>
+            </label>
+            <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+              {detailLength}/{PPS_WITHDRAWAL_DETAIL_MAX_LENGTH}
+            </span>
+          </div>
+          <textarea
+            id="solicitud-baja-detalle"
+            value={motivoBajaDetalle}
+            onChange={(event) => setMotivoBajaDetalle(event.target.value)}
+            maxLength={PPS_WITHDRAWAL_DETAIL_MAX_LENGTH}
+            rows={5}
+            placeholder="Contanos qué situación te impide continuar con esta PPS."
+            aria-describedby="solicitud-baja-detalle-hint"
+            className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-relaxed text-slate-900 placeholder:text-slate-500 focus:border-transparent focus:ring-2 focus:ring-rose-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400"
+          />
+          <p
+            id="solicitud-baja-detalle-hint"
+            className="mt-1 text-xs text-slate-500 dark:text-slate-400"
+          >
+            Mínimo {PPS_WITHDRAWAL_DETAIL_MIN_LENGTH} caracteres. Esta explicación será revisada por
+            Coordinación.
+          </p>
+        </div>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 text-sm leading-relaxed text-slate-700 dark:border-slate-700 dark:text-slate-200">
+          <input
+            type="checkbox"
+            checked={bajaAcknowledged}
+            onChange={(event) => setBajaAcknowledged(event.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-rose-700"
+          />
+          <span>
+            Confirmo que comuniqué o comunicaré la baja a la institución y que comprendo que la
+            fecha del pedido puede determinar una penalización.
+          </span>
+        </label>
+
+        <div className="flex gap-3 pt-1">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setStep(1);
+              setTipoModificacion(null);
+            }}
+            className="flex-1"
+          >
+            Volver
+          </Button>
+          <Button
+            onClick={handleSubmitBaja}
+            isLoading={isSubmitting}
+            disabled={!motivoBaja || !detailIsValid || !bajaAcknowledged}
+            className="flex-1 !bg-rose-700 hover:!bg-rose-800"
+          >
+            Enviar solicitud
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <motion.div
@@ -533,7 +727,9 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
                 ? "Editar práctica"
                 : tipoModificacion === "fecha_fin"
                   ? "Editar fecha"
-                  : "Cambiar horas"}
+                  : tipoModificacion === "baja"
+                    ? "Solicitar baja"
+                    : "Cambiar horas"}
             </h2>
             <button
               ref={closeButtonRef}
@@ -553,7 +749,9 @@ const SolicitudModificacionModal: React.FC<SolicitudModificacionModalProps> = ({
             ? renderStep1()
             : tipoModificacion === "fecha_fin"
               ? renderStep2Fecha()
-              : renderStep2Horas()}
+              : tipoModificacion === "baja"
+                ? renderStep2Baja()
+                : renderStep2Horas()}
         </div>
       </motion.div>
     </div>,

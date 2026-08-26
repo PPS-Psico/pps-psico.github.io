@@ -5,7 +5,8 @@
  * en el monolito `SolicitudesManager.tsx`) ANTES de refactorizarlo:
  *  - idempotencia: no reprocesar una solicitud ya resuelta;
  *  - aprobación de modificación de horas -> propaga horas a la práctica;
- *  - aprobación de modificación de eliminación -> no toca prácticas;
+ *  - una baja no puede pasar por la aprobación genérica;
+ *  - creación y resolución de bajas -> usan las RPC atómicas dedicadas;
  *  - aprobación de nueva PPS -> crea práctica "Finalizada" con nombre resuelto;
  *  - rechazos -> persisten estado + comentario.
  *
@@ -58,7 +59,7 @@ const mockFrom = jest.fn((table: string) => {
   mockState.captured.froms.push(table);
   return mockBuilder;
 });
-const mockRpc = jest.fn();
+const mockRpc = jest.fn<(...args: unknown[]) => Promise<Resp>>();
 
 jest.mock("../../lib/supabaseClient", () => ({
   supabase: { from: mockFrom, rpc: mockRpc, storage: {} },
@@ -69,6 +70,8 @@ import {
   rejectSolicitudModificacion,
   approveSolicitudNuevaPPS,
   rejectSolicitudNuevaPPS,
+  resolveSolicitudBajaPps,
+  submitSolicitudBajaPps,
 } from "../solicitudesService";
 
 const lastUpdate = () =>
@@ -122,7 +125,7 @@ describe("approveSolicitudModificacion", () => {
     expect(mockState.captured.froms).toContain("practicas");
   });
 
-  it("aprueba modificación de eliminación sin tocar la tabla de prácticas", async () => {
+  it("impide aprobar una eliminación sin resolver su penalización", async () => {
     mockState.selectResponses = [
       {
         data: {
@@ -135,12 +138,81 @@ describe("approveSolicitudModificacion", () => {
         error: null,
       },
     ];
-    mockState.writeResponses = [{ error: null }];
+    await expect(approveSolicitudModificacion("s3")).rejects.toThrow("penalización asociada");
 
-    await approveSolicitudModificacion("s3");
-
-    expect(mockState.captured.updates).toHaveLength(1);
+    expect(mockState.captured.updates).toHaveLength(0);
     expect(mockState.captured.froms).not.toContain("practicas");
+  });
+});
+
+describe("solicitudes de baja de PPS", () => {
+  it("crea la solicitud con motivo obligatorio mediante la RPC del estudiante", async () => {
+    mockRpc.mockResolvedValueOnce({ data: "sol-baja-1", error: null });
+
+    const result = await submitSolicitudBajaPps(
+      "est-ignorado-por-seguridad",
+      "prac-1",
+      "academico",
+      "Se superpone con una materia obligatoria."
+    );
+
+    expect(result).toBe("sol-baja-1");
+    expect(mockRpc).toHaveBeenCalledWith("create_my_solicitud_baja_pps_v1", {
+      p_practica_id: "prac-1",
+      p_motivo_baja: "academico",
+      p_motivo_baja_detalle: "Se superpone con una materia obligatoria.",
+    });
+  });
+
+  it("aprueba la baja y delega eliminación + penalización en una única RPC", async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [
+        {
+          estado: "aprobada",
+          penalizacion_id: "pen-1",
+          practicas_eliminadas: 1,
+        },
+      ],
+      error: null,
+    });
+
+    const result = await resolveSolicitudBajaPps({
+      solicitudId: "sol-baja-1",
+      decision: "aprobar",
+      tipoIncumplimiento: "Baja Anticipada",
+      notasAdmin: "Corresponde según la fecha de solicitud.",
+    });
+
+    expect(result).toEqual({
+      estado: "aprobada",
+      penalizacionId: "pen-1",
+      practicasEliminadas: 1,
+    });
+    expect(mockRpc).toHaveBeenCalledWith("resolver_solicitud_baja_pps_v1", {
+      p_solicitud_id: "sol-baja-1",
+      p_decision: "aprobar",
+      p_tipo_incumplimiento: "Baja Anticipada",
+      p_notas_admin: "Corresponde según la fecha de solicitud.",
+    });
+  });
+
+  it("rechaza la baja sin enviar un tipo de penalización", async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [{ estado: "rechazada", penalizacion_id: null, practicas_eliminadas: 0 }],
+      error: null,
+    });
+
+    await resolveSolicitudBajaPps({
+      solicitudId: "sol-baja-2",
+      decision: "rechazar",
+      comentarioRechazo: "La práctica ya fue finalizada.",
+    });
+
+    expect(mockRpc).toHaveBeenCalledWith("resolver_solicitud_baja_pps_v1", {
+      p_solicitud_id: "sol-baja-2",
+      p_decision: "rechazar",
+      p_comentario_rechazo: "La práctica ya fue finalizada.",
+    });
   });
 });
 

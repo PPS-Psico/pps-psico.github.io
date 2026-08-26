@@ -279,8 +279,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 : mod.estudiante?.nombre;
               loadedNotifications.push({
                 id: notifId,
-                title: "Solicitud de Modificación",
-                message: `${studentName || "Estudiante"} solicita cambio de ${mod.tipo_modificacion}.`,
+                title:
+                  mod.tipo_modificacion === "eliminacion"
+                    ? "Solicitud de Baja de PPS"
+                    : "Solicitud de Modificación",
+                message:
+                  mod.tipo_modificacion === "eliminacion"
+                    ? `${studentName || "Estudiante"} solicita la baja de una PPS.`
+                    : `${studentName || "Estudiante"} solicita cambio de ${mod.tipo_modificacion}.`,
                 timestamp: new Date(mod.created_at ?? ""),
                 type: "solicitud_pps",
                 link: "/admin/solicitudes",

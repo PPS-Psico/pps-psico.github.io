@@ -23,6 +23,7 @@ import type {
   Practica,
   SolicitudPPS,
   SolicitudNuevaPPS,
+  SolicitudModificacionPPS,
 } from "../types";
 
 interface StudentPanelContextType {
@@ -32,6 +33,7 @@ interface StudentPanelContextType {
   practicas: Practica[];
   solicitudes: SolicitudPPS[];
   solicitudesNueva: SolicitudNuevaPPS[];
+  solicitudesModificacion: SolicitudModificacionPPS[];
   lanzamientos: LanzamientoPPS[];
   allLanzamientos: LanzamientoPPS[];
   enrollmentMap: Map<string, Convocatoria>;
@@ -66,6 +68,7 @@ interface StudentPanelContextType {
   acceptCompromiso: ReturnType<typeof useStudentCommitments>["acceptCompromiso"];
   refetchAll: () => void;
   refetchPracticas: () => void;
+  refetchSolicitudesModificacion: () => void;
 }
 
 const StudentPanelContext = createContext<StudentPanelContextType | undefined>(undefined);
@@ -80,6 +83,7 @@ const emptyContextValue: StudentPanelContextType = {
   practicas: [],
   solicitudes: [],
   solicitudesNueva: [],
+  solicitudesModificacion: [],
   lanzamientos: [],
   allLanzamientos: [],
   enrollmentMap: new Map(),
@@ -106,6 +110,7 @@ const emptyContextValue: StudentPanelContextType = {
   acceptCompromiso: { mutate: () => {}, isPending: false } as any,
   refetchAll: () => {},
   refetchPracticas: () => {},
+  refetchSolicitudesModificacion: () => {},
 };
 
 export const StudentPanelProvider: React.FC<{ legajo?: string; children: ReactNode }> = ({
@@ -153,6 +158,10 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     refetchSolicitudes,
     solicitudesNueva,
     refetchSolicitudesNueva,
+    solicitudesModificacion,
+    isSolicitudesModificacionLoading,
+    solicitudesModificacionError,
+    refetchSolicitudesModificacion,
   } = useStudentSolicitudes(legajo, studentId);
   const {
     lanzamientos,
@@ -183,6 +192,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     isStudentLoading ||
     isPracticasLoading ||
     isSolicitudesLoading ||
+    isSolicitudesModificacionLoading ||
     isConvocatoriasLoading ||
     isFinalizationLoading ||
     isCommitmentsLoading;
@@ -190,6 +200,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     studentError ||
     practicasError ||
     solicitudesError ||
+    solicitudesModificacionError ||
     convocatoriasError ||
     finalizationError ||
     commitmentsError;
@@ -199,6 +210,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     refetchStudent();
     refetchPracticas();
     refetchSolicitudes();
+    refetchSolicitudesModificacion();
     refetchConvocatorias();
     refetchFinalizacion();
     refetchCompromisos();
@@ -206,6 +218,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     refetchStudent,
     refetchPracticas,
     refetchSolicitudes,
+    refetchSolicitudesModificacion,
     refetchConvocatorias,
     refetchFinalizacion,
     refetchCompromisos,
@@ -247,6 +260,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     practicas,
     solicitudes,
     solicitudesNueva,
+    solicitudesModificacion,
     lanzamientos,
     allLanzamientos,
     institutionAddressMap,
@@ -269,6 +283,7 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     acceptCompromiso,
     refetchAll,
     refetchPracticas,
+    refetchSolicitudesModificacion,
     criterios,
     enrollmentMap,
     completedLanzamientoIds,

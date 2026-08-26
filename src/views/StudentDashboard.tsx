@@ -311,6 +311,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     practicas,
     solicitudes,
     solicitudesNueva,
+    solicitudesModificacion,
     lanzamientos,
     allLanzamientos,
     institutionAddressMap,
@@ -396,7 +397,23 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handleRefetchPracticas = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["practicas"] });
     queryClient.invalidateQueries({ queryKey: ["solicitudes_nueva_pps_student"] });
+    queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion_student"] });
   }, [queryClient]);
+
+  const pendingWithdrawalByPractice = useMemo(
+    () =>
+      new Map(
+        solicitudesModificacion
+          .filter(
+            (request) =>
+              request.tipo_modificacion === "eliminacion" &&
+              request.estado === "pendiente" &&
+              request.practica_id
+          )
+          .map((request) => [request.practica_id as string, request])
+      ),
+    [solicitudesModificacion]
+  );
 
   const handleOpenFinalization = useCallback(() => {
     setIsFinalizationModalOpen(true);
@@ -515,6 +532,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <ErrorBoundary>
         <AtlasSolicitudesView
           solicitudes={solicitudes}
+          solicitudesModificacion={solicitudesModificacion}
           onCreateSolicitud={handleStartSolicitud}
           onRequestFinalization={handleOpenFinalization}
           criterios={criterios}
@@ -522,7 +540,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         />
       </ErrorBoundary>
     ),
-    [solicitudes, handleStartSolicitud, handleOpenFinalization, criterios, finalizacionRequest]
+    [
+      solicitudes,
+      solicitudesModificacion,
+      handleStartSolicitud,
+      handleOpenFinalization,
+      criterios,
+      finalizacionRequest,
+    ]
   );
 
   // Versión mobile (editorial) de Solicitudes.
@@ -539,10 +564,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
           onViewAssignmentSummary={setSummaryPractice}
+          pendingWithdrawalByPractice={pendingWithdrawalByPractice}
         />
       </ErrorBoundary>
     ),
-    [practicas, isPracticasLoading, handleRequestModificacion, handleRequestNuevaPPS]
+    [
+      practicas,
+      isPracticasLoading,
+      handleRequestModificacion,
+      handleRequestNuevaPPS,
+      pendingWithdrawalByPractice,
+    ]
   );
 
   // Versión Atlas (escritorio) de Prácticas — layout 2 columnas.
@@ -556,10 +588,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
           onViewAssignmentSummary={setSummaryPractice}
+          pendingWithdrawalByPractice={pendingWithdrawalByPractice}
         />
       </ErrorBoundary>
     ),
-    [criterios, selectedOrientacion, practicas, handleRequestModificacion, handleRequestNuevaPPS]
+    [
+      criterios,
+      selectedOrientacion,
+      practicas,
+      handleRequestModificacion,
+      handleRequestNuevaPPS,
+      pendingWithdrawalByPractice,
+    ]
   );
 
   const campusSnapshotNotice = useMemo(

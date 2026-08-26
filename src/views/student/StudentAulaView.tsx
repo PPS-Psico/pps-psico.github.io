@@ -607,7 +607,18 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo doy de baja una PPS antes de finalizarla?",
-        a: "Comunicalo de inmediato a la institución y a coordinación. En general, la PPS se suspende y se pierden las horas realizadas. Salvo que la interrupción responda a motivos extraordinarios debidamente justificados, la baja anticipada se considera una penalización y se tendrá en cuenta en futuras convocatorias. Coordinación evalúa cada situación junto con la institución.",
+        a: (
+          <>
+            Entrá en <strong>Mis prácticas</strong>, abrí las opciones de la PPS y elegí{" "}
+            <strong>Solicitar baja de esta PPS</strong>. Tenés que indicar el motivo y explicar la
+            situación; la baja queda pendiente hasta que coordinación la revise. La solicitud no
+            borra la PPS de inmediato. La fecha en que la enviás determina la penalización de
+            referencia: es menor si se presenta antes del inicio, aumenta si se solicita el día de
+            inicio y es mayor cuando la práctica ya comenzó. Coordinación puede ajustar o exceptuar
+            la penalización según la documentación y las circunstancias del caso. Avisá también a la
+            institución cuanto antes.
+          </>
+        ),
       },
       {
         q: "¿Puedo repetir una PPS?",

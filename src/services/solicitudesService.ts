@@ -3,6 +3,7 @@ import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { Estudiante, SolicitudPPS } from "../types";
 import { Database } from "../types/supabase";
+import { getPenaltyScore, type PenaltyType, type PpsWithdrawalReason } from "../constants";
 import { fetchStudentData } from "./estudiantesService";
 import { logger } from "../utils/logger";
 
@@ -100,6 +101,131 @@ export const submitSolicitudModificacion = async (
     .single();
   if (error) throw error;
   return data;
+};
+
+export const submitSolicitudBajaPps = async (
+  studentId: string,
+  practicaId: string,
+  motivoBaja: PpsWithdrawalReason,
+  motivoBajaDetalle: string
+) => {
+  if (studentId === "st_999") {
+    const practicas = await mockDb.getAll("practicas", { id: practicaId });
+    const practica = practicas[0];
+    if (!practica) throw new Error("No se encontró la PPS que intentás dar de baja.");
+
+    return await mockDb.create("solicitudes_modificacion_pps", {
+      estudiante_id: studentId,
+      practica_id: practicaId,
+      tipo_modificacion: "eliminacion",
+      horas_nuevas: null,
+      planilla_asistencia_url: null,
+      estado: "pendiente",
+      comentario_rechazo: null,
+      notas_admin: null,
+      motivo_baja: motivoBaja,
+      motivo_baja_detalle: motivoBajaDetalle.trim(),
+      lanzamiento_id: practica.lanzamiento_id ?? null,
+      convocatoria_id: null,
+      nombre_pps_snapshot: practica.nombre_institucion ?? "PPS",
+      fecha_inicio_snapshot: practica.fecha_inicio?.slice(0, 10) ?? null,
+      estado_practica_snapshot: practica.estado ?? "En curso",
+      resuelta_at: null,
+      resuelta_por: null,
+      penalizacion_id: null,
+      tipo_penalizacion_aplicada: null,
+      puntaje_penalizacion_aplicado: null,
+    });
+  }
+
+  const { data, error } = await supabase.rpc("create_my_solicitud_baja_pps_v1", {
+    p_practica_id: practicaId,
+    p_motivo_baja: motivoBaja,
+    p_motivo_baja_detalle: motivoBajaDetalle.trim(),
+  });
+
+  if (error) throw error;
+  return data;
+};
+
+export interface ResolveSolicitudBajaInput {
+  solicitudId: string;
+  decision: "aprobar" | "rechazar";
+  tipoIncumplimiento?: PenaltyType;
+  notasAdmin?: string;
+  comentarioRechazo?: string;
+}
+
+export const resolveSolicitudBajaPps = async ({
+  solicitudId,
+  decision,
+  tipoIncumplimiento,
+  notasAdmin,
+  comentarioRechazo,
+}: ResolveSolicitudBajaInput) => {
+  if (solicitudId.startsWith("mock_")) {
+    const requests = await mockDb.getAll("solicitudes_modificacion_pps", { id: solicitudId });
+    const request = requests[0];
+    if (!request) throw new Error("No se encontró la solicitud de baja.");
+    if (request.estado !== "pendiente") throw new Error("La solicitud ya fue procesada.");
+
+    if (decision === "rechazar") {
+      if (!comentarioRechazo?.trim()) throw new Error("Ingresá el motivo del rechazo.");
+      await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
+        estado: "rechazada",
+        comentario_rechazo: comentarioRechazo.trim(),
+        notas_admin: notasAdmin?.trim() || null,
+        resuelta_at: new Date().toISOString(),
+      });
+      return { estado: "rechazada", penalizacionId: null, practicasEliminadas: 0 };
+    }
+
+    if (!tipoIncumplimiento) throw new Error("Elegí un tipo de baja válido.");
+    if (request.practica_id) await mockDb.delete("practicas", request.practica_id);
+    if (request.convocatoria_id) {
+      await mockDb.update("convocatorias", request.convocatoria_id, {
+        estado_inscripcion: "No Seleccionado",
+      });
+    }
+    const penalty = await mockDb.create("penalizaciones", {
+      estudiante_id: request.estudiante_id,
+      tipo_incumplimiento: tipoIncumplimiento,
+      fecha_incidente: String(request.created_at || new Date().toISOString()).slice(0, 10),
+      notas: [request.motivo_baja_detalle, notasAdmin].filter(Boolean).join("\n\n"),
+      puntaje_penalizacion: getPenaltyScore(tipoIncumplimiento),
+      convocatoria_afectada: request.nombre_pps_snapshot || "PPS",
+      convocatoria_id: request.convocatoria_id ?? null,
+      lanzamiento_id: request.lanzamiento_id ?? null,
+      estado: "Activa",
+    });
+    await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
+      estado: "aprobada",
+      notas_admin: notasAdmin?.trim() || null,
+      resuelta_at: new Date().toISOString(),
+      practica_id: null,
+      penalizacion_id: penalty.id,
+      tipo_penalizacion_aplicada: tipoIncumplimiento,
+      puntaje_penalizacion_aplicado: getPenaltyScore(tipoIncumplimiento),
+    });
+    return { estado: "aprobada", penalizacionId: penalty.id, practicasEliminadas: 1 };
+  }
+
+  const { data, error } = await supabase.rpc("resolver_solicitud_baja_pps_v1", {
+    p_solicitud_id: solicitudId,
+    p_decision: decision,
+    ...(tipoIncumplimiento ? { p_tipo_incumplimiento: tipoIncumplimiento } : {}),
+    ...(notasAdmin?.trim() ? { p_notas_admin: notasAdmin.trim() } : {}),
+    ...(comentarioRechazo?.trim() ? { p_comentario_rechazo: comentarioRechazo.trim() } : {}),
+  });
+
+  if (error) throw error;
+  const result = data?.[0];
+  if (!result) throw new Error("La base no confirmó la resolución de la solicitud.");
+  return {
+    estado: result.estado,
+    penalizacionId: result.penalizacion_id || null,
+    practicasEliminadas: result.practicas_eliminadas,
+  };
 };
 
 export const submitSolicitudNuevaPPS = async (
@@ -278,10 +404,16 @@ export const fetchAllSolicitudesNuevaPPS = async (estado?: string, isTestingMode
 
 export const approveSolicitudModificacion = async (solicitudId: string, notasAdmin?: string) => {
   if (solicitudId.startsWith("mock_")) {
-    const solicitud = (await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
+    const solicitudes = await mockDb.getAll("solicitudes_modificacion_pps", { id: solicitudId });
+    const solicitud = solicitudes[0];
+    if (!solicitud) throw new Error("Solicitud no encontrada");
+    if (solicitud.tipo_modificacion === "eliminacion") {
+      throw new Error("Las solicitudes de baja deben resolverse con su penalización asociada.");
+    }
+    await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
       estado: "aprobada",
       notas_admin: notasAdmin,
-    })) as any;
+    });
     if (solicitud.tipo_modificacion === "horas" && solicitud.horas_nuevas) {
       await mockDb.update("practicas", solicitud.practica_id, {
         horas_realizadas: solicitud.horas_nuevas,
@@ -298,6 +430,13 @@ export const approveSolicitudModificacion = async (solicitudId: string, notasAdm
   if (fetchError) throw fetchError;
   if (!solicitud) throw new Error("Solicitud no encontrada");
   if (solicitud.estado !== "pendiente") throw new Error("La solicitud ya fue procesada");
+  if (solicitud.tipo_modificacion === "eliminacion") {
+    throw new Error("Las solicitudes de baja deben resolverse con su penalización asociada.");
+  }
+  const practicaId = solicitud.practica_id;
+  if (solicitud.tipo_modificacion === "horas" && solicitud.horas_nuevas && !practicaId) {
+    throw new Error("La solicitud de horas ya no tiene una práctica asociada.");
+  }
 
   const { error: updateError } = await supabase
     .from("solicitudes_modificacion_pps")
@@ -310,7 +449,7 @@ export const approveSolicitudModificacion = async (solicitudId: string, notasAdm
     const { error: practicaError } = await supabase
       .from("practicas")
       .update({ horas_realizadas: solicitud.horas_nuevas })
-      .eq("id", solicitud.practica_id);
+      .eq("id", practicaId as string);
 
     if (practicaError) throw practicaError;
   }

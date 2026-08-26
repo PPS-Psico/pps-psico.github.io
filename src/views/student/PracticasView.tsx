@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import PageWrapper from "../../components/layout/PageWrapper";
 import PracticasTable from "../../components/student/PracticasTable";
 import SolicitudModificacionModal from "../../components/student/SolicitudModificacionModal";
@@ -8,7 +8,14 @@ import type { Practica } from "../../types";
 import { logger } from "../../utils/logger";
 
 const PracticasView: React.FC = () => {
-  const { practicas, updateFechaFin, refetchPracticas, studentDetails } = useStudentPanel();
+  const {
+    practicas,
+    updateFechaFin,
+    refetchPracticas,
+    studentDetails,
+    solicitudesModificacion,
+    refetchSolicitudesModificacion,
+  } = useStudentPanel();
   const [showModificacionModal, setShowModificacionModal] = useState(false);
   const [showNuevaPPSModal, setShowNuevaPPSModal] = useState(false);
   const [selectedPractica, setSelectedPractica] = useState<Practica | null>(null);
@@ -34,7 +41,23 @@ const PracticasView: React.FC = () => {
 
   const handleSuccess = () => {
     refetchPracticas();
+    refetchSolicitudesModificacion();
   };
+
+  const pendingWithdrawalByPractice = useMemo(
+    () =>
+      new Map(
+        solicitudesModificacion
+          .filter(
+            (request) =>
+              request.tipo_modificacion === "eliminacion" &&
+              request.estado === "pendiente" &&
+              request.practica_id
+          )
+          .map((request) => [request.practica_id as string, request])
+      ),
+    [solicitudesModificacion]
+  );
 
   return (
     <>
@@ -54,6 +77,7 @@ const PracticasView: React.FC = () => {
           practicas={practicas}
           onRequestModificacion={handleRequestModificacion}
           onRequestNuevaPPS={handleRequestNuevaPPS}
+          pendingWithdrawalByPractice={pendingWithdrawalByPractice}
         />
       </PageWrapper>
 
