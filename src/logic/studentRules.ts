@@ -84,6 +84,24 @@ export const isPracticeComputable = (practice: Practica): boolean => {
 };
 
 /**
+ * Horas que aporta una práctica a los totales del estudiante.
+ *
+ * Mientras está "En curso" cuenta el objetivo del lanzamiento (no las horas ya
+ * cargadas): es la misma cifra que ya se le muestra en la fila de la práctica, y
+ * mostrar un total distinto ahí confunde más de lo que cuida. No relaja el trámite
+ * de acreditación: ese exige además cero prácticas activas (`hasBlockingActivePractices`),
+ * así que mientras haya una "En curso" el estudiante no puede iniciarlo igual — y una vez
+ * finalizada, esta función ya usa las horas reales.
+ */
+export const getEffectiveHours = (
+  practice: Practica & { horasObjetivo?: number | null }
+): number => {
+  const horasReales = Number(practice[FIELD_HORAS_PRACTICAS] || 0);
+  if (!isPracticeActive(practice[FIELD_ESTADO_PRACTICA])) return horasReales;
+  return Math.max(horasReales, Number(practice.horasObjetivo || 0));
+};
+
+/**
  * Checks if an active practice has exceeded its end date.
  */
 export const isPracticeOverdue = (practice: Practica): boolean => {
@@ -115,9 +133,7 @@ export const getEffectivePracticeStatus = (practice: Practica): string | null | 
  * Calculates total hours from a list of practices.
  */
 export const calculateTotalHours = (practices: Practica[]): number => {
-  return practices
-    .filter(isPracticeComputable)
-    .reduce((acc, p) => acc + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
+  return practices.filter(isPracticeComputable).reduce((acc, p) => acc + getEffectiveHours(p), 0);
 };
 
 /**
@@ -136,7 +152,7 @@ export const calculateSpecialtyHours = (
         isPracticeComputable(p) &&
         normalizeStringForComparison(p[FIELD_ESPECIALIDAD_PRACTICAS]) === normalizedTarget
     )
-    .reduce((acc, p) => acc + (p[FIELD_HORAS_PRACTICAS] || 0), 0);
+    .reduce((acc, p) => acc + getEffectiveHours(p), 0);
 };
 
 /**

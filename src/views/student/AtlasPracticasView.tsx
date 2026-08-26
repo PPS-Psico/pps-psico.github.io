@@ -10,12 +10,18 @@ import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
 } from "../../constants";
 import { useMoodleGradeSync } from "../../contexts/MoodleGradeSyncContext";
-import type { CriteriosCalculados, Orientacion, Practica } from "../../types";
+import type {
+  CriteriosCalculados,
+  Orientacion,
+  Practica,
+  SolicitudModificacionPPS,
+} from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { presentMoodleGrade } from "../../utils/moodleGradePresentation";
 import { resolveGradeReadiness } from "../../domain/finalizacion/gradeReadiness";
 import { canShowPpsAssignmentSummary } from "../../components/student/PpsAssignmentSummary";
 import {
+  getEffectiveHours,
   getPracticePresentationStatus,
   isPracticeActive,
   isPracticeComputable,
@@ -29,6 +35,7 @@ interface AtlasPracticasViewProps {
   onRequestModificacion?: (practica: Practica) => void;
   onRequestNuevaPPS?: () => void;
   onViewAssignmentSummary?: (practica: Practica) => void;
+  pendingWithdrawalByPractice?: Map<string, SolicitudModificacionPPS>;
 }
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -58,6 +65,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   onRequestModificacion,
   onRequestNuevaPPS,
   onViewAssignmentSummary,
+  pendingWithdrawalByPractice = new Map(),
 }) => {
   const { snapshotsByPractice } = useMoodleGradeSync();
 
@@ -361,16 +369,9 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                       const area = (p[FIELD_ESPECIALIDAD_PRACTICAS] as string) || "General";
                       const desaprobada = isPracticeDisapproved(p[FIELD_ESTADO_PRACTICA]);
                       const presentationStatus = getPracticePresentationStatus(p);
+                      const pendingWithdrawal = pendingWithdrawalByPractice.get(p.id);
                       const horasReales = Number(p[FIELD_HORAS_PRACTICAS] || 0);
-                      // Mientras está en curso, mostramos al menos las horas que
-                      // vale la PPS (piso informativo) sin tocar horas_realizadas,
-                      // que sigue siendo lo que cuenta para la acreditación.
-                      const horasMostradas = isPracticeActive(p[FIELD_ESTADO_PRACTICA])
-                        ? Math.max(
-                            horasReales,
-                            Number((p as { horasObjetivo?: number | null }).horasObjetivo || 0)
-                          )
-                        : horasReales;
+                      const horasMostradas = getEffectiveHours(p);
                       return (
                         <tr key={p.id}>
                           <td className="name">
@@ -401,6 +402,15 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                               <span className="dot" aria-hidden="true" />
                               {presentationStatus.label}
                             </span>
+                            {pendingWithdrawal ? (
+                              <span
+                                className="ah-badge ah-badge--wait"
+                                title="Pendiente de revisión"
+                              >
+                                <span className="dot" aria-hidden="true" />
+                                Baja solicitada {fmtShort(pendingWithdrawal.created_at)}
+                              </span>
+                            ) : null}
                           </td>
                           <td className="mono hours">
                             {desaprobada ? (
@@ -439,7 +449,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
                                   Resumen
                                 </button>
                               ) : null}
-                              {onRequestModificacion && !desaprobada ? (
+                              {onRequestModificacion && !desaprobada && !pendingWithdrawal ? (
                                 <button
                                   type="button"
                                   className="ah-row-action"

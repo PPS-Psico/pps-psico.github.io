@@ -4,7 +4,6 @@ import {
   FIELD_ESTADO_PRACTICA,
   FIELD_FECHA_FIN_PRACTICAS,
   FIELD_FECHA_INICIO_PRACTICAS,
-  FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
 } from "../../constants";
 import {
@@ -12,11 +11,11 @@ import {
   useMoodleGradeSync,
 } from "../../contexts/MoodleGradeSyncContext";
 import {
+  getEffectiveHours,
   getPracticePresentationStatus,
-  isPracticeActive,
   isPracticeDisapproved,
 } from "../../logic/studentRules";
-import type { Practica } from "../../types";
+import type { Practica, SolicitudModificacionPPS } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { haptics } from "../../utils/haptics";
 import { logger } from "../../utils/logger";
@@ -31,6 +30,7 @@ interface PracticasTableProps {
   onRequestModificacion?: (practica: Practica) => void;
   onRequestNuevaPPS?: () => void;
   onViewAssignmentSummary?: (practica: Practica) => void;
+  pendingWithdrawalByPractice?: Map<string, SolicitudModificacionPPS>;
 }
 
 // Flat editorial grade — número plano clickeable, color de marca (sin caja ni slot-machine)
@@ -39,8 +39,15 @@ const PracticaRow: React.FC<{
   moodleSnapshot?: MoodleGradeSnapshot;
   onRequestModificacion?: (practica: Practica) => void;
   onViewAssignmentSummary?: (practica: Practica) => void;
+  pendingWithdrawal?: SolicitudModificacionPPS;
   index: number;
-}> = ({ practica, moodleSnapshot, onRequestModificacion, onViewAssignmentSummary }) => {
+}> = ({
+  practica,
+  moodleSnapshot,
+  onRequestModificacion,
+  onViewAssignmentSummary,
+  pendingWithdrawal,
+}) => {
   const longPressTimerRef = useRef<number | null>(null);
   const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -73,18 +80,11 @@ const PracticaRow: React.FC<{
   const areaText = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
   const color = getAreaColor(areaText);
   const campusGrade = presentMoodleGrade(moodleSnapshot);
-  const horasReales = Number(practica[FIELD_HORAS_PRACTICAS] || 0);
-  // Mientras está en curso, mostramos al menos las horas que vale la PPS
-  // (piso informativo) sin tocar horas_realizadas, que sigue siendo lo que
-  // cuenta para la acreditación.
-  const horasMostradas = isPracticeActive(practica[FIELD_ESTADO_PRACTICA])
-    ? Math.max(
-        horasReales,
-        Number((practica as { horasObjetivo?: number | null }).horasObjetivo || 0)
-      )
-    : horasReales;
+  const horasMostradas = getEffectiveHours(practica);
 
-  const canRequestModification = Boolean(onRequestModificacion && !disapproved);
+  const canRequestModification = Boolean(
+    onRequestModificacion && !disapproved && !pendingWithdrawal
+  );
 
   const cancelLongPress = () => {
     if (longPressTimerRef.current !== null) {
@@ -185,6 +185,14 @@ const PracticaRow: React.FC<{
             />
             {presentationStatus.label}
           </span>
+          {pendingWithdrawal ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+              <span className="material-icons !text-[13px]" aria-hidden="true">
+                pending_actions
+              </span>
+              Baja solicitada {formatDate(pendingWithdrawal.created_at)}
+            </span>
+          ) : null}
         </div>
 
         <h3 className="prow__name text-slate-900 dark:text-white text-base md:text-lg font-display font-semibold leading-tight break-words">
@@ -262,6 +270,7 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
   onRequestModificacion,
   onRequestNuevaPPS,
   onViewAssignmentSummary,
+  pendingWithdrawalByPractice = new Map(),
 }) => {
   const { snapshotsByPractice } = useMoodleGradeSync();
   if (import.meta.env.DEV) {
@@ -317,6 +326,13 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
   const hasEditablePractices =
     Boolean(onRequestModificacion) &&
     sortedPracticas.some((practica) => !isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]));
+  const hasPracticesAvailableToEdit =
+    Boolean(onRequestModificacion) &&
+    sortedPracticas.some(
+      (practica) =>
+        !isPracticeDisapproved(practica[FIELD_ESTADO_PRACTICA]) &&
+        !pendingWithdrawalByPractice.has(practica.id)
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -329,7 +345,7 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
             {sortedPracticas.length} {sortedPracticas.length === 1 ? "práctica" : "prácticas"}
           </span>
         </div>
-        {hasEditablePractices ? (
+        {hasEditablePractices && hasPracticesAvailableToEdit ? (
           <p
             id="practicas-edit-hint"
             className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400"
@@ -346,6 +362,7 @@ const PracticasTable: React.FC<PracticasTableProps> = ({
           moodleSnapshot={snapshotsByPractice.get(practica.id)}
           onRequestModificacion={onRequestModificacion}
           onViewAssignmentSummary={onViewAssignmentSummary}
+          pendingWithdrawal={pendingWithdrawalByPractice.get(practica.id)}
           index={index}
         />
       ))}
