@@ -441,26 +441,11 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué tengo que revisar antes de inscribirme?",
-        a: (
-          <>
-            Revisá las horas acreditables, el área y el <strong>requisito excluyente</strong> de la
-            convocatoria. Los horarios <strong>obligatorios</strong> ya aparecen seleccionados y no
-            se pueden quitar. Entre las franjas <strong>a elección</strong>, marcá solamente las que
-            realmente puedas sostener durante toda la práctica. Los cupos del turno tarde son menos
-            frecuentes y se priorizan para estudiantes que trabajan.
-          </>
-        ),
+        a: "Revisá la cantidad de horas, el área, los requisitos, la modalidad y la ubicación. Prestá especial atención a los horarios: inscribite solamente si podés sostener la asistencia durante toda la PPS y si contás con los medios necesarios para llegar a la institución.",
       },
       {
         q: "¿Puedo volver a inscribirme en una PPS que ya realicé?",
-        a: (
-          <>
-            No. Si la práctica figura como <strong>Finalizada</strong> o
-            <strong> Convenio Realizado</strong>, Mi Panel bloquea una nueva inscripción a esa PPS.
-            Una práctica <strong>Desaprobada</strong> queda guardada con 0 horas, pero no activa
-            este bloqueo: podés volver a realizarla en una nueva edición.
-          </>
-        ),
+        a: "No. Las PPS ya realizadas no se pueden repetir.",
       },
       {
         q: "¿Qué pasa si una convocatoria ofrece varios dispositivos?",
@@ -471,18 +456,6 @@ const faqGroups: FaqGroup[] = [
             actividades y requisitos; dentro de él, cada horario muestra su propio cupo.
             Coordinación asigna una franja respetando las preferencias y la disponibilidad.
             Inscribirte no reserva automáticamente una vacante.
-          </>
-        ),
-      },
-      {
-        q: "¿Puedo elegir otra orientación dentro de la misma institución?",
-        a: (
-          <>
-            Sí, si todavía no realizaste esa orientación allí. El bloqueo se aplica por la
-            combinación <strong>institución + orientación</strong>, no por el nombre del
-            dispositivo. Por ejemplo, si ya completaste una PPS Laboral en una institución, no podés
-            elegir otro dispositivo Laboral de esa misma institución, pero sí uno Educacional
-            disponible.
           </>
         ),
       },
@@ -514,8 +487,8 @@ const faqGroups: FaqGroup[] = [
         a: "Recibís una notificación por correo y, en Inicio > Tus resultados, ves primero tu estado personal: seleccionado/a, no seleccionado/a o resultado pendiente. La opción Ver convocados queda disponible como detalle.",
       },
       {
-        q: "¿Cuándo tengo que aceptar el consentimiento digital?",
-        a: "Apenas quedás seleccionado/a. Mi Panel muestra la fecha y hora exactas: normalmente el plazo cierra 24 horas antes del comienzo de la PPS o cuando Coordinación entrega la lista de estudiantes a la institución, lo que ocurra primero. Si la mesa se cierra el mismo día en que comienza la PPS o después, el consentimiento se omite y tu lugar queda vigente sin firma, correo ni baja automática. Si recibís un correo identificado como último recordatorio, tendrás 24 horas desde ese envío para firmar; cumplido ese plazo, el sistema dará de baja automáticamente tu selección y liberará la vacante. Leé cada paso, revisá tus datos y aceptá las dos declaraciones finales.",
+        q: "¿Qué es el consentimiento digital?",
+        a: "Es un acuerdo que firmás después de quedar seleccionado/a y antes de comenzar la PPS. Es un paso obligatorio para confirmar tu compromiso con la práctica. Si no lo firmás dentro del plazo indicado, podés perder la vacante y quedar dado/a de baja de la PPS.",
       },
     ],
   },
@@ -525,7 +498,7 @@ const faqGroups: FaqGroup[] = [
     subtitle: "Horas, asistencia y cambios durante la cursada.",
     items: [
       {
-        q: "¿Cuántas horas acredita mi PPS?",
+        q: "¿Cuántas horas suma mi PPS?",
         a: (
           <>
             La mayoría de las convocatorias indica la cantidad exacta. Si dice{" "}
@@ -537,15 +510,8 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Qué significa que la fecha de finalización depende de las horas?",
-        a: (
-          <>
-            Significa que no hay una única fecha de cierre para todo el grupo. Cada estudiante
-            finaliza cuando completa las horas acreditables indicadas en la convocatoria. En una PPS
-            de <strong>70 horas</strong>, feriados, recuperaciones y la frecuencia asignada pueden
-            hacer que las fechas individuales sean distintas.
-          </>
-        ),
+        q: "¿Las fechas de finalización son exactas?",
+        a: "No. Son estimativas y pueden variar según el cronograma, la frecuencia, los feriados o las recuperaciones. Además, la institución puede extender la PPS para asegurar el cumplimiento total de las horas acordadas.",
       },
       {
         q: "¿Puedo cambiar de orientación una vez iniciada la PPS?",
@@ -620,10 +586,6 @@ const faqGroups: FaqGroup[] = [
           </>
         ),
       },
-      {
-        q: "¿Puedo repetir una PPS?",
-        a: "No se puede repetir en la misma institución y con la misma orientación. Cada práctica debe ser una experiencia nueva para explorar distintos campos y adquirir diversas habilidades.",
-      },
     ],
   },
   {
@@ -637,15 +599,11 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo entrego un informe?",
-        a: "Entrá en Entregas y, dentro de Te falta subir, abrí el espacio de tu PPS. Cuando la tarea está vinculada, Mi Panel usa el lanzamiento y la orientación de tu práctica para llevarte al espacio exacto del Campus. Ahí cargás el informe final y, si la práctica fue presencial, también la planilla de asistencia firmada. Al volver, elegí Actualizar estado para consultar nuevamente.",
+        a: "Entrá en Entregas, abrí la PPS correspondiente y seguí el enlace al Campus. Allí podés subir el informe y, si la práctica fue presencial, también la planilla de asistencia firmada.",
       },
       {
         q: "¿Qué hago si no encuentro el espacio de entrega de mi PPS?",
-        a: "Si la entrega indica Buscar espacio de entrega, todavía no hay un vínculo confirmado. Durante la transición 2026 podés revisar el directorio por área e institución. Desde 2027 sólo se muestran las tareas que te fueron asignadas: si falta una, escribí a coordinación para que vincule la tarea correcta; no entregues en una tarea parecida por tu cuenta.",
-      },
-      {
-        q: "¿Cómo entrego un relevamiento profesional o una entrevista a profesionales?",
-        a: "Coordinación te asigna la actividad y la orientación que acredita. En ese momento aparece automáticamente una tarjeta en Entregas que abre la tarea anual exacta de Clínica, Laboral/Comunitaria o Educacional. Estas actividades tienen entrega libre: no muestran fecha de vencimiento y podés subir el informe cuando completes la actividad.",
+        a: "Ponete en contacto con el coordinador para que te habilite el espacio de entrega.",
       },
       {
         q: "¿Dónde reviso si el informe quedó entregado?",
@@ -653,41 +611,15 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cuál es el plazo para entregar el informe?",
-        a: (
-          <>
-            Tenés <strong>30 días corridos</strong> desde la fecha de finalización de tu práctica.
-            En las tareas exclusivas automatizadas, Campus muestra la apertura 7 días antes y el
-            vencimiento a las 23:59 hs (hora de Argentina), sin bloquear una entrega tardía. Durante
-            la transición 2026 algunas PPS siguen usando tareas compartidas y esas fechas pueden no
-            verse en Campus: el plazo académico igualmente se mantiene. Si una tarea histórica
-            bloquea el envío, escribí a coordinación. Los relevamientos profesionales y las
-            entrevistas a profesionales asignados por Coordinación son la excepción: tienen entrega
-            libre, sin fecha límite.
-          </>
-        ),
+        a: "Tenés 30 días corridos desde la fecha real de finalización de tu práctica. Si la fecha indicada en Campus es diferente, se toma la fecha en la que efectivamente terminaste.",
       },
       {
         q: "¿Qué hago si no llego a entregar el informe en el plazo?",
-        a: (
-          <>
-            Escribí a coordinación <strong>antes del vencimiento</strong> para solicitar una
-            prórroga. Las tareas exclusivas nuevas admiten el envío tardío y lo dejan registrado;
-            una tarea histórica puede tener otra configuración. La entrega fuera de término sin
-            prórroga previa queda sujeta a la disponibilidad de corrección del equipo docente.
-          </>
-        ),
+        a: "Tenés que escribir al coordinador para solicitar una prórroga. Si no lo hacés y no entregaste el informe, coordinación evaluará cómo continuar.",
       },
       {
         q: "¿Cuánto tiempo tiene la jefatura de área para corregir mi informe?",
-        a: (
-          <>
-            El plazo de seguimiento para la corrección es de <strong>30 días corridos</strong>{" "}
-            contados desde la <strong>fecha real en que enviaste la entrega</strong> en el Campus
-            (no desde el fin de la práctica). Cuando ingresás a Mi Panel dentro del Campus Virtual,
-            el panel intenta actualizar las tareas vinculadas y conserva el último dato confirmado
-            si Campus no responde. La pantalla te avisa si tenés que reintentar.
-          </>
-        ),
+        a: "La jefatura de área tiene 30 días corridos para corregir tu informe.",
       },
       {
         q: "¿Qué significa si mi informe figura con 'Reentrega solicitada'?",
@@ -732,45 +664,11 @@ const faqGroups: FaqGroup[] = [
   {
     id: "panel",
     label: "Mi Panel",
-    subtitle: "Seguimiento, acreditación y acceso.",
+    subtitle: "Seguimiento y acceso.",
     items: [
       {
         q: "¿Qué es Mi Panel?",
-        a: (
-          <>
-            Es la herramienta para inscribirte, aceptar consentimientos, seguir tus horas y realizar
-            solicitudes de PPS. Los datos administrativos son referenciales y podés pedir
-            correcciones desde Prácticas. Las <strong>calificaciones se consultan en Campus</strong>
-            y no se cargan manualmente. En una PPS presencial, tu respaldo es la{" "}
-            <strong>planilla de asistencia firmada</strong>; en una PPS online, el{" "}
-            <strong>informe final corregido y aprobado</strong>.
-          </>
-        ),
-      },
-      {
-        q: "¿Cómo aparecen mis entregas y calificaciones de Campus?",
-        a: (
-          <>
-            Abrí Mi Panel desde la página de la materia en <strong>Campus Virtual</strong>. Al
-            ingresar, el panel consulta únicamente las tareas vinculadas a tus PPS y muestra si no
-            entregaste, si el informe está en corrección o la calificación publicada por Moodle. La
-            pantalla indica la fecha de la última consulta. Si entrás por la dirección directa,
-            podés ver el último dato guardado, pero necesitás volver a abrir el panel desde Campus
-            para actualizarlo. Cada tarea se valida por separado. Una lectura fallida nunca borra el
-            último estado confirmado: el panel conserva, por ejemplo, una entrega que ya había sido
-            detectada mientras vuelve a intentar leer su corrección en próximos ingresos. Cuando
-            Moodle publica una <strong>calificación</strong>, queda guardada como registro final, se
-            copia automáticamente a Prácticas y esa tarea deja de consultarse. La escala de cada
-            espacio está configurada por coordinación: el panel no intenta adivinar si una nota fue
-            cargada sobre 10 o sobre 100. Si el docente cambia una calificación ya publicada,
-            coordinación puede reabrir esa tarea para una nueva lectura; mientras tanto se conserva
-            la nota anterior con su fecha y procedencia. Si aparece{" "}
-            <strong>Estado a revisar</strong>, todavía no existe un estado anterior suficientemente
-            confiable para mostrar. Si una PPS dice <strong>Espacio pendiente de vincular</strong>,
-            Mi Panel no abre una tarea aproximada por nombre: podés consultar el directorio y avisar
-            a coordinación para que confirme el vínculo correcto.
-          </>
-        ),
+        a: "Mi Panel es una plataforma creada por el coordinador de PPS para brindarte una herramienta que te permita inscribirte, aceptar consentimientos, seguir tus horas, realizar solicitudes y gestionar todo tu recorrido de PPS de una manera simple e innovadora. Se mejora de forma constante para que sea cada vez más útil para los estudiantes. No es una plataforma oficial de UFLO Universidad.",
       },
       {
         q: "¿Puedo descargar un certificado de una PPS en curso?",
@@ -809,62 +707,8 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
-        q: "¿Cuáles son los requisitos obligatorios para acreditar?",
-        a: (
-          <>
-            <ol>
-              <li>
-                <strong>250 horas totales</strong> de práctica aprobada.
-              </li>
-              <li>
-                <strong>Mínimo 70 horas</strong> en tu orientación de especialidad.
-              </li>
-              <li>
-                <strong>Rotación</strong> por al menos 3 de las 4 orientaciones.
-              </li>
-              <li>
-                <strong>Todos los informes</strong> corregidos y aprobados.
-              </li>
-            </ol>
-            El indicador <strong>3/3 de Mis Prácticas</strong> resume solamente horas, orientación y
-            rotación. La revisión de informes y la acreditación final se gestionan por separado. Usá
-            la planilla de seguimiento para el control exacto de horas: Mi Panel es referencial.
-          </>
-        ),
-      },
-      {
-        q: "¿Cuánto demora la acreditación final?",
-        a: (
-          <>
-            Una vez enviada la solicitud desde <strong>Mis Solicitudes</strong>, el trámite puede
-            demorar hasta <strong>14 días hábiles</strong>. No se computan sábados, domingos,
-            feriados nacionales ni los recesos universitarios de verano e invierno. Vas a recibir la
-            confirmación cuando la acreditación quede registrada.
-          </>
-        ),
-      },
-      {
-        q: "¿Qué datos debo revisar cuando creo mi cuenta?",
-        a: (
-          <>
-            Para crear tu cuenta, ingresá legajo, DNI, correo y teléfono tal como figuran en el
-            registro académico. Por seguridad, Mi Panel no muestra ni completa esos datos antes de
-            validar la vinculación.
-          </>
-        ),
-      },
-      {
-        q: "¿Qué ocurre al entrar a Mi Panel desde el Campus?",
-        a: (
-          <>
-            Si todavía no tenés cuenta, Mi Panel puede precargar desde el Campus tu nombre,
-            apellido, correo y DNI. Vos completás <strong>legajo, celular y contraseña</strong>; si
-            el Campus no informa un DNI válido, también vas a poder ingresarlo. Si ya tenés una
-            cuenta vinculada y los datos coinciden, Mi Panel inicia la sesión automáticamente. Si
-            falta algún dato o existe una diferencia, ingresá con legajo y contraseña o usá
-            <strong> Recuperar acceso</strong>.
-          </>
-        ),
+        q: "¿Qué datos tengo que ingresar para crear mi cuenta?",
+        a: "Sólo tenés que ingresar tu celular y crear una contraseña. Es importante que el número sea correcto porque muchas instituciones lo usan para contactarte. La contraseña te permite ingresar desde la aplicación instalada en tu celular; desde Campus, el acceso es automático.",
       },
       {
         q: "¿Cómo se instala Mi Panel en el celular o computadora?",
@@ -925,8 +769,42 @@ const faqGroups: FaqGroup[] = [
   {
     id: "tramites",
     label: "Trámites",
-    subtitle: "Propuestas nuevas y contacto con coordinación.",
+    subtitle: "Acreditación, propuestas y contacto con coordinación.",
     items: [
+      {
+        q: "¿Cuáles son los requisitos obligatorios para acreditar?",
+        a: (
+          <ol>
+            <li>
+              <strong>250 horas totales</strong> de práctica aprobada.
+            </li>
+            <li>
+              <strong>Mínimo 70 horas</strong> en tu orientación de especialidad.
+            </li>
+            <li>
+              <strong>Rotación</strong> por al menos 3 de las 4 orientaciones.
+            </li>
+            <li>
+              <strong>Todos los informes</strong> corregidos y aprobados.
+            </li>
+          </ol>
+        ),
+      },
+      {
+        q: "¿Cómo solicito la acreditación?",
+        a: "Una vez que cumplas todos los requisitos, podés solicitarla desde la pestaña Trámites. Es importante que tengas a mano los informes y las planillas de asistencia de tus PPS.",
+      },
+      {
+        q: "¿Cuánto demora la acreditación final?",
+        a: (
+          <>
+            Una vez enviada la solicitud desde <strong>Mis Solicitudes</strong>, el trámite puede
+            demorar hasta <strong>14 días hábiles</strong>. No se computan sábados, domingos,
+            feriados nacionales ni los recesos universitarios de verano e invierno. Vas a recibir la
+            confirmación cuando la acreditación quede registrada.
+          </>
+        ),
+      },
       {
         q: "¿Cómo propongo una institución para una futura PPS?",
         a: (
