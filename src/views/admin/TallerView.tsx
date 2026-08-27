@@ -56,6 +56,9 @@ const SeguroGenerator = lazy(() => import("../../components/admin/SeguroGenerato
 const PersonalizationPanel = lazy(() => import("../../components/PersonalizationPanel"));
 const AdminSearch = lazy(() => import("../../components/admin/AdminSearch"));
 const InformeCampusLinker = lazy(() => import("../../components/admin/InformeCampusLinker"));
+const AsignacionesEspecialesPanel = lazy(
+  () => import("../../components/admin/AsignacionesEspecialesPanel")
+);
 
 // ─── CSS scoped (Paper & Ink · trastienda) ────────────────────────────────────
 
@@ -192,6 +195,7 @@ injectScopedStyles("taller-styles", CSS);
 
 type ToolId =
   | "search"
+  | "pps-especiales"
   | "editor-db"
   | "convenios-gen"
   | "seguros"
@@ -238,6 +242,12 @@ const FAMILIES: FamilyDef[] = [
         name: "Buscar alumno",
         desc: "Encontrá un legajo, abrí su panel o dá de alta uno nuevo.",
         icon: "person_search",
+      },
+      {
+        id: "pps-especiales",
+        name: "PPS especiales",
+        desc: "Asigná relevamientos o entrevistas y conectá la tarea exacta del Campus.",
+        icon: "assignment_ind",
       },
     ],
   },
@@ -340,6 +350,11 @@ const TOOL_META: Record<ToolId, { title: string; sub: string; crumb: string }> =
     title: "Buscar alumno",
     sub: "Buscá por nombre o legajo para abrir el panel del estudiante, o registrá uno nuevo.",
     crumb: "Buscar alumno",
+  },
+  "pps-especiales": {
+    title: "PPS especiales",
+    sub: "Asigná una actividad sin lanzamiento. El estudiante recibe la tarea anual de su orientación, sin fecha límite.",
+    crumb: "PPS especiales",
   },
   "editor-db": {
     title: "Editor de base de datos",
@@ -750,6 +765,12 @@ const TallerView: React.FC<TallerViewProps> = ({ onStudentSelect, isTestingMode 
                   />
                 )}
               </div>
+            </ErrorBoundary>
+          )}
+
+          {activeTool === "pps-especiales" && (
+            <ErrorBoundary>
+              <AsignacionesEspecialesPanel isTestingMode={isTestingMode} />
             </ErrorBoundary>
           )}
 

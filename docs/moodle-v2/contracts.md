@@ -1,6 +1,6 @@
 # Contratos activos · Moodle Task Automation v2
 
-Fecha de verificación: 20 de agosto de 2026
+Fecha de verificación: 27 de agosto de 2026
 Estado: fundación productiva; escritor Moodle todavía no conectado
 
 Este documento describe lo que existe en el repositorio y en Supabase. Las
@@ -19,6 +19,18 @@ deben confundirse con capacidades productivas.
 - Las orientaciones admitidas son `clinica`, `laboral`, `comunitaria`,
   `educacional` y `otra`. La normalización vive en
   `private.moodle_orientation_key(text)`.
+
+### PPS especiales sin lanzamiento
+
+`relevamiento_profesional` y `entrevistas_profesionales` se asignan desde el
+Taller admin y no crean una intención de lanzamiento. La asignación crea una
+`practicas` de tipo `actividad_especial`, sin fechas, y un vínculo confirmado en
+`practica_moodle_tareas`. La tarea se elige por actividad, año y grupo de
+orientación: `clinica`, `laboral_comunitaria` o `educacional`.
+
+Entrevistas 2026 usa los CMID verificados `1224814` (Clínica), `1097090`
+(Laboral/Comunitaria) y `1224816` (Educacional). Son tareas compartidas anuales,
+sin vencimiento; los estudiantes sólo acceden a la que coordinación les asignó.
 
 ## 2. Tablas
 
@@ -63,6 +75,14 @@ replaced`;
 `withdrawn` y `replaced` no cuentan en los agregados activos; la fila no se
 borra.
 
+### PPS especiales
+
+- `public.special_pps_task_catalog`: una tarea por actividad, grupo de
+  orientación y año.
+- `public.special_pps_assignments`: relación auditable entre estudiante,
+  práctica especial y tarea anual; conserva las orientaciones Laboral y
+  Comunitaria por separado aunque compartan tarea.
+
 ### Auditoría privada
 
 `private.moodle_agent_runs` y `private.moodle_agent_run_items` registran
@@ -83,6 +103,9 @@ privilegiada equivalente vive en `private`, usa `SECURITY DEFINER` y
 | `request_moodle_task_reconcile_v1(p_intent_id uuid)`                                                                                                    | Reencola una intención `dedicated` en `error` o `needs_attention`.                                                                                                     |
 | `set_moodle_expected_participant_exception_v1(...)`                                                                                                     | Cambia una membresía con motivo obligatorio para excepciones.                                                                                                          |
 | `get_moodle_task_unit_summaries_v1(p_launch_id uuid default null, p_orientation text default null)`                                                     | Read model con esperados, entregados, faltantes, corrección, reentrega, aprobados, desaprobados, exceptuados y resueltos. Respeta RLS.                                 |
+| `set_special_pps_task_v1(...)`                                                                                                                          | Configura la tarea anual exacta de una PPS especial; sólo coordinación o `service_role`.                                                                               |
+| `assign_special_pps_v1(...)`                                                                                                                            | Crea atómicamente práctica, vínculo Moodle confirmado y asignación especial sin fecha límite.                                                                          |
+| `cancel_special_pps_assignment_v1(...)`                                                                                                                 | Cancela la asignación, retira el vínculo visible y conserva la práctica como `No se pudo concretar`.                                                                   |
 
 La confirmación no está autorizada para `legacy_shared`; tampoco se adopta una
 tarea por semejanza de nombre.
@@ -136,4 +159,5 @@ no queda atado a la disponibilidad del Campus.
 - Backfill: `supabase/migrations/20260820101000_backfill_legacy_moodle_task_intents.sql`.
 - Hardening: `supabase/migrations/20260820110500_harden_moodle_v2_advisors.sql`.
 - Contrato SQL: `supabase/tests/moodle_v2_schema_contract.sql`.
+- PPS especiales: `supabase/tests/special_pps_assignments_contract.sql`.
 - Tipos: `src/types/supabase.ts`, siempre regenerados con `npm run gen-types`.

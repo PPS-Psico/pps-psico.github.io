@@ -213,6 +213,12 @@
   border-color: color-mix(in oklab, var(--sd-danger) 34%, var(--sd-rule));
 }
 
+/* La fecha estimada ya pasó, pero nadie la hace cumplir: se apaga en vez de
+   alarmar. El rojo queda reservado para un cierre real cargado en Campus. */
+.sd-pending[data-urgency="estimated"] {
+  --sd-deadline: var(--sd-ink-subtle);
+}
+
 .sd-pending__body {
   min-width: 0;
   padding: 30px 32px;
@@ -422,6 +428,12 @@
   line-height: 1.45;
 }
 
+.sd-deadline-date sup {
+  margin-left: 1px;
+  color: var(--sd-deadline);
+  font-weight: 600;
+}
+
 .sd-progress {
   height: 6px;
   overflow: hidden;
@@ -446,6 +458,20 @@
   color: var(--sd-ink-subtle);
   font: 400 11px/1.4 var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+.sd-deadline-note {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--sd-rule);
+  color: var(--sd-ink-subtle);
+  font: 400 11px/1.5 var(--font-sans);
+  text-wrap: pretty;
+}
+
+.sd-deadline-note > span {
+  color: var(--sd-deadline);
+  font-weight: 600;
 }
 
 .sd-pending__actions {

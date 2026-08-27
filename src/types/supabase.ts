@@ -287,6 +287,10 @@ export type Database = {
           academic_year: number | null
           activo: boolean
           area: string
+          close_cutoff_at: string | null
+          close_note: string | null
+          closed_at: string | null
+          closed_by: string | null
           course_id: number
           created_at: string
           grade_conversion_mode: string
@@ -304,6 +308,10 @@ export type Database = {
           academic_year?: number | null
           activo?: boolean
           area: string
+          close_cutoff_at?: string | null
+          close_note?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           course_id?: number
           created_at?: string
           grade_conversion_mode?: string
@@ -321,6 +329,10 @@ export type Database = {
           academic_year?: number | null
           activo?: boolean
           area?: string
+          close_cutoff_at?: string | null
+          close_note?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           course_id?: number
           created_at?: string
           grade_conversion_mode?: string
@@ -2893,6 +2905,126 @@ export type Database = {
           },
         ]
       }
+      special_pps_assignments: {
+        Row: {
+          academic_year: number
+          activity_type: string
+          assigned_at: string
+          assigned_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          estudiante_id: string
+          expected_hours: number
+          id: string
+          orientation_key: string
+          practica_id: string
+          status: string
+          task_catalog_id: string
+        }
+        Insert: {
+          academic_year: number
+          activity_type: string
+          assigned_at?: string
+          assigned_by?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          estudiante_id: string
+          expected_hours?: number
+          id?: string
+          orientation_key: string
+          practica_id: string
+          status?: string
+          task_catalog_id: string
+        }
+        Update: {
+          academic_year?: number
+          activity_type?: string
+          assigned_at?: string
+          assigned_by?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          estudiante_id?: string
+          expected_hours?: number
+          id?: string
+          orientation_key?: string
+          practica_id?: string
+          status?: string
+          task_catalog_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_pps_assignments_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_pps_assignments_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: true
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_pps_assignments_task_catalog_id_fkey"
+            columns: ["task_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "special_pps_task_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_pps_task_catalog: {
+        Row: {
+          academic_year: number
+          activity_type: string
+          aula_entrega_id: number
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          orientation_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          academic_year: number
+          activity_type: string
+          aula_entrega_id: number
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          orientation_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          academic_year?: number
+          activity_type?: string
+          aula_entrega_id?: number
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          orientation_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_pps_task_catalog_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verification_attempts: {
         Row: {
           created_at: string
@@ -3030,10 +3162,24 @@ export type Database = {
         }[]
       }
       archive_lanzamientos_after_start_grace: { Args: never; Returns: number }
+      assign_special_pps_v1: {
+        Args: {
+          p_academic_year: number
+          p_activity_type: string
+          p_estudiante_id: string
+          p_expected_hours?: number
+          p_orientation_key: string
+        }
+        Returns: Json
+      }
       auth_email: { Args: never; Returns: string }
       calc_cohorte_estudiante: {
         Args: { p_estudiante_id: string }
         Returns: number
+      }
+      cancel_special_pps_assignment_v1: {
+        Args: { p_assignment_id: string; p_reason: string }
+        Returns: boolean
       }
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean }
       claim_consentimiento_final_reminder_batch: {
@@ -3117,6 +3263,10 @@ export type Database = {
       clean_dirty_text: { Args: { val: string }; Returns: string }
       cleanup_old_verification_attempts: { Args: never; Returns: undefined }
       close_finished_practicas: { Args: never; Returns: number }
+      close_moodle_task_v1: {
+        Args: { p_cmid: number; p_cutoff_at: string; p_note?: string }
+        Returns: undefined
+      }
       close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json }
       complete_moodle_jefe_login_v1: {
         Args: { token_hash_input: string; userid_input: string }
@@ -3856,6 +4006,18 @@ export type Database = {
         Returns: string
       }
       mark_password_changed: { Args: never; Returns: undefined }
+      moodle_task_close_state_v1: {
+        Args: never
+        Returns: {
+          close_cutoff_at: string
+          closed_at: string
+          cmid: number
+          first_submitted_at: string
+          is_closable: boolean
+          is_eligible: boolean
+          suggested_cutoff_at: string
+        }[]
+      }
       owns_storage_folder: { Args: { object_name: string }; Returns: boolean }
       practica_computa: { Args: { p_estado: string }; Returns: boolean }
       process_consentimiento_timeouts: { Args: never; Returns: undefined }
@@ -3900,6 +4062,7 @@ export type Database = {
           practica_id: string
         }[]
       }
+      reopen_moodle_task_v1: { Args: { p_cmid: number }; Returns: undefined }
       request_moodle_task_reconcile_v1: {
         Args: { p_intent_id: string }
         Returns: boolean
@@ -3958,6 +4121,32 @@ export type Database = {
           p_reason_note?: string
         }
         Returns: boolean
+      }
+      set_special_pps_task_v1: {
+        Args: {
+          p_academic_year: number
+          p_activity_type: string
+          p_aula_entrega_id: number
+          p_orientation_key: string
+        }
+        Returns: {
+          academic_year: number
+          activity_type: string
+          aula_entrega_id: number
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          orientation_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "special_pps_task_catalog"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

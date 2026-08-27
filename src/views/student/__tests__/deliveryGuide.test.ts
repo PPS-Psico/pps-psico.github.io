@@ -4,6 +4,7 @@ import {
   FIELD_FECHA_FIN_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+  FIELD_TIPO_ACTIVIDAD_PRACTICAS,
 } from "../../../constants";
 import { FALLBACK_DELIVERY_AREAS } from "../../../hooks/useAulaEntregas";
 import type { MoodleTaskLink } from "../../../hooks/useMoodleTaskLinks";
@@ -242,6 +243,40 @@ describe("deliveryGuide", () => {
   it("excluye prácticas desaprobadas de la guía de entregas", () => {
     const deliveries = buildGuidedDeliveries(
       [practice({ [FIELD_ESTADO_PRACTICA]: "Desaprobada" })],
+      [],
+      FALLBACK_DELIVERY_AREAS
+    );
+
+    expect(deliveries).toEqual([]);
+  });
+
+  it("presenta las PPS especiales como entrega libre aunque tengan fecha final", () => {
+    const [delivery] = buildGuidedDeliveries(
+      [
+        practice({
+          [FIELD_TIPO_ACTIVIDAD_PRACTICAS]: "actividad_especial",
+          [FIELD_FECHA_FIN_PRACTICAS]: "2026-06-30",
+        }),
+      ],
+      [],
+      FALLBACK_DELIVERY_AREAS
+    );
+
+    expect(delivery).toMatchObject({
+      isOpenEnded: true,
+      deadline: null,
+      deadlineLabel: "Sin fecha de cierre",
+    });
+  });
+
+  it("retira de Entregas una PPS especial cancelada", () => {
+    const deliveries = buildGuidedDeliveries(
+      [
+        practice({
+          [FIELD_TIPO_ACTIVIDAD_PRACTICAS]: "actividad_especial",
+          [FIELD_ESTADO_PRACTICA]: "No se pudo concretar",
+        }),
+      ],
       [],
       FALLBACK_DELIVERY_AREAS
     );

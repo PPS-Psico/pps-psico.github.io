@@ -6,6 +6,10 @@ import {
   useMoodleGradeSync,
 } from "../../contexts/MoodleGradeSyncContext";
 import { MOODLE_ASSIGN, useAulaEntregas, type DeliveryArea } from "../../hooks/useAulaEntregas";
+import {
+  useMoodleTaskCloseState,
+  type MoodleTaskCloseState,
+} from "../../hooks/useMoodleTaskCloseState";
 import { useMoodleTaskLinks } from "../../hooks/useMoodleTaskLinks";
 import type { InformeTask, Practica } from "../../types";
 import {
@@ -24,7 +28,7 @@ interface StudentDeliveriesPanelProps {
 }
 
 type DeliveryTone = "neutral" | "info" | "ok" | "warn";
-type DeadlineUrgency = "normal" | "soon" | "overdue" | "unknown";
+type DeadlineUrgency = "normal" | "soon" | "overdue" | "estimated" | "unknown";
 type DeliveryBucket = "pending" | "delivered" | "upcoming" | "unknown";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -50,6 +54,7 @@ function formatUtcDate(date: Date | null): string | null {
 }
 
 function formatPracticePeriod(delivery: GuidedDelivery): string {
+  if (delivery.isOpenEnded) return "Actividad abierta";
   const start = formatUtcDate(delivery.startDate);
   const end = formatUtcDate(delivery.endDate);
   if (start && end) return `${start} → ${end}`;
@@ -68,7 +73,30 @@ function formatDeadlineDate(date: Date): string {
   return `${label.charAt(0).toUpperCase()}${label.slice(1)}, 23:59`;
 }
 
-function getDeadlineMeta(deadline: Date | null): {
+function parseCalendarDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+}
+
+/**
+ * Dos fechas que se ven iguales y no lo son.
+ *
+ * El plazo que arma `deliveryGuide` sale de la fecha de finalización estimada de
+ * la práctica, y esa fecha no la hace cumplir nadie: aunque pase, el estudiante
+ * puede seguir subiendo. Pintarla de rojo y decirle "venció" es mentirle, sobre
+ * todo cuando su institución extendió la cursada.
+ *
+ * La Fecha límite cargada en Campus sí bloquea la entrega. El rojo queda
+ * reservado para cuando el cierre está anclado a algo real: una primera entrega
+ * observada en una tarea del modelo nuevo, o directamente el cutoff ya cargado.
+ */
+function getDeadlineMeta(
+  deadline: Date | null,
+  closeState?: MoodleTaskCloseState,
+  isOpenEnded = false
+): {
   days: number | null;
   elapsed: number;
   progress: number;
@@ -77,8 +105,28 @@ function getDeadlineMeta(deadline: Date | null): {
   unit: string;
   detail: string;
   progressCopy: string;
+  isEnforceable: boolean;
 } {
-  if (!deadline) {
+  if (isOpenEnded) {
+    return {
+      days: null,
+      elapsed: 0,
+      progress: 0,
+      urgency: "normal",
+      headline: "Libre",
+      unit: "sin vencimiento",
+      detail: "Esta actividad no tiene fecha límite.",
+      progressCopy: "Podés entregar cuando completes la actividad.",
+      isEnforceable: false,
+    };
+  }
+
+  const hardCutoff = parseCalendarDate(closeState?.closeCutoffAt);
+  const effective = hardCutoff ?? deadline;
+  const isEnforceable =
+    Boolean(hardCutoff) || Boolean(closeState?.isEligible && closeState.firstSubmittedAt);
+
+  if (!effective) {
     return {
       days: null,
       elapsed: 0,
@@ -88,37 +136,47 @@ function getDeadlineMeta(deadline: Date | null): {
       unit: "sin fecha",
       detail: "La fecha de finalización todavía no está informada.",
       progressCopy: "El plazo se calcula cuando la práctica tiene fecha de cierre.",
+      isEnforceable: false,
     };
   }
 
   const today = new Date();
   const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   const deadlineUtc = Date.UTC(
-    deadline.getUTCFullYear(),
-    deadline.getUTCMonth(),
-    deadline.getUTCDate()
+    effective.getUTCFullYear(),
+    effective.getUTCMonth(),
+    effective.getUTCDate()
   );
   const days = Math.round((deadlineUtc - todayUtc) / DAY_MS);
   const elapsed = Math.min(30, Math.max(0, 30 - days));
   const progress = Math.min(100, Math.max(0, (elapsed / 30) * 100));
-  const urgency: DeadlineUrgency = days < 0 ? "overdue" : days <= 7 ? "soon" : "normal";
+  const urgency: DeadlineUrgency =
+    days < 0 ? (isEnforceable ? "overdue" : "estimated") : days <= 7 ? "soon" : "normal";
+
+  const absDays = Math.abs(days);
+  const dayWord = absDays === 1 ? "día" : "días";
 
   return {
     days,
     elapsed,
     progress,
     urgency,
-    headline: String(Math.abs(days)),
-    unit: Math.abs(days) === 1 ? "día" : "días",
-    detail: formatDeadlineDate(deadline),
+    headline: String(absDays),
+    unit: dayWord,
+    detail: formatDeadlineDate(effective),
     progressCopy:
       days < 0
-        ? `El plazo venció hace ${Math.abs(days)} ${Math.abs(days) === 1 ? "día" : "días"}`
+        ? isEnforceable
+          ? `El espacio cerró hace ${absDays} ${dayWord}`
+          : `La fecha estimada pasó hace ${absDays} ${dayWord}, pero el espacio sigue abierto`
         : days === 0
-          ? "El plazo académico vence hoy"
+          ? isEnforceable
+            ? "El espacio cierra hoy"
+            : "Es la fecha estimada de cierre"
           : days > 30
             ? "El plazo comienza cuando finalice la práctica"
             : `Quedan ${days} de los 30 días de plazo`,
+    isEnforceable,
   };
 }
 
@@ -218,21 +276,25 @@ function manualGrade(delivery: GuidedDelivery): string | null {
 function PendingDeliveryCard({
   delivery,
   snapshot,
+  closeState,
   openedCampus,
   isRefreshing,
   canReopenGrades,
   onOpenCampus,
   onOpenDirectory,
+  allowLegacyDirectory,
   onRefresh,
   onReopen,
 }: {
   delivery: GuidedDelivery;
   snapshot?: MoodleGradeSnapshot;
+  closeState?: MoodleTaskCloseState;
   openedCampus: boolean;
   isRefreshing: boolean;
   canReopenGrades: boolean;
   onOpenCampus: (practiceId: string) => void;
   onOpenDirectory: (areaId: string | null) => void;
+  allowLegacyDirectory: boolean;
   onRefresh: () => Promise<void>;
   onReopen: (practicaId: string, cmid: number) => void;
 }) {
@@ -240,7 +302,7 @@ function PendingDeliveryCard({
     ? `${MOODLE_ASSIGN}${delivery.institution.moodleId}`
     : null;
   const status = compactStatus(delivery, snapshot);
-  const deadline = getDeadlineMeta(delivery.deadline);
+  const deadline = getDeadlineMeta(delivery.deadline, closeState, delivery.isOpenEnded);
   const observedAt = snapshot?.last_observed_at || snapshot?.observed_at || null;
   const observedLabel = formatMoodleObservationTime(observedAt);
   const areaName = cleanAreaName(delivery.areaName);
@@ -265,15 +327,21 @@ function PendingDeliveryCard({
 
         <h3>{delivery.practiceName}</h3>
         <p className="sd-pending__task">
-          Informe final de PPS
+          {delivery.isOpenEnded ? "Entrega de actividad especial" : "Informe final de PPS"}
           {delivery.academicYear ? ` · Tarea ${delivery.academicYear}` : ""} · {areaName}
         </p>
 
         <div className="sd-upload-list">
           <span>Qué tenés que subir</span>
           <ul>
-            <li>Informe final supervisado (PDF o DOCX)</li>
-            {!delivery.isOnline && <li>Planilla de horas firmada por la institución</li>}
+            <li>
+              {delivery.isOpenEnded
+                ? "Informe de la actividad (PDF o DOCX)"
+                : "Informe final supervisado (PDF o DOCX)"}
+            </li>
+            {!delivery.isOnline && !delivery.isOpenEnded && (
+              <li>Planilla de horas firmada por la institución</li>
+            )}
           </ul>
         </div>
 
@@ -296,12 +364,27 @@ function PendingDeliveryCard({
       </div>
 
       <aside className="sd-pending__aside">
-        <span className="sd-label">Cierre de la entrega</span>
+        <span className="sd-label">
+          {delivery.isOpenEnded
+            ? "Modalidad de entrega"
+            : deadline.isEnforceable
+              ? "Cierre de la entrega"
+              : "Cierre estimado"}
+        </span>
         <div className="sd-deadline-number">
           <strong>{deadline.headline}</strong>
-          <span>{deadline.days !== null && deadline.days < 0 ? "de atraso" : deadline.unit}</span>
+          <span>
+            {deadline.days !== null && deadline.days < 0
+              ? deadline.isEnforceable
+                ? "de atraso"
+                : "de margen"
+              : deadline.unit}
+          </span>
         </div>
-        <p className="sd-deadline-date">{deadline.detail}</p>
+        <p className="sd-deadline-date">
+          {deadline.detail}
+          {delivery.deadline && !deadline.isEnforceable && <sup aria-hidden>*</sup>}
+        </p>
         {delivery.deadline && (
           <div
             className="sd-progress"
@@ -315,6 +398,19 @@ function PendingDeliveryCard({
           </div>
         )}
         <p className="sd-progress-copy">{deadline.progressCopy}</p>
+        {delivery.deadline && !deadline.isEnforceable && (
+          <p className="sd-deadline-note">
+            <span aria-hidden>*</span> Son 30 días desde la fecha de finalización, que es estimada y
+            puede no coincidir con el día en que vos terminaste. Es orientativa: el espacio sigue
+            aceptando entregas. Cuando se defina el cierre real vas a verlo acá.
+          </p>
+        )}
+        {deadline.isEnforceable && closeState?.closeCutoffAt && (
+          <p className="sd-deadline-note">
+            Esta fecha ya está cargada en Campus: desde ese día el espacio no acepta más entregas.
+            Si terminaste tu práctica más tarde, escribile a coordinación antes del cierre.
+          </p>
+        )}
 
         <div className="sd-pending__actions">
           {directHref ? (
@@ -329,7 +425,7 @@ function PendingDeliveryCard({
               Abrir espacio de entrega
               <Icon name="external" size={17} />
             </a>
-          ) : (
+          ) : allowLegacyDirectory ? (
             <button
               className="sd-primary-action"
               type="button"
@@ -338,11 +434,18 @@ function PendingDeliveryCard({
               Buscar espacio de entrega
               <Icon name="search" size={17} />
             </button>
+          ) : (
+            <span className="sd-primary-action" aria-disabled="true">
+              Tarea pendiente de vinculación
+              <Icon name="clock" size={17} />
+            </span>
           )}
           <p id={`campus-open-hint-${delivery.id}`} className="sd-action-hint">
             {directHref
               ? "Abrimos la tarea exacta del Campus en otra pestaña."
-              : "Todavía no hay una tarea exacta vinculada a esta práctica."}
+              : allowLegacyDirectory
+                ? "Todavía no hay una tarea exacta vinculada a esta práctica."
+                : "Escribí a coordinación: desde 2027 sólo se muestran tareas asignadas."}
           </p>
 
           {openedCampus && directHref && (
@@ -462,11 +565,13 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
     reopenGrade,
   } = useMoodleGradeSync();
   const { links: exactTaskLinks, isLoading: areTaskLinksLoading } = useMoodleTaskLinks(!isPublic);
+  const { closeStateByCmid } = useMoodleTaskCloseState(!isPublic);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(isPublic);
   const [openedCampusIds, setOpenedCampusIds] = useState<Set<string>>(() => new Set());
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const catalogRef = useRef<HTMLDetailsElement>(null);
+  const allowLegacyDirectory = new Date().getFullYear() <= 2026;
 
   const guidedDeliveries = useMemo(
     () => buildGuidedDeliveries(practicas, informeTasks, areas, new Date(), exactTaskLinks),
@@ -526,6 +631,12 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
       setIsManualRefreshing(false);
     }
   }, [isManualRefreshing, retry]);
+
+  const closeStateFor = useCallback(
+    (delivery: GuidedDelivery): MoodleTaskCloseState | undefined =>
+      delivery.institution ? closeStateByCmid.get(delivery.institution.moodleId) : undefined,
+    [closeStateByCmid]
+  );
 
   const handleOpenCampus = useCallback((practiceId: string) => {
     setOpenedCampusIds((current) => {
@@ -639,11 +750,13 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                     key={delivery.id}
                     delivery={delivery}
                     snapshot={snapshotsByPractice.get(delivery.id)}
+                    closeState={closeStateFor(delivery)}
                     openedCampus={openedCampusIds.has(delivery.id)}
                     isRefreshing={isRefreshing}
                     canReopenGrades={canReopenGrades}
                     onOpenCampus={handleOpenCampus}
                     onOpenDirectory={openDirectory}
+                    allowLegacyDirectory={allowLegacyDirectory}
                     onRefresh={handleRefresh}
                     onReopen={handleReopenGrade}
                   />
@@ -691,11 +804,13 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                     key={delivery.id}
                     delivery={delivery}
                     snapshot={snapshotsByPractice.get(delivery.id)}
+                    closeState={closeStateFor(delivery)}
                     openedCampus={openedCampusIds.has(delivery.id)}
                     isRefreshing={isRefreshing}
                     canReopenGrades={canReopenGrades}
                     onOpenCampus={handleOpenCampus}
                     onOpenDirectory={openDirectory}
+                    allowLegacyDirectory={allowLegacyDirectory}
                     onRefresh={handleRefresh}
                     onReopen={handleReopenGrade}
                   />
@@ -718,11 +833,13 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                     key={delivery.id}
                     delivery={delivery}
                     snapshot={snapshotsByPractice.get(delivery.id)}
+                    closeState={closeStateFor(delivery)}
                     openedCampus={openedCampusIds.has(delivery.id)}
                     isRefreshing={isRefreshing}
                     canReopenGrades={canReopenGrades}
                     onOpenCampus={handleOpenCampus}
                     onOpenDirectory={openDirectory}
+                    allowLegacyDirectory={allowLegacyDirectory}
                     onRefresh={handleRefresh}
                     onReopen={handleReopenGrade}
                   />
@@ -763,90 +880,92 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
         </>
       )}
 
-      <details
-        ref={catalogRef}
-        className="sd-directory"
-        open={isPublic || catalogOpen}
-        onToggle={(event) => setCatalogOpen(event.currentTarget.open)}
-      >
-        <summary>
-          <span className="sd-directory__icon" aria-hidden>
-            <Icon name="upload" size={19} />
-          </span>
-          <span className="sd-directory__copy">
-            <strong>
-              {isPublic ? "Espacios de entrega por área" : "¿No aparece tu práctica?"}
-            </strong>
-            <small>
-              Vinculamos cada informe con la tarea exacta del año para no mandarte a otra cohorte.
-              Si falta la tuya, buscala en el directorio por área.
-            </small>
-          </span>
-          <span className="sd-directory__action">
-            {catalogOpen ? "Cerrar directorio" : "Buscar otro espacio de entrega"}
-            <Icon name={catalogOpen ? "chev" : "search"} size={17} />
-          </span>
-        </summary>
+      {allowLegacyDirectory && (
+        <details
+          ref={catalogRef}
+          className="sd-directory"
+          open={isPublic || catalogOpen}
+          onToggle={(event) => setCatalogOpen(event.currentTarget.open)}
+        >
+          <summary>
+            <span className="sd-directory__icon" aria-hidden>
+              <Icon name="upload" size={19} />
+            </span>
+            <span className="sd-directory__copy">
+              <strong>
+                {isPublic ? "Espacios de entrega por área" : "¿No aparece tu práctica?"}
+              </strong>
+              <small>
+                Vinculamos cada informe con la tarea exacta del año para no mandarte a otra cohorte.
+                Si falta la tuya, buscala en el directorio por área.
+              </small>
+            </span>
+            <span className="sd-directory__action">
+              {catalogOpen ? "Cerrar directorio" : "Buscar otro espacio de entrega"}
+              <Icon name={catalogOpen ? "chev" : "search"} size={17} />
+            </span>
+          </summary>
 
-        <div className="sd-directory__body">
-          <p>Elegí el área y después la institución donde realizaste la práctica.</p>
-          <div className="sd-directory__tabs" role="tablist" aria-label="Áreas de entrega">
-            {areas.map((area: DeliveryArea, index) => {
-              const selected = area.id === selectedArea.id;
-              return (
-                <button
-                  key={area.id}
-                  type="button"
-                  role="tab"
-                  id={`delivery-directory-tab-${area.id}`}
-                  aria-selected={selected}
-                  aria-controls="delivery-directory-panel"
-                  tabIndex={selected ? 0 : -1}
-                  className={selected ? "is-active" : undefined}
-                  style={{ ["--sd-area" as string]: area.color }}
-                  onClick={() => setActiveAreaId(area.id)}
-                  onKeyDown={(event) => handleAreaKeyDown(event, index)}
+          <div className="sd-directory__body">
+            <p>Elegí el área y después la institución donde realizaste la práctica.</p>
+            <div className="sd-directory__tabs" role="tablist" aria-label="Áreas de entrega">
+              {areas.map((area: DeliveryArea, index) => {
+                const selected = area.id === selectedArea.id;
+                return (
+                  <button
+                    key={area.id}
+                    type="button"
+                    role="tab"
+                    id={`delivery-directory-tab-${area.id}`}
+                    aria-selected={selected}
+                    aria-controls="delivery-directory-panel"
+                    tabIndex={selected ? 0 : -1}
+                    className={selected ? "is-active" : undefined}
+                    style={{ ["--sd-area" as string]: area.color }}
+                    onClick={() => setActiveAreaId(area.id)}
+                    onKeyDown={(event) => handleAreaKeyDown(event, index)}
+                  >
+                    <span aria-hidden>
+                      <Icon name={areaIcons[area.id] ?? "upload"} size={18} />
+                    </span>
+                    <strong>{area.name}</strong>
+                    <small>{area.institutions.length}</small>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div
+              id="delivery-directory-panel"
+              role="tabpanel"
+              aria-labelledby={`delivery-directory-tab-${selectedArea.id}`}
+              className="sd-directory__grid"
+              key={selectedArea.id}
+            >
+              {selectedArea.institutions.map((institution) => (
+                <a
+                  key={institution.moodleId}
+                  href={`${MOODLE_ASSIGN}${institution.moodleId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ ["--sd-area" as string]: selectedArea.color }}
+                  aria-label={`Abrir la entrega de ${institution.name} en el Campus`}
                 >
-                  <span aria-hidden>
-                    <Icon name={areaIcons[area.id] ?? "upload"} size={18} />
+                  <strong>{institution.name}</strong>
+                  <span>
+                    Abrir en Campus
+                    <Icon name="external" size={16} />
                   </span>
-                  <strong>{area.name}</strong>
-                  <small>{area.institutions.length}</small>
-                </button>
-              );
-            })}
+                </a>
+              ))}
+            </div>
+            <p className="sd-directory__note">
+              El directorio es una alternativa manual. Si tenés dudas, confirmá el año y la
+              institución antes de subir el informe.
+            </p>
           </div>
-
-          <div
-            id="delivery-directory-panel"
-            role="tabpanel"
-            aria-labelledby={`delivery-directory-tab-${selectedArea.id}`}
-            className="sd-directory__grid"
-            key={selectedArea.id}
-          >
-            {selectedArea.institutions.map((institution) => (
-              <a
-                key={institution.moodleId}
-                href={`${MOODLE_ASSIGN}${institution.moodleId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ ["--sd-area" as string]: selectedArea.color }}
-                aria-label={`Abrir la entrega de ${institution.name} en el Campus`}
-              >
-                <strong>{institution.name}</strong>
-                <span>
-                  Abrir en Campus
-                  <Icon name="external" size={16} />
-                </span>
-              </a>
-            ))}
-          </div>
-          <p className="sd-directory__note">
-            El directorio es una alternativa manual. Si tenés dudas, confirmá el año y la
-            institución antes de subir el informe.
-          </p>
-        </div>
-      </details>
+        </details>
+      )}
     </div>
   );
 };

@@ -156,7 +156,7 @@ const sections: AulaSection[] = [
       </>
     ),
     description:
-      "Elegís tu área e institución desde acá; la carga del informe se abre directamente en el Campus.",
+      "Cada PPS abre su tarea exacta del Campus; las actividades especiales también aparecen cuando Coordinación las asigna.",
     icon: "upload",
     pageEyebrow: "Campus PPS · Entregas",
     pageTitle: (
@@ -165,7 +165,7 @@ const sections: AulaSection[] = [
       </>
     ),
     pageLead:
-      "Tus PPS aparecen primero con su acceso de entrega. Si necesitás subir un informe de otra práctica, también podés ver todos los espacios disponibles.",
+      "Tus PPS aparecen con su acceso exacto. Durante la transición 2026 también podés consultar el directorio manual; desde 2027 sólo verás las tareas que te hayan asignado.",
   },
 ];
 
@@ -641,7 +641,11 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Qué hago si no encuentro el espacio de entrega de mi PPS?",
-        a: "Si la entrega indica Buscar espacio de entrega, todavía no hay un vínculo confirmado para esa PPS. Desplegá Buscar otro espacio de entrega y revisá el directorio por área e institución. Si tampoco aparece allí, escribí a coordinación para que habilite o vincule la tarea correcta; no entregues en una tarea parecida por tu cuenta.",
+        a: "Si la entrega indica Buscar espacio de entrega, todavía no hay un vínculo confirmado. Durante la transición 2026 podés revisar el directorio por área e institución. Desde 2027 sólo se muestran las tareas que te fueron asignadas: si falta una, escribí a coordinación para que vincule la tarea correcta; no entregues en una tarea parecida por tu cuenta.",
+      },
+      {
+        q: "¿Cómo entrego un relevamiento profesional o una entrevista a profesionales?",
+        a: "Coordinación te asigna la actividad y la orientación que acredita. En ese momento aparece automáticamente una tarjeta en Entregas que abre la tarea anual exacta de Clínica, Laboral/Comunitaria o Educacional. Estas actividades tienen entrega libre: no muestran fecha de vencimiento y podés subir el informe cuando completes la actividad.",
       },
       {
         q: "¿Dónde reviso si el informe quedó entregado?",
@@ -656,7 +660,9 @@ const faqGroups: FaqGroup[] = [
             vencimiento a las 23:59 hs (hora de Argentina), sin bloquear una entrega tardía. Durante
             la transición 2026 algunas PPS siguen usando tareas compartidas y esas fechas pueden no
             verse en Campus: el plazo académico igualmente se mantiene. Si una tarea histórica
-            bloquea el envío, escribí a coordinación.
+            bloquea el envío, escribí a coordinación. Los relevamientos profesionales y las
+            entrevistas a profesionales asignados por Coordinación son la excepción: tienen entrega
+            libre, sin fecha límite.
           </>
         ),
       },

@@ -6,6 +6,7 @@ import {
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+  FIELD_TIPO_ACTIVIDAD_PRACTICAS,
 } from "../../constants";
 import type { DeliveryArea, DeliveryInstitution } from "../../hooks/useAulaEntregas";
 import type { MoodleTaskLink } from "../../hooks/useMoodleTaskLinks";
@@ -30,6 +31,7 @@ export interface GuidedDelivery {
   deadlineLabel: string;
   hours: number | null;
   isOnline: boolean;
+  isOpenEnded: boolean;
   academicYear: number | null;
   statusLabel: string;
   statusDetail: string;
@@ -167,7 +169,12 @@ export function buildGuidedDeliveries(
   );
 
   return practicas
-    .filter((practice) => !isPracticeDisapproved(practice[FIELD_ESTADO_PRACTICA]))
+    .filter((practice) => {
+      if (isPracticeDisapproved(practice[FIELD_ESTADO_PRACTICA])) return false;
+      const isSpecial = practice[FIELD_TIPO_ACTIVIDAD_PRACTICAS] === "actividad_especial";
+      const state = normalizeStringForComparison(practice[FIELD_ESTADO_PRACTICA]);
+      return !(isSpecial && (state.includes("cancel") || state.includes("no se pudo concretar")));
+    })
     .map((practice) => {
       const practiceName =
         cleanDbValue(practice[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]) || "Práctica";
@@ -184,7 +191,8 @@ export function buildGuidedDeliveries(
       const resolutionSource: GuidedDelivery["resolutionSource"] = exactTaskLink ? "exact" : "none";
       const startDate = parseToUTCDate(practice[FIELD_FECHA_INICIO_PRACTICAS]);
       const endDate = parseToUTCDate(practice[FIELD_FECHA_FIN_PRACTICAS]);
-      const deadline = endDate ? addDays(endDate, 30) : null;
+      const isOpenEnded = practice[FIELD_TIPO_ACTIVIDAD_PRACTICAS] === "actividad_especial";
+      const deadline = !isOpenEnded && endDate ? addDays(endDate, 30) : null;
       const rawHours = Number(practice[FIELD_HORAS_PRACTICAS]);
       const hours = Number.isFinite(rawHours) && rawHours > 0 ? rawHours : null;
 
@@ -202,6 +210,7 @@ export function buildGuidedDeliveries(
         deadlineLabel: formatDeadline(deadline),
         hours,
         isOnline: Boolean(practice[FIELD_ES_ONLINE_PRACTICAS]),
+        isOpenEnded,
         academicYear:
           exactTaskLink?.academicYear ??
           endDate?.getUTCFullYear() ??

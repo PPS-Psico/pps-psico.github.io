@@ -17,7 +17,8 @@ export const TABLE_LANZAMIENTO_OPCIONES = "lanzamiento_opciones";
 export const TABLE_CONVOCATORIA_PREFERENCIAS = "convocatoria_preferencias";
 
 // Tablas que se venian usando como string suelto en los `.from(...)`.
-// Verificadas contra `information_schema` el 2026-08-22: las 15 existen.
+// Verificadas contra `information_schema` el 2026-08-22; las PPS especiales se
+// agregaron el 2026-08-27.
 export const TABLE_AGENT_SUGGESTIONS = "agent_suggestions";
 export const TABLE_AGENT_AUDIT_LOG = "agent_audit_log";
 export const TABLE_APP_CONFIG = "app_config";
@@ -30,9 +31,18 @@ export const TABLE_LANZAMIENTO_OPCION_HORARIOS = "lanzamiento_opcion_horarios";
 export const TABLE_MOODLE_GRADE_REOPEN_EVENTS = "moodle_grade_reopen_events";
 export const TABLE_MOODLE_GRADE_SNAPSHOTS = "moodle_grade_snapshots";
 export const TABLE_PRACTICA_MOODLE_TAREAS = "practica_moodle_tareas";
+export const TABLE_SPECIAL_PPS_ASSIGNMENTS = "special_pps_assignments";
+export const TABLE_SPECIAL_PPS_TASK_CATALOG = "special_pps_task_catalog";
 export const TABLE_REMINDERS = "reminders";
 export const TABLE_WHATSAPP_CONTACTOS = "whatsapp_contactos";
 export const TABLE_WHATSAPP_MENSAJES = "whatsapp_mensajes";
+
+// PPS especiales
+export const FIELD_ACTIVITY_TYPE_SPECIAL_PPS = "activity_type";
+export const FIELD_ACADEMIC_YEAR_SPECIAL_PPS = "academic_year";
+export const FIELD_ENABLED_SPECIAL_PPS = "enabled";
+export const FIELD_ORIENTATION_KEY_SPECIAL_PPS = "orientation_key";
+export const FIELD_STATUS_SPECIAL_PPS = "status";
 
 // Buckets de Storage. NO son tablas: van por `supabase.storage.from(...)`.
 // Estaban mezclados con los nombres de tabla porque ambos se escriben igual

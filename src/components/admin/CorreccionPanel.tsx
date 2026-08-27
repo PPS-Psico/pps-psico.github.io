@@ -8,6 +8,7 @@ import Toast from "../ui/Toast";
 import SubTabs from "../SubTabs";
 import InformeCorreccionCard from "../InformeCorreccionCard";
 import CorreccionRapidaView from "../CorreccionRapidaView";
+import CierreTareasPanel from "./CierreTareasPanel";
 // FIX: Added InformeCorreccionPPS to imports from types to enable proper typing
 import type {
   InformeCorreccionStudent,
@@ -147,6 +148,7 @@ const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false
           tabs={[
             { id: "grouped", label: "Por Institución", icon: "account_tree" },
             { id: "flat", label: "Vista Rápida", icon: "view_list" },
+            { id: "cierre", label: "Cierre de tareas", icon: "lock_clock" },
           ]}
           activeTabId={activeTab}
           onTabChange={setActiveTab}
@@ -212,6 +214,8 @@ const CorreccionPanel: React.FC<CorreccionPanelProps> = ({ isTestingMode = false
             />
           )}
         </div>
+      ) : activeTab === "cierre" ? (
+        <CierreTareasPanel />
       ) : (
         <CorreccionRapidaView
           students={flatStudents}
