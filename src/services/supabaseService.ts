@@ -285,7 +285,7 @@ export const updateRecord = async <T extends TableName>(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .update(fields as any)
       // T genérico: la columna "id" no se resuelve a string bajo el overload genérico.
-      // @ts-expect-error supabase-js no puede demostrar que toda T tiene id.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .eq("id", recordId as any)
       .select()
       .maybeSingle();
@@ -350,7 +350,7 @@ export const deleteRecord = async <T extends TableName>(
       .from(tableName)
       .delete({ count: "exact" })
       // T genérico: la columna "id" no se resuelve a string bajo el overload genérico.
-      // @ts-expect-error supabase-js no puede demostrar que toda T tiene id.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .eq("id", recordId as any);
 
     if (error)
