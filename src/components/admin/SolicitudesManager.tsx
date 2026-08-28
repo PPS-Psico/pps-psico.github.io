@@ -13,6 +13,7 @@ import {
   FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
   FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_DETALLE_PRACTICAS_FINALIZACION,
+  FIELD_ORIGEN_FINALIZACION,
   TABLE_ESTUDIANTES,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_LEGAJO_ESTUDIANTES,
@@ -205,9 +206,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
 
       return data.map((req) => {
         const studentData = req.estudiantes as
-          | { nombre?: string; legajo?: string; correo?: string }
-          | null
-          | undefined;
+          { nombre?: string; legajo?: string; correo?: string } | null | undefined;
         const reqRec = req as Record<string, unknown>;
         const updatedAt = new Date(
           (reqRec.actualizacion as string) || (reqRec.created_at as string) || Date.now()
@@ -310,6 +309,7 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
           FIELD_PLANILLA_ASISTENCIA_FINALIZACION,
           FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
           FIELD_DETALLE_PRACTICAS_FINALIZACION,
+          FIELD_ORIGEN_FINALIZACION,
         ]
       );
 
@@ -548,7 +548,6 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
           ultimo_mensaje_at: new Date().toISOString(),
           ultimo_mensaje_de: "nos",
           estado: "respondido_por_nos",
-          email_institucion: borradorHermes.to,
           participantes: [borradorHermes.to, "luis.battaglia@uflouni.edu.ar"],
           ingested_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),

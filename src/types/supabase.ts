@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      accreditation_transition_events: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string
+          documentation_snapshot: Json
+          estudiante_id: string
+          finalizacion_id: string | null
+          id: string
+          outcome: string
+          requirement_gaps: string[]
+          trigger_observation_id: string
+          trigger_practica_id: string
+          uncertain_practice_ids: string[]
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string
+          documentation_snapshot?: Json
+          estudiante_id: string
+          finalizacion_id?: string | null
+          id?: string
+          outcome: string
+          requirement_gaps?: string[]
+          trigger_observation_id: string
+          trigger_practica_id: string
+          uncertain_practice_ids?: string[]
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string
+          documentation_snapshot?: Json
+          estudiante_id?: string
+          finalizacion_id?: string | null
+          id?: string
+          outcome?: string
+          requirement_gaps?: string[]
+          trigger_observation_id?: string
+          trigger_practica_id?: string
+          uncertain_practice_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accreditation_transition_events_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: true
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accreditation_transition_events_finalizacion_id_fkey"
+            columns: ["finalizacion_id"]
+            isOneToOne: false
+            referencedRelation: "finalizacion_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accreditation_transition_events_trigger_observation_id_fkey"
+            columns: ["trigger_observation_id"]
+            isOneToOne: true
+            referencedRelation: "moodle_grade_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accreditation_transition_events_trigger_practica_id_fkey"
+            columns: ["trigger_practica_id"]
+            isOneToOne: false
+            referencedRelation: "practicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_action_log: {
         Row: {
           action_type: string
@@ -260,24 +331,30 @@ export type Database = {
       }
       app_config: {
         Row: {
+          accreditation_automation_mode: string
           created_at: string
           horas_objetivo_orientacion: number
           horas_objetivo_total: number
           id: number
+          moodle_attendance_auto_threshold: number
           rotacion_objetivo: number
         }
         Insert: {
+          accreditation_automation_mode?: string
           created_at?: string
           horas_objetivo_orientacion?: number
           horas_objetivo_total?: number
           id?: number
+          moodle_attendance_auto_threshold?: number
           rotacion_objetivo?: number
         }
         Update: {
+          accreditation_automation_mode?: string
           created_at?: string
           horas_objetivo_orientacion?: number
           horas_objetivo_total?: number
           id?: number
+          moodle_attendance_auto_threshold?: number
           rotacion_objetivo?: number
         }
         Relationships: []
@@ -927,6 +1004,7 @@ export type Database = {
           fecha_solicitud: string | null
           id: string
           informe_final_url: Json | null
+          origen: string
           planilla_asistencia_url: Json | null
           planilla_horas_url: Json | null
           sugerencias_mejoras: string | null
@@ -941,6 +1019,7 @@ export type Database = {
           fecha_solicitud?: string | null
           id?: string
           informe_final_url?: Json | null
+          origen?: string
           planilla_asistencia_url?: Json | null
           planilla_horas_url?: Json | null
           sugerencias_mejoras?: string | null
@@ -955,6 +1034,7 @@ export type Database = {
           fecha_solicitud?: string | null
           id?: string
           informe_final_url?: Json | null
+          origen?: string
           planilla_asistencia_url?: Json | null
           planilla_horas_url?: Json | null
           sugerencias_mejoras?: string | null
@@ -1462,6 +1542,9 @@ export type Database = {
       }
       moodle_grade_observations: {
         Row: {
+          attendance_confidence: number | null
+          attendance_evidence: string | null
+          attendance_evidence_reasons: Json | null
           aula_entrega_id: number
           auth_user_id: string
           bridge_version: string
@@ -1484,12 +1567,19 @@ export type Database = {
           practica_id: string
           received_at: string
           request_id: string
+          submission_classifier_version: string | null
+          submission_file_count: number | null
+          submission_file_types: Json | null
+          submission_logical_file_count: number | null
           submitted: boolean
           submitted_at: string | null
           submitted_at_display: string | null
           task_status: string
         }
         Insert: {
+          attendance_confidence?: number | null
+          attendance_evidence?: string | null
+          attendance_evidence_reasons?: Json | null
           aula_entrega_id: number
           auth_user_id: string
           bridge_version: string
@@ -1512,12 +1602,19 @@ export type Database = {
           practica_id: string
           received_at?: string
           request_id: string
+          submission_classifier_version?: string | null
+          submission_file_count?: number | null
+          submission_file_types?: Json | null
+          submission_logical_file_count?: number | null
           submitted?: boolean
           submitted_at?: string | null
           submitted_at_display?: string | null
           task_status: string
         }
         Update: {
+          attendance_confidence?: number | null
+          attendance_evidence?: string | null
+          attendance_evidence_reasons?: Json | null
           aula_entrega_id?: number
           auth_user_id?: string
           bridge_version?: string
@@ -1540,6 +1637,10 @@ export type Database = {
           practica_id?: string
           received_at?: string
           request_id?: string
+          submission_classifier_version?: string | null
+          submission_file_count?: number | null
+          submission_file_types?: Json | null
+          submission_logical_file_count?: number | null
           submitted?: boolean
           submitted_at?: string | null
           submitted_at_display?: string | null
@@ -1619,6 +1720,9 @@ export type Database = {
       }
       moodle_grade_snapshots: {
         Row: {
+          attendance_confidence: number | null
+          attendance_evidence: string | null
+          attendance_evidence_reasons: Json | null
           aula_entrega_id: number
           cmid: number
           confidence: string
@@ -1646,12 +1750,19 @@ export type Database = {
           received_at: string
           reopened_at: string | null
           scan_closed: boolean
+          submission_classifier_version: string | null
+          submission_file_count: number | null
+          submission_file_types: Json | null
+          submission_logical_file_count: number | null
           submitted: boolean
           submitted_at: string | null
           submitted_at_display: string | null
           task_status: string
         }
         Insert: {
+          attendance_confidence?: number | null
+          attendance_evidence?: string | null
+          attendance_evidence_reasons?: Json | null
           aula_entrega_id: number
           cmid: number
           confidence: string
@@ -1679,12 +1790,19 @@ export type Database = {
           received_at: string
           reopened_at?: string | null
           scan_closed?: boolean
+          submission_classifier_version?: string | null
+          submission_file_count?: number | null
+          submission_file_types?: Json | null
+          submission_logical_file_count?: number | null
           submitted?: boolean
           submitted_at?: string | null
           submitted_at_display?: string | null
           task_status: string
         }
         Update: {
+          attendance_confidence?: number | null
+          attendance_evidence?: string | null
+          attendance_evidence_reasons?: Json | null
           aula_entrega_id?: number
           cmid?: number
           confidence?: string
@@ -1712,6 +1830,10 @@ export type Database = {
           received_at?: string
           reopened_at?: string | null
           scan_closed?: boolean
+          submission_classifier_version?: string | null
+          submission_file_count?: number | null
+          submission_file_types?: Json | null
+          submission_logical_file_count?: number | null
           submitted?: boolean
           submitted_at?: string | null
           submitted_at_display?: string | null
@@ -3399,6 +3521,10 @@ export type Database = {
       }
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined }
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean }
+      evaluate_student_accreditation_transition_v1: {
+        Args: { p_student_id: string; p_trigger_observation_id: string }
+        Returns: Json
+      }
       finalize_password_reset_delivery: {
         Args: {
           p_delivered: boolean
@@ -3638,6 +3764,7 @@ export type Database = {
         Args: { token_hash_input: string }
         Returns: Json
       }
+      get_moodle_submission_evidence_health_v1: { Args: never; Returns: Json }
       get_moodle_sync_health: { Args: never; Returns: Json }
       get_moodle_task_unit_summaries_v1: {
         Args: { p_launch_id?: string; p_orientation?: string }

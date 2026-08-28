@@ -23,6 +23,7 @@ const validResult = {
       gradedAtDisplay: "lunes, 10 de agosto de 2026, 11:09",
       submittedAt: "2026-07-21T04:12:00.000Z",
       submittedAtDisplay: "martes, 21 de julio de 2026, 01:12",
+      submissionFiles: ["Informe final.pdf", "IMG_4182.jpg", "IMG_4183.jpg"],
     },
   ],
 };
@@ -66,6 +67,19 @@ describe("moodleTasksResultSchema", () => {
     expect(
       moodleTasksResultSchema.safeParse({ ...validResult, moodleUsername: "blas" }).success
     ).toBe(false);
+  });
+
+  it("rechaza más archivos que el máximo material de la tarea", () => {
+    const candidate = {
+      ...validResult,
+      tasks: [
+        {
+          ...validResult.tasks[0],
+          submissionFiles: Array.from({ length: 21 }, (_, index) => `archivo-${index}.jpg`),
+        },
+      ],
+    };
+    expect(moodleTasksResultSchema.safeParse(candidate).success).toBe(false);
   });
 });
 

@@ -11,6 +11,11 @@ import {
   type GradeIssue,
   type GradeReadiness,
 } from "../../domain/finalizacion/gradeReadiness";
+import {
+  parseAccreditationDocumentationSnapshot,
+  type AccreditationEvidenceItem,
+  type AccreditationTransitionEvent,
+} from "../../domain/finalizacion/accreditationTransition";
 import { Icon } from "./ds";
 import {
   FIELD_ES_ONLINE_PRACTICAS,
@@ -31,6 +36,7 @@ import {
   type DetallePracticas,
 } from "../../utils/acreditacion";
 import { ALL_ORIENTACIONES, type CriteriosCalculados, type Practica } from "../../types";
+import { isPracticeFinished } from "../../logic/studentRules";
 
 interface FinalizacionFormProps {
   isOpen: boolean;
@@ -40,6 +46,8 @@ interface FinalizacionFormProps {
   criterios?: CriteriosCalculados;
   solicitudes?: any[];
   onAddPPS?: () => void;
+  /** Evento persistido que permite pedir sólo las planillas dudosas. */
+  assistedTransition?: AccreditationTransitionEvent | null;
 }
 
 type Step = "requisitos" | "completar" | "documentacion" | "confirmar" | "enviado";
@@ -53,7 +61,7 @@ interface RowState {
 const toDateInput = (value: string | null | undefined): string =>
   value ? String(value).slice(0, 10) : "";
 
-const DANGER = "#c0563f";
+const DANGER = "#a6293a";
 const ROTACION_TARGET = 3;
 
 const joinAreaList = (items: string[], connector = "o") => {
@@ -227,6 +235,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
   criterios,
   solicitudes = [],
   onAddPPS,
+  assistedTransition = null,
 }) => {
   const { showToast } = useToast();
   const { resolvedTheme } = useTheme();
@@ -240,13 +249,22 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     kind: "informe" | "asistencia";
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isAssisted = assistedTransition?.outcome === "manual_required";
+  const uncertainPracticeIds = useMemo(
+    () => new Set(isAssisted ? assistedTransition.uncertain_practice_ids : []),
+    [assistedTransition, isAssisted]
+  );
+  const evidenceByPractice = useMemo(() => {
+    if (!isAssisted || !assistedTransition) return new Map<string, AccreditationEvidenceItem>();
+    const snapshot = parseAccreditationDocumentationSnapshot(
+      assistedTransition.documentation_snapshot
+    );
+    return new Map(snapshot?.items.map((item) => [item.practicaId, item]) ?? []);
+  }, [assistedTransition, isAssisted]);
 
   // Prácticas finalizadas: son las que entran al trámite.
   const finalizadas = useMemo(
-    () =>
-      practicas.filter(
-        (p) => normalizeStringForComparison(p[FIELD_ESTADO_PRACTICA]) === "finalizada"
-      ),
+    () => practicas.filter((p) => isPracticeFinished(p[FIELD_ESTADO_PRACTICA])),
     [practicas]
   );
 
@@ -264,7 +282,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      setStep("requisitos");
+      setStep(isAssisted ? "documentacion" : "requisitos");
       setSugerencias("");
     } else {
       document.body.style.overflow = "unset";
@@ -272,7 +290,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen]);
+  }, [isAssisted, isOpen]);
 
   // Sincroniza el estado por fila con las prácticas finalizadas (preserva archivos elegidos).
   useEffect(() => {
@@ -294,8 +312,9 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
     const rs = rows[p.id];
     if (!rs) return false;
     const esOnline = !!p[FIELD_ES_ONLINE_PRACTICAS];
-    if (!rs.informe) return false;
-    if (!esOnline && !rs.asistencia) return false;
+    if (!isAssisted && !rs.informe) return false;
+    if (!esOnline && (!isAssisted || uncertainPracticeIds.has(p.id)) && !rs.asistencia)
+      return false;
     return true;
   };
 
@@ -341,17 +360,43 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
       for (const p of finalizadas) {
         const rs = rows[p.id];
         const esOnline = !!p[FIELD_ES_ONLINE_PRACTICAS];
+        const evidence = evidenceByPractice.get(p.id);
 
-        const informeUrl = await uploadFinalizationFile(rs.informe!, studentId, "informe", p.id);
+        let informe: DetallePracticaItem["informe"];
+        if (isAssisted) {
+          informe = {
+            source: "moodle",
+            cmid: evidence?.cmid ?? p.nota_moodle_cmid ?? null,
+            evidence: "graded",
+          };
+        } else {
+          const informeUrl = await uploadFinalizationFile(rs.informe!, studentId, "informe", p.id);
+          informe = { source: "student_upload", url: informeUrl, filename: rs.informe!.name };
+        }
+
         let asistencia: DetallePracticaItem["asistencia"] = null;
-        if (!esOnline && rs.asistencia) {
+        const attendanceRequired = !esOnline && (!isAssisted || uncertainPracticeIds.has(p.id));
+        if (attendanceRequired && rs.asistencia) {
           const asistenciaUrl = await uploadFinalizationFile(
             rs.asistencia,
             studentId,
             "asistencia",
             p.id
           );
-          asistencia = { url: asistenciaUrl, filename: rs.asistencia.name };
+          asistencia = {
+            source: "student_upload",
+            url: asistenciaUrl,
+            filename: rs.asistencia.name,
+          };
+        } else if (!esOnline && isAssisted) {
+          asistencia = {
+            source: "moodle",
+            cmid: evidence?.cmid ?? p.nota_moodle_cmid ?? null,
+            evidence: evidence?.attendanceEvidence ?? "assumed",
+            confidence: evidence?.attendanceConfidence ?? null,
+            fileCount: evidence?.fileCount ?? null,
+            logicalFileCount: evidence?.logicalFileCount ?? null,
+          };
         }
 
         items.push({
@@ -365,25 +410,40 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
           // La calificación ya no se autodeclara. Se resuelve desde el snapshot Moodle
           // durante la revisión administrativa; se conserva la clave por compatibilidad.
           nota: "",
-          informe: { url: informeUrl, filename: rs.informe!.name },
+          informe,
           asistencia,
+          documentation: {
+            report: "verified",
+            attendance: esOnline ? "not_required" : "verified",
+          },
         });
       }
 
       const detalle: DetallePracticas = {
+        version: "moodle-assisted/v1",
+        source: isAssisted ? "moodle_assisted" : "manual",
         totalHoras: computeTotalHoras(items.map((i) => i.horas)),
         notaPromedio: null,
         items,
       };
 
-      await submitFinalizationRequest(studentId, { detalle, sugerencias });
+      await submitFinalizationRequest(studentId, {
+        detalle,
+        sugerencias,
+        origen: isAssisted ? "moodle_assisted" : "manual",
+      });
     },
     onSuccess: () => {
       setStep("enviado");
       queryClient.invalidateQueries({ queryKey: ["finalizacionRequest"] });
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
       queryClient.invalidateQueries({ queryKey: ["practicas"] });
-      showToast("Solicitud de acreditación enviada con éxito.", "success");
+      showToast(
+        isAssisted
+          ? "Documentación pendiente enviada. El trámite de acreditación quedó iniciado."
+          : "Solicitud de acreditación enviada con éxito.",
+        "success"
+      );
     },
     onError: (error) => {
       logger.error("Finalizacion submission error:", error);
@@ -406,7 +466,9 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
       : step === "completar"
         ? "Completá tus PPS"
         : step === "documentacion"
-          ? "Documentación por PPS"
+          ? isAssisted
+            ? "Documentación pendiente"
+            : "Documentación por PPS"
           : step === "confirmar"
             ? "Revisá y enviá"
             : "Solicitud enviada";
@@ -434,7 +496,10 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
             <div className="flex items-center gap-3">
               <span
                 className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(192,86,63,0.1)", color: DANGER }}
+                style={{
+                  background: `color-mix(in oklab, ${DANGER} 10%, transparent)`,
+                  color: DANGER,
+                }}
               >
                 <span className="material-icons">lock</span>
               </span>
@@ -466,8 +531,8 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
             <div
               className="p-4 rounded-2xl flex items-start gap-3"
               style={{
-                background: "rgba(192,86,63,0.08)",
-                border: "1px solid rgba(192,86,63,0.20)",
+                background: `color-mix(in oklab, ${DANGER} 8%, transparent)`,
+                border: `1px solid color-mix(in oklab, ${DANGER} 30%, transparent)`,
               }}
             >
               <Icon name="alert" size={18} color={DANGER} />
@@ -619,11 +684,35 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
           {step === "documentacion" && (
             <div className="space-y-4">
               <p className="text-sm leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-                Cargá por cada PPS el <strong>informe final</strong>, la{" "}
-                <strong>planilla de asistencia</strong> y verificá que la{" "}
-                <strong>fecha de finalización</strong> sea correcta. La calificación se consulta
-                directamente en Campus; las PPS online no requieren planilla de asistencia.
+                {isAssisted ? (
+                  <>
+                    Campus ya verificó tus <strong>informes finales</strong> y la documentación
+                    segura. Cargá sólo las <strong>planillas de asistencia pendientes</strong> que
+                    aparecen abajo y revisá las fechas.
+                  </>
+                ) : (
+                  <>
+                    Cargá por cada PPS el <strong>informe final</strong>, la{" "}
+                    <strong>planilla de asistencia</strong> y verificá que la{" "}
+                    <strong>fecha de finalización</strong> sea correcta. La calificación se consulta
+                    directamente en Campus; las PPS online no requieren planilla de asistencia.
+                  </>
+                )}
               </p>
+
+              {isAssisted && (
+                <div
+                  className="flex items-start gap-3 rounded-xl border px-4 py-3"
+                  style={{ background: "var(--tint)", borderColor: "var(--accent)" }}
+                >
+                  <Icon name="check" size={18} color="var(--accent-text)" strokeWidth={2.3} />
+                  <p className="m-0 text-xs leading-5" style={{ color: "var(--accent-text)" }}>
+                    No tenés que volver a subir ningún informe. Te pedimos documentación sólo para{" "}
+                    {uncertainPracticeIds.size}{" "}
+                    {uncertainPracticeIds.size === 1 ? "PPS presencial" : "PPS presenciales"}.
+                  </p>
+                </div>
+              )}
 
               <GradeIssuesNotice issues={gradeIssues} />
 
@@ -637,6 +726,12 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
                     row={rows[p.id]}
                     readiness={gradeReadinessById.get(p.id)}
                     valid={isRowValid(p)}
+                    assisted={isAssisted}
+                    attendanceRequired={
+                      !p[FIELD_ES_ONLINE_PRACTICAS] &&
+                      (!isAssisted || uncertainPracticeIds.has(p.id))
+                    }
+                    evidence={evidenceByPractice.get(p.id)}
                     onSetRow={(patch) => setRow(p.id, patch)}
                     onPickInforme={() => openFilePicker(p.id, "informe")}
                     onPickAsistencia={() => openFilePicker(p.id, "asistencia")}
@@ -655,7 +750,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
             />
           )}
 
-          {step === "enviado" && <EnviadoStep />}
+          {step === "enviado" && <EnviadoStep assisted={isAssisted} />}
         </div>
 
         {/* Footer */}
@@ -669,6 +764,7 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
               cumpleTodo={cumpleTodo}
               allRowsValid={allRowsValid}
               isSubmitting={submitMutation.isPending}
+              assisted={isAssisted}
               onBack={() => {
                 if (step === "completar") setStep("requisitos");
                 else if (step === "documentacion") setStep(cumpleTodo ? "requisitos" : "completar");
@@ -699,7 +795,10 @@ const RequisitosStep: React.FC<{
     {!cumpleTodo && (
       <div
         className="p-4 rounded-2xl flex items-start gap-3"
-        style={{ background: "rgba(192,86,63,0.08)", border: "1px solid rgba(192,86,63,0.30)" }}
+        style={{
+          background: `color-mix(in oklab, ${DANGER} 8%, transparent)`,
+          border: `1px solid color-mix(in oklab, ${DANGER} 30%, transparent)`,
+        }}
       >
         <Icon name="alert" size={18} color={DANGER} />
         <p className="text-xs font-medium leading-relaxed" style={{ color: DANGER }}>
@@ -914,9 +1013,9 @@ const ISSUE_STYLES: Record<IssueTone, { bg: string; line: string; text: string }
     text: "var(--danger-text, #8d2323)",
   },
   warn: {
-    bg: "var(--warn-tint, #fdf1e3)",
+    bg: "var(--warn-tint, color-mix(in oklab, #a85a23 8%, transparent))",
     line: "var(--warn-line, #e8c89a)",
-    text: "var(--warn-text, #8a5a00)",
+    text: "var(--warn-text, #a85a23)",
   },
 };
 
@@ -1004,10 +1103,24 @@ const PpsDocCard: React.FC<{
   row?: RowState;
   readiness?: GradeReadiness;
   valid: boolean;
+  assisted: boolean;
+  attendanceRequired: boolean;
+  evidence?: AccreditationEvidenceItem;
   onSetRow: (patch: Partial<RowState>) => void;
   onPickInforme: () => void;
   onPickAsistencia: () => void;
-}> = ({ practica, row, readiness, valid, onSetRow, onPickInforme, onPickAsistencia }) => {
+}> = ({
+  practica,
+  row,
+  readiness,
+  valid,
+  assisted,
+  attendanceRequired,
+  evidence,
+  onSetRow,
+  onPickInforme,
+  onPickAsistencia,
+}) => {
   const esOnline = !!practica[FIELD_ES_ONLINE_PRACTICAS];
   if (!row) return null;
 
@@ -1041,7 +1154,10 @@ const PpsDocCard: React.FC<{
               style={
                 readiness.ready
                   ? { background: "var(--tint)", color: "var(--accent-text)" }
-                  : { background: "var(--warn-tint, #fdf1e3)", color: "var(--warn-text, #8a5a00)" }
+                  : {
+                      background: "var(--warn-tint, color-mix(in oklab, #a85a23 8%, transparent))",
+                      color: "var(--warn-text, #a85a23)",
+                    }
               }
             >
               {readiness.ready ? `Nota ${readiness.nota}` : readiness.label}
@@ -1104,24 +1220,81 @@ const PpsDocCard: React.FC<{
       </p>
 
       {/* Archivos */}
-      <div className={`grid grid-cols-1 ${esOnline ? "" : "sm:grid-cols-2"} gap-2.5`}>
-        <RowFileButton
-          label="Informe final"
-          file={row.informe}
-          onPick={onPickInforme}
-          onClear={() => onSetRow({ informe: null })}
-          required
-        />
-        {!esOnline && (
+      {assisted ? (
+        <div className={`grid grid-cols-1 ${esOnline ? "" : "sm:grid-cols-2"} gap-2.5`}>
+          <div
+            className="flex min-h-[58px] items-center gap-2.5 rounded-xl border px-3 py-2.5"
+            style={{ background: "var(--tint)", borderColor: "var(--line)" }}
+          >
+            <span style={{ color: "var(--accent-text)" }}>
+              <Icon name="check" size={17} strokeWidth={2.4} />
+            </span>
+            <div>
+              <p className="m-0 text-xs font-bold" style={{ color: "var(--accent-text)" }}>
+                Informe verificado
+              </p>
+              <p className="m-0 mt-0.5 text-[10px]" style={{ color: "var(--ink-muted)" }}>
+                Calificación confirmada en Campus
+              </p>
+            </div>
+          </div>
+
+          {!esOnline && attendanceRequired && (
+            <RowFileButton
+              label="Planilla de asistencia"
+              file={row.asistencia}
+              onPick={onPickAsistencia}
+              onClear={() => onSetRow({ asistencia: null })}
+              required
+            />
+          )}
+
+          {!esOnline && !attendanceRequired && (
+            <div
+              className="flex min-h-[58px] items-center gap-2.5 rounded-xl border px-3 py-2.5"
+              style={{ background: "var(--tint)", borderColor: "var(--line)" }}
+              title={
+                evidence
+                  ? `Evidencia ${evidence.attendanceEvidence}; confianza ${Math.round(
+                      evidence.attendanceConfidence * 100
+                    )}%`
+                  : "Documentación verificada en Campus"
+              }
+            >
+              <span style={{ color: "var(--accent-text)" }}>
+                <Icon name="shield" size={17} strokeWidth={2.1} />
+              </span>
+              <div>
+                <p className="m-0 text-xs font-bold" style={{ color: "var(--accent-text)" }}>
+                  Asistencia verificada
+                </p>
+                <p className="m-0 mt-0.5 text-[10px]" style={{ color: "var(--ink-muted)" }}>
+                  Evidencia suficiente en la entrega
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className={`grid grid-cols-1 ${esOnline ? "" : "sm:grid-cols-2"} gap-2.5`}>
           <RowFileButton
-            label="Planilla de asistencia"
-            file={row.asistencia}
-            onPick={onPickAsistencia}
-            onClear={() => onSetRow({ asistencia: null })}
+            label="Informe final"
+            file={row.informe}
+            onPick={onPickInforme}
+            onClear={() => onSetRow({ informe: null })}
             required
           />
-        )}
-      </div>
+          {!esOnline && (
+            <RowFileButton
+              label="Planilla de asistencia"
+              file={row.asistencia}
+              onPick={onPickAsistencia}
+              onClear={() => onSetRow({ asistencia: null })}
+              required
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -1186,7 +1359,7 @@ const ConfirmarStep: React.FC<{
   </div>
 );
 
-const EnviadoStep: React.FC = () => (
+const EnviadoStep: React.FC<{ assisted: boolean }> = ({ assisted }) => (
   <div className="py-8 flex flex-col items-center text-center gap-4">
     <div
       className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -1199,8 +1372,9 @@ const EnviadoStep: React.FC = () => (
         ¡Acreditación enviada!
       </h3>
       <p className="text-sm mt-1 max-w-sm" style={{ color: "var(--ink-soft)" }}>
-        Recibimos el detalle de tus PPS. El trámite quedó en proceso y vas a recibir novedades por
-        correo.
+        {assisted
+          ? "Recibimos las planillas pendientes. El trámite de acreditación ya quedó en proceso y vas a recibir novedades por correo."
+          : "Recibimos el detalle de tus PPS. El trámite quedó en proceso y vas a recibir novedades por correo."}
       </p>
     </div>
   </div>
@@ -1239,10 +1413,11 @@ const FooterButtons: React.FC<{
   cumpleTodo: boolean;
   allRowsValid: boolean;
   isSubmitting: boolean;
+  assisted: boolean;
   onBack: () => void;
   onNext: () => void;
-}> = ({ step, cumpleTodo, allRowsValid, isSubmitting, onBack, onNext }) => {
-  const showBack = step !== "requisitos";
+}> = ({ step, cumpleTodo, allRowsValid, isSubmitting, assisted, onBack, onNext }) => {
+  const showBack = step !== "requisitos" && !(assisted && step === "documentacion");
   const nextLabel =
     step === "requisitos"
       ? cumpleTodo

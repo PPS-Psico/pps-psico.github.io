@@ -5,6 +5,7 @@ import {
   FIELD_PLANILLA_ASISTENCIA_FINALIZACION,
   FIELD_PLANILLA_HORAS_FINALIZACION,
   FIELD_SUGERENCIAS_MEJORAS_FINALIZACION,
+  FIELD_ORIGEN_FINALIZACION,
 } from "../../constants";
 import type { FinalizacionRequest } from "../../hooks/useFinalizacionLogic";
 import { useFinalizacionLogic } from "../../hooks/useFinalizacionLogic";
@@ -15,7 +16,12 @@ import {
   useFinalizationGradeResolution,
 } from "../../hooks/useFinalizationGradeResolution";
 import { supabase } from "../../lib/supabaseClient";
-import { computeTotalHoras, type DetallePracticas } from "../../utils/acreditacion";
+import {
+  computeTotalHoras,
+  isDetalleArchivoMoodle,
+  isDetalleArchivoSubido,
+  type DetallePracticas,
+} from "../../utils/acreditacion";
 import {
   Attachment,
   getNormalizationState,
@@ -92,11 +98,11 @@ const DetallePorPps: React.FC<{
   const files: Attachment[] = [];
   const indexOf = new Map<string, number>();
   detalle.items.forEach((item, i) => {
-    if (item.informe) {
+    if (isDetalleArchivoSubido(item.informe)) {
       indexOf.set(`informe-${i}`, files.length);
       files.push({ url: item.informe.url, filename: item.informe.filename, type: "informe" });
     }
-    if (item.asistencia) {
+    if (isDetalleArchivoSubido(item.asistencia)) {
       indexOf.set(`asistencia-${i}`, files.length);
       files.push({
         url: item.asistencia.url,
@@ -122,6 +128,16 @@ const DetallePorPps: React.FC<{
     ) : (
       <span className="px-2.5 py-1.5 text-xs italic text-slate-400">{label}</span>
     );
+
+  const MoodleEvidence: React.FC<{ label: string }> = ({ label }) => (
+    <span
+      title="Evidencia verificada desde la entrega de Moodle; no existe una copia duplicada en Supabase."
+      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+    >
+      <span className="material-icons !text-sm">cloud_done</span>
+      {label} · Campus
+    </span>
+  );
 
   return (
     <div className="space-y-4">
@@ -169,9 +185,15 @@ const DetallePorPps: React.FC<{
               <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                 Nota: {gradesByPractice.get(item.practicaId)?.nota || "—"}
               </span>
-              <FileBtn label="Informe" icon="description" idx={indexOf.get(`informe-${i}`)} />
+              {isDetalleArchivoMoodle(item.informe) ? (
+                <MoodleEvidence label="Informe" />
+              ) : (
+                <FileBtn label="Informe" icon="description" idx={indexOf.get(`informe-${i}`)} />
+              )}
               {item.esOnline ? (
                 <span className="px-2.5 py-1.5 text-xs italic text-slate-400">Sin asistencia</span>
+              ) : isDetalleArchivoMoodle(item.asistencia) ? (
+                <MoodleEvidence label="Asistencia" />
               ) : (
                 <FileBtn
                   label="Asistencia"
@@ -317,6 +339,15 @@ const RequestListItem: React.FC<{
             <h4 className="font-bold text-slate-800 dark:text-slate-100 truncate text-base">
               {request.studentName}
             </h4>
+            {(request[FIELD_ORIGEN_FINALIZACION] === "moodle_automatic" ||
+              request[FIELD_ORIGEN_FINALIZACION] === "moodle_assisted") && (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <span className="material-icons !text-xs">cloud_done</span>
+                {request[FIELD_ORIGEN_FINALIZACION] === "moodle_automatic"
+                  ? "Automático · Campus"
+                  : "Asistido · Campus"}
+              </span>
+            )}
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono bg-slate-50 dark:bg-slate-800 px-1.5 rounded border border-slate-100 dark:border-slate-700">
                 {request.studentLegajo}

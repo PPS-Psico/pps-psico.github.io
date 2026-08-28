@@ -43,10 +43,19 @@ export const moodleTaskResultSchema = z
     feedbackComment: z.string().trim().max(2000).nullable().optional(),
     submittedAt: z.string().datetime({ offset: true }).nullable().optional(),
     submittedAtDisplay: z.string().trim().max(200).nullable().optional(),
+    // Se usan transitoriamente para clasificar la composición de la entrega.
+    // El backend persiste sólo evidencia derivada, nunca estos nombres.
+    submissionFiles: z.array(z.string().trim().min(1).max(180)).max(20).nullable().optional(),
   })
   .superRefine((task, ctx) => {
     if (!task.submitted && task.submittedAt) {
       ctx.addIssue({ code: "custom", message: "Una tarea no entregada no puede tener fecha." });
+    }
+    if (!task.submitted && task.submissionFiles && task.submissionFiles.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Una tarea no entregada no puede incluir archivos.",
+      });
     }
     if (task.status !== "graded") return;
     if (task.gradeValue === null || task.gradeMax === null || task.gradeValue > task.gradeMax) {

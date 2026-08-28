@@ -1,11 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { classifyMoodleSubmissionFiles } from "../../../src/domain/moodle/moodleSubmissionEvidence.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_ORIGIN = "https://pps-psico.github.io";
 const COURSE_ID = 3615;
 const BRIDGE_VERSION = "pps-moodle-bridge/v1";
-const PARSER_VERSION = "assignment-page/v2";
+const PARSER_VERSION = "assignment-page/v3";
 const MAX_OBSERVATIONS = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TASK_STATUSES = new Set(["no_access", "not_submitted", "submitted", "graded", "parse_error"]);
@@ -90,6 +91,7 @@ type PracticeRow = {
   estudiante_id: string;
   lanzamiento_id: string | null;
   especialidad: string | null;
+  es_online: boolean | null;
 };
 
 type TaskLinkRow = {
@@ -250,6 +252,7 @@ Deno.serve(async (req) => {
       const feedbackComment = boundedText(raw.feedbackComment, 2000);
       const submittedAt = boundedText(raw.submittedAt, 40);
       const submittedAtDisplay = boundedText(raw.submittedAtDisplay, 200);
+      const rawSubmissionFiles = raw.submissionFiles;
       if (!practicaId || !UUID_RE.test(practicaId)) throw new Error("invalid_practice");
       if (!cmid || !Number.isInteger(cmid) || cmid <= 0) throw new Error("invalid_cmid");
       if (!status || !TASK_STATUSES.has(status)) throw new Error("invalid_status");
@@ -262,6 +265,20 @@ Deno.serve(async (req) => {
         throw new Error("grade_without_graded_status");
       }
       const submitted = raw.submitted === true || status === "graded" || status === "submitted";
+      let submissionFiles: string[] | null = null;
+      if (rawSubmissionFiles !== null && rawSubmissionFiles !== undefined) {
+        if (!Array.isArray(rawSubmissionFiles) || rawSubmissionFiles.length > 20) {
+          throw new Error("invalid_submission_files");
+        }
+        submissionFiles = rawSubmissionFiles.map((value) => {
+          const filename = boundedText(value, 180);
+          if (!filename) throw new Error("invalid_submission_files");
+          return filename;
+        });
+        if (!submitted && submissionFiles.length > 0) {
+          throw new Error("files_without_submission");
+        }
+      }
       if (submittedAt) {
         const submittedMs = Date.parse(submittedAt);
         if (Number.isNaN(submittedMs)) throw new Error("invalid_submitted_at");
@@ -281,6 +298,7 @@ Deno.serve(async (req) => {
         gradeDisplay,
         gradedAtDisplay,
         feedbackComment,
+        submissionFiles,
       };
     });
 
@@ -305,7 +323,7 @@ Deno.serve(async (req) => {
     const practiceIds = [...new Set(normalizedInput.map((item) => item.practicaId))];
     const { data: practiceData, error: practiceError } = await admin
       .from("practicas")
-      .select("id, estudiante_id, lanzamiento_id, especialidad")
+      .select("id, estudiante_id, lanzamiento_id, especialidad, es_online")
       .eq("estudiante_id", student.id)
       .in("id", practiceIds);
     if (practiceError) throw new Error("practice_lookup_failed");
@@ -385,6 +403,10 @@ Deno.serve(async (req) => {
           ) {
             throw new Error("grade_scale_mismatch");
           }
+          const submissionEvidence = classifyMoodleSubmissionFiles({
+            filenames: item.submissionFiles,
+            isOnline: practice.es_online === true,
+          });
           const payloadHash = await sha256({
             requestId,
             observedAt,
@@ -399,6 +421,7 @@ Deno.serve(async (req) => {
             feedbackComment: item.feedbackComment,
             submittedAt: item.submittedAt,
             submittedAtDisplay: item.submittedAtDisplay,
+            submissionFiles: item.submissionFiles,
           });
           return {
             row: {
@@ -426,6 +449,13 @@ Deno.serve(async (req) => {
               parser_version: PARSER_VERSION,
               confidence: "moodle_session_observed",
               payload_hash: payloadHash,
+              submission_file_count: submissionEvidence.fileCount,
+              submission_logical_file_count: submissionEvidence.logicalFileCount,
+              submission_file_types: submissionEvidence.fileTypeCounts,
+              attendance_evidence: submissionEvidence.attendanceEvidence,
+              attendance_confidence: submissionEvidence.attendanceConfidence,
+              attendance_evidence_reasons: submissionEvidence.reasons,
+              submission_classifier_version: submissionEvidence.classifierVersion,
             },
             rejection: null,
           };
@@ -462,7 +492,7 @@ Deno.serve(async (req) => {
     const { data: existingSnapshots, error: existingSnapshotError } = await admin
       .from("moodle_grade_snapshots")
       .select(
-        "practica_id, cmid, task_status, observed_at, last_observed_at, scan_closed, grade_revision, grade_value, grade_max"
+        "practica_id, cmid, task_status, observed_at, last_observed_at, scan_closed, grade_revision, grade_value, grade_max, submission_file_count, submission_logical_file_count, attendance_evidence, submission_classifier_version"
       )
       .in("practica_id", candidatePracticeIds);
     if (existingSnapshotError) throw new Error("snapshot_lookup_failed");
@@ -490,7 +520,11 @@ Deno.serve(async (req) => {
       return (
         existing.task_status === row.task_status &&
         sameNumber(existing.grade_value, row.grade_value) &&
-        sameNumber(existing.grade_max, row.grade_max)
+        sameNumber(existing.grade_max, row.grade_max) &&
+        sameNumber(existing.submission_file_count, row.submission_file_count) &&
+        sameNumber(existing.submission_logical_file_count, row.submission_logical_file_count) &&
+        existing.attendance_evidence === row.attendance_evidence &&
+        existing.submission_classifier_version === row.submission_classifier_version
       );
     };
     const unchangedSkipped = observationRows.filter(carriesNothingNew).length;
@@ -566,6 +600,13 @@ Deno.serve(async (req) => {
       observed_at: row.observed_at,
       received_at: row.received_at,
       confidence: row.confidence,
+      submission_file_count: row.submission_file_count,
+      submission_logical_file_count: row.submission_logical_file_count,
+      submission_file_types: row.submission_file_types,
+      attendance_evidence: row.attendance_evidence,
+      attendance_confidence: row.attendance_confidence,
+      attendance_evidence_reasons: row.attendance_evidence_reasons,
+      submission_classifier_version: row.submission_classifier_version,
     }));
 
     const snapshotsToUpsert = snapshots.filter((row) => {
@@ -590,6 +631,31 @@ Deno.serve(async (req) => {
       if (snapshotError) throw new Error("snapshot_upsert_failed");
     }
 
+    // La nota y la evidencia documental ya quedaron persistidas. La evaluación
+    // es best-effort: en modo `shadow` sólo audita; si falla, nunca revierte ni
+    // oculta una sincronización válida de Moodle.
+    let accreditationTransition: unknown = null;
+    const transitionTrigger = persistedData
+      .filter((row) => row.task_status === "graded")
+      .sort((a, b) => Date.parse(b.observed_at) - Date.parse(a.observed_at))[0];
+    if (transitionTrigger) {
+      const { data: transitionData, error: transitionError } = await admin.rpc(
+        "evaluate_student_accreditation_transition_v1",
+        {
+          p_student_id: student.id,
+          p_trigger_observation_id: transitionTrigger.id,
+        }
+      );
+      if (transitionError) {
+        console.error(
+          `[moodle-grade] accreditation_transition_failed: ${transitionError.message}`,
+          { observationId: transitionTrigger.id }
+        );
+      } else {
+        accreditationTransition = transitionData;
+      }
+    }
+
     console.log(
       `[moodle-grade] Stored ${snapshots.length}; snapshot ${snapshotsToUpsert.length}; preserved ${preserved}; sin cambios ${unchangedSkipped}; rejected ${rejectedObservations.length}.`
     );
@@ -610,6 +676,7 @@ Deno.serve(async (req) => {
       preserved,
       skippedTerminal: unchangedSkipped,
       rejected: rejectedObservations,
+      accreditationTransition,
       observedAt,
     });
   } catch (error) {
@@ -634,6 +701,8 @@ Deno.serve(async (req) => {
       "invalid_grade",
       "invalid_grade_range",
       "grade_without_graded_status",
+      "invalid_submission_files",
+      "files_without_submission",
       "practice_not_owned",
       "practice_without_task_link",
       "task_not_confirmed_for_practice",

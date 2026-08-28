@@ -36,14 +36,7 @@ export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_sna
 };
 
 export type MoodleGradeSyncStatus =
-  | "idle"
-  | "loading"
-  | "syncing"
-  | "synced"
-  | "partial"
-  | "complete"
-  | "unavailable"
-  | "error";
+  "idle" | "loading" | "syncing" | "synced" | "partial" | "complete" | "unavailable" | "error";
 
 interface MoodleGradeSyncValue {
   snapshotsByPractice: Map<string, MoodleGradeSnapshot>;
@@ -167,6 +160,7 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
             gradedAtDisplay: task.gradedAtDisplay,
             submittedAt: task.submittedAt ?? null,
             submittedAtDisplay: task.submittedAtDisplay ?? null,
+            submissionFiles: task.submissionFiles ?? null,
           }))
         );
         if (observations.length === 0) throw new MoodleBridgeError("invalid_response");

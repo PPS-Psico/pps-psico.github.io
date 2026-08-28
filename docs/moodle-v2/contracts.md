@@ -1,7 +1,8 @@
 # Contratos activos · Moodle Task Automation v2
 
 Fecha de verificación: 27 de agosto de 2026
-Estado: fundación productiva; escritor Moodle todavía no conectado
+Estado: fundación productiva; escritor Moodle todavía no conectado;
+acreditación híbrida en modo sombra
 
 Este documento describe lo que existe en el repositorio y en Supabase. Las
 propuestas futuras permanecen en
@@ -161,3 +162,19 @@ no queda atado a la disponibilidad del Campus.
 - Contrato SQL: `supabase/tests/moodle_v2_schema_contract.sql`.
 - PPS especiales: `supabase/tests/special_pps_assignments_contract.sql`.
 - Tipos: `src/types/supabase.ts`, siempre regenerados con `npm run gen-types`.
+
+## 9. Evidencia documental y acreditación híbrida
+
+La observación de una entrega puede incluir nombres transitorios de archivos.
+El Edge Function los clasifica y descarta; sólo persiste conteos, tipos,
+resultado, confianza, razones y versión del clasificador. Ningún nombre de
+archivo de Moodle queda almacenado.
+
+`app_config.accreditation_automation_mode` está en `shadow`. En este modo la
+aprobación del último informe registra una predicción privada, pero no crea
+`accreditation_transition_events` ni `finalizacion_pps`. El contrato completo,
+los umbrales y el rollout están en
+[moodle-accreditation-hybrid.md](../moodle-accreditation-hybrid.md).
+
+La sincronización de notas es prioritaria: una falla de la evaluación híbrida
+se registra y no invalida una observación Moodle aceptada.

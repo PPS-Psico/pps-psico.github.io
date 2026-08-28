@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FIELD_ESTUDIANTE_FINALIZACION } from "../../../constants";
+import { FIELD_ESTUDIANTE_FINALIZACION, FIELD_ORIGEN_FINALIZACION } from "../../../constants";
 import { supabase } from "../../../lib/supabaseClient";
 import { runQuery } from "../../../lib/dbQuery";
 import {
@@ -9,6 +9,8 @@ import {
 } from "../../../hooks/useFinalizationGradeResolution";
 import {
   computeTotalHoras,
+  isDetalleArchivoMoodle,
+  isDetalleArchivoSubido,
   resolveFrecuenciaSemanal,
   type DetallePracticas,
 } from "../../../utils/acreditacion";
@@ -213,14 +215,14 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
     if (detalle) {
       const files: Attachment[] = [];
       detalle.items.forEach((item) => {
-        if (item.informe) {
+        if (isDetalleArchivoSubido(item.informe)) {
           files.push({
             url: item.informe.url,
             filename: item.informe.filename,
             type: "informe",
           });
         }
-        if (item.asistencia) {
+        if (isDetalleArchivoSubido(item.asistencia)) {
           files.push({
             url: item.asistencia.url,
             filename: item.asistencia.filename,
@@ -526,6 +528,34 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
               <span className="meta" style={{ fontSize: 11 }}>
                 · {formatDate(sol.createdTime)}
               </span>
+              {(sol[FIELD_ORIGEN_FINALIZACION] === "moodle_automatic" ||
+                sol[FIELD_ORIGEN_FINALIZACION] === "moodle_assisted") && (
+                <span
+                  title={
+                    sol[FIELD_ORIGEN_FINALIZACION] === "moodle_automatic"
+                      ? "Trámite iniciado automáticamente con documentación verificada en Campus."
+                      : "Trámite asistido: el alumno cargó sólo la documentación que Campus no pudo confirmar."
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "2px 6px",
+                    borderRadius: 6,
+                    border: "1px solid var(--ok)",
+                    color: "var(--ok)",
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                  }}
+                >
+                  <span className="material-icons" style={{ fontSize: 12 }}>
+                    cloud_done
+                  </span>
+                  {sol[FIELD_ORIGEN_FINALIZACION] === "moodle_automatic"
+                    ? "Automático · Campus"
+                    : "Asistido · Campus"}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -650,12 +680,14 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
               {/* Detail List */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {detalle.items.map((item, i) => {
-                  const informeIdx = allFiles.findIndex(
-                    (f) => f.url === item.informe?.url && f.type === "informe"
-                  );
-                  const asistenciaIdx = allFiles.findIndex(
-                    (f) => f.url === item.asistencia?.url && f.type === "asistencia"
-                  );
+                  const informe = item.informe;
+                  const asistencia = item.asistencia;
+                  const informeIdx = isDetalleArchivoSubido(informe)
+                    ? allFiles.findIndex((f) => f.url === informe.url && f.type === "informe")
+                    : -1;
+                  const asistenciaIdx = isDetalleArchivoSubido(asistencia)
+                    ? allFiles.findIndex((f) => f.url === asistencia.url && f.type === "asistencia")
+                    : -1;
                   // Datos que pide el SAC al cargar la PPS y que hay que tener a mano acá.
                   const horarioDeclarado = horariosPorPractica[item.practicaId];
                   const frecuencia = resolveFrecuenciaSemanal({
@@ -797,7 +829,28 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                           );
                         })()}
 
-                        {item.informe ? (
+                        {isDetalleArchivoMoodle(item.informe) ? (
+                          <span
+                            title="Verificado desde la entrega de Moodle; no se duplicó el archivo en Supabase."
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid var(--ok)",
+                              background: "color-mix(in oklab, var(--ok) 8%, var(--paper))",
+                              fontSize: 11,
+                              fontWeight: 650,
+                              color: "var(--ok)",
+                            }}
+                          >
+                            <span className="material-icons" style={{ fontSize: 14 }}>
+                              cloud_done
+                            </span>
+                            Informe · Campus
+                          </span>
+                        ) : isDetalleArchivoSubido(item.informe) ? (
                           <button
                             onClick={() => handlePreview(allFiles, informeIdx)}
                             className="press"
@@ -843,7 +896,28 @@ const EgresoCardItem: React.FC<EgresoCardItemProps> = ({
                           >
                             Sin asistencia (Online)
                           </span>
-                        ) : item.asistencia ? (
+                        ) : isDetalleArchivoMoodle(item.asistencia) ? (
+                          <span
+                            title="Evidencia verificada desde la entrega de Moodle; no se duplicó el archivo en Supabase."
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1px solid var(--ok)",
+                              background: "color-mix(in oklab, var(--ok) 8%, var(--paper))",
+                              fontSize: 11,
+                              fontWeight: 650,
+                              color: "var(--ok)",
+                            }}
+                          >
+                            <span className="material-icons" style={{ fontSize: 14 }}>
+                              cloud_done
+                            </span>
+                            Asistencia · Campus
+                          </span>
+                        ) : isDetalleArchivoSubido(item.asistencia) ? (
                           <button
                             onClick={() => handlePreview(allFiles, asistenciaIdx)}
                             className="press"

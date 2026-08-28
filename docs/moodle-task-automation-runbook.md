@@ -123,3 +123,19 @@ npm run check:migrations
 Además ejecutar `supabase/tests/moodle_v2_schema_contract.sql`, revisar los
 advisors de seguridad/performance y probar el simulador admin en el Campus. No
 marcar el writer como productivo hasta completar el piloto end-to-end.
+
+## 8. Piloto de acreditación híbrida
+
+1. Confirmar que `accreditation_automation_mode = 'shadow'`.
+2. Instalar la versión vigente de `docs/moodle-label-inicio-bridge.html` en la
+   etiqueta de Inicio del Campus.
+3. Ingresar con estudiantes de prueba que tengan entregas online y presenciales
+   con uno, varios, duplicados e imágenes.
+4. Revisar el agregado de `get_moodle_submission_evidence_health_v1()` y las
+   predicciones privadas; no inspeccionar ni persistir nombres de archivos.
+5. Contrastar manualmente cada predicción `auto_started` con la tarea real.
+6. Probar los tres avisos y el formulario reducido antes de activar.
+7. Cambiar a `active` sólo con aprobación operativa explícita.
+
+Rollback inmediato: volver el modo a `shadow`. Esto detiene eventos y trámites
+nuevos sin afectar notas, snapshots ni solicitudes existentes.

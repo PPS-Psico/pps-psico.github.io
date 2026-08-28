@@ -2,10 +2,31 @@
 // Centraliza la forma del snapshot `detalle_practicas` y el cálculo de
 // horas totales / nota promedio para reusar entre estudiante y admin.
 
-export interface DetalleArchivo {
+export interface DetalleArchivoSubido {
+  source?: "student_upload";
   url: string;
   filename: string;
 }
+
+export interface DetalleArchivoMoodle {
+  source: "moodle";
+  cmid: number | null;
+  evidence: string;
+  confidence?: number | null;
+  fileCount?: number | null;
+  logicalFileCount?: number | null;
+}
+
+export type DetalleArchivo = DetalleArchivoSubido | DetalleArchivoMoodle;
+
+export const isDetalleArchivoSubido = (
+  archivo: DetalleArchivo | null | undefined
+): archivo is DetalleArchivoSubido =>
+  Boolean(archivo && "url" in archivo && typeof archivo.url === "string" && archivo.url !== "");
+
+export const isDetalleArchivoMoodle = (
+  archivo: DetalleArchivo | null | undefined
+): archivo is DetalleArchivoMoodle => archivo?.source === "moodle";
 
 export interface DetallePracticaItem {
   practicaId: string;
@@ -19,9 +40,15 @@ export interface DetallePracticaItem {
   nota: string;
   informe: DetalleArchivo | null;
   asistencia: DetalleArchivo | null;
+  documentation?: {
+    report: "verified" | "required";
+    attendance: "verified" | "required" | "not_required";
+  };
 }
 
 export interface DetallePracticas {
+  version?: string;
+  source?: "manual" | "moodle_assisted" | "moodle_automatic";
   totalHoras: number;
   /** Promedio de notas numéricas, ya redondeado (.5 → arriba). null si no hay notas numéricas. */
   notaPromedio: number | null;

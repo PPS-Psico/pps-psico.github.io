@@ -6,6 +6,7 @@ type ParsedTask = {
   submitted: boolean;
   gradeValue: number | null;
   gradeMax: number | null;
+  submissionFiles: string[] | null;
 };
 
 function loadLabelParser(): (cmid: number, document: Document) => ParsedTask {
@@ -110,5 +111,30 @@ describe("lector de tareas de la etiqueta Moodle", () => {
       submitted: true,
       gradeValue: null,
     });
+  });
+
+  it("extrae los adjuntos de la fila Archivos enviados sin leer otros enlaces", () => {
+    const parseTask = loadLabelParser();
+    const taskDocument = new DOMParser().parseFromString(
+      `
+        <table class="submissionstatustable">
+          <tr><th>Estado de la entrega</th><td>Enviado para calificar</td></tr>
+          <tr>
+            <th>Archivos enviados</th>
+            <td>
+              <a href="https://campus.uflo.edu.ar/pluginfile.php/1/Informe%20final.pdf">Informe final.pdf</a>
+              <a href="https://campus.uflo.edu.ar/pluginfile.php/1/IMG_4182.jpg">IMG_4182.jpg</a>
+            </td>
+          </tr>
+          <tr><th>Comentarios</th><td><a href="/otro-enlace">No es un archivo</a></td></tr>
+        </table>
+      `,
+      "text/html"
+    );
+
+    expect(parseTask(946365, taskDocument).submissionFiles).toEqual([
+      "Informe final.pdf",
+      "IMG_4182.jpg",
+    ]);
   });
 });

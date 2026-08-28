@@ -296,6 +296,7 @@ export const FIELD_PLANILLA_HORAS_FINALIZACION = "planilla_horas_url";
 export const FIELD_PLANILLA_ASISTENCIA_FINALIZACION = "planilla_asistencia_url";
 export const FIELD_SUGERENCIAS_MEJORAS_FINALIZACION = "sugerencias_mejoras";
 export const FIELD_DETALLE_PRACTICAS_FINALIZACION = "detalle_practicas";
+export const FIELD_ORIGEN_FINALIZACION = "origen";
 
 // Penalizaciones
 export const FIELD_PENALIZACION_ESTUDIANTE_LINK = "estudiante_id";

@@ -7,6 +7,7 @@ import ErrorState from "../components/ErrorState";
 import PreSolicitudCheckModal from "../components/PreSolicitudCheckModal";
 import CriteriosPanel from "../components/student/CriteriosPanel";
 import FinalizacionForm from "../components/student/FinalizacionForm";
+import AccreditationTransitionModal from "../components/student/AccreditationTransitionModal";
 import AtlasTopbar from "../components/student/home/atlas/AtlasTopbar";
 import HomeView from "../components/student/HomeView";
 import PracticasTable from "../components/student/PracticasTable";
@@ -69,6 +70,7 @@ import FinalizationStatusCard from "../components/student/FinalizationStatusCard
 // import MobileSectionHeader from '../components/layout/MobileSectionHeader'; // Unused
 import ErrorBoundary from "../components/ErrorBoundary";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useAccreditationTransition } from "../hooks/useAccreditationTransition";
 import { getErrorMessage } from "../utils/getErrorMessage";
 import { logger } from "../utils/logger";
 import { formatMoodleObservationTime } from "../utils/moodleGradePresentation";
@@ -292,6 +294,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [isFinalizationModalOpen, setIsFinalizationModalOpen] = useState(false);
   const [isPreCheckModalOpen, setIsPreCheckModalOpen] = useState(false);
+  const [dismissedTransitionId, setDismissedTransitionId] = useState<string | null>(null);
 
   // Estado para modales de corrección de prácticas
   const [showModificacionModal, setShowModificacionModal] = useState(false);
@@ -334,6 +337,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     acceptCompromiso,
   } = useStudentPanel();
 
+  const { transitionEvent, acknowledge: acknowledgeTransition } = useAccreditationTransition(
+    studentId,
+    !isAdminViewing
+  );
+  const assistedTransition =
+    transitionEvent?.outcome === "manual_required" && !finalizacionRequest ? transitionEvent : null;
+  const pendingTransitionEvent =
+    transitionEvent &&
+    !transitionEvent.acknowledged_at &&
+    transitionEvent.id !== dismissedTransitionId
+      ? transitionEvent
+      : null;
+
   const [internalActiveTab, setInternalActiveTab] = useState<TabId>(
     showExportButton ? "practicas" : "inicio"
   );
@@ -344,8 +360,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [mobileIndicator, setMobileIndicator] = useState({ x: 0, width: 0, ready: false });
 
   const selectedOrientacion = (studentDetails?.[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "") as
-    | Orientacion
-    | "";
+    Orientacion | "";
   const studentNameForPanel =
     studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || currentUser?.nombre || "Estudiante";
 
@@ -418,6 +433,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const handleOpenFinalization = useCallback(() => {
     setIsFinalizationModalOpen(true);
   }, []);
+
+  const handleTransitionPrimary = useCallback(async () => {
+    if (!pendingTransitionEvent) return;
+    try {
+      await acknowledgeTransition.mutateAsync(pendingTransitionEvent.id);
+      if (pendingTransitionEvent.outcome === "manual_required") {
+        setIsFinalizationModalOpen(true);
+      } else if (pendingTransitionEvent.outcome === "requirements_pending") {
+        setCurrentActiveTab("practicas");
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ["finalizacionRequest"] });
+      }
+    } catch (error) {
+      logger.error("No se pudo confirmar el aviso de acreditación:", error);
+      showToast("No pudimos guardar el avance. Reintentá en unos segundos.", "error");
+    }
+  }, [acknowledgeTransition, pendingTransitionEvent, queryClient, setCurrentActiveTab, showToast]);
+
+  const handleTransitionLater = useCallback(() => {
+    if (pendingTransitionEvent) setDismissedTransitionId(pendingTransitionEvent.id);
+  }, [pendingTransitionEvent]);
 
   const existingInstitutions = useMemo(() => {
     const namesSet = new Set<string>();
@@ -809,25 +845,43 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   // sigue viendo el panel completo (más abajo) para poder gestionar.
   if (finalizacionRequest && !isAdminViewing) {
     return (
-      <FinalizacionReadOnlyView
-        status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
-        requestDate={
-          finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
-          finalizacionRequest.created_at ||
-          ""
-        }
-        studentName={studentNameForPanel}
-        criterios={criterios}
-        selectedOrientacion={selectedOrientacion}
-        practicas={practicas}
-        informeTasks={informeTasks}
-      />
+      <>
+        {pendingTransitionEvent && (
+          <AccreditationTransitionModal
+            event={pendingTransitionEvent}
+            isBusy={acknowledgeTransition.isPending}
+            onPrimary={handleTransitionPrimary}
+            onLater={handleTransitionLater}
+          />
+        )}
+        <FinalizacionReadOnlyView
+          status={finalizacionRequest[FIELD_ESTADO_FINALIZACION] || "Pendiente"}
+          requestDate={
+            finalizacionRequest[FIELD_FECHA_SOLICITUD_FINALIZACION] ||
+            finalizacionRequest.created_at ||
+            ""
+          }
+          studentName={studentNameForPanel}
+          criterios={criterios}
+          selectedOrientacion={selectedOrientacion}
+          practicas={practicas}
+          informeTasks={informeTasks}
+        />
+      </>
     );
   }
 
   return (
     <>
       {isAdminViewing && <SimulationBanner />}
+      {pendingTransitionEvent && (
+        <AccreditationTransitionModal
+          event={pendingTransitionEvent}
+          isBusy={acknowledgeTransition.isPending}
+          onPrimary={handleTransitionPrimary}
+          onLater={handleTransitionLater}
+        />
+      )}
       {isPreCheckModalOpen && (
         <PreSolicitudCheckModal
           isOpen={isPreCheckModalOpen}
@@ -844,6 +898,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         criterios={criterios}
         solicitudes={solicitudesNueva}
         onAddPPS={() => setShowNuevaPPSModal(true)}
+        assistedTransition={assistedTransition}
       />
       <div className="print-only">
         {assignmentSummary ? (

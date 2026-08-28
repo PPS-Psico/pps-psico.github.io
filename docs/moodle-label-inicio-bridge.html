@@ -355,6 +355,55 @@
       );
     }
 
+    // Lee únicamente los nombres visibles de los adjuntos de la entrega. Los
+    // nombres viajan hasta la Edge Function para clasificar la composición y se
+    // descartan allí: Supabase conserva sólo conteos/tipos, nunca los archivos
+    // ni sus nombres. `null` significa que esta versión de la página no expuso
+    // una lista verificable; `[]`, que la lista sí estaba pero quedó vacía.
+    function submissionFilesFromDocument(doc) {
+      var fileNames = [];
+      var seenLinks = Object.create(null);
+      var listObserved = false;
+      var rows = doc.querySelectorAll(
+        ".submissionstatustable tr, .feedbacktable tr, table.generaltable tr"
+      );
+
+      Array.prototype.forEach.call(rows, function (row) {
+        var cells = row.querySelectorAll("th, td");
+        if (cells.length < 2) return;
+        var label = normalizeText(cells[0].textContent);
+        var isFileRow =
+          label.indexOf("archivos enviados") > -1 ||
+          label.indexOf("archivos de la entrega") > -1 ||
+          label.indexOf("file submissions") > -1 ||
+          label.indexOf("submitted files") > -1;
+        if (!isFileRow) return;
+        listObserved = true;
+
+        Array.prototype.forEach.call(
+          row.querySelectorAll('td a[href*="/pluginfile.php/"]'),
+          function (anchor) {
+            if (fileNames.length >= 20) return;
+            var href = anchor.getAttribute("href") || "";
+            if (!href || seenLinks[href]) return;
+            var name = cleanText(anchor.textContent);
+            if (!name) {
+              try {
+                name = decodeURIComponent(href.split(/[?#]/)[0].split("/").pop() || "");
+              } catch (_error) {
+                name = "";
+              }
+            }
+            if (!name) return;
+            seenLinks[href] = true;
+            fileNames.push(name.slice(0, 180));
+          }
+        );
+      });
+
+      return listObserved ? fileNames : null;
+    }
+
     function meansNotSubmitted(value) {
       var state = normalizeText(value);
       return (
@@ -380,6 +429,7 @@
       var submittedAtDisplay = null;
       var submitted = false;
       var explicitNotSubmitted = false;
+      var submissionFiles = submissionFilesFromDocument(doc);
 
       rows.forEach(function (row) {
         var label = normalizeText(row.cells[0]);
@@ -456,6 +506,7 @@
           feedbackComment: feedbackComment,
           submittedAt: submittedAt,
           submittedAtDisplay: submittedAtDisplay,
+          submissionFiles: submissionFiles,
         };
       }
 
@@ -471,6 +522,7 @@
           feedbackComment: feedbackComment,
           submittedAt: submittedAt,
           submittedAtDisplay: submittedAtDisplay,
+          submissionFiles: submissionFiles,
         };
       }
 
@@ -485,6 +537,7 @@
           gradedAtDisplay: null,
           submittedAt: null,
           submittedAtDisplay: null,
+          submissionFiles: submissionFiles,
         };
       }
 
@@ -498,6 +551,7 @@
         gradedAtDisplay: null,
         submittedAt: null,
         submittedAtDisplay: null,
+        submissionFiles: submissionFiles,
       };
     }
 
@@ -512,6 +566,7 @@
         gradedAtDisplay: null,
         submittedAt: null,
         submittedAtDisplay: null,
+        submissionFiles: null,
       };
     }
 

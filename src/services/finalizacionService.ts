@@ -5,7 +5,7 @@ import type { FinalizacionPPS } from "../types";
 import { Database } from "../types/supabase";
 import { fetchStudentData } from "./estudiantesService";
 import { logger } from "../utils/logger";
-import type { DetallePracticas } from "../utils/acreditacion";
+import { isDetalleArchivoSubido, type DetallePracticas } from "../utils/acreditacion";
 
 export const fetchFinalizacionRequest = async (
   legajo: string,
@@ -62,17 +62,20 @@ export const submitFinalizationRequest = async (
   data: {
     detalle: DetallePracticas;
     sugerencias?: string | null;
+    origen?: "manual" | "moodle_assisted";
   }
 ) => {
   const { detalle } = data;
 
   // Agregados legacy: todos los informes / asistencias en un solo array.
   const informesAgg = detalle.items
-    .filter((i) => i.informe)
-    .map((i) => ({ url: i.informe!.url, filename: i.informe!.filename }));
+    .map((i) => i.informe)
+    .filter(isDetalleArchivoSubido)
+    .map((archivo) => ({ url: archivo.url, filename: archivo.filename }));
   const asistenciasAgg = detalle.items
-    .filter((i) => i.asistencia)
-    .map((i) => ({ url: i.asistencia!.url, filename: i.asistencia!.filename }));
+    .map((i) => i.asistencia)
+    .filter(isDetalleArchivoSubido)
+    .map((archivo) => ({ url: archivo.url, filename: archivo.filename }));
 
   const record: Database["public"]["Tables"]["finalizacion_pps"]["Insert"] = {
     [C.FIELD_ESTUDIANTE_FINALIZACION]: studentId,
@@ -84,6 +87,7 @@ export const submitFinalizationRequest = async (
     [C.FIELD_PLANILLA_ASISTENCIA_FINALIZACION]: JSON.stringify(asistenciasAgg),
     [C.FIELD_PLANILLA_HORAS_FINALIZACION]: JSON.stringify([]),
     [C.FIELD_SUGERENCIAS_MEJORAS_FINALIZACION]: data.sugerencias ?? null,
+    origen: data.origen ?? "manual",
   };
 
   await db.finalizacion.create(record);

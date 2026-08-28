@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabaseClient";
 import { logger } from "../utils/logger";
 import { learnFromFeedback } from "../services/hermesLearn";
+import type { Database, Json } from "../types/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -156,14 +157,16 @@ export function useAgentSuggestions(isTestingMode = false) {
       const originalPayload = (existing?.payload as Record<string, unknown>) || {};
       const edited = editedText !== undefined;
 
-      const updatePayload: Record<string, unknown> = { estado: edited ? "edited" : "approved" };
+      const updatePayload: Database["public"]["Tables"]["agent_suggestions"]["Update"] = {
+        estado: edited ? "edited" : "approved",
+      };
       if (edited) {
         // Persist edited text back into payload.borrador
         updatePayload.payload = {
           ...originalPayload,
           borrador: editedText,
           editado_por_humano: true,
-        };
+        } as Json;
       }
       const { error } = await supabase.from("agent_suggestions").update(updatePayload).eq("id", id);
       if (error) throw error;
@@ -192,10 +195,12 @@ export function useAgentSuggestions(isTestingMode = false) {
         .single();
       const basePayload = (existing?.payload as Record<string, unknown>) || {};
 
-      const updatePayload: Record<string, unknown> = { estado: "discarded" };
+      const updatePayload: Database["public"]["Tables"]["agent_suggestions"]["Update"] = {
+        estado: "discarded",
+      };
       if (reason) {
         // Preservar payload original; sumar motivo_descarte sin sobreescribir
-        updatePayload.payload = { ...basePayload, motivo_descarte: reason };
+        updatePayload.payload = { ...basePayload, motivo_descarte: reason } as Json;
       }
       const { error } = await supabase.from("agent_suggestions").update(updatePayload).eq("id", id);
       if (error) throw error;

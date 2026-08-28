@@ -29,6 +29,7 @@ import {
 } from "../../../constants";
 import { formatDate } from "../../../utils/formatters";
 import type { LanzamientoPPS } from "../../../types";
+import type { Database } from "../../../types/supabase";
 import RecordEditModal from "../../../components/admin/RecordEditModal";
 import { LAUNCH_TABLE_CONFIG } from "../../../components/admin/LanzadorConvocatorias";
 import { logger } from "../../../utils/logger";
@@ -688,7 +689,7 @@ const PROPAGABLE_DATE_FIELDS = [
 interface PropagationPrompt {
   count: number;
   labels: string[];
-  practicaFields: Record<string, unknown>;
+  practicaFields: Database["public"]["Tables"]["practicas"]["Update"];
 }
 
 function useLaunchEditor(launch: LanzamientoPPS, onRefresh?: () => void) {
@@ -734,9 +735,10 @@ function useLaunchEditor(launch: LanzamientoPPS, onRefresh?: () => void) {
           );
 
           if (count > 0) {
-            const practicaFields: Record<string, unknown> = {};
+            const practicaFields: Database["public"]["Tables"]["practicas"]["Update"] = {};
             changed.forEach((f) => {
-              practicaFields[f.practicaKey] = fields[f.launchKey] ?? null;
+              practicaFields[f.practicaKey] =
+                (fields[f.launchKey] as string | null | undefined) ?? null;
             });
             setPrompt({ count, labels: changed.map((f) => f.label), practicaFields });
           }
