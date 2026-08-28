@@ -1,8 +1,7 @@
 import { supabase } from "../lib/supabaseClient";
 
 type HermesProxyResponse<T> =
-  | { ok: true; data: T }
-  | { ok: false; error?: string; detalle?: string };
+  { ok: true; data: T } | { ok: false; error?: string; detalle?: string };
 
 /** Invoca una tarea permitida de Hermes sin exponer su credencial en el browser. */
 export async function invokeHermesTask<T>(

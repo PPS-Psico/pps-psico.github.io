@@ -10,11 +10,7 @@ import {
 import { normalizeStringForComparison } from "../utils/formatters";
 
 export type SortablePracticaKey =
-  | "institucion"
-  | "especialidad"
-  | "horas"
-  | "fechaInicio"
-  | "estado";
+  "institucion" | "especialidad" | "horas" | "fechaInicio" | "estado";
 type SortDirection = "ascending" | "descending";
 export type SortConfig = { key: SortablePracticaKey | null; direction: SortDirection };
 

@@ -105,8 +105,7 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   const launchName = launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | null;
   const fechaInicio = launch[FIELD_FECHA_INICIO_LANZAMIENTOS] as string | null;
   const listaEntregadaAt = launch[FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS] as
-    | string
-    | null;
+    string | null;
   const consentimientoRequerido = launch[FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS] !== false;
 
   const rosterQuery = useLaunchRoster(launch.id);

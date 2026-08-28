@@ -5,13 +5,7 @@ export type JefeArea = {
 
 export type JefeReportStatus = "pending" | "waiting" | "stale" | "corrected";
 export type JefeReportUrgency =
-  | "critical"
-  | "soon"
-  | "on_time"
-  | "undated"
-  | "waiting"
-  | "stale"
-  | "corrected";
+  "critical" | "soon" | "on_time" | "undated" | "waiting" | "stale" | "corrected";
 
 export type JefeReport = {
   practica_id: string;
@@ -132,14 +126,7 @@ export type JefeMoodleSyncResult = {
 };
 
 export type JefeMoodleSyncStatus =
-  | "idle"
-  | "loading"
-  | "syncing"
-  | "synced"
-  | "partial"
-  | "complete"
-  | "unavailable"
-  | "error";
+  "idle" | "loading" | "syncing" | "synced" | "partial" | "complete" | "unavailable" | "error";
 
 export type JefeMoodleSyncState = {
   status: JefeMoodleSyncStatus;

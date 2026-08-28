@@ -1,9 +1,7 @@
 import type { ExecutiveReportModel } from "./executiveReport.types";
 
 export type DirectorNearReasonCode =
-  | "total_hours_230_249"
-  | "missing_one_orientation"
-  | "specialty_gap_20_or_less";
+  "total_hours_230_249" | "missing_one_orientation" | "specialty_gap_20_or_less";
 
 export type PressureLevel = "low" | "moderate" | "high" | "saturated";
 

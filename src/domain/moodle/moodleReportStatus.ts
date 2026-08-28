@@ -16,11 +16,7 @@ export type MoodleProvisioningStatus =
 export type MoodleMonitoringStatus = "not_started" | "hot" | "cold" | "settled" | "needs_attention";
 
 export type MoodleParticipantMembershipStatus =
-  | "expected"
-  | "withdrawn"
-  | "institution_failed"
-  | "waived"
-  | "replaced";
+  "expected" | "withdrawn" | "institution_failed" | "waived" | "replaced";
 
 export type MoodleReportStatus =
   | "not_applicable"
@@ -92,9 +88,7 @@ export const MOODLE_PASSING_GRADE = 4;
  * que cae debajo de ese piso delata un problema de carga y no un resultado.
  */
 export type MoodleGradeReading =
-  | { kind: "score"; value: number }
-  | { kind: "pass_fail"; passed: boolean }
-  | { kind: "unusable" };
+  { kind: "score"; value: number } | { kind: "pass_fail"; passed: boolean } | { kind: "unusable" };
 
 const UNUSABLE: MoodleGradeReading = { kind: "unusable" };
 

@@ -1250,8 +1250,7 @@ const PenalizationManager: React.FC<PenalizationManagerProps> = ({ isTestingMode
         const studentData = penaltiesByStudent.get(studentId)!;
         const rawPpsLink = p[FIELD_PENALIZACION_LANZAMIENTO_ID];
         const ppsId = (Array.isArray(rawPpsLink) ? rawPpsLink[0] : rawPpsLink) as
-          | string
-          | undefined;
+          string | undefined;
         const fallbackPpsName = p[FIELD_PENALIZACION_CONVOCATORIA_LINK] as string | undefined;
 
         studentData.penalties.push({

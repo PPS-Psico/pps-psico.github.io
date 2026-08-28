@@ -4,11 +4,7 @@ import {
 } from "../domain/moodle/moodleReportStatus";
 
 export type MoodleGradeStatus =
-  | "no_access"
-  | "not_submitted"
-  | "submitted"
-  | "graded"
-  | "parse_error";
+  "no_access" | "not_submitted" | "submitted" | "graded" | "parse_error";
 
 export interface MoodleGradeLike {
   task_status: string;

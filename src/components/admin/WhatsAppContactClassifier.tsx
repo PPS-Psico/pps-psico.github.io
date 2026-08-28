@@ -26,11 +26,7 @@ interface SuggestionPayload {
   phone: string;
   nombre_contacto: string;
   tipo:
-    | "autoridad_uflo"
-    | "institucion_con_convenio"
-    | "sin_convenio"
-    | "coordinador_externo"
-    | "otro";
+    "autoridad_uflo" | "institucion_con_convenio" | "sin_convenio" | "coordinador_externo" | "otro";
   institucion_id: string | null;
   confidence: number;
   justificacion: string;
