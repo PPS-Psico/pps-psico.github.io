@@ -33,7 +33,9 @@ import type { Estudiante } from "../../types";
 
 type ToastState = { message: string; type: "success" | "error" | "warning" | "info" } | null;
 type StudentEditingState =
-  (Record<string, unknown> & { id?: string }) | { isCreating: true } | null;
+  | (Record<string, unknown> & { id?: string })
+  | { isCreating: true }
+  | null;
 type StudentRow = Estudiante & { __totalHours: number };
 interface StudentPage {
   records: StudentRow[];

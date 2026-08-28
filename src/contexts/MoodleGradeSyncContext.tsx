@@ -36,7 +36,14 @@ export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_sna
 };
 
 export type MoodleGradeSyncStatus =
-  "idle" | "loading" | "syncing" | "synced" | "partial" | "complete" | "unavailable" | "error";
+  | "idle"
+  | "loading"
+  | "syncing"
+  | "synced"
+  | "partial"
+  | "complete"
+  | "unavailable"
+  | "error";
 
 interface MoodleGradeSyncValue {
   snapshotsByPractice: Map<string, MoodleGradeSnapshot>;

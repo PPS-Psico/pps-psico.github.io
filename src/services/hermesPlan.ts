@@ -12,7 +12,10 @@ import { supabase } from "../lib/supabaseClient";
 import { planToday } from "./gmailService";
 
 export type AccionTipo =
-  "responder_mail" | "mover_solicitud" | "verificar_finalizacion" | "correccion";
+  | "responder_mail"
+  | "mover_solicitud"
+  | "verificar_finalizacion"
+  | "correccion";
 
 export type CanalContacto = "whatsapp" | "email" | "ninguno";
 

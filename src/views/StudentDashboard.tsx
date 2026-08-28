@@ -360,7 +360,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [mobileIndicator, setMobileIndicator] = useState({ x: 0, width: 0, ready: false });
 
   const selectedOrientacion = (studentDetails?.[FIELD_ORIENTACION_ELEGIDA_ESTUDIANTES] || "") as
-    Orientacion | "";
+    | Orientacion
+    | "";
   const studentNameForPanel =
     studentDetails?.[FIELD_NOMBRE_ESTUDIANTES] || currentUser?.nombre || "Estudiante";
 

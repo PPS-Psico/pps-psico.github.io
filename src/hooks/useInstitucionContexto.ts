@@ -90,7 +90,8 @@ function parseGmailMensajes(hilo: Record<string, unknown>): ConversationEntry[] 
         if (!m || typeof m !== "object") return null;
         const o = m as Record<string, unknown>;
         const texto = (o.texto || o.snippet || o.body || o.cuerpo || o.preview) as
-          string | undefined;
+          | string
+          | undefined;
         if (!texto) return null;
         const fecha = o.fecha || o.date || o.timestamp || o.received_at;
         const de = (o.de || o.from || o.remitente || o.autor) as string | undefined;

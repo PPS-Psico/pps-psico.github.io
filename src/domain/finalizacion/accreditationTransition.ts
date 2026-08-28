@@ -2,7 +2,9 @@ import type { Json, Tables } from "../../types/supabase";
 
 export type AccreditationTransitionEvent = Tables<"accreditation_transition_events">;
 export type AccreditationTransitionOutcome =
-  "auto_started" | "manual_required" | "requirements_pending";
+  | "auto_started"
+  | "manual_required"
+  | "requirements_pending";
 
 export interface AccreditationEvidenceItem {
   practicaId: string;

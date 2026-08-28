@@ -369,7 +369,9 @@ export interface GestionReportData {
 }
 
 export type AnyReportData =
-  ExecutiveReportData | ComparativeExecutiveReportData | GestionReportData;
+  | ExecutiveReportData
+  | ComparativeExecutiveReportData
+  | GestionReportData;
 
 export interface StudentInfo {
   legajo: string;

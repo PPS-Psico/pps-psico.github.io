@@ -1,7 +1,9 @@
 import { supabase } from "../lib/supabaseClient";
 
 export type InterviewCompletionReason =
-  "total_hours_230_249" | "missing_one_orientation" | "specialty_gap_20_or_less";
+  | "total_hours_230_249"
+  | "missing_one_orientation"
+  | "specialty_gap_20_or_less";
 
 export interface InterviewCompletionCandidate {
   id: string;

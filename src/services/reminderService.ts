@@ -2,7 +2,11 @@ import { supabase } from "../lib/supabaseClient";
 import { logger } from "../utils/logger";
 
 export type ReminderType =
-  "contactar" | "seguimiento" | "lanzamiento" | "vencimiento" | "acreditacion";
+  | "contactar"
+  | "seguimiento"
+  | "lanzamiento"
+  | "vencimiento"
+  | "acreditacion";
 
 export interface Reminder {
   id: string;

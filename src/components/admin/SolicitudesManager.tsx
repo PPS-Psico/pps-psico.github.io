@@ -206,7 +206,9 @@ const SolicitudesManager: React.FC<{ isTestingMode?: boolean }> = ({ isTestingMo
 
       return data.map((req) => {
         const studentData = req.estudiantes as
-          { nombre?: string; legajo?: string; correo?: string } | null | undefined;
+          | { nombre?: string; legajo?: string; correo?: string }
+          | null
+          | undefined;
         const reqRec = req as Record<string, unknown>;
         const updatedAt = new Date(
           (reqRec.actualizacion as string) || (reqRec.created_at as string) || Date.now()
