@@ -483,6 +483,10 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Qué puedo presentar si trabajo de manera informal y no tengo certificado laboral?",
+        a: "Si trabajás de manera informal o no registrada, podés presentar una declaración jurada simple indicando qué actividad realizás, desde cuándo, tus días y horarios, y un contacto de referencia. Si contás con algún respaldo, también podés adjuntar una nota de la persona empleadora, comprobantes de pago o transferencias, capturas de horarios o facturas si trabajás por cuenta propia. Podés ocultar importes y datos de terceros que no sean necesarios.",
+      },
+      {
         q: "¿Cómo sé si fui seleccionado/a?",
         a: "Recibís una notificación por correo y, en Inicio > Tus resultados, ves primero tu estado personal: seleccionado/a, no seleccionado/a o resultado pendiente. La opción Ver convocados queda disponible como detalle.",
       },
