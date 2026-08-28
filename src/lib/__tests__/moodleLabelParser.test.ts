@@ -9,6 +9,16 @@ type ParsedTask = {
   submissionFiles: string[] | null;
 };
 
+type ParsedJefeTask = {
+  cmid: number;
+  status: "ok" | "no_access" | "parse_error";
+  rows: Array<{
+    moodleUserId: number;
+    moodleUsername: string;
+    submissionFiles: string[] | null;
+  }>;
+};
+
 function loadLabelParser(): (cmid: number, document: Document) => ParsedTask {
   const label = readFileSync("docs/moodle-label-inicio-bridge.html", "utf8");
   const source = label.match(/<script>([\s\S]*?)<\/script>/)?.[1];
@@ -35,6 +45,37 @@ function loadLabelParser(): (cmid: number, document: Document) => ParsedTask {
       __parseMoodleTaskForTest: (cmid: number, doc: Document) => ParsedTask;
     }
   ).__parseMoodleTaskForTest;
+}
+
+function loadJefeLabelParser(): (cmid: number, document: Document) => ParsedJefeTask {
+  const label = readFileSync("docs/moodle-label-inicio-bridge.html", "utf8");
+  const source = label.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  if (!source) throw new Error("La etiqueta Moodle no contiene el script del puente.");
+
+  document.body.innerHTML = `
+    <div
+      id="pps-aula-embed"
+      data-moodle-user-id="32734"
+      data-moodle-username="35154584"
+    >
+      <iframe id="pps-aula-frame"></iframe>
+    </div>
+  `;
+  jest.useFakeTimers();
+  window.eval(
+    source.replace(
+      /\}\)\(\);\s*$/,
+      "window.__parseMoodleJefeForTest = parseJefeGradingDocument; })();"
+    )
+  );
+  jest.clearAllTimers();
+  jest.useRealTimers();
+
+  return (
+    window as typeof window & {
+      __parseMoodleJefeForTest: (cmid: number, doc: Document) => ParsedJefeTask;
+    }
+  ).__parseMoodleJefeForTest;
 }
 
 describe("lector de tareas de la etiqueta Moodle", () => {
@@ -136,5 +177,56 @@ describe("lector de tareas de la etiqueta Moodle", () => {
       "Informe final.pdf",
       "IMG_4182.jpg",
     ]);
+  });
+
+  it("extrae por estudiante los archivos visibles en la tabla de Entregas", () => {
+    const parseJefeTask = loadJefeLabelParser();
+    const gradingDocument = new DOMParser().parseFromString(
+      `
+        <table id="submissions">
+          <thead>
+            <tr>
+              <th>Nombre completo</th>
+              <th>Nombre de usuario</th>
+              <th>Dirección de correo</th>
+              <th>Estado</th>
+              <th>Calificación</th>
+              <th>Última modificación (entrega)</th>
+              <th>Archivos enviados</th>
+              <th>Comentarios de la entrega</th>
+              <th>Última modificación (calificación)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="user10970">
+              <td><a href="/user/view.php?id=10970">Estudiante de prueba</a></td>
+              <td>44684830</td>
+              <td>estudiante@example.com</td>
+              <td>Enviado para calificar</td>
+              <td>-</td>
+              <td>martes, 21 de julio de 2026, 01:12</td>
+              <td>
+                <a href="/pluginfile.php/1/assignsubmission_file/submission_files/1/Informe.pdf">Informe.pdf</a>
+                <a href="/pluginfile.php/1/assignsubmission_file/submission_files/1/IMG_4182.jpg">IMG_4182.jpg</a>
+              </td>
+              <td><a href="/otro-enlace">No es un archivo</a></td>
+              <td>-</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+      "text/html"
+    );
+
+    expect(parseJefeTask(1085731, gradingDocument)).toMatchObject({
+      status: "ok",
+      rows: [
+        {
+          moodleUserId: 10970,
+          moodleUsername: "44684830",
+          submissionFiles: ["Informe.pdf", "IMG_4182.jpg"],
+        },
+      ],
+    });
   });
 });

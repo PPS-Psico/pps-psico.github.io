@@ -142,6 +142,7 @@ describe("jefeMoodleTasksResultSchema", () => {
             gradedAtDisplay: null,
             submittedAt: "2026-07-21T04:12:00.000Z",
             submittedAtDisplay: "martes, 21 de julio de 2026, 01:12",
+            submissionFiles: ["Informe final.pdf", "IMG_4182.jpg", "IMG_4183.jpg"],
           },
         ],
       },

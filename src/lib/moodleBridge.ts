@@ -90,6 +90,9 @@ const jefeSubmissionRowSchema = z
     gradedAtDisplay: z.string().trim().max(200).nullable(),
     submittedAt: z.string().datetime({ offset: true }).nullable(),
     submittedAtDisplay: z.string().trim().max(200).nullable(),
+    // En el barrido anual los nombres sólo cruzan transitoriamente hasta la
+    // función SQL, que persiste evidencia derivada y los descarta.
+    submissionFiles: z.array(z.string().trim().min(1).max(180)).max(20).nullable().optional(),
   })
   .superRefine((row, ctx) => {
     if (row.status === "graded") {

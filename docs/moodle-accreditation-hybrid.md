@@ -36,9 +36,10 @@ Las PPS online requieren informe aprobado, pero nunca planilla de asistencia.
 ## Fuente de evidencia
 
 El puente HTML de Moodle lee, dentro de cada tarea vinculada, los nombres
-visibles en la fila `Archivos enviados / File submissions`. Los nombres son
-transitorios: viajan al Edge Function para clasificar la entrega y **no se
-guardan**. Supabase conserva sólo:
+visibles en la fila o columna `Archivos enviados / File submissions`. Los
+nombres son transitorios: la sesión estudiantil los lleva al Edge Function y
+el barrido anual a un clasificador privado SQL; en ambos caminos se descartan
+antes de persistir. Supabase conserva sólo:
 
 - cantidad física y lógica de archivos;
 - tipos/extensiones agregados;
@@ -136,6 +137,10 @@ resumen agregado para coordinación. Las evaluaciones pueden agruparse por
   `supabase/migrations/20260827202000_guard_hybrid_finalization_origin.sql`.
 - Guardia de informes pendientes/nulos:
   `supabase/migrations/20260828114200_fix_accreditation_report_null_guard.sql`.
+- Evidencia del barrido anual:
+  `supabase/migrations/20260828180536_capture_jefe_submission_evidence.sql`.
+- Corrección de equivalencia para copias `(1)`:
+  `supabase/migrations/20260828180630_fix_jefe_classifier_extension_stem.sql`.
 - Contrato de regresión:
   `supabase/tests/accreditation_transition_contract.sql`.
 

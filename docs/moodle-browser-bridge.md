@@ -83,8 +83,9 @@ Estados permitidos: `no_access`, `not_submitted`, `submitted`, `graded`, `parse_
 El panel de Jefe usa un mensaje separado. El iframe sólo envía los `cmid`
 devueltos por `get_jefe_moodle_sync_tasks_v1()` o, dentro del simulador Admin,
 por `get_jefe_moodle_sync_tasks_preview_v1(preview_key)`; el documento padre abre
-`action=grading&perpage=-1&status=submitted`, extrae únicamente las columnas
-necesarias de la tabla y nunca devuelve archivos ni HTML completo.
+`action=grading` en páginas de 100 filas, extrae únicamente las columnas
+necesarias de la tabla —incluida `Archivos enviados`— y nunca descarga archivos
+ni devuelve HTML completo.
 
 ```json
 {
@@ -98,8 +99,12 @@ necesarias de la tabla y nunca devuelve archivos ni HTML completo.
 
 Cada fila de `PPS_MOODLE_JEFE_TASKS_RESULT` incluye el `cmid`, DNI/usuario
 Moodle del estudiante, estado, nota bruta y la fecha real de última modificación
-de la entrega. El resultado identifica además al usuario Moodle que realizó la
-lectura. `sync_jefe_moodle_reports_v1` verifica la identidad de la jefatura real.
+de la entrega. Si Moodle expone la columna, incluye además `submissionFiles`
+con hasta 20 nombres visibles. Esos nombres sólo viven durante la llamada: la
+función privada `classify_moodle_submission_files_v1` los convierte en conteos,
+tipos y evidencia de asistencia, y no los almacena. El resultado identifica
+además al usuario Moodle que realizó la lectura.
+`sync_jefe_moodle_reports_v1` verifica la identidad de la jefatura real.
 En el simulador, `sync_jefe_moodle_reports_preview_v1` exige un rol
 `SuperUser`/`AdminTester`, vuelve a resolver la clave opaca seleccionada y limita
 el lote a sus áreas y tareas antes de persistir. Ambos caminos comparten la misma
@@ -140,6 +145,8 @@ La observación debe ser append-only e incluir como mínimo:
 - versión del puente;
 - huella del payload y datos de parsing;
 - nivel de confianza `moodle_session_observed`.
+- conteos físicos/lógicos, tipos agregados y decisión documental, sin nombres
+  ni URLs de archivos.
 
 `lanzamiento_id` es nullable de forma intencional en el ledger y el snapshot:
 cuando una práctica legacy tiene una relación confirmada en

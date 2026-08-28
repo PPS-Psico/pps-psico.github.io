@@ -1,6 +1,6 @@
 begin;
 
-select plan(6);
+select plan(11);
 
 select ok(
   to_regprocedure('private.evaluate_student_accreditation_transition_v1(uuid,uuid)') is not null,
@@ -52,6 +52,58 @@ select is(
   ),
   true,
   'only an all-graded report set passes the aggregate'
+);
+
+select is(
+  private.classify_moodle_submission_files_v1(
+    array['Informe final.pdf', 'Informe final (1).pdf'],
+    false
+  ) ->> 'attendanceEvidence',
+  'duplicate_only',
+  'obvious browser copies do not count as attendance evidence'
+);
+
+select is(
+  private.classify_moodle_submission_files_v1(
+    array['Informe final.pdf', 'Planilla firmada.jpg'],
+    false
+  ) ->> 'attendanceEvidence',
+  'detected',
+  'a distinct attendance-named attachment is detected conservatively'
+);
+
+select is(
+  private.classify_moodle_submission_files_v1(
+    array['Informe Adultos.pdf', 'Informe Ninos.docx'],
+    false
+  ) ->> 'attendanceEvidence',
+  'needs_review',
+  'two report-looking files do not become automatic attendance evidence'
+);
+
+select ok(
+  position(
+    'submission_file_count'
+    in pg_get_functiondef(
+      'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+    )
+  ) > 0
+  and position(
+    'assignment-grading-table/v2'
+    in pg_get_functiondef(
+      'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+    )
+  ) > 0,
+  'the annual Moodle scan persists only derived v2 submission evidence'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'private.classify_moodle_submission_files_v1(text[],boolean)',
+    'execute'
+  ),
+  'the private filename classifier is not callable directly by clients'
 );
 
 select * from finish();

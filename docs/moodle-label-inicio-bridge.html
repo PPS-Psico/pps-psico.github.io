@@ -355,11 +355,33 @@
       );
     }
 
+    function appendSubmissionFileNames(container, fileNames, seenLinks) {
+      Array.prototype.forEach.call(
+        container.querySelectorAll('a[href*="/pluginfile.php/"]'),
+        function (anchor) {
+          if (fileNames.length >= 20) return;
+          var href = anchor.getAttribute("href") || "";
+          if (!href || seenLinks[href]) return;
+          var name = cleanText(anchor.textContent);
+          if (!name) {
+            try {
+              name = decodeURIComponent(href.split(/[?#]/)[0].split("/").pop() || "");
+            } catch (_error) {
+              name = "";
+            }
+          }
+          if (!name) return;
+          seenLinks[href] = true;
+          fileNames.push(name.slice(0, 180));
+        }
+      );
+    }
+
     // Lee únicamente los nombres visibles de los adjuntos de la entrega. Los
-    // nombres viajan hasta la Edge Function para clasificar la composición y se
-    // descartan allí: Supabase conserva sólo conteos/tipos, nunca los archivos
-    // ni sus nombres. `null` significa que esta versión de la página no expuso
-    // una lista verificable; `[]`, que la lista sí estaba pero quedó vacía.
+    // nombres viajan hasta el clasificador y se descartan allí: Supabase
+    // conserva sólo conteos/tipos, nunca los archivos ni sus nombres. `null`
+    // significa que esta versión de la página no expuso una lista verificable;
+    // `[]`, que la lista sí estaba pero quedó vacía.
     function submissionFilesFromDocument(doc) {
       var fileNames = [];
       var seenLinks = Object.create(null);
@@ -379,26 +401,7 @@
           label.indexOf("submitted files") > -1;
         if (!isFileRow) return;
         listObserved = true;
-
-        Array.prototype.forEach.call(
-          row.querySelectorAll('td a[href*="/pluginfile.php/"]'),
-          function (anchor) {
-            if (fileNames.length >= 20) return;
-            var href = anchor.getAttribute("href") || "";
-            if (!href || seenLinks[href]) return;
-            var name = cleanText(anchor.textContent);
-            if (!name) {
-              try {
-                name = decodeURIComponent(href.split(/[?#]/)[0].split("/").pop() || "");
-              } catch (_error) {
-                name = "";
-              }
-            }
-            if (!name) return;
-            seenLinks[href] = true;
-            fileNames.push(name.slice(0, 180));
-          }
-        );
+        appendSubmissionFileNames(row, fileNames, seenLinks);
       });
 
       return listObserved ? fileNames : null;
@@ -674,6 +677,12 @@
         "ultima modificacion (calificacion)",
         "last modified (grade)",
       ]);
+      var submissionFilesIndex = findHeaderIndex(headers, [
+        "archivos enviados",
+        "archivos de la entrega",
+        "file submissions",
+        "submitted files",
+      ]);
 
       if (usernameIndex < 0 || statusIndex < 0 || submittedAtIndex < 0) {
         return jefeTaskFailure(cmid, "parse_error", "required_columns_missing");
@@ -740,6 +749,15 @@
             ? cleanText(cells[gradedAtIndex].textContent)
             : "";
         if (!gradedAtDisplay || gradedAtDisplay === "-") gradedAtDisplay = null;
+        var submissionFiles = null;
+        if (submissionFilesIndex >= 0 && cells[submissionFilesIndex]) {
+          submissionFiles = [];
+          appendSubmissionFileNames(
+            cells[submissionFilesIndex],
+            submissionFiles,
+            Object.create(null)
+          );
+        }
 
         rows.push({
           moodleUserId: moodleUserId,
@@ -753,6 +771,7 @@
           gradedAtDisplay: gradedAtDisplay ? gradedAtDisplay.slice(0, 200) : null,
           submittedAt: parsedSubmissionDate ? parsedSubmissionDate.iso : null,
           submittedAtDisplay: parsedSubmissionDate ? parsedSubmissionDate.display : null,
+          submissionFiles: submissionFiles,
         });
       });
 
