@@ -1,6 +1,6 @@
 begin;
 
-select plan(16);
+select plan(23);
 
 select ok(
   to_regprocedure('private.evaluate_student_accreditation_transition_v1(uuid,uuid)') is not null,
@@ -156,6 +156,75 @@ select ok(
     'execute'
   ),
   'students cannot execute the administrative accreditation backfill'
+);
+
+select ok(
+  to_regclass('private.moodle_jefe_unmatched_diagnostics') is not null,
+  'the private unmatched Moodle diagnostic table exists'
+);
+
+select ok(
+  (
+    select relrowsecurity
+    from pg_class
+    where oid = 'private.moodle_jefe_unmatched_diagnostics'::regclass
+  )
+  and not has_table_privilege(
+    'authenticated',
+    'private.moodle_jefe_unmatched_diagnostics',
+    'select'
+  ),
+  'unmatched diagnostics use RLS and are not readable by authenticated clients'
+);
+
+select ok(
+  position(
+    'unmatched_diagnostics as ('
+    in pg_get_functiondef(
+      'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+    )
+  ) > 0,
+  'the annual scan captures internal unmatched rows'
+);
+
+select ok(
+  position(
+    '''unmatched_reasons'', v_unmatched_reasons'
+    in pg_get_functiondef(
+      'private.sync_jefe_moodle_reports_scoped_v1_impl(uuid,uuid,bigint,integer,timestamptz,bigint,text,jsonb)'::regprocedure
+    )
+  ) > 0,
+  'the annual scan returns only aggregate unmatched reasons'
+);
+
+select ok(
+  to_regprocedure('private.assess_student_accreditation_v1(uuid)') is not null,
+  'the read-only accreditation assessment exists'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'private.assess_student_accreditation_v1(uuid)',
+    'execute'
+  ),
+  'students cannot execute the private accreditation assessment'
+);
+
+select ok(
+  position(
+    'onsite_task_practice_count'
+    in pg_get_functiondef(
+      'private.assess_student_accreditation_v1(uuid)'::regprocedure
+    )
+  ) > 0
+  and position(
+    'bool_and(coalesce(p.informe_estado = ''calificado'', false))'
+    in pg_get_functiondef(
+      'private.assess_student_accreditation_v1(uuid)'::regprocedure
+    )
+  ) > 0,
+  'the read-only assessment preserves shared-task and strict report safeguards'
 );
 
 select * from finish();

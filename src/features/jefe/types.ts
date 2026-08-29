@@ -114,6 +114,13 @@ export type JefeMoodleSyncTask = {
   area_keys: string[];
 };
 
+export type JefeMoodleUnmatchedReason =
+  | "no_practice_in_area"
+  | "practice_without_confirmed_task_link"
+  | "task_mismatch";
+
+export type JefeMoodleUnmatchedReasons = Partial<Record<JefeMoodleUnmatchedReason, number>>;
+
 export type JefeMoodleSyncResult = {
   success: boolean;
   academic_year: number;
@@ -125,6 +132,7 @@ export type JefeMoodleSyncResult = {
   ambiguous: number;
   unmatched: number;
   unmatched_external?: number;
+  unmatched_reasons?: JefeMoodleUnmatchedReasons;
   deduplicated?: number;
   invalid: number;
   observed_at: string;
@@ -148,6 +156,7 @@ export type JefeMoodleSyncState = {
   ambiguous: number;
   unmatched: number;
   unmatchedInternal: number;
+  unmatchedReasons: JefeMoodleUnmatchedReasons;
   deduplicated: number;
   failedTasks: number;
   lastObservedAt: string | null;

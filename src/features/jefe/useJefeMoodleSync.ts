@@ -6,8 +6,14 @@ import {
   requestJefeMoodleTasks,
 } from "../../lib/moodleBridge";
 import { buildJefeMoodleBatches } from "./jefeMoodleBatches";
+import { hasJefeMoodleSyncProblems } from "./jefeMoodleSyncStatus";
 import { fetchJefeMoodleSyncTasks, syncJefeMoodleReports } from "./jefeService";
-import type { JefeMoodleSyncState, JefeMoodleSyncStatus } from "./types";
+import type {
+  JefeMoodleSyncState,
+  JefeMoodleSyncStatus,
+  JefeMoodleUnmatchedReason,
+  JefeMoodleUnmatchedReasons,
+} from "./types";
 
 const recentlyStarted = new Map<string, number>();
 const AUTO_SYNC_THROTTLE_MS = 60_000;
@@ -21,6 +27,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
   const [unmatched, setUnmatched] = useState(0);
   const [deduplicated, setDeduplicated] = useState(0);
   const [unmatchedExternal, setUnmatchedExternal] = useState(0);
+  const [unmatchedReasons, setUnmatchedReasons] = useState<JefeMoodleUnmatchedReasons>({});
   const [failedTasks, setFailedTasks] = useState(0);
   const [lastObservedAt, setLastObservedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -69,6 +76,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       let ambiguousTotal = 0;
       let unmatchedTotal = 0;
       let unmatchedExternalTotal = 0;
+      const unmatchedReasonTotals: JefeMoodleUnmatchedReasons = {};
       let deduplicatedTotal = 0;
       let invalidTotal = 0;
       let failedTotal = 0;
@@ -90,6 +98,11 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
           ambiguousTotal += persisted.ambiguous;
           unmatchedTotal += persisted.unmatched;
           unmatchedExternalTotal += persisted.unmatched_external ?? 0;
+          for (const [reason, count] of Object.entries(persisted.unmatched_reasons ?? {})) {
+            if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) continue;
+            const typedReason = reason as JefeMoodleUnmatchedReason;
+            unmatchedReasonTotals[typedReason] = (unmatchedReasonTotals[typedReason] ?? 0) + count;
+          }
           deduplicatedTotal += persisted.deduplicated ?? 0;
           invalidTotal += persisted.invalid;
           if (!latestObservedAt || persisted.observed_at > latestObservedAt) {
@@ -110,13 +123,18 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       setUnmatched(unmatchedTotal);
       setDeduplicated(deduplicatedTotal);
       setUnmatchedExternal(unmatchedExternalTotal);
+      setUnmatchedReasons(unmatchedReasonTotals);
       setFailedTasks(failedTotal);
       setLastObservedAt(latestObservedAt);
 
       await queryClient.invalidateQueries({ queryKey: ["jefe-dashboard-v1"] });
-      const internalUnmatched = Math.max(0, unmatchedTotal - unmatchedExternalTotal);
-      const isPartial =
-        failedTotal > 0 || ambiguousTotal > 0 || internalUnmatched > 0 || invalidTotal > 0;
+      // Una fila interna sin vínculo queda aislada y auditada, pero no vuelve
+      // parcial una sincronización cuyas tareas sí se leyeron correctamente.
+      const isPartial = hasJefeMoodleSyncProblems({
+        failedTasks: failedTotal,
+        ambiguous: ambiguousTotal,
+        invalid: invalidTotal,
+      });
       setSyncStatus(isPartial ? "partial" : "synced");
     } catch (error) {
       if (error instanceof MoodleBridgeError && error.code === "not_embedded") {
@@ -181,6 +199,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
     ambiguous,
     unmatched,
     unmatchedInternal: Math.max(0, unmatched - unmatchedExternal),
+    unmatchedReasons,
     deduplicated,
     failedTasks,
     lastObservedAt,
