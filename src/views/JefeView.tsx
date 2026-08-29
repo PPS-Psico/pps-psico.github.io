@@ -68,19 +68,6 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
   let icon = "sync";
   let title = "Preparando la actualización de informes";
   let detail = "Buscando las tareas del año para tu orientación.";
-  const unmatchedReasonDetail = [
-    sync.unmatchedReasons.no_practice_in_area
-      ? `${sync.unmatchedReasons.no_practice_in_area} sin una PPS del área`
-      : null,
-    sync.unmatchedReasons.practice_without_confirmed_task_link
-      ? `${sync.unmatchedReasons.practice_without_confirmed_task_link} sin tarea confirmada`
-      : null,
-    sync.unmatchedReasons.task_mismatch
-      ? `${sync.unmatchedReasons.task_mismatch} vinculadas a otra tarea`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
   if (sync.status === "syncing") {
     icon = "sync";
     title = "Actualizando informes desde Campus";
@@ -88,16 +75,13 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
   } else if (sync.status === "synced") {
     icon = "cloud_done";
     title = "Informes actualizados";
-    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea revisada" : "tareas revisadas"}${sync.accepted > 0 ? ` · ${sync.accepted} entregas vinculadas` : ""}${sync.deduplicated > 0 ? ` · ${sync.deduplicated} asignadas a la práctica más reciente` : ""}${sync.unmatchedInternal > 0 ? ` · ${sync.unmatchedInternal} filas apartadas para auditoría${unmatchedReasonDetail ? ` (${unmatchedReasonDetail})` : ""}` : ""}${observedLabel ? ` · ${observedLabel}` : ""}.`;
+    detail = `${sync.taskCount} ${sync.taskCount === 1 ? "tarea revisada" : "tareas revisadas"}${sync.accepted > 0 ? ` · ${sync.accepted} entregas vinculadas` : ""}${sync.deduplicated > 0 ? ` · ${sync.deduplicated} asignadas a la práctica más reciente` : ""}${sync.unmatchedInternal > 0 ? " · las filas ajenas al área o sin correspondencia se aislaron sin modificar ninguna PPS" : ""}${observedLabel ? ` · ${observedLabel}` : ""}.`;
   } else if (sync.status === "partial") {
     icon = "rule";
     title = "Actualización parcial";
     const issues = [
       sync.failedTasks > 0 ? `${sync.failedTasks} tareas no se pudieron leer` : null,
       sync.ambiguous > 0 ? `${sync.ambiguous} entregas con prácticas duplicadas` : null,
-      sync.unmatchedInternal > 0
-        ? `${sync.unmatchedInternal} filas apartadas para auditoría${unmatchedReasonDetail ? ` (${unmatchedReasonDetail})` : ""}`
-        : null,
     ].filter(Boolean);
     detail = issues.join(" · ") || "Algunas filas requieren revisión.";
   } else if (sync.status === "complete") {

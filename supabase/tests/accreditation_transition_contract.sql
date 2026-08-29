@@ -1,6 +1,6 @@
 begin;
 
-select plan(23);
+select plan(27);
 
 select ok(
   to_regprocedure('private.evaluate_student_accreditation_transition_v1(uuid,uuid)') is not null,
@@ -225,6 +225,52 @@ select ok(
     )
   ) > 0,
   'the read-only assessment preserves shared-task and strict report safeguards'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_constraint constraint_definition
+    where constraint_definition.conrelid = 'public.practica_moodle_tareas'::regclass
+      and constraint_definition.conname = 'practica_moodle_tareas_link_source_check'
+      and position(
+        'jefe_observed'
+        in pg_get_constraintdef(constraint_definition.oid)
+      ) > 0
+  ),
+  'direct Moodle links identify safe Jefe observations separately'
+);
+
+select ok(
+  to_regprocedure(
+    'private.resolve_safe_jefe_moodle_links_v1(timestamp with time zone)'
+  ) is not null,
+  'the conservative unmatched diagnostic resolver exists'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'private.resolve_safe_jefe_moodle_links_v1(timestamp with time zone)',
+    'execute'
+  ),
+  'clients cannot execute the unmatched diagnostic resolver'
+);
+
+select ok(
+  position(
+    'private.moodle_orientation_key(ae.area) = any (d.area_keys)'
+    in pg_get_functiondef(
+      'private.resolve_safe_jefe_moodle_links_v1(timestamp with time zone)'::regprocedure
+    )
+  ) > 0
+  and position(
+    'candidate.institution_score >= 0.75'
+    in pg_get_functiondef(
+      'private.resolve_safe_jefe_moodle_links_v1(timestamp with time zone)'::regprocedure
+    )
+  ) > 0,
+  'the resolver requires the scanned orientation and a strong institution match'
 );
 
 select * from finish();
