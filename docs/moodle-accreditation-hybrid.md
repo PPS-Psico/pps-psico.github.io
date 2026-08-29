@@ -145,7 +145,7 @@ resumen agregado para coordinación. Las evaluaciones pueden agruparse por
 - 0 eventos estudiantiles y 0 finalizaciones `moodle_automatic` o
   `moodle_assisted`;
 - 0 evidencias de tareas compartidas marcadas como automáticas;
-- Edge Function activa en versión 16 con JWT obligatorio.
+- Edge Function vigente activa con JWT obligatorio.
 
 Este corte no autoriza `active`: primero debe completarse el reescaneo real
 desde una sesión Moodle y auditarse la muestra resultante.
