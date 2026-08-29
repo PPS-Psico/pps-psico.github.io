@@ -1,6 +1,6 @@
 begin;
 
-select plan(11);
+select plan(16);
 
 select ok(
   to_regprocedure('private.evaluate_student_accreditation_transition_v1(uuid,uuid)') is not null,
@@ -104,6 +104,58 @@ select ok(
     'execute'
   ),
   'the private filename classifier is not callable directly by clients'
+);
+
+select ok(
+  position(
+    'onsite_task_practice_count'
+    in pg_get_functiondef(
+      'private.evaluate_student_accreditation_transition_v1(uuid,uuid)'::regprocedure
+    )
+  ) > 0
+  and position(
+    '''sharedTask'', e.shared_onsite_task'
+    in pg_get_functiondef(
+      'private.evaluate_student_accreditation_transition_v1(uuid,uuid)'::regprocedure
+    )
+  ) > 0,
+  'the evaluator marks shared onsite Moodle tasks as non-automatic evidence'
+);
+
+select ok(
+  to_regprocedure('private.evaluate_accreditation_after_jefe_observation_v1()') is not null,
+  'the annual Jefe scan accreditation evaluator exists'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_trigger trigger_definition
+    join pg_proc trigger_function
+      on trigger_function.oid = trigger_definition.tgfoid
+    join pg_namespace trigger_schema
+      on trigger_schema.oid = trigger_function.pronamespace
+    where trigger_definition.tgname = 'evaluate_accreditation_after_jefe_observation_trigger'
+      and trigger_definition.tgrelid = 'public.moodle_grade_observations'::regclass
+      and trigger_schema.nspname = 'private'
+      and trigger_function.proname = 'evaluate_accreditation_after_jefe_observation_v1'
+      and not trigger_definition.tgisinternal
+  ),
+  'the annual Jefe observation trigger invokes the private evaluator'
+);
+
+select ok(
+  to_regprocedure('private.backfill_moodle_accreditation_evaluations_v1(integer)') is not null,
+  'the repeatable shadow accreditation backfill exists'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'private.backfill_moodle_accreditation_evaluations_v1(integer)',
+    'execute'
+  ),
+  'students cannot execute the administrative accreditation backfill'
 );
 
 select * from finish();

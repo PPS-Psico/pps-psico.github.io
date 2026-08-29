@@ -3,6 +3,7 @@ import type { MoodleTaskLink } from "../hooks/useMoodleTaskLinks";
 import type { Practica } from "../types";
 import { cleanDbValue, normalizeStringForComparison } from "./formatters";
 import { isFinalMoodleGrade, type MoodleGradeLike } from "./moodleGradePresentation";
+import { MOODLE_SUBMISSION_CLASSIFIER_VERSION } from "../domain/moodle/moodleSubmissionEvidence";
 
 export function normalizeMoodleOrientationKey(value: unknown): string | null {
   const normalized = normalizeStringForComparison(cleanDbValue(value));
@@ -46,7 +47,8 @@ export function resolveExactMoodleTaskLink(
 
 /**
  * Agrupa solamente las tareas que todavía pueden avanzar. Una calificación
- * completa es terminal y se excluye de todas las lecturas posteriores.
+ * completa es terminal sólo cuando también tiene la evidencia de adjuntos
+ * vigente. Los snapshots históricos se releen una vez y vuelven a cerrarse.
  */
 export function buildPendingMoodleAssignments(
   practices: Practica[],
@@ -56,7 +58,13 @@ export function buildPendingMoodleAssignments(
   const byCmid = new Map<string, string[]>();
 
   practices.forEach((practice) => {
-    if (isFinalMoodleGrade(snapshotsByPractice.get(practice.id))) return;
+    const snapshot = snapshotsByPractice.get(practice.id);
+    if (
+      isFinalMoodleGrade(snapshot) &&
+      snapshot.submission_classifier_version === MOODLE_SUBMISSION_CLASSIFIER_VERSION
+    ) {
+      return;
+    }
     const task = resolveExactMoodleTaskLink(practice, links);
     if (!task) return;
     const practiceIds = byCmid.get(task.moodleId) ?? [];

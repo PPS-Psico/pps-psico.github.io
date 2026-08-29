@@ -75,6 +75,7 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
   const [syncStatus, setSyncStatus] = useState<MoodleGradeSyncStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const lastAutoSignatureRef = useRef<string | null>(null);
+  const syncInFlightRef = useRef(false);
 
   const isPrivilegedViewer = isSuperUserMode || isJefeMode || isDirectivoMode || isAdminTesterMode;
   const isOwnStudentSession =
@@ -143,7 +144,9 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
       setErrorMessage(null);
       return;
     }
+    if (syncInFlightRef.current) return;
 
+    syncInFlightRef.current = true;
     setSyncStatus("syncing");
     setErrorMessage(null);
     try {
@@ -195,6 +198,8 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
         // una eventual correccion en practicas.nota. Revalidamos el panel para que
         // Inicio y Practicas reflejen la nota sin que el alumno cambie de seccion.
         queryClient.invalidateQueries({ queryKey: ["practicas"] }),
+        queryClient.invalidateQueries({ queryKey: ["accreditationTransition", studentId] }),
+        queryClient.invalidateQueries({ queryKey: ["finalizacionRequest"] }),
       ]);
       if (rejectedCount > 0) {
         setSyncStatus("partial");
@@ -216,6 +221,8 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
           ? "Campus no respondió a tiempo. Podés reintentar sin perder los últimos datos guardados."
           : "No pudimos validar la respuesta de Campus. Reintentá desde la página del curso."
       );
+    } finally {
+      syncInFlightRef.current = false;
     }
   }, [
     assignments,
@@ -225,6 +232,25 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     queryClient,
     studentId,
   ]);
+
+  // Mientras el alumno mantiene abierto el panel, una corrección docente puede
+  // llegar después de la primera lectura. Reintentamos de forma moderada y al
+  // recuperar el foco; las respuestas idénticas quedan como noop en el servidor.
+  useEffect(() => {
+    if (!isOwnStudentSession || !isInsideParentFrame || assignments.size === 0) return;
+    const refresh = () => void runSync();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const interval = window.setInterval(refresh, 5 * 60_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [assignments.size, isInsideParentFrame, isOwnStudentSession, runSync]);
 
   useEffect(() => {
     if (!isOwnStudentSession || isPracticasLoading || areLinksLoading) return;

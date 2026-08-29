@@ -54,6 +54,7 @@ describe("buildPendingMoodleAssignments", () => {
           grade_max: 10,
           grade_display: "8 / 10",
           observed_at: "2026-08-11T12:00:00.000Z",
+          submission_classifier_version: "submission-files/v1",
         },
       ],
       [
@@ -71,6 +72,50 @@ describe("buildPendingMoodleAssignments", () => {
 
     expect(buildPendingMoodleAssignments(practices, links, snapshots)).toEqual(
       new Map([["946365", ["practice-submitted"]]])
+    );
+  });
+
+  it("reescanea una nota terminal histórica que todavía no tiene evidencia de adjuntos", () => {
+    const snapshots = new Map([
+      [
+        "practice-graded",
+        {
+          task_status: "graded",
+          submitted: true,
+          grade_value: 8,
+          grade_max: 10,
+          grade_display: "8 / 10",
+          observed_at: "2026-08-11T12:00:00.000Z",
+          scan_closed: true,
+          submission_classifier_version: null,
+        },
+      ],
+    ]);
+
+    expect(buildPendingMoodleAssignments([practices[0]], links, snapshots).has("946366")).toBe(
+      true
+    );
+  });
+
+  it("vuelve a cerrar el escaneo después de guardar la versión vigente del clasificador", () => {
+    const snapshots = new Map([
+      [
+        "practice-graded",
+        {
+          task_status: "graded",
+          submitted: true,
+          grade_value: 8,
+          grade_max: 10,
+          grade_display: "8 / 10",
+          observed_at: "2026-08-11T12:00:00.000Z",
+          scan_closed: true,
+          submission_classifier_version: "submission-files/v1",
+        },
+      ],
+    ]);
+
+    expect(buildPendingMoodleAssignments([practices[0]], links, snapshots).has("946366")).toBe(
+      false
     );
   });
 

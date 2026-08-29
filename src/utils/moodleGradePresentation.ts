@@ -19,6 +19,8 @@ export interface MoodleGradeLike {
   graded_at_display?: string | null;
   observed_at: string;
   scan_closed?: boolean;
+  /** Versión de la evidencia de adjuntos; una nota vieja puede necesitar un único reescaneo. */
+  submission_classifier_version?: string | null;
   last_task_status?: string | null;
   last_observed_at?: string | null;
   /** Contrato de escala de la tarea, tomado de aula_entregas. */

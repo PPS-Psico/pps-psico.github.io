@@ -473,7 +473,11 @@ const FinalizacionForm: React.FC<FinalizacionFormProps> = ({
             ? "Revisá y enviá"
             : "Solicitud enviada";
 
-  if (!cumpleTodo) {
+  // Un evento manual_required sólo se crea después de que el servidor confirmó
+  // los requisitos académicos. No bloqueamos ese flujo por un cálculo local
+  // transitoriamente desactualizado: el formulario asistido pide únicamente la
+  // evidencia documental que el evento dejó marcada como incierta.
+  if (!cumpleTodo && !isAssisted) {
     return createPortal(
       <div
         className="ed fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4"

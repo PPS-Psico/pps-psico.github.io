@@ -330,6 +330,15 @@ Deno.serve(async (req) => {
     const practices = (practiceData ?? []) as PracticeRow[];
     if (practices.length !== practiceIds.length) throw new Error("practice_not_owned");
 
+    const onsitePracticeIdsByCmid = new Map<number, Set<string>>();
+    normalizedInput.forEach((item) => {
+      const practice = practices.find((candidate) => candidate.id === item.practicaId);
+      if (!practice || practice.es_online === true) return;
+      const practiceIdsForTask = onsitePracticeIdsByCmid.get(item.cmid) ?? new Set<string>();
+      practiceIdsForTask.add(practice.id);
+      onsitePracticeIdsByCmid.set(item.cmid, practiceIdsForTask);
+    });
+
     const launchIds = [
       ...new Set(practices.map((practice) => practice.lanzamiento_id).filter(Boolean)),
     ] as string[];
@@ -406,6 +415,7 @@ Deno.serve(async (req) => {
           const submissionEvidence = classifyMoodleSubmissionFiles({
             filenames: item.submissionFiles,
             isOnline: practice.es_online === true,
+            onsitePracticeCountForTask: onsitePracticeIdsByCmid.get(item.cmid)?.size ?? 1,
           });
           const payloadHash = await sha256({
             requestId,

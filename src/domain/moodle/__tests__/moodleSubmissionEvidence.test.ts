@@ -88,4 +88,28 @@ describe("classifyMoodleSubmissionFiles", () => {
       reasons: ["file_list_not_observed"],
     });
   });
+
+  it("mantiene en revisión una tarea compartida por varias PPS presenciales", () => {
+    expect(
+      classifyMoodleSubmissionFiles({
+        filenames: ["Informe adultos.pdf", "Informe niños.pdf", "Planilla firmada.jpg"],
+        isOnline: false,
+        onsitePracticeCountForTask: 2,
+      })
+    ).toMatchObject({
+      attendanceEvidence: "needs_review",
+      attendanceConfidence: 0,
+      reasons: expect.arrayContaining(["shared_task_multiple_onsite_practices"]),
+    });
+  });
+
+  it("no penaliza una tarea compartida si sólo una PPS requiere asistencia", () => {
+    expect(
+      classifyMoodleSubmissionFiles({
+        filenames: ["Informe.pdf", "Planilla firmada.jpg"],
+        isOnline: false,
+        onsitePracticeCountForTask: 1,
+      })
+    ).toMatchObject({ attendanceEvidence: "detected", attendanceConfidence: 0.99 });
+  });
 });

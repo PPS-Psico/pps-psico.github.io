@@ -1,6 +1,6 @@
 # Runbook · Tareas e informes Moodle v2
 
-Vigencia: 20 de agosto de 2026
+Vigencia: 29 de agosto de 2026
 Alcance actual: lectura legacy 2026 y fundación dedicada; escritura Moodle aún
 no habilitada
 
@@ -133,9 +133,15 @@ marcar el writer como productivo hasta completar el piloto end-to-end.
    con uno, varios, duplicados e imágenes.
 4. Revisar el agregado de `get_moodle_submission_evidence_health_v1()` y las
    predicciones privadas; no inspeccionar ni persistir nombres de archivos.
-5. Contrastar manualmente cada predicción `auto_started` con la tarea real.
-6. Probar los tres avisos y el formulario reducido antes de activar.
-7. Cambiar a `active` sólo con aprobación operativa explícita.
+5. Ejecutar `private.backfill_moodle_accreditation_evaluations_v1()` únicamente
+   en `shadow` después del reescaneo. Si el modo no es `shadow`, la función debe
+   fallar sin procesar estudiantes.
+6. Confirmar que toda tarea compartida por más de una PPS presencial del mismo
+   estudiante se prediga como `manual_required`, aun cuando tenga dos o más
+   adjuntos.
+7. Contrastar manualmente cada predicción `auto_started` con la tarea real.
+8. Probar los tres avisos y el formulario reducido antes de activar.
+9. Cambiar a `active` sólo con aprobación operativa explícita.
 
 Rollback inmediato: volver el modo a `shadow`. Esto detiene eventos y trámites
 nuevos sin afectar notas, snapshots ni solicitudes existentes.

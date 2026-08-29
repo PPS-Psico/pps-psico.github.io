@@ -295,19 +295,21 @@ const guideBlocks: GuideBlock[] = [
     num: "07",
     kicker: "Acreditación",
     title: "Finalización",
-    summary: "Cuando completás los requisitos, pedís la acreditación desde Mis Solicitudes.",
+    summary: "Cuando se aprueba el último informe, el panel revisa e inicia el cierre adecuado.",
     bullets: [
       "Todos los informes de PPS corregidos y aprobados por el docente.",
-      "El pedido de acreditación se hace desde Mis Solicitudes, con un clic.",
+      "Si Campus ya confirma toda la documentación, el trámite comienza automáticamente.",
+      "Si alguna planilla no puede verificarse, sólo se pide completar esa parte.",
     ],
     note: {
       tag: "Último paso",
       key: true,
       text: (
         <>
-          Con <strong>todos los requisitos</strong> cumplidos, pedí la{" "}
-          <strong>acreditación de tus PPS</strong> desde Mis Solicitudes para cerrar tu recorrido.
-          El trámite puede demorar hasta <strong>14 días hábiles</strong>.
+          Al volver a abrir el panel después de la última corrección vas a recibir un aviso. El
+          sistema inicia la <strong>acreditación de tus PPS</strong> o abre un formulario reducido
+          si falta confirmar alguna planilla. El trámite puede demorar hasta{" "}
+          <strong>14 días hábiles</strong>.
         </>
       ),
     },
@@ -363,8 +365,8 @@ const editorialClosingSteps = [
   {
     num: "03",
     lead: "Último paso",
-    title: "Pedí la acreditación",
-    text: "Cuando todos los requisitos estén aprobados, iniciá el pedido desde Mis Solicitudes.",
+    title: "Revisá el aviso de acreditación",
+    text: "Al aprobarse el último informe, el panel inicia el trámite o te pide sólo la documentación que no pudo verificar.",
   },
 ];
 
@@ -796,7 +798,15 @@ const faqGroups: FaqGroup[] = [
       },
       {
         q: "¿Cómo solicito la acreditación?",
-        a: "Una vez que cumplas todos los requisitos, podés solicitarla desde la pestaña Trámites. Es importante que tengas a mano los informes y las planillas de asistencia de tus PPS.",
+        a: (
+          <>
+            Cuando se aprueba tu último informe, el panel vuelve a consultar Campus al abrirse y
+            revisa tus requisitos. Si los informes y las planillas están verificados, el trámite se
+            inicia automáticamente. Si alguna PPS presencial queda dudosa, se abre un formulario
+            reducido que pide <strong>sólo esa planilla</strong>. Las PPS online no requieren
+            planilla de asistencia. El pedido manual desde Trámites sigue disponible como respaldo.
+          </>
+        ),
       },
       {
         q: "¿Cuánto demora la acreditación final?",

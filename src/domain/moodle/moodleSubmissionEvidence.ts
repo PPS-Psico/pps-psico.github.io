@@ -107,7 +107,7 @@ const result = (
   classifierVersion: MOODLE_SUBMISSION_CLASSIFIER_VERSION,
 });
 
-export function classifyMoodleSubmissionFiles(params: {
+function classifySinglePracticeSubmissionFiles(params: {
   filenames: readonly string[] | null;
   isOnline: boolean;
 }): MoodleSubmissionEvidence {
@@ -233,4 +233,27 @@ export function classifyMoodleSubmissionFiles(params: {
     logicalFileCount,
     fileTypeCounts
   );
+}
+
+/**
+ * Una misma tarea puede contener informes de varias PPS presenciales. En ese
+ * caso la lista completa de adjuntos no permite atribuir una planilla a cada
+ * práctica, aunque aparezca un nombre explícito o una combinación documento +
+ * imágenes. La evidencia queda deliberadamente en revisión hasta que exista
+ * una planilla por práctica o coordinación valide otra regla de negocio.
+ */
+export function classifyMoodleSubmissionFiles(params: {
+  filenames: readonly string[] | null;
+  isOnline: boolean;
+  onsitePracticeCountForTask?: number;
+}): MoodleSubmissionEvidence {
+  const evidence = classifySinglePracticeSubmissionFiles(params);
+  if (params.isOnline || (params.onsitePracticeCountForTask ?? 1) <= 1) return evidence;
+
+  return {
+    ...evidence,
+    attendanceEvidence: "needs_review",
+    attendanceConfidence: 0,
+    reasons: [...new Set([...evidence.reasons, "shared_task_multiple_onsite_practices"])],
+  };
 }
