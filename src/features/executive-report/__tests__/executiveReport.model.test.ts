@@ -1,5 +1,5 @@
 import { buildExecutiveReportModel, containsPersonalStudentData } from "../executiveReport.model";
-import { testingSnapshot } from "../executiveReport.service";
+import { testingManagementReportData, testingSnapshot } from "../executiveReport.service";
 
 describe("executive report model", () => {
   it("publishes the exact official 2024 result without minimum-language", () => {
@@ -170,5 +170,41 @@ describe("executive report model", () => {
     expect(containsPersonalStudentData(model)).toBe(false);
     expect(model.author.unit).toBe("Psicología · Sede Comahue");
     expect(JSON.stringify(model)).not.toContain("Buenos Aires");
+  });
+
+  it("adds management evidence without changing the annual report contract", () => {
+    const managementData = testingManagementReportData("2026-08-31");
+    const annual = buildExecutiveReportModel({
+      kind: "annual",
+      selected: testingSnapshot(2026, "2026-08-31"),
+      previous: testingSnapshot(2025, "2025-08-31"),
+      managementData,
+    });
+    const management = buildExecutiveReportModel({
+      kind: "management",
+      selected: testingSnapshot(2026, "2026-08-31"),
+      previous: testingSnapshot(2025, "2025-08-31"),
+      managementSeries: [
+        testingSnapshot(2024, "2024-12-31"),
+        testingSnapshot(2025, "2025-12-31"),
+        testingSnapshot(2026, "2026-08-31"),
+      ],
+      managementData,
+    });
+
+    expect(annual.management).toBeNull();
+    expect(management.management?.data?.population.administrativeEnrollment.at(-1)?.students).toBe(
+      242
+    );
+    expect(management.executiveSummary[0]).toContain("matrícula administrativa");
+    expect(management.executiveSummary).toContain(
+      "210 de 218 estudiantes que se postularon al menos una vez en 2026 iniciaron una PPS durante el año (96,3%)."
+    );
+    expect(management.executiveSummary).toHaveLength(4);
+    expect(JSON.stringify(management.executiveSummary)).not.toContain(
+      "puede atribuirse a una institución"
+    );
+    expect(management.headline).toContain("6 convenios correspondientes a 2 instituciones");
+    expect(containsPersonalStudentData(management)).toBe(false);
   });
 });

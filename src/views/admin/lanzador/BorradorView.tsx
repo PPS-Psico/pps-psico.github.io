@@ -31,9 +31,10 @@ interface BorradorViewProps {
   launch: LanzamientoPPS;
   onPublish: () => void;
   onRefresh: () => void;
+  onDelete?: () => void;
 }
 
-const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefresh }) => {
+const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefresh, onDelete }) => {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -175,6 +176,16 @@ const BorradorView: React.FC<BorradorViewProps> = ({ launch, onPublish, onRefres
             icon: "edit",
             onClick: () => setEditOpen(true),
           },
+          ...(onDelete
+            ? [
+                {
+                  label: "Eliminar borrador",
+                  icon: "delete_outline",
+                  onClick: onDelete,
+                  danger: true,
+                },
+              ]
+            : []),
         ]}
       />
       <div className="lv4-canvas-body">

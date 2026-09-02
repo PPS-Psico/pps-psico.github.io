@@ -159,6 +159,12 @@ export type JefeMoodleSyncState = {
   unmatchedReasons: JefeMoodleUnmatchedReasons;
   deduplicated: number;
   failedTasks: number;
+  /**
+   * Todas las tareas que fallaron lo hicieron porque Campus devolvió el login:
+   * la sesión de Moodle venció. Es la causa más frecuente de un barrido en
+   * cero y no se distingue de un fallo de lectura si sólo se cuentan tareas.
+   */
+  campusSessionExpired: boolean;
   lastObservedAt: string | null;
   errorMessage: string | null;
   retry: () => Promise<void>;

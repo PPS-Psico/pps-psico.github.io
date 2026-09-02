@@ -160,6 +160,20 @@ html.dark .lv4 {
 .lv4-state-menu-item:hover,
 .lv4-state-menu-item:focus-visible { background: var(--paper-3); outline: none; }
 .lv4-state-menu-item .material-icons { font-size: 17px; color: var(--ink-3); }
+.lv4-state-menu-item.danger,
+.lv4-state-menu-item-danger {
+  color: var(--warn);
+}
+.lv4-state-menu-item.danger .material-icons,
+.lv4-state-menu-item-danger .material-icons {
+  color: var(--warn);
+}
+.lv4-state-menu-item.danger:hover,
+.lv4-state-menu-item.danger:focus-visible,
+.lv4-state-menu-item-danger:hover,
+.lv4-state-menu-item-danger:focus-visible {
+  background: var(--warn-s);
+}
 .lv4-row-name {
   font-size: 13px; font-weight: 500; color: var(--ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -757,6 +771,12 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   background: var(--warn); color: var(--paper); border-color: var(--warn);
 }
 .lv4-btn-danger:hover { opacity: .88; }
+.lv4-btn-danger-outline {
+  border-color: var(--warn); color: var(--warn); background: transparent;
+}
+.lv4-btn-danger-outline:hover {
+  background: var(--warn-s); color: var(--warn); border-color: var(--warn);
+}
 .lv4-btn-ghost { background: transparent; color: var(--ink-3); border-color: transparent; }
 .lv4-btn-ghost:hover { color: var(--ink); background: var(--paper-2); }
 

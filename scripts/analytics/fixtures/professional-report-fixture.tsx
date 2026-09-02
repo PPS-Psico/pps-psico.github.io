@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { pdf } from "@react-pdf/renderer";
 import { testingDirectorSnapshot } from "../../../src/features/executive-report/directorReport.service";
 import { buildExecutiveReportModel } from "../../../src/features/executive-report/executiveReport.model";
-import { testingSnapshot } from "../../../src/features/executive-report/executiveReport.service";
+import {
+  testingManagementReportData,
+  testingSnapshot,
+} from "../../../src/features/executive-report/executiveReport.service";
 import type { DirectorReportModel } from "../../../src/features/executive-report/directorReport.types";
 import { DirectorReportPdf } from "../../../src/features/executive-report/pdf/DirectorReportPdf";
 import { ExecutiveReportPdf } from "../../../src/features/executive-report/pdf/ExecutiveReportPdf";
@@ -101,15 +104,16 @@ const model =
   kind === "management"
     ? buildExecutiveReportModel({
         kind: "management",
-        selected: testingSnapshot(2026, "2026-07-18"),
-        previous: testingSnapshot(2025, "2025-07-18"),
+        selected: testingSnapshot(2026, "2026-08-31"),
+        previous: testingSnapshot(2025, "2025-08-31"),
         managementBaseline: testingSnapshot(2024, "2024-08-31"),
         managementSeries: [
           testingSnapshot(2024, "2024-12-31"),
           testingSnapshot(2025, "2025-12-31"),
-          testingSnapshot(2026, "2026-07-18"),
+          testingSnapshot(2026, "2026-08-31"),
         ],
-        generatedAt: new Date("2026-07-18T12:00:00Z"),
+        managementData: testingManagementReportData("2026-08-31"),
+        generatedAt: new Date("2026-09-01T12:00:00Z"),
       })
     : kind === "annual2025"
       ? buildExecutiveReportModel({

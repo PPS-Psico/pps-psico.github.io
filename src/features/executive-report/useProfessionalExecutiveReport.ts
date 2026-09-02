@@ -7,7 +7,14 @@ import {
   useTrayectoriaFinalizados,
 } from "../../hooks/useMetricsExtras";
 import { buildExecutiveReportModel } from "./executiveReport.model";
-import { fetchAnalyticsSnapshot, reportCutoff, testingSnapshot } from "./executiveReport.service";
+import {
+  equivalentCutoff,
+  fetchAnalyticsSnapshot,
+  fetchManagementReportData,
+  reportCutoff,
+  testingManagementReportData,
+  testingSnapshot,
+} from "./executiveReport.service";
 import type {
   AnalyticsSnapshot,
   ExecutiveReportKind,
@@ -17,6 +24,7 @@ import type {
 interface UseProfessionalExecutiveReportOptions {
   kind: ExecutiveReportKind;
   year: number;
+  managementCutoffISO?: string;
   isTestingMode?: boolean;
 }
 
@@ -32,6 +40,7 @@ const snapshotQuery = (year: number, cutoffISO: string, isTestingMode: boolean) 
 export const useProfessionalExecutiveReport = ({
   kind,
   year,
+  managementCutoffISO,
   isTestingMode = false,
 }: UseProfessionalExecutiveReportOptions): {
   model: ExecutiveReportModel | null;
@@ -39,6 +48,9 @@ export const useProfessionalExecutiveReport = ({
   error: Error | null;
 } => {
   const currentYear = new Date().getFullYear();
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const effectiveManagementCutoff = managementCutoffISO || todayISO;
+  const managementYear = Number(effectiveManagementCutoff.slice(0, 4)) || currentYear;
   const selectedCutoff = reportCutoff(year, year < currentYear);
   const previousCutoff = reportCutoff(year - 1, year < currentYear);
 
@@ -51,17 +63,23 @@ export const useProfessionalExecutiveReport = ({
     enabled: kind === "annual",
   });
   const managementComparisonQuery = useQuery({
-    ...snapshotQuery(currentYear - 1, reportCutoff(currentYear - 1, false), isTestingMode),
+    ...snapshotQuery(
+      managementYear - 1,
+      equivalentCutoff(managementYear - 1, effectiveManagementCutoff),
+      isTestingMode
+    ),
     enabled: kind === "management",
   });
 
   const managementYears = useMemo(
-    () => Array.from({ length: Math.max(1, currentYear - 2024 + 1) }, (_, index) => 2024 + index),
-    [currentYear]
+    () =>
+      Array.from({ length: Math.max(1, managementYear - 2024 + 1) }, (_, index) => 2024 + index),
+    [managementYear]
   );
   const managementQueries = useQueries({
     queries: managementYears.map((seriesYear) => {
-      const cutoff = reportCutoff(seriesYear, seriesYear < currentYear);
+      const cutoff =
+        seriesYear < managementYear ? `${seriesYear}-12-31` : effectiveManagementCutoff;
       return {
         ...snapshotQuery(seriesYear, cutoff, isTestingMode),
         enabled: kind === "management",
@@ -71,6 +89,20 @@ export const useProfessionalExecutiveReport = ({
   const baselineQuery = useQuery({
     ...snapshotQuery(2024, "2024-08-31", isTestingMode),
     enabled: kind === "management",
+  });
+  const managementDataQuery = useQuery({
+    queryKey: [
+      "professional-executive-report",
+      "management-data",
+      effectiveManagementCutoff,
+      isTestingMode,
+    ],
+    queryFn: () =>
+      isTestingMode
+        ? Promise.resolve(testingManagementReportData(effectiveManagementCutoff))
+        : fetchManagementReportData(effectiveManagementCutoff),
+    enabled: kind === "management",
+    staleTime: 1000 * 60 * 5,
   });
 
   const detailTestingMode = isTestingMode || kind === "management";
@@ -103,6 +135,7 @@ export const useProfessionalExecutiveReport = ({
       agreements: kind === "annual" ? agreementsQuery.data || [] : [],
       trajectory: kind === "annual" ? trajectoryQuery.data || null : null,
       selectionEffort: kind === "annual" ? selectionEffortQuery.data || null : null,
+      managementData: kind === "management" ? managementDataQuery.data || null : null,
     });
   }, [
     agreementsQuery.data,
@@ -112,6 +145,7 @@ export const useProfessionalExecutiveReport = ({
     kind,
     launchesQuery.data,
     managementSeries,
+    managementDataQuery.data,
     selectionEffortQuery.data,
     trajectoryQuery.data,
   ]);
@@ -126,6 +160,7 @@ export const useProfessionalExecutiveReport = ({
     kind === "management" &&
     (baselineQuery.isLoading ||
       managementComparisonQuery.isLoading ||
+      managementDataQuery.isLoading ||
       managementQueries.some((query) => query.isLoading));
   const queryError =
     selectedQuery.error ||
@@ -133,6 +168,7 @@ export const useProfessionalExecutiveReport = ({
     (kind === "management"
       ? baselineQuery.error ||
         managementComparisonQuery.error ||
+        managementDataQuery.error ||
         managementQueries.find((query) => query.error)?.error
       : launchesQuery.error ||
         agreementsQuery.error ||

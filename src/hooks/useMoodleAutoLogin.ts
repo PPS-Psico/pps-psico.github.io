@@ -48,6 +48,29 @@ export const suppressMoodleAutoLogin = (): void => {
 
 let onboardingResult: MoodleOnboardingProfile | null = null;
 
+export const hasValidatedSupabaseSession = async (): Promise<boolean> => {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !sessionData?.session) return false;
+
+  // getSession sólo lee el token persistido. Si otra pestaña cerró esa sesión,
+  // el JWT puede seguir vigente hasta su expiración aunque Auth ya la haya
+  // revocado. getUser confirma la sesión contra el servidor antes de impedir
+  // que el autologin de Campus emita una nueva.
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (!userError && user) return true;
+
+  logger.warn("[MoodleAutoLogin] Sesión local revocada; se renovará desde Campus");
+  const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
+  if (signOutError) {
+    logger.warn("[MoodleAutoLogin] No se pudo limpiar la sesión local revocada");
+  }
+  return false;
+};
+
 /**
  * Resuelve la entrada exclusivamente a partir de un mensaje del padre Moodle.
  * La URL pública ya no habilita autologin ni alta aunque contenga datos que
@@ -82,8 +105,7 @@ export const useMoodleAutoLogin = (): MoodleAutoLoginResult => {
           moodleUserId: context.moodleUserId,
         });
 
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData?.session) {
+        if (await hasValidatedSupabaseSession()) {
           landingOnDashboard = true;
           return;
         }

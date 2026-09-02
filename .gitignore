@@ -87,3 +87,5 @@ tmp/
 /playwright-report/
 /blob-report/
 /.playwright/
+
+__pycache__/

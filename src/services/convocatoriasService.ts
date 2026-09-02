@@ -552,3 +552,52 @@ export const toggleStudentSelection = async (
     return { success: false, error: (e as Error).message };
   }
 };
+
+/**
+ * Elimina un lanzamiento y sus dependencias de forma segura y limpia.
+ */
+export const eliminarLanzamiento = async (lanzamientoId: string): Promise<boolean> => {
+  if (!lanzamientoId) throw new Error("ID de lanzamiento no proporcionado.");
+
+  try {
+    // 1. Desvincular penalizaciones asociadas para preservar el registro disciplinario
+    await supabase
+      .from("penalizaciones")
+      .update({ lanzamiento_id: null })
+      .eq("lanzamiento_id", lanzamientoId);
+
+    // 2. Eliminar solicitudes de modificación vinculadas al lanzamiento
+    await supabase
+      .from("solicitudes_modificacion_pps")
+      .delete()
+      .eq("lanzamiento_id", lanzamientoId);
+
+    // 3. Eliminar sugerencias del agente si las hubiere
+    await supabase.from("agent_suggestions").delete().eq("lanzamiento_id", lanzamientoId);
+
+    // 4. Eliminar prácticas vinculadas a este lanzamiento
+    const { error: practicasError } = await supabase
+      .from("practicas")
+      .delete()
+      .eq(C.FIELD_LANZAMIENTO_VINCULADO_PRACTICAS, lanzamientoId);
+    if (practicasError) throw practicasError;
+
+    // 5. Eliminar convocatorias (inscripciones de estudiantes)
+    const { error: convocatoriasError } = await supabase
+      .from("convocatorias")
+      .delete()
+      .eq(C.FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS, lanzamientoId);
+    if (convocatoriasError) throw convocatoriasError;
+
+    // 6. Eliminar opciones de lanzamiento
+    await supabase.from("lanzamiento_opciones").delete().eq("lanzamiento_id", lanzamientoId);
+
+    // 7. Eliminar el registro principal en lanzamientos_pps
+    await db.lanzamientos.delete(lanzamientoId);
+
+    return true;
+  } catch (error) {
+    logger.error(`[Convocatorias] Error al eliminar lanzamiento ${lanzamientoId}:`, error);
+    throw error;
+  }
+};

@@ -6,7 +6,11 @@ import { createServer } from "vite";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, "../..");
-const outputDir = resolve(rootDir, "output/pdf");
+const outputDirArg = process.argv.indexOf("--output-dir");
+const outputDir =
+  outputDirArg >= 0 && process.argv[outputDirArg + 1]
+    ? resolve(process.cwd(), process.argv[outputDirArg + 1])
+    : resolve(rootDir, "output/pdf");
 const allFixtures = [
   {
     query: "",

@@ -406,11 +406,21 @@ export const buildExecutiveReportModel = (
   const generatedAt = input.generatedAt || new Date();
   const { selected, previous } = input;
   const managementSeries = [...(input.managementSeries || [])].sort((a, b) => a.year - b.year);
+  const managementData = input.managementData || null;
   const kind = input.kind;
   const annual = kind === "annual";
+  const administrativeEnrollment = managementData?.population.administrativeEnrollment || [];
+  const firstEnrollment = administrativeEnrollment.at(0);
+  const lastEnrollment = administrativeEnrollment.at(-1);
+  const enrollmentMultiplier =
+    firstEnrollment && lastEnrollment && firstEnrollment.students > 0
+      ? roundOne(lastEnrollment.students / firstEnrollment.students)
+      : null;
   const headline = annual
     ? annualHeadline(selected)
-    : "Desde el inicio de la gestión se consolidó una medición versionada, trazable y apta para rendición institucional.";
+    : managementData
+      ? `La expansión de la demanda fue acompañada por ${managementData.agreementCount} convenios correspondientes a ${managementData.institutionCount} instituciones o espacios, con una oferta PPS que se actualiza hasta el corte elegido.`
+      : "Desde el inicio de la gestión se consolidó una medición trazable y apta para rendición institucional.";
 
   const executiveSummary = annual
     ? [
@@ -425,9 +435,16 @@ export const buildExecutiveReportModel = (
             : "La oferta y sus resultados se presentan con el mismo corte temporal que el ciclo anterior.",
       ]
     : [
-        "La serie integra el cierre documentado de 2024 y los registros operativos posteriores bajo el contrato analytics-v2.",
+        enrollmentMultiplier != null
+          ? `La matrícula administrativa informada por la Facultad se multiplicó por ${enrollmentMultiplier.toLocaleString("es-AR")} entre ${firstEnrollment?.cycle} y ${lastEnrollment?.cycle}.`
+          : "La matrícula administrativa se presenta como una serie externa y separada de las cuentas creadas en Mi Panel.",
+        managementData
+          ? `${managementData.agreementCount} convenios, consolidados en ${managementData.institutionCount} instituciones o espacios, quedaron registrados desde el inicio de la gestión hasta el corte.`
+          : "Los convenios y su contribución se informan únicamente cuando existe evidencia institucional vinculada.",
+        managementData && managementData.access.applicants > 0
+          ? `${managementData.access.started} de ${managementData.access.applicants} estudiantes que se postularon al menos una vez en ${managementData.access.year} iniciaron una PPS durante el año (${managementData.access.startRatePct?.toLocaleString("es-AR") ?? "—"}%).`
+          : "El acceso anual se informa únicamente cuando existen postulaciones trazables al corte.",
         "El 1 de septiembre de 2024 se utiliza como hito de inicio de gestión y el 31 de agosto como línea de base temporal.",
-        "Las variaciones se presentan como evidencia de evolución del programa; no se atribuyen causalmente a una única intervención.",
       ];
 
   const outcomeMetrics: ReportMetric[] = [
@@ -504,6 +521,7 @@ export const buildExecutiveReportModel = (
           startISO: "2024-09-01",
           baseline: input.managementBaseline || null,
           series: managementSeries,
+          data: managementData,
           caveat:
             "El corte de llegada permite ordenar la evidencia en el tiempo, pero no demuestra por sí solo causalidad.",
         },

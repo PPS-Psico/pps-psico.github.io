@@ -3738,6 +3738,7 @@ export type Database = {
           task_name: string
         }[]
       }
+      get_management_report_v1: { Args: { p_cutoff?: string }; Returns: Json }
       get_metrics_years: { Args: never; Returns: Json }
       get_moodle_grade_discrepancies: {
         Args: never

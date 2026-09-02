@@ -29,6 +29,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
   const [unmatchedExternal, setUnmatchedExternal] = useState(0);
   const [unmatchedReasons, setUnmatchedReasons] = useState<JefeMoodleUnmatchedReasons>({});
   const [failedTasks, setFailedTasks] = useState(0);
+  const [noAccessTasks, setNoAccessTasks] = useState(0);
   const [lastObservedAt, setLastObservedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -67,6 +68,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
 
     setSyncStatus("syncing");
     setErrorMessage(null);
+    setNoAccessTasks(0);
     try {
       const academicYears = new Set(tasks.map((task) => task.academic_year));
       if (academicYears.size !== 1) throw new MoodleBridgeError("invalid_response");
@@ -80,6 +82,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       let deduplicatedTotal = 0;
       let invalidTotal = 0;
       let failedTotal = 0;
+      let noAccessTotal = 0;
       let successfulBatches = 0;
       let latestObservedAt: string | null = null;
       let lastBatchError: unknown = null;
@@ -94,6 +97,9 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
           );
           successfulBatches += 1;
           failedTotal += bridgeResult.tasks.filter((task) => task.status !== "ok").length;
+          // Campus contesta el login cuando la sesión de Moodle venció: el
+          // puente lo reporta como `no_access` tarea por tarea.
+          noAccessTotal += bridgeResult.tasks.filter((task) => task.status === "no_access").length;
           acceptedTotal += persisted.accepted;
           ambiguousTotal += persisted.ambiguous;
           unmatchedTotal += persisted.unmatched;
@@ -125,6 +131,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       setUnmatchedExternal(unmatchedExternalTotal);
       setUnmatchedReasons(unmatchedReasonTotals);
       setFailedTasks(failedTotal);
+      setNoAccessTasks(noAccessTotal);
       setLastObservedAt(latestObservedAt);
 
       await queryClient.invalidateQueries({ queryKey: ["jefe-dashboard-v1"] });
@@ -202,6 +209,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
     unmatchedReasons,
     deduplicated,
     failedTasks,
+    campusSessionExpired: noAccessTasks > 0 && noAccessTasks === failedTasks,
     lastObservedAt,
     errorMessage: tasksQuery.isError
       ? "No pudimos obtener las tareas habilitadas para tu orientación."

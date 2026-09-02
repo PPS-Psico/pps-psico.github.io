@@ -5,7 +5,17 @@ import manropeSemiBold from "@fontsource/manrope/files/manrope-latin-600-normal.
 import manropeBold from "@fontsource/manrope/files/manrope-latin-700-normal.woff?url";
 import sourceSerifSemiBold from "@fontsource/source-serif-4/files/source-serif-4-latin-600-normal.woff?url";
 import sourceSerifBold from "@fontsource/source-serif-4/files/source-serif-4-latin-700-normal.woff?url";
-import type { ExecutiveReportModel, ReportMetric } from "../executiveReport.types";
+import type {
+  ExecutiveReportModel,
+  ManagementAgreement,
+  ManagementNetworkInstitution,
+  ReportMetric,
+} from "../executiveReport.types";
+import {
+  buildManagementAccessPresentation,
+  managementCapacityValue,
+  visibleManagementAgreements,
+} from "../managementReport.presentation";
 
 Font.register({
   family: "Manrope",
@@ -229,6 +239,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: 14,
   },
+  constrainedHeaderTitle: { width: "75%" },
   sectionLabel: {
     color: C.teal,
     fontSize: 6.5,
@@ -558,6 +569,186 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   tableCell: { fontSize: 6.2, lineHeight: 1.35, paddingRight: 6 },
+  summaryIntro: { color: C.muted, fontSize: 7, lineHeight: 1.5, marginBottom: 12, marginTop: 20 },
+  managementMatrix: { borderTopColor: C.navy, borderTopWidth: 1.5 },
+  matrixRow: { borderBottomColor: C.rule, borderBottomWidth: 1, flexDirection: "row" },
+  matrixLabel: {
+    color: C.ink,
+    fontSize: 6.4,
+    fontWeight: 600,
+    justifyContent: "center",
+    minHeight: 26,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    width: "40%",
+  },
+  matrixCell: {
+    borderLeftColor: C.rule,
+    borderLeftWidth: 1,
+    color: C.navy,
+    fontSize: 7.2,
+    fontWeight: 700,
+    justifyContent: "center",
+    minHeight: 26,
+    paddingHorizontal: 5,
+    paddingVertical: 6,
+    textAlign: "center",
+  },
+  matrixHeaderLabel: { backgroundColor: C.pale, color: C.muted, fontSize: 5.8 },
+  matrixYear: { color: C.navy, fontSize: 9, fontWeight: 700 },
+  matrixYearNote: { color: C.muted, fontSize: 5.2, marginTop: 2 },
+  enrollmentBlock: {
+    borderTopColor: C.rule,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    marginTop: 20,
+    paddingTop: 16,
+  },
+  enrollmentCopy: { paddingRight: 20, width: "42%" },
+  enrollmentCopyText: { color: C.muted, fontSize: 6.4, lineHeight: 1.5, marginTop: 5 },
+  enrollmentBars: { width: "58%" },
+  enrollmentBarRow: { alignItems: "center", flexDirection: "row", marginBottom: 6 },
+  enrollmentCycle: { color: C.muted, fontSize: 5.8, width: 38 },
+  enrollmentTrack: { backgroundColor: "#EEF1F4", height: 6, width: 150 },
+  enrollmentFill: { backgroundColor: C.teal, height: 6 },
+  enrollmentValue: { color: C.navy, fontSize: 7, fontWeight: 700, textAlign: "right", width: 28 },
+  currentStock: { backgroundColor: C.pale, marginTop: 15, padding: 10 },
+  currentStockTitle: { color: C.navy, fontSize: 6.5, fontWeight: 700 },
+  currentStockValue: { color: C.ink, fontSize: 7.4, fontWeight: 600, marginTop: 3 },
+  currentStockNote: { color: C.muted, fontSize: 5.5, lineHeight: 1.4, marginTop: 3 },
+  accessEvidence: {
+    borderLeftColor: C.teal,
+    borderLeftWidth: 2,
+    flexDirection: "row",
+    marginTop: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
+  accessMetric: { paddingRight: 10, width: "24%" },
+  accessRate: { color: C.navy, fontSize: 14, fontWeight: 700 },
+  accessLabel: { color: C.muted, fontSize: 4.8, fontWeight: 700, marginTop: 1 },
+  accessCopy: { width: "76%" },
+  accessText: { color: C.ink, fontSize: 6.4, fontWeight: 600, lineHeight: 1.45 },
+  accessBreakdownTitle: {
+    color: C.navy,
+    fontSize: 4.7,
+    fontWeight: 700,
+    marginTop: 4,
+  },
+  accessBreakdown: { color: C.ink, fontSize: 5.5, lineHeight: 1.4, marginTop: 1 },
+  accessCaveat: { color: C.muted, fontSize: 4.8, lineHeight: 1.35, marginTop: 4 },
+  detailIntro: { color: C.muted, fontSize: 6.6, lineHeight: 1.5, marginBottom: 12, marginTop: 16 },
+  contributionHeader: { borderBottomColor: C.navy, borderBottomWidth: 1, flexDirection: "row" },
+  contributionHeaderCell: {
+    color: C.muted,
+    fontSize: 5,
+    fontWeight: 700,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+    textAlign: "center",
+    textTransform: "uppercase",
+  },
+  contributionRow: {
+    borderBottomColor: C.rule,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    minHeight: 52,
+  },
+  contributionIdentity: { justifyContent: "center", paddingHorizontal: 5, paddingVertical: 7 },
+  contributionName: { color: C.ink, fontFamily: "Source Serif 4", fontSize: 7.2, lineHeight: 1.25 },
+  contributionDate: { color: C.muted, fontSize: 5.2, marginTop: 2 },
+  contributionAgreementCount: { color: C.muted, fontSize: 4.8, marginTop: 2 },
+  contributionOrientations: { flexDirection: "row", flexWrap: "wrap", marginTop: 4 },
+  contributionOrientation: { fontSize: 4.8, fontWeight: 700, marginRight: 3 },
+  contributionCell: {
+    borderLeftColor: C.rule,
+    borderLeftWidth: 1,
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    paddingVertical: 5,
+    textAlign: "center",
+  },
+  contributionValue: { color: C.navy, fontSize: 8.5, fontWeight: 700 },
+  contributionLabel: { color: C.muted, fontSize: 4.5, marginTop: 1 },
+  contributionRealized: { color: C.teal, fontSize: 4.5, fontWeight: 700, marginTop: 2 },
+  contributionLaunches: { color: C.muted, fontSize: 4.5, marginTop: 2 },
+  contributionTotal: { backgroundColor: C.pale },
+  networkContext: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    marginTop: 16,
+  },
+  networkContextCopy: { color: C.muted, fontSize: 6.2, lineHeight: 1.5, width: "62%" },
+  networkCoverage: { color: C.navy, fontSize: 6.2, fontWeight: 700, lineHeight: 1.5, width: "32%" },
+  networkHeader: { borderBottomColor: C.navy, borderBottomWidth: 1, flexDirection: "row" },
+  networkHeaderCell: {
+    color: C.muted,
+    fontSize: 4.8,
+    fontWeight: 700,
+    padding: 5,
+    textTransform: "uppercase",
+  },
+  networkRow: {
+    alignItems: "center",
+    borderBottomColor: C.rule,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    minHeight: 40,
+  },
+  networkCell: { paddingHorizontal: 5, paddingVertical: 5 },
+  networkName: { color: C.ink, fontFamily: "Source Serif 4", fontSize: 6.7, lineHeight: 1.25 },
+  networkLast: { color: C.muted, fontSize: 4.8, marginTop: 2 },
+  networkOrientations: { flexDirection: "row", flexWrap: "wrap" },
+  networkOrientation: {
+    fontSize: 4.7,
+    fontWeight: 700,
+    marginBottom: 2,
+    marginRight: 3,
+    paddingHorizontal: 3,
+    paddingVertical: 2,
+  },
+  networkNumber: { color: C.navy, fontSize: 7, fontWeight: 700, textAlign: "center" },
+  networkValidity: { fontSize: 5, fontWeight: 700, lineHeight: 1.3 },
+  closingStatement: {
+    borderBottomColor: C.rule,
+    borderBottomWidth: 1,
+    marginTop: 24,
+    paddingBottom: 22,
+  },
+  closingHeadline: {
+    color: C.navy,
+    fontFamily: "Source Serif 4",
+    fontSize: 12,
+    lineHeight: 1.3,
+    marginTop: 14,
+    maxWidth: 410,
+  },
+  generatedLabel: { color: C.teal, fontSize: 5.8, fontWeight: 700 },
+  generatedHeadline: {
+    color: C.navy,
+    fontFamily: "Source Serif 4",
+    fontSize: 16,
+    lineHeight: 1.2,
+    marginTop: 5,
+    maxWidth: 390,
+  },
+  generatedText: { color: C.muted, fontSize: 6.2, lineHeight: 1.45, marginTop: 6 },
+  closingCutoff: { color: C.muted, fontSize: 6.3, marginTop: 8 },
+  closingBand: {
+    borderBottomColor: C.rule,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    marginTop: 24,
+  },
+  closingMetric: { flex: 1, minHeight: 68, paddingHorizontal: 10, paddingVertical: 13 },
+  closingMetricBorder: { borderLeftColor: C.rule, borderLeftWidth: 1 },
+  closingMetricValue: { color: C.navy, fontSize: 19, fontWeight: 700 },
+  closingMetricLabel: { color: C.muted, fontSize: 5.5, lineHeight: 1.4, marginTop: 3 },
+  closingColumns: { flexDirection: "row", marginTop: 28 },
+  closingColumn: { flex: 1 },
+  closingColumnLeft: { marginRight: 32 },
+  closingText: { color: C.muted, fontSize: 7, lineHeight: 1.55 },
   offerCol: { width: "35%" },
   orientationCol: { width: "17%" },
   dateCol: { width: "17%" },
@@ -610,6 +801,20 @@ const styles = StyleSheet.create({
 
 const integer = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
+const dateFormatter = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const formatISODate = (value: string): string =>
+  dateFormatter.format(new Date(`${value.slice(0, 10)}T00:00:00Z`));
+
+const chunk = <T,>(items: T[], size: number): T[][] =>
+  Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+    items.slice(index * size, index * size + size)
+  );
 
 const comparisonPeriod = (year: number, cutoffISO: string): string => {
   if (cutoffISO.endsWith("-12-31")) return `Cierre ${year}`;
@@ -638,7 +843,11 @@ const Wordmark = ({ inverse = false }: { inverse?: boolean }) => (
 
 const Footer = ({ model }: { model: ExecutiveReportModel }) => (
   <View style={styles.pageFooter} fixed>
-    <Text>Fuente: Mi Panel Académico · {model.current.metricVersion}</Text>
+    <Text>
+      {model.kind === "management"
+        ? `Fuente: Mi Panel Académico · corte ${formatISODate(model.asOfISO)}`
+        : `Fuente: Mi Panel Académico · ${model.current.metricVersion}`}
+    </Text>
     <Text
       render={({ pageNumber, totalPages }) =>
         `${String(pageNumber).padStart(2, "0")} / ${String(totalPages).padStart(2, "0")}`
@@ -647,13 +856,23 @@ const Footer = ({ model }: { model: ExecutiveReportModel }) => (
   </View>
 );
 
-const Header = ({ title, label }: { title: string; label: string }) => (
+const Header = ({
+  title,
+  label,
+  constrained = false,
+  showWordmark = true,
+}: {
+  title: string;
+  label: string;
+  constrained?: boolean;
+  showWordmark?: boolean;
+}) => (
   <View style={styles.pageHeader}>
-    <View>
+    <View style={constrained ? styles.constrainedHeaderTitle : {}}>
       <Text style={styles.sectionLabel}>{label}</Text>
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
-    <Wordmark />
+    {showWordmark && <Wordmark />}
   </View>
 );
 
@@ -761,7 +980,11 @@ const ManagementCover = ({ model }: { model: ExecutiveReportModel }) => (
 
 const ExecutiveReading = ({ model }: { model: ExecutiveReportModel }) => (
   <Page size="A4" style={styles.page}>
-    <Header title="Lectura ejecutiva" label="Síntesis del período" />
+    <Header
+      title="Lectura ejecutiva"
+      label="Síntesis del período"
+      showWordmark={model.kind !== "management"}
+    />
     <View style={styles.readingGrid}>
       <View style={styles.readingLead}>
         <Text style={styles.readingHeadline}>{model.headline}</Text>
@@ -972,7 +1195,11 @@ const ManagementTimeline = ({ model }: { model: ExecutiveReportModel }) => {
   const maxCapacity = Math.max(1, ...series.map((snapshot) => snapshot.capacity.operational));
   return (
     <Page size="A4" style={styles.page}>
-      <Header title="Evolución de la gestión" label="Serie 2024 hasta la actualidad" />
+      <Header
+        title="Evolución de la gestión"
+        label="Serie 2024 hasta la actualidad"
+        showWordmark={false}
+      />
       <View style={styles.timeline}>
         <Text style={styles.timelineYear}>2024</Text>
         <View style={styles.timelineTrack}>
@@ -1028,6 +1255,443 @@ const ManagementTimeline = ({ model }: { model: ExecutiveReportModel }) => {
           El cierre completo 2024 fue de 42 ofertas: 36 finitas por 270 vacantes y 6 sin cupo
           finito.
         </Text>
+      </View>
+      <Footer model={model} />
+    </Page>
+  );
+};
+
+const ManagementAnnualSummary = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  const series = model.management?.series || [];
+  if (!data) return null;
+  const cohortByYear = new Map(data.population.accountCohorts.map((row) => [row.year, row]));
+  const enrollmentByYear = new Map(
+    data.population.administrativeEnrollment.map((row) => [row.year, row])
+  );
+  const agreementsByYear = new Map<number, number>();
+  data.agreements.forEach((agreement) => {
+    const year = Number(agreement.signedAt.slice(0, 4));
+    agreementsByYear.set(year, (agreementsByYear.get(year) || 0) + agreement.agreementCount);
+  });
+  const rows = [
+    ["PPS lanzadas", (year: number) => series.find((row) => row.year === year)?.capacity.launches],
+    [
+      "Cupos ofrecidos",
+      (year: number) => {
+        const snapshot = series.find((row) => row.year === year);
+        return snapshot ? managementCapacityValue(snapshot) : undefined;
+      },
+    ],
+    [
+      "Estudiantes que iniciaron PPS",
+      (year: number) => series.find((row) => row.year === year)?.flows.ppsStarted,
+    ],
+    [
+      "Estudiantes que finalizaron",
+      (year: number) => series.find((row) => row.year === year)?.flows.finalized,
+    ],
+    [
+      "Altas de cuenta en Mi Panel",
+      (year: number) => {
+        const cohort = cohortByYear.get(year);
+        return cohort?.available ? (cohort.accountsCreated ?? "ND") : "ND";
+      },
+    ],
+    [
+      "De esas altas, actualmente activas",
+      (year: number) => {
+        const cohort = cohortByYear.get(year);
+        return cohort?.available ? (cohort.currentlyActive ?? "ND") : "ND";
+      },
+    ],
+    [
+      "Matrícula administrativa PPS",
+      (year: number) => enrollmentByYear.get(year)?.students ?? "ND",
+    ],
+    ["Convenios nuevos", (year: number) => agreementsByYear.get(year) || 0],
+  ] as const;
+  const maxEnrollment = Math.max(
+    1,
+    ...data.population.administrativeEnrollment.map((row) => row.students)
+  );
+  const access = buildManagementAccessPresentation(data.access, series);
+  const yearWidth = `${60 / Math.max(series.length, 1)}%`;
+  return (
+    <Page size="A4" style={styles.page}>
+      <Header
+        title="Resumen de los años de gestión"
+        label="Resultados por año y corte"
+        showWordmark={false}
+      />
+      <Text style={styles.summaryIntro}>
+        Los años cerrados se leen al 31 de diciembre. {model.year} se calcula hasta el corte
+        elegido:
+        {` ${formatISODate(model.asOfISO)}. “Cupos ofrecidos” presenta en una sola cifra la capacidad total registrada por Mi Panel.`}
+      </Text>
+      <View style={styles.managementMatrix}>
+        <View style={styles.matrixRow}>
+          <Text style={[styles.matrixLabel, styles.matrixHeaderLabel]}>Indicador</Text>
+          {series.map((snapshot) => (
+            <View style={[styles.matrixCell, { width: yearWidth }]} key={`head-${snapshot.year}`}>
+              <Text style={styles.matrixYear}>{snapshot.year}</Text>
+              <Text style={styles.matrixYearNote}>
+                {snapshot.cutoffISO.endsWith("12-31") ? "cierre" : "al corte"}
+              </Text>
+            </View>
+          ))}
+        </View>
+        {rows.map(([label, value]) => (
+          <View style={styles.matrixRow} key={label}>
+            <Text style={styles.matrixLabel}>{label}</Text>
+            {series.map((snapshot) => (
+              <Text
+                style={[styles.matrixCell, { width: yearWidth }]}
+                key={`${label}-${snapshot.year}`}
+              >
+                {String(value(snapshot.year) ?? 0)}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </View>
+      <View style={styles.enrollmentBlock}>
+        <View style={styles.enrollmentCopy}>
+          <Text style={styles.h3}>Crecimiento de matrícula administrativa</Text>
+          <Text style={styles.enrollmentCopyText}>
+            Serie externa informada por la Facultad. No equivale a cuentas creadas, postulantes ni
+            estudiantes que iniciaron PPS.
+          </Text>
+        </View>
+        <View style={styles.enrollmentBars}>
+          {data.population.administrativeEnrollment.map((row) => (
+            <View style={styles.enrollmentBarRow} key={row.cycle}>
+              <Text style={styles.enrollmentCycle}>{row.cycle}</Text>
+              <View style={styles.enrollmentTrack}>
+                <View
+                  style={[
+                    styles.enrollmentFill,
+                    { width: `${(row.students / maxEnrollment) * 100}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.enrollmentValue}>{row.students}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      <View style={styles.currentStock}>
+        <Text style={styles.currentStockTitle}>Estado actual de la población</Text>
+        <Text style={styles.currentStockValue}>
+          {data.population.currentStock.activeStudents} estudiantes activos;{" "}
+          {data.population.currentStock.activeStudentsWithCurrentPps} con PPS en curso al corte.
+        </Text>
+        <Text style={styles.currentStockNote}>
+          Es una fotografía actual. No se presenta como serie histórica porque el estado activo
+          previo no puede reconstruirse con el mismo criterio. El historial verificable de cuentas
+          de Mi Panel comienza el{" "}
+          {data.population.accountHistoryStartISO
+            ? formatISODate(data.population.accountHistoryStartISO)
+            : "día no disponible"}
+          ; por eso los años anteriores se informan como ND. Las altas de cuenta no equivalen a
+          ingresantes académicos.
+        </Text>
+      </View>
+      <View style={styles.accessEvidence}>
+        <View style={styles.accessMetric}>
+          <Text style={styles.accessRate}>
+            {data.access.startRatePct == null
+              ? "—"
+              : `${decimal.format(data.access.startRatePct)}%`}
+          </Text>
+          <Text style={styles.accessLabel}>ACCESO OBSERVADO EN {data.access.year}</Text>
+        </View>
+        <View style={styles.accessCopy}>
+          <Text style={styles.accessText}>{access.overview}</Text>
+          <Text style={styles.accessBreakdownTitle}>QUIENES TODAVÍA NO INICIARON</Text>
+          <Text style={styles.accessBreakdown}>{access.pending}</Text>
+          <Text style={styles.accessBreakdownTitle}>TRAYECTORIA REGISTRADA</Text>
+          <Text style={styles.accessBreakdown}>{access.withoutAnyPps}</Text>
+          <Text style={styles.accessCaveat}>{access.scope}</Text>
+        </View>
+      </View>
+      <Footer model={model} />
+    </Page>
+  );
+};
+
+const AgreementContributionCell = ({
+  agreement,
+  year,
+  width,
+}: {
+  agreement: ManagementAgreement;
+  year: number;
+  width: string;
+}) => {
+  if (year < Number(agreement.signedAt.slice(0, 4))) {
+    return <View style={[styles.contributionCell, { width }]} />;
+  }
+  const contribution = agreement.contributions.find((row) => row.year === year);
+  return (
+    <View style={[styles.contributionCell, { width }]}>
+      <Text style={styles.contributionValue}>{contribution?.practiceStudents || 0}</Text>
+      <Text style={styles.contributionLabel}>estudiantes</Text>
+    </View>
+  );
+};
+
+const ManagementAgreementPages = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  if (!data?.agreements.length) return null;
+  const years = model.management?.series.map((snapshot) => snapshot.year) || [];
+  const visibleAgreements = visibleManagementAgreements(data.agreements);
+  const pages = chunk(visibleAgreements, 9);
+  const yearWidth = `${42 / Math.max(years.length, 1)}%`;
+  return (
+    <>
+      {pages.map((agreements, pageIndex) => (
+        <Page size="A4" style={styles.page} key={`agreement-${pageIndex + 1}`}>
+          <Header
+            title="Nuevas instituciones incorporadas por esta gestión"
+            label={`Gestión 2024—${model.year} · parte ${pageIndex + 1} de ${pages.length}`}
+            constrained
+            showWordmark={false}
+          />
+          {pageIndex === 0 && (
+            <Text style={styles.detailIntro}>
+              Incorporar cada institución requirió múltiples reuniones y el diseño y la tramitación
+              de los convenios marco y específicos necesarios. La tabla muestra únicamente cuántos
+              estudiantes realizaron una PPS en cada año. El total vuelve a contar a cada estudiante
+              una sola vez entre años.
+            </Text>
+          )}
+          <View style={styles.contributionHeader}>
+            <Text style={[styles.contributionHeaderCell, { textAlign: "left", width: "40%" }]}>
+              Institución
+            </Text>
+            {years.map((year) => (
+              <Text style={[styles.contributionHeaderCell, { width: yearWidth }]} key={year}>
+                {year}
+              </Text>
+            ))}
+            <Text style={[styles.contributionHeaderCell, { width: "18%" }]}>Total</Text>
+          </View>
+          {agreements.map((agreement) => (
+            <View style={styles.contributionRow} key={agreement.id} wrap={false}>
+              <View style={[styles.contributionIdentity, { width: "40%" }]}>
+                <Text style={styles.contributionName}>{agreement.institution}</Text>
+                <Text style={styles.contributionDate}>
+                  Desde{" "}
+                  {agreement.datePrecision === "year"
+                    ? agreement.signedAt.slice(0, 4)
+                    : formatISODate(agreement.signedAt)}
+                  {agreement.datePrecision === "year" ? " · fecha anual registrada" : ""}
+                </Text>
+                {agreement.agreementCount > 1 && (
+                  <Text style={styles.contributionAgreementCount}>
+                    {agreement.agreementCount} registros de convenio consolidados
+                  </Text>
+                )}
+                <View style={styles.contributionOrientations}>
+                  {agreement.orientations.length ? (
+                    agreement.orientations.map((orientation) => (
+                      <Text
+                        style={[
+                          styles.contributionOrientation,
+                          { color: ORIENTATION_TEXT_COLORS[orientation] || C.muted },
+                        ]}
+                        key={orientation}
+                      >
+                        {orientationLabels[orientation] || orientation}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={styles.contributionDate}>Sin orientación atribuida</Text>
+                  )}
+                </View>
+              </View>
+              {years.map((year) => (
+                <AgreementContributionCell
+                  agreement={agreement}
+                  year={year}
+                  width={yearWidth}
+                  key={year}
+                />
+              ))}
+              <View style={[styles.contributionCell, styles.contributionTotal, { width: "18%" }]}>
+                <Text style={styles.contributionValue}>{agreement.totalPracticeStudents}</Text>
+                <Text style={styles.contributionLabel}>estudiantes distintos</Text>
+              </View>
+            </View>
+          ))}
+          <Footer model={model} />
+        </Page>
+      ))}
+    </>
+  );
+};
+
+const ManagementNetworkPages = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  if (!data?.recentNetwork.length) return null;
+  const years = Array.from(
+    new Set(data.recentNetwork.flatMap((row) => Object.keys(row.launchesByYear).map(Number)))
+  ).sort((a, b) => a - b);
+  const pages = chunk(data.recentNetwork, 10);
+  return (
+    <>
+      {pages.map((institutions, pageIndex) => (
+        <Page size="A4" style={styles.page} key={`network-${pageIndex + 1}`}>
+          <Header
+            title="Red institucional con actividad reciente"
+            label={`${years.join("–")} · parte ${pageIndex + 1} de ${pages.length}`}
+            showWordmark={false}
+          />
+          {pageIndex === 0 && (
+            <View style={styles.networkContext}>
+              <Text style={styles.networkContextCopy}>
+                Instituciones y espacios con al menos una PPS lanzada durante los dos años
+                calendario más recientes hasta el corte.
+              </Text>
+            </View>
+          )}
+          <View style={styles.networkHeader}>
+            <Text style={[styles.networkHeaderCell, { width: "42%" }]}>Institución / espacio</Text>
+            <Text style={[styles.networkHeaderCell, { width: `${50 - years.length * 8}%` }]}>
+              Orientaciones
+            </Text>
+            {years.map((year) => (
+              <Text
+                style={[styles.networkHeaderCell, { textAlign: "center", width: "8%" }]}
+                key={year}
+              >
+                {year}
+              </Text>
+            ))}
+            <Text style={[styles.networkHeaderCell, { textAlign: "center", width: "8%" }]}>
+              Total
+            </Text>
+          </View>
+          {institutions.map((institution: ManagementNetworkInstitution) => (
+            <View style={styles.networkRow} key={institution.key} wrap={false}>
+              <View style={[styles.networkCell, { width: "42%" }]}>
+                <Text style={styles.networkName}>{institution.institution}</Text>
+                <Text style={styles.networkLast}>
+                  Última actividad: {formatISODate(institution.lastActivity)}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.networkCell,
+                  styles.networkOrientations,
+                  { width: `${50 - years.length * 8}%` },
+                ]}
+              >
+                {institution.orientations.length ? (
+                  institution.orientations.map((orientation) => (
+                    <Text
+                      style={[
+                        styles.networkOrientation,
+                        {
+                          backgroundColor: ORIENTATION_PALES[orientation] || C.pale,
+                          color: ORIENTATION_TEXT_COLORS[orientation] || C.muted,
+                        },
+                      ]}
+                      key={orientation}
+                    >
+                      {orientationLabels[orientation] || orientation}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={styles.networkLast}>Sin orientación atribuida</Text>
+                )}
+              </View>
+              {years.map((year) => (
+                <Text
+                  style={[styles.networkCell, styles.networkNumber, { width: "8%" }]}
+                  key={year}
+                >
+                  {institution.launchesByYear[String(year)] || 0}
+                </Text>
+              ))}
+              <Text style={[styles.networkCell, styles.networkNumber, { width: "8%" }]}>
+                {institution.totalLaunches}
+              </Text>
+            </View>
+          ))}
+          <Footer model={model} />
+        </Page>
+      ))}
+    </>
+  );
+};
+
+const ManagementClosing = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  if (!data) return null;
+  const totalFixed = data.agreements.reduce((total, row) => total + row.totalFixedOffered, 0);
+  const totalRealized = data.agreements.reduce((total, row) => total + row.totalRealized, 0);
+  const totalCapacity = totalFixed + totalRealized;
+  return (
+    <Page size="A4" style={styles.page}>
+      <Header
+        title="Estado al corte y documentación adjunta"
+        label="Cierre ejecutivo"
+        constrained
+        showWordmark={false}
+      />
+      <View style={styles.closingStatement}>
+        <Text style={styles.generatedLabel}>GENERADO AUTOMÁTICAMENTE POR MI PANEL</Text>
+        <Text style={styles.generatedHeadline}>
+          Este documento demuestra la capacidad de Mi Panel para producir información de gestión
+          actualizada.
+        </Text>
+        <Text style={styles.generatedText}>
+          La fecha de corte, los indicadores, la serie anual y el detalle institucional se
+          recalculan cada vez que se genera el informe.
+        </Text>
+        <Text style={styles.closingHeadline}>{model.headline}</Text>
+        <Text style={styles.closingCutoff}>Corte reproducible: {formatISODate(model.asOfISO)}</Text>
+      </View>
+      <View style={styles.closingBand}>
+        {[
+          [
+            data.institutionCount,
+            `instituciones o espacios incorporados · ${data.agreementCount} registros de convenio`,
+          ],
+          [totalCapacity, "cupos ofrecidos acumulados desde esas instituciones"],
+        ].map(([value, label], index) => (
+          <View style={[styles.closingMetric, index ? styles.closingMetricBorder : {}]} key={label}>
+            <Text style={styles.closingMetricValue}>{value}</Text>
+            <Text style={styles.closingMetricLabel}>{label}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={styles.closingColumns}>
+        <View style={[styles.closingColumn, styles.closingColumnLeft]}>
+          <Text style={styles.h3}>Actualización al corte</Text>
+          <Text style={styles.closingText}>
+            Mi Panel consolida la actividad de las PPS, las trayectorias estudiantiles y la red
+            institucional con la información disponible al momento de emisión.
+          </Text>
+        </View>
+        <View style={styles.closingColumn}>
+          <Text style={styles.h3}>Documento que acompaña este informe</Text>
+          <Text style={styles.closingText}>
+            Se adjunta por separado el Informe anual detallado de PPS {model.year}, generado en
+            forma separada para el año del corte. Ese documento conserva el desarrollo operativo del
+            año en curso y no forma parte de este rediseño.
+          </Text>
+        </View>
+      </View>
+      <View style={styles.finalSignature}>
+        <View style={styles.signature}>
+          <Text style={styles.signatureName}>{model.author.name}</Text>
+          <Text>{model.author.role}</Text>
+          <Text>{model.author.unit}</Text>
+        </View>
+        <Text style={styles.signature}>{model.author.email}</Text>
       </View>
       <Footer model={model} />
     </Page>
@@ -1257,7 +1921,13 @@ export const ExecutiveReportPdf = ({
         <OutcomesInstitutions model={model} />
       </>
     ) : (
-      <ManagementTimeline model={model} />
+      <>
+        <ManagementAnnualSummary model={model} />
+        <ManagementTimeline model={model} />
+        <ManagementAgreementPages model={model} />
+        <ManagementNetworkPages model={model} />
+        <ManagementClosing model={model} />
+      </>
     )}
     {includeTechnicalAnnex && <TechnicalAnnex model={model} />}
     {model.kind === "annual" && <LaunchAnnex model={model} />}

@@ -98,6 +98,14 @@ const JefeMoodleSyncNotice: React.FC<{ sync: JefeMoodleSyncState }> = ({ sync })
     detail = sync.errorMessage || "Conservamos el último estado confirmado.";
   }
 
+  // Un barrido que no leyó nada casi siempre es la sesión de Campus vencida,
+  // no un problema de las tareas. Decirlo evita buscar el error donde no está.
+  if (sync.campusSessionExpired && (sync.status === "partial" || sync.status === "error")) {
+    icon = "no_accounts";
+    title = "Tu sesión de Campus expiró";
+    detail = `Campus devolvió la pantalla de acceso en las ${sync.failedTasks} tareas. Volvé a entrar a Campus en otra pestaña y reintentá: no se pierde nada de lo ya guardado.`;
+  }
+
   const canRetry = sync.status === "error" || sync.status === "partial";
   return (
     <div className={`jefe-sync-notice jefe-sync-notice--${sync.status}`} role="status">

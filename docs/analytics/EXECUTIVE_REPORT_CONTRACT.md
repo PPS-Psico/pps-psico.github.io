@@ -96,10 +96,15 @@ externa al momento de generarse.
    variación conserve unidad y porcentaje.
 6. Descargar el PDF y revisar que el nombre sea:
    - `informe-pps-sede-comahue-AAAA.pdf`, o
-   - `informe-gestion-pps-sede-comahue-2024-AAAA.pdf`, o
+   - `informe-gestion-pps-sede-comahue-2024-AAAA-MM-DD.pdf`, o
    - `informe-direccion-pps-agostina-reale-berrueta-AAAA.pdf`.
 7. Ante diferencias, ejecutar el RPC con el mismo `p_year` y `p_cutoff`; no corregir
    texto o cifras directamente en la plantilla.
+
+En el informe de gestión, las altas de cuenta anteriores al 29/11/2025 se
+presentan como `ND` porque no existe historial verificable de Auth. Los seis
+convenios de gestión recuperados para 2024 se incluyen con precisión anual y no
+con una fecha de firma inventada.
 
 ## Pruebas mínimas ante cambios
 
@@ -160,3 +165,29 @@ API recorte la secuencia: al 18/07/2026 existen 2.270 postulaciones históricas.
   participantes registrados.
 - La tabla plana fue reemplazada por capítulos mensuales y filas editoriales para
   facilitar búsqueda y lectura sin perder precisión.
+
+## Informe de gestión con corte configurable
+
+La vista **Mi gestión** permite elegir cualquier fecha de corte desde 2024 y se
+recalcula al generar. Los años anteriores al corte se leen al 31 de diciembre y
+el año en curso se lee hasta el día seleccionado. Incluye:
+
+- resumen anual de PPS lanzadas, capacidad, inicios y finalizaciones;
+- matrícula administrativa externa, diferenciada de las cuentas creadas;
+- instituciones incorporadas desde el inicio de gestión, consolidadas en una fila
+  institucional aunque tengan varios convenios o espacios, mostrando únicamente
+  estudiantes que realizaron una PPS por año y el total deduplicado;
+- acceso observado en el año del corte: postulantes distintos frente a quienes
+  iniciaron una PPS, con los pendientes distribuidos por cantidad de PPS a las
+  que se inscribieron, el total anual de lanzamientos y sin atribuirles intención;
+- red con actividad en los dos años calendario más recientes, orientaciones con
+  sus colores y cantidad de lanzamientos;
+- rótulo directivo único **Cupos ofrecidos**, calculado desde la capacidad total
+  registrada sin exponer su descomposición técnica;
+- indicación de adjuntar el informe anual detallado del año del corte.
+- cierre destacado que identifica al documento como generación automática de Mi
+  Panel y explicita que se actualiza al corte elegido.
+
+Este alcance modifica sólo **Mi gestión**. El contenido y la composición del
+informe anual permanecen sin cambios. La versión `management-report-v1` queda en
+la trazabilidad técnica; no se muestra como jerga en el cuerpo directivo.

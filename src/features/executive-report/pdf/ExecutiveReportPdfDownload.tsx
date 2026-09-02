@@ -5,7 +5,7 @@ import { ExecutiveReportPdf } from "./ExecutiveReportPdf";
 const fileName = (model: ExecutiveReportModel): string =>
   model.kind === "annual"
     ? `informe-pps-sede-comahue-${model.year}.pdf`
-    : `informe-gestion-pps-sede-comahue-2024-${model.year}.pdf`;
+    : `informe-gestion-pps-sede-comahue-2024-${model.asOfISO}.pdf`;
 
 const ExecutiveReportPdfDownload = ({
   model,

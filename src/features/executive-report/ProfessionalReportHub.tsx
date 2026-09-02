@@ -19,10 +19,14 @@ interface ProfessionalReportHubProps {
 const ProfessionalReportHub = ({ year, isTestingMode = false }: ProfessionalReportHubProps) => {
   const [kind, setKind] = useState<ProfessionalReportVariant>("annual");
   const [includeTechnicalAnnex, setIncludeTechnicalAnnex] = useState(false);
+  const [managementCutoffISO, setManagementCutoffISO] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
   const executiveKind: ExecutiveReportKind = kind === "director" ? "annual" : kind;
   const executiveReport = useProfessionalExecutiveReport({
     kind: executiveKind,
     year,
+    managementCutoffISO,
     isTestingMode,
   });
   const directorReport = useDirectorReport({
@@ -55,6 +59,19 @@ const ProfessionalReportHub = ({ year, isTestingMode = false }: ProfessionalRepo
           </p>
         </div>
         <div className="per-toolbar-actions">
+          {kind === "management" && (
+            <label className="per-cutoff-control">
+              <span>Fecha de corte</span>
+              <input
+                type="date"
+                min="2024-01-01"
+                max={new Date().toISOString().slice(0, 10)}
+                value={managementCutoffISO}
+                onChange={(event) => setManagementCutoffISO(event.target.value)}
+              />
+              <small>El informe se recalcula al generar</small>
+            </label>
+          )}
           {kind !== "director" && (
             <label className="per-technical-toggle">
               <input

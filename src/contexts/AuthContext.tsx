@@ -95,7 +95,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAuthenticatedUser(null);
 
       // 3. Sign out from Supabase (Safe catch if no session exists)
-      const { error } = await supabase.auth.signOut();
+      // Cerrar sólo esta sesión. El scope global también revoca las sesiones
+      // abiertas por el mismo usuario dentro de Campus u otros dispositivos.
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) logger.warn("Supabase signOut warning:", error.message);
 
       // 4. Force cleanup

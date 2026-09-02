@@ -150,6 +150,56 @@ describe("processAndLinkStudentData", () => {
       });
     });
 
+    it("reconoce una PPS especial histórica calificada aunque no tenga lanzamiento", () => {
+      const practicas = [
+        prac("practice-survey", {
+          [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]:
+            "Relevamiento del Ejercicio Profesional en Psicología",
+          [C.FIELD_TIPO_ACTIVIDAD_PRACTICAS]: "actividad_especial",
+          [C.FIELD_ESTADO_PRACTICA]: "Finalizada",
+          [C.FIELD_FECHA_FIN_PRACTICAS]: "2025-09-24",
+          [C.FIELD_INFORME_ESTADO_PRACTICAS]: "calificado",
+          [C.FIELD_NOTA_MOODLE_PRACTICAS]: 9,
+          [C.FIELD_NOTA_FUENTE_PRACTICAS]: "admin",
+          [C.FIELD_NOTA_PRACTICAS]: "9",
+        }),
+      ];
+
+      const { informeTasks } = processAndLinkStudentData({
+        myEnrollments: [],
+        allLanzamientos: [],
+        practicas,
+      });
+
+      expect(informeTasks).toEqual([
+        expect.objectContaining({
+          convocatoriaId: "practica-practice-survey",
+          practicaId: "practice-survey",
+          ppsName: "Relevamiento del Ejercicio Profesional en Psicología",
+          fechaFinalizacion: "2025-09-24",
+          informeSubido: true,
+          nota: "9",
+        }),
+      ]);
+    });
+
+    it("no convierte una nota legacy aislada en una entrega confirmada", () => {
+      const { informeTasks } = processAndLinkStudentData({
+        myEnrollments: [],
+        allLanzamientos: [],
+        practicas: [
+          prac("practice-legacy", {
+            [C.FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS]: "PPS histórica",
+            [C.FIELD_ESTADO_PRACTICA]: "Finalizada",
+            [C.FIELD_NOTA_PRACTICAS]: "Aprobado",
+            [C.FIELD_NOTA_FUENTE_PRACTICAS]: "legacy",
+          }),
+        ],
+      });
+
+      expect(informeTasks).toEqual([]);
+    });
+
     it("ordena las tareas pendientes (sin informe subido) primero", () => {
       const allLanzamientos = [
         lanz("lzA", {

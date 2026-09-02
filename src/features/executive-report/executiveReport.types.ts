@@ -72,6 +72,113 @@ export interface OrientationSummary {
   sharePct: number | null;
 }
 
+export interface ManagementAccountCohort {
+  year: number;
+  accountsCreated: number | null;
+  currentlyActive: number | null;
+  available: boolean;
+}
+
+export interface ManagementAdministrativeEnrollment {
+  year: number;
+  cycle: string;
+  students: number;
+}
+
+export interface ManagementAgreementContribution {
+  year: number;
+  launches: number;
+  fixedOffered: number;
+  realized: number;
+  applicants: number;
+  practiceStudents: number;
+}
+
+export type ManagementValidity =
+  | "confirmed"
+  | "expired"
+  | "pending_mapping"
+  | "pending_agreement"
+  | "inconsistent_expiry";
+
+export interface ManagementAgreement {
+  id: string;
+  institutionId: string;
+  institution: string;
+  type: string | null;
+  signedAt: string;
+  expiresAt: string | null;
+  datePrecision: "day" | "year";
+  validity: ManagementValidity;
+  agreementCount: number;
+  orientations: string[];
+  contributions: ManagementAgreementContribution[];
+  totalLaunches: number;
+  totalFixedOffered: number;
+  totalRealized: number;
+  totalApplicants: number;
+  totalPracticeStudents: number;
+}
+
+export interface ManagementAccess {
+  year: number;
+  applicants: number;
+  started: number;
+  withAnyPps: number;
+  withoutStart: number;
+  withoutAnyPps: number;
+  startRatePct: number | null;
+  pendingApplicationDistribution: Array<{
+    applications: number;
+    students: number;
+    withoutAnyPps: number;
+  }>;
+}
+
+export interface ManagementNetworkInstitution {
+  key: string;
+  institutionId: string | null;
+  institution: string;
+  orientations: string[];
+  launchesByYear: Record<string, number>;
+  totalLaunches: number;
+  lastActivity: string;
+  agreementDate: string | null;
+  agreementExpiry: string | null;
+  validity: ManagementValidity;
+  mappingComplete: boolean;
+}
+
+export interface ManagementReportData {
+  reportVersion: string;
+  cutoffISO: string;
+  generatedAtISO: string;
+  managementStartISO: string;
+  agreementCount: number;
+  institutionCount: number;
+  access: ManagementAccess;
+  population: {
+    accountStateAsOfISO: string;
+    accountHistoryStartISO: string | null;
+    accountCohorts: ManagementAccountCohort[];
+    currentStock: {
+      activeStudents: number;
+      activeStudentsWithCurrentPps: number;
+      historicallyComparable: boolean;
+    };
+    administrativeEnrollment: ManagementAdministrativeEnrollment[];
+    administrativeSource: string;
+  };
+  agreements: ManagementAgreement[];
+  recentNetwork: ManagementNetworkInstitution[];
+  quality: {
+    recentLaunches: number;
+    resolvedInstitutionLaunches: number;
+    unresolvedInstitutionLaunches: number;
+    institutionMappingCoveragePct: number | null;
+  };
+}
+
 export interface ExecutiveReportModel {
   kind: ExecutiveReportKind;
   generatedAtISO: string;
@@ -106,6 +213,7 @@ export interface ExecutiveReportModel {
     startISO: "2024-09-01";
     baseline: AnalyticsSnapshot | null;
     series: AnalyticsSnapshot[];
+    data: ManagementReportData | null;
     caveat: string;
   } | null;
   methodology: string[];
@@ -122,5 +230,6 @@ export interface ExecutiveReportModelInput {
   agreements?: NewAgreement[];
   trajectory?: TrayectoriaFinalizados | null;
   selectionEffort?: EsfuerzoPrimeraSeleccion | null;
+  managementData?: ManagementReportData | null;
   generatedAt?: Date;
 }

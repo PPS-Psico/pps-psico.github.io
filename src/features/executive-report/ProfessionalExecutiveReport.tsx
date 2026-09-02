@@ -5,10 +5,37 @@ import "@fontsource/manrope/latin-700.css";
 import "@fontsource/source-serif-4/latin-600.css";
 import "@fontsource/source-serif-4/latin-700.css";
 import "./professionalExecutiveReport.css";
-import type { ExecutiveReportModel, ReportDelta, ReportMetric } from "./executiveReport.types";
+import type {
+  ExecutiveReportModel,
+  ManagementAgreement,
+  ManagementNetworkInstitution,
+  ReportDelta,
+  ReportMetric,
+} from "./executiveReport.types";
+import {
+  buildManagementAccessPresentation,
+  managementCapacityValue,
+  visibleManagementAgreements,
+} from "./managementReport.presentation";
 
 const integerFormatter = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 const decimalFormatter = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
+const dateFormatter = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const formatISODate = (value: string | null): string => {
+  if (!value) return "—";
+  return dateFormatter.format(new Date(`${value.slice(0, 10)}T12:00:00Z`));
+};
+
+const chunk = <T,>(items: T[], size: number): T[][] =>
+  Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+    items.slice(index * size, index * size + size)
+  );
 
 const orientationClassName = (orientation: string): string =>
   `is-${orientation.toLocaleLowerCase("es").replace(/[^a-z0-9]/g, "")}`;
@@ -90,19 +117,31 @@ const Wordmark = ({ inverse = false }: { inverse?: boolean }) => (
   </div>
 );
 
-const PageHeader = ({ title, label }: { title: string; label: string }) => (
+const PageHeader = ({
+  title,
+  label,
+  showWordmark = true,
+}: {
+  title: string;
+  label: string;
+  showWordmark?: boolean;
+}) => (
   <header className="per-page-header">
     <div>
       <span>{label}</span>
       <h2>{title}</h2>
     </div>
-    <Wordmark />
+    {showWordmark && <Wordmark />}
   </header>
 );
 
 const SourceFooter = ({ model, page }: { model: ExecutiveReportModel; page: string }) => (
   <footer className="per-page-footer">
-    <span>Fuente: Mi Panel Académico · {model.current.metricVersion}</span>
+    <span>
+      {model.kind === "management"
+        ? `Fuente: Mi Panel Académico · corte ${formatISODate(model.asOfISO)}`
+        : `Fuente: Mi Panel Académico · ${model.current.metricVersion}`}
+    </span>
     <span>{page}</span>
   </footer>
 );
@@ -173,7 +212,11 @@ const ManagementCover = ({ model }: { model: ExecutiveReportModel }) => (
 
 const ExecutiveReading = ({ model }: { model: ExecutiveReportModel }) => (
   <section className="per-page">
-    <PageHeader title="Lectura ejecutiva" label="Síntesis del período" />
+    <PageHeader
+      title="Lectura ejecutiva"
+      label="Síntesis del período"
+      showWordmark={model.kind !== "management"}
+    />
     <div className="per-reading-grid">
       <div className="per-reading-lead">
         <p>{model.headline}</p>
@@ -338,7 +381,11 @@ const ManagementTimeline = ({ model }: { model: ExecutiveReportModel }) => {
   const maxCapacity = Math.max(1, ...series.map((snapshot) => snapshot.capacity.operational));
   return (
     <section className="per-page">
-      <PageHeader title="Evolución de la gestión" label="Serie 2024 hasta la actualidad" />
+      <PageHeader
+        title="Evolución de la gestión"
+        label="Serie 2024 hasta la actualidad"
+        showWordmark={false}
+      />
       <div className="per-arrival-timeline">
         <span>2024</span>
         <div>
@@ -385,6 +432,421 @@ const ManagementTimeline = ({ model }: { model: ExecutiveReportModel }) => {
         </p>
       </div>
       <SourceFooter model={model} page="03" />
+    </section>
+  );
+};
+
+const ManagementAnnualSummary = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  const series = model.management?.series || [];
+  if (!data) return null;
+  const cohortByYear = new Map(data.population.accountCohorts.map((row) => [row.year, row]));
+  const enrollmentByYear = new Map(
+    data.population.administrativeEnrollment.map((row) => [row.year, row])
+  );
+  const agreementsByYear = new Map<number, number>();
+  data.agreements.forEach((agreement) => {
+    const agreementYear = Number(agreement.signedAt.slice(0, 4));
+    agreementsByYear.set(
+      agreementYear,
+      (agreementsByYear.get(agreementYear) || 0) + agreement.agreementCount
+    );
+  });
+  const maxEnrollment = Math.max(
+    1,
+    ...data.population.administrativeEnrollment.map((row) => row.students)
+  );
+  const access = buildManagementAccessPresentation(data.access, series);
+  const rows = [
+    {
+      label: "PPS lanzadas",
+      value: (snapshot: (typeof series)[number]) => snapshot.capacity.launches,
+    },
+    {
+      label: "Cupos ofrecidos",
+      value: managementCapacityValue,
+    },
+    {
+      label: "Estudiantes que iniciaron PPS",
+      value: (snapshot: (typeof series)[number]) => snapshot.flows.ppsStarted,
+    },
+    {
+      label: "Estudiantes que finalizaron",
+      value: (snapshot: (typeof series)[number]) => snapshot.flows.finalized,
+    },
+    {
+      label: "Altas de cuenta en Mi Panel",
+      value: (snapshot: (typeof series)[number]) => {
+        const cohort = cohortByYear.get(snapshot.year);
+        return cohort?.available ? (cohort.accountsCreated ?? "ND") : "ND";
+      },
+    },
+    {
+      label: "De esas altas, actualmente activas",
+      value: (snapshot: (typeof series)[number]) => {
+        const cohort = cohortByYear.get(snapshot.year);
+        return cohort?.available ? (cohort.currentlyActive ?? "ND") : "ND";
+      },
+    },
+    {
+      label: "Matrícula administrativa PPS",
+      value: (snapshot: (typeof series)[number]) =>
+        enrollmentByYear.get(snapshot.year)?.students ?? "ND",
+    },
+    {
+      label: "Convenios nuevos",
+      value: (snapshot: (typeof series)[number]) => agreementsByYear.get(snapshot.year) || 0,
+    },
+  ];
+
+  return (
+    <section className="per-page per-management-summary">
+      <PageHeader
+        title="Resumen de los años de gestión"
+        label="Resultados por año y corte"
+        showWordmark={false}
+      />
+      <p className="per-summary-intro">
+        Los años cerrados se leen al 31 de diciembre. {model.year} se calcula hasta el corte
+        elegido: <strong>{formatISODate(model.asOfISO)}</strong>. “Cupos ofrecidos” presenta en una
+        sola cifra la capacidad total registrada por Mi Panel.
+      </p>
+      <div
+        className="per-management-matrix"
+        style={{ gridTemplateColumns: `minmax(210px, 1.7fr) repeat(${series.length}, 1fr)` }}
+      >
+        <div className="per-matrix-corner">Indicador</div>
+        {series.map((snapshot) => (
+          <div className="per-matrix-year" key={`head-${snapshot.year}`}>
+            <strong>{snapshot.year}</strong>
+            <span>{snapshot.cutoffISO.endsWith("12-31") ? "cierre" : "al corte"}</span>
+          </div>
+        ))}
+        {rows.flatMap((row) => [
+          <div className="per-matrix-label" key={`${row.label}-label`}>
+            {row.label}
+          </div>,
+          ...series.map((snapshot) => (
+            <div className="per-matrix-value" key={`${row.label}-${snapshot.year}`}>
+              {row.value(snapshot)}
+            </div>
+          )),
+        ])}
+      </div>
+      <div className="per-enrollment-series">
+        <div>
+          <h3>Crecimiento de la matrícula administrativa</h3>
+          <p>
+            Serie externa informada por la Facultad. No equivale a cuentas creadas, postulantes ni
+            estudiantes que iniciaron PPS.
+          </p>
+        </div>
+        <div className="per-enrollment-bars">
+          {data.population.administrativeEnrollment.map((row) => (
+            <div key={row.cycle}>
+              <span>{row.cycle}</span>
+              <i style={{ width: `${(row.students / maxEnrollment) * 100}%` }} />
+              <strong>{row.students}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="per-current-stock-note">
+        <strong>Foto operativa al momento de emisión</strong>
+        <span>
+          {data.population.currentStock.activeStudents} estudiantes activos en Mi Panel ·{" "}
+          {data.population.currentStock.activeStudentsWithCurrentPps} con PPS actualmente en curso
+        </span>
+        <small>
+          Este stock no se usa como serie histórica: su estado corresponde al momento de generar el
+          documento. El historial verificable de cuentas de Mi Panel comienza el{" "}
+          {data.population.accountHistoryStartISO
+            ? formatISODate(data.population.accountHistoryStartISO)
+            : "día no disponible"}
+          ; por eso los años anteriores se informan como ND. Las altas de cuenta no equivalen a
+          ingresantes académicos.
+        </small>
+      </div>
+      <div className="per-access-evidence">
+        <div className="per-access-metric">
+          <strong>{data.access.startRatePct?.toLocaleString("es-AR") ?? "—"}%</strong>
+          <span>acceso observado en {data.access.year}</span>
+        </div>
+        <div className="per-access-copy">
+          <p className="per-access-lead">{access.overview}</p>
+          <p>
+            <strong>Qué pasó con quienes todavía no iniciaron</strong>
+            {access.pending}
+          </p>
+          <p>
+            <strong>Trayectoria registrada</strong>
+            {access.withoutAnyPps}
+          </p>
+          <small>{access.scope}</small>
+        </div>
+      </div>
+      <SourceFooter model={model} page="G3" />
+    </section>
+  );
+};
+
+const AgreementContributionCell = ({
+  agreement,
+  year,
+}: {
+  agreement: ManagementAgreement;
+  year: number;
+}) => {
+  if (year < Number(agreement.signedAt.slice(0, 4))) {
+    return (
+      <span
+        className="per-contribution-empty"
+        aria-label="La institución aún no estaba incorporada"
+      />
+    );
+  }
+  const contribution = agreement.contributions.find((item) => item.year === year);
+  return (
+    <span className="per-contribution-cell">
+      <strong>{contribution?.practiceStudents || 0}</strong>
+      <small>estudiantes</small>
+    </span>
+  );
+};
+
+const ManagementAgreementPages = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  if (!data?.agreements.length) return null;
+  const years = model.management?.series.map((snapshot) => snapshot.year) || [];
+  const visibleAgreements = visibleManagementAgreements(data.agreements);
+  const pages = chunk(visibleAgreements, 10);
+  return (
+    <>
+      {pages.map((agreements, pageIndex) => (
+        <section className="per-page per-management-detail-page" key={`agreements-${pageIndex}`}>
+          <PageHeader
+            title="Nuevas instituciones incorporadas por esta gestión"
+            label={`Gestión 2024—${model.year} · parte ${pageIndex + 1} de ${pages.length}`}
+            showWordmark={false}
+          />
+          {pageIndex === 0 && (
+            <p className="per-detail-intro">
+              Incorporar cada institución requirió múltiples reuniones y el diseño y la tramitación
+              de los convenios marco y específicos necesarios. La tabla muestra únicamente cuántos
+              estudiantes realizaron una PPS en cada año. El total vuelve a contar a cada estudiante
+              una sola vez entre años.
+            </p>
+          )}
+          <div
+            className="per-contribution-head"
+            style={{
+              gridTemplateColumns: `minmax(210px, 1.8fr) repeat(${years.length}, 0.8fr) 0.9fr`,
+            }}
+          >
+            <span>Institución</span>
+            {years.map((year) => (
+              <span key={year}>{year}</span>
+            ))}
+            <span>Total</span>
+          </div>
+          <div className="per-contribution-list">
+            {agreements.map((agreement) => (
+              <article
+                className="per-contribution-row"
+                style={{
+                  gridTemplateColumns: `minmax(210px, 1.8fr) repeat(${years.length}, 0.8fr) 0.9fr`,
+                }}
+                key={agreement.id}
+              >
+                <div className="per-contribution-identity">
+                  <strong>{agreement.institution}</strong>
+                  <span>
+                    Desde{" "}
+                    {agreement.datePrecision === "year"
+                      ? agreement.signedAt.slice(0, 4)
+                      : formatISODate(agreement.signedAt)}
+                    {agreement.datePrecision === "year" ? " · fecha anual registrada" : ""}
+                  </span>
+                  {agreement.agreementCount > 1 && (
+                    <span>{agreement.agreementCount} registros de convenio consolidados</span>
+                  )}
+                  <div className="per-orientation-tags">
+                    {agreement.orientations.length ? (
+                      agreement.orientations.map((orientation) => (
+                        <span className={orientationClassName(orientation)} key={orientation}>
+                          {ORIENTATION_LABELS[orientation] || orientation}
+                        </span>
+                      ))
+                    ) : (
+                      <span>Sin orientación atribuida</span>
+                    )}
+                  </div>
+                </div>
+                {years.map((year) => (
+                  <AgreementContributionCell agreement={agreement} year={year} key={year} />
+                ))}
+                <span className="per-contribution-total">
+                  <strong>{agreement.totalPracticeStudents}</strong>
+                  <small>estudiantes distintos</small>
+                </span>
+              </article>
+            ))}
+          </div>
+          <SourceFooter model={model} page={`C${pageIndex + 1}`} />
+        </section>
+      ))}
+    </>
+  );
+};
+
+const NetworkRow = ({
+  institution,
+  years,
+}: {
+  institution: ManagementNetworkInstitution;
+  years: number[];
+}) => (
+  <article
+    className="per-network-row"
+    style={{
+      gridTemplateColumns: `minmax(260px, 1.8fr) minmax(210px, 1.35fr) repeat(${years.length}, 0.45fr) 0.7fr`,
+    }}
+  >
+    <div className="per-network-identity">
+      <strong>{institution.institution}</strong>
+      <span>Última actividad: {formatISODate(institution.lastActivity)}</span>
+    </div>
+    <div className="per-network-orientations">
+      {institution.orientations.length
+        ? institution.orientations.map((orientation) => (
+            <span className={orientationClassName(orientation)} key={orientation}>
+              {ORIENTATION_LABELS[orientation] || orientation}
+            </span>
+          ))
+        : "Sin orientación atribuida"}
+    </div>
+    {years.map((year) => (
+      <strong className="per-network-year" key={year}>
+        {institution.launchesByYear[String(year)] || 0}
+      </strong>
+    ))}
+    <strong className="per-network-total">{institution.totalLaunches}</strong>
+  </article>
+);
+
+const ManagementNetworkPages = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  if (!data?.recentNetwork.length) return null;
+  const years = Array.from(
+    new Set(data.recentNetwork.flatMap((row) => Object.keys(row.launchesByYear).map(Number)))
+  ).sort((a, b) => a - b);
+  const pages = chunk(data.recentNetwork, 12);
+  return (
+    <>
+      {pages.map((institutions, pageIndex) => (
+        <section className="per-page per-management-network-page" key={`network-${pageIndex}`}>
+          <PageHeader
+            title="Red institucional con actividad reciente"
+            label={`${years.join("–")} · parte ${pageIndex + 1} de ${pages.length}`}
+            showWordmark={false}
+          />
+          {pageIndex === 0 && (
+            <div className="per-network-context">
+              <p>
+                Incluye instituciones y espacios con al menos una PPS lanzada durante los dos años
+                calendario más recientes hasta el corte.
+              </p>
+            </div>
+          )}
+          <div
+            className="per-network-head"
+            style={{
+              gridTemplateColumns: `minmax(260px, 1.8fr) minmax(210px, 1.35fr) repeat(${years.length}, 0.45fr) 0.7fr`,
+            }}
+          >
+            <span>Institución / espacio</span>
+            <span>Orientaciones</span>
+            {years.map((year) => (
+              <span key={year}>{year}</span>
+            ))}
+            <span>Total</span>
+          </div>
+          <div className="per-network-list">
+            {institutions.map((institution) => (
+              <NetworkRow institution={institution} years={years} key={institution.key} />
+            ))}
+          </div>
+          <SourceFooter model={model} page={`R${pageIndex + 1}`} />
+        </section>
+      ))}
+    </>
+  );
+};
+
+const ManagementClosing = ({ model }: { model: ExecutiveReportModel }) => {
+  const data = model.management?.data;
+  if (!data) return null;
+  const totalFixed = data.agreements.reduce((total, row) => total + row.totalFixedOffered, 0);
+  const totalRealized = data.agreements.reduce((total, row) => total + row.totalRealized, 0);
+  const totalCapacity = totalFixed + totalRealized;
+  return (
+    <section className="per-page per-management-closing">
+      <PageHeader
+        title="Estado al corte y documentación adjunta"
+        label="Cierre ejecutivo"
+        showWordmark={false}
+      />
+      <div className="per-closing-statement">
+        <strong>Generado automáticamente por Mi Panel</strong>
+        <h3>
+          Este documento demuestra la capacidad de Mi Panel para producir información de gestión
+          actualizada.
+        </h3>
+        <small>
+          La fecha de corte, los indicadores, la serie anual y el detalle institucional se
+          recalculan cada vez que se genera el informe.
+        </small>
+        <p>{model.headline}</p>
+        <span>Corte reproducible: {formatISODate(model.asOfISO)}</span>
+      </div>
+      <div className="per-closing-band">
+        <div>
+          <strong>{data.institutionCount}</strong>
+          <span>
+            instituciones o espacios incorporados · {data.agreementCount} registros de convenio
+          </span>
+        </div>
+        <div>
+          <strong>{totalCapacity}</strong>
+          <span>cupos ofrecidos acumulados desde esas instituciones</span>
+        </div>
+      </div>
+      <div className="per-closing-columns">
+        <div>
+          <h3>Actualización al corte</h3>
+          <p>
+            Mi Panel consolida la actividad de las PPS, las trayectorias estudiantiles y la red
+            institucional con la información disponible al momento de emisión.
+          </p>
+        </div>
+        <div>
+          <h3>Documento que acompaña este informe</h3>
+          <p>
+            Se adjunta por separado el <strong>Informe anual detallado de PPS {model.year}</strong>,
+            generado en forma separada para el año del corte. Ese documento conserva el desarrollo
+            operativo del año en curso y no forma parte de este rediseño.
+          </p>
+        </div>
+      </div>
+      <div className="per-final-signature">
+        <div>
+          <strong>{model.author.name}</strong>
+          <span>{model.author.role}</span>
+          <span>{model.author.unit}</span>
+        </div>
+        <a href={`mailto:${model.author.email}`}>{model.author.email}</a>
+      </div>
+      <SourceFooter model={model} page="Cierre" />
     </section>
   );
 };
@@ -559,7 +1021,13 @@ export const ProfessionalExecutiveReport = ({
         <OutcomesAndInstitutions model={model} />
       </>
     ) : (
-      <ManagementTimeline model={model} />
+      <>
+        <ManagementAnnualSummary model={model} />
+        <ManagementTimeline model={model} />
+        <ManagementAgreementPages model={model} />
+        <ManagementNetworkPages model={model} />
+        <ManagementClosing model={model} />
+      </>
     )}
     {includeTechnicalAnnex && <TechnicalAnnex model={model} />}
     {model.kind === "annual" && <LaunchAnnex model={model} />}

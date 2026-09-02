@@ -154,7 +154,7 @@ const Banner: React.FC<{
  * decidir la visibilidad del Lanzador (una PPS sale de la vista por su
  * `fecha_finalizacion`, no por un flag).
  */
-type RowAction = "abrir" | "cerrar" | "ocultar";
+type RowAction = "abrir" | "cerrar" | "ocultar" | "eliminar";
 
 interface SidebarProps {
   entries: SidebarEntry[];
@@ -436,26 +436,41 @@ const LanzadorSidebar: React.FC<SidebarProps> = ({
                             {(
                               [
                                 {
-                                  action: "abrir",
+                                  action: "abrir" as RowAction,
                                   icon: "lock_open",
                                   label: isHidden ? "Publicar inscripción" : "Abrir inscripción",
                                 },
-                                { action: "cerrar", icon: "lock", label: "Cerrar inscripción" },
+                                {
+                                  action: "cerrar" as RowAction,
+                                  icon: "lock",
+                                  label: "Cerrar inscripción",
+                                },
                                 ...(isHidden
                                   ? []
                                   : [
                                       {
-                                        action: "ocultar",
+                                        action: "ocultar" as RowAction,
                                         icon: "visibility_off",
                                         label: "Ocultar a estudiantes",
                                       },
                                     ]),
-                              ] as { action: RowAction; icon: string; label: string }[]
+                                {
+                                  action: "eliminar" as RowAction,
+                                  icon: "delete_outline",
+                                  label: "Eliminar convocatoria",
+                                  danger: true,
+                                },
+                              ] as {
+                                action: RowAction;
+                                icon: string;
+                                label: string;
+                                danger?: boolean;
+                              }[]
                             ).map((opt) => (
                               <button
                                 key={opt.action}
                                 role="menuitem"
-                                className="lv4-state-menu-item"
+                                className={`lv4-state-menu-item${opt.danger ? " danger" : ""}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setOpenMenuId(null);
@@ -520,7 +535,12 @@ interface CanvasHeaderProps {
   launch: LanzamientoPPS;
   uiState: UIState;
   primaryAction?: { label: string; icon: string; onClick: () => void; disabled?: boolean };
-  secondaryActions?: Array<{ label: string; icon: string; onClick: () => void }>;
+  secondaryActions?: Array<{
+    label: string;
+    icon: string;
+    onClick: () => void;
+    danger?: boolean;
+  }>;
 }
 
 const CanvasHeader: React.FC<CanvasHeaderProps> = ({
@@ -627,7 +647,11 @@ const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           }}
         >
           {secondaryActions.map((a, i) => (
-            <button key={i} className="lv4-btn" onClick={a.onClick}>
+            <button
+              key={i}
+              className={`lv4-btn${a.danger ? " lv4-btn-danger-outline" : ""}`}
+              onClick={a.onClick}
+            >
               <span className="material-icons" style={{ fontSize: 14 }}>
                 {a.icon}
               </span>

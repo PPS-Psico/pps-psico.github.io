@@ -36,7 +36,7 @@ import {
 import { useModal } from "../../contexts/ModalContext";
 import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
-import { closeSelectionAndQueueNotifications } from "../../services";
+import { closeSelectionAndQueueNotifications, eliminarLanzamiento } from "../../services";
 import { mockDb } from "../../services/mockDb";
 import type { LanzamientoPPS } from "../../types";
 import { normalizeStringForComparison } from "../../utils/formatters";
@@ -404,8 +404,80 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       ),
   });
 
+  const deleteLaunchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (isTestingMode) {
+        await mockDb.delete("lanzamientos_pps", id);
+        return true;
+      }
+      return eliminarLanzamiento(id);
+    },
+    onSuccess: (_, deletedId) => {
+      if (selectedId === deletedId) {
+        setSelectedId(null);
+      }
+      refreshLaunches();
+      showModal(
+        "Convocatoria eliminada",
+        "La convocatoria y sus datos vinculados fueron eliminados correctamente."
+      );
+    },
+    onError: (e: unknown) => {
+      showModal(
+        "No se pudo eliminar la convocatoria",
+        (e as Error)?.message || "Ocurrió un error al intentar eliminar la convocatoria."
+      );
+    },
+  });
+
+  const handleRequestDeleteLaunch = useCallback(
+    (id: string) => {
+      const launch = launches.find((l) => l.id === id);
+      const name = (launch?.[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string) || "esta convocatoria";
+      const counts = countsByLaunch[id];
+      const inscriptos = counts?.inscriptos ?? 0;
+      const isDraft =
+        normalizeStringForComparison(launch?.[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]) === "oculto";
+
+      if (isDraft) {
+        setConfirmState({
+          title: "¿Eliminar este borrador?",
+          message: `Se eliminará permanentemente el borrador de «${name}». Esta acción no se puede deshacer.`,
+          confirmText: "Eliminar borrador",
+          type: "danger",
+          onConfirm: () => deleteLaunchMutation.mutate(id),
+        });
+        return;
+      }
+
+      if (inscriptos > 0) {
+        setConfirmState({
+          title: "¿Eliminar convocatoria con inscriptos?",
+          message: `La convocatoria «${name}» tiene ${inscriptos} estudiante${inscriptos === 1 ? "" : "s"} inscripto${inscriptos === 1 ? "" : "s"}. Al eliminarla, se removerán también las postulaciones asociadas. ¿Deseás continuar?`,
+          confirmText: "Eliminar definitivamente",
+          type: "danger",
+          onConfirm: () => deleteLaunchMutation.mutate(id),
+        });
+        return;
+      }
+
+      setConfirmState({
+        title: "¿Eliminar esta convocatoria?",
+        message: `Se eliminará permanentemente la convocatoria «${name}». Esta acción no se puede deshacer.`,
+        confirmText: "Eliminar convocatoria",
+        type: "danger",
+        onConfirm: () => deleteLaunchMutation.mutate(id),
+      });
+    },
+    [launches, countsByLaunch, deleteLaunchMutation]
+  );
+
   const handleRowAction = useCallback(
     (id: string, action: RowAction) => {
+      if (action === "eliminar") {
+        handleRequestDeleteLaunch(id);
+        return;
+      }
       if (action === "ocultar") {
         setConfirmState({
           title: "¿Ocultar la convocatoria?",
@@ -419,7 +491,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
       }
       rowActionMutation.mutate({ id, action });
     },
-    [rowActionMutation]
+    [handleRequestDeleteLaunch, rowActionMutation]
   );
 
   const duplicateMutation = useMutation({
@@ -669,6 +741,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
                 })
               }
               onRefresh={refreshLaunches}
+              onDelete={() => handleRequestDeleteLaunch(selectedLaunch.id)}
             />
           </div>
         );

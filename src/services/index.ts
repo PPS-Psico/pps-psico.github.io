@@ -7,6 +7,7 @@ export {
   fetchSeleccionados,
   darBajaPpsConPenalizacion,
   toggleStudentSelection,
+  eliminarLanzamiento,
 } from "./convocatoriasService";
 export type { BajaPpsInput, BajaPpsResult } from "./convocatoriasService";
 

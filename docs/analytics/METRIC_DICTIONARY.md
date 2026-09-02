@@ -56,7 +56,11 @@ valor técnico y no una oferta real.
 - **Exclusiones:** personal, cuentas sin perfil de estudiante y usuarios no
   vinculados.
 - **No usar:** `estudiantes.created_at` ni `estudiantes.cohorte`.
-- **Estado:** definición aprobada; RPC agregado pendiente.
+- **Disponibilidad histórica:** el registro verificable actual de
+  `auth.users.created_at` comienza el 29/11/2025. Los períodos anteriores se
+  publican como `ND`, nunca como cero.
+- **Estado:** implementada en `management-report-v1` con indicador explícito de
+  disponibilidad.
 
 ### Nuevas cuentas activas
 
@@ -64,7 +68,11 @@ valor técnico y no una oferta real.
   se encuentran actualmente en `estado = 'Activo'`.
 - **Tipo:** cohorte de activación con estado actual.
 - **Publicación:** valor, total de cuentas creadas y fecha de corte.
-- **Estado:** KPI operativo aprobado; implementación pendiente en el dashboard.
+- **Disponibilidad:** hereda el inicio del historial de cuentas. Si la cohorte no
+  puede observarse, tanto el total como el subconjunto activo se publican como
+  `ND`.
+- **Estado:** implementada en el informe de gestión. No es una serie histórica
+  de estudiantes activos.
 
 ### Cohorte de primera actividad PPS
 
@@ -329,3 +337,67 @@ denominador activo. La fuente es `get_moodle_task_unit_summaries_v1`.
 versión inicial captura diariamente `active_students` y
 `active_students_with_current_pps`. No se permite reconstruir retrospectivamente
 un stock ni guardar como snapshot el JSON del RPC legado.
+
+## Informe de gestión dinámico (`management-report-v1`)
+
+`get_management_report_v1(p_cutoff)` complementa, sin reemplazar, los resultados
+anuales de `analytics-v2`. El corte es elegido al generar el informe y toda fila
+debe respetarlo.
+
+Revisión de presentación directiva: 01/09/2026. No modifica las fórmulas ni el
+payload del contrato.
+
+- **Matrícula administrativa PPS:** serie externa informada por Secretaría de
+  Facultad: 2022/1 = 39, 2023/1 = 87, 2024/1 = 101 y 2025/1 = 242. Se publica
+  como fuente externa y no se equipara con cuentas, postulantes o inicios.
+- **Cuentas de estudiantes creadas:** usuarios con rol `Alumno`, fechados por
+  `auth.users.created_at`. Excluye cuentas de personal. El historial verificable
+  comienza el 29/11/2025; 2024 se publica como `ND`.
+- **Nuevas cuentas actualmente activas:** subconjunto de cada cohorte creada que
+  continúa activo al corte. Es un stock con fecha de corte, no un flujo anual.
+- **Instituciones incorporadas:** convenios con fecha registrada desde el
+  01/09/2024 y seis convenios de gestión 2024 recuperados con precisión anual,
+  confirmados por Coordinación. Estos últimos conservan `01/01/2024` como fecha
+  técnica estimada y se muestran como “fecha anual registrada”; no se presenta
+  ese día como fecha exacta de firma. La salida presenta **una fila por
+  institución canónica**, aunque existan varios registros de convenio o espacios
+  operativos asociados. En el informe directivo, el aporte anual muestra
+  únicamente estudiantes distintos con una PPS registrada; el total vuelve a
+  deduplicar entre años, por lo que no necesariamente equivale a la suma de las
+  columnas anuales. Banco Provincia del Neuquén se excluye de esta tabla por
+  decisión del responsable; el registro fuente no se elimina.
+- **Acceso observado en el año del corte:** estudiantes distintos que se
+  postularon al menos una vez a una oferta del año, comparados con quienes
+  iniciaron una PPS durante ese mismo año. Se publican numerador, denominador,
+  porcentaje, casos sin inicio anual y casos sin ninguna PPS registrada hasta el
+  corte. Para quienes no iniciaron se publica además la distribución por cantidad
+  de PPS distintas a las que se inscribieron y el total de lanzamientos del año
+  hasta el corte; el denominador excluye por definición a quien no registra
+  ninguna inscripción. Es una medida descriptiva de acceso; no permite atribuir
+  los casos pendientes a falta de interés, rechazo u otra decisión personal.
+- **Red con actividad reciente:** instituciones o espacios con al menos una PPS
+  lanzada en los dos años calendario más recientes hasta el corte, junto con sus
+  orientaciones —con el color institucional de cada área— y cantidad de ofertas
+  por año. La vigencia documental y la cobertura de mapeo permanecen en el
+  payload de calidad, pero no se muestran en el cuerpo directivo.
+- **Cupos ofrecidos (rótulo directivo):** alias de presentación de
+  `capacity.operational`. Reúne cupos fijos publicados y participación registrada
+  en ofertas sin límite prefijado. No cambia la fórmula canónica ni convierte el
+  componente realizado en vacantes históricas.
+
+La resolución de institución usa, en este orden, `institucion_id` directo,
+institución inequívoca de la práctica y coincidencia exacta del nombre
+normalizado. Los registros cuyos nombres representan espacios de una misma
+institución se consolidan mediante su nombre institucional canónico; por ejemplo,
+`Institución Fernando Ulloa - Ateneos` y `Institución Fernando Ulloa -
+Entrevistas de Admisión` integran una sola fila `Institución Fernando Ulloa`.
+No usa coincidencia difusa. Las filas no resueltas se conservan como
+`pending_mapping`; una fecha de vencimiento incoherente se muestra como
+`inconsistent_expiry`, y la ausencia de convenio como `pending_agreement`.
+
+Los componentes internos de cupos fijos y participación realizada deben seguir
+reconciliando con `capacity.operational`, aunque la tabla directiva muestre una
+sola fila “Cupos ofrecidos”. Los conteos de estudiantes se reconcilian como
+conjuntos distintos: por año dentro de cada columna y nuevamente entre años para
+el total. El reporte no
+incluye nombres, documentos ni correos de estudiantes.

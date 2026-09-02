@@ -17,12 +17,36 @@ import {
   FIELD_NOTA_FUENTE_PRACTICAS,
   FIELD_LANZAMIENTO_VINCULADO_PRACTICAS,
   FIELD_FECHA_FIN_PRACTICAS,
+  FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
 } from "../constants";
 
 interface LinkDataParams {
   myEnrollments: Convocatoria[];
   allLanzamientos: LanzamientoPPS[];
   practicas: Practica[];
+}
+
+function getPracticeInformeEvidence(practica: Practica): {
+  informeSubido: boolean;
+  nota: string | null;
+} {
+  const moodleGrade = practica[FIELD_NOTA_MOODLE_PRACTICAS];
+  const storedGrade =
+    practica[FIELD_NOTA_FUENTE_PRACTICAS] && practica[FIELD_NOTA_FUENTE_PRACTICAS] !== "legacy"
+      ? practica[FIELD_NOTA_PRACTICAS]
+      : null;
+  const nota = moodleGrade != null ? String(moodleGrade) : storedGrade ? String(storedGrade) : null;
+  const normalizedNote = normalizeStringForComparison(nota);
+  const hasDeliveryEvidence =
+    Boolean(normalizedNote) &&
+    normalizedNote !== "sin calificar" &&
+    normalizedNote !== "no entregado";
+  const informeState = normalizeStringForComparison(practica[FIELD_INFORME_ESTADO_PRACTICAS]);
+
+  return {
+    informeSubido: hasDeliveryEvidence || ["entregado", "calificado"].includes(informeState),
+    nota,
+  };
 }
 
 export function processAndLinkStudentData({
@@ -74,6 +98,7 @@ export function processAndLinkStudentData({
   // Step 4: Generate informe tasks
   const informeTasks: InformeTask[] = [];
   const processedForInforme = new Set<string>();
+  const processedPracticeIds = new Set<string>();
 
   // 4a. From Enrollments (Selections)
   for (const [ppsId, enrollment] of enrollmentMap.entries()) {
@@ -84,6 +109,7 @@ export function processAndLinkStudentData({
       const pps = lanzamientosMap.get(ppsId);
       if (pps && pps[FIELD_INFORME_LANZAMIENTOS]) {
         const practica = practicas.find((p) => p[FIELD_LANZAMIENTO_VINCULADO_PRACTICAS] === pps.id);
+        const practiceEvidence = practica ? getPracticeInformeEvidence(practica) : null;
 
         informeTasks.push({
           convocatoriaId: enrollment.id,
@@ -93,19 +119,12 @@ export function processAndLinkStudentData({
           fechaFinalizacion: pps[FIELD_FECHA_FIN_LANZAMIENTOS] || new Date().toISOString(),
           informeSubido:
             !!enrollment[FIELD_INFORME_SUBIDO_CONVOCATORIAS] ||
-            ["entregado", "calificado"].includes(
-              String(practica?.[FIELD_INFORME_ESTADO_PRACTICAS] ?? "")
-            ),
-          nota:
-            practica?.[FIELD_NOTA_MOODLE_PRACTICAS] != null
-              ? String(practica[FIELD_NOTA_MOODLE_PRACTICAS])
-              : practica?.[FIELD_NOTA_FUENTE_PRACTICAS] &&
-                  practica?.[FIELD_NOTA_FUENTE_PRACTICAS] !== "legacy"
-                ? practica?.[FIELD_NOTA_PRACTICAS]
-                : null,
+            Boolean(practiceEvidence?.informeSubido),
+          nota: practiceEvidence?.nota ?? null,
           fechaEntregaInforme: enrollment[FIELD_FECHA_ENTREGA_INFORME_CONVOCATORIAS],
         });
         processedForInforme.add(ppsId);
+        if (practica) processedPracticeIds.add(practica.id);
       }
     }
   }
@@ -122,6 +141,8 @@ export function processAndLinkStudentData({
         pps[FIELD_INFORME_LANZAMIENTOS] &&
         isPracticeFinished(practica[FIELD_ESTADO_PRACTICA])
       ) {
+        const practiceEvidence = getPracticeInformeEvidence(practica);
+
         informeTasks.push({
           convocatoriaId: `practica-${practica.id}`,
           practicaId: practica.id,
@@ -131,20 +152,35 @@ export function processAndLinkStudentData({
             pps[FIELD_FECHA_FIN_LANZAMIENTOS] ||
             practica[FIELD_FECHA_FIN_PRACTICAS] ||
             new Date().toISOString(),
-          informeSubido: ["entregado", "calificado"].includes(
-            String(practica[FIELD_INFORME_ESTADO_PRACTICAS] ?? "")
-          ),
-          nota:
-            practica[FIELD_NOTA_MOODLE_PRACTICAS] != null
-              ? String(practica[FIELD_NOTA_MOODLE_PRACTICAS])
-              : practica[FIELD_NOTA_FUENTE_PRACTICAS] &&
-                  practica[FIELD_NOTA_FUENTE_PRACTICAS] !== "legacy"
-                ? practica[FIELD_NOTA_PRACTICAS]
-                : null,
+          informeSubido: practiceEvidence.informeSubido,
+          nota: practiceEvidence.nota,
         });
         processedForInforme.add(linkedId);
+        processedPracticeIds.add(practica.id);
       }
     }
+  }
+
+  // 4c. From canonical practice evidence without a usable launch.
+  // Historical special activities (for example, professional surveys) were
+  // recorded directly in `practicas`. Their Moodle grade is still authoritative
+  // even though they do not have a launch or an old task link.
+  for (const practica of practicas) {
+    if (processedPracticeIds.has(practica.id)) continue;
+
+    const practiceEvidence = getPracticeInformeEvidence(practica);
+    if (!practiceEvidence.informeSubido) continue;
+
+    informeTasks.push({
+      convocatoriaId: `practica-${practica.id}`,
+      practicaId: practica.id,
+      ppsName:
+        String(practica[FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS] ?? "").trim() || "Práctica",
+      fechaFinalizacion: practica[FIELD_FECHA_FIN_PRACTICAS] || new Date().toISOString(),
+      informeSubido: true,
+      nota: practiceEvidence.nota,
+    });
+    processedPracticeIds.add(practica.id);
   }
 
   informeTasks.sort((a, b) => {
