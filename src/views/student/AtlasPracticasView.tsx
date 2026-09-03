@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import confetti from "canvas-confetti";
 import "../../components/student/home/atlas/atlasHome.css";
 import {
+  FIELD_DESAPROBACION_MOTIVO_PUBLICO_PRACTICAS,
   FIELD_ESPECIALIDAD_PRACTICAS,
   FIELD_ESTADO_PRACTICA,
   FIELD_FECHA_INICIO_PRACTICAS,
@@ -135,11 +136,65 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
   const notaCell = (p: Practica) => {
     const estado = normalizeStringForComparison((p[FIELD_ESTADO_PRACTICA] as string) || "");
     if (isPracticeDisapproved(estado)) {
-      return <span className="ah-disapproval-grade">Desaprobada</span>;
+      // El motivo público existe en la base desde que se registra la
+      // desaprobación, pero no se mostraba en ninguna pantalla. Sin él, una
+      // práctica con el informe calificado 9 y desaprobada por asistencia se
+      // lee como un error del panel, y el alumno escribe para preguntar.
+      const motivo = cleanDbValue(p[FIELD_DESAPROBACION_MOTIVO_PUBLICO_PRACTICAS]);
+      return (
+        <span className="ah-disapproval-grade" title={motivo || undefined}>
+          Desaprobada
+          {motivo ? (
+            <small
+              style={{
+                display: "block",
+                fontWeight: 400,
+                fontSize: 11,
+                lineHeight: 1.35,
+                marginTop: 2,
+                color: "var(--fg-subtle)",
+              }}
+            >
+              {motivo}
+            </small>
+          ) : null}
+        </span>
+      );
     }
     const snapshot = snapshotsByPractice.get(p.id);
     const campusGrade = presentMoodleGrade(snapshot);
     if (isPracticeActive(estado)) {
+      // Hay PPS -- los talleres de Fundación Tiempo, por ejemplo -- donde el
+      // informe se entrega y se corrige al principio y la práctica sigue
+      // cursándose durante meses. Mostrar sólo "en curso" escondía una nota ya
+      // puesta y el alumno lo leía como una corrección pendiente.
+      const registrada = resolveGradeReadiness(p);
+      const notaEnCurso =
+        (registrada.ready && registrada.nota) ||
+        (campusGrade?.hasGrade ? campusGrade.compact : null);
+      if (notaEnCurso) {
+        return (
+          <span
+            className="nota"
+            style={{ color: "var(--ink)", fontSize: 12.5, fontFamily: "var(--font-mono)" }}
+            title="El informe ya está corregido. La práctica sigue en curso hasta su fecha de finalización."
+          >
+            {notaEnCurso}
+            <small
+              style={{
+                display: "block",
+                fontFamily: "var(--font-sans)",
+                fontWeight: 400,
+                fontSize: 11,
+                marginTop: 2,
+                color: "var(--info-500)",
+              }}
+            >
+              informe corregido · sigue en curso
+            </small>
+          </span>
+        );
+      }
       return (
         <span className="nota" style={{ color: "var(--info-500)", fontSize: 12.5 }}>
           en curso
