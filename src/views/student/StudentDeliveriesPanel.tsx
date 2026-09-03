@@ -218,7 +218,11 @@ function isDelivered(delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): 
   }
   if (delivery.task?.informeSubido) return true;
   const note = delivery.task?.nota?.trim().toLocaleLowerCase("es") ?? "";
-  return Boolean(note && note !== "sin calificar" && note !== "no entregado");
+  if (note && note !== "sin calificar" && note !== "no entregado") return true;
+  // `delivery.task` sólo existe cuando hay una tarea de Moodle vinculada. Una
+  // actividad calificada a mano y sin esa tarea (ver deliveryGuide.ts) llega
+  // acá con `task` null; sin este chequeo quedaba "pendiente" para siempre.
+  return delivery.gradedDirectly;
 }
 
 function getDeliveryBucket(

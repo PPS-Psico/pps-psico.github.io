@@ -8,6 +8,7 @@ import {
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
   FIELD_TIPO_ACTIVIDAD_PRACTICAS,
 } from "../../constants";
+import { resolveGradeReadiness } from "../../domain/finalizacion/gradeReadiness";
 import type { DeliveryArea, DeliveryInstitution } from "../../hooks/useAulaEntregas";
 import type { MoodleTaskLink } from "../../hooks/useMoodleTaskLinks";
 import { isPracticeDisapproved } from "../../logic/studentRules";
@@ -25,6 +26,14 @@ export interface GuidedDelivery {
   areaColor: string;
   institution: DeliveryInstitution | null;
   task: InformeTask | null;
+  /**
+   * Nota e informe_estado cargados directamente en la práctica, sin pasar por
+   * una tarea de Moodle. Actividades cortas (una jornada, un relevamiento)
+   * suelen calificarse a mano y no tienen `task` -- sin este campo, el panel
+   * las trataba como sin corregir y les mostraba un contador de días de
+   * atraso creciendo indefinidamente aunque ya tuvieran nota.
+   */
+  gradedDirectly: boolean;
   startDate: Date | null;
   endDate: Date | null;
   deadline: Date | null;
@@ -192,7 +201,14 @@ export function buildGuidedDeliveries(
       const startDate = parseToUTCDate(practice[FIELD_FECHA_INICIO_PRACTICAS]);
       const endDate = parseToUTCDate(practice[FIELD_FECHA_FIN_PRACTICAS]);
       const isOpenEnded = practice[FIELD_TIPO_ACTIVIDAD_PRACTICAS] === "actividad_especial";
-      const deadline = !isOpenEnded && endDate ? addDays(endDate, 30) : null;
+      // Una actividad corta calificada a mano (una jornada, un relevamiento)
+      // suele no tener tarea de Moodle vinculada, así que `task` queda null y
+      // el chequeo de "ya entregado" -- que sólo mira task.nota -- nunca la ve
+      // corregida. Sin este corte aparte, el plazo de 30 días sigue corriendo
+      // para siempre y el alumno ve un contador de atraso creciendo con una
+      // nota ya cargada.
+      const gradedDirectly = resolveGradeReadiness(practice).ready;
+      const deadline = !isOpenEnded && !gradedDirectly && endDate ? addDays(endDate, 30) : null;
       const rawHours = Number(practice[FIELD_HORAS_PRACTICAS]);
       const hours = Number.isFinite(rawHours) && rawHours > 0 ? rawHours : null;
 
@@ -204,6 +220,7 @@ export function buildGuidedDeliveries(
         areaColor: area?.color || "var(--primary-500)",
         institution,
         task,
+        gradedDirectly,
         startDate,
         endDate,
         deadline,
