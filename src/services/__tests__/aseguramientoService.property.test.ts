@@ -108,10 +108,10 @@ const arbNonBlank = fc
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("aseguramientoService — property-based", () => {
-  it("Property 1: con marca y estado no terminal clasifica en 'asegurar' (nunca 'activa')", () => {
-    // Feature: flujo-aseguramiento-pps, Property 1: La marca de aseguramiento
-    // clasifica en el paso Seguro, que es el último antes de activar. Nunca en
-    // "activa": esa transición sigue siendo un acto explícito del admin.
+  it("Property 1: el paso lo decide el estado persistido, no la marca de seguro", () => {
+    // Feature: flujo-aseguramiento-pps, Property 1: `seguro_gestionado_at` es
+    // auditoría, no posición. Una PPS que volvió del seguro a la sala de firmas
+    // conserva la marca —la planilla se generó— y tiene que quedarse en firmas.
     fc.assert(
       fc.property(
         arbMarkClassifiableState,
@@ -121,16 +121,14 @@ describe("aseguramientoService — property-based", () => {
         fc.boolean(),
         arbPrePipelineTimeline,
         (dbState, seguroGestionadoAt, totalSel, totalInsc, vencida, timeline) => {
-          const bucket = deriveBucket({
-            dbState,
-            seguroGestionadoAt,
-            totalSel,
-            totalInsc,
-            vencida,
-            timeline,
-          });
-          expect(bucket).toBe("asegurar");
-          expect(bucket).not.toBe("activa");
+          const base = { dbState, totalSel, totalInsc, vencida, timeline };
+          // La marca no mueve a la PPS de lugar: con o sin ella, el bucket es el
+          // mismo. Antes `seguroGestionadoAt != null` forzaba "asegurar", y por
+          // eso volver del seguro a las firmas no se veía en pantalla.
+          expect(deriveBucket({ ...base, seguroGestionadoAt })).toBe(
+            deriveBucket({ ...base, seguroGestionadoAt: null })
+          );
+          expect(deriveBucket({ ...base, seguroGestionadoAt })).not.toBe("activa");
         }
       ),
       { numRuns: 100 }

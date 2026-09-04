@@ -27,8 +27,12 @@ describe("lanzadorState", () => {
       expect(mapDbToUiState("CERRADO")).toBe("confirmacion");
     });
 
-    it("rescata al paso Seguro los 'Cerrado' legacy con seguro ya gestionado", () => {
-      expect(mapDbToUiState("Cerrado", "2025-06-15T12:00:00Z")).toBe("seguro");
+    it("'Cerrado' es la sala de firmas aunque el seguro ya se haya generado", () => {
+      // Regresión: volver del paso Seguro a las firmas escribe 'Cerrado' pero
+      // conserva `seguro_gestionado_at`, porque la planilla se generó de verdad.
+      // Mientras la marca decidía el paso, el estado cambiaba y la pantalla no:
+      // el boton "Volver a las firmas" no hacia nada visible.
+      expect(mapDbToUiState("Cerrado", "2025-06-15T12:00:00Z")).toBe("confirmacion");
       expect(mapDbToUiState("Cerrado", null)).toBe("confirmacion");
     });
 

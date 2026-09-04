@@ -200,10 +200,10 @@ export function deriveBucket(input: BucketInput): SidebarBucket {
   if (dbState === "archivada") return "oculta";
   if (dbState === "activa") return "activa";
 
-  // Paso 4. La marca de seguro tiene precedencia sobre los conteos y la ventana
-  // de inscripción: si está seteada (aunque el DB haya quedado en 'Cerrado' por
-  // datos legacy), el seguro ya se gestionó y lo único que resta es activar.
-  if (dbState === "seguro" || seguroGestionadoAt != null) return "asegurar";
+  // Paso 4. Lo decide el estado persistido, no la marca de seguro: una PPS que
+  // volvió del seguro a la sala de firmas conserva `seguro_gestionado_at` (la
+  // planilla se generó de verdad) y tiene que quedar en firmas igual.
+  if (dbState === "seguro") return "asegurar";
 
   // Mesa cerrada (DB 'Cerrado'): entra a la sala de firmas si hay elegidos. Si
   // el cierre ocurrió sin seleccionar a nadie, la acción pendiente sigue siendo

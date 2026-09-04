@@ -71,10 +71,17 @@ export type { UIState, SidebarBucket };
  *                    quedaron con ese valor drenan solas al avanzar. Solo se
  *                    escribe 'Seguro' de ahora en más.
  *
- * El `seguroGestionadoAt` (opcional) rescata los registros legacy que quedaron
- * en "Cerrado" con el seguro ya marcado: esos pertenecen al step 4.
+ * `seguro_gestionado_at` NO participa del paso. Cuando 'Seguro' no existía como
+ * token, una fila en 'Cerrado' con esa marca era la única forma de reconocer el
+ * paso 4, y el mapeo la usaba para desempatar. Con el token explícito esa regla
+ * pasó a estorbar: se comía la vuelta atrás desde el seguro a la sala de firmas
+ * —el estado se escribía pero la pantalla no se movía— porque la marca arrastra
+ * de nuevo al paso 4. Hoy el paso lo dice `estado_convocatoria` y nada más; la
+ * marca vuelve a ser lo que su nombre indica, auditoría de que el seguro se
+ * gestionó.
  */
 export function mapDbToUiState(dbStatus: string, seguroGestionadoAt?: string | null): UIState {
+  void seguroGestionadoAt;
   const s = normalizeStringForComparison(dbStatus);
   if (s === "oculto") return "borrador";
   // "Programada" es prepublicación y vive fuera del pipeline visible.
@@ -84,9 +91,7 @@ export function mapDbToUiState(dbStatus: string, seguroGestionadoAt?: string | n
   if (s === "confirmacion") return "seguro"; // legacy, ver el comentario de arriba
   if (s === "activa" || s === "activo") return "activa";
   if (s === "archivado" || s === "archivada") return "archivada";
-  if (s === "cerrado" || s === "cerrada") {
-    return seguroGestionadoAt ? "seguro" : "confirmacion";
-  }
+  if (s === "cerrado" || s === "cerrada") return "confirmacion";
   return "borrador";
 }
 
