@@ -7,6 +7,11 @@ import { ALUMNO, mockSupabase } from "./supabaseMock";
  * una persona — entra, o le dicen con claridad por qué no.
  */
 test.describe("Login del estudiante", () => {
+  // El primer montaje puede absorber el costo de compilación fría de Vite.
+  // Las aserciones conservan sus timeouts de 15 s; este margen evita que el
+  // presupuesto global de 30 s corte un flujo sano justo al final.
+  test.describe.configure({ timeout: 60_000 });
+
   test("con credenciales válidas entra al panel", async ({ page }) => {
     await mockSupabase(page, {
       tables: {

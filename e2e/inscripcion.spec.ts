@@ -6,6 +6,10 @@ import { ALUMNO, LANZAMIENTO, mockSupabase, type MockOptions } from "./supabaseM
  * el alumno pierde el cupo y nadie se entera hasta que reclama.
  */
 test.describe("Inscripción a una convocatoria", () => {
+  // El primer montaje puede absorber el costo de compilación fría de Vite.
+  // Las esperas funcionales siguen acotadas a 15 s cada una.
+  test.describe.configure({ timeout: 60_000 });
+
   const escrituras: Array<{ table: string; method: string; body: unknown }> = [];
 
   const entrar = async (page: import("@playwright/test").Page, extra: MockOptions = {}) => {
