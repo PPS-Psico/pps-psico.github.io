@@ -16,36 +16,22 @@
  * estados por su cuenta.
  */
 import React, { lazy, Suspense, useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useGestionConvocatorias } from "../../hooks/useGestionConvocatorias";
 import { useGmailHilos, matchesGmailFilter } from "../../hooks/useGmailHilos";
-import type { GmailHilo, GmailFilter } from "../../hooks/useGmailHilos";
+import type { GmailFilter } from "../../hooks/useGmailHilos";
 import { useFichaSize } from "../../hooks/useFichaSize";
-import {
-  getThreadsWithDraft,
-  generatePendingDrafts,
-  planToday,
-  modifyThread,
-  type GmailAction,
-} from "../../services/gmailService";
+import { getThreadsWithDraft } from "../../services/gmailService";
 import type { AccionDia, SolicitudOutreach } from "../../services/hermesPlan";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
-import {
-  FIELD_ESTADO_GESTION_LANZAMIENTOS,
-  FIELD_NOTAS_GESTION_LANZAMIENTOS,
-  FIELD_HISTORIAL_GESTION_LANZAMIENTOS,
-  FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS,
-} from "../../constants";
-import { formatDate, getWhatsAppUrl, normalizeStringForComparison } from "../../utils/formatters";
+import { normalizeStringForComparison } from "../../utils/formatters";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import { supabase } from "../../lib/supabaseClient";
 import { mockDb } from "../../services/mockDb";
-import type { LanzamientoPPS } from "../../types";
 import {
   STATE_META,
-  STATE_TO_DB,
   HOY_STATES,
   HOY_ORDER,
   type UiState,
@@ -54,12 +40,12 @@ import {
   type InstitutionVM,
   type ViewMode,
 } from "./gestion/gestionTypes";
-import { buildItems, buildInstitutions, appendHistorial } from "./gestion/gestionHelpers";
+import { buildItems, buildInstitutions } from "./gestion/gestionHelpers";
 import { CalendarView } from "./gestion/CalendarView";
 import { Rail, ViewModeTabs } from "./gestion/nav";
 import { Bandeja } from "./gestion/Bandeja";
 import { FichaSizeToggle } from "./gestion/FichaSizeToggle";
-import { LS_GV3_RAIL_COLLAPSED, LS_GV3_MAILS_SEEN } from "../../constants/uiConstants";
+import { LS_GV3_RAIL_COLLAPSED } from "../../constants/uiConstants";
 import {
   ContactModal,
   EditInstitucionModal,
@@ -69,6 +55,8 @@ import {
 import { MailsView } from "./gestion/MailsView";
 import { Ficha } from "./gestion/Ficha";
 import { InstitucionesView } from "./gestion/InstitucionesView";
+import { useGestionMailController } from "./gestion/useGestionMailController";
+import { useGestionInstitutionController } from "./gestion/useGestionInstitutionController";
 
 // Contactos WhatsApp — reubicado desde "Herramientas": es supervisión de Hermes
 // (revisar/validar las clasificaciones que el agente propone), por eso vive en
@@ -404,7 +392,6 @@ interface GestionViewProps {
 const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const initialCat = (searchParams.get("cat") as CatId) || "porContactar";
   const [activeCat, setActiveCat] = useState<CatId>(initialCat);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -437,15 +424,11 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     }
   });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [contactVm, setContactVm] = useState<InstitutionVM | null>(null);
-  const [editVm, setEditVm] = useState<InstitutionVM | null>(null);
-  const [reminderVm, setReminderVm] = useState<InstitutionVM | null>(null);
-  const [pendingChange, setPendingChange] = useState<{
-    vm: InstitutionVM;
-    newState: UiState;
-  } | null>(null);
-  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; icon: string } | null>(null);
+  const showToast = useCallback((msg: string, icon = "check_circle") => {
+    setToast({ msg, icon });
+    setTimeout(() => setToast(null), 2400);
+  }, []);
 
   // Permite abrir un modo o categoría concretos vía query param, p.ej. desde un
   // enlace del dashboard o una notificación de Hermes:
@@ -509,50 +492,10 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     isError: gmailError,
     refetch: refetchGmail,
   } = useGmailHilos(isTestingMode);
-  const [openMailHilo, setOpenMailHilo] = useState<GmailHilo | null>(null);
   // Acción de solicitud abierta en el panel derecho (Hermes ya preparó WhatsApp/email).
   const [openSolicitud, setOpenSolicitud] = useState<SolicitudOutreach | null>(null);
   // Institución abierta en el panel derecho para contactar/reinsistir (desde "Hoy").
   const [openInstVm, setOpenInstVm] = useState<InstitutionVM | null>(null);
-  const [generatingDrafts, setGeneratingDrafts] = useState(false);
-  const [planningToday, setPlanningToday] = useState(false);
-  // thread_ids con una acción de bandeja (archivar/descartar) en curso.
-  const [busyThreads, setBusyThreads] = useState<Set<string>>(new Set());
-  // thread_ids ocultos transitoriamente mientras corre la ventana de "Deshacer".
-  const [hiddenThreads, setHiddenThreads] = useState<Set<string>>(new Set());
-  // Cola de acciones deshacibles (archivar/descartar) en su ventana de 5s.
-  const [undoQueue, setUndoQueue] = useState<
-    { key: string; hilo: GmailHilo; action: GmailAction; label: string }[]
-  >([]);
-  const undoTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  // Hilos ya vistos por el operador (indicador de no leído). Persistido localmente.
-  const [seenThreads, setSeenThreads] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem(LS_GV3_MAILS_SEEN);
-      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-    } catch {
-      return new Set();
-    }
-  });
-  // Tamaño del panel derecho: 3 niveles (collapsed / normal / expanded) con
-  // auto-ajuste por modo + override manual persistente por modo.
-  // En `mails` con un panel denso (MailPanel) → auto=expanded; en calendario
-  // → auto=collapsed; resto → normal.
-  const hasRichContent =
-    (viewMode === "mails" &&
-      (Boolean(openMailHilo) || Boolean(openInstVm) || Boolean(openSolicitud))) ||
-    // Calendario arranca colapsado para priorizar el grid, pero al tocar un
-    // evento (que solo selecciona una institución, sin abrir nada más) la
-    // ficha tiene que expandirse — si no, el click no muestra nada.
-    (viewMode === "calendario" && Boolean(selectedKey));
-  const fichaSize = useFichaSize({ mode: viewMode, hasRichContent });
-  const persistSeen = useCallback((next: Set<string>) => {
-    try {
-      localStorage.setItem(LS_GV3_MAILS_SEEN, JSON.stringify([...next].slice(-500)));
-    } catch {
-      /* noop */
-    }
-  }, []);
 
   // Set de thread_ids que ya tienen borrador de Hermes (para el indicador ✦).
   const {
@@ -565,6 +508,35 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     staleTime: 60 * 1000,
     queryFn: () => getThreadsWithDraft(isTestingMode),
   });
+
+  const {
+    openMailHilo,
+    setOpenMailHilo,
+    generatingDrafts,
+    busyThreads,
+    hiddenThreads,
+    undoQueue,
+    seenThreads,
+    handleGenerateDrafts,
+    handleArchiveMail,
+    handleDiscardMail,
+    undoMailAction,
+    toggleSeenMail,
+    markSeen,
+  } = useGestionMailController({
+    isTestingMode,
+    showToast,
+    refetchGmail,
+    refetchDrafts,
+  });
+
+  // Tamaño del panel derecho: 3 niveles (collapsed / normal / expanded) con
+  // auto-ajuste por modo + override manual persistente por modo.
+  const hasRichContent =
+    (viewMode === "mails" &&
+      (Boolean(openMailHilo) || Boolean(openInstVm) || Boolean(openSolicitud))) ||
+    (viewMode === "calendario" && Boolean(selectedKey));
+  const fichaSize = useFichaSize({ mode: viewMode, hasRichContent });
 
   // Deep-link desde el Inicio: ?view=mails&thread=<id> abre ese hilo puntual en
   // el panel derecho (en vez de dejar al operador en la bandeja general). Se
@@ -582,7 +554,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
       setOpenInstVm(null);
       setOpenMailHilo(hilo);
     }
-  }, [searchParams, gmailHilos]);
+  }, [searchParams, gmailHilos, setOpenMailHilo]);
 
   const items = useMemo(
     () => buildItems(filteredData, institutionsMap),
@@ -597,6 +569,28 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     institutions.forEach((vm) => m.set(vm.key, vm));
     return m;
   }, [institutions]);
+  const {
+    contactVm,
+    setContactVm,
+    editVm,
+    setEditVm,
+    reminderVm,
+    setReminderVm,
+    pendingChange,
+    setPendingChange,
+    saving,
+    openContact,
+    sendWhatsApp,
+    markWaiting,
+    saveReminder,
+    saveInstitution,
+    confirmChange,
+  } = useGestionInstitutionController({
+    institutionsByKey: instByKey,
+    saveLaunch: handleSave,
+    updateInstitution: handleUpdateInstitution,
+    showToast,
+  });
 
   // Deep-link desde el Inicio: ?view=instituciones&inst=<id> selecciona y abre
   // la ficha de esa institución (Hermes manda el id de la tabla instituciones).
@@ -687,144 +681,6 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     });
   }, []);
 
-  const showToast = useCallback((msg: string, icon = "check_circle") => {
-    setToast({ msg, icon });
-    setTimeout(() => setToast(null), 2400);
-  }, []);
-
-  const handleGenerateDrafts = useCallback(async () => {
-    setGeneratingDrafts(true);
-    const res = await generatePendingDrafts(10);
-    setGeneratingDrafts(false);
-    if (res) {
-      showToast(
-        res.generados > 0
-          ? `Hermes preparó ${res.generados} ${res.generados === 1 ? "borrador" : "borradores"}`
-          : "No había correos nuevos para responder",
-        "auto_awesome"
-      );
-      refetchDrafts();
-    } else {
-      showToast("No se pudo generar borradores ahora", "error");
-    }
-  }, [showToast, refetchDrafts]);
-
-  // ── Acciones de bandeja con ventana de "Deshacer" ──────────────────────────
-  // El hilo se oculta al instante (optimista) y la acción real contra Gmail se
-  // dispara recién a los 5s, salvo que el operador deshaga. Así "archivar" y
-  // "descartar" son reversibles sin depender de un endpoint de "desarchivar".
-  const UNDO_MS = 5000;
-
-  const commitMailAction = useCallback(
-    async (entry: { key: string; hilo: GmailHilo; action: GmailAction; label: string }) => {
-      undoTimers.current.delete(entry.key);
-      setUndoQueue((q) => q.filter((e) => e.key !== entry.key));
-      if (isTestingMode) {
-        setHiddenThreads((s) => {
-          const next = new Set(s);
-          next.delete(entry.hilo.thread_id);
-          return next;
-        });
-        showToast("Modo demo: acción no aplicada", "info");
-        return;
-      }
-      setBusyThreads((s) => new Set(s).add(entry.hilo.thread_id));
-      const res = await modifyThread(entry.hilo.thread_id, entry.action);
-      setBusyThreads((s) => {
-        const next = new Set(s);
-        next.delete(entry.hilo.thread_id);
-        return next;
-      });
-      if (res.success) {
-        if (res.dryRun) showToast("Modo seguro: no se aplicó el cambio", "info");
-        refetchGmail();
-        refetchDrafts();
-      } else {
-        // Falló: revelamos de nuevo el hilo y avisamos.
-        setHiddenThreads((s) => {
-          const next = new Set(s);
-          next.delete(entry.hilo.thread_id);
-          return next;
-        });
-        showToast(`No se pudo completar: ${res.message || "error"}`, "error");
-      }
-    },
-    [isTestingMode, showToast, refetchGmail, refetchDrafts]
-  );
-
-  const queueMailAction = useCallback(
-    (h: GmailHilo, action: GmailAction, label: string) => {
-      const key = `${h.thread_id}:${Date.now()}`;
-      const entry = { key, hilo: h, action, label };
-      setHiddenThreads((s) => new Set(s).add(h.thread_id));
-      if (openMailHilo?.thread_id === h.thread_id) setOpenMailHilo(null);
-      setUndoQueue((q) => [...q, entry]);
-      const timer = setTimeout(() => void commitMailAction(entry), UNDO_MS);
-      undoTimers.current.set(key, timer);
-    },
-    [openMailHilo, commitMailAction]
-  );
-
-  const undoMailAction = useCallback((key: string, threadId: string) => {
-    const timer = undoTimers.current.get(key);
-    if (timer) clearTimeout(timer);
-    undoTimers.current.delete(key);
-    setUndoQueue((q) => q.filter((e) => e.key !== key));
-    setHiddenThreads((s) => {
-      const next = new Set(s);
-      next.delete(threadId);
-      return next;
-    });
-  }, []);
-
-  const handleArchiveMail = useCallback(
-    (h: GmailHilo) => queueMailAction(h, "archive", "Hilo archivado"),
-    [queueMailAction]
-  );
-
-  const handleDiscardMail = useCallback(
-    (h: GmailHilo) => queueMailAction(h, "trash", "Correo descartado a papelera"),
-    [queueMailAction]
-  );
-
-  // Marca un hilo como leído/no leído (local + sincroniza con Gmail, best-effort).
-  const toggleSeenMail = useCallback(
-    (h: GmailHilo) => {
-      const wasSeen = seenThreads.has(h.thread_id);
-      setSeenThreads((s) => {
-        const next = new Set(s);
-        if (wasSeen) next.delete(h.thread_id);
-        else next.add(h.thread_id);
-        persistSeen(next);
-        return next;
-      });
-      if (!isTestingMode) void modifyThread(h.thread_id, wasSeen ? "markUnread" : "markRead");
-    },
-    [seenThreads, persistSeen, isTestingMode]
-  );
-
-  // Al abrir un hilo, queda marcado como leído.
-  const markSeen = useCallback(
-    (h: GmailHilo) => {
-      if (seenThreads.has(h.thread_id)) return;
-      setSeenThreads((s) => {
-        const next = new Set(s).add(h.thread_id);
-        persistSeen(next);
-        return next;
-      });
-    },
-    [seenThreads, persistSeen]
-  );
-
-  // Limpieza de timers pendientes al desmontar (evita commits fantasma).
-  useEffect(() => {
-    const timers = undoTimers.current;
-    return () => {
-      timers.forEach((t) => clearTimeout(t));
-      timers.clear();
-    };
-  }, []);
-
   // Atajos de teclado: [ colapsa, ] normal, Shift+] expande la ficha derecha.
   // No intercepta si el foco está en un input/textarea/contenteditable.
   useEffect(() => {
@@ -847,36 +703,10 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
     return () => document.removeEventListener("keydown", onKey);
   }, [fichaSize]);
 
-  const handlePlanToday = useCallback(async () => {
-    setPlanningToday(true);
-    const res = await planToday(20);
-    setPlanningToday(false);
-    if (res.ok) {
-      showToast(
-        res.acciones > 0
-          ? `Hermes planificó ${res.acciones} ${res.acciones === 1 ? "acción" : "acciones"} para hoy`
-          : "Hermes no detectó acciones pendientes",
-        "auto_awesome"
-      );
-      queryClient.invalidateQueries({ queryKey: ["hermesPlan"] });
-    } else {
-      showToast(res.motivo, "error");
-    }
-  }, [showToast, queryClient]);
-
   const selectByItem = useCallback((item: BandejaItem) => {
     const key = normalizeStringForComparison(item.grupo);
     setSelectedKey((cur) => (cur === key ? null : key));
   }, []);
-
-  const openContact = useCallback(
-    (vmOrItem: InstitutionVM | BandejaItem) => {
-      const key = "key" in vmOrItem ? vmOrItem.key : normalizeStringForComparison(vmOrItem.grupo);
-      const vm = instByKey.get(key);
-      if (vm) setContactVm(vm);
-    },
-    [instByKey]
-  );
 
   // ── Tarjetas de CICLO DE VIDA para la bandeja única "Hoy" ──────────────────
   // Convierte los items de gestión que conviene atender hoy (HOY_STATES) en
@@ -940,122 +770,7 @@ const GestionView: React.FC<GestionViewProps> = ({ isTestingMode = false }) => {
           },
         };
       });
-  }, [items, instByKey]);
-
-  const sendWhatsApp = useCallback(
-    (vm: InstitutionVM, text: string) => {
-      // Validamos el teléfono con cleanWhatsAppNumber antes de abrir wa.me
-      // para evitar el "contacto inexistente" que aparece cuando el número
-      // no es un WhatsApp real (fijos mal cargados, números incompletos, etc).
-      const url = getWhatsAppUrl(vm.phone, text);
-      if (!url) {
-        showToast("Este teléfono no es un WhatsApp válido", "info");
-        return;
-      }
-      window.open(url, "_blank", "noopener");
-      setContactVm(null);
-      showToast("WhatsApp abierto · revisá y enviá manualmente", "chat");
-    },
-    [showToast]
-  );
-
-  const markWaiting = useCallback(
-    async (vm: InstitutionVM) => {
-      const latest = vm.launches[0];
-      if (!latest) return;
-      // historial_gestion es lo que useGestionConvocatorias usa como "último
-      // contacto real" para el umbral de Reinsistir — sin escribirlo acá, el
-      // reloj de espera queda atado a updated_at (que se mueve con cualquier
-      // edición, no solo con un contacto real).
-      const ok = await handleSave(latest.id, {
-        [FIELD_ESTADO_GESTION_LANZAMIENTOS]: STATE_TO_DB.esperandoRespuesta,
-        [FIELD_HISTORIAL_GESTION_LANZAMIENTOS]: appendHistorial(
-          latest[FIELD_HISTORIAL_GESTION_LANZAMIENTOS] as string | null,
-          "Contactada · esperando respuesta"
-        ),
-      } as Partial<LanzamientoPPS>);
-      setContactVm(null);
-      if (ok) showToast("Marcada como “Esperando respuesta”", "schedule_send");
-    },
-    [handleSave, showToast]
-  );
-
-  const saveReminder = useCallback(
-    async (iso: string) => {
-      if (!reminderVm) return;
-      const latest = reminderVm.launches[0];
-      if (!latest) return;
-      setSaving(true);
-      const ok = await handleSave(latest.id, {
-        [FIELD_PROXIMO_SEGUIMIENTO_LANZAMIENTOS]: iso,
-      } as Partial<LanzamientoPPS>);
-      setSaving(false);
-      if (ok) {
-        setReminderVm(null);
-        showToast(`Recordatorio para el ${formatDate(iso)}`, "alarm");
-      }
-    },
-    [reminderVm, handleSave, showToast]
-  );
-
-  const saveInstitution = useCallback(
-    async (patch: {
-      telefono?: string;
-      tutor?: string;
-      direccion?: string;
-      convenio_nuevo?: string;
-    }) => {
-      if (!editVm) return;
-      if (editVm.id === editVm.key) {
-        // No hay registro real de institución (solo se conoce por el grupo de lanzamientos)
-        showToast("Esta institución no tiene ficha propia todavía", "info");
-        setEditVm(null);
-        return;
-      }
-      setSaving(true);
-      const ok = await handleUpdateInstitution(editVm.id, patch);
-      setSaving(false);
-      if (ok) {
-        setEditVm(null);
-        showToast("Institución actualizada", "check_circle");
-      }
-    },
-    [editVm, handleUpdateInstitution, showToast]
-  );
-
-  const confirmChange = useCallback(
-    async (note: string) => {
-      if (!pendingChange) return;
-      const latest = pendingChange.vm.launches[0];
-      if (!latest) return;
-      setSaving(true);
-      const dbValue = STATE_TO_DB[pendingChange.newState];
-      const updates: Partial<LanzamientoPPS> = {
-        [FIELD_ESTADO_GESTION_LANZAMIENTOS]: dbValue,
-      } as Partial<LanzamientoPPS>;
-      if (note.trim()) {
-        const prev = (latest[FIELD_NOTAS_GESTION_LANZAMIENTOS] as string) || "";
-        const stamp = new Date().toLocaleDateString("es", { day: "2-digit", month: "short" });
-        (updates as any)[FIELD_NOTAS_GESTION_LANZAMIENTOS] =
-          `${prev ? prev + "\n" : ""}[${stamp}] ${note.trim()}`;
-      }
-      // historial_gestion alimenta el cálculo de días de espera (Reinsistir) y el
-      // timeline de la Ficha. Todo cambio de estado es un contacto real, así que
-      // se registra acá con el mismo formato que markWaiting.
-      const historialTexto = `${STATE_META[pendingChange.newState].label}${note.trim() ? ` · ${note.trim()}` : ""}`;
-      (updates as any)[FIELD_HISTORIAL_GESTION_LANZAMIENTOS] = appendHistorial(
-        latest[FIELD_HISTORIAL_GESTION_LANZAMIENTOS] as string | null,
-        historialTexto
-      );
-      const ok = await handleSave(latest.id, updates);
-      setSaving(false);
-      if (ok) {
-        showToast(`${STATE_META[pendingChange.newState].label} · cambio registrado`, "flag");
-        setPendingChange(null);
-      }
-    },
-    [pendingChange, handleSave, showToast]
-  );
+  }, [items, instByKey, setOpenMailHilo]);
 
   if (loadingState === "loading" || loadingState === "initial") {
     return (
