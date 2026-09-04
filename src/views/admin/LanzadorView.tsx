@@ -4,13 +4,13 @@
  * Layout: sidebar colapsable izquierdo + canvas central por estado.
  *
  * El sidebar agrupa por RECORRIDO (ver `lanzadorState`):
- *   Abiertas → A seleccionar → A asegurar → En confirmación → Activas
+ *   Abiertas → A seleccionar → En confirmación → A asegurar → Activas
  * y una convocatoria sale de la vista cuando llega su `fecha_finalizacion`.
  *
  * El canvas, en cambio, sigue el `estado_convocatoria` real de la DB: el grupo
  * dice DÓNDE está la PPS en el tiempo, el canvas QUÉ le falta. Por eso una PPS
- * ya iniciada pero todavía en 'Cerrado' aparece en Activas y abre el generador
- * de seguros.
+ * ya iniciada pero todavía en 'Cerrado' aparece en Activas y abre la sala de
+ * firmas.
  *
  * NOTA: Los sub-componentes internos (SeleccionadorConvocatorias,
  * SeguroGenerator, LanzadorConvocatorias) no se modifican. Solo cambia la
@@ -36,7 +36,12 @@ import {
 import { useModal } from "../../contexts/ModalContext";
 import { db } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
-import { closeSelectionAndQueueNotifications, eliminarLanzamiento } from "../../services";
+import {
+  closeSelectionAndQueueNotifications,
+  eliminarLanzamiento,
+  notifySelectedStudentsForLaunch,
+} from "../../services";
+import type { NotifySelectionResult } from "../../services";
 import { mockDb } from "../../services/mockDb";
 import type { LanzamientoPPS } from "../../types";
 import { normalizeStringForComparison } from "../../utils/formatters";
@@ -99,6 +104,14 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   const [isCreating, setIsCreating] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [finalReminderFeedback, setFinalReminderFeedback] = useState<{
+    launchId: string;
+    tone: "ok" | "warn";
+    title: string;
+    message: string;
+  } | null>(null);
+  // Resultado del aviso a los seleccionados. Antes esto se perdía en un
+  // `void ...catch(logger.error)`: si el envío fallaba, el admin no se enteraba.
+  const [selectionNotice, setSelectionNotice] = useState<{
     launchId: string;
     tone: "ok" | "warn";
     title: string;
@@ -228,6 +241,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         pendientes?: number;
         bajas?: number;
         seleccionados_vigentes?: number;
+        eximidos?: number;
         requerido?: boolean;
       }
     >
@@ -256,6 +270,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
           pendientes?: number;
           bajas?: number;
           seleccionados_vigentes?: number;
+          eximidos?: number;
           requerido?: boolean;
         }
       >;
@@ -294,9 +309,77 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
     invalidateLaunchData(queryClient);
   }, [queryClient]);
 
+  /** Traduce el resumen del envío a un mensaje que le sirva al admin. */
+  const reportSelectionNotice = useCallback(
+    (launchId: string, result: NotifySelectionResult | void) => {
+      if (!result) return;
+      if (result.requested === 0) {
+        setSelectionNotice(
+          result.message
+            ? { launchId, tone: "ok", title: "Sin avisos pendientes", message: result.message }
+            : null
+        );
+        return;
+      }
+      if (result.failed === 0) {
+        setSelectionNotice({
+          launchId,
+          tone: "ok",
+          title: `Aviso enviado a ${result.sent} estudiante${result.sent === 1 ? "" : "s"}`,
+          message: "Quedó registrado quién lo recibió, así que reintentar no duplica correos.",
+        });
+        return;
+      }
+      const detalle = (result.failures || [])
+        .slice(0, 3)
+        .map((f) => `${f.name} (${f.reason})`)
+        .join(" · ");
+      setSelectionNotice({
+        launchId,
+        tone: "warn",
+        title: `${result.failed} de ${result.requested} quedaron sin aviso`,
+        message: detalle
+          ? `${detalle}. Podés reintentar: solo se les escribe a los que faltan.`
+          : "Podés reintentar: solo se les escribe a los que faltan.",
+      });
+    },
+    []
+  );
+
+  const retryNotificationMutation = useMutation({
+    mutationFn: (launchId: string) => notifySelectedStudentsForLaunch(launchId),
+    onMutate: (launchId) =>
+      setSelectionNotice((current) => (current?.launchId === launchId ? null : current)),
+    onSuccess: (result, launchId) => {
+      reportSelectionNotice(launchId, result);
+      refreshLaunches();
+    },
+    onError: (error: unknown, launchId) =>
+      setSelectionNotice({
+        launchId,
+        tone: "warn",
+        title: "No se pudieron enviar los avisos",
+        message: (error as Error)?.message || "Revisá la conexión e intentá de nuevo.",
+      }),
+  });
+
   // ── Estado mutations ──────────────────────────────────────────────────────
   const changeEstadoMutation = useMutation({
-    mutationFn: async ({ id, estado }: { id: string; estado: string }) => {
+    mutationFn: async ({
+      id,
+      estado,
+      closeSelection,
+    }: {
+      id: string;
+      estado: string;
+      /**
+       * Solo el cierre de la mesa corre `close_selection` (decide no-elegidos y
+       * dispara los correos de consentimiento). Volver a 'Cerrado' desde un paso
+       * posterior es una navegación del pipeline, no un cierre: si reejecutara el
+       * RPC re-notificaría a todos los seleccionados.
+       */
+      closeSelection?: boolean;
+    }) => {
       const updates: Record<string, unknown> = {
         [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: estado,
       };
@@ -307,14 +390,24 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         updates[FIELD_ESTADO_GESTION_LANZAMIENTOS] = "Archivado";
       }
 
-      if (estado === "Cerrado") {
+      if (estado === "Cerrado" && closeSelection !== false) {
         const launch = launches.find((item) => item.id === id);
         if (!launch) throw new Error("No se encontró el lanzamiento que se intenta cerrar.");
 
         const { notificationTask } = await closeSelectionAndQueueNotifications(launch);
-        void notificationTask.catch((error) =>
-          logger.error("[Lanzador] Error notificando seleccionados:", error)
-        );
+        void notificationTask
+          .then((result) => reportSelectionNotice(id, result))
+          .catch((error) => {
+            logger.error("[Lanzador] Error avisando a los seleccionados:", error);
+            setSelectionNotice({
+              launchId: id,
+              tone: "warn",
+              title: "La mesa cerró, pero los avisos quedaron pendientes",
+              message:
+                (error as Error)?.message ||
+                "Nadie perdió su lugar. Reintentá los avisos desde la sala de firmas.",
+            });
+          });
       } else {
         if (estado === "Abierta") updates[FIELD_SELECTION_CLOSED_AT_LANZAMIENTOS] = null;
         await db.lanzamientos.update(id, updates);
@@ -355,15 +448,15 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
   };
 
   const handleChangeEstado = useCallback(
-    (id: string, estado: string, confirm?: ConfirmOpts) => {
+    (id: string, estado: string, confirm?: ConfirmOpts, closeSelection?: boolean) => {
       if (confirm) {
         setConfirmState({
           ...confirm,
-          onConfirm: () => changeEstadoMutation.mutate({ id, estado }),
+          onConfirm: () => changeEstadoMutation.mutate({ id, estado, closeSelection }),
         });
         return;
       }
-      changeEstadoMutation.mutate({ id, estado });
+      changeEstadoMutation.mutate({ id, estado, closeSelection });
     },
     [changeEstadoMutation]
   );
@@ -379,9 +472,19 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
         if (!launch) throw new Error("No se encontró el lanzamiento que se intenta cerrar.");
 
         const { notificationTask } = await closeSelectionAndQueueNotifications(launch);
-        void notificationTask.catch((error) =>
-          logger.error("[Lanzador] Error notificando seleccionados:", error)
-        );
+        void notificationTask
+          .then((result) => reportSelectionNotice(id, result))
+          .catch((error) => {
+            logger.error("[Lanzador] Error avisando a los seleccionados:", error);
+            setSelectionNotice({
+              launchId: id,
+              tone: "warn",
+              title: "La mesa cerró, pero los avisos quedaron pendientes",
+              message:
+                (error as Error)?.message ||
+                "Nadie perdió su lugar. Reintentá los avisos desde la sala de firmas.",
+            });
+          });
         return;
       }
       switch (action) {
@@ -662,6 +765,65 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
     [closeInstitutionalListMutation]
   );
 
+  /**
+   * Paso 3 → 4. Coordinación decide cuándo armar el seguro y el listado de
+   * convocados; no se dispara solo al cerrar la mesa, porque con firmas
+   * pendientes la nómina todavía puede perder gente y habría que rehacer ambos
+   * documentos. Si quedan pendientes, el confirm lo dice.
+   */
+  const requestPasoSeguro = useCallback(
+    (launchId: string, pending: number) => {
+      const counts = countsByLaunch[launchId];
+      if (counts && counts.seleccionados <= 0) {
+        showModal(
+          "No hay estudiantes seleccionados",
+          "Seleccioná al menos un estudiante vigente antes de armar el seguro."
+        );
+        return;
+      }
+
+      setConfirmState({
+        title: "¿Pasar al seguro y el listado?",
+        message:
+          pending > 0
+            ? `Quedan ${pending} estudiante${pending !== 1 ? "s" : ""} sin firmar. Podés generar el seguro igual, pero si alguno se da de baja vas a tener que rehacer la planilla y el listado. Las firmas siguen abiertas.`
+            : "La convocatoria pasa al paso de seguro, donde se generan la planilla y el listado para la institución. Podés volver a la sala de firmas cuando quieras.",
+        confirmText: pending > 0 ? "Generar igual" : "Generar seguro y listado",
+        type: pending > 0 ? "warning" : "info",
+        onConfirm: () => changeEstadoMutation.mutate({ id: launchId, estado: "Seguro" }),
+      });
+    },
+    [countsByLaunch, changeEstadoMutation, showModal]
+  );
+
+  const requestActivacion = useCallback(
+    (launchId: string) => {
+      const counts = countsByLaunch[launchId];
+      if (!counts) {
+        showModal(
+          "No se pudo verificar la selección",
+          "Esperá a que terminen de cargar los conteos e intentá nuevamente."
+        );
+        return;
+      }
+      if (counts.seleccionados <= 0) {
+        showModal(
+          "No hay estudiantes seleccionados",
+          "Seleccioná al menos un estudiante vigente antes de activar la PPS."
+        );
+        return;
+      }
+      handleChangeEstado(launchId, "Activa", {
+        title: "¿Activar esta PPS?",
+        message:
+          "Pasará a estado «Activa» (en curso). Esta acción no cierra el consentimiento: quienes estén pendientes conservan su lugar hasta 24 horas antes del inicio o hasta que registres la entrega de la lista a la institución.",
+        confirmText: "Activar PPS",
+        type: "info",
+      });
+    },
+    [countsByLaunch, handleChangeEstado, showModal]
+  );
+
   // ── Canvas renderer ───────────────────────────────────────────────────────
   const renderCanvas = () => {
     if (isLoading) {
@@ -777,6 +939,21 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
               launch={selectedLaunch}
               showModal={showModal}
               isTestingMode={isTestingMode}
+              onActivar={() => requestActivacion(selectedLaunch.id)}
+              onVolverAFirmas={() =>
+                handleChangeEstado(
+                  selectedLaunch.id,
+                  "Cerrado",
+                  {
+                    title: "¿Volver a la sala de firmas?",
+                    message:
+                      "La convocatoria regresa al paso de consentimientos. Los plazos y las firmas ya registradas no se tocan, y no se reenvía ningún correo.",
+                    confirmText: "Volver a las firmas",
+                    type: "info",
+                  },
+                  false
+                )
+              }
             />
           </div>
         );
@@ -794,33 +971,18 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
                 finalReminderFeedback?.launchId === selectedLaunch.id ? finalReminderFeedback : null
               }
               onFinalReminder={(pending) => requestFinalReminder(selectedLaunch.id, pending)}
+              onReintentarAvisos={() => retryNotificationMutation.mutate(selectedLaunch.id)}
+              isRetryingAvisos={
+                retryNotificationMutation.isPending &&
+                retryNotificationMutation.variables === selectedLaunch.id
+              }
+              selectionNotice={
+                selectionNotice?.launchId === selectedLaunch.id ? selectionNotice : null
+              }
               onListaEntregada={(pending) =>
                 requestInstitutionalListClose(selectedLaunch.id, pending)
               }
-              onActivar={() => {
-                const counts = countsByLaunch[selectedLaunch.id];
-                if (!counts) {
-                  showModal(
-                    "No se pudo verificar la selección",
-                    "Esperá a que terminen de cargar los conteos e intentá nuevamente."
-                  );
-                  return;
-                }
-                if (counts.seleccionados <= 0) {
-                  showModal(
-                    "No hay estudiantes seleccionados",
-                    "Seleccioná al menos un estudiante vigente antes de activar la PPS."
-                  );
-                  return;
-                }
-                handleChangeEstado(selectedLaunch.id, "Activa", {
-                  title: "¿Activar esta PPS?",
-                  message:
-                    "Pasará a estado «Activa» (en curso). Esta acción no cierra el consentimiento: quienes estén pendientes conservan su lugar hasta 24 horas antes del inicio o hasta que registres la entrega de la lista a la institución.",
-                  confirmText: "Activar PPS",
-                  type: "info",
-                });
-              }}
+              onGenerarSeguro={(pending) => requestPasoSeguro(selectedLaunch.id, pending)}
             />
           </div>
         );
@@ -865,13 +1027,18 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
                 })
               }
               onReactivarConfirmacion={() =>
-                handleChangeEstado(selectedLaunch.id, "Confirmacion", {
-                  title: "¿Reactivar la Sala de Firmas?",
-                  message:
-                    "La convocatoria volverá al paso «Confirmación» para recolectar compromisos y firmas digitales.",
-                  confirmText: "Reactivar firmas",
-                  type: "info",
-                })
+                handleChangeEstado(
+                  selectedLaunch.id,
+                  "Cerrado",
+                  {
+                    title: "¿Reactivar la Sala de Firmas?",
+                    message:
+                      "La convocatoria volverá al paso «Confirmación» para recolectar compromisos y firmas digitales. No se reenvían los correos de selección.",
+                    confirmText: "Reactivar firmas",
+                    type: "info",
+                  },
+                  false
+                )
               }
             />
           </div>

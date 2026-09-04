@@ -1414,6 +1414,15 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
   .lv4-moodle-facts { grid-template-columns: 1fr; }
   .lv4-moodle-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Exencion de consentimiento ("perdonar la firma"). Comparte el verde del
+   estado resuelto pero con su propio icono, para no confundirlo con una firma
+   real del estudiante. */
+.lv4-consent-avatar.is-waived { background: var(--ok-s); color: var(--ok); }
+.lv4-consent-status.is-waived { background: var(--ok-s); color: var(--ok); }
+.lv4-consent-waive { border: none; background: none; cursor: pointer; }
+.lv4-consent-waive:disabled { cursor: progress; opacity: .5; }
+.lv4-consent-waive.is-active { color: var(--ok); }
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

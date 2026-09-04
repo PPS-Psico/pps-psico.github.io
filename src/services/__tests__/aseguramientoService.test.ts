@@ -6,6 +6,7 @@
  */
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import {
+  FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS,
   FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS,
 } from "../../constants";
@@ -44,6 +45,19 @@ describe("aseguramientoService — mutaciones", () => {
     expect(Number.isNaN(ts)).toBe(false);
     expect(ts).toBeGreaterThanOrEqual(before - 1000);
     expect(ts).toBeLessThanOrEqual(after + 1000);
+  });
+
+  it("marcarAseguramiento persiste el estado 'Seguro', no el legacy", async () => {
+    await marcarAseguramiento("lanz-9", "coord-1");
+    const [, fields] = mockUpdate.mock.calls[0];
+    expect(fields[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]).toBe("Seguro");
+  });
+
+  it("revertir deja la convocatoria en el paso Seguro, sin devolverla a las firmas", async () => {
+    await revertirAseguramiento("lanz-10", "coord-1");
+    const [, fields] = mockUpdate.mock.calls[0];
+    expect(fields[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]).toBe("Seguro");
+    expect(fields[FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS]).toBeNull();
   });
 
   it("marcarAseguramiento acepta coordinadorId null (queda informativo)", async () => {

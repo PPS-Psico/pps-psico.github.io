@@ -8,7 +8,7 @@
  * aquí para conveniencia del consumidor de la vista.
  *
  * El recorrido visible (lo que muestra el sidebar):
- *   Abiertas → A seleccionar → A asegurar → En confirmación → Activas
+ *   Abiertas → A seleccionar → En confirmación → A asegurar → Activas
  *
  * Una convocatoria entra al recorrido cuando se publica y sale cuando llega su
  * `fecha_finalizacion`. Los dos extremos —lo que todavía no está en el pipeline
@@ -63,12 +63,16 @@ export type { UIState, SidebarBucket };
  * de UI. La comparación es normalizada (case/acentos-insensible) porque la DB
  * históricamente guardó variantes ("Cerrado"/"cerrada", "Abierta"/"abierto").
  *
- * El `seguroGestionadoAt` (opcional) desambigua el estado intermedio "Cerrado":
- *   - NULL  → step 3 "Seguro" (todavía hay que gestionar el seguro)
- *   - set   → step 4 "Confirmación" (legacy: seguro marcado pero DB quedó
- *             en "Cerrado"; el flujo nuevo persiste "Confirmacion" explícito)
+ * Correspondencia con el pipeline (ver `aseguramientoService`):
+ *   'Cerrado'      → step 3 "Confirmación" (sala de firmas, apenas cerró la mesa)
+ *   'Seguro'       → step 4 "Seguro" (seguro + listado de convocados)
+ *   'Confirmacion' → step 4, LEGACY. Así se llamaba el paso del seguro cuando iba
+ *                    antes del consentimiento. No se migró: las convocatorias que
+ *                    quedaron con ese valor drenan solas al avanzar. Solo se
+ *                    escribe 'Seguro' de ahora en más.
  *
- * Si no se pasa `seguroGestionadoAt` y el DB es "Cerrado", cae a "seguro".
+ * El `seguroGestionadoAt` (opcional) rescata los registros legacy que quedaron
+ * en "Cerrado" con el seguro ya marcado: esos pertenecen al step 4.
  */
 export function mapDbToUiState(dbStatus: string, seguroGestionadoAt?: string | null): UIState {
   const s = normalizeStringForComparison(dbStatus);
@@ -76,11 +80,12 @@ export function mapDbToUiState(dbStatus: string, seguroGestionadoAt?: string | n
   // "Programada" es prepublicación y vive fuera del pipeline visible.
   if (s === "programada" || s === "programado") return "borrador";
   if (s === "abierta" || s === "abierto") return "seleccion";
-  if (s === "confirmacion") return "confirmacion";
+  if (s === "seguro") return "seguro";
+  if (s === "confirmacion") return "seguro"; // legacy, ver el comentario de arriba
   if (s === "activa" || s === "activo") return "activa";
   if (s === "archivado" || s === "archivada") return "archivada";
   if (s === "cerrado" || s === "cerrada") {
-    return seguroGestionadoAt ? "confirmacion" : "seguro";
+    return seguroGestionadoAt ? "seguro" : "confirmacion";
   }
   return "borrador";
 }
@@ -120,6 +125,7 @@ export interface LaunchConsentCounts {
   pendientes?: number;
   bajas?: number;
   seleccionados_vigentes?: number;
+  eximidos?: number;
   requerido?: boolean;
 }
 export type LaunchConsentMap = Record<string, LaunchConsentCounts>;
@@ -180,9 +186,9 @@ export function buildSidebarEntries(
     });
 
     // El canvas sigue el estado real de la DB: así una PPS que ya arrancó pero
-    // quedó en 'Cerrado' abre el generador de seguros, y una que quedó en
-    // 'Confirmacion' abre la sala de firmas. El grupo dice DÓNDE está en el
-    // tiempo; el canvas, QUÉ le falta.
+    // quedó en 'Cerrado' abre la sala de firmas, y una que quedó en
+    // 'Confirmacion' abre el generador de seguros. El grupo dice DÓNDE está en
+    // el tiempo; el canvas, QUÉ le falta.
     const uiState: UIState = bucket === "finalizada" ? "archivada" : dbState;
     const seguroGestionado = bucket !== "finalizada" && seguroGestionadoAt != null;
 
@@ -200,7 +206,6 @@ export function buildSidebarEntries(
       case "seleccionar":
         metaLine = `${totalInsc} candidato${totalInsc !== 1 ? "s" : ""} · ${cupos ?? "?"} cupos`;
         break;
-      case "asegurar":
       case "confirmacion":
         metaLine =
           consent.requerido === false
@@ -210,6 +215,13 @@ export function buildSidebarEntries(
                   pendientesConsent !== 1 ? "s" : ""
                 }${bajasConsent > 0 ? ` · ${bajasConsent} baja${bajasConsent !== 1 ? "s" : ""}` : ""}`
               : `${totalSel} seleccionado${totalSel !== 1 ? "s" : ""} · sala de consentimientos`;
+        break;
+      case "asegurar":
+        // Paso 4: la nómina ya decantó, lo que falta es la planilla de seguro y
+        // el listado para la institución.
+        metaLine = seguroGestionadoAt
+          ? `Seguro y listado listos · ${totalSel} seleccionado${totalSel !== 1 ? "s" : ""}`
+          : `${totalSel} en la nómina · falta el seguro y el listado`;
         break;
       case "activa":
         // Una PPS corriendo sin seguro es lo más urgente que puede haber acá,
@@ -228,9 +240,8 @@ export function buildSidebarEntries(
 
     const needsAction =
       bucket === "seleccionar" ||
-      (bucket === "asegurar" && consent.requerido !== false && consent.aceptados < consent.total) ||
-      (bucket === "asegurar" && consent.requerido !== false && consent.total === 0) ||
       bucket === "confirmacion" ||
+      (bucket === "asegurar" && !seguroGestionado) ||
       (bucket === "activa" && !seguroGestionado);
 
     return {

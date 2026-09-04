@@ -21,20 +21,27 @@ describe("lanzadorState", () => {
       expect(mapDbToUiState("abierto")).toBe("seleccion");
     });
 
-    it("mapea 'Cerrado' a 'seguro' por defecto (sin marca de seguro)", () => {
-      expect(mapDbToUiState("Cerrado")).toBe("seguro");
-      expect(mapDbToUiState("cerrada")).toBe("seguro");
-      expect(mapDbToUiState("CERRADO")).toBe("seguro");
+    it("mapea 'Cerrado' a la sala de firmas (sin marca de seguro)", () => {
+      expect(mapDbToUiState("Cerrado")).toBe("confirmacion");
+      expect(mapDbToUiState("cerrada")).toBe("confirmacion");
+      expect(mapDbToUiState("CERRADO")).toBe("confirmacion");
     });
 
-    it("mapea 'Cerrado' a 'confirmacion' si seguro_gestionado_at está seteado", () => {
-      expect(mapDbToUiState("Cerrado", "2025-06-15T12:00:00Z")).toBe("confirmacion");
-      expect(mapDbToUiState("Cerrado", null)).toBe("seguro");
+    it("rescata al paso Seguro los 'Cerrado' legacy con seguro ya gestionado", () => {
+      expect(mapDbToUiState("Cerrado", "2025-06-15T12:00:00Z")).toBe("seguro");
+      expect(mapDbToUiState("Cerrado", null)).toBe("confirmacion");
     });
 
-    it("mapea 'Confirmacion' (nuevo) a confirmacion", () => {
-      expect(mapDbToUiState("Confirmacion")).toBe("confirmacion");
-      expect(mapDbToUiState("confirmacion")).toBe("confirmacion");
+    it("mapea 'Seguro' al paso Seguro", () => {
+      expect(mapDbToUiState("Seguro")).toBe("seguro");
+      expect(mapDbToUiState("seguro")).toBe("seguro");
+    });
+
+    it("mapea el token 'Confirmacion' al paso Seguro", () => {
+      // 'Confirmacion' quedó nombrado así cuando el seguro iba antes de las
+      // firmas; hoy identifica el paso 4.
+      expect(mapDbToUiState("Confirmacion")).toBe("seguro");
+      expect(mapDbToUiState("confirmacion")).toBe("seguro");
     });
 
     it("mapea variantes de activa", () => {
@@ -87,15 +94,15 @@ describe("lanzadorState", () => {
       expect(steps).toEqual([1, 2, 3, 4, 5, 6]);
     });
 
-    it("STATE_META incluye seleccion, seguro y confirmacion", () => {
+    it("el consentimiento va antes que el seguro", () => {
       expect(STATE_META.seleccion.step).toBe(2);
-      expect(STATE_META.seguro.step).toBe(3);
-      expect(STATE_META.confirmacion.step).toBe(4);
+      expect(STATE_META.confirmacion.step).toBe(3);
+      expect(STATE_META.seguro.step).toBe(4);
     });
 
     it("el pipeline tiene 5 pasos visibles en el orden correcto", () => {
       expect(PIPELINE_STEPS).toHaveLength(5);
-      expect(PIPELINE_STEPS).toEqual(["Borrador", "Selección", "Seguro", "Confirmación", "Activa"]);
+      expect(PIPELINE_STEPS).toEqual(["Borrador", "Selección", "Confirmación", "Seguro", "Activa"]);
     });
 
     it("BUCKET_ORDER referencia solo buckets definidos en BUCKET_META", () => {
@@ -104,9 +111,10 @@ describe("lanzadorState", () => {
       HIDDEN_BUCKETS.forEach((b) => expect(known).toContain(b));
     });
 
-    it("BUCKET_ORDER prioriza acciones pendientes (seleccionar/asegurar primero)", () => {
+    it("BUCKET_ORDER prioriza acciones pendientes (seleccionar/confirmar primero)", () => {
       expect(BUCKET_ORDER[0]).toBe("seleccionar");
-      expect(BUCKET_ORDER[1]).toBe("asegurar");
+      expect(BUCKET_ORDER[1]).toBe("confirmacion");
+      expect(BUCKET_ORDER[2]).toBe("asegurar");
       // Las que están en curso cierran el recorrido visible.
       expect(BUCKET_ORDER[BUCKET_ORDER.length - 1]).toBe("activa");
     });

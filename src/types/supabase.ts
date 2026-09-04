@@ -687,6 +687,9 @@ export type Database = {
           baja_automatica_at: string | null
           certificado_trabajo: string | null
           certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
           correo: string | null
           created_at: string | null
           cursando_electivas: string | null
@@ -718,6 +721,11 @@ export type Database = {
           orientacion: string | null
           otra_situacion_academica: string | null
           reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
           selected_at: string | null
           selection_decided_at: string | null
           telefono: string | null
@@ -729,6 +737,9 @@ export type Database = {
           baja_automatica_at?: string | null
           certificado_trabajo?: string | null
           certificado_url?: string | null
+          consentimiento_exceptuado_at?: string | null
+          consentimiento_exceptuado_motivo?: string | null
+          consentimiento_exceptuado_por?: string | null
           correo?: string | null
           created_at?: string | null
           cursando_electivas?: string | null
@@ -760,6 +771,11 @@ export type Database = {
           orientacion?: string | null
           otra_situacion_academica?: string | null
           reminder_sent_at?: string | null
+          seleccion_notificacion_claim_token?: string | null
+          seleccion_notificacion_claimed_at?: string | null
+          seleccion_notificacion_claimed_by?: string | null
+          seleccion_notificada_at?: string | null
+          seleccion_notificada_por?: string | null
           selected_at?: string | null
           selection_decided_at?: string | null
           telefono?: string | null
@@ -771,6 +787,9 @@ export type Database = {
           baja_automatica_at?: string | null
           certificado_trabajo?: string | null
           certificado_url?: string | null
+          consentimiento_exceptuado_at?: string | null
+          consentimiento_exceptuado_motivo?: string | null
+          consentimiento_exceptuado_por?: string | null
           correo?: string | null
           created_at?: string | null
           cursando_electivas?: string | null
@@ -802,6 +821,11 @@ export type Database = {
           orientacion?: string | null
           otra_situacion_academica?: string | null
           reminder_sent_at?: string | null
+          seleccion_notificacion_claim_token?: string | null
+          seleccion_notificacion_claimed_at?: string | null
+          seleccion_notificacion_claimed_by?: string | null
+          seleccion_notificada_at?: string | null
+          seleccion_notificada_por?: string | null
           selected_at?: string | null
           selection_decided_at?: string | null
           telefono?: string | null
@@ -3386,6 +3410,23 @@ export type Database = {
           user_id: string
         }[]
       }
+      claim_seleccion_notificacion_batch: {
+        Args: {
+          p_actor_user_id: string
+          p_claim_token: string
+          p_lanzamiento_id: string
+          p_requested_at: string
+        }
+        Returns: {
+          convocatoria_id: string
+          encuentro_inicial: string
+          estudiante_correo: string
+          estudiante_nombre: string
+          estudiante_user_id: string
+          horario: string
+          pps_nombre: string
+        }[]
+      }
       clean_dirty_text: { Args: { val: string }; Returns: string }
       cleanup_old_verification_attempts: { Args: never; Returns: undefined }
       close_finished_practicas: { Args: never; Returns: number }
@@ -3529,6 +3570,65 @@ export type Database = {
         Args: { p_student_id: string; p_trigger_observation_id: string }
         Returns: Json
       }
+      eximir_consentimiento: {
+        Args: { p_convocatoria_id: string; p_motivo?: string }
+        Returns: {
+          airtable_id: string | null
+          baja_automatica_at: string | null
+          certificado_trabajo: string | null
+          certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
+          correo: string | null
+          created_at: string | null
+          cursando_electivas: string | null
+          cv_url: string | null
+          direccion: string | null
+          dni: number | null
+          estado_inscripcion: string | null
+          estudiante_id: string | null
+          fecha_entrega_informe: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          fecha_nacimiento: string | null
+          final_reminder_claim_token: string | null
+          final_reminder_claimed_at: string | null
+          final_reminder_claimed_by: string | null
+          final_reminder_sent_at: string | null
+          final_reminder_sent_by: string | null
+          finales_adeuda: string | null
+          horario_asignado: string | null
+          horario_seleccionado: string | null
+          horas_acreditadas: number | null
+          id: string
+          informe_subido: boolean | null
+          lanzamiento_id: string | null
+          legajo: number | null
+          nombre_pps: string | null
+          opcion_asignada_id: string | null
+          opcion_horario_asignado_id: string | null
+          orientacion: string | null
+          otra_situacion_academica: string | null
+          reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
+          selected_at: string | null
+          selection_decided_at: string | null
+          telefono: string | null
+          termino_cursar: string | null
+          trabaja: boolean | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "convocatorias"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       finalize_password_reset_delivery: {
         Args: {
           p_delivered: boolean
@@ -3538,6 +3638,14 @@ export type Database = {
         Returns: boolean
       }
       finish_consentimiento_final_reminder: {
+        Args: {
+          p_claim_token: string
+          p_convocatoria_id: string
+          p_sent: boolean
+        }
+        Returns: boolean
+      }
+      finish_seleccion_notificacion: {
         Args: {
           p_claim_token: string
           p_convocatoria_id: string
@@ -4024,6 +4132,9 @@ export type Database = {
           baja_automatica_at: string | null
           certificado_trabajo: string | null
           certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
           correo: string | null
           created_at: string | null
           cursando_electivas: string | null
@@ -4055,6 +4166,11 @@ export type Database = {
           orientacion: string | null
           otra_situacion_academica: string | null
           reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
           selected_at: string | null
           selection_decided_at: string | null
           telefono: string | null
@@ -4079,6 +4195,9 @@ export type Database = {
           baja_automatica_at: string | null
           certificado_trabajo: string | null
           certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
           correo: string | null
           created_at: string | null
           cursando_electivas: string | null
@@ -4110,6 +4229,11 @@ export type Database = {
           orientacion: string | null
           otra_situacion_academica: string | null
           reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
           selected_at: string | null
           selection_decided_at: string | null
           telefono: string | null
@@ -4226,6 +4350,65 @@ export type Database = {
           penalizacion_id: string
           practicas_eliminadas: number
         }[]
+      }
+      revertir_exencion_consentimiento: {
+        Args: { p_convocatoria_id: string }
+        Returns: {
+          airtable_id: string | null
+          baja_automatica_at: string | null
+          certificado_trabajo: string | null
+          certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
+          correo: string | null
+          created_at: string | null
+          cursando_electivas: string | null
+          cv_url: string | null
+          direccion: string | null
+          dni: number | null
+          estado_inscripcion: string | null
+          estudiante_id: string | null
+          fecha_entrega_informe: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          fecha_nacimiento: string | null
+          final_reminder_claim_token: string | null
+          final_reminder_claimed_at: string | null
+          final_reminder_claimed_by: string | null
+          final_reminder_sent_at: string | null
+          final_reminder_sent_by: string | null
+          finales_adeuda: string | null
+          horario_asignado: string | null
+          horario_seleccionado: string | null
+          horas_acreditadas: number | null
+          id: string
+          informe_subido: boolean | null
+          lanzamiento_id: string | null
+          legajo: number | null
+          nombre_pps: string | null
+          opcion_asignada_id: string | null
+          opcion_horario_asignado_id: string | null
+          orientacion: string | null
+          otra_situacion_academica: string | null
+          reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
+          selected_at: string | null
+          selection_decided_at: string | null
+          telefono: string | null
+          termino_cursar: string | null
+          trabaja: boolean | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "convocatorias"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       safe_date_cast: { Args: { val: string }; Returns: string }
       save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean }

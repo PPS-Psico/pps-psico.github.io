@@ -75,8 +75,14 @@ export function isLaunchVisibleToStudent(l: LanzamientoPPS, now: Date = new Date
     l[C.FIELD_FECHA_INICIO_LANZAMIENTOS];
   const isScheduledForFuture = publicationDate ? new Date(publicationDate) > now : false;
 
+  // 'seguro' es el paso 4 del Lanzador y 'confirmacion' su nombre legacy: los dos
+  // significan "la mesa ya cerró". Si faltara alguno, la convocatoria se le
+  // caería del panel al estudiante justo después de que lo seleccionaron.
   const isClosed =
-    estadoConv === "cerrada" || estadoConv === "cerrado" || estadoConv === "confirmacion";
+    estadoConv === "cerrada" ||
+    estadoConv === "cerrado" ||
+    estadoConv === "seguro" ||
+    estadoConv === "confirmacion";
 
   // Una convocatoria cerrada debe seguir visible para el estudiante hasta el
   // día en que comienza, AUNQUE ya esté archivada (el archivado puede ocurrir
@@ -89,7 +95,7 @@ export function isLaunchVisibleToStudent(l: LanzamientoPPS, now: Date = new Date
   return (
     estadoConv !== "oculto" &&
     notArchivedOrUpcoming &&
-    ["abierta", "abierto", "cerrado", "cerrada", "confirmacion"].includes(estadoConv) &&
+    ["abierta", "abierto", "cerrado", "cerrada", "seguro", "confirmacion"].includes(estadoConv) &&
     (!isClosed || startNotPast) &&
     (isClosed || !isScheduledForFuture)
   );
@@ -122,6 +128,10 @@ export const fetchConvocatoriasData = async (
     });
   }
 
+  // Los estados en los que la convocatoria sigue siendo visible para el
+  // estudiante que ya se anotó. 'Seguro' es el paso 4 del Lanzador y
+  // 'Confirmacion' su nombre legacy: si faltara alguno, las convocatorias que
+  // avanzan desaparecerían del panel de los alumnos ya seleccionados.
   const visibleLaunches = await db.lanzamientos.getAll({
     filters: {
       [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: [
@@ -129,6 +139,7 @@ export const fetchConvocatoriasData = async (
         "Abierto",
         "Cerrado",
         "Cerrada",
+        "Seguro",
         "Confirmacion",
         "Confirmación",
       ],

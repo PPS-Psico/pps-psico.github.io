@@ -9,12 +9,24 @@
  *    operativa del Lanzador a partir de su estado, marca de aseguramiento y
  *    conteos. Es la única fuente de verdad de la regla de buckets.
  *  - `marcarAseguramiento` / `revertirAseguramiento`: persisten / borran la
- *    marca `seguro_gestionado_at` en `lanzamientos_pps`. Además transicionan
- *    `estado_convocatoria` ↔ 'Confirmacion'/'Cerrado' para que el nuevo
- *    pipeline (5 pasos: Borrador → Selección → Seguro → Confirmación → Activa)
- *    refleje la sala de consentimientos.
+ *    marca `seguro_gestionado_at` en `lanzamientos_pps` dentro del paso Seguro
+ *    (5 pasos: Borrador → Selección → Confirmación → Seguro → Activa).
  *  - Helpers de formato (`buildClipboardText`, `buildHeader`) usados por el
  *    Generador de seguros.
+ *
+ * ORDEN DEL PIPELINE: al cerrar la mesa la PPS entra a la SALA DE FIRMAS, no al
+ * generador de seguros. El seguro y el listado institucional se arman recién
+ * cuando Coordinación decide, con la nómina ya decantada: generarlos antes de
+ * saber quién confirma obliga a rehacerlos por cada baja.
+ *
+ * TOKENS DE `estado_convocatoria`:
+ *   'Cerrado'      → paso 3 «Confirmación» (sala de firmas)
+ *   'Seguro'       → paso 4 «Seguro» (seguro + listado de convocados)
+ *   'Confirmacion' → paso 4, LEGACY. Se escribía cuando el seguro iba antes del
+ *                    consentimiento. No se migró a propósito: la lista de estados
+ *                    visibles para el estudiante vive en el cliente, y mover esas
+ *                    filas antes del deploy las sacaría del panel de los alumnos
+ *                    ya anotados. Drenan solas al avanzar a Activa/Archivado.
  *
  * "Activa" y "Finalizada" las decide el CALENDARIO, no un click: una PPS está
  * en curso entre su `fecha_inicio` y su `fecha_finalizacion`, y sale de la vista
@@ -57,14 +69,14 @@ export type SidebarBucket =
 export const STATE_META: Record<UIState, { label: string; step: number }> = {
   borrador: { label: "Borrador", step: 1 },
   seleccion: { label: "Selección", step: 2 },
-  seguro: { label: "Seguro", step: 3 },
-  confirmacion: { label: "Confirmación", step: 4 },
+  confirmacion: { label: "Confirmación", step: 3 },
+  seguro: { label: "Seguro", step: 4 },
   activa: { label: "Activa", step: 5 },
   archivada: { label: "Archivada", step: 6 },
 };
 
 /** Pasos visibles en el pipeline (no incluye archivada). */
-export const PIPELINE_STEPS = ["Borrador", "Selección", "Seguro", "Confirmación", "Activa"];
+export const PIPELINE_STEPS = ["Borrador", "Selección", "Confirmación", "Seguro", "Activa"];
 
 /** Metadata de las categorías del sidebar. */
 export const BUCKET_META: Record<
@@ -74,8 +86,8 @@ export const BUCKET_META: Record<
   borrador: { label: "Borradores", tone: "borrador", collapsedByDefault: false },
   abierta: { label: "Abiertas", tone: "seleccion", collapsedByDefault: false },
   seleccionar: { label: "A seleccionar", tone: "seleccion", collapsedByDefault: false },
-  asegurar: { label: "A asegurar", tone: "seguro", collapsedByDefault: false },
   confirmacion: { label: "En confirmación", tone: "confirmacion", collapsedByDefault: false },
+  asegurar: { label: "A asegurar", tone: "seguro", collapsedByDefault: false },
   activa: { label: "Activas", tone: "activa", collapsedByDefault: false },
   // Estos dos solo se listan cuando hay una búsqueda activa, así que arrancan
   // expandidos: si el admin los buscó, los quiere ver.
@@ -90,8 +102,8 @@ export const BUCKET_META: Record<
  */
 export const BUCKET_ORDER: SidebarBucket[] = [
   "seleccionar",
-  "asegurar",
   "confirmacion",
+  "asegurar",
   "abierta",
   "activa",
 ];
@@ -165,11 +177,13 @@ export interface BucketInput {
  *  3. borrador            (estado Oculto y todavía no arrancó)
  *  4. oculta              (archivada en DB y todavía no arrancó)
  *  5. activa              (marcada 'Activa' en DB aunque no haya llegado su fecha)
- *  6. confirmacion        (sala de consentimientos; explícita en DB o por marca)
- *  7. hay seleccionados   → asegurar (Req 3.3/4.1)
- *  8. cerrada/vencida con inscriptos → seleccionar
- *  9. cerrada/vencida sin inscriptos → oculta (no prosperó)
- * 10. resto               → abierta
+ *  6. asegurar            (paso 4: DB 'Confirmacion', o marca de seguro presente)
+ *  7. mesa cerrada        → confirmacion si hay elegidos; si no, seleccionar /
+ *                           oculta según haya inscriptos
+ *  8. hay seleccionados   → confirmacion (mesa todavía abierta, ya hay elegidos)
+ *  9. vencida con inscriptos → seleccionar
+ * 10. vencida sin inscriptos → oculta (no prosperó)
+ * 11. resto               → abierta
  *
  * El calendario tiene precedencia sobre el pipeline (1 y 2). Antes "Activa"
  * dependía de un click del admin en la sala de Confirmación, así que las PPS
@@ -185,19 +199,23 @@ export function deriveBucket(input: BucketInput): SidebarBucket {
   if (dbState === "borrador") return "borrador";
   if (dbState === "archivada") return "oculta";
   if (dbState === "activa") return "activa";
-  if (dbState === "confirmacion") return "confirmacion";
 
-  // La marca de seguro tiene precedencia sobre los conteos y la ventana de
-  // inscripción: si está seteada (aunque el DB haya quedado en 'Cerrado' por
-  // datos legacy), el lanzamiento está operativamente en la sala de
-  // Confirmación.
-  if (seguroGestionadoAt != null) return "confirmacion";
+  // Paso 4. La marca de seguro tiene precedencia sobre los conteos y la ventana
+  // de inscripción: si está seteada (aunque el DB haya quedado en 'Cerrado' por
+  // datos legacy), el seguro ya se gestionó y lo único que resta es activar.
+  if (dbState === "seguro" || seguroGestionadoAt != null) return "asegurar";
 
-  if (totalSel > 0) return "asegurar";
+  // Mesa cerrada (DB 'Cerrado'): entra a la sala de firmas si hay elegidos. Si
+  // el cierre ocurrió sin seleccionar a nadie, la acción pendiente sigue siendo
+  // elegir.
+  if (dbState === "confirmacion") {
+    if (totalSel > 0) return "confirmacion";
+    return totalInsc > 0 ? "seleccionar" : "oculta";
+  }
 
-  const cerradaOVencida = dbState === "seguro" || (dbState === "seleccion" && vencida);
-  if (cerradaOVencida && totalInsc > 0) return "seleccionar";
-  if (cerradaOVencida) return "oculta";
+  if (totalSel > 0) return "confirmacion";
+
+  if (dbState === "seleccion" && vencida) return totalInsc > 0 ? "seleccionar" : "oculta";
 
   return "abierta";
 }
@@ -210,11 +228,11 @@ export function isSeguroGestionado(input: BucketInput): boolean {
 // ── Mutaciones de aseguramiento ─────────────────────────────────────────────────
 
 /**
- * Cierra el flujo de aseguramiento de un lanzamiento (paso 4: sala de
- * confirmaciones). Persiste DOS cosas:
+ * Cierra el flujo de aseguramiento de un lanzamiento (paso 4: seguro y
+ * listado). Persiste DOS cosas:
  *  - `seguro_gestionado_at` (timestamp) y `seguro_gestionado_por` (auditoría).
- *  - `estado_convocatoria = 'Confirmacion'` (transición explícita al
- *    bucket "En confirmación" del nuevo pipeline).
+ *  - `estado_convocatoria = 'Seguro'`. Es idempotente: el lanzamiento ya llega
+ *    con ese valor cuando Coordinación decide pasar desde la sala de firmas.
  *
  * Esto desacopla "seguro listo" de "PPS activa": la PPS puede arrancar
  * (transición a 'Activa' manual del admin) con reemplazos o consentimientos
@@ -230,14 +248,16 @@ export async function marcarAseguramiento(
   await db.lanzamientos.update(lanzamientoId, {
     [FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS]: new Date().toISOString(),
     [FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS]: coordinadorId,
-    [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion",
+    [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Seguro",
   } as Record<string, unknown>);
 }
 
 /**
- * Revierte el aseguramiento: borra `seguro_gestionado_at` y regresa el estado
- * de la convocatoria a 'Cerrado' (= "A asegurar" en el sidebar). El admin
- * puede luego re-abrir la mesa a 'Abierta' si necesita más candidatos.
+ * Revierte el aseguramiento: borra `seguro_gestionado_at` sin sacar al
+ * lanzamiento del paso Seguro, que es donde el admin quiere
+ * volver a generar la planilla. Para retroceder a la sala de firmas está la
+ * acción explícita del canvas (vuelve a 'Cerrado'), y para re-abrir la mesa,
+ * 'Abierta'.
  */
 export async function revertirAseguramiento(
   lanzamientoId: string,
@@ -246,7 +266,7 @@ export async function revertirAseguramiento(
   await db.lanzamientos.update(lanzamientoId, {
     [FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS]: null,
     [FIELD_SEGURO_GESTIONADO_POR_LANZAMIENTOS]: coordinadorId,
-    [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
+    [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Seguro",
   } as Record<string, unknown>);
 }
 

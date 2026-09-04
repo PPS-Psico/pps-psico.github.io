@@ -18,6 +18,11 @@ export {
 } from "./compromisosService";
 
 export {
+  eximirConsentimiento,
+  revertirExencionConsentimiento,
+} from "./consentimientoExencionService";
+
+export {
   fetchSolicitudes,
   uploadSolicitudFile,
   submitSolicitudModificacion,
@@ -72,17 +77,17 @@ export {
 } from "./conveniosService";
 export type { ConvenioPorVencer, ConveniosKpis } from "./conveniosService";
 
+// El envío de avisos de selección ya no vive en el navegador: lo hace la Edge
+// Function `notify-selection-closed`, que registra a quién le escribió y puede
+// reintentarse sin duplicar correos. `selectionNotificationService` se eliminó
+// junto con ese camino.
 export {
-  notifySelectedStudents,
-  sendSelectionEmails,
-  sendSelectionPushNotifications,
-  fetchSelectedCandidatesForLaunch,
-} from "./selectionNotificationService";
-export type { SelectionCandidate } from "./selectionNotificationService";
-
-export { closeSelectionAndQueueNotifications } from "./selectionClosingService";
+  closeSelectionAndQueueNotifications,
+  notifySelectedStudentsForLaunch,
+} from "./selectionClosingService";
 export type {
   CloseSelectionRpcResult,
+  NotifySelectionResult,
   QueuedSelectionClose,
   SelectionClosingDependencies,
 } from "./selectionClosingService";

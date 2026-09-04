@@ -7,10 +7,13 @@
  * Cada propiedad corre con fast-check (>= 100 runs). Las acciones con efectos
  * (persistencia, descargas, mailto) se prueban aparte en el test unit.
  *
- * Pipeline nuevo (5 pasos): Borrador → Selección → Seguro → Confirmación → Activa.
+ * Pipeline (5 pasos): Borrador → Selección → Confirmación → Seguro → Activa.
+ * Al cerrar la mesa se entra a la SALA DE FIRMAS; el seguro y el listado se
+ * arman después, cuando Coordinación decide, con la nómina ya decantada.
+ *
  * La marca de aseguramiento ya NO clasifica como "activa" — para eso el admin
  * debe transicionar explícitamente `estado_convocatoria = 'Activa'`. La marca
- * clasifica como "confirmacion" (sala de consentimientos).
+ * clasifica como "asegurar" (paso 4 resuelto, falta activar).
  */
 import { describe, it, expect } from "@jest/globals";
 import fc from "fast-check";
@@ -61,8 +64,8 @@ const arbDbState = fc.constantFrom(...ALL_STATES);
  */
 const arbPrePipelineTimeline = fc.constantFrom<LaunchTimeline>("pendiente", "desconocida");
 
-/** Estados donde tiene sentido "A asegurar": no terminal, no borrador/archivada. */
-const arbNonTerminalState = fc.constantFrom<UIState>("seleccion", "seguro");
+/** Estados previos al seguro: mesa abierta o recién cerrada (sala de firmas). */
+const arbPreSeguroState = fc.constantFrom<UIState>("seleccion", "confirmacion");
 
 /** Estados donde marca de seguro aplica: pre-activa (con o sin seguro ya). */
 const arbMarkClassifiableState = fc.constantFrom<UIState>("seleccion", "seguro", "confirmacion");
@@ -105,10 +108,10 @@ const arbNonBlank = fc
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe("aseguramientoService — property-based", () => {
-  it("Property 1: con marca y estado no terminal clasifica en 'confirmacion' (nunca 'asegurar' ni 'activa')", () => {
-    // Feature: flujo-aseguramiento-pps, Property 1: La marca de aseguramiento clasifica en
-    // la sala de Confirmación (nuevo pipeline). Antes la marca clasificaba en
-    // "activa" — eso se saltaba la sala de consentimientos (bug histórico).
+  it("Property 1: con marca y estado no terminal clasifica en 'asegurar' (nunca 'activa')", () => {
+    // Feature: flujo-aseguramiento-pps, Property 1: La marca de aseguramiento
+    // clasifica en el paso Seguro, que es el último antes de activar. Nunca en
+    // "activa": esa transición sigue siendo un acto explícito del admin.
     fc.assert(
       fc.property(
         arbMarkClassifiableState,
@@ -126,8 +129,7 @@ describe("aseguramientoService — property-based", () => {
             vencida,
             timeline,
           });
-          expect(bucket).toBe("confirmacion");
-          expect(bucket).not.toBe("asegurar");
+          expect(bucket).toBe("asegurar");
           expect(bucket).not.toBe("activa");
         }
       ),
@@ -135,12 +137,12 @@ describe("aseguramientoService — property-based", () => {
     );
   });
 
-  it("Property 2: sin marca, con seleccionados y estado no terminal clasifica en 'asegurar'", () => {
-    // Feature: flujo-aseguramiento-pps, Property 2: Sin marca, con seleccionados y
-    // estado no terminal, clasifica en A_Asegurar.
+  it("Property 2: sin marca y con seleccionados, la sala de firmas es el paso pendiente", () => {
+    // Feature: flujo-aseguramiento-pps, Property 2: Sin marca y con gente
+    // elegida, el trabajo pendiente son los consentimientos — no el seguro.
     fc.assert(
       fc.property(
-        arbNonTerminalState,
+        arbPreSeguroState,
         fc.integer({ min: 1, max: 50 }),
         arbCount,
         fc.boolean(),
@@ -154,48 +156,46 @@ describe("aseguramientoService — property-based", () => {
             vencida,
             timeline,
           });
-          expect(bucket).toBe("asegurar");
+          expect(bucket).toBe("confirmacion");
         }
       ),
       { numRuns: 100 }
     );
   });
 
-  it("Property 3: round-trip 'marcar/revertir' vuelve al estado original (asegurar)", () => {
-    // Feature: flujo-aseguramiento-pps, Property 3: La reversión es el inverso de la
-    // marca. En el nuevo flujo, revertir implica DOS cosas: borrar la marca Y
-    // regresar `estado_convocatoria` a 'Cerrado' (lo que `revertirAseguramiento`
-    // persiste). El test simula esa transición completa.
+  it("Property 3: round-trip 'pasar al seguro / volver a las firmas' es reversible", () => {
+    // Feature: flujo-aseguramiento-pps, Property 3: el pipeline se recorre en
+    // los dos sentidos sin dejar residuo. Ir al seguro es 'Cerrado' →
+    // 'Confirmacion'; volver es 'Confirmacion' → 'Cerrado' con la marca en null
+    // (lo que persisten `handleChangeEstado` y `revertirAseguramiento`).
     fc.assert(
       fc.property(
-        arbNonTerminalState,
         arbIsoDate,
         fc.integer({ min: 1, max: 50 }),
         arbCount,
         fc.boolean(),
         arbPrePipelineTimeline,
-        (dbStateOriginal, marca, totalSel, totalInsc, vencida, timeline) => {
-          // 1) Marcar: dbState pasa a "confirmacion" + marca set.
-          const conMarca = deriveBucket({
-            dbState: "confirmacion",
-            seguroGestionadoAt: marca,
-            totalSel,
-            totalInsc,
-            vencida,
-            timeline,
-          });
-          expect(conMarca).toBe("confirmacion");
+        (marca, totalSel, totalInsc, vencida, timeline) => {
+          const base = { totalSel, totalInsc, vencida, timeline };
 
-          // 2) Revertir: dbState vuelve a "seguro" (lo que era "Cerrado") + marca null.
-          const revertido = deriveBucket({
-            dbState: "seguro",
-            seguroGestionadoAt: null,
-            totalSel,
-            totalInsc,
-            vencida,
-            timeline,
-          });
-          expect(revertido).toBe("asegurar");
+          // 1) Mesa cerrada, sin marca: sala de firmas.
+          expect(deriveBucket({ ...base, dbState: "confirmacion", seguroGestionadoAt: null })).toBe(
+            "confirmacion"
+          );
+
+          // 2) Coordinación pasa al seguro; con o sin la planilla ya generada
+          //    el lanzamiento vive en el paso 4.
+          expect(deriveBucket({ ...base, dbState: "seguro", seguroGestionadoAt: null })).toBe(
+            "asegurar"
+          );
+          expect(deriveBucket({ ...base, dbState: "seguro", seguroGestionadoAt: marca })).toBe(
+            "asegurar"
+          );
+
+          // 3) Volver a las firmas devuelve al paso 3 sin residuo.
+          expect(deriveBucket({ ...base, dbState: "confirmacion", seguroGestionadoAt: null })).toBe(
+            "confirmacion"
+          );
         }
       ),
       { numRuns: 100 }

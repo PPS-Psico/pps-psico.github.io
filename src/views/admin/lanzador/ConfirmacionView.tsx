@@ -1,8 +1,13 @@
 /**
- * Step 4: sala operativa de consentimientos previa al inicio de la PPS.
- * Separa con claridad firmas, estudiantes en plazo y bajas efectivas.
+ * Paso 3: sala operativa de consentimientos, inmediatamente después de cerrar
+ * la mesa de selección. Separa con claridad firmas, estudiantes en plazo y
+ * bajas efectivas.
+ *
+ * Desde acá Coordinación decide cuándo pasar al paso 4 (seguro + listado de
+ * convocados): esos documentos se arman con la nómina ya decantada, no apenas
+ * se cierra la mesa.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { Suspense, useMemo, useState } from "react";
 import {
   FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS,
@@ -10,7 +15,9 @@ import {
   FIELD_LISTA_ESTUDIANTES_ENTREGADA_AT_LANZAMIENTOS,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
 } from "../../../constants";
-import { launchKeys } from "../../../lib/launchQueryKeys";
+import { invalidateLaunchData, launchKeys } from "../../../lib/launchQueryKeys";
+import { eximirConsentimiento, revertirExencionConsentimiento } from "../../../services";
+import { useModal } from "../../../contexts/ModalContext";
 import { supabase } from "../../../lib/supabaseClient";
 import { classifyDbError } from "../../../lib/dbError";
 import type { LanzamientoPPS } from "../../../types";
@@ -33,9 +40,17 @@ import { useLaunchRoster } from "./useLaunchData";
 
 interface ConfirmacionViewProps {
   launch: LanzamientoPPS;
-  onActivar: () => void;
+  onGenerarSeguro: (pendientes: number) => void;
   onListaEntregada: (pendientes: number) => void;
   onFinalReminder: (pendientes: number) => void;
+  /** Reintenta el aviso de selección para quienes todavía no lo recibieron. */
+  onReintentarAvisos: () => void;
+  isRetryingAvisos?: boolean;
+  selectionNotice?: {
+    tone: "ok" | "warn";
+    title: string;
+    message: string;
+  } | null;
   isClosingList?: boolean;
   isSendingFinalReminder?: boolean;
   finalReminderFeedback?: {
@@ -53,11 +68,12 @@ interface ConsentRow {
   horario: string | null;
   acceptedAt: string | null;
   bajaAt: string | null;
+  eximidoAt: string | null;
   selectedAt: string | null;
   finalReminderSentAt: string | null;
   baseDeadline: Date | null;
   deadline: Date | null;
-  status: "firmo" | "pendiente" | "baja";
+  status: "firmo" | "eximido" | "pendiente" | "baja";
 }
 
 const initials = (name: string | null) =>
@@ -92,14 +108,19 @@ const groupSchedules = (rows: ConsentRow[]) => {
 
 const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   launch,
-  onActivar,
+  onGenerarSeguro,
   onListaEntregada,
   onFinalReminder,
+  onReintentarAvisos,
+  isRetryingAvisos = false,
+  selectionNotice = null,
   isClosingList = false,
   isSendingFinalReminder = false,
   finalReminderFeedback = null,
 }) => {
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
+  const { showModal } = useModal();
+  const queryClient = useQueryClient();
   const [gestionOpen, setGestionOpen] = useState(false);
   const [firmadosOpen, setFirmadosOpen] = useState(false);
   const launchName = launch[FIELD_NOMBRE_PPS_LANZAMIENTOS] as string | null;
@@ -195,6 +216,8 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             convocatoria.horario_seleccionado?.trim() ||
             null;
 
+          const eximidoAt = convocatoria.consentimiento_exceptuado_at;
+
           return {
             id: convocatoria.id,
             nombre: info?.nombre ?? null,
@@ -203,6 +226,7 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             horario,
             acceptedAt: commitment?.acceptedAt ?? null,
             bajaAt: convocatoria.baja_automatica_at,
+            eximidoAt,
             selectedAt: convocatoria.selected_at,
             finalReminderSentAt: convocatoria.final_reminder_sent_at,
             baseDeadline: getConsentimientoDeadline(
@@ -216,22 +240,37 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
               listaEntregadaAt,
               convocatoria.final_reminder_sent_at
             ),
-            status: accepted ? "firmo" : current ? "pendiente" : "baja",
+            // La firma real manda sobre la exención: si el estudiante terminó
+            // firmando, se muestra como firmó y no como perdonado.
+            status: accepted ? "firmo" : eximidoAt ? "eximido" : current ? "pendiente" : "baja",
           } satisfies ConsentRow;
         })
         .sort((a, b) => {
-          const rank = { pendiente: 0, baja: 1, firmo: 2 } as const;
+          const rank = { pendiente: 0, baja: 1, eximido: 2, firmo: 3 } as const;
           return rank[a.status] - rank[b.status] || (a.nombre || "").localeCompare(b.nombre || "");
         }),
     [selectedRoster, compromisoByConvocatoria, studentInfo, fechaInicio, listaEntregadaAt]
   );
 
+  // Estudiantes vigentes a los que todavía no les llegó el aviso de selección.
+  // La marca la escribe la Edge Function al confirmar cada envío, así que esto
+  // es la cola real de pendientes, no una estimación.
+  const sinAvisar = selectedRoster.filter(
+    (row) =>
+      normalizeStringForComparison(row.estado_inscripcion) === "seleccionado" &&
+      row.baja_automatica_at == null &&
+      row.seleccion_notificada_at == null
+  ).length;
+
   const pendingRows = rows.filter((row) => row.status === "pendiente");
   const bajaRows = rows.filter((row) => row.status === "baja");
   const signedRows = rows.filter((row) => row.status === "firmo");
-  const selectedCurrent = pendingRows.length + signedRows.length;
-  const progress =
-    selectedCurrent > 0 ? Math.round((signedRows.length / selectedCurrent) * 100) : 0;
+  const eximidoRows = rows.filter((row) => row.status === "eximido");
+  // Un eximido está resuelto para la nómina: cuenta como cubierto, aunque el
+  // avance distingue quién firmó de quién fue perdonado.
+  const resolvedRows = signedRows.length + eximidoRows.length;
+  const selectedCurrent = pendingRows.length + resolvedRows;
+  const progress = selectedCurrent > 0 ? Math.round((resolvedRows / selectedCurrent) * 100) : 0;
   const schedulesToCover = groupSchedules(bajaRows);
   const pendingWithoutFinalReminder = pendingRows.filter((row) => !row.finalReminderSentAt);
   const finalReminderDeadline = pendingRows
@@ -264,6 +303,31 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
     (studentIds.length > 0 && studentInfoQuery.isLoading);
   const hasError = rosterQuery.isError || compromisosQuery.isError || studentInfoQuery.isError;
 
+  /**
+   * "Perdonar" la firma: el estudiante queda en la nómina firme o no firme. Es
+   * la salida para los casos resueltos por fuera del panel (contacto por otro
+   * canal, firma en papel, problemas de acceso). Si ya lo había sacado la baja
+   * automática, la RPC lo repone con su práctica.
+   */
+  const exencionMutation = useMutation({
+    mutationFn: async ({ convocatoriaId, eximir }: { convocatoriaId: string; eximir: boolean }) => {
+      if (eximir) {
+        await eximirConsentimiento(convocatoriaId);
+        return;
+      }
+      await revertirExencionConsentimiento(convocatoriaId);
+    },
+    onSuccess: () => invalidateLaunchData(queryClient),
+    onError: (error: unknown) =>
+      showModal(
+        "No se pudo actualizar la exención",
+        (error as Error)?.message || "Intentá nuevamente en unos segundos."
+      ),
+  });
+
+  const isExencionPending = (rowId: string) =>
+    exencionMutation.isPending && exencionMutation.variables?.convocatoriaId === rowId;
+
   const reminderMessage = (row: ConsentRow) =>
     `Hola ${row.nombre || ""}! Te recordamos que tenés pendiente aceptar el compromiso digital ` +
     `para la PPS${launchName ? ` en ${launchName}` : ""}. ` +
@@ -272,6 +336,12 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
       ? `El plazo actual cierra el *${formatConsentimientoDeadline(row.deadline)}*. `
       : "") +
     `Ingresá a tu panel y confirmá: pps.psico.uflo.edu.ar`;
+
+  const exencionMessage = (row: ConsentRow) =>
+    `Hola ${row.nombre || ""}! Te confirmamos que tu lugar en la PPS${
+      launchName ? ` en ${launchName}` : ""
+    } queda asegurado. No hace falta que completes el compromiso digital: lo damos por resuelto ` +
+    `desde Coordinación. Cualquier duda, escribime por acá.`;
 
   const bajaMessage = (row: ConsentRow) =>
     `Hola ${row.nombre || ""}! Te escribo de la Coordinación de PPS por la práctica${
@@ -287,16 +357,28 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             icon: "verified",
             label: `Firmó${row.acceptedAt ? ` · ${formatCompactDate(row.acceptedAt)}` : ""}`,
           }
-        : row.status === "baja"
+        : row.status === "eximido"
           ? {
-              tone: "is-dropped",
-              icon: "person_off",
-              label: `Baja${row.bajaAt ? ` · ${formatCompactDate(row.bajaAt)}` : ""}`,
+              tone: "is-waived",
+              icon: "volunteer_activism",
+              label: `Sin firma requerida${row.eximidoAt ? ` · ${formatCompactDate(row.eximidoAt)}` : ""}`,
             }
-          : { tone: "is-pending", icon: "hourglass_empty", label: "En plazo" };
+          : row.status === "baja"
+            ? {
+                tone: "is-dropped",
+                icon: "person_off",
+                label: `Baja${row.bajaAt ? ` · ${formatCompactDate(row.bajaAt)}` : ""}`,
+              }
+            : { tone: "is-pending", icon: "hourglass_empty", label: "En plazo" };
+    const yaEximido = !!row.eximidoAt;
+    const exencionPending = isExencionPending(row.id);
     const waUrl = getWhatsAppUrl(
       row.telefono,
-      row.status === "baja" ? bajaMessage(row) : reminderMessage(row)
+      row.status === "baja"
+        ? bajaMessage(row)
+        : row.status === "eximido"
+          ? exencionMessage(row)
+          : reminderMessage(row)
     );
 
     return (
@@ -335,7 +417,13 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
           {row.status === "baja" && (
             <div className="lv4-consent-drop-help">
               La vacante quedó liberada. Volvé a seleccionarlo solamente si corresponde reabrir el
-              caso.
+              caso, o perdonale la firma para reponerlo acá mismo.
+            </div>
+          )}
+          {row.status === "eximido" && (
+            <div className="lv4-consent-drop-help">
+              Coordinación lo eximió de la firma digital: queda en la nómina firme o no firme, y no
+              se le aplica la baja automática.
             </div>
           )}
         </div>
@@ -381,6 +469,34 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
                 mail
               </span>
             </span>
+          )}
+          {/* Perdonar la firma. No se ofrece a quien ya firmó: ahí no hay nada
+              que perdonar. */}
+          {row.status !== "firmo" && (
+            <button
+              type="button"
+              className={`lv4-icon-btn lv4-consent-waive${yaEximido ? " is-active" : ""}`}
+              onClick={() =>
+                exencionMutation.mutate({ convocatoriaId: row.id, eximir: !yaEximido })
+              }
+              disabled={exencionPending}
+              title={
+                yaEximido
+                  ? "Volver a exigirle la firma"
+                  : row.status === "baja"
+                    ? "Perdonar la firma y reponerlo en la nómina"
+                    : "Perdonar la firma: queda en la nómina firme o no"
+              }
+              aria-label={
+                yaEximido
+                  ? `Volver a exigir la firma a ${row.nombre || "el estudiante"}`
+                  : `Perdonar la firma de ${row.nombre || "el estudiante"}`
+              }
+            >
+              <span className="material-icons" aria-hidden="true">
+                {exencionPending ? "hourglass_empty" : yaEximido ? "undo" : "volunteer_activism"}
+              </span>
+            </button>
           )}
         </div>
       </div>
@@ -453,6 +569,40 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
         />
         {editModal}
         <div className="lv4-canvas-body">
+          {sinAvisar > 0 && (
+            <Banner
+              tone="warn"
+              icon="mark_email_unread"
+              title={`${sinAvisar} estudiante${sinAvisar === 1 ? "" : "s"} sin aviso de selección`}
+              action={
+                <button
+                  className="lv4-btn lv4-btn-primary"
+                  onClick={onReintentarAvisos}
+                  disabled={isRetryingAvisos}
+                >
+                  <span className="material-icons" aria-hidden="true">
+                    forward_to_inbox
+                  </span>
+                  {isRetryingAvisos ? "Enviando…" : "Enviar los avisos que faltan"}
+                </button>
+              }
+            >
+              {sinAvisar === 1 ? "No le" : "No les"} llegó el correo avisando que
+              {sinAvisar === 1 ? " quedó seleccionado" : " quedaron seleccionados"}. Reintentar es
+              seguro: se registra quién ya lo recibió, así que nadie recibe el aviso dos veces.
+            </Banner>
+          )}
+
+          {selectionNotice && (
+            <Banner
+              tone={selectionNotice.tone}
+              icon={selectionNotice.tone === "ok" ? "mark_email_read" : "warning"}
+              title={selectionNotice.title}
+            >
+              {selectionNotice.message}
+            </Banner>
+          )}
+
           <StatGrid>
             <Stat
               label="Seleccionados vigentes"
@@ -476,20 +626,21 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
                 <span className="lv4-eyebrow">Decisión automática de cierre</span>
                 <strong>La nómina puede continuar sin firmas digitales</strong>
                 <p>
-                  Podés activar la PPS directamente cuando estén resueltos los pasos operativos.
+                  Pasá al seguro cuando quieras: la nómina ya está cerrada y no va a cambiar por
+                  falta de firma.
                 </p>
               </div>
             </div>
             <div className="lv4-consent-decision-actions">
               <button
                 className="lv4-btn lv4-btn-primary"
-                onClick={onActivar}
+                onClick={() => onGenerarSeguro(0)}
                 disabled={seleccionadosVigentes === 0}
               >
                 <span className="material-icons" aria-hidden="true">
-                  play_circle
+                  shield
                 </span>
-                Activar PPS
+                Generar seguro y listado
               </button>
             </div>
           </section>
@@ -507,6 +658,40 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
       />
       {editModal}
       <div className="lv4-canvas-body">
+        {sinAvisar > 0 && (
+          <Banner
+            tone="warn"
+            icon="mark_email_unread"
+            title={`${sinAvisar} estudiante${sinAvisar === 1 ? "" : "s"} sin aviso de selección`}
+            action={
+              <button
+                className="lv4-btn lv4-btn-primary"
+                onClick={onReintentarAvisos}
+                disabled={isRetryingAvisos}
+              >
+                <span className="material-icons" aria-hidden="true">
+                  forward_to_inbox
+                </span>
+                {isRetryingAvisos ? "Enviando…" : "Enviar los avisos que faltan"}
+              </button>
+            }
+          >
+            {sinAvisar === 1 ? "No le" : "No les"} llegó el correo avisando que
+            {sinAvisar === 1 ? " quedó seleccionado" : " quedaron seleccionados"}. Reintentar es
+            seguro: se registra quién ya lo recibió, así que nadie recibe el aviso dos veces.
+          </Banner>
+        )}
+
+        {selectionNotice && (
+          <Banner
+            tone={selectionNotice.tone}
+            icon={selectionNotice.tone === "ok" ? "mark_email_read" : "warning"}
+            title={selectionNotice.title}
+          >
+            {selectionNotice.message}
+          </Banner>
+        )}
+
         <StatGrid>
           <Stat label="Seleccionados vigentes" value={selectedCurrent} hint="con lugar asignado" />
           <Stat label="Firmaron" value={signedRows.length} hint="compromiso aceptado" tone="ok" />
@@ -516,6 +701,14 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             hint="pueden confirmar"
             tone={pendingRows.length > 0 ? "warn" : "ok"}
           />
+          {eximidoRows.length > 0 && (
+            <Stat
+              label="Eximidos"
+              value={eximidoRows.length}
+              hint="sin firma requerida"
+              tone="ok"
+            />
+          )}
           {bajaRows.length > 0 && (
             <Stat label="Bajas" value={bajaRows.length} hint="vacantes liberadas" tone="warn" />
           )}
@@ -526,7 +719,14 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             <div className="lv4-consent-progress-head">
               <span className="lv4-eyebrow">Avance sobre seleccionados vigentes</span>
               <strong>
-                {signedRows.length}/{selectedCurrent} · {progress}%
+                {resolvedRows}/{selectedCurrent} · {progress}%
+                {eximidoRows.length > 0 && (
+                  <span style={{ fontWeight: 400 }}>
+                    {" "}
+                    ({signedRows.length} firmaron, {eximidoRows.length} eximido
+                    {eximidoRows.length !== 1 ? "s" : ""})
+                  </span>
+                )}
               </strong>
             </div>
             <div
@@ -568,7 +768,7 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
                   ? "No se admiten nuevas firmas. Las bajas y sus vacantes quedan separadas del grupo vigente."
                   : hasActiveFinalWindow
                     ? "El correo prometió 24 horas completas. La nómina no puede cerrarse antes de ese vencimiento; después, las faltas de firma se procesan como bajas automáticas."
-                    : "El plazo cierra 24 horas antes del inicio o cuando registres la entrega de la lista, lo que ocurra primero. Activar la PPS no cierra por sí solo las firmas."}
+                    : "El plazo cierra 24 horas antes del inicio o cuando registres la entrega de la lista, lo que ocurra primero. Pasar al seguro no cierra por sí solo las firmas."}
               </p>
             </div>
           </div>
@@ -596,13 +796,13 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             )}
             <button
               className="lv4-btn lv4-btn-primary"
-              onClick={onActivar}
+              onClick={() => onGenerarSeguro(pendingRows.length)}
               disabled={selectedCurrent === 0}
             >
               <span className="material-icons" aria-hidden="true">
-                play_circle
+                shield
               </span>
-              Activar PPS
+              Generar seguro y listado
             </button>
           </div>
         </section>
@@ -712,6 +912,24 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
             )}
             <div className="lv4-consent-list is-dropped" role="list">
               {bajaRows.map(renderRow)}
+            </div>
+          </section>
+        )}
+
+        {eximidoRows.length > 0 && (
+          <section className="lv4-consent-section">
+            <div className="lv4-consent-section-head">
+              <div>
+                <span className="lv4-eyebrow">Decisión de Coordinación</span>
+                <h2>Eximidos de la firma ({eximidoRows.length})</h2>
+                <p>
+                  Quedan en la nómina firmen o no. Entran al seguro y al listado como cualquier
+                  seleccionado; el botón de deshacer les vuelve a exigir el compromiso.
+                </p>
+              </div>
+            </div>
+            <div className="lv4-consent-list" role="list">
+              {eximidoRows.map(renderRow)}
             </div>
           </section>
         )}

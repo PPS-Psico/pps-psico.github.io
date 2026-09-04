@@ -153,15 +153,31 @@ describe("buildSidebarEntries", () => {
       expect(e.metaLine).toContain("4 cupos");
     });
 
-    it("clasifica en 'asegurar' cuando hay seleccionados y falta el seguro", () => {
+    it("cerrar la mesa manda a la sala de firmas, no al seguro", () => {
       const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado" });
       const [e] = buildSidebarEntries([l], { [l.id]: { inscriptos: 9, seleccionados: 4 } }, {});
-      expect(e.bucket).toBe("asegurar");
+      expect(e.bucket).toBe("confirmacion");
+      expect(e.uiState).toBe("confirmacion");
       expect(e.needsAction).toBe(true);
     });
 
-    it("marca needsAction y metaLine de consentimientos en confirmación", () => {
+    it("una mesa cerrada sin nadie elegido sigue pidiendo selección", () => {
+      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado" });
+      const [e] = buildSidebarEntries([l], { [l.id]: { inscriptos: 9, seleccionados: 0 } }, {});
+      expect(e.bucket).toBe("seleccionar");
+    });
+
+    it("clasifica en 'asegurar' el paso de seguro y listado", () => {
       const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion" });
+      const [e] = buildSidebarEntries([l], { [l.id]: { inscriptos: 9, seleccionados: 4 } }, {});
+      expect(e.bucket).toBe("asegurar");
+      expect(e.uiState).toBe("seguro");
+      expect(e.needsAction).toBe(true);
+      expect(e.metaLine).toBe("4 en la nómina · falta el seguro y el listado");
+    });
+
+    it("marca needsAction y metaLine de consentimientos en confirmación", () => {
+      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado" });
       const [e] = buildSidebarEntries(
         [l],
         { [l.id]: { inscriptos: 5, seleccionados: 4 } },
@@ -173,7 +189,7 @@ describe("buildSidebarEntries", () => {
     });
 
     it("no vuelve a mostrar 25/25 cuando el roster real tiene 37 seleccionados", () => {
-      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion" });
+      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado" });
       const [e] = buildSidebarEntries(
         [l],
         { [l.id]: { inscriptos: 37, seleccionados: 37 } },
@@ -193,7 +209,7 @@ describe("buildSidebarEntries", () => {
     });
 
     it("explica cuando el consentimiento fue omitido por cierre el día de inicio", () => {
-      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion" });
+      const l = launch({ [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado" });
       const [e] = buildSidebarEntries(
         [l],
         { [l.id]: { inscriptos: 25, seleccionados: 25 } },
@@ -235,8 +251,9 @@ describe("buildSidebarEntries", () => {
       expect(e.bucket).toBe("activa");
       expect(e.metaLine).toBe("Seguro pendiente");
       expect(e.needsAction).toBe(true);
-      // El canvas sigue el estado de la DB, así que abre el generador de seguros.
-      expect(e.uiState).toBe("seguro");
+      // El canvas sigue el estado de la DB: quedó en 'Cerrado', así que abre la
+      // sala de firmas y desde ahí se pasa al seguro.
+      expect(e.uiState).toBe("confirmacion");
     });
   });
 

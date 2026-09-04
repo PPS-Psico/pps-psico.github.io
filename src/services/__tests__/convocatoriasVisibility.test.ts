@@ -52,6 +52,31 @@ describe("isLaunchVisibleToStudent", () => {
     expect(isLaunchVisibleToStudent(l, mediodiaBuenosAires)).toBe(true);
   });
 
+  it("mantiene visible una convocatoria en el paso Seguro antes de su inicio", () => {
+    // Regresión: al agregar el token 'Seguro' (paso 4), las dos compuertas de
+    // visibilidad —el filtro de la query y esta función— tenían que aprenderlo.
+    // Si una sola queda sin él, la convocatoria desaparece del panel del alumno
+    // justo después de que lo seleccionaron.
+    const l = makeLaunch({
+      [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Seguro",
+      [C.FIELD_FECHA_INICIO_LANZAMIENTOS]: tomorrow,
+    });
+    expect(isLaunchVisibleToStudent(l, NOW)).toBe(true);
+  });
+
+  it("trata 'Seguro' igual que su nombre legacy 'Confirmacion'", () => {
+    const fields = { [C.FIELD_FECHA_INICIO_LANZAMIENTOS]: tomorrow };
+    const nuevo = makeLaunch({
+      ...fields,
+      [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Seguro",
+    });
+    const legacy = makeLaunch({
+      ...fields,
+      [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Confirmacion",
+    });
+    expect(isLaunchVisibleToStudent(nuevo, NOW)).toBe(isLaunchVisibleToStudent(legacy, NOW));
+  });
+
   it("oculta una Cerrada cuyo inicio ya pasó", () => {
     const l = makeLaunch({
       [C.FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrada",
