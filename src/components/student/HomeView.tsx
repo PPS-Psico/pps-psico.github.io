@@ -246,7 +246,20 @@ const HomeView: React.FC<HomeViewProps> = ({
     };
     lanzamientos.forEach((l) => {
       const status = normalizeStringForComparison(l[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]);
-      if (status === "cerrada" || status === "cerrado" || status === "confirmacion") push(l);
+      // Los pasos posteriores al cierre de la mesa habilitan "Ver convocados".
+      // 'seguro' es el paso 4 del Lanzador y 'confirmacion' su nombre legacy: si
+      // faltara alguno, la convocatoria dejaria de ofrecer su lista al avanzar.
+      // Es la tercera lista blanca de estados del lado del estudiante, junto con
+      // el filtro de la query y `isLaunchVisibleToStudent`; las tres tienen que
+      // conocer los mismos valores.
+      if (
+        status === "cerrada" ||
+        status === "cerrado" ||
+        status === "seguro" ||
+        status === "confirmacion"
+      ) {
+        push(l);
+      }
     });
     (allLanzamientos || []).forEach((l) => {
       if (enrollmentMap.has(l.id)) push(l);
