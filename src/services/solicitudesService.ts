@@ -588,3 +588,88 @@ export const rejectSolicitudNuevaPPS = async (
 
   if (error) throw error;
 };
+
+/*
+  Archivar / desarchivar una corrección.
+
+  "Archivar" saca una solicitud de la cola SIN decidirla: no toca `practicas`,
+  no notifica al alumno, y se puede revertir. Es para las que ya no aplican
+  (carga retroactiva de un alumno ya acreditado, duplicado de algo ya cargado)
+  donde ni aprobar ni rechazar es correcto.
+
+  Solo vale para 'nueva' y 'modificacion' de horas — nunca para bajas
+  (tipo_modificacion 'eliminacion'), que tienen su propia RPC con penalización.
+  El estado de destino queda en 'pendiente' al desarchivar: vuelve a la cola.
+*/
+type ArchivableTipo = "modificacion" | "nueva";
+
+export const archiveSolicitudCorreccion = async (
+  solicitudId: string,
+  tipo: ArchivableTipo,
+  notasAdmin?: string
+) => {
+  const notasPatch = notasAdmin?.trim() ? { notas_admin: notasAdmin.trim() } : {};
+
+  if (tipo === "modificacion") {
+    if (solicitudId.startsWith("mock_")) {
+      await mockDb.update("solicitudes_modificacion_pps", solicitudId, {
+        estado: "archivada",
+        ...notasPatch,
+      });
+      return;
+    }
+    const { data: solicitud, error: fetchError } = await supabase
+      .from("solicitudes_modificacion_pps")
+      .select("estado, tipo_modificacion")
+      .eq("id", solicitudId)
+      .single();
+    if (fetchError) throw fetchError;
+    if (!solicitud) throw new Error("Solicitud no encontrada");
+    if (solicitud.estado !== "pendiente")
+      throw new Error("Solo se pueden archivar solicitudes pendientes.");
+    if (solicitud.tipo_modificacion === "eliminacion")
+      throw new Error("Las solicitudes de baja no se archivan: se resuelven con su penalización.");
+    const { error } = await supabase
+      .from("solicitudes_modificacion_pps")
+      .update({ estado: "archivada", ...notasPatch })
+      .eq("id", solicitudId);
+    if (error) throw error;
+    return;
+  }
+
+  if (solicitudId.startsWith("mock_")) {
+    await mockDb.update("solicitudes_nueva_pps", solicitudId, {
+      estado: "archivada",
+      ...notasPatch,
+    });
+    return;
+  }
+  const { data: solicitud, error: fetchError } = await supabase
+    .from("solicitudes_nueva_pps")
+    .select("estado")
+    .eq("id", solicitudId)
+    .single();
+  if (fetchError) throw fetchError;
+  if (!solicitud) throw new Error("Solicitud no encontrada");
+  if (solicitud.estado !== "pendiente")
+    throw new Error("Solo se pueden archivar solicitudes pendientes.");
+  const { error } = await supabase
+    .from("solicitudes_nueva_pps")
+    .update({ estado: "archivada", ...notasPatch })
+    .eq("id", solicitudId);
+  if (error) throw error;
+};
+
+export const unarchiveSolicitudCorreccion = async (solicitudId: string, tipo: ArchivableTipo) => {
+  const table = tipo === "modificacion" ? "solicitudes_modificacion_pps" : "solicitudes_nueva_pps";
+  if (solicitudId.startsWith("mock_")) {
+    await mockDb.update(table, solicitudId, { estado: "pendiente" });
+    return;
+  }
+  const { error } = await supabase
+    .from(table)
+    .update({ estado: "pendiente" })
+    .eq("id", solicitudId)
+    .eq("estado", "archivada");
+  if (error) throw error;
+};

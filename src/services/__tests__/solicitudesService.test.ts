@@ -72,6 +72,8 @@ import {
   rejectSolicitudNuevaPPS,
   resolveSolicitudBajaPps,
   submitSolicitudBajaPps,
+  archiveSolicitudCorreccion,
+  unarchiveSolicitudCorreccion,
 } from "../solicitudesService";
 
 const lastUpdate = () =>
@@ -316,5 +318,47 @@ describe("rejectSolicitudNuevaPPS", () => {
       comentario_rechazo: "No corresponde",
       notas_admin: "nota",
     });
+  });
+});
+
+describe("archiveSolicitudCorreccion", () => {
+  it("archiva una nueva PPS pendiente sin tocar practicas ni comentario", async () => {
+    mockState.selectResponses = [{ data: { estado: "pendiente" }, error: null }];
+    mockState.writeResponses = [{ error: null }];
+
+    await archiveSolicitudCorreccion("n7", "nueva", "carga retroactiva, alumno ya acreditado");
+
+    expect(mockState.captured.froms).toEqual(["solicitudes_nueva_pps", "solicitudes_nueva_pps"]);
+    expect(lastUpdate()).toEqual({
+      estado: "archivada",
+      notas_admin: "carga retroactiva, alumno ya acreditado",
+    });
+    expect(mockState.captured.froms).not.toContain("practicas");
+  });
+
+  it("no archiva una solicitud que ya fue resuelta", async () => {
+    mockState.selectResponses = [{ data: { estado: "aprobada" }, error: null }];
+    await expect(archiveSolicitudCorreccion("n8", "nueva")).rejects.toThrow("pendientes");
+    expect(mockState.captured.updates).toHaveLength(0);
+  });
+
+  it("no archiva una solicitud de baja", async () => {
+    mockState.selectResponses = [
+      { data: { estado: "pendiente", tipo_modificacion: "eliminacion" }, error: null },
+    ];
+    await expect(archiveSolicitudCorreccion("m9", "modificacion")).rejects.toThrow(
+      "no se archivan"
+    );
+    expect(mockState.captured.updates).toHaveLength(0);
+  });
+});
+
+describe("unarchiveSolicitudCorreccion", () => {
+  it("devuelve a pendiente solo si estaba archivada", async () => {
+    mockState.writeResponses = [{ error: null }];
+    await unarchiveSolicitudCorreccion("m10", "modificacion");
+    expect(mockState.captured.froms).toEqual(["solicitudes_modificacion_pps"]);
+    expect(lastUpdate()).toEqual({ estado: "pendiente" });
+    expect(mockBuilder.eq).toHaveBeenCalledWith("estado", "archivada");
   });
 });

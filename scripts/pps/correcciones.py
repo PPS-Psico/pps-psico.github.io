@@ -34,6 +34,12 @@ Uso:
     python scripts/pps/correcciones.py revisar <id|legajo|apellido>
     python scripts/pps/correcciones.py revisar --todas
     python scripts/pps/correcciones.py descargar <id>
+    python scripts/pps/correcciones.py archivar <id> --motivo "..."
+
+`archivar` es la unica escritura del script: pasa una solicitud pendiente a
+estado 'archivada' — la saca de la cola sin decidirla, sin tocar `practicas` y
+sin notificar al alumno. Es reversible desde el panel. No aprueba ni rechaza
+nada, y nunca toca bajas.
 """
 
 from __future__ import annotations
@@ -516,6 +522,54 @@ def cmd_descargar(args) -> None:
     print("  nombre del alumno, institución, y firma/sello del tutor.")
 
 
+TABLA = {"nueva": "solicitudes_nueva_pps", "modificacion": "solicitudes_modificacion_pps"}
+
+
+def cmd_archivar(args) -> None:
+    """Saca una solicitud de la cola sin decidirla.
+
+    'archivada' es un estado terminal blando: no crea ni pisa `practicas`, no
+    notifica al alumno, y se revierte desde el panel (botón «Devolver a la
+    cola»). Es para las que ya no aplican — carga retroactiva de un alumno que
+    ya está acreditado, o duplicado de algo ya cargado — donde ni aprobar ni
+    rechazar es lo correcto.
+
+    Nunca toca bajas (tipo_modificacion='eliminacion') ni solicitudes que ya
+    fueron resueltas.
+    """
+    panel = Panel()
+    revs = revisar_todas(panel)
+    elegida = next((r for r in revs if r["id"].startswith(args.referencia)), None)
+    if not elegida:
+        sys.exit(f"No encontré una solicitud pendiente que empiece con «{args.referencia}».")
+
+    tabla = TABLA[elegida["tipo"]]
+    cols = "estado,tipo_modificacion" if elegida["tipo"] == "modificacion" else "estado"
+    fila = panel.get(f"{tabla}?select={cols}&id=eq.{elegida['id']}")
+    if not fila:
+        sys.exit(f"La solicitud {elegida['id']} ya no existe.")
+    estado = fila[0].get("estado")
+    if estado != "pendiente":
+        sys.exit(f"No se archiva: la solicitud está en estado «{estado}», no «pendiente».")
+    if fila[0].get("tipo_modificacion") == "eliminacion":
+        sys.exit("No se archiva: es una solicitud de baja (tiene su propia RPC de penalización).")
+
+    print(f"Solicitud : {elegida['tipo'].upper()} {elegida['id'][:8]} · "
+          f"{elegida['alumno']} · leg {elegida['legajo']}")
+    print(f"Cambio    : estado  pendiente  →  archivada")
+    if args.motivo:
+        print(f"Nota      : {args.motivo}")
+    if args.dry_run:
+        print("\n(dry-run: no se escribió nada)")
+        return
+
+    cambios = {"estado": "archivada"}
+    if args.motivo:
+        cambios["notas_admin"] = args.motivo
+    panel.patch(f"{tabla}?id=eq.{elegida['id']}", cambios)
+    print("\nArchivada.")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(
         description="Revisión (capa 1) de solicitudes de cambio y alta de PPS.")
@@ -535,6 +589,14 @@ def main() -> None:
     pd.add_argument("referencia")
     pd.add_argument("--destino", default="tmp/correcciones")
     pd.set_defaults(func=cmd_descargar)
+
+    pa = sub.add_parser("archivar",
+                        help="Saca una solicitud pendiente de la cola sin decidirla (reversible).")
+    pa.add_argument("referencia", help="id (8 dígitos o completo) de la solicitud.")
+    pa.add_argument("--motivo", default="",
+                    help="Nota interna de por qué se archiva (va a notas_admin).")
+    pa.add_argument("--dry-run", action="store_true")
+    pa.set_defaults(func=cmd_archivar)
 
     args = p.parse_args()
     args.func(args)

@@ -4,9 +4,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   approveSolicitudModificacion,
   approveSolicitudNuevaPPS,
+  archiveSolicitudCorreccion,
   fetchAllSolicitudesModificacion,
   fetchAllSolicitudesNuevaPPS,
   resolveSolicitudBajaPps,
+  unarchiveSolicitudCorreccion,
   type ResolveSolicitudBajaInput,
 } from "../../../services";
 import {
@@ -17,7 +19,7 @@ import { getPenaltyScore, type PenaltyType } from "../../../constants/penalties"
 import { getErrorMessage } from "../../../utils/getErrorMessage";
 import Loader from "../../Loader";
 import { SecureStorageLink } from "../../ui/SecureStorageLink";
-import { DataItem, EmptyState } from "./primitives";
+import { CollapsibleHistory, DataItem, EmptyState } from "./primitives";
 import { getStorageRef } from "../../../utils/attachmentUtils";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -143,6 +145,28 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
     onError: (e) => onToast(getErrorMessage(e, "Error al aprobar"), "error"),
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: ({ id, tipo }: { id: string; tipo: "modificacion" | "nueva" }) =>
+      archiveSolicitudCorreccion(id, tipo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion"] });
+      queryClient.invalidateQueries({ queryKey: ["solicitudes_nueva_pps"] });
+      onToast("Solicitud archivada. No se notificó al alumno y no se tocó su legajo.");
+    },
+    onError: (e) => onToast(getErrorMessage(e, "Error al archivar"), "error"),
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: ({ id, tipo }: { id: string; tipo: "modificacion" | "nueva" }) =>
+      unarchiveSolicitudCorreccion(id, tipo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion"] });
+      queryClient.invalidateQueries({ queryKey: ["solicitudes_nueva_pps"] });
+      onToast("Solicitud devuelta a la cola.");
+    },
+    onError: (e) => onToast(getErrorMessage(e, "Error al devolver a la cola"), "error"),
+  });
+
   const resolveBajaMutation = useMutation({
     mutationFn: resolveSolicitudBajaPps,
     onSuccess: (result) => {
@@ -187,36 +211,68 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
           </div>
         }
       >
-        {(lista) =>
-          lista.length === 0 ? (
-            <EmptyState
-              icon="inbox"
-              title="Sin solicitudes"
-              msg="No hay solicitudes de modificaciones ni de cargas de PPS."
+        {(lista) => {
+          if (lista.length === 0) {
+            return (
+              <EmptyState
+                icon="inbox"
+                title="Sin solicitudes"
+                msg="No hay solicitudes de modificaciones ni de cargas de PPS."
+              />
+            );
+          }
+
+          // Las resueltas (aprobadas / rechazadas) ya no aportan a la cola de
+          // trabajo: quedan archivadas dentro del "Historial" plegable para que
+          // la lista visible sean solo las que esperan decisión.
+          const pendientes = lista.filter((s) => (s.estado || "").toLowerCase() === "pendiente");
+          const resueltas = lista.filter((s) => (s.estado || "").toLowerCase() !== "pendiente");
+
+          const renderCard = (sol: CorreccionItem) => (
+            <CorreccionCardItem
+              key={sol.id}
+              sol={sol}
+              expanded={expandedId === sol.id}
+              onToggle={() => onToggle(sol.id)}
+              onToast={onToast}
+              onReject={onReject}
+              onResolveBaja={(input) => resolveBajaMutation.mutateAsync(input)}
+              onArchive={() =>
+                archiveMutation.mutateAsync({ id: sol.id, tipo: sol.tipo_solicitud })
+              }
+              onUnarchive={() =>
+                unarchiveMutation.mutateAsync({ id: sol.id, tipo: sol.tipo_solicitud })
+              }
+              onApprove={async (id, notas) => {
+                if (sol.tipo_solicitud === "modificacion") {
+                  approveModMutation.mutate({ id, notas });
+                } else {
+                  approveNuevaMutation.mutate({ id, notas });
+                }
+              }}
             />
-          ) : (
+          );
+
+          return (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {lista.map((sol) => (
-                <CorreccionCardItem
-                  key={sol.id}
-                  sol={sol}
-                  expanded={expandedId === sol.id}
-                  onToggle={() => onToggle(sol.id)}
-                  onToast={onToast}
-                  onReject={onReject}
-                  onResolveBaja={(input) => resolveBajaMutation.mutateAsync(input)}
-                  onApprove={async (id, notas) => {
-                    if (sol.tipo_solicitud === "modificacion") {
-                      approveModMutation.mutate({ id, notas });
-                    } else {
-                      approveNuevaMutation.mutate({ id, notas });
-                    }
-                  }}
+              {pendientes.length === 0 ? (
+                <EmptyState
+                  icon="task_alt"
+                  title="Sin solicitudes pendientes"
+                  msg="No hay correcciones esperando revisión."
                 />
-              ))}
+              ) : (
+                pendientes.map(renderCard)
+              )}
+
+              {resueltas.length > 0 && (
+                <CollapsibleHistory count={resueltas.length}>
+                  {resueltas.map(renderCard)}
+                </CollapsibleHistory>
+              )}
             </div>
-          )
-        }
+          );
+        }}
       </QueryState>
     </div>
   );
@@ -231,6 +287,8 @@ interface CorreccionCardItemProps {
   onReject: (sol: CorreccionItem) => void;
   onApprove: (id: string, notas?: string) => Promise<void>;
   onResolveBaja: (input: ResolveSolicitudBajaInput) => Promise<unknown>;
+  onArchive: () => Promise<unknown>;
+  onUnarchive: () => Promise<unknown>;
 }
 
 const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
@@ -241,6 +299,8 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
   onReject,
   onApprove,
   onResolveBaja,
+  onArchive,
+  onUnarchive,
 }) => {
   const isMod = sol.tipo_solicitud === "modificacion";
   const isWithdrawal = isMod && sol.tipo_modificacion === "eliminacion";
@@ -262,6 +322,7 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
     const e = (est || "").toLowerCase();
     if (e === "aprobada") return { label: "Aprobada", c: "var(--ok)", s: "var(--ok-soft)" };
     if (e === "rechazada") return { label: "Rechazada", c: "var(--crit)", s: "var(--crit-soft)" };
+    if (e === "archivada") return { label: "Archivada", c: "var(--ink-3)", s: "var(--paper-2)" };
     return { label: "Pendiente", c: "var(--warn)", s: "var(--warn-soft)" };
   };
 
@@ -271,6 +332,24 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
     setLoading(true);
     try {
       await onApprove(sol.id, adminNotes);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    setLoading(true);
+    try {
+      await onArchive();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    setLoading(true);
+    try {
+      await onUnarchive();
     } finally {
       setLoading(false);
     }
@@ -860,35 +939,74 @@ const CorreccionCardItem: React.FC<CorreccionCardItemProps> = ({
                   </div>
                 </>
               ) : (
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
                   <button
-                    onClick={() => onReject(sol)}
-                    className="btn btn-sm press"
-                    style={{ color: "var(--crit)", borderColor: "var(--crit)" }}
-                  >
-                    <span className="material-icons" style={{ fontSize: 15 }}>
-                      close
-                    </span>
-                    Rechazar
-                  </button>
-                  <button
-                    onClick={handleApprove}
+                    onClick={handleArchive}
                     disabled={loading}
                     className="btn btn-sm press"
-                    style={{
-                      background: "var(--ok)",
-                      color: "var(--paper)",
-                      borderColor: "var(--ok)",
-                      opacity: loading ? 0.5 : 1,
-                    }}
+                    style={{ color: "var(--ink-3)", borderColor: "var(--rule-2)" }}
+                    title="Sacar de la cola sin decidir. No notifica al alumno ni toca su legajo. Reversible."
                   >
                     <span className="material-icons" style={{ fontSize: 15 }}>
-                      check_circle
+                      inventory_2
                     </span>
-                    {isMod ? "Aprobar cambio" : "Aprobar y crear PPS"}
+                    Archivar
                   </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => onReject(sol)}
+                      className="btn btn-sm press"
+                      style={{ color: "var(--crit)", borderColor: "var(--crit)" }}
+                    >
+                      <span className="material-icons" style={{ fontSize: 15 }}>
+                        close
+                      </span>
+                      Rechazar
+                    </button>
+                    <button
+                      onClick={handleApprove}
+                      disabled={loading}
+                      className="btn btn-sm press"
+                      style={{
+                        background: "var(--ok)",
+                        color: "var(--paper)",
+                        borderColor: "var(--ok)",
+                        opacity: loading ? 0.5 : 1,
+                      }}
+                    >
+                      <span className="material-icons" style={{ fontSize: 15 }}>
+                        check_circle
+                      </span>
+                      {isMod ? "Aprobar cambio" : "Aprobar y crear PPS"}
+                    </button>
+                  </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Archived: devolver a la cola */}
+          {sol.estado === "archivada" && (
+            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+              <button
+                onClick={handleUnarchive}
+                disabled={loading}
+                className="btn btn-sm press"
+                style={{ color: "var(--ink-2)", borderColor: "var(--rule-2)" }}
+              >
+                <span className="material-icons" style={{ fontSize: 15 }}>
+                  unarchive
+                </span>
+                Devolver a la cola
+              </button>
             </div>
           )}
         </div>

@@ -32,6 +32,8 @@ export {
   resolveSolicitudBajaPps,
   approveSolicitudNuevaPPS,
   rejectSolicitudNuevaPPS,
+  archiveSolicitudCorreccion,
+  unarchiveSolicitudCorreccion,
 } from "./solicitudesService";
 export type { ResolveSolicitudBajaInput } from "./solicitudesService";
 
