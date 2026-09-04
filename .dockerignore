@@ -1,0 +1,20 @@
+.git
+.github
+.husky
+.env
+.env.*
+node_modules
+dist
+coverage
+playwright-report
+test-results
+tmp
+output
+outputs
+artifacts
+Pagina PPS
+pps-uflo
+testsprite_tests
+design*.tar.gz
+design_response.bin
+*.patch

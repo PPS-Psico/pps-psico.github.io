@@ -7,8 +7,12 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# The builder needs Vite, TypeScript and the React plugin from devDependencies.
+# Skip local Git-hook installation; the final stage still contains only dist/.
+# `deno` (devDependency, solo para `deno check` de edge functions en CI) rechaza musl
+# en su postinstall y rompe `npm ci` sobre Alpine. El build sólo necesita Vite,
+# TypeScript y el plugin de React, ninguno con postinstall obligatorio.
+RUN HUSKY=0 npm ci --ignore-scripts
 
 # Copy source code
 COPY . .

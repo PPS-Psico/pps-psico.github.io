@@ -6,7 +6,7 @@ Este archivo documenta convenciones, flujos de trabajo y decisiones arquitectoni
 
 **Mi Panel Academico** - Sistema de gestion de Practicas Profesionales Supervisadas (PPS) para la Licenciatura en Psicologia de UFLO.
 
-- **Stack**: React 18 + TypeScript + Vite + Supabase + TailwindCSS
+- **Stack**: React 19 + TypeScript + Vite + Supabase + TailwindCSS
 - **Hosting**: GitHub Pages (build estatico)
 - **DB**: Supabase (Postgres) con RLS
 - **Auth**: Supabase Auth con roles (estudiante, admin, directivo, jefe)
