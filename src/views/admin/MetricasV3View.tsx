@@ -22,8 +22,7 @@ import Loader from "../../components/Loader";
 import { useAdminPreferences } from "../../contexts/AdminPreferencesContext";
 import { useMetricsData, useMetricsYears } from "../../hooks/useMetricsData";
 import { useMetricsDinamica } from "../../hooks/useMetricsExtras";
-import { injectScopedStyles } from "../../utils/injectScopedStyles";
-import { METRICAS_V3_CSS } from "./metricasV3Styles";
+import "./metricasV3Styles.css";
 
 // Generadores de export (Excel/PDF) reubicados como subpestaña opcional.
 const GestionRelanzamientoReport = lazy(
@@ -44,8 +43,6 @@ const HermesIntelligenceDashboard = lazy(() =>
     default: m.HermesIntelligenceDashboard,
   }))
 );
-
-injectScopedStyles("metricas-v3-styles", METRICAS_V3_CSS);
 
 type TabId = "dashboard" | "timeline" | "reporte" | "hermes" | "descargas";
 
