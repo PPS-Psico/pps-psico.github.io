@@ -29,14 +29,14 @@ export const useStudentCommitments = (
       const data = await fetchStudentCompromisos(studentId);
       try {
         sessionStorage.setItem(`pps_cache_commitments_${legajo}`, JSON.stringify(data));
-      } catch (e) {}
+      } catch {}
       return data;
     },
     initialData: () => {
       try {
         const cached = sessionStorage.getItem(`pps_cache_commitments_${legajo}`);
         return cached ? JSON.parse(cached) : undefined;
-      } catch (e) {
+      } catch {
         return undefined;
       }
     },
@@ -93,8 +93,8 @@ export const useStudentCommitments = (
     },
   });
 
-  const compromisoMap = new Map(
-    compromisos.map((item: CompromisoPPS) => [item.convocatoria_id, item])
+  const compromisoMap = new Map<string, CompromisoPPS>(
+    compromisos.map((item: CompromisoPPS) => [item.convocatoria_id, item] as const)
   );
 
   return {

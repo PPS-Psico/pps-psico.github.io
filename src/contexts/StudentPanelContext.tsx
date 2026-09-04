@@ -102,12 +102,20 @@ const emptyContextValue: StudentPanelContextType = {
   isFinalizationLoading: false,
   isCommitmentsLoading: false,
   error: null,
-  updateOrientation: { mutate: () => {}, isPending: false } as any,
-  updateInternalNotes: { mutate: () => {}, isPending: false } as any,
-  updateFechaFin: { mutate: () => {}, isPending: false } as any,
+  updateOrientation: { mutate: () => {}, isPending: false } as unknown as ReturnType<
+    typeof useStudentData
+  >["updateOrientation"],
+  updateInternalNotes: { mutate: () => {}, isPending: false } as unknown as ReturnType<
+    typeof useStudentData
+  >["updateInternalNotes"],
+  updateFechaFin: { mutate: () => {}, isPending: false } as unknown as ReturnType<
+    typeof useStudentPracticas
+  >["updateFechaFin"],
   enrollStudent: { mutate: () => {}, isPending: false },
   cancelEnrollment: { mutate: () => {}, isPending: false },
-  acceptCompromiso: { mutate: () => {}, isPending: false } as any,
+  acceptCompromiso: { mutate: () => {}, isPending: false } as unknown as ReturnType<
+    typeof useStudentCommitments
+  >["acceptCompromiso"],
   refetchAll: () => {},
   refetchPracticas: () => {},
   refetchSolicitudesModificacion: () => {},
@@ -157,7 +165,6 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     solicitudesError,
     refetchSolicitudes,
     solicitudesNueva,
-    refetchSolicitudesNueva,
     solicitudesModificacion,
     isSolicitudesModificacionLoading,
     solicitudesModificacionError,
@@ -254,48 +261,86 @@ const StudentPanelContextActiveProvider: React.FC<{ legajo: string; children: Re
     return processAndLinkStudentData({ myEnrollments, allLanzamientos, practicas });
   }, [myEnrollments, allLanzamientos, practicas, isConvocatoriasLoading, isPracticasLoading]);
 
-  const value = {
-    studentDetails,
-    studentId,
-    practicas,
-    solicitudes,
-    solicitudesNueva,
-    solicitudesModificacion,
-    lanzamientos,
-    allLanzamientos,
-    institutionAddressMap,
-    institutionLogoMap,
-    finalizacionRequest,
-    compromisoMap,
-    isLoading,
-    isStudentLoading,
-    isPracticasLoading,
-    isSolicitudesLoading,
-    isConvocatoriasLoading,
-    isFinalizationLoading,
-    isCommitmentsLoading,
-    error,
-    updateOrientation,
-    updateInternalNotes,
-    updateFechaFin,
-    enrollStudent,
-    cancelEnrollment,
-    acceptCompromiso,
-    refetchAll,
-    refetchPracticas,
-    refetchSolicitudesModificacion,
-    criterios,
-    enrollmentMap,
-    completedLanzamientoIds,
-    completedOrientationsByInstitution,
-    informeTasks,
-  };
-
-  return (
-    <StudentPanelContext.Provider value={value as StudentPanelContextType}>
-      {children}
-    </StudentPanelContext.Provider>
+  // Keep consumers isolated from unrelated parent renders. The source hooks
+  // already expose stable references while their data is unchanged, so the
+  // aggregate context should preserve that stability instead of rebuilding a
+  // new value object on every provider render.
+  const value = useMemo<StudentPanelContextType>(
+    () => ({
+      studentDetails,
+      studentId,
+      practicas,
+      solicitudes,
+      solicitudesNueva,
+      solicitudesModificacion,
+      lanzamientos,
+      allLanzamientos,
+      institutionAddressMap,
+      institutionLogoMap,
+      finalizacionRequest,
+      compromisoMap,
+      isLoading,
+      isStudentLoading,
+      isPracticasLoading,
+      isSolicitudesLoading,
+      isConvocatoriasLoading,
+      isFinalizationLoading,
+      isCommitmentsLoading,
+      error,
+      updateOrientation,
+      updateInternalNotes,
+      updateFechaFin,
+      enrollStudent,
+      cancelEnrollment,
+      acceptCompromiso,
+      refetchAll,
+      refetchPracticas,
+      refetchSolicitudesModificacion,
+      criterios,
+      enrollmentMap,
+      completedLanzamientoIds,
+      completedOrientationsByInstitution,
+      informeTasks,
+    }),
+    [
+      studentDetails,
+      studentId,
+      practicas,
+      solicitudes,
+      solicitudesNueva,
+      solicitudesModificacion,
+      lanzamientos,
+      allLanzamientos,
+      institutionAddressMap,
+      institutionLogoMap,
+      finalizacionRequest,
+      compromisoMap,
+      isLoading,
+      isStudentLoading,
+      isPracticasLoading,
+      isSolicitudesLoading,
+      isConvocatoriasLoading,
+      isFinalizationLoading,
+      isCommitmentsLoading,
+      error,
+      updateOrientation,
+      updateInternalNotes,
+      updateFechaFin,
+      enrollStudent,
+      cancelEnrollment,
+      acceptCompromiso,
+      refetchAll,
+      refetchPracticas,
+      refetchSolicitudesModificacion,
+      criterios,
+      enrollmentMap,
+      completedLanzamientoIds,
+      completedOrientationsByInstitution,
+      informeTasks,
+    ]
   );
+
+  return <StudentPanelContext.Provider value={value}>{children}</StudentPanelContext.Provider>;
 };
 
 /**
