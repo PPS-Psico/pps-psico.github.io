@@ -1,6 +1,6 @@
 import { brotliCompressSync, gzipSync } from "node:zlib";
-import { readFile, readdir, writeFile } from "node:fs/promises";
-import { extname, join, relative, resolve } from "node:path";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { dirname, extname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
 
 const args = new Map();
@@ -193,5 +193,9 @@ const report = {
 };
 
 const serialized = `${JSON.stringify(report, null, 2)}\n`;
-if (outputPath) await writeFile(resolve(outputPath), serialized, "utf8");
+if (outputPath) {
+  const resolvedOutputPath = resolve(outputPath);
+  await mkdir(dirname(resolvedOutputPath), { recursive: true });
+  await writeFile(resolvedOutputPath, serialized, "utf8");
+}
 process.stdout.write(serialized);
