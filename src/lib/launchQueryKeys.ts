@@ -41,9 +41,12 @@ const LAUNCH_QUERY_PREFIXES = [
   "launchPracticas",
   "launchCompromisos",
   // Seleccionador
+  "openLaunchesForSelector",
   "candidatesForLaunch",
   "availableStudents",
   "seleccionadosInfo",
+  // Padrón de tareas de Moodle por lanzamiento (ActivaView)
+  "launch-moodle-units",
 ] as const;
 
 /**

@@ -32,6 +32,7 @@ import {
   FIELD_SEGURO_GESTIONADO_AT_LANZAMIENTOS,
 } from "../../constants";
 import { db } from "../../lib/db";
+import { invalidateLaunchData } from "../../lib/launchQueryKeys";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -463,11 +464,27 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       return;
     }
 
+    // Los lanzamientos involucrados salen de los grupos elegidos: no hace falta
+    // traer las tres tablas enteras para armar la planilla de una PPS.
+    const lanzamientoIds = Array.from(
+      new Set(
+        selectedGroups
+          .map((group) => group[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] as string | undefined)
+          .filter((id): id is string => !!id)
+      )
+    );
+
     try {
       const [estudiantesRes, lanzamientosRes, convocatoriasRes] = await Promise.all([
-        db.estudiantes.getAll(),
-        db.lanzamientos.getAll(),
-        db.convocatorias.getAll(),
+        db.estudiantes.getAll({ filters: { id: Array.from(studentIds) } }),
+        lanzamientoIds.length > 0
+          ? db.lanzamientos.getAll({ filters: { id: lanzamientoIds } })
+          : Promise.resolve([]),
+        lanzamientoIds.length > 0
+          ? db.convocatorias.getAll({
+              filters: { [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: lanzamientoIds },
+            })
+          : Promise.resolve([]),
       ]);
 
       const studentMap = new Map(estudiantesRes.map((r) => [r.id, r]));
@@ -840,9 +857,10 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       // Éxito: reflejar el estado "asegurado" y refrescar el Lanzador.
       markStepDone(4);
       setSeguroGestionadoAt(new Date().toISOString());
-      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
-      queryClient.invalidateQueries({ queryKey: ["convStatusByLaunch"] });
-      queryClient.invalidateQueries({ queryKey: ["inscCountByLaunch"] });
+      // Un solo helper invalida todo lo derivado de lanzamientos. Antes eran tres
+      // llamadas, dos de ellas a claves que ningún useQuery define: no fallaban,
+      // simplemente dejaban el panel con datos viejos.
+      invalidateLaunchData(queryClient);
       setToastInfo({ message: "Seguro gestionado. La PPS pasó a Activas.", type: "success" });
     } finally {
       setIsMarcando(false);
@@ -865,9 +883,7 @@ const SeguroGenerator: React.FC<SeguroGeneratorProps> = ({
       await revertirAseguramiento(preSelectedLanzamientoId, coordinadorId);
       setSeguroGestionadoAt(null);
       setDoneSteps(new Set());
-      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
-      queryClient.invalidateQueries({ queryKey: ["convStatusByLaunch"] });
-      queryClient.invalidateQueries({ queryKey: ["inscCountByLaunch"] });
+      invalidateLaunchData(queryClient);
       setToastInfo({ message: "Aseguramiento revertido.", type: "success" });
     } catch (e) {
       logger.error("Error al revertir aseguramiento:", e);

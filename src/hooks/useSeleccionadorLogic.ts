@@ -204,17 +204,20 @@ export const useSeleccionadorLogic = (
       if (!selectedLanzamiento) return [];
       const launchId = selectedLanzamiento.id;
 
-      let allEnrollments: ConvocatoriaFields[] = [];
+      // El filtro va en la base, no en el cliente: `convocatorias` tiene miles de
+      // filas históricas y sirven ~20. La columna está indexada
+      // (idx_convocatorias_lanzamiento_id), así que es una sola ida barata.
+      let enrollments: ConvocatoriaFields[] = [];
       if (isTestingMode) {
-        allEnrollments = await mockDb.getAll("convocatorias");
+        const allEnrollments: ConvocatoriaFields[] = await mockDb.getAll("convocatorias");
+        enrollments = allEnrollments.filter(
+          (c) => c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === launchId
+        );
       } else {
-        allEnrollments = await db.convocatorias.getAll();
+        enrollments = await db.convocatorias.getAll({
+          filters: { [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: launchId },
+        });
       }
-
-      // FILTER: Enrollments for this launch
-      const enrollments = allEnrollments.filter(
-        (c) => c[FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS] === launchId
-      );
 
       if (enrollments.length === 0) return [];
 

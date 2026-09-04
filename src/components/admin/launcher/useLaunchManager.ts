@@ -49,6 +49,7 @@ import {
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../../constants/configConstants";
 import { useConfirm } from "../../../hooks/useConfirm";
 import { db } from "../../../lib/db";
+import { invalidateLaunchData } from "../../../lib/launchQueryKeys";
 import { supabase } from "../../../lib/supabaseClient";
 import { runMutation } from "../../../lib/dbQuery";
 import { getDbErrorMessage } from "../../../lib/dbError";
@@ -442,8 +443,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
       setShowPreviewModal(false);
 
       if (!isTestingMode) {
-        queryClient.invalidateQueries({ queryKey: ["allLanzamientos"] });
-        queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
+        invalidateLaunchData(queryClient);
         queryClient.invalidateQueries({ queryKey: ["conveniosData"] });
       }
     },
@@ -488,9 +488,7 @@ export function useLaunchManager(isTestingMode: boolean, forcedTab?: "new" | "hi
     },
     onSuccess: () => {
       setToastInfo({ message: "Lanzamiento y datos vinculados eliminados.", type: "success" });
-      queryClient.invalidateQueries({ queryKey: ["launchHistory"] });
-      queryClient.invalidateQueries({ queryKey: ["allConvocatorias"] });
-      queryClient.invalidateQueries({ queryKey: ["allPracticas"] });
+      invalidateLaunchData(queryClient);
     },
     onError: (error: Error) => {
       // El detalle tecnico va al log; al admin se le muestra el mensaje del
