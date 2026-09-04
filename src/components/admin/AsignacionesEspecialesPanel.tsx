@@ -19,9 +19,12 @@ import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
 
-type ActivityType = "relevamiento_profesional" | "entrevistas_profesionales";
+type ActivityType =
+  | "relevamiento_profesional"
+  | "entrevistas_profesionales"
+  | "proyecto_investigacion";
 type OrientationKey = "clinica" | "laboral" | "comunitaria" | "educacional";
-type TaskOrientationKey = "clinica" | "laboral_comunitaria" | "educacional";
+type TaskOrientationKey = "clinica" | "laboral_comunitaria" | "educacional" | "general";
 
 type StudentRow = Pick<
   Database["public"]["Tables"]["estudiantes"]["Row"],
@@ -63,7 +66,15 @@ const ACTIVITIES: Array<{ id: ActivityType; label: string; shortLabel: string }>
     label: "Entrevistas a Profesionales",
     shortLabel: "Entrevistas profesionales",
   },
+  {
+    id: "proyecto_investigacion",
+    label: "Informe de un proyecto de investigación de la universidad",
+    shortLabel: "Proyecto de investigación",
+  },
 ];
+
+/** El título del proyecto es lo que después se lee al cargar el SAC. */
+const REQUIRES_PROJECT_TITLE: ActivityType = "proyecto_investigacion";
 
 const ORIENTATIONS: Array<{ id: OrientationKey; label: string }> = [
   { id: "clinica", label: "Clínica" },
@@ -85,6 +96,23 @@ const TASK_ORIENTATIONS: Array<{
   },
   { id: "educacional", label: "Educacional", areas: ["educacional"] },
 ];
+
+/**
+ * Relevamiento y Entrevistas piden un trabajo distinto en cada área, así que
+ * llevan una tarea por orientación. En un proyecto de investigación el
+ * entregable es siempre el mismo informe y la orientación que acredita la
+ * decide Coordinación caso por caso, así que alcanza con una única tarea
+ * compartida y la orientación se elige recién al asignar.
+ */
+const RESEARCH_TASK_ORIENTATION: (typeof TASK_ORIENTATIONS)[number] = {
+  id: "general",
+  label: "Única para todas las orientaciones",
+  areas: ["clinica", "laboral", "comunitaria", "educacional"],
+};
+
+function taskOrientationsFor(activity: ActivityType): typeof TASK_ORIENTATIONS {
+  return activity === "proyecto_investigacion" ? [RESEARCH_TASK_ORIENTATION] : TASK_ORIENTATIONS;
+}
 
 const CSS = `
 .sa-shell { max-width: 1060px; margin: 0 auto; color: var(--ink); }
@@ -167,15 +195,17 @@ function orientationLabel(value: OrientationKey): string {
   return ORIENTATIONS.find((orientation) => orientation.id === value)?.label ?? value;
 }
 
-function taskOrientationFor(value: OrientationKey): TaskOrientationKey {
+function taskOrientationFor(activity: ActivityType, value: OrientationKey): TaskOrientationKey {
+  if (activity === "proyecto_investigacion") return "general";
   return value === "laboral" || value === "comunitaria" ? "laboral_comunitaria" : value;
 }
 
 function taskMatchesActivity(task: TaskRow, activity: ActivityType): boolean {
   const name = `${task.moodle_name ?? ""} ${task.institucion}`;
-  return activity === "relevamiento_profesional"
-    ? /relevamiento/i.test(name)
-    : /entrevistas?\s+a\s+profesionales/i.test(name);
+  if (activity === "relevamiento_profesional") return /relevamiento/i.test(name);
+  if (activity === "entrevistas_profesionales")
+    return /entrevistas?\s+a\s+profesionales/i.test(name);
+  return /investigaci[oó]n/i.test(name);
 }
 
 const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = ({
@@ -189,6 +219,7 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
   const [activity, setActivity] = useState<ActivityType>("relevamiento_profesional");
   const [orientation, setOrientation] = useState<OrientationKey>("clinica");
   const [hours, setHours] = useState(20);
+  const [projectTitle, setProjectTitle] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
   const [taskSelections, setTaskSelections] = useState<Record<string, string>>({});
@@ -270,10 +301,13 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
     () =>
       catalog.find(
         (row) =>
-          row.activity_type === activity && row.orientation_key === taskOrientationFor(orientation)
+          row.activity_type === activity &&
+          row.orientation_key === taskOrientationFor(activity, orientation)
       ) ?? null,
     [activity, catalog, orientation]
   );
+
+  const needsProjectTitle = activity === REQUIRES_PROJECT_TITLE;
 
   const assignMutation = useMutation({
     mutationFn: async () => {
@@ -285,6 +319,8 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
         p_estudiante_id: selectedStudent.id,
         p_expected_hours: hours,
         p_orientation_key: orientation,
+        // Se omite (no se manda null) para que caiga el default de la función.
+        p_project_title: needsProjectTitle ? projectTitle.trim() : undefined,
       });
       if (error) throw error;
     },
@@ -295,6 +331,7 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
       });
       setSelectedStudent(null);
       setStudentSearch("");
+      setProjectTitle("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["special-pps-assignments", year] }),
         queryClient.invalidateQueries({ queryKey: ["practicas"] }),
@@ -353,7 +390,10 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
   });
 
   const canAssign =
-    Boolean(selectedStudent) && Boolean(selectedCatalog?.aula_entregas?.activo) && hours > 0;
+    Boolean(selectedStudent) &&
+    Boolean(selectedCatalog?.aula_entregas?.activo) &&
+    hours > 0 &&
+    (!needsProjectTitle || projectTitle.trim().length >= 5);
 
   const requestCancellation = async (row: AssignmentRow) => {
     const reason = window.prompt(
@@ -447,6 +487,24 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
                 </div>
               </div>
 
+              {needsProjectTitle && (
+                <div className="sa-field">
+                  <label htmlFor="special-pps-project-title">Título del proyecto</label>
+                  <input
+                    id="special-pps-project-title"
+                    type="text"
+                    value={projectTitle}
+                    placeholder="Título tal como figura en la resolución"
+                    onChange={(event) => setProjectTitle(event.target.value)}
+                    autoComplete="off"
+                  />
+                  <small style={{ color: "var(--ink-3)", fontSize: 10.5, lineHeight: 1.45 }}>
+                    Se guarda como nombre de la práctica, así que es lo que vas a leer al cargar el
+                    SAC: “Proyecto de Investigación — {projectTitle.trim() || "…"}”.
+                  </small>
+                </div>
+              )}
+
               <div className="sa-field">
                 <label htmlFor="special-pps-orientation">Orientación que acredita</label>
                 <select
@@ -460,6 +518,12 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
                     </option>
                   ))}
                 </select>
+                {needsProjectTitle && (
+                  <small style={{ color: "var(--ink-3)", fontSize: 10.5, lineHeight: 1.45 }}>
+                    La tarea de investigación es una sola y sirve para cualquier orientación: elegí
+                    acá la que corresponda acreditar.
+                  </small>
+                )}
               </div>
 
               <div className="sa-field">
@@ -572,6 +636,12 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
                   <dt>PPS</dt>
                   <dd>{activityLabel(activity)}</dd>
                 </div>
+                {needsProjectTitle && (
+                  <div className="sa-summary-row">
+                    <dt>Proyecto</dt>
+                    <dd>{projectTitle.trim() || "Falta cargar el título"}</dd>
+                  </div>
+                )}
                 <div className="sa-summary-row">
                   <dt>Orientación</dt>
                   <dd>{orientationLabel(orientation)}</dd>
@@ -628,6 +698,7 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
                         {orientationLabel(row.orientation_key as OrientationKey)} ·{" "}
                         {row.expected_hours} hs
                       </small>
+                      {row.project_title && <small>{row.project_title}</small>}
                     </span>
                     <span className="sa-state">
                       {row.practicas?.nota
@@ -671,7 +742,7 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
             <div key={activityItem.id} style={{ marginBottom: 36 }}>
               <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>{activityItem.shortLabel}</h3>
               <div className="sa-config-grid">
-                {TASK_ORIENTATIONS.map((orientationItem) => {
+                {taskOrientationsFor(activityItem.id).map((orientationItem) => {
                   const row = catalog.find(
                     (item) =>
                       item.activity_type === activityItem.id &&
