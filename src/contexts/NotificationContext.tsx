@@ -15,9 +15,7 @@ import {
   FIELD_CHECKED_AT_ANALYTICS_HEALTH,
   FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS,
   FIELD_ESTADO_FINALIZACION,
-  FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS,
   FIELD_ESTADO_PPS,
-  FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS,
   FIELD_FECHA_SOLICITUD_FINALIZACION,
   FIELD_NOMBRE_ESTUDIANTES,
   FIELD_NOMBRE_PPS_LANZAMIENTOS,
@@ -26,7 +24,6 @@ import {
   FIELD_ISSUES_ANALYTICS_HEALTH,
   FIELD_STATUS_ANALYTICS_HEALTH,
   FIELD_SOLICITUD_NOMBRE_ALUMNO,
-  TABLE_NAME_CONVOCATORIAS,
   TABLE_NAME_ANALYTICS_HEALTH_CHECKS,
   TABLE_NAME_FINALIZACION,
   TABLE_NAME_LANZAMIENTOS_PPS,
@@ -34,33 +31,22 @@ import {
   TABLE_NAME_SOLICITUDES_MODIFICACION,
   TABLE_NAME_SOLICITUDES_NUEVA,
 } from "../constants";
-import { isFCMSubscribed, subscribeToFCM, unsubscribeFromFCM } from "../lib/fcm";
 import { supabase } from "../lib/supabaseClient";
 import ReminderService, { Reminder } from "../services/reminderService";
 import { useAuth } from "./AuthContext";
 import { logger } from "../utils/logger";
-import { getErrorMessage } from "../utils/getErrorMessage";
-import { badgeService } from "../utils/badgeService";
-import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
-
-/** Fila genérica de un payload de Supabase Realtime (acceso dinámico por columna). */
-type RtRow = { id: string; [key: string]: unknown };
+import { usePushNotifications } from "../hooks/notifications/usePushNotifications";
+import { useNotificationRealtime } from "../hooks/notifications/useNotificationRealtime";
+import { useUnreadBadge } from "../hooks/notifications/useUnreadBadge";
+import { playNotificationSound } from "../utils/playNotificationSound";
+import type { AppNotification } from "./notificationTypes";
+export type { AppNotification } from "./notificationTypes";
 
 type AnalyticsHealthIssue = {
   severity?: string;
   code?: string;
   message?: string;
 };
-
-export interface AppNotification {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: Date;
-  type: "solicitud_pps" | "acreditacion" | "info" | "recordatorio" | "estado" | "lanzamiento";
-  link: string;
-  isRead: boolean;
-}
 
 interface NotificationContextType {
   notifications: AppNotification[];
@@ -101,6 +87,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     message: string;
     type: "success" | "error" | "warning";
   } | null>(null);
+  const showToast = useCallback((message: string, type: "success" | "error" | "warning") => {
+    setToast({ message, type });
+  }, []);
 
   // Persistencia Local: Set de IDs leídos
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
@@ -123,17 +112,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const notificationsRef = useRef<AppNotification[]>([]);
   const [readIdsLoadedFor, setReadIdsLoadedFor] = useState<string | null>(null);
 
-  // Push notification state
-  const pushSupported = "Notification" in window && "serviceWorker" in navigator;
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
-
   const navigate = useNavigate();
 
   const isAdmin = isSuperUserMode || isJefeMode || isDirectivoMode;
   const isStudent = !isAdmin && !!authenticatedUser;
   const userId = authenticatedUser?.id || "guest";
   const STORAGE_KEY = `read_notifications_v2_${userId}`;
+  const push = usePushNotifications(authenticatedUser?.id, showToast);
 
   // 0. CARGAR LE�DOS DESDE LOCALSTORAGE
   useEffect(() => {
@@ -156,22 +141,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       setReadIdsLoadedFor(userId);
     }
   }, [authenticatedUser, STORAGE_KEY, userId]);
-
-  // 0.5. CHECK PUSH SUBSCRIPTION STATUS
-  useEffect(() => {
-    if (!authenticatedUser || !pushSupported) return;
-
-    const checkPushStatus = async () => {
-      try {
-        const subscribed = await isFCMSubscribed();
-        setPushEnabled(subscribed);
-      } catch (e) {
-        logger.warn("Error checking push status", e);
-      }
-    };
-
-    checkPushStatus();
-  }, [authenticatedUser, pushSupported]);
 
   // Helper para guardar en storage
   const persistReadIds = useCallback(
@@ -435,180 +404,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     fetchNotificationsAndReminders();
   }, [isAdmin, isStudent, authenticatedUser, readIdsLoadedFor, userId]);
 
-  // 2. LISTEN FOR NEW EVENTS (REALTIME)
-  useEffect(() => {
-    if (!authenticatedUser) return;
-
-    const channelName = `notifications-${authenticatedUser.id}`;
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLE_NAME_PPS },
-        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
-          if (!isAdmin) return;
-          if (!payload || !payload.new) return;
-
-          const newRecord = payload.new as RtRow;
-          const notifId = `pps-${newRecord.id}`;
-
-          addNotification({
-            id: notifId,
-            title: "Nueva Solicitud de PPS",
-            message: `Nueva solicitud de inicio recibida.`,
-            timestamp: new Date(),
-            type: "solicitud_pps",
-            link: "/admin/solicitudes?tab=ingreso",
-            isRead: false,
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLE_NAME_FINALIZACION },
-        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
-          if (!isAdmin) return;
-          if (!payload || !payload.new) return;
-
-          const newRecord = payload.new as RtRow;
-          const notifId = `fin-${newRecord.id}`;
-
-          addNotification({
-            id: notifId,
-            title: "Nueva Solicitud de Acreditación",
-            message: `Un estudiante ha enviado documentación para finalizar.`,
-            timestamp: new Date(),
-            type: "acreditacion",
-            link: "/admin/solicitudes?tab=egreso",
-            isRead: false,
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLE_NAME_SOLICITUDES_MODIFICACION },
-        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
-          if (!isAdmin) return;
-          if (!payload || !payload.new) return;
-
-          addNotification({
-            id: `mod-${(payload.new as RtRow).id}`,
-            title: "Solicitud de Modificación",
-            message: `Un estudiante solicita un cambio en su práctica.`,
-            timestamp: new Date(),
-            type: "solicitud_pps",
-            link: "/admin/solicitudes",
-            isRead: false,
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: TABLE_NAME_SOLICITUDES_NUEVA },
-        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
-          if (!isAdmin) return;
-          if (!payload || !payload.new) return;
-
-          addNotification({
-            id: `newpps-${(payload.new as RtRow).id}`,
-            title: "Nueva PPS Autogestiva",
-            message: `Nueva solicitud autogestiva recibida.`,
-            timestamp: new Date(),
-            type: "solicitud_pps",
-            link: "/admin/solicitudes",
-            isRead: false,
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: TABLE_NAME_LANZAMIENTOS_PPS },
-        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
-          if (!isStudent) return;
-
-          const newRecord = payload.new as RtRow;
-          if (!newRecord) return;
-
-          const isNewActive =
-            payload.eventType === "INSERT" &&
-            newRecord[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === "Abierta";
-          const isBecameActive =
-            payload.eventType === "UPDATE" &&
-            newRecord[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] === "Abierta" &&
-            payload.old?.[FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS] !== "Abierta";
-
-          if (isNewActive || isBecameActive) {
-            const notifId = `launch-realtime-${newRecord.id}`;
-            addNotification({
-              id: notifId,
-              title: "�Nueva Oportunidad de PPS!",
-              message: `Se ha abierto la inscripci�n para ${newRecord[FIELD_NOMBRE_PPS_LANZAMIENTOS]}.`,
-              timestamp: new Date(),
-              type: "lanzamiento",
-              link: "/student",
-              isRead: false,
-            });
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: TABLE_NAME_CONVOCATORIAS },
-        async (payload: RealtimePostgresChangesPayload<RtRow>) => {
-          if (!isStudent) return;
-
-          const newRecord = payload.new as RtRow;
-          const oldRecord = payload.old as Partial<RtRow>;
-
-          const studentIdInRecord = newRecord[FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS];
-          const cleanId = Array.isArray(studentIdInRecord)
-            ? studentIdInRecord[0]
-            : studentIdInRecord;
-
-          if (authenticatedUser && cleanId === authenticatedUser.id) {
-            if (
-              newRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS] !==
-              oldRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]
-            ) {
-              const newState = newRecord[FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS];
-              let msg = `Tu estado ha cambiado a: ${newState}`;
-              if (newState === "Seleccionado")
-                msg = "�Felicitaciones! Has sido Seleccionado para la PPS.";
-
-              addNotification({
-                id: `conv-update-${newRecord.id}-${Date.now()}`,
-                title: "Actualizaci�n de Postulaci�n",
-                message: msg,
-                timestamp: new Date(),
-                type: "estado",
-                link: "/student/solicitudes",
-                isRead: false,
-              });
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isAdmin, isStudent, authenticatedUser]);
-
-  const addNotification = (notif: AppNotification) => {
+  const addNotification = useCallback((notif: AppNotification) => {
     setNotifications((prev) => [notif, ...prev]);
     setToast({ message: notif.title, type: "success" });
     // Note: Push notifications when the page is hidden are handled by the
     // service worker. Do NOT use the native Notification API here as it
     // creates duplicate notifications.
+    playNotificationSound();
+  }, []);
 
-    try {
-      new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3")
-        .play()
-        .catch(() => {});
-    } catch {}
-  };
+  useNotificationRealtime({
+    userId: authenticatedUser?.id,
+    isAdmin,
+    isStudent,
+    onNotification: addNotification,
+  });
 
   /*
     Los tres handlers leen la bandeja y los leídos por ref en vez de por estado.
@@ -646,59 +456,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [notifications]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
-
-  // Actualizar el Badge del icono de la PWA según las notificaciones no leídas
-  useEffect(() => {
-    if (unreadCount > 0) {
-      badgeService.set(unreadCount);
-    } else {
-      badgeService.clear();
-    }
-  }, [unreadCount]);
-
-  const showToast = useCallback((message: string, type: "success" | "error" | "warning") => {
-    setToast({ message, type });
-  }, []);
-
-  // Push notification handlers
-  const subscribeToPush = useCallback(async () => {
-    if (!pushSupported) {
-      showToast("Tu navegador no soporta notificaciones push", "warning");
-      return;
-    }
-
-    setPushLoading(true);
-    try {
-      const result = await subscribeToFCM(authenticatedUser?.id);
-      if (result.success) {
-        setPushEnabled(true);
-        showToast("Notificaciones activadas! Te avisaremos de nuevas convocatorias.", "success");
-      } else {
-        showToast(result.error || "No se pudo activar notificaciones", "error");
-      }
-    } catch (error) {
-      showToast(getErrorMessage(error, "Error al activar notificaciones"), "error");
-    } finally {
-      setPushLoading(false);
-    }
-  }, [pushSupported, showToast, authenticatedUser?.id]);
-
-  const unsubscribeFromPush = useCallback(async () => {
-    setPushLoading(true);
-    try {
-      const result = await unsubscribeFromFCM();
-      if (result.success) {
-        setPushEnabled(false);
-        showToast("Notificaciones desactivadas", "success");
-      } else {
-        showToast(result.error || "No se pudo desactivar notificaciones", "error");
-      }
-    } catch (error) {
-      showToast(getErrorMessage(error, "Error al desactivar notificaciones"), "error");
-    } finally {
-      setPushLoading(false);
-    }
-  }, [showToast]);
+  useUnreadBadge(unreadCount);
 
   // `showToast` es estable, así que este valor nunca cambia de identidad.
   const toastValue = useMemo(() => ({ showToast }), [showToast]);
@@ -711,11 +469,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       markAllAsRead,
       clearNotifications,
       showToast,
-      isPushSupported: pushSupported,
-      isPushEnabled: pushEnabled,
-      isPushLoading: pushLoading,
-      subscribeToPush,
-      unsubscribeFromPush,
+      isPushSupported: push.isSupported,
+      isPushEnabled: push.isEnabled,
+      isPushLoading: push.isLoading,
+      subscribeToPush: push.subscribe,
+      unsubscribeFromPush: push.unsubscribe,
     }),
     [
       notifications,
@@ -724,11 +482,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       markAllAsRead,
       clearNotifications,
       showToast,
-      pushSupported,
-      pushEnabled,
-      pushLoading,
-      subscribeToPush,
-      unsubscribeFromPush,
+      push.isSupported,
+      push.isEnabled,
+      push.isLoading,
+      push.subscribe,
+      push.unsubscribe,
     ]
   );
 
