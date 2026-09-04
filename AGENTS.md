@@ -41,13 +41,26 @@ Esto conecta a Supabase, lee el schema actual, y regenera el archivo completo. D
 
 ### Migraciones de DB
 
-Se aplican directamente en Supabase via MCP tools:
+Este proyecto conserva drift histórico entre timestamps locales y remotos. Hasta
+que exista un baseline canónico nuevo, **no usar `supabase db push`,
+`migration repair` ni MCP `apply_migration` directamente**: cualquiera de esas
+rutas puede reaplicar historia o volver a crear claves distintas.
 
-```
-supabase_apply_migration(project_id, name, query)
-```
+Flujo vigente:
 
-**Despues de cada migracion**: correr `npm run gen-types` y verificar que compile.
+1. consultar el ledger vivo y `git status`;
+2. crear el archivo con `npx supabase migration new <nombre>` y revisar su SQL;
+3. validarlo con el replay aislado o una rama descartable cuando sea posible;
+4. ejecutar el SQL exacto con `supabase db query --linked` y registrar esa misma
+   versión/nombre en `supabase_migrations.schema_migrations` dentro del mismo
+   cambio operativo;
+5. volver a leer el objeto afectado y el ledger vivo;
+6. correr `npm run gen-types`, `npm run type-check` y
+   `npm run check:migrations`.
+
+La fotografía de divergencias y sus hashes está en
+`docs/migration-ledger-audit-2026-09-03.md`. No renombrar, borrar ni reaplicar una
+migración histórica para que la lista se vea alineada.
 
 ### Edge Functions
 
@@ -89,11 +102,9 @@ src/
   lib/             # DB wrapper (db.ts), supabase client
 supabase/
   functions/       # Edge Functions (Deno)
-  migrations/      # SQL migrations. NO usar `supabase db push`: se aplican con
-                   # `supabase db query --linked` y la version se registra a
-                   # mano en `supabase_migrations.schema_migrations`. Por eso el
-                   # archivo puede quedar desfasado del estado real: ante la
-                   # duda, consultar la base viva y no el repo.
+  migrations/      # SQL migrations. Seguir el flujo canónico documentado arriba;
+                   # ante la duda, consultar la base viva y no inferir el estado
+                   # productivo desde nombres locales.
 ```
 
 ### Convenciones

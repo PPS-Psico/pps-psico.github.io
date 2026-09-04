@@ -71,3 +71,14 @@ CI ejecuta el chequeo liviano `npm run check:migrations`. El replay completo que
 
 Después de aplicarlas se regeneró `src/types/supabase.ts`. El contrato
 `supabase/tests/moodle_v2_schema_contract.sql` pasó contra el schema productivo.
+
+## Auditoría posterior · 3 de septiembre de 2026
+
+El historial siguió creciendo y volvió a mostrar drift de timestamps y nombres.
+La fotografía completa, generada contra el ledger vivo sin ejecutar DDL ni DML,
+está en [migration-ledger-audit-2026-09-03.md](./migration-ledger-audit-2026-09-03.md).
+
+Esta actualización no invalida la evidencia del 1 de agosto: la conserva como
+cierre fechado de aquel alcance. Para trabajo nuevo prevalece la auditoría más
+reciente y el protocolo de `AGENTS.md`; los conteos de esta página no deben
+interpretarse como estado permanente del proyecto.

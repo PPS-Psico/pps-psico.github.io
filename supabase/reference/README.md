@@ -8,7 +8,7 @@ Esta carpeta contiene evidencia y SQL para auditoría/replay local. **Nada bajo 
 - `bootstrap/platform/supabase_platform_compat.sql`: compatibilidad local de Auth, Storage y `pg_trgm` para la imagen PostgreSQL cruda.
 - `bootstrap/overlays/`: 20 objetos cronológicos comprobados que existen en producción pero fueron creados fuera del ledger.
 
-El harness intercala overlays por timestamp, pero registra exclusivamente las 111 entradas de `supabase/migrations/` en `supabase_migrations.schema_migrations`. Los overlays son schema-only: no copian PII, seeds ni datos históricos.
+El harness intercala overlays por timestamp, pero registra exclusivamente los archivos de `supabase/migrations/` incluidos en el replay dentro de `supabase_migrations.schema_migrations`. Los overlays son schema-only: no copian PII, seeds ni datos históricos.
 
 ## Variantes legacy
 
@@ -19,7 +19,7 @@ El harness intercala overlays por timestamp, pero registra exclusivamente las 11
 
 ## Reglas
 
-- `supabase/migrations/` contiene únicamente las 111 migraciones remotas canónicas con nombre `YYYYMMDDHHMMSS_nombre.sql`.
+- `supabase/migrations/` debe contener únicamente migraciones remotas canónicas con nombre `YYYYMMDDHHMMSS_nombre.sql`; el conteo se verifica contra el ledger vivo y no se fija en este documento.
 - Un timestamp no puede repetirse entre migraciones y overlays.
 - No mover archivos de referencia a `supabase/migrations/` ni aplicarlos en Supabase alojado.
 - Cambios nuevos de producción requieren una migración nueva aplicada por MCP, seguida por `npm run gen-types` y `npm run type-check`.
