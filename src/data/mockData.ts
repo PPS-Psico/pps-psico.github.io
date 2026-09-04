@@ -223,6 +223,31 @@ export const MOCK_LANZAMIENTOS = [
     [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 60,
     institucion_id: "inst_2",
   },
+  // Sala de firmas: cerrada y por empezar.
+  //
+  // Las fechas van RELATIVAS a hoy, no con `getYearDate(mes)`. Los otros
+  // lanzamientos usan meses fijos del año corriente, así que su ubicación en el
+  // pipeline depende de en qué mes se mire: `lanz_2` está en 'Cerrado' pero
+  // arranca en abril y termina en julio, con lo cual desde agosto el calendario
+  // la da por finalizada y el canvas abre la vista de Archivada. Resultado: el
+  // modo de prueba no podía mostrar el paso 3 en ninguna época del año. Con el
+  // inicio a un mes vista, esta cae siempre en la ventana entre el cierre de la
+  // mesa y el comienzo, que es exactamente donde vive la sala de firmas.
+  {
+    id: "lanz_5",
+    created_at: getDate(0),
+    [FIELD_NOMBRE_PPS_LANZAMIENTOS]: "Hospital Álvarez - Interconsulta",
+    [FIELD_FECHA_INICIO_LANZAMIENTOS]: getDate(1),
+    [FIELD_FECHA_FIN_LANZAMIENTOS]: getDate(4),
+    [FIELD_ORIENTACION_LANZAMIENTOS]: "Clínica",
+    [FIELD_CUPOS_DISPONIBLES_LANZAMIENTOS]: 4,
+    [FIELD_ESTADO_CONVOCATORIA_LANZAMIENTOS]: "Cerrado",
+    [FIELD_ESTADO_GESTION_LANZAMIENTOS]: "Relanzamiento Confirmado",
+    [FIELD_HORARIO_SELECCIONADO_LANZAMIENTOS]: "Jueves 9 a 13hs",
+    [FIELD_DIRECCION_LANZAMIENTOS]: "Aranguren 2701",
+    [FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]: 70,
+    institucion_id: "inst_1",
+  },
   // Mayo
   {
     id: "lanz_3",
@@ -259,6 +284,35 @@ export const MOCK_LANZAMIENTOS = [
 
 // --- INSCRIPCIONES (CONVOCATORIAS) ---
 export const MOCK_CONVOCATORIAS = [
+  // Inscripciones a Hospital Álvarez (lanz_5) — la sala de firmas.
+  // Dos seleccionados y un inscripto sin elegir, para que el paso 3 tenga algo
+  // que mostrar: lista de pendientes, botón de perdonar la firma y aviso de
+  // notificaciones sin enviar.
+  {
+    id: "conv_6",
+    created_at: getDate(0),
+    [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: "lanz_5",
+    [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: "st_1",
+    [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Seleccionado",
+    [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: "Jueves 9 a 13hs",
+  },
+  {
+    id: "conv_7",
+    created_at: getDate(0),
+    [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: "lanz_5",
+    [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: "st_2",
+    [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Seleccionado",
+    [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: "Jueves 9 a 13hs",
+  },
+  {
+    id: "conv_8",
+    created_at: getDate(0),
+    [FIELD_LANZAMIENTO_VINCULADO_CONVOCATORIAS]: "lanz_5",
+    [FIELD_ESTUDIANTE_INSCRIPTO_CONVOCATORIAS]: "st_3",
+    [FIELD_ESTADO_INSCRIPCION_CONVOCATORIAS]: "Inscripto",
+    [FIELD_HORARIO_FORMULA_CONVOCATORIAS]: "Jueves 9 a 13hs",
+  },
+
   // Inscripciones a Garrahan (lanz_1)
   {
     id: "conv_1",

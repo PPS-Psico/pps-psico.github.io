@@ -8,7 +8,7 @@
  * se cierra la mesa.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import {
   FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS,
   FIELD_FECHA_INICIO_LANZAMIENTOS,
@@ -19,6 +19,7 @@ import { invalidateLaunchData, launchKeys } from "../../../lib/launchQueryKeys";
 import { eximirConsentimiento, revertirExencionConsentimiento } from "../../../services";
 import { useModal } from "../../../contexts/ModalContext";
 import { supabase } from "../../../lib/supabaseClient";
+import { mockDb } from "../../../services/mockDb";
 import { classifyDbError } from "../../../lib/dbError";
 import type { LanzamientoPPS } from "../../../types";
 import {
@@ -53,6 +54,13 @@ interface ConfirmacionViewProps {
   } | null;
   isClosingList?: boolean;
   isSendingFinalReminder?: boolean;
+  /**
+   * En el modo de prueba los ids son de fixture ("lanz_5", "st_1"), no uuids.
+   * Sin esto las consultas a `compromisos_pps` y `estudiantes` fallaban al
+   * castear y la vista mostraba el cartel de error: el paso 3 era inalcanzable
+   * desde /testing.
+   */
+  isTestingMode?: boolean;
   finalReminderFeedback?: {
     tone: "ok" | "warn";
     title: string;
@@ -117,6 +125,7 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   isClosingList = false,
   isSendingFinalReminder = false,
   finalReminderFeedback = null,
+  isTestingMode = false,
 }) => {
   const { openEdit, modal: editModal } = useLaunchEditor(launch);
   const { showModal } = useModal();
@@ -130,7 +139,7 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
     | null;
   const consentimientoRequerido = launch[FIELD_CONSENTIMIENTO_REQUERIDO_LANZAMIENTOS] !== false;
 
-  const rosterQuery = useLaunchRoster(launch.id);
+  const rosterQuery = useLaunchRoster(launch.id, isTestingMode);
   const { data: roster = [] } = rosterQuery;
   const selectedRoster = useMemo(
     () =>
@@ -143,7 +152,10 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   );
 
   const compromisosQuery = useQuery({
-    queryKey: launchKeys.compromisos(launch.id),
+    queryKey: [...launchKeys.compromisos(launch.id), isTestingMode ? "testing" : "live"],
+    // Sin firmas de mentira: en el modo de prueba todos los seleccionados
+    // aparecen como pendientes, que es el estado interesante de esta pantalla.
+    enabled: !isTestingMode,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("compromisos_pps")
@@ -166,8 +178,8 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
   const studentInfoQuery = useQuery<
     Record<string, { nombre: string | null; telefono: string | null; correo: string | null }>
   >({
-    queryKey: ["seleccionadosInfo", studentIds.join(",")],
-    enabled: studentIds.length > 0,
+    queryKey: ["seleccionadosInfo", studentIds.join(","), isTestingMode ? "testing" : "live"],
+    enabled: studentIds.length > 0 && !isTestingMode,
     queryFn: async () => {
       if (studentIds.length === 0) return {};
       const { data, error } = await supabase
@@ -187,7 +199,40 @@ const ConfirmacionView: React.FC<ConfirmacionViewProps> = ({
       );
     },
   });
-  const studentInfo = useMemo(() => studentInfoQuery.data || {}, [studentInfoQuery.data]);
+  const liveStudentInfo = useMemo(() => studentInfoQuery.data || {}, [studentInfoQuery.data]);
+  const [mockStudentInfo, setMockStudentInfo] = useState<
+    Record<string, { nombre: string | null; telefono: string | null; correo: string | null }>
+  >({});
+
+  // Los nombres del modo de prueba salen del mismo fixture que el roster, para
+  // que la sala se lea como la real y no como una lista de "Sin nombre".
+  useEffect(() => {
+    if (!isTestingMode || studentIds.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const rows = (await mockDb.getAll("estudiantes")) as Record<string, unknown>[];
+      if (cancelled) return;
+      setMockStudentInfo(
+        Object.fromEntries(
+          rows
+            .filter((row) => studentIds.includes(String(row.id)))
+            .map((row) => [
+              String(row.id),
+              {
+                nombre: (row.nombre as string | null) ?? null,
+                telefono: (row.telefono as string | null) ?? null,
+                correo: (row.correo as string | null) ?? null,
+              },
+            ])
+        )
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTestingMode, studentIds]);
+
+  const studentInfo = isTestingMode ? mockStudentInfo : liveStudentInfo;
 
   const compromisoByConvocatoria = useMemo(
     () =>

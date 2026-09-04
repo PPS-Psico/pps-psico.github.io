@@ -962,6 +962,7 @@ const LanzadorView: React.FC<LanzadorViewProps> = ({ isTestingMode = false }) =>
           <div className="lv4-canvas">
             <ConfirmacionView
               launch={selectedLaunch}
+              isTestingMode={isTestingMode}
               isClosingList={closeInstitutionalListMutation.isPending}
               isSendingFinalReminder={
                 finalReminderMutation.isPending &&
