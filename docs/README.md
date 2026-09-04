@@ -7,12 +7,13 @@ Este directorio concentra documentacion vigente y util para operar o evolucionar
 - [phase-0-baseline.md](./phase-0-baseline.md): baseline verificable y orden de ejecución de la Fase 0.
 - [architecture-current.md](./architecture-current.md): foto tecnica actual del sistema.
 - [internal-professionalization-plan.md](./internal-professionalization-plan.md): roadmap interno y criterios de prioridad.
+- [modernization-execution-plan-2026-09.md](./modernization-execution-plan-2026-09.md): plan operativo, gates, métricas y estado del saneamiento técnico iniciado en septiembre de 2026.
 - [moodle-task-automation-v2-plan.md](./moodle-task-automation-v2-plan.md): plan estructural para automatizar tareas e informes PPS, convivencia legacy 2026 y corte `dedicated` 2027.
 - [moodle-v2/contracts.md](./moodle-v2/contracts.md): contrato productivo de tablas, RPC, seguridad, estados y límites actuales.
 - [moodle-v2/workboard.md](./moodle-v2/workboard.md): avance verificable y pendientes reales por paquete de trabajo.
 - [moodle-task-automation-runbook.md](./moodle-task-automation-runbook.md): operación, recuperación, validación y rollback del flujo Moodle v2.
 - [analytics/README.md](./analytics/README.md): métricas, calidad de datos y plan de analítica confiable.
-- [migration-history-reconciliation.md](./migration-history-reconciliation.md): replay local y reconciliación de las 111 migraciones productivas.
+- [migration-history-reconciliation.md](./migration-history-reconciliation.md): replay local y evidencia fechada de reconciliación del historial productivo.
 - [visual-baseline.md](./visual-baseline.md): matriz y capturas previas al rediseño, aisladas de producción.
 - [criterio-metricas-ingresantes.md](./criterio-metricas-ingresantes.md):
   definiciones vigentes de matrícula administrativa, cuentas, activación,

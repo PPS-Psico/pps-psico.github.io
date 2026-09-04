@@ -1588,3 +1588,7 @@ La numeración vigente continúa desde la Fase 0 cerrada en la sección anterior
 - evidencia: capturas aisladas del Dashboard y del modal de rechazo en Solicitudes, ambas con `mockDb` y producción bloqueada;
 - límites: se excluyen modificadores AI/WA/mail, formularios ajenos al corte, icon-only, elementos no-button, Atlas, estudiante y todo el Lanzador `.lv4-*`;
 - documento de ejecución: `docs/phase-1d-dashboard-actions.md`.
+
+## 16. Track transversal de modernización — septiembre de 2026
+
+El saneamiento de configuración, rendimiento percibido, código muerto, artefactos y modularidad quedó cerrado en `docs/modernization-execution-plan-2026-09.md`. Ese workboard conserva los gates, métricas, rollback, commits y deuda documentada sin reemplazar los contratos de las fases visuales ni los historiales fechados de Supabase.
