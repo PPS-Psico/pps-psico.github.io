@@ -217,8 +217,12 @@ function isDelivered(delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): 
     return true;
   }
   if (delivery.task?.informeSubido) return true;
-  const note = delivery.task?.nota?.trim().toLocaleLowerCase("es") ?? "";
-  if (note && note !== "sin calificar" && note !== "no entregado") return true;
+  // Antes alcanzaba con que la práctica tuviera nota para darla por entregada.
+  // Esa inferencia venía de cuando las notas se cargaban a mano; hoy la nota
+  // sale de la corrección del docente en Moodle. Manteniéndola, una práctica
+  // con nota vieja y sin ninguna lectura aparecía en "Ya entregadas" junto al
+  // cartel "Sin entrega detectada", contradiciéndose en la misma fila.
+  //
   // `delivery.task` sólo existe cuando hay una tarea de Moodle vinculada. Una
   // actividad calificada a mano y sin esa tarea (ver deliveryGuide.ts) llega
   // acá con `task` null; sin este chequeo quedaba "pendiente" para siempre.
@@ -271,10 +275,17 @@ function compactStatus(
   };
 }
 
-function manualGrade(delivery: GuidedDelivery): string | null {
-  const note = delivery.task?.nota?.trim();
-  if (!note || /sin calificar|no entregado|entregado/i.test(note)) return null;
-  return note;
+/**
+ * Qué dice la fila sobre la entrega. Sale sólo de lo que Moodle vio: si no hay
+ * lectura, se dice que no la hay en vez de afirmar una entrega que nadie
+ * verificó.
+ */
+function deliveredSummary(snapshot?: MoodleGradeSnapshot): string {
+  if (snapshot?.task_status === "graded") return "Calificada";
+  if (snapshot && (snapshot.submitted || snapshot.task_status === "submitted")) {
+    return "Entregado";
+  }
+  return "Sin registro en Campus";
 }
 
 function PendingDeliveryCard({
@@ -493,12 +504,15 @@ function DeliveredRow({
     : null;
   const status = compactStatus(delivery, snapshot);
   const presentation = deliveryPresentation(delivery, snapshot);
+  // Sólo la fecha que Moodle registró. Antes caía a `fechaEntregaInforme`, que
+  // es el plazo cargado al lanzar la convocatoria y no cuándo entregó el
+  // alumno: se mostraba un vencimiento administrativo como si fuera la entrega.
   const submittedAt =
-    formatStoredTime(snapshot?.submitted_at) ??
-    snapshot?.submitted_at_display ??
-    formatStoredTime(delivery.task?.fechaEntregaInforme);
+    formatStoredTime(snapshot?.submitted_at) ?? snapshot?.submitted_at_display ?? null;
   const correctedAt = snapshot?.graded_at_display;
-  const grade = presentation.hasGrade ? presentation.compact : manualGrade(delivery);
+  const deliveredLabel = deliveredSummary(snapshot);
+  const deliveredDetail = correctedAt ? `Corregida ${correctedAt}` : submittedAt;
+  const grade = presentation.hasGrade ? presentation.compact : null;
   const areaName = cleanAreaName(delivery.areaName);
 
   return (
@@ -518,10 +532,8 @@ function DeliveredRow({
         {status.label}
       </span>
       <div className="sd-ledger__submitted">
-        <strong>Entregado</strong>
-        <small>
-          {correctedAt ? `Corregida ${correctedAt}` : (submittedAt ?? "Fecha no disponible")}
-        </small>
+        <strong>{deliveredLabel}</strong>
+        {deliveredDetail ? <small>{deliveredDetail}</small> : null}
       </div>
       <div className="sd-ledger__grade" aria-label={grade ? `Nota ${grade}` : "Sin nota publicada"}>
         {grade ?? "—"}
