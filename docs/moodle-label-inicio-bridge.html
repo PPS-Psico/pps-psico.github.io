@@ -604,23 +604,156 @@
         });
     }
 
-    function fetchTasks(cmids) {
-      var results = new Array(cmids.length);
-      var cursor = 0;
+    // El indice de tareas del curso lista TODAS las tareas -incluidas las
+    // ocultas- con el estado de entrega y la nota del propio alumno, en una
+    // sola pagina. Cada fila trae el cmid como atributo y cada celda se
+    // identifica por data-mdl-overview-item, asi que no hay que adivinar nada.
+    //
+    // Ojo con dos cosas que el DOM real desmintio: una tarea calificada sigue
+    // diciendo "Enviado para calificar" en el estado -la senal de que hay nota
+    // es la celda de nota- y la clave de esa celda viene traducida
+    // ("Calificacion"), por eso se la busca por nombre y por descarte.
+    var OVERVIEW_ITEMS = ["name", "duedate", "completion", "submissionstatus"];
 
-      function worker() {
-        var index = cursor++;
-        if (index >= cmids.length) return Promise.resolve();
-        return fetchTask(cmids[index]).then(function (result) {
-          results[index] = result;
-          return worker();
+    function overviewCellValue(row, item) {
+      var cell = row.querySelector('td[data-mdl-overview-item="' + item + '"]');
+      if (!cell) return null;
+      var raw = cell.getAttribute("data-mdl-overview-value");
+      return raw !== null && raw !== "" ? raw : null;
+    }
+
+    function overviewGradeCell(row) {
+      var cells = Array.prototype.slice.call(
+        row.querySelectorAll("td[data-mdl-overview-item]")
+      );
+      var byName = null;
+      var byRest = null;
+      cells.forEach(function (cell) {
+        var item = cell.getAttribute("data-mdl-overview-item") || "";
+        if (!byName && /calificacion|grade|nota/.test(normalizeText(item))) byName = cell;
+        if (!byRest && OVERVIEW_ITEMS.indexOf(item) === -1) byRest = cell;
+      });
+      return byName || byRest;
+    }
+
+    function parseCourseOverviewDoc(doc) {
+      var byCmid = {};
+      var rows = doc.querySelectorAll("tr[data-mdl-overview-cmid]");
+      Array.prototype.forEach.call(rows, function (row) {
+        var rawCmid = row.getAttribute("data-mdl-overview-cmid");
+        if (!rawCmid || !/^\d+$/.test(rawCmid)) return;
+        var cmid = Number(rawCmid);
+        if (!Number.isSafeInteger(cmid) || cmid <= 0) return;
+
+        var gradeCell = overviewGradeCell(row);
+        var rawGrade = gradeCell ? gradeCell.getAttribute("data-mdl-overview-value") : null;
+        var hasGrade = rawGrade !== null && String(rawGrade).trim() !== "";
+        var gradeValue = hasGrade ? Number(String(rawGrade).replace(",", ".")) : null;
+        if (gradeValue !== null && !isFinite(gradeValue)) gradeValue = null;
+
+        var estado = normalizeText(overviewCellValue(row, "submissionstatus") || "");
+        var status;
+        if (gradeValue !== null) status = "graded";
+        else if (!estado || estado === "-") status = "unknown";
+        else if (estado.indexOf("no entregado") > -1 || estado.indexOf("sin entrega") > -1)
+          status = "not_submitted";
+        else if (estado.indexOf("enviado") > -1 || estado.indexOf("entregado") > -1)
+          status = "submitted";
+        else status = "unknown";
+
+        byCmid[cmid] = {
+          cmid: cmid,
+          status: status,
+          gradeValue: gradeValue,
+          gradeDisplay: gradeCell
+            ? (gradeCell.textContent || "").replace(/\s+/g, " ").trim() || null
+            : null,
+        };
+      });
+      return byCmid;
+    }
+
+    function fetchCourseOverview() {
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () {
+        controller.abort();
+      }, FETCH_TIMEOUT_MS);
+
+      return fetch(
+        "/course/overview.php?id=" + encodeURIComponent(COURSE_ID) + "&expand%5B%5D=assign",
+        {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          redirect: "follow",
+          signal: controller.signal,
+          headers: { Accept: "text/html" },
+        }
+      )
+        .then(function (response) {
+          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          return response.text();
+        })
+        .then(function (html) {
+          if (!html) return null;
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          var parsed = parseCourseOverviewDoc(doc);
+          // Sin filas no hay indice utilizable: mejor caer al camino de siempre
+          // que dar por "no entregado" lo que en realidad no pudimos leer.
+          return Object.keys(parsed).length > 0 ? parsed : null;
+        })
+        .catch(function () {
+          return null;
+        })
+        .finally(function () {
+          window.clearTimeout(timer);
         });
-      }
+    }
 
-      var workers = [];
-      for (var i = 0; i < Math.min(3, cmids.length); i += 1) workers.push(worker());
-      return Promise.all(workers).then(function () {
-        return results;
+    function overviewNotSubmitted(cmid) {
+      return {
+        cmid: cmid,
+        status: "not_submitted",
+        submitted: false,
+        gradeValue: null,
+        gradeMax: null,
+        gradeDisplay: null,
+        gradedAtDisplay: null,
+        submittedAt: null,
+        submittedAtDisplay: null,
+        submissionFiles: null,
+      };
+    }
+
+    function fetchTasks(cmids) {
+      // El indice se lee una sola vez y sirve para descartar: la pagina de
+      // detalle -que es la que trae archivos y fechas- se pide solo para las
+      // tareas donde el indice vio algo. En un alumno tipico eso es una request
+      // en lugar de una por tarea vinculada.
+      return fetchCourseOverview().then(function (overview) {
+        var results = new Array(cmids.length);
+        var cursor = 0;
+
+        function worker() {
+          var index = cursor++;
+          if (index >= cmids.length) return Promise.resolve();
+          var cmid = cmids[index];
+          var seen = overview ? overview[cmid] : null;
+          if (seen && seen.status === "not_submitted") {
+            results[index] = overviewNotSubmitted(cmid);
+            return worker();
+          }
+          return fetchTask(cmid).then(function (result) {
+            results[index] = result;
+            return worker();
+          });
+        }
+
+        var workers = [];
+        for (var i = 0; i < Math.min(3, cmids.length); i += 1) workers.push(worker());
+        return Promise.all(workers).then(function () {
+          return results;
+        });
       });
     }
 
