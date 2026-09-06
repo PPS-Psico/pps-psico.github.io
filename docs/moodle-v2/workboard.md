@@ -25,6 +25,15 @@ proyector académico. No hay nota borrada por una ausencia observada.
 Los estados desconocidos producen cobertura parcial; no se inventa una ausencia.
 **Esta extensión necesita instalación y relectura real en Campus.**
 
+`20260906142427_moodle_expected_negative_observations` quedó aplicada con SQL
+exacto y ledger en la misma transacción, después de ensayo con `ROLLBACK` y
+contrato PostgreSQL 17 aislado. La captura negativa exige evidencia previa de
+esa persona/tarea o un vínculo confirmado de su práctica (incluido el fallback
+confirmado de lanzamiento por orientación). No convierte el padrón completo del
+curso en obligaciones para todas las tareas. La captura positiva sin vínculo
+continúa habilitada. Se verificaron permisos privados, aislamiento por alumno y
+curso, rechazo de vínculos sin confirmar y conservación de la nota académica.
+
 La PR #21 (`d94c8cb`) y el despliegue `34038086581` terminaron correctamente:
 arranque cancelable sin bloqueo, espera restante del throttle y reanudación
 aunque la cola devuelva los mismos datos. Seis regresiones nuevas, TypeScript,

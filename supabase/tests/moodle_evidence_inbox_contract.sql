@@ -58,6 +58,16 @@ begin
   v_result:=public.moodle_evidence_inbox_v1(0,30);
   if v_result->>'mode'<>'shadow' or jsonb_array_length(v_result->'cases')=0 then raise exception 'Inbox unavailable'; end if;
   -- A negative row is evidence about this task, never a revocation of a grade.
+  if not private.moodle_capture_negative_allowed_v1(v_student,3615,9999991,99999991) then raise exception 'Existing evidence scope lost'; end if;
+  if private.moodle_capture_negative_allowed_v1(v_student,3615,9999992,99999991) then raise exception 'Unrelated task treated as obligation'; end if;
+  insert into public.aula_entregas(id,course_id,moodle_id) values(9999992,3615,'9999992');
+  insert into public.practica_moodle_tareas(id,practica_id,aula_entrega_id,validation_status) values(9999992,v_p2,9999992,'confirmed');
+  if not private.moodle_capture_negative_allowed_v1(v_student,3615,9999992,99999991) then raise exception 'Confirmed negative scope missing'; end if;
+  if private.moodle_capture_negative_allowed_v1(v_other,3615,9999992,99999992) then raise exception 'Other student inherited obligation'; end if;
+  if private.moodle_capture_negative_allowed_v1(v_student,9999,9999992,99999991) then raise exception 'Other course inherited obligation'; end if;
+  update public.practica_moodle_tareas set validation_status='pending' where id=9999992;
+  if private.moodle_capture_negative_allowed_v1(v_student,3615,9999992,99999991) then raise exception 'Unconfirmed link created obligation'; end if;
+  if has_function_privilege('authenticated','private.moodle_capture_negative_allowed_v1(uuid,bigint,bigint,bigint)','EXECUTE') then raise exception 'Negative scope helper leaked'; end if;
   update public.practicas set nota='7' where id=v_p2;
   perform private.capture_moodle_evidence_v1(gen_random_uuid(),'jefe',v_staff,3615,9999991,99999991,v_student,now(),
     private.moodle_evidence_content_v1('{"status":"not_submitted","submitted":false,"gradeValue":null,"gradeMax":null,"submittedAt":null}'::jsonb));
