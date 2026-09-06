@@ -157,8 +157,8 @@ const jefeSubmissionRowSchema = z
     moodleUserId: z.number().int().positive(),
     moodleUsername: z.string().regex(/^\d{6,12}$/),
     email: z.string().trim().email().max(320).nullable(),
-    status: z.enum(["submitted", "graded"]),
-    submitted: z.literal(true),
+    status: z.enum(["submitted", "graded", "not_submitted"]),
+    submitted: z.boolean(),
     gradeValue: z.number().finite().nonnegative().nullable(),
     gradeMax: z.number().finite().positive().nullable(),
     gradeDisplay: z.string().trim().max(160).nullable(),
@@ -171,6 +171,15 @@ const jefeSubmissionRowSchema = z
     submissionFiles: z.array(z.string().trim().min(1).max(180)).max(20).nullable().optional(),
   })
   .superRefine((row, ctx) => {
+    if (row.submitted !== (row.status !== "not_submitted")) {
+      ctx.addIssue({ code: "custom", message: "Estado de entrega contradictorio." });
+    }
+    if (
+      row.status === "not_submitted" &&
+      (row.submittedAt !== null || row.submittedAtDisplay !== null)
+    ) {
+      ctx.addIssue({ code: "custom", message: "Una lectura negativa no tiene fecha de entrega." });
+    }
     if (row.status === "graded") {
       if (row.gradeValue === null || row.gradeMax === null || row.gradeValue > row.gradeMax) {
         ctx.addIssue({ code: "custom", message: "La calificación Moodle no es válida." });
@@ -186,7 +195,12 @@ const jefeTaskScanSchema = z.object({
   cmid: z.number().int().positive(),
   status: z.enum(["ok", "no_access", "parse_error"]),
   errorCode: z.string().trim().max(80).nullable(),
-  rows: z.array(jefeSubmissionRowSchema).max(500),
+  // Keep the v1 positive rows intact. Older clients ignore the additive list.
+  rows: z.array(jefeSubmissionRowSchema.refine((row) => row.status !== "not_submitted")).max(500),
+  negativeRows: z
+    .array(jefeSubmissionRowSchema.refine((row) => row.status === "not_submitted"))
+    .max(500)
+    .optional(),
 });
 
 export const jefeMoodleTasksResultSchema = z
@@ -202,11 +216,22 @@ export const jefeMoodleTasksResultSchema = z
   })
   .superRefine((result, ctx) => {
     const totalRows = result.tasks.reduce((total, task) => total + task.rows.length, 0);
+    if (new Set(result.tasks.map((task) => task.cmid)).size !== result.tasks.length) {
+      ctx.addIssue({ code: "custom", message: "La respuesta repite una tarea." });
+    }
     if (totalRows > 1000) {
       ctx.addIssue({ code: "custom", message: "La respuesta Moodle excede el límite de filas." });
     }
     result.tasks.forEach((task, index) => {
-      if (task.status !== "ok" && task.rows.length > 0) {
+      const count = task.rows.length + (task.negativeRows?.length ?? 0);
+      if (count > 500) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["tasks", index],
+          message: "Demasiadas filas por tarea.",
+        });
+      }
+      if (task.status !== "ok" && count > 0) {
         ctx.addIssue({
           code: "custom",
           path: ["tasks", index, "rows"],

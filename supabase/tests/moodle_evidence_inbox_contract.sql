@@ -57,6 +57,12 @@ begin
   if (select count(*) from private.moodle_evidence_versions where case_id=v_case and legacy_observation_id is not null)<>2 then raise exception 'Backfill lineage lost'; end if;
   v_result:=public.moodle_evidence_inbox_v1(0,30);
   if v_result->>'mode'<>'shadow' or jsonb_array_length(v_result->'cases')=0 then raise exception 'Inbox unavailable'; end if;
+  -- A negative row is evidence about this task, never a revocation of a grade.
+  update public.practicas set nota='7' where id=v_p2;
+  perform private.capture_moodle_evidence_v1(gen_random_uuid(),'jefe',v_staff,3615,9999991,99999991,v_student,now(),
+    private.moodle_evidence_content_v1('{"status":"not_submitted","submitted":false,"gradeValue":null,"gradeMax":null,"submittedAt":null}'::jsonb));
+  if not exists(select 1 from private.moodle_evidence_versions where case_id=v_case and content->>'status'='not_submitted') then raise exception 'Negative observation lost'; end if;
+  if (select nota from public.practicas where id=v_p2) is distinct from '7' then raise exception 'Negative observation changed grade'; end if;
   if has_table_privilege('authenticated','private.moodle_evidence_versions','UPDATE')
     or has_function_privilege('anon','public.moodle_evidence_inbox_v1(integer,integer)','EXECUTE')
     or has_function_privilege('authenticated','private.capture_moodle_evidence_v1(uuid,text,uuid,bigint,bigint,bigint,uuid,timestamptz,jsonb,uuid,uuid)','EXECUTE') then

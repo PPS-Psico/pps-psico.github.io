@@ -12,9 +12,12 @@ function loadBridge() {
   window.eval(source.replace(/\}\)\(\);\s*$/, "window.__jefePagination = fetchJefeTask; })();"));
   return (
     window as unknown as {
-      __jefePagination: (
-        cmid: number
-      ) => Promise<{ status: string; errorCode: string | null; rows: unknown[] }>;
+      __jefePagination: (cmid: number) => Promise<{
+        status: string;
+        errorCode: string | null;
+        rows: unknown[];
+        negativeRows: unknown[];
+      }>;
     }
   ).__jefePagination;
 }
@@ -37,6 +40,7 @@ describe("paginación real del barrido docente", () => {
     const result = await loadBridge()(55);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.rows).toHaveLength(2);
+    expect(result.negativeRows).toHaveLength(98);
     expect(result.errorCode).toBeNull();
   });
   it("conserva lo leído y marca parcial cuando falla la siguiente página", async () => {
@@ -49,5 +53,49 @@ describe("paginación real del barrido docente", () => {
     const result = await loadBridge()(55);
     expect(result.rows).toHaveLength(1);
     expect(result.errorCode).toBe("partial_page_unavailable");
+  });
+  it("conserva lecturas negativas incluso si no hubo entregas antes de un fallo", async () => {
+    jest.useFakeTimers();
+    window.fetch = jest.fn(async (url: string) => ({
+      ok: !url.includes("&page=1"),
+      url,
+      text: async () => table(100, -1),
+    })) as unknown as typeof fetch;
+    const result = await loadBridge()(55);
+    expect(result.rows).toHaveLength(0);
+    expect(result.negativeRows).toHaveLength(100);
+    expect(result.negativeRows[0]).toMatchObject({
+      status: "not_submitted",
+      submitted: false,
+      submittedAt: null,
+    });
+    expect(result.errorCode).toBe("partial_page_unavailable");
+  });
+  it.each(["No entregado", "Draft (not submitted)"])(
+    "no convierte %s en una entrega",
+    async (status) => {
+      jest.useFakeTimers();
+      window.fetch = jest.fn(async (url: string) => ({
+        ok: true,
+        url,
+        text: async () => table(1, -1).replace("Sin entrega", status),
+      })) as unknown as typeof fetch;
+      const result = await loadBridge()(55);
+      expect(result.rows).toHaveLength(0);
+      expect(result.negativeRows).toHaveLength(1);
+      expect(result.errorCode).toBeNull();
+    }
+  );
+  it("un estado desconocido produce cobertura parcial, no ausencia inventada", async () => {
+    jest.useFakeTimers();
+    window.fetch = jest.fn(async (url: string) => ({
+      ok: true,
+      url,
+      text: async () => table(1, -1).replace("Sin entrega", "Estado nuevo desconocido"),
+    })) as unknown as typeof fetch;
+    const result = await loadBridge()(55);
+    expect(result.rows).toHaveLength(0);
+    expect(result.negativeRows).toHaveLength(0);
+    expect(result.errorCode).toBe("partial_unknown_submission_status");
   });
 });

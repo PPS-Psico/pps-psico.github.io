@@ -94,12 +94,23 @@ export const syncJefeMoodleReports = async (
     p_tasks: result.tasks,
   };
   // A separate committed request preserves even unmatched rows if attribution fails.
-  const evidence = await supabase.rpc("capture_jefe_moodle_evidence_v1", {
-    ...commonArgs,
-    p_preview_key: previewKey ?? undefined,
-  });
-  if (evidence.error) throw evidence.error;
-  const receipt = evidenceReceiptSchema.parse(evidence.data);
+  // Full rosters can exceed 1,000 rows across four tasks. Commit each task's
+  // positive and negative evidence together within the SQL limit of 500.
+  const evidenceBatches = result.tasks.some((task) => task.negativeRows !== undefined)
+    ? result.tasks.map((task) => [{ ...task, rows: [...task.rows, ...(task.negativeRows ?? [])] }])
+    : [result.tasks];
+  const receipt = { accepted: 0, rejected: 0 };
+  for (const tasks of evidenceBatches) {
+    const evidence = await supabase.rpc("capture_jefe_moodle_evidence_v1", {
+      ...commonArgs,
+      p_tasks: tasks,
+      p_preview_key: previewKey ?? undefined,
+    });
+    if (evidence.error) throw evidence.error;
+    const batchReceipt = evidenceReceiptSchema.parse(evidence.data);
+    receipt.accepted += batchReceipt.accepted;
+    receipt.rejected += batchReceipt.rejected;
+  }
   if (receipt.rejected > 0)
     throw new Error("Se conservó evidencia parcial; algunas filas requieren relectura.");
   const legacyTasks = new Set(
@@ -108,7 +119,9 @@ export const syncJefeMoodleReports = async (
   const deferred = result.tasks
     .filter((task) => !legacyTasks.has(task.cmid))
     .reduce((count, task) => count + task.rows.length, 0);
-  commonArgs.p_tasks = result.tasks.filter((task) => legacyTasks.has(task.cmid));
+  commonArgs.p_tasks = result.tasks
+    .filter((task) => legacyTasks.has(task.cmid))
+    .map(({ negativeRows: _negativeRows, ...task }) => task);
   if (commonArgs.p_tasks.length === 0)
     return {
       success: true,
