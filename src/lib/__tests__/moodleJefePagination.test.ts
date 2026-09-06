@@ -54,6 +54,17 @@ describe("paginación real del barrido docente", () => {
     expect(result.rows).toHaveLength(1);
     expect(result.errorCode).toBe("partial_page_unavailable");
   });
+  it("termina un padrón de cuatro páginas que supera los antiguos 18 segundos", async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest.fn(async (url: string) => {
+      jest.setSystemTime(Date.now() + 6_000);
+      return { ok: true, url, text: async () => table(url.includes("&page=3") ? 46 : 100, -1) };
+    });
+    window.fetch = fetchMock as unknown as typeof fetch;
+    const result = await loadBridge()(55);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(result.errorCode).toBeNull();
+  });
   it("limpia el filtro persistente Enviada en cada página", async () => {
     jest.useFakeTimers();
     const fetchMock = jest.fn(async (url: string) => {

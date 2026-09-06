@@ -1004,7 +1004,9 @@
       var seen = {};
       var collected = [];
       var negativeCollected = [];
-      var deadline = Date.now() + 18000;
+      // Cuatro páginas para el padrón actual de 346 alumnos. El consumidor
+      // reserva 36 s por tarea y dos trabajadores, más 5 s de margen.
+      var deadline = Date.now() + 36000;
 
       function partial(code) {
         return {

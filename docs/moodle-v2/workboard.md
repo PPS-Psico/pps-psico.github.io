@@ -35,6 +35,13 @@ aunque haya sólo cinco personas. Dos regresiones nuevas verifican ambos casos.
 La relectura con esta versión está en curso; el barrido filtrado anterior no
 certifica cobertura de ausencias.
 
+La medición del padrón completo (100 + 100 + 100 + 46) dio 3.728, 6.548,
+1.974 y 1.765 ms. Con lecturas simultáneas hubo cortes al presupuesto antiguo
+de 18 s. El presupuesto pasa a 36 s por tarea; el panel espera las dos oleadas
+de un lote de cuatro más 5 s de margen (77 s). El timeout de cada página sigue
+siendo 10 s y una interrupción sigue conservando cobertura parcial. Una prueba
+de cuatro páginas a 6 s verifica el caso antes truncado.
+
 `20260906142427_moodle_expected_negative_observations` quedó aplicada con SQL
 exacto y ledger en la misma transacción, después de ensayo con `ROLLBACK` y
 contrato PostgreSQL 17 aislado. La captura negativa exige evidencia previa de
