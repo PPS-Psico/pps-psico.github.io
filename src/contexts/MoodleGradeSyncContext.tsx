@@ -230,13 +230,7 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     } finally {
       syncInFlightRef.current = false;
     }
-  }, [
-    assignments,
-    isInsideParentFrame,
-    isOwnStudentSession,
-    queryClient,
-    studentId,
-  ]);
+  }, [assignments, isInsideParentFrame, isOwnStudentSession, queryClient, studentId]);
 
   // Mientras el alumno mantiene abierto el panel, una corrección docente puede
   // llegar después de la primera lectura. Reintentamos de forma moderada y al
