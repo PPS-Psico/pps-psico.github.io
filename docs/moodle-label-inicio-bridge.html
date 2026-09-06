@@ -171,6 +171,14 @@
     var MAX_TASKS = 20;
     var MAX_JEFE_ROWS = 1000;
     var FETCH_TIMEOUT_MS = 10000;
+    // Presupuesto propio del índice: no consume el tiempo reservado al detalle.
+    var OVERVIEW_TIMEOUT_MS = 4000;
+    var OVERVIEW_CACHE_MS = 30000;
+    var OVERVIEW_BACKOFF_MS = 5 * 60 * 1000;
+    var overviewCache = null;
+    var overviewCacheUntil = 0;
+    var overviewRetryAt = 0;
+    var overviewInFlight = null;
     var f = document.getElementById("pps-aula-frame");
     var embed = document.getElementById("pps-aula-embed");
     if (!f || !embed) return;
@@ -604,23 +612,158 @@
         });
     }
 
-    function fetchTasks(cmids) {
-      var results = new Array(cmids.length);
-      var cursor = 0;
+    // El índice enumera las tareas visibles para esta sesión. Es una ayuda de
+    // lectura, no una prueba de cobertura histórica ni un resolvedor de PPS.
 
-      function worker() {
-        var index = cursor++;
-        if (index >= cmids.length) return Promise.resolve();
-        return fetchTask(cmids[index]).then(function (result) {
-          results[index] = result;
-          return worker();
+    function overviewCellValue(row, item) {
+      var cell = row.querySelector('td[data-mdl-overview-item="' + item + '"]');
+      if (!cell) return null;
+      var raw = cell.getAttribute("data-mdl-overview-value");
+      return raw !== null && raw !== "" ? raw : null;
+    }
+
+    function overviewGradeCell(row) {
+      var cells = Array.prototype.slice.call(row.querySelectorAll("td[data-mdl-overview-item]"));
+      var byName = null;
+      cells.forEach(function (cell) {
+        var item = cell.getAttribute("data-mdl-overview-item") || "";
+        if (!byName && /^(calificacion|grade|nota)$/.test(normalizeText(item))) byName = cell;
+      });
+      return byName;
+    }
+
+    function parseCourseOverviewDoc(doc) {
+      var byCmid = {};
+      var rows = doc.querySelectorAll("tr[data-mdl-overview-cmid]");
+      Array.prototype.forEach.call(rows, function (row) {
+        // La tabla docente contiene agregados, no el estado del alumno.
+        if (!row.querySelector('td[data-mdl-overview-item="submissionstatus"]')) return;
+        var rawCmid = row.getAttribute("data-mdl-overview-cmid");
+        if (!rawCmid || !/^\d+$/.test(rawCmid)) return;
+        var cmid = Number(rawCmid);
+        if (!Number.isSafeInteger(cmid) || cmid <= 0) return;
+
+        var gradeCell = overviewGradeCell(row);
+        var rawGrade = gradeCell ? gradeCell.getAttribute("data-mdl-overview-value") : null;
+        var hasGrade = rawGrade !== null && String(rawGrade).trim() !== "";
+        var gradeValue = hasGrade ? Number(String(rawGrade).replace(",", ".")) : null;
+        if (gradeValue !== null && !isFinite(gradeValue)) gradeValue = null;
+
+        var estado = normalizeText(overviewCellValue(row, "submissionstatus") || "");
+        var status;
+        if (gradeValue !== null) status = "graded";
+        else if (!estado || estado === "-") status = "unknown";
+        else if (estado.indexOf("no entregado") > -1 || estado.indexOf("sin entrega") > -1)
+          status = "not_submitted";
+        else if (estado.indexOf("enviado") > -1 || estado.indexOf("entregado") > -1)
+          status = "submitted";
+        else status = "unknown";
+
+        byCmid[cmid] = {
+          cmid: cmid,
+          status: status,
+          gradeValue: gradeValue,
+          gradeDisplay: gradeCell
+            ? (gradeCell.textContent || "").replace(/\s+/g, " ").trim() || null
+            : null,
+        };
+      });
+      return byCmid;
+    }
+
+    function fetchCourseOverview() {
+      if (!esEstudiante()) return Promise.resolve(null);
+      if (overviewInFlight) return overviewInFlight;
+      if (Date.now() < overviewCacheUntil) return Promise.resolve(overviewCache);
+      if (Date.now() < overviewRetryAt) return Promise.resolve(null);
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () {
+        controller.abort();
+      }, OVERVIEW_TIMEOUT_MS);
+
+      overviewInFlight = fetch(
+        "/course/overview.php?id=" + encodeURIComponent(COURSE_ID) + "&expand%5B%5D=assign",
+        {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          redirect: "follow",
+          signal: controller.signal,
+          headers: { Accept: "text/html" },
+        }
+      )
+        .then(function (response) {
+          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          return response.text();
+        })
+        .then(function (html) {
+          if (!html) return null;
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          var parsed = parseCourseOverviewDoc(doc);
+          // Sin filas no hay indice utilizable: mejor caer al camino de siempre
+          // que dar por "no entregado" lo que en realidad no pudimos leer.
+          return Object.keys(parsed).length > 0 ? parsed : null;
+        })
+        .catch(function () {
+          return null;
+        })
+        .then(function (result) {
+          overviewCache = result;
+          overviewCacheUntil = result ? Date.now() + OVERVIEW_CACHE_MS : 0;
+          overviewRetryAt = result ? 0 : Date.now() + OVERVIEW_BACKOFF_MS;
+          return result;
+        })
+        .finally(function () {
+          window.clearTimeout(timer);
+          overviewInFlight = null;
         });
-      }
+      return overviewInFlight;
+    }
 
-      var workers = [];
-      for (var i = 0; i < Math.min(3, cmids.length); i += 1) workers.push(worker());
-      return Promise.all(workers).then(function () {
-        return results;
+    function overviewNotSubmitted(cmid) {
+      return {
+        cmid: cmid,
+        status: "not_submitted",
+        submitted: false,
+        gradeValue: null,
+        gradeMax: null,
+        gradeDisplay: null,
+        gradedAtDisplay: null,
+        submittedAt: null,
+        submittedAtDisplay: null,
+        submissionFiles: null,
+      };
+    }
+
+    function fetchTasks(cmids) {
+      // El indice se lee una sola vez y sirve para descartar: la pagina de
+      // detalle -que es la que trae archivos y fechas- se pide solo para las
+      // tareas donde el indice vio algo. En un alumno tipico eso es una request
+      // en lugar de una por tarea vinculada.
+      return fetchCourseOverview().then(function (overview) {
+        var results = new Array(cmids.length);
+        var cursor = 0;
+
+        function worker() {
+          var index = cursor++;
+          if (index >= cmids.length) return Promise.resolve();
+          var cmid = cmids[index];
+          var seen = overview ? overview[cmid] : null;
+          if (seen && seen.status === "not_submitted") {
+            results[index] = overviewNotSubmitted(cmid);
+            return worker();
+          }
+          return fetchTask(cmid).then(function (result) {
+            results[index] = result;
+            return worker();
+          });
+        }
+
+        var workers = [];
+        for (var i = 0; i < Math.min(3, cmids.length); i += 1) workers.push(worker());
+        return Promise.all(workers).then(function () {
+          return results;
+        });
       });
     }
 
@@ -669,6 +812,10 @@
       var emailIndex = findHeaderIndex(headers, ["direccion de correo", "email address"]);
       var statusIndex = findHeaderIndex(headers, ["estado", "status"]);
       var gradeIndex = findHeaderIndex(headers, ["calificacion", "grade"]);
+      var feedbackIndex = findHeaderIndex(headers, [
+        "comentarios de retroalimentacion",
+        "feedback comments",
+      ]);
       var submittedAtIndex = findHeaderIndex(headers, [
         "ultima modificacion (entrega)",
         "last modified (submission)",
@@ -769,6 +916,10 @@
           gradeMax: gradeMax,
           gradeDisplay: gradeDisplay,
           gradedAtDisplay: gradedAtDisplay ? gradedAtDisplay.slice(0, 200) : null,
+          feedbackComment:
+            feedbackIndex >= 0 && cells[feedbackIndex]
+              ? cleanText(cells[feedbackIndex].textContent).slice(0, 2000) || null
+              : null,
           submittedAt: parsedSubmissionDate ? parsedSubmissionDate.iso : null,
           submittedAtDisplay: parsedSubmissionDate ? parsedSubmissionDate.display : null,
           submissionFiles: submissionFiles,
@@ -776,14 +927,25 @@
       });
 
       if (rows.length > 500) return jefeTaskFailure(cmid, "parse_error", "task_row_limit");
-      return { cmid: cmid, status: "ok", errorCode: null, rows: rows };
+      return {
+        cmid: cmid,
+        status: "ok",
+        errorCode: null,
+        rows: rows,
+        pageRowCount: tableRows.filter(function (row) {
+          return row.tagName === "TR";
+        }).length,
+      };
     }
 
-    function fetchJefeGradingPage(cmid, page) {
+    function fetchJefeGradingPage(cmid, page, budgetMs) {
       var controller = new AbortController();
-      var timer = window.setTimeout(function () {
-        controller.abort();
-      }, FETCH_TIMEOUT_MS);
+      var timer = window.setTimeout(
+        function () {
+          controller.abort();
+        },
+        Math.min(FETCH_TIMEOUT_MS, budgetMs || FETCH_TIMEOUT_MS)
+      );
       var url =
         "/mod/assign/view.php?id=" +
         encodeURIComponent(cmid) +
@@ -827,12 +989,18 @@
       var page = 0;
       var seen = {};
       var collected = [];
+      var deadline = Date.now() + 18000;
+
+      function partial(code) {
+        return { cmid: cmid, status: "ok", errorCode: code, rows: collected };
+      }
 
       function step() {
-        return fetchJefeGradingPage(cmid, page).then(function (result) {
+        if (Date.now() >= deadline) return Promise.resolve(partial("partial_time_budget"));
+        return fetchJefeGradingPage(cmid, page, deadline - Date.now()).then(function (result) {
           if (result.status !== "ok") {
-            if (collected.length > 0 && result.errorCode === "grading_page_unavailable") {
-              return { cmid: cmid, status: "ok", errorCode: null, rows: collected };
+            if (collected.length > 0) {
+              return partial("partial_page_unavailable");
             }
             return result;
           }
@@ -843,12 +1011,17 @@
               collected.push(row);
             }
           });
-          if ((result.rows || []).length < JEFE_GRADING_PAGE_SIZE) {
+          if (collected.length > 500) {
+            collected = collected.slice(0, 500);
+            return partial("partial_row_limit");
+          }
+          // Paging depends on ALL table rows, including students without a submission.
+          if ((result.pageRowCount || 0) < JEFE_GRADING_PAGE_SIZE) {
             return { cmid: cmid, status: "ok", errorCode: null, rows: collected };
           }
           page += 1;
           if (page >= JEFE_GRADING_MAX_PAGES) {
-            return { cmid: cmid, status: "ok", errorCode: null, rows: collected };
+            return partial("partial_page_limit");
           }
           return step();
         });
@@ -945,6 +1118,54 @@
       if (event.origin !== PANEL_ORIGIN || event.source !== f.contentWindow) return;
       var data = event.data;
       if (!data) return;
+
+      if (
+        data.type === "PPS_MOODLE_CAPABILITIES_REQUEST" &&
+        data.version === 2 &&
+        data.courseId === COURSE_ID &&
+        typeof data.requestId === "string" &&
+        /^[0-9a-f-]{36}$/i.test(data.requestId)
+      ) {
+        f.contentWindow.postMessage(
+          {
+            type: "PPS_MOODLE_CAPABILITIES_RESULT",
+            version: 2,
+            requestId: data.requestId,
+            courseId: COURSE_ID,
+            discovery: esEstudiante(),
+          },
+          PANEL_ORIGIN
+        );
+        return;
+      }
+
+      if (
+        data.type === "PPS_MOODLE_DISCOVERY_REQUEST" &&
+        data.version === 2 &&
+        data.courseId === COURSE_ID &&
+        typeof data.requestId === "string" &&
+        /^[0-9a-f-]{36}$/i.test(data.requestId)
+      ) {
+        fetchCourseOverview().then(function (overview) {
+          var all = overview ? Object.keys(overview) : [];
+          var positive = all.filter(function (key) {
+            return overview[key].status === "submitted" || overview[key].status === "graded";
+          });
+          f.contentWindow.postMessage(
+            {
+              type: "PPS_MOODLE_DISCOVERY_RESULT",
+              version: 2,
+              requestId: data.requestId,
+              courseId: COURSE_ID,
+              status: overview ? "ok" : "unavailable",
+              cmids: positive.slice(0, 500).map(Number),
+              rowsSeen: all.length,
+            },
+            PANEL_ORIGIN
+          );
+        });
+        return;
+      }
 
       if (data.ppsAula && typeof data.height === "number" && data.height > 200) {
         f.style.height = data.height + 2 + "px";

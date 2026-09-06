@@ -97,10 +97,6 @@ function moodleSnapshotPriority(snapshot: MoodleGradeLike): number {
 export function selectCurrentMoodleSnapshots<
   T extends MoodleGradeLike & { practica_id: string; cmid: number },
 >(practices: Practica[], links: MoodleTaskLink[], snapshots: T[]): Map<string, T> {
-  const snapshotsByKey = new Map<string, T>(
-    snapshots.map((snapshot) => [`${snapshot.practica_id}:${snapshot.cmid}`, snapshot] as const)
-  );
-
   const practiceIds = new Set(practices.map((practice) => practice.id));
   const bestByCmid = new Map<string, T>();
   snapshots.forEach((snapshot) => {
@@ -117,16 +113,54 @@ export function selectCurrentMoodleSnapshots<
     }
   });
 
+  const ownByPractice = new Map<string, T[]>();
+  snapshots.forEach((snapshot) => {
+    if (!practiceIds.has(snapshot.practica_id)) return;
+    const list = ownByPractice.get(snapshot.practica_id);
+    if (list) list.push(snapshot);
+    else ownByPractice.set(snapshot.practica_id, [snapshot]);
+  });
+
   const result = new Map<string, T>();
 
   practices.forEach((practice) => {
     const task = resolveExactMoodleTaskLink(practice, links);
-    if (!task) return;
-    const own = snapshotsByKey.get(`${practice.id}:${task.moodleId}`);
+
+    const mine = ownByPractice.get(practice.id) ?? [];
+    const linked = task
+      ? mine.find((snapshot) => String(snapshot.cmid) === String(task.moodleId))
+      : undefined;
+
+    // La tarea vinculada manda mientras tenga algo que contar: si ahi consta la
+    // entrega, un snapshot terminal de una tarea anterior no debe pisarla
+    // despues de un remapeo.
+    //
+    // Pero "sin entrega" no es evidencia de que el alumno no entrego. Desde que
+    // la atribucion acepta cualquier tarea de la unidad -Ateneos y Entrevistas
+    // Ulloa, Barriletes y Asociacion Civil Pensar-, la practica acumula un
+    // snapshot por tarea, y el de la vinculada puede ser justo el que no vio
+    // nada. Elegirlo igual mostraba "Sin entrega detectada" al lado de la nota.
+    // Cuando la vinculada no tiene evidencia, gana la hermana que si la tiene.
+    const own =
+      linked && moodleSnapshotPriority(linked) >= 2
+        ? linked
+        : mine.reduce<T | null>((best, snapshot) => {
+            if (!best) return snapshot;
+            const delta = moodleSnapshotPriority(snapshot) - moodleSnapshotPriority(best);
+            if (delta !== 0) return delta > 0 ? snapshot : best;
+            if (task) {
+              if (String(snapshot.cmid) === String(task.moodleId)) return snapshot;
+              if (String(best.cmid) === String(task.moodleId)) return best;
+            }
+            return snapshot.observed_at > best.observed_at ? snapshot : best;
+          }, null);
+
     if (own) {
       result.set(practice.id, own);
       return;
     }
+
+    if (!task) return;
 
     // Cuando una tarea recibe dos informes -Fundacion Tiempo, Ateneos Ulloa-
     // Moodle guarda una sola entrega y la observacion queda contra una sola de

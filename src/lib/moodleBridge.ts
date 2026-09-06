@@ -77,6 +77,81 @@ export const moodleTasksResultSchema = z.object({
 export type MoodleTaskResult = z.infer<typeof moodleTaskResultSchema>;
 export type MoodleTasksResult = z.infer<typeof moodleTasksResultSchema>;
 
+// Separate protocol: v1 task responses remain restricted to requested CMIDs.
+export const moodleDiscoveryResultSchema = z.object({
+  type: z.literal("PPS_MOODLE_DISCOVERY_RESULT"),
+  version: z.literal(2),
+  requestId: z.string().uuid(),
+  courseId: z.literal(MOODLE_COURSE_ID),
+  status: z.enum(["ok", "unavailable"]),
+  cmids: z.array(z.number().int().positive()).max(500),
+  rowsSeen: z.number().int().nonnegative().max(10000),
+});
+
+let discoveryCapability: { until: number; pending: Promise<boolean> } | null = null;
+
+function supportsMoodleDiscovery(): Promise<boolean> {
+  if (discoveryCapability && discoveryCapability.until > Date.now())
+    return discoveryCapability.pending;
+  const requestId = createRequestId();
+  const pending = new Promise<boolean>((resolve) => {
+    const finish = (available: boolean) => {
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      resolve(available);
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== MOODLE_ORIGIN || event.source !== window.parent) return;
+      const data = event.data;
+      if (
+        data?.type === "PPS_MOODLE_CAPABILITIES_RESULT" &&
+        data.version === 2 &&
+        data.requestId === requestId &&
+        data.courseId === MOODLE_COURSE_ID &&
+        typeof data.discovery === "boolean"
+      )
+        finish(data.discovery);
+    };
+    const timer = window.setTimeout(() => finish(false), 1_000);
+    window.addEventListener("message", onMessage);
+    window.parent.postMessage(
+      {
+        type: "PPS_MOODLE_CAPABILITIES_REQUEST",
+        version: 2,
+        requestId,
+        courseId: MOODLE_COURSE_ID,
+      },
+      MOODLE_ORIGIN
+    );
+  });
+  discoveryCapability = { until: Date.now() + 5 * 60_000, pending };
+  return pending;
+}
+
+export async function requestMoodleDiscovery(timeoutMs = 6_000) {
+  if (!isEmbeddedInMoodle()) throw new MoodleBridgeError("not_embedded");
+  if (!(await supportsMoodleDiscovery())) return null;
+  const requestId = createRequestId();
+  return new Promise<z.infer<typeof moodleDiscoveryResultSchema> | null>((resolve) => {
+    const finish = (result: z.infer<typeof moodleDiscoveryResultSchema> | null) => {
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      resolve(result);
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== MOODLE_ORIGIN || event.source !== window.parent) return;
+      const parsed = moodleDiscoveryResultSchema.safeParse(event.data);
+      if (parsed.success && parsed.data.requestId === requestId) finish(parsed.data);
+    };
+    const timer = window.setTimeout(() => finish(null), timeoutMs);
+    window.addEventListener("message", onMessage);
+    window.parent.postMessage(
+      { type: "PPS_MOODLE_DISCOVERY_REQUEST", version: 2, requestId, courseId: MOODLE_COURSE_ID },
+      MOODLE_ORIGIN
+    );
+  });
+}
+
 const jefeSubmissionRowSchema = z
   .object({
     moodleUserId: z.number().int().positive(),
@@ -88,6 +163,7 @@ const jefeSubmissionRowSchema = z
     gradeMax: z.number().finite().positive().nullable(),
     gradeDisplay: z.string().trim().max(160).nullable(),
     gradedAtDisplay: z.string().trim().max(200).nullable(),
+    feedbackComment: z.string().trim().max(2000).nullable().optional(),
     submittedAt: z.string().datetime({ offset: true }).nullable(),
     submittedAtDisplay: z.string().trim().max(200).nullable(),
     // En el barrido anual los nombres sólo cruzan transitoriamente hasta la
@@ -207,7 +283,9 @@ export async function requestMoodleCourseContext(timeoutMs = 5_000): Promise<Moo
 
 export async function requestMoodleTasks(
   rawCmids: string[],
-  timeoutMs = 15_000
+  // Etiquetas anteriores: hasta 10 s de índice + una tanda de detalles de 10 s.
+  // El proveedor usa tandas de tres; otros consumidores conservan hasta 20.
+  timeoutMs = 5_000 + 10_000 + Math.ceil(Math.min(rawCmids.length, 20) / 3) * 10_000
 ): Promise<MoodleTasksResult> {
   if (typeof window === "undefined" || window.parent === window) {
     throw new MoodleBridgeError("not_embedded");
@@ -236,7 +314,12 @@ export async function requestMoodleTasks(
       const candidate = moodleTasksResultSchema.safeParse(event.data);
       if (!candidate.success || candidate.data.requestId !== requestId) return;
       const requested = new Set(cmids);
-      if (candidate.data.tasks.some((task) => !requested.has(task.cmid))) {
+      const returned = new Set(candidate.data.tasks.map((task) => task.cmid));
+      if (
+        candidate.data.tasks.length !== requested.size ||
+        returned.size !== requested.size ||
+        candidate.data.tasks.some((task) => !requested.has(task.cmid))
+      ) {
         finish(() => reject(new MoodleBridgeError("invalid_response")));
         return;
       }

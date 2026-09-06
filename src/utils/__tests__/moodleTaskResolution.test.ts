@@ -285,4 +285,42 @@ describe("buildPendingMoodleAssignments", () => {
         ?.cmid
     ).toBe(999001);
   });
+
+  it("usa la entrega de una tarea hermana cuando la vinculada no vio nada", () => {
+    // Legajo 35793: la practica apunta a "Barriletes en Bandada" 2026, donde el
+    // alumno ni siquiera es participante, y entrego en la tarea del cohorte
+    // anterior. Elegir por vinculo mostraba "Sin entrega detectada" al lado de
+    // la fecha de entrega real.
+    const snapshots = [
+      {
+        practica_id: "practice-graded",
+        cmid: 946366,
+        task_status: "not_submitted",
+        submitted: false,
+        grade_value: null,
+        grade_max: null,
+        grade_display: null,
+        observed_at: "2026-09-04T17:38:45.000Z",
+        scan_closed: false,
+      },
+      {
+        practica_id: "practice-graded",
+        cmid: 805657,
+        task_status: "submitted",
+        submitted: true,
+        grade_value: null,
+        grade_max: 100,
+        grade_display: null,
+        submitted_at_display: "martes, 7 de julio de 2026, 21:58",
+        observed_at: "2026-09-05T00:16:10.000Z",
+        scan_closed: false,
+      },
+    ];
+
+    const selected = selectCurrentMoodleSnapshots([practices[0]], links, snapshots).get(
+      "practice-graded"
+    );
+    expect(selected?.cmid).toBe(805657);
+    expect(selected?.submitted).toBe(true);
+  });
 });
