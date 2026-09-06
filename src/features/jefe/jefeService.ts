@@ -2,6 +2,7 @@ import { supabase } from "../../lib/supabaseClient";
 import type { JefeDashboardData, JefePreviewProfile } from "./types";
 import type { JefeMoodleTasksResult } from "../../lib/moodleBridge";
 import type { JefeMoodleSyncResult, JefeMoodleSyncTask } from "./types";
+import { evidenceReceiptSchema } from "../../services/moodleEvidenceService";
 
 const dateForYear = (year: number): string => {
   const now = new Date();
@@ -61,6 +62,14 @@ export const updateJefeReportGrade = async (practicaId: string, grade: string): 
 export const fetchJefeMoodleSyncTasks = async (
   previewKey?: string
 ): Promise<JefeMoodleSyncTask[]> => {
+  const { data, error } = await supabase.rpc("moodle_evidence_scan_queue_v1", {
+    p_preview_key: previewKey,
+  });
+  if (error) throw error;
+  return (data ?? []) as JefeMoodleSyncTask[];
+};
+
+const fetchLegacyJefeMoodleTasks = async (previewKey?: string): Promise<JefeMoodleSyncTask[]> => {
   const { data, error } = previewKey
     ? await supabase.rpc("get_jefe_moodle_sync_tasks_preview_v1", {
         p_preview_key: previewKey,
@@ -84,6 +93,36 @@ export const syncJefeMoodleReports = async (
     p_actor_moodle_username: result.moodleUsername,
     p_tasks: result.tasks,
   };
+  // A separate committed request preserves even unmatched rows if attribution fails.
+  const evidence = await supabase.rpc("capture_jefe_moodle_evidence_v1", {
+    ...commonArgs,
+    p_preview_key: previewKey ?? undefined,
+  });
+  if (evidence.error) throw evidence.error;
+  const receipt = evidenceReceiptSchema.parse(evidence.data);
+  if (receipt.rejected > 0)
+    throw new Error("Se conservó evidencia parcial; algunas filas requieren relectura.");
+  const legacyTasks = new Set(
+    (await fetchLegacyJefeMoodleTasks(previewKey)).map((task) => task.cmid)
+  );
+  const deferred = result.tasks
+    .filter((task) => !legacyTasks.has(task.cmid))
+    .reduce((count, task) => count + task.rows.length, 0);
+  commonArgs.p_tasks = result.tasks.filter((task) => legacyTasks.has(task.cmid));
+  if (commonArgs.p_tasks.length === 0)
+    return {
+      success: true,
+      academic_year: academicYear,
+      task_count: result.tasks.length,
+      rows_received: receipt.accepted,
+      accepted: 0,
+      stored: 0,
+      snapshot_updated: 0,
+      ambiguous: 0,
+      unmatched: deferred,
+      invalid: 0,
+      observed_at: result.observedAt,
+    };
   const { data, error } = previewKey
     ? await supabase.rpc("sync_jefe_moodle_reports_preview_v1", {
         p_preview_key: previewKey,
@@ -95,5 +134,6 @@ export const syncJefeMoodleReports = async (
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new Error("La sincronización Moodle devolvió una respuesta vacía.");
   }
-  return data as unknown as JefeMoodleSyncResult;
+  const projected = data as unknown as JefeMoodleSyncResult;
+  return { ...projected, unmatched: projected.unmatched + deferred };
 };

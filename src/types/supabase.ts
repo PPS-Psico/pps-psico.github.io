@@ -80,6 +80,13 @@ export type Database = {
             foreignKeyName: "accreditation_transition_events_trigger_practica_id_fkey"
             columns: ["trigger_practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "accreditation_transition_events_trigger_practica_id_fkey"
+            columns: ["trigger_practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -687,6 +694,9 @@ export type Database = {
           baja_automatica_at: string | null
           certificado_trabajo: string | null
           certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
           correo: string | null
           created_at: string | null
           cursando_electivas: string | null
@@ -718,6 +728,11 @@ export type Database = {
           orientacion: string | null
           otra_situacion_academica: string | null
           reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
           selected_at: string | null
           selection_decided_at: string | null
           telefono: string | null
@@ -729,6 +744,9 @@ export type Database = {
           baja_automatica_at?: string | null
           certificado_trabajo?: string | null
           certificado_url?: string | null
+          consentimiento_exceptuado_at?: string | null
+          consentimiento_exceptuado_motivo?: string | null
+          consentimiento_exceptuado_por?: string | null
           correo?: string | null
           created_at?: string | null
           cursando_electivas?: string | null
@@ -760,6 +778,11 @@ export type Database = {
           orientacion?: string | null
           otra_situacion_academica?: string | null
           reminder_sent_at?: string | null
+          seleccion_notificacion_claim_token?: string | null
+          seleccion_notificacion_claimed_at?: string | null
+          seleccion_notificacion_claimed_by?: string | null
+          seleccion_notificada_at?: string | null
+          seleccion_notificada_por?: string | null
           selected_at?: string | null
           selection_decided_at?: string | null
           telefono?: string | null
@@ -771,6 +794,9 @@ export type Database = {
           baja_automatica_at?: string | null
           certificado_trabajo?: string | null
           certificado_url?: string | null
+          consentimiento_exceptuado_at?: string | null
+          consentimiento_exceptuado_motivo?: string | null
+          consentimiento_exceptuado_por?: string | null
           correo?: string | null
           created_at?: string | null
           cursando_electivas?: string | null
@@ -802,6 +828,11 @@ export type Database = {
           orientacion?: string | null
           otra_situacion_academica?: string | null
           reminder_sent_at?: string | null
+          seleccion_notificacion_claim_token?: string | null
+          seleccion_notificacion_claimed_at?: string | null
+          seleccion_notificacion_claimed_by?: string | null
+          seleccion_notificada_at?: string | null
+          seleccion_notificada_por?: string | null
           selected_at?: string | null
           selection_decided_at?: string | null
           telefono?: string | null
@@ -1381,6 +1412,7 @@ export type Database = {
           selection_closed_at: string | null
           selection_closed_by: string | null
           tipo_actividad: string
+          unidad_id: number | null
           updated_at: string | null
         }
         Insert: {
@@ -1433,6 +1465,7 @@ export type Database = {
           selection_closed_at?: string | null
           selection_closed_by?: string | null
           tipo_actividad?: string
+          unidad_id?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -1485,9 +1518,18 @@ export type Database = {
           selection_closed_at?: string | null
           selection_closed_by?: string | null
           tipo_actividad?: string
+          unidad_id?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lanzamientos_pps_unidad_id_fkey"
+            columns: ["unidad_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_entrega"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       moodle_grade_import_batches: {
         Row: {
@@ -1672,6 +1714,13 @@ export type Database = {
             foreignKeyName: "moodle_grade_observations_practica_id_fkey"
             columns: ["practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_observations_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -1709,6 +1758,13 @@ export type Database = {
           requested_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "moodle_grade_reopen_events_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
           {
             foreignKeyName: "moodle_grade_reopen_events_practica_id_fkey"
             columns: ["practica_id"]
@@ -1874,6 +1930,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "moodle_grade_observations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_snapshots_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
           },
           {
             foreignKeyName: "moodle_grade_snapshots_practica_id_fkey"
@@ -2117,6 +2180,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "moodle_task_intents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_task_expected_participants_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
           },
           {
             foreignKeyName: "moodle_task_expected_participants_practica_id_fkey"
@@ -2410,6 +2480,13 @@ export type Database = {
             foreignKeyName: "penalizaciones_practica_id_fkey"
             columns: ["practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "penalizaciones_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -2459,6 +2536,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "aula_entregas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practica_moodle_tareas_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: true
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
           },
           {
             foreignKeyName: "practica_moodle_tareas_practica_id_fkey"
@@ -2861,6 +2945,13 @@ export type Database = {
             foreignKeyName: "solicitudes_modificacion_pps_practica_id_fkey"
             columns: ["practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "solicitudes_modificacion_pps_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -3041,6 +3132,7 @@ export type Database = {
           id: string
           orientation_key: string
           practica_id: string
+          project_title: string | null
           status: string
           task_catalog_id: string
         }
@@ -3057,6 +3149,7 @@ export type Database = {
           id?: string
           orientation_key: string
           practica_id: string
+          project_title?: string | null
           status?: string
           task_catalog_id: string
         }
@@ -3073,6 +3166,7 @@ export type Database = {
           id?: string
           orientation_key?: string
           practica_id?: string
+          project_title?: string | null
           status?: string
           task_catalog_id?: string
         }
@@ -3083,6 +3177,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "estudiantes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_pps_assignments_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: true
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
           },
           {
             foreignKeyName: "special_pps_assignments_practica_id_fkey"
@@ -3146,6 +3247,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      unidad_entrega_tareas: {
+        Row: {
+          aula_entrega_id: number
+          compartida: boolean
+          created_at: string
+          unidad_id: number
+        }
+        Insert: {
+          aula_entrega_id: number
+          compartida?: boolean
+          created_at?: string
+          unidad_id: number
+        }
+        Update: {
+          aula_entrega_id?: number
+          compartida?: boolean
+          created_at?: string
+          unidad_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unidad_entrega_tareas_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unidad_entrega_tareas_unidad_id_fkey"
+            columns: ["unidad_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_entrega"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unidades_entrega: {
+        Row: {
+          clave: string
+          created_at: string
+          id: number
+          nombre: string
+          nota: string | null
+        }
+        Insert: {
+          clave: string
+          created_at?: string
+          id?: number
+          nombre: string
+          nota?: string | null
+        }
+        Update: {
+          clave?: string
+          created_at?: string
+          id?: number
+          nombre?: string
+          nota?: string | null
+        }
+        Relationships: []
       }
       verification_attempts: {
         Row: {
@@ -3265,9 +3426,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      practica_estado_entrega: {
+        Row: {
+          cmid_evidencia: number | null
+          cmid_vinculado: number | null
+          desde_tarea_hermana: boolean | null
+          entregado: boolean | null
+          especialidad: string | null
+          estado: string | null
+          estudiante_id: string | null
+          grade_display: string | null
+          grade_max: number | null
+          grade_value: number | null
+          lanzamiento_id: string | null
+          nombre_institucion: string | null
+          observed_at: string | null
+          practica_id: string | null
+          submitted_at: string | null
+          submitted_at_display: string | null
+          tarea_evidencia: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_practica_estudiante"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_practica_lanzamiento"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicas_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      activate_started_launches: { Args: never; Returns: number }
       admin_reset_password: {
         Args: { legajo_input: string; new_password: string }
         Returns: undefined
@@ -3291,6 +3496,7 @@ export type Database = {
           p_estudiante_id: string
           p_expected_hours?: number
           p_orientation_key: string
+          p_project_title?: string
         }
         Returns: Json
       }
@@ -3302,6 +3508,23 @@ export type Database = {
       cancel_special_pps_assignment_v1: {
         Args: { p_assignment_id: string; p_reason: string }
         Returns: boolean
+      }
+      canonical_orientacion_label: {
+        Args: { p_value: string }
+        Returns: string
+      }
+      capture_jefe_moodle_evidence_v1: {
+        Args: {
+          p_academic_year: number
+          p_actor_moodle_user_id: number
+          p_actor_moodle_username: string
+          p_course_id: number
+          p_observed_at: string
+          p_preview_key?: string
+          p_request_id: string
+          p_tasks: Json
+        }
+        Returns: Json
       }
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean }
       claim_consentimiento_final_reminder_batch: {
@@ -3380,6 +3603,23 @@ export type Database = {
           estudiante_id: string
           request_id: string
           user_id: string
+        }[]
+      }
+      claim_seleccion_notificacion_batch: {
+        Args: {
+          p_actor_user_id: string
+          p_claim_token: string
+          p_lanzamiento_id: string
+          p_requested_at: string
+        }
+        Returns: {
+          convocatoria_id: string
+          encuentro_inicial: string
+          estudiante_correo: string
+          estudiante_nombre: string
+          estudiante_user_id: string
+          horario: string
+          pps_nombre: string
         }[]
       }
       clean_dirty_text: { Args: { val: string }; Returns: string }
@@ -3519,11 +3759,82 @@ export type Database = {
           practicas_eliminadas: number
         }[]
       }
+      decide_moodle_evidence_v1: {
+        Args: {
+          p_action: string
+          p_case: string
+          p_evidence: string
+          p_grade?: number
+          p_practice: string
+          p_reason: string
+          p_revision: number
+        }
+        Returns: number
+      }
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined }
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean }
       evaluate_student_accreditation_transition_v1: {
         Args: { p_student_id: string; p_trigger_observation_id: string }
         Returns: Json
+      }
+      eximir_consentimiento: {
+        Args: { p_convocatoria_id: string; p_motivo?: string }
+        Returns: {
+          airtable_id: string | null
+          baja_automatica_at: string | null
+          certificado_trabajo: string | null
+          certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
+          correo: string | null
+          created_at: string | null
+          cursando_electivas: string | null
+          cv_url: string | null
+          direccion: string | null
+          dni: number | null
+          estado_inscripcion: string | null
+          estudiante_id: string | null
+          fecha_entrega_informe: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          fecha_nacimiento: string | null
+          final_reminder_claim_token: string | null
+          final_reminder_claimed_at: string | null
+          final_reminder_claimed_by: string | null
+          final_reminder_sent_at: string | null
+          final_reminder_sent_by: string | null
+          finales_adeuda: string | null
+          horario_asignado: string | null
+          horario_seleccionado: string | null
+          horas_acreditadas: number | null
+          id: string
+          informe_subido: boolean | null
+          lanzamiento_id: string | null
+          legajo: number | null
+          nombre_pps: string | null
+          opcion_asignada_id: string | null
+          opcion_horario_asignado_id: string | null
+          orientacion: string | null
+          otra_situacion_academica: string | null
+          reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
+          selected_at: string | null
+          selection_decided_at: string | null
+          telefono: string | null
+          termino_cursar: string | null
+          trabaja: boolean | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "convocatorias"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       finalize_password_reset_delivery: {
         Args: {
@@ -3534,6 +3845,14 @@ export type Database = {
         Returns: boolean
       }
       finish_consentimiento_final_reminder: {
+        Args: {
+          p_claim_token: string
+          p_convocatoria_id: string
+          p_sent: boolean
+        }
+        Returns: boolean
+      }
+      finish_seleccion_notificacion: {
         Args: {
           p_claim_token: string
           p_convocatoria_id: string
@@ -4009,6 +4328,17 @@ export type Database = {
       }
       identity_ip_rate_limited: { Args: never; Returns: boolean }
       increment_snooze_count: { Args: { reminder_id: string }; Returns: number }
+      ingest_student_moodle_evidence_v1: {
+        Args: {
+          p_course: number
+          p_moodle_user: number
+          p_observed: string
+          p_request: string
+          p_tasks: Json
+          p_username: string
+        }
+        Returns: Json
+      }
       inscribir_convocatoria_multiopcion: {
         Args: {
           p_datos?: Json
@@ -4020,6 +4350,9 @@ export type Database = {
           baja_automatica_at: string | null
           certificado_trabajo: string | null
           certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
           correo: string | null
           created_at: string | null
           cursando_electivas: string | null
@@ -4051,6 +4384,11 @@ export type Database = {
           orientacion: string | null
           otra_situacion_academica: string | null
           reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
           selected_at: string | null
           selection_decided_at: string | null
           telefono: string | null
@@ -4075,6 +4413,9 @@ export type Database = {
           baja_automatica_at: string | null
           certificado_trabajo: string | null
           certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
           correo: string | null
           created_at: string | null
           cursando_electivas: string | null
@@ -4106,6 +4447,11 @@ export type Database = {
           orientacion: string | null
           otra_situacion_academica: string | null
           reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
           selected_at: string | null
           selection_decided_at: string | null
           telefono: string | null
@@ -4134,6 +4480,20 @@ export type Database = {
         Returns: string
       }
       mark_password_changed: { Args: never; Returns: undefined }
+      moodle_evidence_inbox_v1: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      moodle_evidence_scan_queue_v1: {
+        Args: { p_preview_key?: string }
+        Returns: {
+          academic_year: number
+          area_keys: string[]
+          cmid: number
+          course_id: number
+          task_name: string
+        }[]
+      }
       moodle_task_close_state_v1: {
         Args: never
         Returns: {
@@ -4222,6 +4582,65 @@ export type Database = {
           penalizacion_id: string
           practicas_eliminadas: number
         }[]
+      }
+      revertir_exencion_consentimiento: {
+        Args: { p_convocatoria_id: string }
+        Returns: {
+          airtable_id: string | null
+          baja_automatica_at: string | null
+          certificado_trabajo: string | null
+          certificado_url: string | null
+          consentimiento_exceptuado_at: string | null
+          consentimiento_exceptuado_motivo: string | null
+          consentimiento_exceptuado_por: string | null
+          correo: string | null
+          created_at: string | null
+          cursando_electivas: string | null
+          cv_url: string | null
+          direccion: string | null
+          dni: number | null
+          estado_inscripcion: string | null
+          estudiante_id: string | null
+          fecha_entrega_informe: string | null
+          fecha_finalizacion: string | null
+          fecha_inicio: string | null
+          fecha_nacimiento: string | null
+          final_reminder_claim_token: string | null
+          final_reminder_claimed_at: string | null
+          final_reminder_claimed_by: string | null
+          final_reminder_sent_at: string | null
+          final_reminder_sent_by: string | null
+          finales_adeuda: string | null
+          horario_asignado: string | null
+          horario_seleccionado: string | null
+          horas_acreditadas: number | null
+          id: string
+          informe_subido: boolean | null
+          lanzamiento_id: string | null
+          legajo: number | null
+          nombre_pps: string | null
+          opcion_asignada_id: string | null
+          opcion_horario_asignado_id: string | null
+          orientacion: string | null
+          otra_situacion_academica: string | null
+          reminder_sent_at: string | null
+          seleccion_notificacion_claim_token: string | null
+          seleccion_notificacion_claimed_at: string | null
+          seleccion_notificacion_claimed_by: string | null
+          seleccion_notificada_at: string | null
+          seleccion_notificada_por: string | null
+          selected_at: string | null
+          selection_decided_at: string | null
+          telefono: string | null
+          termino_cursar: string | null
+          trabaja: boolean | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "convocatorias"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       safe_date_cast: { Args: { val: string }; Returns: string }
       save_fcm_token: { Args: { tok: string; uid: string }; Returns: boolean }
@@ -4382,12 +4801,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4411,11 +4830,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4436,11 +4855,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4461,11 +4880,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4478,11 +4897,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
