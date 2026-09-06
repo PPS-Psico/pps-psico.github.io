@@ -24,10 +24,7 @@ import { syncStudentMoodleBatches } from "../domain/moodle/moodleStudentSync";
 import { supabase } from "../lib/supabaseClient";
 import { captureStudentMoodleEvidence } from "../services/moodleEvidenceService";
 import type { Database } from "../types/supabase";
-import {
-  buildPendingMoodleAssignments,
-  selectCurrentMoodleSnapshots,
-} from "../utils/moodleTaskResolution";
+import { buildPendingMoodleAssignments } from "../utils/moodleTaskResolution";
 
 /**
  * El snapshot no guarda la escala de la tarea: vive en `aula_entregas`. Sin
@@ -36,6 +33,10 @@ import {
  */
 export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_snapshots"]["Row"] & {
   grade_conversion_mode: MoodleGradeConversionMode | null;
+  reviewedAllocation?: boolean;
+  reviewRequired?: boolean;
+  academicGrade?: string | null;
+  academicGradeSource?: string | null;
 };
 
 export type MoodleGradeSyncStatus =
@@ -93,30 +94,20 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     enabled: canReadSnapshots,
     queryFn: async () => {
       if (!studentId) return [];
-      const { data, error } = await supabase
-        .from("moodle_grade_snapshots")
-        .select("*, aula_entregas(grade_conversion_mode)")
-        .eq("estudiante_id", studentId)
-        .order("observed_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map((row) => {
-        const { aula_entregas: task, ...snapshot } = row as typeof row & {
-          aula_entregas: { grade_conversion_mode: string | null } | null;
-        };
-        return {
-          ...snapshot,
-          grade_conversion_mode:
-            (task?.grade_conversion_mode as MoodleGradeConversionMode | null) ?? null,
-        } as MoodleGradeSnapshot;
+      const { data, error } = await supabase.rpc("read_moodle_practice_snapshots_v1", {
+        p_student: studentId,
       });
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("Invalid canonical delivery response");
+      return data as unknown as MoodleGradeSnapshot[];
     },
     staleTime: 60_000,
     retry: 1,
   });
 
   const snapshotsByPractice = useMemo(() => {
-    return selectCurrentMoodleSnapshots(practicas, links, snapshotsQuery.data ?? []);
-  }, [links, practicas, snapshotsQuery.data]);
+    return new Map((snapshotsQuery.data ?? []).map((snapshot) => [snapshot.practica_id, snapshot]));
+  }, [snapshotsQuery.data]);
 
   const assignments = useMemo(() => {
     if (!isOwnStudentSession || snapshotsQuery.isLoading) return new Map<string, string[]>();

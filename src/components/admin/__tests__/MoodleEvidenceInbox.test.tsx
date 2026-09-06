@@ -5,11 +5,13 @@ import MoodleEvidenceInbox from "../MoodleEvidenceInbox";
 import {
   decideMoodleEvidence,
   fetchMoodleEvidenceInbox,
+  applyMoodleEvidence,
 } from "../../../services/moodleEvidenceService";
 
 jest.mock("../../../services/moodleEvidenceService", () => ({
   decideMoodleEvidence: jest.fn(),
   fetchMoodleEvidenceInbox: jest.fn(),
+  applyMoodleEvidence: jest.fn(),
 }));
 const item = {
   id: "case-a",
@@ -61,6 +63,52 @@ beforeEach(() => {
   jest
     .mocked(fetchMoodleEvidenceInbox)
     .mockResolvedValue({ total: 1, mode: "shadow", cases: [item] });
+});
+
+it("aplica sólo la decisión guardada y el registro académico que el operador revisó", async () => {
+  const reviewed = {
+    ...item,
+    decisions: [
+      {
+        id: "decision-a",
+        evidence_id: "version-a",
+        practica_id: "pps-a",
+        revision: 3,
+        action: "allocate" as const,
+        grade: 7,
+        reason: "PPS A verificada",
+        created_at: item.observedAt,
+      },
+    ],
+    practices: item.practices.map((p) => ({
+      ...p,
+      academic: { nota: p.grade },
+      applicationId: null,
+      appliedDecisionId: null,
+    })),
+  };
+  jest
+    .mocked(fetchMoodleEvidenceInbox)
+    .mockResolvedValue({ total: 1, mode: "review_and_apply", cases: [reviewed] });
+  jest.mocked(applyMoodleEvidence).mockResolvedValue(undefined);
+  mount();
+  await screen.findByText("Estudiante de prueba");
+  fireEvent.click(screen.getByText("Estudiante de prueba"));
+  fireEvent.change(screen.getByLabelText("PPS del estudiante"), { target: { value: "pps-a" } });
+  expect(screen.getByRole("button", { name: "Aplicar al expediente" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Motivo de la aplicación o reversión"), {
+    target: { value: "Confirmo el valor individual revisado" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Aplicar al expediente" }));
+  await waitFor(() =>
+    expect(applyMoodleEvidence).toHaveBeenCalledWith(
+      reviewed,
+      "pps-a",
+      "decision-a",
+      "apply",
+      "Confirmo el valor individual revisado"
+    )
+  );
 });
 
 it("registra una nota por PPS y no copia la nota global automáticamente", async () => {

@@ -298,8 +298,12 @@ una métrica nueva: sólo habilita una lectura de prueba para `SuperUser` y
   pendientes/críticos al corte de hoy. Es un stock operativo separado y nunca se
   compara como si fuera un resultado anual.
 
-La cola de informes usa el timestamp de entrega mostrado por Moodle y, como
-fallback, `convocatorias.fecha_entrega_informe`. `observed_at` sólo indica cuándo
+Desde la reconciliación de entregas del 06/09/2026 UTC (`moodle-delivery-read-v2`),
+la cola usa el timestamp de la evidencia seleccionada para esa PPS mediante
+`private.moodle_practice_snapshot_v1`. Una aplicación explícita tiene prioridad;
+sin ella se elige un snapshot propio. No se toma la fecha de otra PPS compartida
+ni `convocatorias.fecha_entrega_informe`, que es un plazo administrativo.
+`observed_at` sólo indica cuándo
 Mi Panel leyó Moodle y no puede reemplazar la fecha de entrega. Si ninguna fuente
 confiable aporta la fecha, el informe permanece pendiente con urgencia `undated`
 y se separa de `on_time`. El seguimiento interno vence a los 30 días corridos;
@@ -308,6 +312,11 @@ sobre el plazo normativo comunicado al estudiante. Una entrega sin calificación
 sale de la cola prioritaria cuando acumula más de 60 días de atraso respecto de
 ese vencimiento: se conserva con estado `stale` como antecedente, pero no integra
 `pending`, `critical` ni la foto operativa.
+
+Deuda verificada el 06/09/2026 UTC: el helper productivo aplica 90 días, aunque
+el contrato anterior describe 60. La reconciliación de evidencias conserva el
+umbral vivo; no cambia esta política de antigüedad. El contrato de lectura
+agregado/detalle vigente se verifica con `moodle_delivery_read_contract.sql`.
 
 ### Métricas operativas por unidad Moodle v2
 

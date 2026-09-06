@@ -2,9 +2,9 @@
 
 Fecha: 05/09/2026. Corte de base: 10:17 Argentina (13:17 UTC).
 Repositorio examinado: HEAD `8218975`, con cambios de otras tareas ya presentes.
-Estado de esta entrega: diagnóstico verificado, correcciones locales probadas y
-diseño de la solución estructural. La bandeja de evidencia propuesta abajo
-todavía no está implementada ni desplegada.
+Estado actualizado: captura e inbox publicados; aplicación explícita y lectura
+común implementadas en la segunda fase, detallada al final. El diagnóstico que
+sigue conserva el corte original y no representa cantidades actuales.
 
 ## Decisión recomendada
 
@@ -356,7 +356,7 @@ de datos reales y un parche textual de agosto. No se alteró esa historia para
 forzar un resultado verde; `scripts/test-moodle-evidence.mjs` identifica
 explícitamente su alcance como contrato aislado, no como replay completo.
 
-**Límite de esta activación:** las decisiones y notas por PPS se guardan en
+**Límite de la primera activación (superado por la segunda fase):** las decisiones y notas por PPS se guardan en
 `shadow`. No se aplican automáticamente al expediente. La nueva evidencia
 requiere volver a revisar la decisión que correspondía a una versión anterior.
 Siguen pendientes la promoción de decisiones al contrato canónico de lectura
@@ -369,3 +369,57 @@ FAQ adicional propuesta, sin incorporar: explicar que una calificación
 registrada en Mi Panel puede coexistir con una lectura de Campus sin entrega,
 y que el origen de la nota aparece en la fila. El plazo administrativo no
 representa la fecha en la que el alumno entregó.
+
+## Segunda fase: aplicación y lectura común — 06/09/2026 UTC
+
+Migración `20260906005856_moodle_evidence_application`, aplicada con ledger en
+la misma transacción y verificada por lectura posterior. No aplica las
+propuestas existentes en lote ni decide automáticamente atribuciones ambiguas.
+
+- La propuesta sigue siendo independiente de la acción **Aplicar al expediente**.
+  La aplicación confirma entrega y escribe únicamente la nota individual
+  propuesta; una propuesta sin nota conserva la nota académica actual.
+- Registra actor, motivo, decisión, valores anteriores y valores aplicados.
+  **Revertir aplicación** restaura el registro previo sin borrar el historial.
+  Rechaza la reversión si una edición posterior del expediente sería pisada.
+- Serializa por práctica y verifica el registro académico y aplicación que el
+  operador vio. Dos coordinadores no pueden sobrescribirse silenciosamente.
+- Una nueva corrección de Campus queda pendiente de revisión; la aplicación
+  anterior sigue vigente. Una lectura idéntica con otro request no la invalida.
+- El proyector automático conserva las observaciones pero deja de escribir las
+  prácticas bajo reconciliación manual, incluso después de una reversión.
+- `private.moodle_practice_snapshot_v1` selecciona una sola evidencia por PPS.
+  La consumen estudiante y coordinación mediante
+  `read_moodle_practice_snapshots_v1`, la bandeja v2 y las filas de jefatura.
+  La vista diagnóstica antigua `practica_estado_entrega` no es este contrato.
+- No se presta la entrega de una PPS a otra por compartir CMID. Cada aplicación
+  tiene su propia nota. La nota académica se presenta como registro de Mi Panel
+  o confirmación de coordinación; la lectura bruta de Campus permanece separada.
+- Jefatura usa la fecha de la evidencia seleccionada para esa PPS. Se eliminan
+  el plazo administrativo y la fecha prestada de otra PPS como fechas de entrega.
+
+Validación: contrato PostgreSQL 17 aislado con alumnos y prácticas sintéticos,
+ensayo del SQL exacto en producción con `ROLLBACK`, comparación antes/después y
+contrato de lectura real `supabase/tests/moodle_delivery_read_contract.sql`.
+Los casos incluyen notas 7 y 9 en una tarea compartida, tercera PPS sin
+asignación, estudiante ajeno, reintento concurrente, lectura repetida,
+recorrección, bloqueo del proyector y restauración sin borrar una edición posterior.
+
+En la comparación real previa a aplicar no cambió ninguna nota mostrada en
+jefatura. Cambiaron 79 fechas de Clínica, 14 de Educacional, 11 de Comunitaria y
+9 de Laboral; sólo una fila de Comunitaria cambió de estado de cola. Son
+menciones por orientación, no un conteo deduplicado de alumnos.
+
+Deuda previa encontrada: el helper vivo `jefe_report_status_v1` usa 90 días
+después del vencimiento para `stale`, mientras la documentación y el contrato
+histórico esperan 60. El contrato histórico falla igual antes de esta migración.
+Esta fase conserva el umbral vivo y no declara ese contrato histórico aprobado.
+
+La resolución de cada caso ambiguo sigue siendo una decisión académica del
+responsable, ahora realizable con aplicación y reversión desde la bandeja. La
+acreditación híbrida sigue en shadow y el escritor dedicado 2027 mantiene su
+piloto independiente. Esta fase no declara resueltos los 285 vínculos ausentes
+del corte inicial ni desplegado un worker autónomo de navegador.
+
+Propuesta de FAQ, sin incorporarla: aclarar que una corrección nueva puede
+quedar en revisión mientras se conserva la nota vigente del expediente.

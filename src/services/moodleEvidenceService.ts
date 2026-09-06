@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { supabase } from "../lib/supabaseClient";
 import type { MoodleTasksResult } from "../lib/moodleBridge";
+import type { Json } from "../types/supabase";
 
 export const evidenceCaseSchema = z.object({
   id: z.string(),
@@ -13,6 +14,19 @@ export const evidenceCaseSchema = z.object({
   observedAt: z.string(),
   source: z.string(),
   versionCount: z.number(),
+  applications: z
+    .array(
+      z.object({
+        id: z.string(),
+        practica_id: z.string(),
+        action: z.enum(["apply", "revert"]),
+        previous_academic: z.object({ nota: z.string().nullable() }),
+        applied_academic: z.object({ nota: z.string().nullable() }),
+        reason: z.string(),
+        created_at: z.string(),
+      })
+    )
+    .optional(),
   history: z.array(
     z.object({
       id: z.string(),
@@ -56,13 +70,17 @@ export const evidenceCaseSchema = z.object({
       start: z.string().nullable(),
       state: z.string().nullable(),
       exactLink: z.boolean(),
+      academic: z.record(z.string(), z.unknown()).optional(),
+      applicationId: z.string().nullable().optional(),
+      appliedDecisionId: z.string().nullable().optional(),
+      effectiveSnapshot: z.record(z.string(), z.unknown()).nullable().optional(),
     })
   ),
 });
 export type MoodleEvidenceCase = z.infer<typeof evidenceCaseSchema>;
 const inboxSchema = z.object({
   total: z.number(),
-  mode: z.literal("shadow"),
+  mode: z.enum(["shadow", "review_and_apply"]),
   cases: z.array(evidenceCaseSchema),
 });
 export const evidenceReceiptSchema = z.object({
@@ -71,12 +89,31 @@ export const evidenceReceiptSchema = z.object({
 });
 
 export async function fetchMoodleEvidenceInbox(offset: number) {
-  const { data, error } = await supabase.rpc("moodle_evidence_inbox_v1", {
+  const { data, error } = await supabase.rpc("moodle_evidence_inbox_v2", {
     p_offset: offset,
     p_limit: 30,
   });
   if (error) throw error;
   return inboxSchema.parse(data);
+}
+
+export async function applyMoodleEvidence(
+  item: MoodleEvidenceCase,
+  practiceId: string,
+  decisionId: string,
+  action: "apply" | "revert",
+  reason: string
+) {
+  const practice = item.practices.find((p) => p.id === practiceId);
+  if (!practice?.academic) throw new Error("Reload academic record before applying");
+  const { error } = await supabase.rpc("apply_moodle_evidence_decision_v1", {
+    p_decision: decisionId,
+    p_expected_academic: practice.academic as Json,
+    p_expected_application: practice.applicationId ?? undefined,
+    p_action: action,
+    p_reason: reason,
+  });
+  if (error) throw error;
 }
 
 export async function decideMoodleEvidence(

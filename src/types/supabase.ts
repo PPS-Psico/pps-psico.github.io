@@ -3488,6 +3488,16 @@ export type Database = {
           practica_id: string
         }[]
       }
+      apply_moodle_evidence_decision_v1: {
+        Args: {
+          p_action: string
+          p_decision: string
+          p_expected_academic: Json
+          p_expected_application?: string
+          p_reason: string
+        }
+        Returns: string
+      }
       archive_lanzamientos_after_start_grace: { Args: never; Returns: number }
       assign_special_pps_v1: {
         Args: {
@@ -4484,6 +4494,10 @@ export type Database = {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      moodle_evidence_inbox_v2: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       moodle_evidence_scan_queue_v1: {
         Args: { p_preview_key?: string }
         Returns: {
@@ -4510,6 +4524,10 @@ export type Database = {
       practica_computa: { Args: { p_estado: string }; Returns: boolean }
       process_consentimiento_timeouts: { Args: never; Returns: undefined }
       publish_scheduled_launches: { Args: never; Returns: number }
+      read_moodle_practice_snapshots_v1: {
+        Args: { p_student: string }
+        Returns: Json
+      }
       reconcile_moodle_task_intents_v1: {
         Args: { p_launch_id?: string }
         Returns: Json
