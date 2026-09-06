@@ -45,6 +45,12 @@ try {
   sql(readFileSync("supabase/tests/fixtures/moodle_evidence_schema.sql", "utf8"));
   sql(readFileSync("supabase/migrations/20260905132925_moodle_evidence_inbox.sql", "utf8"));
   sql(readFileSync("supabase/migrations/20260906001008_moodle_partial_scan_coverage.sql", "utf8"));
+  sql(
+    readFileSync(
+      "supabase/migrations/20260906142427_moodle_expected_negative_observations.sql",
+      "utf8"
+    )
+  );
   const actor = randomUUID();
   sql(
     `insert into auth.users(id) values ('${actor}'); insert into public.estudiantes(id,user_id,role,nombre) values(gen_random_uuid(),'${actor}','SuperUser','[TEST] Coordinator');`

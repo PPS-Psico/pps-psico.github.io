@@ -105,4 +105,31 @@ describe("jefeService — sincronización Moodle", () => {
     expect(result).toEqual(expect.objectContaining({ unmatched: 1, snapshot_updated: 0 }));
     expect(rpcSpy).toHaveBeenCalledTimes(2);
   });
+  it("guarda el padrón negativo por tarea sin enviarlo al proyector académico", async () => {
+    const negative = { moodleUserId: 123, status: "not_submitted", submitted: false };
+    const tasks = Array.from({ length: 4 }, (_, index) => ({
+      cmid: 1109159 + index,
+      status: "ok",
+      errorCode: null,
+      rows: [],
+      negativeRows: Array.from({ length: 346 }, () => negative),
+    }));
+    for (let i = 0; i < 4; i++)
+      rpcSpy.mockResolvedValueOnce({ data: { accepted: 346, rejected: 0 }, error: null });
+    rpcSpy.mockResolvedValueOnce({ data: tasks.map(({ cmid }) => ({ cmid })), error: null });
+    rpcSpy.mockResolvedValueOnce({ data: { unmatched: 0, accepted: 0 }, error: null });
+    await syncJefeMoodleReports(2026, { ...bridgeResult, tasks });
+    for (let i = 0; i < 4; i++) {
+      expect(rpcSpy.mock.calls[i][0]).toBe("capture_jefe_moodle_evidence_v1");
+      const saved = rpcSpy.mock.calls[i][1]?.p_tasks as Array<{ rows: unknown[] }>;
+      expect(saved).toHaveLength(1);
+      expect(saved[0].rows).toHaveLength(346);
+    }
+    expect(rpcSpy).toHaveBeenLastCalledWith(
+      "sync_jefe_moodle_reports_v1",
+      expect.objectContaining({
+        p_tasks: tasks.map(({ negativeRows: _negativeRows, ...task }) => task),
+      })
+    );
+  });
 });

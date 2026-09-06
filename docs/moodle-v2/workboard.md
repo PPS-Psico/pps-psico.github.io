@@ -8,6 +8,44 @@ Este corte prevalece sobre la tabla de fundación del 29 de agosto conservada
 debajo. La reconciliación de entregas se publicó en PR #19 y #20; el despliegue
 `34036803616` terminó correctamente sobre `7f18efc`.
 
+### Barrido real posterior, 6/9 a las 14:02 UTC
+
+El responsable abrió las jefaturas y se comprobó su persistencia en la base:
+Clínica 51/51 tareas, Educacional 33/33 y Laboral/Comunitaria 57/57, todas con
+estado `ok`. Son **112 tareas distintas**, con solapamientos entre áreas.
+Quedaron 1.121 casos (174 más que el corte previo) y cero aplicaciones manuales.
+El contrato de lectura común volvió a pasar después de esta ingesta.
+
+Esto supera el pendiente de cero filas de cobertura del corte previo conservado
+en la tabla de abajo. Certifica el recorrido del catálogo; no certifica la
+ausencia individual de entrega: el puente instalado conserva sólo filas
+positivas. La extensión preparada agrega `negativeRows` sin alterar `rows` v1,
+guarda cada tarea en una petición de evidencia y excluye las negativas del
+proyector académico. No hay nota borrada por una ausencia observada.
+Los estados desconocidos producen cobertura parcial; no se inventa una ausencia.
+**Esta extensión necesita instalación y relectura real en Campus.**
+
+`20260906142427_moodle_expected_negative_observations` quedó aplicada con SQL
+exacto y ledger en la misma transacción, después de ensayo con `ROLLBACK` y
+contrato PostgreSQL 17 aislado. La captura negativa exige evidencia previa de
+esa persona/tarea o un vínculo confirmado de su práctica (incluido el fallback
+confirmado de lanzamiento por orientación). No convierte el padrón completo del
+curso en obligaciones para todas las tareas. La captura positiva sin vínculo
+continúa habilitada. Se verificaron permisos privados, aislamiento por alumno y
+curso, rechazo de vínculos sin confirmar y conservación de la nota académica.
+
+La PR #21 (`d94c8cb`) y el despliegue `34038086581` terminaron correctamente:
+arranque cancelable sin bloqueo, espera restante del throttle y reanudación
+aunque la cola devuelva los mismos datos. Seis regresiones nuevas, TypeScript,
+lint, suite completa, e2e y build aprobados.
+
+El corte de evidencia documental posterior al barrido tiene 941 snapshots
+clasificados y 33 entregados/calificados sin observación de archivos. La
+acreditación híbrida continúa en `shadow`: esos conteos no sustituyen la muestra
+académica revisada ni autorizan el paso a `active`.
+
+### Corte anterior al barrido (conservado para trazabilidad)
+
 | Circuito               | Estado comprobado                                                                                                    | Pendiente para su aceptación operativa                                                                       |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Captura y conservación | Publicado: cuatro migraciones verificadas, puente instalado y Edge Function desplegada; 947 casos en el corte actual | El total de casos no demuestra cobertura completa                                                            |

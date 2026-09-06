@@ -836,6 +836,8 @@
       }
 
       var rows = [];
+      var negativeRows = [];
+      var unknownStatus = false;
       var tableRows = Array.prototype.slice.call(table.tBodies[0].children || []);
       tableRows.forEach(function (row) {
         if (!row || row.tagName !== "TR") return;
@@ -846,10 +848,15 @@
         if (!/^\d{6,12}$/.test(moodleUsername)) return;
 
         var statusText = normalizeText(cells[statusIndex].textContent);
+        var notSubmitted =
+          /sin (entrega|envio)|no (hay entregas|entregado|se han realizado|submissions?)|not submitted|borrador|draft|^nuevo$|^new$/.test(
+            statusText
+          );
         var submitted =
-          statusText.indexOf("enviado para calificar") > -1 ||
-          statusText.indexOf("entregado") > -1 ||
-          statusText.indexOf("submitted for grading") > -1;
+          !notSubmitted &&
+          (statusText.indexOf("enviado para calificar") > -1 ||
+            statusText.indexOf("entregado") > -1 ||
+            statusText.indexOf("submitted for grading") > -1);
 
         var gradeValue = null;
         var gradeMax = null;
@@ -875,8 +882,10 @@
             }
           }
         }
-        if (!submitted) return;
-
+        if (!submitted && !notSubmitted) {
+          unknownStatus = true;
+          return;
+        }
         var parsedSubmissionDate = parseMoodleSubmissionDate(
           cleanText(cells[submittedAtIndex].textContent)
         );
@@ -906,12 +915,12 @@
           );
         }
 
-        rows.push({
+        (submitted ? rows : negativeRows).push({
           moodleUserId: moodleUserId,
           moodleUsername: moodleUsername,
           email: email,
-          status: gradeValue !== null ? "graded" : "submitted",
-          submitted: true,
+          status: gradeValue !== null ? "graded" : submitted ? "submitted" : "not_submitted",
+          submitted: submitted,
           gradeValue: gradeValue,
           gradeMax: gradeMax,
           gradeDisplay: gradeDisplay,
@@ -920,8 +929,9 @@
             feedbackIndex >= 0 && cells[feedbackIndex]
               ? cleanText(cells[feedbackIndex].textContent).slice(0, 2000) || null
               : null,
-          submittedAt: parsedSubmissionDate ? parsedSubmissionDate.iso : null,
-          submittedAtDisplay: parsedSubmissionDate ? parsedSubmissionDate.display : null,
+          submittedAt: submitted && parsedSubmissionDate ? parsedSubmissionDate.iso : null,
+          submittedAtDisplay:
+            submitted && parsedSubmissionDate ? parsedSubmissionDate.display : null,
           submissionFiles: submissionFiles,
         });
       });
@@ -930,8 +940,9 @@
       return {
         cmid: cmid,
         status: "ok",
-        errorCode: null,
+        errorCode: unknownStatus ? "partial_unknown_submission_status" : null,
         rows: rows,
+        negativeRows: negativeRows,
         pageRowCount: tableRows.filter(function (row) {
           return row.tagName === "TR";
         }).length,
@@ -989,35 +1000,66 @@
       var page = 0;
       var seen = {};
       var collected = [];
+      var negativeCollected = [];
       var deadline = Date.now() + 18000;
 
       function partial(code) {
-        return { cmid: cmid, status: "ok", errorCode: code, rows: collected };
+        return {
+          cmid: cmid,
+          status: "ok",
+          errorCode: code,
+          rows: collected,
+          negativeRows: negativeCollected,
+        };
       }
 
       function step() {
         if (Date.now() >= deadline) return Promise.resolve(partial("partial_time_budget"));
         return fetchJefeGradingPage(cmid, page, deadline - Date.now()).then(function (result) {
           if (result.status !== "ok") {
-            if (collected.length > 0) {
+            if (collected.length > 0 || negativeCollected.length > 0) {
               return partial("partial_page_unavailable");
             }
             return result;
           }
           (result.rows || []).forEach(function (row) {
             var key = row.moodleUserId + "|" + row.moodleUsername;
-            if (!seen[key]) {
-              seen[key] = true;
+            if (seen[key] !== "positive") {
+              if (seen[key] === "negative") {
+                negativeCollected = negativeCollected.filter(function (item) {
+                  return item.moodleUserId + "|" + item.moodleUsername !== key;
+                });
+              }
+              seen[key] = "positive";
               collected.push(row);
+            }
+          });
+          (result.negativeRows || []).forEach(function (row) {
+            var key = row.moodleUserId + "|" + row.moodleUsername;
+            if (!seen[key]) {
+              seen[key] = "negative";
+              negativeCollected.push(row);
             }
           });
           if (collected.length > 500) {
             collected = collected.slice(0, 500);
+            negativeCollected = [];
             return partial("partial_row_limit");
           }
+          if (collected.length + negativeCollected.length > 500) {
+            negativeCollected = negativeCollected.slice(0, 500 - collected.length);
+            return partial("partial_row_limit");
+          }
+          if (result.errorCode) return partial(result.errorCode);
           // Paging depends on ALL table rows, including students without a submission.
           if ((result.pageRowCount || 0) < JEFE_GRADING_PAGE_SIZE) {
-            return { cmid: cmid, status: "ok", errorCode: null, rows: collected };
+            return {
+              cmid: cmid,
+              status: "ok",
+              errorCode: null,
+              rows: collected,
+              negativeRows: negativeCollected,
+            };
           }
           page += 1;
           if (page >= JEFE_GRADING_MAX_PAGES) {
