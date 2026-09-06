@@ -278,7 +278,7 @@ function compactStatus(
  * verificó.
  */
 function recordedPanelGrade(delivery: GuidedDelivery): string | null {
-  const note = delivery.task?.nota?.trim();
+  const note = delivery.recordedGrade?.trim() || delivery.task?.nota?.trim();
   return note && !/sin calificar|no entregado|entregado/i.test(note) ? note : null;
 }
 
