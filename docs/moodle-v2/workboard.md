@@ -1,6 +1,42 @@
 # Tablero verificable · Moodle Task Automation v2
 
-Última actualización: 29 de agosto de 2026
+Última actualización: 6 de septiembre de 2026
+
+## Corte operativo del 6 de septiembre
+
+Este corte prevalece sobre la tabla de fundación del 29 de agosto conservada
+debajo. La reconciliación de entregas se publicó en PR #19 y #20; el despliegue
+`34036803616` terminó correctamente sobre `7f18efc`.
+
+| Circuito               | Estado comprobado                                                                                                    | Pendiente para su aceptación operativa                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Captura y conservación | Publicado: cuatro migraciones verificadas, puente instalado y Edge Function desplegada; 947 casos en el corte actual | El total de casos no demuestra cobertura completa                                                            |
+| Aplicación y reversión | Publicado, probado con transacción revertida y datos sintéticos; 0 aplicaciones académicas reales                    | Decisiones del responsable sobre casos ambiguos                                                              |
+| Lectura común          | Estudiante, bandeja y filas de jefatura conectadas; contrato SQL real aprobado nuevamente el 6/9                     | Última inspección del conjunto publicado dentro de Campus                                                    |
+| Cola persistente       | Código y SQL publicados; conserva resultados parciales y rota mientras Campus está abierto                           | **0 filas de cobertura en la base**: ejecutar el primer barrido real de jefatura y comprobar su persistencia |
+| Escritor dedicado      | 1 intención verificada y 212 legacy; scripts de claim/confirm y planner disponibles                                  | No hay worker autónomo ni evidencia del ciclo completo de creación, entrega, nota y reentrega                |
+| Acreditación híbrida   | `shadow` confirmado en vivo                                                                                          | Reescaneo, muestra revisada y decisión operativa antes de activar                                            |
+
+La intención dedicada existente enlaza el catálogo interno 151, cuyo CMID real
+es **1222866**, curso 3615. No confundir la PK del catálogo con el CMID.
+Tiene cuatro participantes y `provisioning_evidence` nulo; `verified` y hashes
+iguales no prueban por sí solos el piloto completo. No modificarla ni crear otra
+por semejanza de nombre para completar esta lista.
+
+La revisión del arranque del observer añadió regresiones para StrictMode con
+cola en cache, tandas `4 + 4 + 4 + 1`, fallo parcial, remonte tras un error,
+rotación persistente, error de consulta y modo fuera de Campus. La cancelación
+del timer ya no deja el arranque marcado como ejecutado; el throttle no anuncia
+una lectura exitosa que no ocurrió.
+
+La última comprobación visual y el piloto real requieren control del navegador
+integrado autenticado. Una captura de pantalla prueba la presentación visible,
+pero no sustituye las acciones ni la evidencia persistida de esos recorridos.
+El rediseño solicitado de «Estado en Campus»/«Entrega» queda pospuesto por
+indicación del responsable hasta terminar la aceptación funcional.
+
+## Fotografía de fundación del 29 de agosto (histórica)
+
 Estado general: fundación productiva y lectura 2026 reforzada; escritura Moodle
 dedicada pendiente de piloto
 
