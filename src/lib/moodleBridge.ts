@@ -371,7 +371,8 @@ export async function requestMoodleTasks(
 
 export async function requestJefeMoodleTasks(
   rawCmids: Array<string | number>,
-  timeoutMs = 45_000
+  // Match the bridge's two workers and 36-second per-task budget.
+  timeoutMs = 5_000 + Math.ceil(Math.min(rawCmids.length, 20) / 2) * 36_000
 ): Promise<JefeMoodleTasksResult> {
   if (!isEmbeddedInMoodle()) throw new MoodleBridgeError("not_embedded");
 

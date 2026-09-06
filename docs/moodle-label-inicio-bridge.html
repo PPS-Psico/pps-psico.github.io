@@ -944,7 +944,7 @@
         rows: rows,
         negativeRows: negativeRows,
         pageRowCount: tableRows.filter(function (row) {
-          return row.tagName === "TR";
+          return row.tagName === "TR" && !row.classList.contains("emptyrow");
         }).length,
       };
     }
@@ -960,7 +960,10 @@
       var url =
         "/mod/assign/view.php?id=" +
         encodeURIComponent(cmid) +
-        "&action=grading&perpage=100" +
+        // Moodle recuerda filtros del docente. El mismo contrato de "Limpiar
+        // todo" evita certificar una lista recortada por estado, grupo o nombre.
+        "&action=grading&group=0&status=&workflowfilter=&markingallocationfilter=" +
+        "&suspendedparticipantsfilter=0&tifirst=&tilast=&perpage=100" +
         (page > 0 ? "&page=" + page : "");
 
       return fetch(url, {
@@ -1001,7 +1004,9 @@
       var seen = {};
       var collected = [];
       var negativeCollected = [];
-      var deadline = Date.now() + 18000;
+      // Cuatro páginas para el padrón actual de 346 alumnos. El consumidor
+      // reserva 36 s por tarea y dos trabajadores, más 5 s de margen.
+      var deadline = Date.now() + 36000;
 
       function partial(code) {
         return {
