@@ -4,6 +4,12 @@ Vigencia: 29 de agosto de 2026
 Alcance actual: lectura legacy 2026 y fundación dedicada; escritura Moodle aún
 no habilitada
 
+Actualización operativa del 6/9/2026: consultar primero el
+[corte del tablero](moodle-v2/workboard.md#corte-operativo-del-6-de-septiembre).
+El puente vigente está instalado en la **descripción de General, sección
+50889**, no en una actividad Etiqueta independiente. No agregar otro puente
+siguiendo la ubicación histórica de este documento.
+
 ## 1. Comprobación rápida
 
 1. Verificar que la intención/unidad existe en el Lanzador y que los conteos no
