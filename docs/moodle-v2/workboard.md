@@ -8,7 +8,37 @@ Este corte prevalece sobre la tabla de fundación del 29 de agosto conservada
 debajo. La reconciliación de entregas se publicó en PR #19 y #20; el despliegue
 `34036803616` terminó correctamente sobre `7f18efc`.
 
-### Barrido real posterior, 6/9 a las 14:02 UTC
+### Cierre de lectura completa, 6/9 a las 21:09 UTC
+
+PR #22 y #23 publicadas. El despliegue final `34059574276` terminó correctamente
+sobre `ce94eb85c41e51d178e17fa1da2d93a3e094b0ad`: 98 suites, 812 pruebas y 7 e2e,
+TypeScript, lint, migraciones y build aprobados. El puente final se guardó y
+releyó en General (50889); los respaldos conservan el HTML previo y se reemplazó
+sólo el script. TypeScript también pasó en el checkout principal del responsable.
+
+| Alcance | Tareas completas | Filas por tarea | Última lectura UTC |
+| --- | --- | --- | --- |
+| Laboral + Comunitaria | 57/57 | 346 | 20:56:23 |
+| Educacional | 33/33 | 346 | 21:02:05 |
+| Clínica | 51/51 | 346–347 | 21:08:30 |
+
+Son **112 tareas distintas**, no 141: las áreas se solapan. Todas las coberturas
+quedaron `ok`, sin relecturas vencidas ni parciales pendientes. La tarea clínica
+946366 expone 347 participantes: esa diferencia no es un error ni cambia el
+denominador de obligaciones confirmadas de cada PPS.
+
+Se conservaron 1.255 casos y 387 versiones negativas de jefe, correspondientes
+a 279 casos. La auditoría de esos casos encontró **cero fuera de un vínculo
+confirmado o de evidencia previa** y cero aplicaciones manuales al expediente.
+El contrato SQL de lectura común volvió a pasar después del barrido. También se
+comprobó la bandeja de coordinación dentro de Campus. Una ausencia observada no
+borra una nota académica.
+
+Este cierre acepta la captura y relectura del catálogo actual. No equivale a
+resolver asociaciones académicas ambiguas, activar la acreditación híbrida ni
+validar el escritor dedicado de 2027; esos pendientes se mantienen debajo.
+
+### Barrido previo, 6/9 a las 14:02 UTC
 
 El responsable abrió las jefaturas y se comprobó su persistencia en la base:
 Clínica 51/51 tareas, Educacional 33/33 y Laboral/Comunitaria 57/57, todas con
@@ -18,8 +48,8 @@ El contrato de lectura común volvió a pasar después de esta ingesta.
 
 Esto supera el pendiente de cero filas de cobertura del corte previo conservado
 en la tabla de abajo. Certifica el recorrido del catálogo; no certifica la
-ausencia individual de entrega: el puente instalado conserva sólo filas
-positivas. La extensión preparada agrega `negativeRows` sin alterar `rows` v1,
+ausencia individual de entrega: el puente de ese momento conservaba sólo filas
+positivas. La extensión agrega `negativeRows` sin alterar `rows` v1,
 guarda cada tarea en una petición de evidencia y excluye las negativas del
 proyector académico. No hay nota borrada por una ausencia observada.
 Los estados desconocidos producen cobertura parcial; no se inventa una ausencia.
@@ -32,8 +62,8 @@ El puente instalado solicita ahora los parámetros explícitos de «Limpiar todo
 (estado, grupo, nombre, flujo y asignación de corrector) en cada página. También
 excluye `tr.emptyrow` del cómputo de paginación: Moodle rellena hasta 100 filas
 aunque haya sólo cinco personas. Dos regresiones nuevas verifican ambos casos.
-La relectura con esta versión está en curso; el barrido filtrado anterior no
-certifica cobertura de ausencias.
+La relectura con esta versión terminó según el cierre superior; el barrido
+filtrado anterior no certificaba cobertura de ausencias.
 
 La medición del padrón completo (100 + 100 + 100 + 46) dio 3.728, 6.548,
 1.974 y 1.765 ms. Con lecturas simultáneas hubo cortes al presupuesto antiguo
