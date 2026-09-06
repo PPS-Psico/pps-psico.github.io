@@ -150,6 +150,15 @@ y 8 en acreditación.
 
 ## Contrato adicional: jefaturas de área
 
+Actualización de lectura de entregas, 06/09/2026 UTC: las filas de informes
+consumen `private.moodle_practice_snapshot_v1`, compartido con estudiante y
+coordinación. Una asociación aplicada explícitamente tiene prioridad; las
+notas individuales no se toman del número global de una tarea compartida. La
+fecha es la de la evidencia propia seleccionada y no un plazo administrativo.
+Reconciliación ejecutable: `supabase/tests/moodle_delivery_read_contract.sql`.
+La discrepancia previa entre 60 días documentados y 90 del helper vivo para
+`stale` se registra en el diccionario; esta actualización no cambia ese umbral.
+
 `get_jefe_dashboard_v1(year, cutoff)` es el contrato de lectura de Inicio,
 Informes y Panorama. Resuelve alcance por DNI en
 `private.jefe_area_assignments`; el cliente no envía orientaciones ni puede

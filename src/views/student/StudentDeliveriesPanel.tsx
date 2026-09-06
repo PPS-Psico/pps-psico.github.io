@@ -258,7 +258,10 @@ function compactStatus(
   delivery: GuidedDelivery,
   snapshot?: MoodleGradeSnapshot
 ): { label: string; detail: string; tone: DeliveryTone } {
-  const presentation = deliveryPresentation(delivery, snapshot);
+  const presentation = deliveryPresentation(
+    delivery,
+    snapshot && !snapshot.reviewedAllocation ? { ...snapshot, academicGrade: null } : snapshot
+  );
   if (snapshot?.task_status === "graded" && presentation.hasGrade) {
     return { label: "Calificada", detail: presentation.detail, tone: presentation.tone };
   }
@@ -543,7 +546,13 @@ function DeliveredRow({
         {grade ?? "—"}
         {grade && (
           <small className="block text-xs font-normal">
-            {presentation.hasGrade ? "Campus" : "Mi Panel"}
+            {snapshot?.reviewedAllocation
+              ? "Coordinación"
+              : snapshot?.academicGrade
+                ? "Mi Panel"
+                : presentation.hasGrade
+                  ? "Campus"
+                  : "Mi Panel"}
           </small>
         )}
       </div>

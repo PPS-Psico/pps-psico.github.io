@@ -54,6 +54,13 @@ try {
       readFileSync("supabase/tests/moodle_evidence_inbox_contract.sql", "utf8")
   );
   console.log("Moodle evidence SQL contract: PASS (isolated PostgreSQL 17; synthetic data)");
+  sql(readFileSync("supabase/tests/fixtures/moodle_application_schema.sql", "utf8"));
+  sql(readFileSync("supabase/migrations/20260906005856_moodle_evidence_application.sql", "utf8"));
+  sql(
+    `select set_config('request.jwt.claim.sub','${actor}',false);\n` +
+      readFileSync("supabase/tests/moodle_evidence_application_contract.sql", "utf8")
+  );
+  console.log("Moodle application SQL contract: PASS (isolated PostgreSQL 17; synthetic data)");
 } finally {
   docker(["rm", "--force", name]);
 }
