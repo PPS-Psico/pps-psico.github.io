@@ -23,7 +23,17 @@ positivas. La extensión preparada agrega `negativeRows` sin alterar `rows` v1,
 guarda cada tarea en una petición de evidencia y excluye las negativas del
 proyector académico. No hay nota borrada por una ausencia observada.
 Los estados desconocidos producen cobertura parcial; no se inventa una ausencia.
-**Esta extensión necesita instalación y relectura real en Campus.**
+La extensión se instaló en General (sección 50889) el 6/9, conservando el HTML
+ajeno al script y un respaldo local previo. La prueba descubrió además que
+Moodle conservaba el filtro docente «Enviada»: una respuesta correcta y todas
+sus páginas podían seguir siendo una lista filtrada. Al quitarlo aparecieron
+«Sin entrega» y se conservaron las primeras 28 observaciones negativas de jefe.
+El puente instalado solicita ahora los parámetros explícitos de «Limpiar todo»
+(estado, grupo, nombre, flujo y asignación de corrector) en cada página. También
+excluye `tr.emptyrow` del cómputo de paginación: Moodle rellena hasta 100 filas
+aunque haya sólo cinco personas. Dos regresiones nuevas verifican ambos casos.
+La relectura con esta versión está en curso; el barrido filtrado anterior no
+certifica cobertura de ausencias.
 
 `20260906142427_moodle_expected_negative_observations` quedó aplicada con SQL
 exacto y ledger en la misma transacción, después de ensayo con `ROLLBACK` y

@@ -944,7 +944,7 @@
         rows: rows,
         negativeRows: negativeRows,
         pageRowCount: tableRows.filter(function (row) {
-          return row.tagName === "TR";
+          return row.tagName === "TR" && !row.classList.contains("emptyrow");
         }).length,
       };
     }
@@ -960,7 +960,10 @@
       var url =
         "/mod/assign/view.php?id=" +
         encodeURIComponent(cmid) +
-        "&action=grading&perpage=100" +
+        // Moodle recuerda filtros del docente. El mismo contrato de "Limpiar
+        // todo" evita certificar una lista recortada por estado, grupo o nombre.
+        "&action=grading&group=0&status=&workflowfilter=&markingallocationfilter=" +
+        "&suspendedparticipantsfilter=0&tifirst=&tilast=&perpage=100" +
         (page > 0 ? "&page=" + page : "");
 
       return fetch(url, {
