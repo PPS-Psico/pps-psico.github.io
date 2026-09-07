@@ -65,6 +65,35 @@ beforeEach(() => {
     .mockResolvedValue({ total: 1, mode: "shadow", cases: [item] });
 });
 
+it.each(["Aprobado", "Desaprobado"] as const)(
+  "conserva %s como nota textual de 2024",
+  async (outcome) => {
+    const historical = { ...item, taskYear: 2024 };
+    jest
+      .mocked(fetchMoodleEvidenceInbox)
+      .mockResolvedValue({ total: 1, mode: "review_and_apply", cases: [historical] });
+    jest.mocked(decideMoodleEvidence).mockResolvedValue(undefined);
+    mount();
+    fireEvent.click(await screen.findByText("Estudiante de prueba"));
+    fireEvent.change(screen.getByLabelText("PPS del estudiante"), { target: { value: "pps-a" } });
+    fireEvent.change(screen.getByLabelText(/Nota propuesta/), { target: { value: outcome } });
+    fireEvent.change(screen.getByLabelText("Fundamento de la decisión"), {
+      target: { value: "Comentario docente de 2024 revisado" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Registrar asociación" }));
+    await waitFor(() =>
+      expect(decideMoodleEvidence).toHaveBeenCalledWith(
+        historical,
+        "pps-a",
+        "allocate",
+        "Comentario docente de 2024 revisado",
+        outcome
+      )
+    );
+    expect(applyMoodleEvidence).not.toHaveBeenCalled();
+  }
+);
+
 it("aplica sólo la decisión guardada y el registro académico que el operador revisó", async () => {
   const reviewed = {
     ...item,

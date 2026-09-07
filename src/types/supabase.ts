@@ -3781,6 +3781,19 @@ export type Database = {
         }
         Returns: number
       }
+      decide_moodle_evidence_v2: {
+        Args: {
+          p_action: string
+          p_case: string
+          p_evidence: string
+          p_grade?: number
+          p_practice: string
+          p_qualitative_grade?: string
+          p_reason: string
+          p_revision: number
+        }
+        Returns: number
+      }
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined }
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean }
       evaluate_student_accreditation_transition_v1: {
