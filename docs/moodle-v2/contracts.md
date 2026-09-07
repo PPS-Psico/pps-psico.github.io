@@ -178,3 +178,23 @@ los umbrales y el rollout están en
 
 La sincronización de notas es prioritaria: una falla de la evaluación híbrida
 se registra y no invalida una observación Moodle aceptada.
+
+## 10. Calificaciones cualitativas de 2024
+
+Criterio confirmado por coordinación el 7 de septiembre de 2026: en 2024 se
+calificaba por **Aprobado / Desaprobado**. Esos textos son notas académicas;
+no tienen una equivalencia numérica autorizada. El número bruto de Moodle y
+el comentario docente siguen siendo evidencia separada.
+
+La bandeja usa el año del catálogo de la tarea, no una fecha inferida de la
+práctica ni el año del escaneo. Para tareas catalogadas como 2024 ofrece ambos
+resultados cualitativos. `decide_moodle_evidence_v2` registra una propuesta con
+`qualitative_grade`; la aplicación explícita conserva el texto en `practicas.nota`
+y deja `nota_moodle` nula. La lectura común y jefatura preservan esa nota.
+Una reversión restaura los campos académicos anteriores y las sincronizaciones
+posteriores no sobrescriben la decisión revisada.
+
+No se interpretan comentarios automáticamente ni se reasignan prácticas por
+nombre. La confirmación del criterio de notas no confirma por sí sola una
+asociación individual ambigua. La API anterior conserva su firma, pero tampoco
+admite proponer una equivalencia numérica para una tarea catalogada como 2024.

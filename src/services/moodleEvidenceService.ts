@@ -10,6 +10,7 @@ export const evidenceCaseSchema = z.object({
   studentId: z.string().nullable(),
   studentName: z.string().nullable(),
   taskName: z.string().nullable(),
+  taskYear: z.number().nullable().optional(),
   evidenceId: z.string(),
   observedAt: z.string(),
   source: z.string(),
@@ -57,6 +58,7 @@ export const evidenceCaseSchema = z.object({
       revision: z.number(),
       action: z.enum(["allocate", "revoke"]),
       grade: z.number().nullable(),
+      qualitative_grade: z.enum(["Aprobado", "Desaprobado"]).nullable().optional(),
       reason: z.string(),
       created_at: z.string(),
     })
@@ -121,16 +123,17 @@ export async function decideMoodleEvidence(
   practiceId: string,
   action: "allocate" | "revoke",
   reason: string,
-  grade: number | null
+  grade: number | "Aprobado" | "Desaprobado" | null
 ) {
-  const { error } = await supabase.rpc("decide_moodle_evidence_v1", {
+  const { error } = await supabase.rpc("decide_moodle_evidence_v2", {
     p_case: item.id,
     p_evidence: item.evidenceId,
     p_practice: practiceId,
     p_revision: item.revision,
     p_action: action,
     p_reason: reason,
-    p_grade: grade ?? undefined,
+    p_grade: typeof grade === "number" ? grade : undefined,
+    p_qualitative_grade: typeof grade === "string" ? grade : undefined,
   });
   if (error) throw error;
 }

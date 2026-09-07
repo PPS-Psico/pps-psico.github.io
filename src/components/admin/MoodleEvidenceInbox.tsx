@@ -42,8 +42,8 @@ function Application({ item, practiceId }: { item: MoodleEvidenceCase; practiceI
       <p className="text-sm font-semibold">Aplicación al expediente</p>
       <p className="text-sm">
         Nota actual: {practice.grade || "Sin nota"}.{" "}
-        {decision?.grade != null
-          ? `Nota de la propuesta: ${decision.grade}.`
+        {(decision?.qualitative_grade ?? decision?.grade) != null
+          ? `Nota de la propuesta: ${decision?.qualitative_grade ?? decision?.grade}.`
           : "La propuesta conserva la nota actual."}
       </p>
       {practice.effectiveSnapshot?.reviewRequired === true && (
@@ -102,6 +102,7 @@ function Decision({ item }: { item: MoodleEvidenceCase }) {
   const [practice, setPractice] = useState("");
   const [reason, setReason] = useState("");
   const [grade, setGrade] = useState("");
+  const qualitative = item.taskYear === 2024;
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (action: "allocate" | "revoke") =>
@@ -110,7 +111,11 @@ function Decision({ item }: { item: MoodleEvidenceCase }) {
         practice,
         action,
         reason.trim(),
-        action === "allocate" && grade.trim() ? Number(grade.replace(",", ".")) : null
+        action === "allocate" && grade.trim()
+          ? qualitative
+            ? (grade as "Aprobado" | "Desaprobado")
+            : Number(grade.replace(",", "."))
+          : null
       ),
     onSuccess: async () => {
       setReason("");
@@ -124,10 +129,12 @@ function Decision({ item }: { item: MoodleEvidenceCase }) {
     !!practice &&
     reason.trim().length >= 8 &&
     (!grade.trim() ||
-      (/^\d{1,2}([.,]\d{1,2})?$/.test(grade.trim()) &&
-        Number.isFinite(number) &&
-        number >= 0 &&
-        number <= 10));
+      (qualitative
+        ? ["Aprobado", "Desaprobado"].includes(grade)
+        : /^\d{1,2}([.,]\d{1,2})?$/.test(grade.trim()) &&
+          Number.isFinite(number) &&
+          number >= 0 &&
+          number <= 10));
   const field =
     "w-full rounded border border-slate-300 bg-white p-2 text-sm dark:border-slate-600 dark:bg-slate-900";
   return (
@@ -166,15 +173,30 @@ function Decision({ item }: { item: MoodleEvidenceCase }) {
             </p>
           )}
           <label className="block text-sm">
-            Nota propuesta para esta PPS (opcional, de 0 a 10)
-            <input
-              className={field}
-              inputMode="decimal"
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              maxLength={5}
-              disabled={mutation.isPending}
-            />
+            {qualitative
+              ? "Nota propuesta para esta PPS (criterio 2024)"
+              : "Nota propuesta para esta PPS (opcional, de 0 a 10)"}
+            {qualitative ? (
+              <select
+                className={field}
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                disabled={mutation.isPending}
+              >
+                <option value="">Conservar la nota actual</option>
+                <option value="Aprobado">Aprobado</option>
+                <option value="Desaprobado">Desaprobado</option>
+              </select>
+            ) : (
+              <input
+                className={field}
+                inputMode="decimal"
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                maxLength={5}
+                disabled={mutation.isPending}
+              />
+            )}
           </label>
           <label className="block text-sm">
             Fundamento de la decisión
@@ -333,7 +355,9 @@ export default function MoodleEvidenceInbox({ enabled }: { enabled: boolean }) {
                           {new Date(d.created_at).toLocaleString("es-AR")} ·{" "}
                           {d.action === "allocate" ? "Asociación" : "Revocación"} ·{" "}
                           {item.practices.find((p) => p.id === d.practica_id)?.name || "PPS"}
-                          {d.grade !== null ? ` · Nota propuesta: ${d.grade}` : ""}
+                          {(d.qualitative_grade ?? d.grade) != null
+                            ? ` · Nota propuesta: ${d.qualitative_grade ?? d.grade}`
+                            : ""}
                           <p className="break-words">{d.reason}</p>
                         </li>
                       ))}
