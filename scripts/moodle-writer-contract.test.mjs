@@ -194,3 +194,57 @@ test("legacy never acquires creation or verification permissions", () => {
   assert.throws(() => inventoryDecision(legacy, inventory, now));
   assert.throws(() => validateReadback(legacy, observed, new Date(now - 1000).toISOString(), now));
 });
+
+test("confirmation retains the observed resubmission and access settings", () => {
+  const evidence = validateReadback(
+    plan,
+    { ...observed, availabilityConditions: { showc: [], c: [], op: "&" } },
+    new Date(now - 1000).toISOString(),
+    now
+  );
+  assert.equal(evidence.maxAttempts, -1);
+  assert.equal(evidence.attemptReopenMethod, "manual");
+  assert.deepEqual(evidence.availabilityConditions, { op: "&", c: [], showc: [] });
+});
+
+for (const key of ["maxAttempts", "attemptReopenMethod", "availabilityConditions"])
+  test(`confirmation refuses missing ${key}, including an old checkpoint`, () => {
+    const oldPlan = { ...plan, expected: { ...plan.expected } };
+    const incomplete = { ...observed };
+    delete oldPlan.expected[key];
+    delete incomplete[key];
+    for (const candidate of [plan, oldPlan])
+      assert.throws(
+        () => validateReadback(candidate, incomplete, new Date(now - 1000).toISOString(), now),
+        new RegExp(key)
+      );
+  });
+
+for (const [key, value] of [
+  ["maxAttempts", 1],
+  ["maxAttempts", "-1"],
+  ["attemptReopenMethod", "untilpass"],
+  ["attemptReopenMethod", "none"],
+  ["availabilityConditions", null],
+  ["availabilityConditions", ""],
+  [
+    "availabilityConditions",
+    { op: "&", c: [{ type: "profile", sf: "idnumber", v: "4227" }], showc: [true] },
+  ],
+  ["availabilityConditions", { op: "&", c: [{ op: "&", c: [] }], showc: [true] }],
+  ["availabilityConditions", { op: "!&", c: [], showc: [] }],
+  ["availabilityConditions", { op: "&", c: [], showc: [], unknown: true }],
+  ["availabilityConditions", { op: "&", c: [] }],
+])
+  test(`confirmation blocks ${key}=${JSON.stringify(value)}`, () => {
+    assert.throws(
+      () =>
+        validateReadback(
+          plan,
+          { ...observed, [key]: value },
+          new Date(now - 1000).toISOString(),
+          now
+        ),
+      new RegExp(key)
+    );
+  });
