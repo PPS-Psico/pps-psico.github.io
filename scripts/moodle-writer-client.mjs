@@ -26,12 +26,13 @@ export async function unplannedActiveLaunches(client) {
     .from("lanzamientos_pps")
     .select("id,nombre_pps,fecha_inicio,orientacion")
     .eq("estado_convocatoria", "Activa")
-    .gte("fecha_inicio", "2026-01-01");
+    .eq("moodle_task_policy", "dedicated");
   if (launches.error) throw launches.error;
   if (!launches.data.length) return [];
   const intents = await client
     .from("moodle_task_intents")
     .select("lanzamiento_id")
+    .neq("provisioning_status", "cancelled")
     .in(
       "lanzamiento_id",
       launches.data.map((l) => l.id)

@@ -12,11 +12,15 @@ deben confundirse con capacidades productivas.
 ## 1. Unidad y convivencia
 
 - La unidad canónica es `(lanzamiento_id, orientacion_key)`.
-- `legacy_shared`: vínculos confirmados anteriores a 2027. Se observan, pero
+- `legacy_shared`: vínculos históricos preservados por `moodle_task_policy`. Se observan, pero
   jamás se crean, adoptan por nombre ni reconfiguran automáticamente.
-- `dedicated`: lanzamientos desde 2027, activos o archivados. Tendrán una tarea
+- `dedicated`: política predeterminada de todos los nuevos lanzamientos desde
+  el 7/9/2026, también si el año académico es 2026. Al activarse tendrán una tarea
   exclusiva cuyo `ID number` de Moodle debe coincidir exactamente con
   `stable_key`.
+- La migración conserva el modo de los lanzamientos históricos. Las siete PPS
+  activas pendientes de 2026 se habilitan explícitamente mediante un cambio
+  operativo auditado; no se adopta ninguna tarea histórica por nombre.
 - Las orientaciones admitidas son `clinica`, `laboral`, `comunitaria`,
   `educacional` y `otra`. La normalización vive en
   `private.moodle_orientation_key(text)`.

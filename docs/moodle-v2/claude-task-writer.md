@@ -8,6 +8,13 @@ La automatización controla Moodle con Claude in Chrome y usa los scripts del
 proyecto para reclamar y verificar trabajo. Curso autorizado: **3615**. Para
 2027 se usa **Tareas 2027 dentro del mismo curso**.
 
+Decisión vigente desde el 7/9/2026: cada lanzamiento nuevo usa tareas
+exclusivas, también durante 2026. La política `moodle_task_policy` conserva
+los históricos como `legacy_shared` y nace `dedicated` en los nuevos.
+No esperar al año 2027 ni reutilizar tareas de otra cohorte de la institución.
+Dos tareas con el mismo nombre pueden corresponder a lanzamientos diferentes:
+el ID estable es la identidad; una coincidencia sin ID válido requiere revisión.
+
 ## Leer la cola
 
 Ejecutá `node scripts/moodle-provisioner-dry-run.mjs`. El resultado es JSON.
@@ -69,7 +76,10 @@ Cargá los valores exactos de `intent.expected`: nombre, Número ID, HTML,
 apertura, entrega, fecha límite, **Recordarme calificar en**, escala y visibilidad.
 Usá Formato HTML en el editor. Respetá fechas nulas deshabilitando su control.
 `stealth` significa disponible pero sin mostrar en la página; `hidden` es oculto.
-Sólo envío de archivos; texto en línea desactivado. Las fechas ISO están en UTC:
+Sólo envío de archivos; texto en línea desactivado. Configurá Intentos
+permitidos en Ilimitado y Conceder intentos en Manual, para que el docente
+pueda habilitar una reentrega. No agregar restricciones de acceso por perfil.
+Las fechas ISO están en UTC:
 convertí para el huso horario mostrado por Moodle, con precisión de minutos.
 
 En una tarea existente sin descripción declarada (`descriptionHtml: null`),
