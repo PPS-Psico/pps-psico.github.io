@@ -1397,6 +1397,7 @@ export type Database = {
           mensaje_whatsapp: string | null
           modalidad_cupo: string
           moodle_pilot_dedicated: boolean
+          moodle_task_policy: string
           nombre_pps: string | null
           notas_gestion: string | null
           orientacion: string | null
@@ -1450,6 +1451,7 @@ export type Database = {
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
           moodle_pilot_dedicated?: boolean
+          moodle_task_policy?: string
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null
@@ -1503,6 +1505,7 @@ export type Database = {
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
           moodle_pilot_dedicated?: boolean
+          moodle_task_policy?: string
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null

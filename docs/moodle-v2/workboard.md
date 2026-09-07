@@ -28,9 +28,17 @@ Este corte prevalece sobre las fotografías históricas inferiores.
   activas de 2026 con 78 prácticas sin intención ni vínculo confirmado,
   detectadas antes de cambiar su modelo. La cola anteriormente decía idle.
   La versión instalada las reporta como `ACTIVE_LAUNCH_OUTSIDE_QUEUE`.
-- Pendiente de decisión: tareas exclusivas para las PPS nuevas de 2026 frente
-  a continuar espacios anuales compartidos. Nunca resolver esta elección
-  adoptando una tarea histórica por nombre. Inventario del curso en curso.
+- Decisión confirmada el 7/9: todo lanzamiento nuevo usa tareas exclusivas,
+  incluyendo 2026. Migración `20260907141902` aplicada con ledger: preserva
+  la política histórica y establece `dedicated` como valor predeterminado.
+  Contrato con rollback aprobado: dos lanzamientos homónimos generan unidades
+  distintas, los borradores no se encolan y las intenciones legacy no cambian.
+- Las siete PPS pendientes se habilitaron con un cambio operativo separado:
+  nueve unidades, 78 participantes esperados. Guardadas y releídas en Campus:
+  Aser `1228008`, Brochero `1228014`, Kano `1228016`. Faltan seis creaciones
+  y la confirmación final de los nueve vínculos. Las reservas del ensayo se
+  liberaron para que Claude procese la cola; debe recuperar esas tres por
+  ID estable, no recrearlas. Encolado no significa tarea verificada.
 - El responsable ofreció su cuenta de prueba para el recorrido real. Creación,
   reejecución sin duplicados, entrega, corrección y reentrega siguen pendientes
   de aceptación; la instalación del worker no declara ese recorrido aprobado.

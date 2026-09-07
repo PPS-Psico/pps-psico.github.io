@@ -119,7 +119,17 @@ export function inventoryDecision(plan, inventory, now = Date.now()) {
   if (plan.linkedCmid && (matches.length !== 1 || matches[0].cmid !== plan.linkedCmid))
     throw new Error("El vínculo confirmado no coincide con el inventario");
   if (matches.length) return { action: "verify_existing", cmid: matches[0].cmid };
-  if (inventory.activities.some((a) => a.name === plan.expected.name))
+  // Different launches may legitimately have the same institution and month.
+  // Only a valid, different PPS key resolves that name collision.
+  if (
+    inventory.activities.some(
+      (a) =>
+        a.name === plan.expected.name &&
+        !/^PPS:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(clinica|laboral|comunitaria|educacional)$/.test(
+          a.idNumber
+        )
+    )
+  )
     throw new Error("Nombre coincidente sin clave estable: requiere revisión, no creación");
   return { action: "create", cmid: null };
 }

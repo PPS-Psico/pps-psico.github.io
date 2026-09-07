@@ -128,6 +128,26 @@ test("duplicate IDs and a same-name task without stable key block creation", () 
     /Nombre/
   );
 });
+test("same name on a different explicitly identified launch allows a new task", () => {
+  const other = {
+    cmid: 123,
+    name: plan.expected.name,
+    idNumber: "PPS:11111111-2222-4333-8444-555555555555:clinica",
+  };
+  assert.equal(
+    inventoryDecision(plan, { ...inventory, activities: [other] }, now).action,
+    "create"
+  );
+  assert.throws(
+    () =>
+      inventoryDecision(
+        plan,
+        { ...inventory, activities: [{ ...other, idNumber: "unrecognized" }] },
+        now
+      ),
+    /Nombre/
+  );
+});
 test("minute-precision readback is accepted with all actual fields", () => {
   assert.doesNotThrow(() =>
     validateReadback(
