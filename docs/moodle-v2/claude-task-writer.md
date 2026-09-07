@@ -99,7 +99,20 @@ Guardá `observado.json` con valores **releídos**, nunca copiados del plan:
 `sectionId` real (ID de sección, no índice de pestaña), `sectionTitle`,
 `areaBanner` comprobado en la ubicación de la actividad, `stableKey`, `name`,
 `descriptionHtml`, `openAt`, `dueAt`, `cutoffAt`, `gradingDueAt`, `gradeMode`,
-`gradeMax`, `sectionKey`, `visibility`, `fileSubmissions`, `onlineText`.
+`gradeMax`, `sectionKey`, `visibility`, `fileSubmissions`, `onlineText`,
+`maxAttempts`, `attemptReopenMethod`, `availabilityConditions`.
+
+Releé `maxattempts` como número (`-1` = Ilimitado) y `attemptreopenmethod`
+como texto (`manual`). Expandí Restricciones de acceso y comprobá que indique
+Ninguno. `availabilityConditions` es el objeto JSON completo del control
+`availabilityconditionsjson`, no un conteo ni un booleano. Si el control existe
+y su valor está vacío, representalo como `{"op":"&","c":[],"showc":[]}`
+únicamente después de comprobar Ninguno en la interfaz. Un control ausente,
+ilegible o JSON inválido no equivale a ausencia de restricciones: detenerse.
+No borrar condiciones para hacer pasar una confirmación; informar el desvío.
+El verificador exige estos tres campos y los conserva en la evidencia.
+Los comprobantes viejos sin estos campos no sirven para una confirmación nueva:
+hay que releer Campus; nunca completar valores copiando lo esperado.
 `sectionKey` se deriva del área observada: informes-clinica, informes-laboral,
 informes-comunitaria o informes-educacional; no es el ID de la sección Moodle.
 

@@ -2,9 +2,10 @@
 
 Vigencia: 7 de septiembre de 2026.
 Alcance actual: lectura histórica y creación dedicada autorizada por lanzamiento,
-también en 2026. El worker de Claude está instalado; su ejecución integral
-todavía requiere validación. Esto no bloquea procesar las intenciones autorizadas
-con el procedimiento vigente y las comprobaciones obligatorias.
+también en 2026. El worker de Claude completó la cola de nueve unidades de 2026:
+seis creaciones y tres recuperaciones por ID estable, auditadas en base y Campus.
+La prueba de entrega, corrección y reentrega de estudiante sigue siendo un
+piloto separado; no se declara completada por la creación de tareas.
 
 ## Procedimiento vigente del escritor
 
@@ -16,9 +17,12 @@ el checkout principal del desarrollo puede contener cambios ajenos a esta rutina
 Las migraciones aplicadas se verifican en el ledger vivo; un archivo sin seguimiento
 en otro checkout no demuestra que la migración esté pendiente de aplicar.
 
-Estado del traspaso: nueve unidades pendientes de confirmar, de las cuales Aser
-`1228008`, Brochero `1228014` y Kano `1228016` ya se guardaron en Campus. Recuperarlas
-por su ID estable y releerlas; quedan seis creaciones, no nueve.
+Estado auditado al cierre del 7/9: nueve unidades verificadas, cola `idle` sin
+alertas, inventario final de 121 tareas. No reencolar ni recrear esas unidades.
+El verificador ahora exige también `maxAttempts`, `attemptReopenMethod` y el
+objeto completo `availabilityConditions`, y los guarda en la evidencia enviada
+a la base. Las confirmaciones nuevas requieren una relectura con esos campos;
+los recibos anteriores se conservan sin inventar evidencia retrospectiva.
 
 Actualización operativa del 6/9/2026: consultar primero el
 [corte del tablero](moodle-v2/workboard.md#corte-operativo-del-6-de-septiembre).

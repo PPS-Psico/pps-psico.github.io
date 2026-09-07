@@ -6,6 +6,18 @@
 
 Este corte prevalece sobre las fotografías históricas inferiores.
 
+### Cierre de la cola y controles de reentrega
+
+Claude completó las nueve unidades de 2026 (seis creadas, tres recuperadas).
+Auditoría independiente del 7/9: nueve vínculos verificados, 78 asignaciones,
+cola `idle` sin alertas; inventarios de 115 a 121 tareas sin claves duplicadas.
+La relectura de los nueve formularios confirmó fechas, archivos, nota máxima 10,
+visibilidad, intentos ilimitados, reapertura manual y ausencia de restricciones.
+El escritor exige ahora esos últimos tres ajustes en cada comprobante y los
+conserva en `provisioning_evidence`. Las confirmaciones previas no se reescriben.
+La creación real está validada; el piloto de entrega/corrección/reentrega continúa
+pendiente. Los puntos siguientes conservan el historial anterior a este cierre.
+
 - Traspaso corregido: Claude trabaja en `../consulta-pps-moodle-automation`,
   un checkout operativo con código y procedimiento versionados juntos. Debe
   releer el SKILL desde disco en una corrida nueva. El árbol de desarrollo

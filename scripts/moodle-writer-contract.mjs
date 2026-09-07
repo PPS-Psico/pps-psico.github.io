@@ -69,6 +69,9 @@ export function describeIntent(row, catalog = null) {
       visibility: row.desired_visibility,
       fileSubmissions: true,
       onlineText: false,
+      maxAttempts: -1,
+      attemptReopenMethod: "manual",
+      availabilityConditions: { op: "&", c: [], showc: [] },
     },
   };
 }
@@ -159,6 +162,20 @@ export function validateReadback(plan, observed, claimedAt, now = Date.now()) {
   )
     throw new Error("Sección real o año incorrectos");
   const mismatches = [];
+  // Require these readings even for a checkpoint issued by an older writer.
+  if (observed.maxAttempts !== -1) mismatches.push("maxAttempts");
+  if (observed.attemptReopenMethod !== "manual") mismatches.push("attemptReopenMethod");
+  const access = observed.availabilityConditions;
+  if (
+    !access ||
+    access.op !== "&" ||
+    !Array.isArray(access.c) ||
+    access.c.length !== 0 ||
+    !Array.isArray(access.showc) ||
+    access.showc.length !== 0 ||
+    Object.keys(access).some((key) => !["op", "c", "showc"].includes(key))
+  )
+    mismatches.push("availabilityConditions");
   for (const [key, value] of Object.entries(plan.expected)) {
     if (!(key in observed)) {
       mismatches.push(key);
@@ -166,6 +183,8 @@ export function validateReadback(plan, observed, claimedAt, now = Date.now()) {
     }
     // Existing tasks with no declared HTML keep their teacher-authored text.
     if (key === "descriptionHtml" && value === null && typeof observed[key] === "string") continue;
+    // JSON object property order is immaterial; the full empty rule was checked above.
+    if (key === "availabilityConditions") continue;
     if (["openAt", "dueAt", "cutoffAt", "gradingDueAt"].includes(key)) {
       if (minute(value) !== minute(observed[key])) mismatches.push(key);
     } else if (observed[key] !== value) mismatches.push(key);
@@ -181,6 +200,9 @@ export function validateReadback(plan, observed, claimedAt, now = Date.now()) {
     gradingDueAt: observed.gradingDueAt,
     fileSubmissions: observed.fileSubmissions,
     onlineText: observed.onlineText,
+    maxAttempts: observed.maxAttempts,
+    attemptReopenMethod: observed.attemptReopenMethod,
+    availabilityConditions: observed.availabilityConditions,
     readbackSha256: createHash("sha256").update(JSON.stringify(observed)).digest("hex"),
   };
 }
