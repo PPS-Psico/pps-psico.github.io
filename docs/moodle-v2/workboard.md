@@ -1,6 +1,43 @@
 # Tablero verificable · Moodle Task Automation v2
 
-Última actualización: 6 de septiembre de 2026
+Última actualización: 7 de septiembre de 2026
+
+## Corte operativo del 7 de septiembre
+
+Este corte prevalece sobre las fotografías históricas inferiores.
+
+- Notas cualitativas 2024 publicadas en PR #25; despliegue `34117926010`
+  exitoso sobre `7c8930ade8378016a2fe8cae768b46a7802493bc`. Migración
+  `20260907112705` aplicada, tipos regenerados, contratos SQL aislados y CI
+  completa aprobados. Dos aplicaciones individuales autorizadas quedaron
+  auditadas con nota textual, sin equivalencia numérica.
+- Se localizó el worker real: Claude Code, tarea `tareas-campus-pps`, en
+  `.claude/scheduled-tasks/tareas-campus-pps/SKILL.md`. Ya existía un agente
+  de navegador; lo pendiente era verificar y reforzar su circuito operativo.
+- Scripts y procedimiento actualizado instalados en el checkout usado por
+  Claude. Fuente versionada: [claude-task-writer.md](claude-task-writer.md).
+  Ahora informa intenciones bloqueadas y lanzamientos activos fuera de la cola,
+  conserva recibos por corrida, permite retomar un recibo, verifica el lease
+  vivo, requiere inventario por ID estable y relectura material posterior.
+- Migración `20260906211641` aplicada con SQL exacto y ledger. Agrega hash
+  suplementario para la fecha de corrección y año; no cambia los hashes legacy.
+  Contrato ejecutado con rollback: rechaza evidencia incompleta, año incorrecto
+  y desvío de Recordarme calificar en; conserva 2099 para un fixture futuro.
+  Lectura posterior: 212 intenciones legacy y una dedicada, todas verificadas.
+- Prioridad confirmada: funcionamiento actual de **2026**. Hay siete PPS
+  activas de 2026 con 78 prácticas sin intención ni vínculo confirmado,
+  detectadas antes de cambiar su modelo. La cola anteriormente decía idle.
+  La versión instalada las reporta como `ACTIVE_LAUNCH_OUTSIDE_QUEUE`.
+- Pendiente de decisión: tareas exclusivas para las PPS nuevas de 2026 frente
+  a continuar espacios anuales compartidos. Nunca resolver esta elección
+  adoptando una tarea histórica por nombre. Inventario del curso en curso.
+- El responsable ofreció su cuenta de prueba para el recorrido real. Creación,
+  reejecución sin duplicados, entrega, corrección y reentrega siguen pendientes
+  de aceptación; la instalación del worker no declara ese recorrido aprobado.
+
+2027 usará el mismo curso 3615 y “Tareas 2027”; la pestaña no se creó todavía.
+Las tareas históricas y sus configuraciones no se modificaron durante esta
+auditoría. La revisión visual sigue pospuesta por indicación del responsable.
 
 ## Corte operativo del 6 de septiembre
 

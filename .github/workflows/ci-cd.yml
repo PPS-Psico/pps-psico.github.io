@@ -45,6 +45,9 @@ jobs:
       - name: Run tests
         run: npm test -- --ci
 
+      - name: Validate Moodle writer artifacts
+        run: npm run test:moodle-writer
+
       # Los e2e corren contra una Supabase falsa (ver playwright.config.ts): no
       # tocan producción ni crean inscripciones reales. Sólo Chromium, que es lo
       # único que usan, para no bajar tres navegadores en cada corrida.
