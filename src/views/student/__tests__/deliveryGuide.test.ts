@@ -196,8 +196,8 @@ describe("deliveryGuide", () => {
     );
 
     expect(delivery).toMatchObject({
-      statusLabel: "Nota informada",
-      statusTone: "info",
+      statusLabel: "Verificar en el Campus",
+      statusTone: "neutral",
     });
   });
 
@@ -219,8 +219,8 @@ describe("deliveryGuide", () => {
     );
 
     expect(delivery).toMatchObject({
-      statusLabel: "Marcada en Mi Panel",
-      statusTone: "info",
+      statusLabel: "Verificar en el Campus",
+      statusTone: "neutral",
     });
   });
 
