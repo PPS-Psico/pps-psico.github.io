@@ -6,6 +6,11 @@
 
 Este corte prevalece sobre las fotografías históricas inferiores.
 
+- Traspaso corregido: Claude trabaja en `../consulta-pps-moodle-automation`,
+  un checkout operativo con código y procedimiento versionados juntos. Debe
+  releer el SKILL desde disco en una corrida nueva. El árbol de desarrollo
+  `consulta-pps-uflo` no es la carpeta de ejecución del writer.
+
 - Notas cualitativas 2024 publicadas en PR #25; despliegue `34117926010`
   exitoso sobre `7c8930ade8378016a2fe8cae768b46a7802493bc`. Migración
   `20260907112705` aplicada, tipos regenerados, contratos SQL aislados y CI
