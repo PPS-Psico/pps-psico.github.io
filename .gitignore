@@ -80,6 +80,7 @@ tmp/
 # Added by ggshield
 .cache_ggshield
 .moodle-worker-lease.json
+.moodle-worker-runs/
 .observado-*.json
 
 # Playwright (e2e)

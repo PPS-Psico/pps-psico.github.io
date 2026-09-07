@@ -117,6 +117,21 @@ distinto termina en `needs_attention`.
 
 ## 7. Validación de release
 
+El worker externo vigente es la tarea de Claude Code `tareas-campus-pps`.
+Su procedimiento instalable está en
+[moodle-v2/claude-task-writer.md](moodle-v2/claude-task-writer.md).
+Usa los scripts del checkout principal y una carpeta privada por corrida en
+`.moodle-worker-runs/`; estos archivos no se publican. Una cola sin intenciones
+puede tener lanzamientos activos fuera del circuito: el dry-run debe informar
+`ACTIVE_LAUNCH_OUTSIDE_QUEUE`, nunca ocultarlos como inactividad normal.
+
+Desde el endurecimiento del 7/9, la confirmación incluye `gradingDueAt` en
+`p_evidence` y un hash suplementario del servidor. El hash histórico no cambia.
+El hash TypeScript es una huella diagnóstica local, no se compara con el MD5
+del servidor. Los timestamps de configuración se comparan por minuto, como
+los controles de Moodle. Los valores observados provienen del worker; no son
+una certificación independiente de una API de Moodle.
+
 ```bash
 npm run gen-types
 npm run type-check

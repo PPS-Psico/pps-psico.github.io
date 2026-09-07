@@ -55,10 +55,44 @@ describe("moodleTaskProvisioner", () => {
   });
 
   it("creates only dedicated tasks that have no exact stable-key match", () => {
-    expect(planTaskProvisioning(desired, [])).toMatchObject({
+    expect(planTaskProvisioning(desired, [], true)).toMatchObject({
       action: "create_from_template",
       driftDetected: false,
     });
+  });
+
+  it("never treats a missing inventory as proof that creation is safe", () => {
+    expect(planTaskProvisioning(desired, []).driftDetails).toContain("incomplete_inventory");
+    expect(planTaskProvisioning({ ...desired, linkedCmid: 123 }, [], true).action).toBe(
+      "needs_attention"
+    );
+    expect(
+      planTaskProvisioning(desired, [{ ...observed, idNumber: "" }], true).driftDetails
+    ).toContain("name_collision");
+  });
+
+  it("does not retarget a confirmed task or erase undeclared teacher text", () => {
+    expect(
+      planTaskProvisioning({ ...desired, linkedCmid: observed.cmid + 1 }, [observed], true).action
+    ).toBe("needs_attention");
+    expect(
+      verifyObservedMoodleActivity({ ...desired, desiredDescriptionHtml: null }, observed).verified
+    ).toBe(true);
+  });
+
+  it("matches Moodle minute precision and distinguishes stealth from hidden", () => {
+    const stealth = { ...desired, desiredVisibility: "stealth" as const };
+    expect(
+      verifyObservedMoodleActivity(stealth, {
+        ...observed,
+        dueDate: Math.floor(observed.dueDate! / 60) * 60,
+        gradingDueDate: Math.floor(observed.gradingDueDate! / 60) * 60,
+        visibleOnCoursePage: false,
+      }).verified
+    ).toBe(true);
+    expect(verifyObservedMoodleActivity(stealth, { ...observed, visible: false }).verified).toBe(
+      false
+    );
   });
 
   it("returns no-op only after full configuration equality", () => {

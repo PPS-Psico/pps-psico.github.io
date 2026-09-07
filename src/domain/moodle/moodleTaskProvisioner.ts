@@ -25,7 +25,7 @@ export interface DesiredTaskConfig {
   desiredGradeMode: MoodleGradeConversionMode;
   desiredGradeMax: number;
   desiredSectionKey?: string | null;
-  desiredVisibility: "visible" | "hidden";
+  desiredVisibility: "visible" | "hidden" | "stealth";
 }
 
 export interface ObservedMoodleActivity {
@@ -42,6 +42,7 @@ export interface ObservedMoodleActivity {
   gradeMax: number;
   sectionKey?: string | null;
   visible: boolean;
+  visibleOnCoursePage?: boolean;
 }
 
 export interface ProvisioningPlan {
@@ -77,18 +78,22 @@ type ComparableConfig = {
   gradeMode: MoodleGradeConversionMode;
   gradeMax: number;
   sectionKey: string;
-  visibility: "visible" | "hidden";
+  visibility: "visible" | "hidden" | "stealth";
   templateVersion: string;
 };
 
 const toIso = (value: string | null | undefined): string => {
   if (!value) return "";
   const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : value.trim();
+  return Number.isFinite(timestamp)
+    ? new Date(Math.floor(timestamp / 60_000) * 60_000).toISOString()
+    : value.trim();
 };
 
 const unixToIso = (value: number | null | undefined): string =>
-  typeof value === "number" && value > 0 ? new Date(value * 1000).toISOString() : "";
+  typeof value === "number" && value > 0
+    ? new Date(Math.floor(value / 60) * 60_000).toISOString()
+    : "";
 
 const fromDesired = (config: DesiredTaskConfig): ComparableConfig => ({
   stableKey: config.stableKey.trim(),
@@ -119,7 +124,11 @@ const fromObserved = (
   gradeMode: activity.gradeMode,
   gradeMax: activity.gradeMax,
   sectionKey: activity.sectionKey ?? "",
-  visibility: activity.visible ? "visible" : "hidden",
+  visibility: !activity.visible
+    ? "hidden"
+    : activity.visibleOnCoursePage === false
+      ? "stealth"
+      : "visible",
   templateVersion,
 });
 
@@ -147,9 +156,11 @@ function collectMismatches(desired: DesiredTaskConfig, observed: ObservedMoodleA
   const mismatches: string[] = [];
 
   if (observed.courseId !== desired.courseId) mismatches.push("course_id");
+  if (desired.linkedCmid && observed.cmid !== desired.linkedCmid) mismatches.push("confirmed_cmid");
   if (actual.stableKey !== expected.stableKey) mismatches.push("id_number");
   if (actual.name !== expected.name) mismatches.push("name");
-  if (actual.descriptionHtml !== expected.descriptionHtml) mismatches.push("description_html");
+  if (desired.desiredDescriptionHtml != null && actual.descriptionHtml !== expected.descriptionHtml)
+    mismatches.push("description_html");
   if (actual.openAt !== expected.openAt) mismatches.push("open_at");
   if (actual.dueAt !== expected.dueAt) mismatches.push("due_at");
   if (actual.cutoffAt !== expected.cutoffAt) mismatches.push("cutoff_at");
@@ -170,6 +181,15 @@ function collectMismatches(desired: DesiredTaskConfig, observed: ObservedMoodleA
  * reintente para siempre, así que se detiene antes de intentarlo.
  */
 export function findUnsatisfiableDateRule(config: DesiredTaskConfig): string | null {
+  if (
+    [
+      config.desiredOpenAt,
+      config.desiredDueAt,
+      config.desiredCutoffAt,
+      config.desiredGradingDueAt,
+    ].some((value) => value && !Number.isFinite(Date.parse(value)))
+  )
+    return "invalid_date";
   const due = toIso(config.desiredDueAt);
   const gradingDue = toIso(config.desiredGradingDueAt);
   if (!due) return null;
@@ -179,7 +199,8 @@ export function findUnsatisfiableDateRule(config: DesiredTaskConfig): string | n
 
 export function planTaskProvisioning(
   desired: DesiredTaskConfig,
-  observedActivities: ObservedMoodleActivity[]
+  observedActivities: ObservedMoodleActivity[],
+  inventoryComplete = false
 ): ProvisioningPlan {
   const configHash = computeConfigHash(desired);
 
@@ -258,6 +279,30 @@ export function planTaskProvisioning(
   }
 
   if (stableMatches.length === 0) {
+    if (
+      !inventoryComplete ||
+      desired.linkedCmid ||
+      observedActivities.some(
+        (activity) =>
+          activity.courseId === desired.courseId && activity.name === desired.desiredName
+      )
+    ) {
+      return {
+        action: "needs_attention",
+        intentId: desired.intentId,
+        stableKey: desired.stableKey,
+        reason: "Falta un inventario completo o hay una tarea existente que requiere revisión.",
+        configHash,
+        driftDetected: true,
+        driftDetails: [
+          desired.linkedCmid
+            ? "linked_cmid_not_found"
+            : !inventoryComplete
+              ? "incomplete_inventory"
+              : "name_collision",
+        ],
+      };
+    }
     return {
       action: "create_from_template",
       intentId: desired.intentId,
@@ -284,7 +329,7 @@ export function planTaskProvisioning(
         driftDetails: [],
       }
     : {
-        action: "update_config",
+        action: mismatches.includes("confirmed_cmid") ? "needs_attention" : "update_config",
         intentId: desired.intentId,
         stableKey: desired.stableKey,
         targetCmid: observed.cmid,

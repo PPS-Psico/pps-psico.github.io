@@ -70,6 +70,8 @@ declare
   v_claimed public.moodle_task_intents%rowtype;
   v_confirmation jsonb;
   v_summary record;
+  v_readback jsonb;
+  v_bad_readback jsonb;
 begin
   if not private.moodle_v2_is_coordinator() then
     raise exception 'The simulated coordinator session was not authorized';
@@ -125,6 +127,32 @@ begin
   exception when insufficient_privilege then null;
   end;
 
+  v_readback:=jsonb_build_object('schema','moodle-writer/v2','gradingDueAt',v_intent.desired_grading_due_at,
+    'sectionTitle','Tareas 2099','sectionId',999999,'sourceUrl','https://campus.uflo.edu.ar/course/modedit.php?update=1999999999',
+    'fileSubmissions',true,'onlineText',false,'observedAt',now());
+  for v_bad_readback in select x from jsonb_array_elements(jsonb_build_array(
+    '{}'::jsonb,v_readback-'gradingDueAt',v_readback||'{"sectionTitle":"Tareas 2026"}'::jsonb,
+    v_readback||'{"onlineText":true}'::jsonb)) x loop
+    begin
+      perform public.confirm_moodle_task_intent_v1(
+        v_intent.id,v_worker_token,1999999999,3615,v_intent.stable_key,v_intent.desired_name,
+        v_intent.desired_description_html,v_intent.desired_open_at,v_intent.desired_due_at,v_intent.desired_cutoff_at,
+        v_intent.desired_grade_mode,v_intent.desired_grade_max,v_intent.desired_section_key,v_intent.desired_visibility,v_bad_readback);
+      raise exception 'Incomplete or wrong readback accepted' using errcode='P0002';
+    exception when invalid_parameter_value then null; end;
+  end loop;
+  begin
+    v_confirmation:=public.confirm_moodle_task_intent_v1(
+      v_intent.id,v_worker_token,1999999999,3615,v_intent.stable_key,v_intent.desired_name,
+      v_intent.desired_description_html,v_intent.desired_open_at,v_intent.desired_due_at,v_intent.desired_cutoff_at,
+      v_intent.desired_grade_mode,v_intent.desired_grade_max,v_intent.desired_section_key,v_intent.desired_visibility,
+      v_readback||jsonb_build_object('gradingDueAt',v_intent.desired_grading_due_at+interval '1 day'));
+    if v_confirmation->>'verified' is distinct from 'false' then
+      raise exception 'Grading reminder drift accepted' using errcode='P0002'; end if;
+    -- Restore this fixture lease after checking the drift failure state.
+    raise exception 'Rollback drift fixture' using errcode='P0003';
+  exception when too_many_rows then null; end;
+
   v_confirmation := public.confirm_moodle_task_intent_v1(
     v_intent.id, v_worker_token, 1999999999, 3615,
     v_intent.stable_key, v_intent.desired_name,
@@ -132,12 +160,15 @@ begin
     v_intent.desired_due_at, v_intent.desired_cutoff_at,
     v_intent.desired_grade_mode, v_intent.desired_grade_max,
     v_intent.desired_section_key, v_intent.desired_visibility,
-    jsonb_build_object('contract_test', true)
+    v_readback
   );
 
   if not coalesce((v_confirmation ->> 'verified')::boolean, false) then
     raise exception 'Valid confirmation was rejected: %', v_confirmation;
   end if;
+  if not exists(select 1 from public.aula_entregas where course_id=3615
+    and moodle_id='1999999999' and academic_year=2099) then
+    raise exception 'Future task was catalogued under current year'; end if;
 
   select * into strict v_summary
   from public.get_moodle_task_unit_summaries_v1(v_launch_id, 'clinica');
