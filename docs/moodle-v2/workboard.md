@@ -34,8 +34,11 @@ Este corte prevalece sobre las fotografías históricas inferiores.
   Contrato con rollback aprobado: dos lanzamientos homónimos generan unidades
   distintas, los borradores no se encolan y las intenciones legacy no cambian.
 - Las siete PPS pendientes se habilitaron con un cambio operativo separado:
-  nueve unidades, 78 participantes esperados. La creación y relectura en
-  Campus está en ejecución; encolado no significa tarea creada o verificada.
+  nueve unidades, 78 participantes esperados. Guardadas y releídas en Campus:
+  Aser `1228008`, Brochero `1228014`, Kano `1228016`. Faltan seis creaciones
+  y la confirmación final de los nueve vínculos. Las reservas del ensayo se
+  liberaron para que Claude procese la cola; debe recuperar esas tres por
+  ID estable, no recrearlas. Encolado no significa tarea verificada.
 - El responsable ofreció su cuenta de prueba para el recorrido real. Creación,
   reejecución sin duplicados, entrega, corrección y reentrega siguen pendientes
   de aceptación; la instalación del worker no declara ese recorrido aprobado.

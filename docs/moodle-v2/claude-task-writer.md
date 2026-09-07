@@ -109,6 +109,12 @@ Sólo código 0 y `verified: true` confirman el trabajo. Un rechazo no se reinte
 creando otra tarea: guardá los archivos, CMID y motivo y avisá a Blas. Si se
 cortó antes de confirmar, la próxima corrida recupera por ID estable.
 
+Después de cada confirmación exitosa, volvé a leer la cola y procesá la siguiente
+intención reclamable con el mismo procedimiento. Una corrida no se considera
+terminada por haber creado una sola tarea si todavía hay trabajo reclamable.
+Si la sesión se corta o el tiempo disponible no alcanza, conservá los recibos
+y reportá cuántas quedaron pendientes; la próxima corrida recupera por ID.
+
 ## Resultado
 
 Informá tareas verificadas con sus CMID y cualquier bloqueo concreto. No
