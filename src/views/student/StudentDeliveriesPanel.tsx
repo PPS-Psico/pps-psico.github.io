@@ -588,9 +588,11 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
               "Campus respondió parcialmente; conservamos el último estado confirmado."
             : status === "error"
               ? errorMessage || "No pudimos actualizar Campus."
-              : lastObservedLabel
-                ? `Última lectura ${lastObservedLabel}`
-                : "Abrí Mi Panel desde Campus para sincronizar";
+              : status === "unavailable" && errorMessage
+                ? errorMessage
+                : lastObservedLabel
+                  ? `Última lectura ${lastObservedLabel}`
+                  : "Abrí Mi Panel desde Campus para sincronizar";
 
   const handleRefresh = useCallback(async () => {
     if (isManualRefreshing) return;
@@ -680,7 +682,7 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                 <span className="sd-sync__icon" aria-hidden>
                   <Icon
                     name={
-                      status === "error" || status === "partial"
+                      status === "error" || status === "partial" || status === "unavailable"
                         ? "alert"
                         : status === "loading" || status === "syncing"
                           ? "refresh"
