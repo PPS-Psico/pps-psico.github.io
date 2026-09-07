@@ -140,8 +140,14 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     setErrorMessage(null);
     try {
       const discovery = await requestMoodleDiscovery();
-      let discoveryFailures =
-        discovery?.status === "ok" || discovery?.status === "unsupported" ? 0 : 1;
+      if (discovery?.status === "unsupported") {
+        setSyncStatus("unavailable");
+        setErrorMessage(
+          "Esta sesión de Campus no habilita la lectura personal de entregas. Usá una sesión de estudiante para actualizarla; conservamos la última lectura válida."
+        );
+        return;
+      }
+      let discoveryFailures = discovery?.status === "ok" ? 0 : 1;
       let discoveredBatches = 0;
       const discovered = [...new Set(discovery?.cmids ?? [])].filter(
         (cmid) => !assignments.has(String(cmid))

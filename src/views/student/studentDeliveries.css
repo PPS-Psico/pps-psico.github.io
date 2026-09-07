@@ -1222,3 +1222,8 @@
   background: color-mix(in oklab, var(--sd-warning, #a16207) 10%, var(--sd-paper));
   color: var(--sd-warning, #a16207);
 }
+
+.sd-sync[data-state="unavailable"] .sd-sync__icon {
+  background: var(--sd-paper);
+  color: inherit;
+}
