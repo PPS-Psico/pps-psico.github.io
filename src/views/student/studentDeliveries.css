@@ -120,8 +120,7 @@
   color: var(--sd-success);
 }
 
-.sd-sync[data-state="error"] .sd-sync__icon,
-.sd-sync[data-state="partial"] .sd-sync__icon {
+.sd-sync[data-state="error"] .sd-sync__icon {
   background: color-mix(in oklab, var(--sd-danger) 10%, var(--sd-paper));
   color: var(--sd-danger);
 }
@@ -1217,4 +1216,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.sd-sync[data-state="partial"] .sd-sync__icon {
+  background: color-mix(in oklab, var(--sd-warning, #a16207) 10%, var(--sd-paper));
+  color: var(--sd-warning, #a16207);
 }

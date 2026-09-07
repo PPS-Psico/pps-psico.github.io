@@ -12,12 +12,9 @@ import {
 } from "../../hooks/useMoodleTaskCloseState";
 import { useMoodleTaskLinks } from "../../hooks/useMoodleTaskLinks";
 import type { InformeTask, Practica } from "../../types";
-import {
-  formatMoodleObservationTime,
-  presentMoodleGrade,
-  type MoodleGradePresentation,
-} from "../../utils/moodleGradePresentation";
+import { formatMoodleObservationTime } from "../../utils/moodleGradePresentation";
 import { buildGuidedDeliveries, type GuidedDelivery } from "./deliveryGuide";
+import { getDeliveryBucket, deliveryPresentation } from "./deliveryEvidence";
 import "./studentDeliveries.css";
 
 interface StudentDeliveriesPanelProps {
@@ -207,53 +204,6 @@ function formatLastRead(value: string | null): string | null {
   return formatMoodleObservationTime(value);
 }
 
-function isDelivered(delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): boolean {
-  if (
-    snapshot &&
-    (snapshot.submitted ||
-      snapshot.task_status === "submitted" ||
-      snapshot.task_status === "graded")
-  ) {
-    return true;
-  }
-  if (delivery.task?.informeSubido) return true;
-  // El grupo incluye registros académicos. Una nota manual no certifica una
-  // entrega en Campus; la fila distingue explícitamente ambas fuentes.
-  if (recordedPanelGrade(delivery)) return true;
-  // `delivery.task` sólo existe cuando hay una tarea de Moodle vinculada. Una
-  // actividad calificada a mano y sin esa tarea (ver deliveryGuide.ts) llega
-  // acá con `task` null; sin este chequeo quedaba "pendiente" para siempre.
-  return delivery.gradedDirectly;
-}
-
-function getDeliveryBucket(
-  delivery: GuidedDelivery,
-  snapshot?: MoodleGradeSnapshot
-): DeliveryBucket {
-  if (isDelivered(delivery, snapshot)) return "delivered";
-  if (delivery.statusLabel === "Todavía en cursada") return "upcoming";
-  if (snapshot?.task_status === "not_submitted") return "pending";
-
-  const note = delivery.task?.nota?.trim().toLocaleLowerCase("es") ?? "";
-  if (note === "no entregado") return "pending";
-  return "unknown";
-}
-
-function deliveryPresentation(
-  delivery: GuidedDelivery,
-  snapshot?: MoodleGradeSnapshot
-): MoodleGradePresentation {
-  return (
-    presentMoodleGrade(snapshot) ?? {
-      label: delivery.statusLabel,
-      detail: delivery.statusDetail,
-      compact: delivery.statusLabel,
-      tone: delivery.statusTone,
-      hasGrade: false,
-    }
-  );
-}
-
 function compactStatus(
   delivery: GuidedDelivery,
   snapshot?: MoodleGradeSnapshot
@@ -280,18 +230,10 @@ function compactStatus(
  * lectura, se dice que no la hay en vez de afirmar una entrega que nadie
  * verificó.
  */
-function recordedPanelGrade(delivery: GuidedDelivery): string | null {
-  const note = delivery.recordedGrade?.trim() || delivery.task?.nota?.trim();
-  return note && !/sin calificar|no entregado|entregado/i.test(note) ? note : null;
-}
-
-function deliveredSummary(delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): string {
+function deliveredSummary(_delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): string {
+  if (snapshot?.reviewedAllocation) return "Confirmada por coordinación";
   if (snapshot?.task_status === "graded") return "Calificada";
-  if (snapshot && (snapshot.submitted || snapshot.task_status === "submitted")) {
-    return "Entregado";
-  }
-  if (delivery.task?.informeSubido) return "Registrada en Mi Panel";
-  if (recordedPanelGrade(delivery) || delivery.gradedDirectly) return "Calificación registrada";
+  if (snapshot && (snapshot.submitted || snapshot.task_status === "submitted")) return "Entregado";
   return "Sin registro en Campus";
 }
 
@@ -519,7 +461,7 @@ function DeliveredRow({
   const correctedAt = snapshot?.graded_at_display;
   const deliveredLabel = deliveredSummary(delivery, snapshot);
   const deliveredDetail = correctedAt ? `Corregida ${correctedAt}` : submittedAt;
-  const grade = presentation.hasGrade ? presentation.compact : recordedPanelGrade(delivery);
+  const grade = presentation.hasGrade ? presentation.compact : null;
   const areaName = cleanAreaName(delivery.areaName);
 
   return (
@@ -546,13 +488,7 @@ function DeliveredRow({
         {grade ?? "—"}
         {grade && (
           <small className="block text-xs font-normal">
-            {snapshot?.reviewedAllocation
-              ? "Coordinación"
-              : snapshot?.academicGrade
-                ? "Mi Panel"
-                : presentation.hasGrade
-                  ? "Campus"
-                  : "Mi Panel"}
+            {snapshot?.reviewedAllocation ? "Coordinación" : "Campus"}
           </small>
         )}
       </div>
@@ -802,8 +738,21 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                   <Icon name="check" size={20} />
                 </span>
                 <div>
-                  <strong>No tenés informes pendientes.</strong>
-                  <p>Las entregas detectadas en Campus quedan ordenadas debajo.</p>
+                  <strong>
+                    {unknownDeliveries.length > 0 ||
+                    status === "partial" ||
+                    status === "error" ||
+                    status === "unavailable" ||
+                    isRefreshing
+                      ? "Todavía no podemos confirmar todas tus entregas."
+                      : upcomingDeliveries.length > 0
+                        ? "Tus próximos informes se muestran debajo."
+                        : "No tenés informes pendientes."}
+                  </strong>
+                  <p>
+                    Esta sección muestra evidencia de Campus. Las notas manuales se conservan en Mis
+                    Prácticas.
+                  </p>
                 </div>
               </div>
             ) : (

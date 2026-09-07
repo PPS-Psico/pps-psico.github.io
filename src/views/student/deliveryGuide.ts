@@ -115,31 +115,10 @@ function formatDeadline(date: Date | null): string {
 
 function buildStatus(
   practice: Practica,
-  task: InformeTask | null,
+  _task: InformeTask | null,
   deadline: Date | null,
   now: Date
 ): Pick<GuidedDelivery, "statusLabel" | "statusDetail" | "statusTone"> {
-  const note = normalizeStringForComparison(task?.nota);
-  const hasStudentReportedGrade =
-    note && note !== "sin calificar" && note !== "no entregado" && !note.includes("entregado");
-
-  if (hasStudentReportedGrade) {
-    return {
-      statusLabel: "Nota informada",
-      statusDetail:
-        "Es un dato cargado en Mi Panel y no una confirmación del Campus. Verificá allí la corrección oficial.",
-      statusTone: "info",
-    };
-  }
-  if (task?.informeSubido || note.includes("entregado")) {
-    return {
-      statusLabel: "Marcada en Mi Panel",
-      statusDetail:
-        "Esta marca fue informada en Mi Panel; todavía no está verificada automáticamente con el Campus.",
-      statusTone: "info",
-    };
-  }
-
   const practiceState = normalizeStringForComparison(practice[FIELD_ESTADO_PRACTICA]);
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const practiceEnd = parseToUTCDate(practice[FIELD_FECHA_FIN_PRACTICAS]);
@@ -203,14 +182,9 @@ export function buildGuidedDeliveries(
       const startDate = parseToUTCDate(practice[FIELD_FECHA_INICIO_PRACTICAS]);
       const endDate = parseToUTCDate(practice[FIELD_FECHA_FIN_PRACTICAS]);
       const isOpenEnded = practice[FIELD_TIPO_ACTIVIDAD_PRACTICAS] === "actividad_especial";
-      // Una actividad corta calificada a mano (una jornada, un relevamiento)
-      // suele no tener tarea de Moodle vinculada, así que `task` queda null y
-      // el chequeo de "ya entregado" -- que sólo mira task.nota -- nunca la ve
-      // corregida. Sin este corte aparte, el plazo de 30 días sigue corriendo
-      // para siempre y el alumno ve un contador de atraso creciendo con una
-      // nota ya cargada.
+      // Dato administrativo: no confirma la entrega ni elimina su plazo orientativo.
       const gradedDirectly = resolveGradeReadiness(practice).ready;
-      const deadline = !isOpenEnded && !gradedDirectly && endDate ? addDays(endDate, 30) : null;
+      const deadline = !isOpenEnded && endDate ? addDays(endDate, 30) : null;
       const rawHours = Number(practice[FIELD_HORAS_PRACTICAS]);
       const hours = Number.isFinite(rawHours) && rawHours > 0 ? rawHours : null;
 

@@ -88,14 +88,14 @@ export const moodleDiscoveryResultSchema = z.object({
   rowsSeen: z.number().int().nonnegative().max(10000),
 });
 
-let discoveryCapability: { until: number; pending: Promise<boolean> } | null = null;
+let discoveryCapability: { until: number; pending: Promise<boolean | null> } | null = null;
 
-function supportsMoodleDiscovery(): Promise<boolean> {
+function supportsMoodleDiscovery(): Promise<boolean | null> {
   if (discoveryCapability && discoveryCapability.until > Date.now())
     return discoveryCapability.pending;
   const requestId = createRequestId();
-  const pending = new Promise<boolean>((resolve) => {
-    const finish = (available: boolean) => {
+  const pending = new Promise<boolean | null>((resolve) => {
+    const finish = (available: boolean | null) => {
       window.clearTimeout(timer);
       window.removeEventListener("message", onMessage);
       resolve(available);
@@ -112,7 +112,7 @@ function supportsMoodleDiscovery(): Promise<boolean> {
       )
         finish(data.discovery);
     };
-    const timer = window.setTimeout(() => finish(false), 1_000);
+    const timer = window.setTimeout(() => finish(null), 1_000);
     window.addEventListener("message", onMessage);
     window.parent.postMessage(
       {
@@ -130,7 +130,9 @@ function supportsMoodleDiscovery(): Promise<boolean> {
 
 export async function requestMoodleDiscovery(timeoutMs = 6_000) {
   if (!isEmbeddedInMoodle()) throw new MoodleBridgeError("not_embedded");
-  if (!(await supportsMoodleDiscovery())) return null;
+  const supported = await supportsMoodleDiscovery();
+  if (supported === false) return { status: "unsupported" as const, cmids: [] as number[] };
+  if (supported === null) return null;
   const requestId = createRequestId();
   return new Promise<z.infer<typeof moodleDiscoveryResultSchema> | null>((resolve) => {
     const finish = (result: z.infer<typeof moodleDiscoveryResultSchema> | null) => {
