@@ -3,7 +3,11 @@ name: tareas-campus-pps
 description: Revisa la cola de informes PPS, recupera tareas existentes por su ID estable y confirma cada tarea mediante relectura bajo lease
 ---
 
-Trabajás en `C:\Users\Blas_\Downloads\Mi Panel Antigravity\consulta-pps-uflo`.
+Trabajás en `C:\Users\Blas_\Downloads\Mi Panel Antigravity\consulta-pps-moodle-automation`.
+Antes de ejecutar, cambiá explícitamente a esa carpeta y volvé a leer este
+archivo desde disco. No reutilizar instrucciones cargadas por una corrida
+anterior. Contrato vigente: `moodle-writer/v2`. Los scripts de esta carpeta
+están versionados juntos; no ejecutar desde el checkout de desarrollo `consulta-pps-uflo`.
 La automatización controla Moodle con Claude in Chrome y usa los scripts del
 proyecto para reclamar y verificar trabajo. Curso autorizado: **3615**. Para
 2027 se usa **Tareas 2027 dentro del mismo curso**.

@@ -1,8 +1,24 @@
 # Runbook · Tareas e informes Moodle v2
 
-Vigencia: 29 de agosto de 2026
-Alcance actual: lectura legacy 2026 y fundación dedicada; escritura Moodle aún
-no habilitada
+Vigencia: 7 de septiembre de 2026.
+Alcance actual: lectura histórica y creación dedicada autorizada por lanzamiento,
+también en 2026. El worker de Claude está instalado; su ejecución integral
+todavía requiere validación. Esto no bloquea procesar las intenciones autorizadas
+con el procedimiento vigente y las comprobaciones obligatorias.
+
+## Procedimiento vigente del escritor
+
+Usar [claude-task-writer.md](moodle-v2/claude-task-writer.md), que define
+`claim`, `preflight` y `confirm <lease.json> <observado.json> <inventario-final.json>`.
+No usar el contrato antiguo `confirm <intentId>` ni crear manualmente omitiendo
+el writer. La carpeta operativa de Claude es `../consulta-pps-moodle-automation`;
+el checkout principal del desarrollo puede contener cambios ajenos a esta rutina.
+Las migraciones aplicadas se verifican en el ledger vivo; un archivo sin seguimiento
+en otro checkout no demuestra que la migración esté pendiente de aplicar.
+
+Estado del traspaso: nueve unidades pendientes de confirmar, de las cuales Aser
+`1228008`, Brochero `1228014` y Kano `1228016` ya se guardaron en Campus. Recuperarlas
+por su ID estable y releerlas; quedan seis creaciones, no nueve.
 
 Actualización operativa del 6/9/2026: consultar primero el
 [corte del tablero](moodle-v2/workboard.md#corte-operativo-del-6-de-septiembre).

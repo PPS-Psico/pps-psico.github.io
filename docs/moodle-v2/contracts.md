@@ -1,8 +1,9 @@
 # Contratos activos · Moodle Task Automation v2
 
-Fecha de verificación: 27 de agosto de 2026
-Estado: fundación productiva; escritor Moodle todavía no conectado;
-acreditación híbrida en modo sombra
+Fecha de verificación: 7 de septiembre de 2026.
+Estado: escritor Claude instalado, creación dedicada autorizada por lanzamiento
+y política aplicada en producción; aceptación integral de la corrida pendiente.
+Acreditación híbrida en modo sombra.
 
 Este documento describe lo que existe en el repositorio y en Supabase. Las
 propuestas futuras permanecen en
