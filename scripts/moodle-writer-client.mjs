@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { parseEnv } from "node:util";
 import { createClient } from "@supabase/supabase-js";
 import { describeIntent } from "./moodle-writer-contract.mjs";
+import { readAll } from "./moodle-writer-coverage.mjs";
 
 export function writerClient() {
   const file = new URL("../.env", import.meta.url);
@@ -22,24 +23,22 @@ export const INTENT_SELECT =
   "*,lanzamiento:lanzamientos_pps!moodle_task_intents_lanzamiento_id_fkey(nombre_pps,fecha_inicio,fecha_finalizacion,horas_acreditadas)";
 
 export async function unplannedActiveLaunches(client) {
-  const launches = await client
-    .from("lanzamientos_pps")
-    .select("id,nombre_pps,fecha_inicio,orientacion")
-    .eq("estado_convocatoria", "Activa")
-    .eq("moodle_task_policy", "dedicated");
-  if (launches.error) throw launches.error;
-  if (!launches.data.length) return [];
-  const intents = await client
-    .from("moodle_task_intents")
-    .select("lanzamiento_id")
-    .neq("provisioning_status", "cancelled")
-    .in(
-      "lanzamiento_id",
-      launches.data.map((l) => l.id)
-    );
-  if (intents.error) throw intents.error;
-  const planned = new Set(intents.data.map((i) => i.lanzamiento_id));
-  return launches.data
+  const launches = await readAll(() =>
+    client
+      .from("lanzamientos_pps")
+      .select("id,nombre_pps,fecha_inicio,orientacion")
+      .eq("estado_convocatoria", "Activa")
+      .eq("moodle_task_policy", "dedicated")
+  );
+  if (!launches.length) return [];
+  const intents = await readAll(() =>
+    client
+      .from("moodle_task_intents")
+      .select("id,lanzamiento_id")
+      .neq("provisioning_status", "cancelled")
+  );
+  const planned = new Set(intents.map((i) => i.lanzamiento_id));
+  return launches
     .filter((l) => !planned.has(l.id))
     .map((l) => ({
       launchId: l.id,
