@@ -21,10 +21,25 @@ el ID estable es la identidad; una coincidencia sin ID válido requiere revisió
 
 ## Leer la cola
 
+Primero ejecutá `node scripts/moodle-provisioner-apply.mjs reconcile`.
+Este paso idempotente sólo reconcilia intenciones y participantes de lanzamientos
+ya autorizados como `dedicated`; no escribe Moodle ni convierte históricos.
+Si falla, informá el error. No continuar con una cola potencialmente desactualizada.
+
 Ejecutá `node scripts/moodle-provisioner-dry-run.mjs`. El resultado es JSON.
 Sólo permanecé en silencio si terminó con código 0, `status: idle` y
 `attention: []`. Informá las intenciones de `attention` aunque no haya trabajo
 reclamable. Un error de consulta nunca significa que no hay trabajo.
+
+`coverage` audita todas las prácticas PPS desde 2024 y las que no tienen fecha,
+independientemente de `Activa`, `Cerrado` o `Archivado`. Los registros anteriores
+a 2024, las actividades especiales y las bajas figuran en conteos separados.
+Una incidencia `coverage_gap` no autoriza crear una tarea histórica ni adoptar
+una por nombre. Informá institución, orientación, año y cantidad, sin nombres de
+alumnos. Procesá las intenciones reclamables de `plans` aunque existan otras
+incidencias independientes: no frenar toda la cola por un histórico sin resolver.
+No declarar resuelto un caso hasta que desaparezca su incidencia por vínculo
+confirmado. Una nota manual o un estado `verified` aislado no acreditan cobertura.
 
 Las intenciones `legacy_shared` son exclusivamente de lectura: nunca crearlas,
 adoptarlas por nombre ni reconfigurarlas. No activar lanzamientos, cambiar el

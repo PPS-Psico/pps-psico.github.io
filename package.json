@@ -22,7 +22,7 @@
     "perf:benchmark": "node ./scripts/performance-benchmark.mjs",
     "preview": "vite preview",
     "test": "npx jest",
-    "test:moodle-writer": "node --test scripts/moodle-writer-contract.test.mjs",
+    "test:moodle-writer": "node --test scripts/moodle-writer-contract.test.mjs scripts/moodle-writer-coverage.test.mjs",
     "prep-github": "node ./scripts/prepare-deploy.js",
     "deploy": "npm run prep-github && npm run build",
     "prepare": "husky",

@@ -4,7 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import { writerClient, INTENT_SELECT, plansFor } from "./moodle-writer-client.mjs";
-import { inventoryDecision, validateReadback } from "./moodle-writer-contract.mjs";
+import { inventoryDecision, validateReadback, queueState } from "./moodle-writer-contract.mjs";
+import { practiceCoverage, readAll } from "./moodle-writer-coverage.mjs";
 
 const directory = new URL("../.moodle-worker-runs/", import.meta.url);
 const [command, ...args] = process.argv.slice(2);
@@ -48,7 +49,20 @@ function journal(file, event) {
 }
 try {
   const client = writerClient();
-  if (command === "claim") {
+  if (command === "reconcile") {
+    const launches = await readAll(() =>
+      client.from("lanzamientos_pps").select("id").eq("moodle_task_policy", "dedicated")
+    );
+    for (const launch of launches) {
+      const { error } = await client.rpc("reconcile_moodle_task_intents_v1", {
+        p_launch_id: launch.id,
+      });
+      if (error) throw error;
+    }
+    console.log(
+      JSON.stringify({ status: "reconciled", launches: launches.length, moodleWrites: 0 })
+    );
+  } else if (command === "claim") {
     const token = crypto.randomUUID();
     const runDir = new URL(crypto.randomUUID() + "/", directory);
     fs.mkdirSync(runDir, { recursive: true });
@@ -59,8 +73,33 @@ try {
       p_worker_token: token,
     });
     if (error) throw error;
-    if (!data?.length) console.log(JSON.stringify({ status: "idle" }));
-    else {
+    if (!data?.length) {
+      const coverage = await practiceCoverage(client);
+      const queue = queueState(
+        await readAll(() =>
+          client
+            .from("moodle_task_intents")
+            .select(
+              "id,mode,provisioning_status,next_reconcile_at,lease_expires_at,last_error_code"
+            )
+            .eq("mode", "dedicated")
+        )
+      );
+      console.log(
+        JSON.stringify({
+          status: coverage.attention.length || queue.attention.length ? "attention" : queue.status,
+          coverage: coverage.summary,
+          attention: [
+            ...coverage.attention,
+            ...queue.attention.map((r) => ({
+              intentId: r.id,
+              status: r.provisioning_status,
+              error: r.last_error_code,
+            })),
+          ],
+        })
+      );
+    } else {
       const raw = data[0];
       // Persist the receipt before any subsequent query can fail.
       fs.writeFileSync(
@@ -200,7 +239,7 @@ try {
     console.log(JSON.stringify(data, null, 2));
   } else
     throw new Error(
-      "Comandos: claim | resume <lease.json> | preflight <lease.json> <inventory.json> | confirm <lease.json> <observado.json> <inventario-final.json>"
+      "Comandos: reconcile | claim | resume <lease.json> | preflight <lease.json> <inventory.json> | confirm <lease.json> <observado.json> <inventario-final.json>"
     );
 } catch (error) {
   console.error("Writer detenido:", error.message);

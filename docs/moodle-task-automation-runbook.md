@@ -186,3 +186,26 @@ marcar el writer como productivo hasta completar el piloto end-to-end.
 
 Rollback inmediato: volver el modo a `shadow`. Esto detiene eventos y trámites
 nuevos sin afectar notas, snapshots ni solicitudes existentes.
+
+## Cobertura de prácticas (8/9/2026)
+
+El worker ejecuta `moodle-provisioner-apply.mjs reconcile` antes del dry-run.
+Reconcile es idempotente y sólo procesa la política dedicated. La elegibilidad
+incluye prácticas reales aunque el lanzamiento siga Cerrado; no convierte
+históricos ni escribe Moodle. Los triggers usan la misma regla.
+
+El dry-run pagina todas las tablas y agrega `coverage` y `coverage_gap` a
+`attention`. Una cola vacía no equivale a cobertura completa. Audita PPS desde
+2024 y sin fecha; contabiliza por separado anteriores a 2024, bajas y actividades
+especiales. No usa notas manuales para ocultar faltantes. No resuelve por nombre.
+Una incidencia histórica no impide completar otras intenciones aptas.
+
+Remediación histórica: comprobar inventario y antecedentes; conservar cualquier
+vínculo confirmado. Cuando se confirma ausencia y coordinación autoriza una tarea
+exclusiva, cambiar únicamente la política de ese lanzamiento y ejecutar el mismo
+worker con lease, preflight y confirm. No cambiar su estado administrativo ni
+vincular una tarea de otra cohorte para forzar cobertura.
+
+La cobertura verifica vínculos locales; no demuestra por sí sola disponibilidad
+actual en Moodle. El writer exige relectura real antes de confirmar una creación.
+Los fallos posteriores de lectura de Campus siguen visibles en la sincronización.

@@ -78,11 +78,11 @@ TypeScript, lint, migraciones y build aprobados. El puente final se guardó y
 releyó en General (50889); los respaldos conservan el HTML previo y se reemplazó
 sólo el script. TypeScript también pasó en el checkout principal del responsable.
 
-| Alcance | Tareas completas | Filas por tarea | Última lectura UTC |
-| --- | --- | --- | --- |
-| Laboral + Comunitaria | 57/57 | 346 | 20:56:23 |
-| Educacional | 33/33 | 346 | 21:02:05 |
-| Clínica | 51/51 | 346–347 | 21:08:30 |
+| Alcance               | Tareas completas | Filas por tarea | Última lectura UTC |
+| --------------------- | ---------------- | --------------- | ------------------ |
+| Laboral + Comunitaria | 57/57            | 346             | 20:56:23           |
+| Educacional           | 33/33            | 346             | 21:02:05           |
+| Clínica               | 51/51            | 346–347         | 21:08:30           |
 
 Son **112 tareas distintas**, no 141: las áreas se solapan. Todas las coberturas
 quedaron `ok`, sin relecturas vencidas ni parciales pendientes. La tarea clínica
@@ -241,3 +241,13 @@ Cada paquete debe entregar: alcance, archivos tocados, migración productiva si
 corresponde, comandos/tests ejecutados, salida relevante, riesgos, rollback y
 commit. Ninguna conversación reemplaza esta evidencia. Una IA que sólo escribió
 código no puede declarar completo el paso operativo.
+
+### 8/9/2026 — cobertura por práctica
+
+- Implementado: audit paginado de prácticas fuera de cola, independiente de estado
+  administrativo; reconciliación de dedicated con prácticas reales.
+- Migración 20260908114153 aplicada con ledger tras ensayo transaccional rollback.
+- Brochero mayo–septiembre: seis prácticas detectadas; política dedicated aprobada
+  en esta sesión, intención generada por el reconciliador. Confirmación Moodle pendiente.
+- Los restantes históricos sin vínculo permanecen en attention; no adoptar por nombre.
+- El piloto real de entrega/corrección/reentrega 2027 continúa pendiente.
