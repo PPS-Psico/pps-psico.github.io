@@ -969,6 +969,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <div
                 ref={mobileTabBarRef}
                 className="relative flex gap-2 overflow-x-auto py-2.5 px-4 scrollbar-none backdrop-blur-md"
+                role="navigation"
+                aria-label="Secciones del panel"
                 style={{
                   background: "color-mix(in oklab, var(--bg-elevated) 85%, transparent)",
                   borderBottom: "1px solid var(--line)",
@@ -992,7 +994,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       }}
                       type="button"
                       onClick={() => setCurrentActiveTab(tab.id)}
-                      className="student-mobile-tabs__button relative z-10 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap active:scale-95 flex items-center gap-1.5"
+                      className="student-mobile-tabs__button relative z-10 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap active:scale-[0.97] flex items-center gap-1.5"
+                      aria-current={on ? "page" : undefined}
                       style={{
                         background: on ? "transparent" : "var(--bg-sunken)",
                         color: on ? "var(--on-accent)" : "var(--ink-soft)",

@@ -1,3 +1,4 @@
+import { FINALIZACION_HISTORY_STATES } from "../../../domain/finalizacion/states";
 import { Attachment } from "../../../utils/attachmentUtils";
 import { normalizeStringForComparison } from "../../../utils/formatters";
 import type { SolicitudPPSWithStudent, FinalizacionWithStudent } from "./types";
@@ -129,7 +130,7 @@ export function filterIngresoSolicitudes(
 // ─── Filtrado del tab de Egreso (finalizaciones) ────────────────────
 
 /** Estados de finalización que pasan al historial (ya resueltas). */
-export const FINALIZACION_HISTORY_STATES = ["Cargado", "Finalizada"];
+export { FINALIZACION_HISTORY_STATES } from "../../../domain/finalizacion/states";
 
 /** ¿La finalización ya fue resuelta (historial)? */
 export function isHistoryFinalizacion(s: Pick<FinalizacionWithStudent, "estado">): boolean {

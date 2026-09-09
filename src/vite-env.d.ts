@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY: string;
   readonly VITE_GA4_MEASUREMENT_ID?: string;
   readonly VITE_SENTRY_DSN?: string;
+  readonly VITE_APP_RELEASE?: string;
   readonly VITE_ENABLE_MONITORING_IN_DEV?: string;
   readonly VITE_TURNSTILE_SITE_KEY?: string;
   readonly VITE_APP_VERSION?: string;

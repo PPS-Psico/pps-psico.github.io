@@ -87,12 +87,9 @@ if (errors.length > 0) {
 }
 
 // --- 3. Chequeo de tipos ----------------------------------------------------
-// `--node-modules-dir=auto` es necesario porque `send-email` y
-// `request-password-reset` importan `npm:nodemailer`; sin eso Deno no lo
-// resuelve y falla por dependencias, no por el código.
-// `--no-lock` evita que quede un `deno.lock` de 7900 líneas: con
-// `node-modules-dir=auto`, Deno lockea TODO el árbol npm del frontend, que ya
-// está en `package-lock.json` y se desactualizaría con cada cambio de deps.
+// Resolver npm:nodemailer desde la caché de Deno. `auto` reinstalaba las
+// dependencias del frontend y alteraba node_modules después de npm ci.
+// No descubrir package.json/config del frontend ni generar un segundo lockfile.
 const targets = onDisk.map((name) => `supabase/functions/${name}/index.ts`);
 
 // Se invoca el entrypoint del paquete `deno` con node en vez de el shim de
@@ -107,8 +104,8 @@ if (!existsSync(denoEntry)) {
 
 const result = spawnSync(
   process.execPath,
-  [denoEntry, "check", "--node-modules-dir=auto", "--no-lock", ...targets],
-  { stdio: "inherit" }
+  [denoEntry, "check", "--node-modules-dir=none", "--no-config", "--no-lock", ...targets],
+  { stdio: "inherit", env: { ...process.env, DENO_NO_PACKAGE_JSON: "1" } }
 );
 
 if (result.status !== 0) {

@@ -31,6 +31,10 @@ export interface MoodleGradeLike {
    * tareas el numero de Moodle no es la nota de ninguna de las dos.
    */
   inheritedFromSharedTask?: boolean;
+  reviewedAllocation?: boolean;
+  reviewRequired?: boolean;
+  academicGrade?: string | null;
+  academicGradeSource?: string | null;
 }
 
 export type MoodleGradeTone = "neutral" | "info" | "ok" | "warn";
@@ -89,6 +93,37 @@ export function presentMoodleGrade(
   snapshot: MoodleGradeLike | null | undefined
 ): MoodleGradePresentation | null {
   if (!snapshot) return null;
+  const academic = snapshot.academicGrade?.trim();
+  if (
+    academic &&
+    (/^(10|[0-9])([.,][0-9]{1,2})?$/.test(academic) || /^(aprobado|desaprobado)$/i.test(academic))
+  ) {
+    return {
+      label: snapshot.reviewedAllocation
+        ? "Calificación confirmada por coordinación"
+        : "Calificación registrada en Mi Panel",
+      detail: snapshot.reviewRequired
+        ? "Hay cambios posteriores por revisar. Se conserva la calificación actual del expediente."
+        : "Esta es la calificación del expediente. El estado de entrega en Campus se conserva por separado.",
+      compact: academic,
+      tone: snapshot.reviewRequired ? "warn" : "ok",
+      hasGrade: true,
+    };
+  }
+  if (snapshot.reviewedAllocation) {
+    const graded = snapshot.grade_value !== null;
+    return {
+      label: graded
+        ? "Calificación confirmada por coordinación"
+        : "Entrega confirmada por coordinación",
+      detail: snapshot.reviewRequired
+        ? "Hay cambios posteriores por revisar. Se conserva la última decisión aplicada."
+        : "Coordinación revisó la evidencia y confirmó que corresponde a esta PPS.",
+      compact: graded ? String(snapshot.grade_value) : "Entregado",
+      tone: snapshot.reviewRequired ? "warn" : graded ? "ok" : "info",
+      hasGrade: graded,
+    };
+  }
 
   // La entrega es real -el informe entro por el espacio compartido- pero la
   // nota de esta PPS no esta en el numero de Moodle, sino en el comentario de

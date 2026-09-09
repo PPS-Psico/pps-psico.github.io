@@ -1,0 +1,8 @@
+{
+  "merge_commit": "605cd4964c6e805cbaaa5141db36c2a512c1e317",
+  "decisions_mode": "shadow",
+  "branch_ci": "https://github.com/PPS-Psico/pps-psico.github.io/actions/runs/34001918568",
+  "live_pilot": "student capture verified: six direct observations; frontend login and delivery view verified; browser disconnected before role restoration",
+  "deployment_run": "https://github.com/PPS-Psico/pps-psico.github.io/actions/runs/34002095055",
+  "pull_request": "https://github.com/PPS-Psico/pps-psico.github.io/pull/19"
+}

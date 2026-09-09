@@ -22,6 +22,17 @@ const practice = (overrides: Partial<Practica> = {}): Practica =>
   }) as Practica;
 
 describe("deliveryGuide", () => {
+  it("conserva la nota académica aunque no exista una tarea vinculada", () => {
+    const [delivery] = buildGuidedDeliveries(
+      [practice({ nota: "8" })],
+      [],
+      FALLBACK_DELIVERY_AREAS,
+      new Date("2026-09-05T12:00:00Z"),
+      []
+    );
+    expect(delivery.task).toBeNull();
+    expect(delivery.recordedGrade).toBe("8");
+  });
   it("prioriza el vínculo exacto lanzamiento + orientación sobre el nombre difuso", () => {
     const links: MoodleTaskLink[] = [
       {

@@ -217,12 +217,9 @@ function isDelivered(delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): 
     return true;
   }
   if (delivery.task?.informeSubido) return true;
-  // Antes alcanzaba con que la práctica tuviera nota para darla por entregada.
-  // Esa inferencia venía de cuando las notas se cargaban a mano; hoy la nota
-  // sale de la corrección del docente en Moodle. Manteniéndola, una práctica
-  // con nota vieja y sin ninguna lectura aparecía en "Ya entregadas" junto al
-  // cartel "Sin entrega detectada", contradiciéndose en la misma fila.
-  //
+  // El grupo incluye registros académicos. Una nota manual no certifica una
+  // entrega en Campus; la fila distingue explícitamente ambas fuentes.
+  if (recordedPanelGrade(delivery)) return true;
   // `delivery.task` sólo existe cuando hay una tarea de Moodle vinculada. Una
   // actividad calificada a mano y sin esa tarea (ver deliveryGuide.ts) llega
   // acá con `task` null; sin este chequeo quedaba "pendiente" para siempre.
@@ -261,7 +258,10 @@ function compactStatus(
   delivery: GuidedDelivery,
   snapshot?: MoodleGradeSnapshot
 ): { label: string; detail: string; tone: DeliveryTone } {
-  const presentation = deliveryPresentation(delivery, snapshot);
+  const presentation = deliveryPresentation(
+    delivery,
+    snapshot && !snapshot.reviewedAllocation ? { ...snapshot, academicGrade: null } : snapshot
+  );
   if (snapshot?.task_status === "graded" && presentation.hasGrade) {
     return { label: "Calificada", detail: presentation.detail, tone: presentation.tone };
   }
@@ -280,11 +280,18 @@ function compactStatus(
  * lectura, se dice que no la hay en vez de afirmar una entrega que nadie
  * verificó.
  */
-function deliveredSummary(snapshot?: MoodleGradeSnapshot): string {
+function recordedPanelGrade(delivery: GuidedDelivery): string | null {
+  const note = delivery.recordedGrade?.trim() || delivery.task?.nota?.trim();
+  return note && !/sin calificar|no entregado|entregado/i.test(note) ? note : null;
+}
+
+function deliveredSummary(delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): string {
   if (snapshot?.task_status === "graded") return "Calificada";
   if (snapshot && (snapshot.submitted || snapshot.task_status === "submitted")) {
     return "Entregado";
   }
+  if (delivery.task?.informeSubido) return "Registrada en Mi Panel";
+  if (recordedPanelGrade(delivery) || delivery.gradedDirectly) return "Calificación registrada";
   return "Sin registro en Campus";
 }
 
@@ -510,9 +517,9 @@ function DeliveredRow({
   const submittedAt =
     formatStoredTime(snapshot?.submitted_at) ?? snapshot?.submitted_at_display ?? null;
   const correctedAt = snapshot?.graded_at_display;
-  const deliveredLabel = deliveredSummary(snapshot);
+  const deliveredLabel = deliveredSummary(delivery, snapshot);
   const deliveredDetail = correctedAt ? `Corregida ${correctedAt}` : submittedAt;
-  const grade = presentation.hasGrade ? presentation.compact : null;
+  const grade = presentation.hasGrade ? presentation.compact : recordedPanelGrade(delivery);
   const areaName = cleanAreaName(delivery.areaName);
 
   return (
@@ -537,6 +544,17 @@ function DeliveredRow({
       </div>
       <div className="sd-ledger__grade" aria-label={grade ? `Nota ${grade}` : "Sin nota publicada"}>
         {grade ?? "—"}
+        {grade && (
+          <small className="block text-xs font-normal">
+            {snapshot?.reviewedAllocation
+              ? "Coordinación"
+              : snapshot?.academicGrade
+                ? "Mi Panel"
+                : presentation.hasGrade
+                  ? "Campus"
+                  : "Mi Panel"}
+          </small>
+        )}
       </div>
       <div className="sd-ledger__actions">
         {directHref && (
@@ -867,10 +885,10 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
           {deliveredDeliveries.length > 0 && (
             <section className="sd-section sd-section--delivered" aria-labelledby="delivered-title">
               <header className="sd-section__head sd-section__head--ledger">
-                <h2 id="delivered-title">Ya entregadas</h2>
+                <h2 id="delivered-title">Entregas y calificaciones registradas</h2>
                 <span className="sd-section__count">
                   {deliveredDeliveries.length}{" "}
-                  {deliveredDeliveries.length === 1 ? "entregada" : "entregadas"}
+                  {deliveredDeliveries.length === 1 ? "registrada" : "registradas"}
                 </span>
               </header>
               <div className="sd-ledger">

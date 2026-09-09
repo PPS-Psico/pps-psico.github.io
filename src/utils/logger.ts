@@ -13,6 +13,8 @@
  * código existente que llama `logger.info(...)` no necesita cambios.
  */
 
+import { reportUnexpectedError } from "./errorMonitoring";
+
 type LogArgs = unknown[];
 type Level = "info" | "debug" | "warn" | "error";
 
@@ -71,8 +73,8 @@ class Logger {
 
   error(message?: unknown, ...args: LogArgs) {
     console.error(this.prefix("error"), message, ...args);
-    // Hook para Sentry u otra herramienta de APM en producción:
-    // if (!this.isDev) Sentry.captureException(args[0] ?? message);
+    const error = [message, ...args].find((value): value is Error => value instanceof Error);
+    if (error) reportUnexpectedError(error);
   }
 
   // ── Logging con namespace (scope) ─────────────────────────────────────────

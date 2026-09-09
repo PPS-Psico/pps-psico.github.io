@@ -1423,6 +1423,17 @@ html.dark .lv4-card.confirmed { background: color-mix(in oklab, var(--accent) 14
 .lv4-consent-waive { border: none; background: none; cursor: pointer; }
 .lv4-consent-waive:disabled { cursor: progress; opacity: .5; }
 .lv4-consent-waive.is-active { color: var(--ok); }
+
+/* Búsqueda paginada de reemplazos: comparte el lenguaje del Lanzador. */
+.lv4-replacement-search { margin-top: 10px; padding: 14px; border: 1px solid var(--rule-2); border-radius: 12px; background: var(--paper-2); }
+.lv4-replacement-label { display: block; margin-bottom: 8px; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.lv4-replacement-status { margin: 10px 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.lv4-replacement-results { margin: 0; padding: 0; list-style: none; }
+.lv4-replacement-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule-2); }
+.lv4-replacement-identity { min-width: 0; overflow-wrap: anywhere; }
+.lv4-replacement-identity strong { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+.lv4-replacement-identity span { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.lv4-replacement-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
 `;
 
 injectScopedStyles("lv4-styles", LANZADOR_CSS);

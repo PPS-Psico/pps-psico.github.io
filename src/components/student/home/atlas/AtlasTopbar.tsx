@@ -208,6 +208,7 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                       type="button"
                       role="menuitem"
                       className={"ah-menu__item" + (activeTab === item.id ? " active" : "")}
+                      aria-current={activeTab === item.id ? "page" : undefined}
                       onClick={() => handleTabChange(item.id)}
                     >
                       <span className="material-icons" aria-hidden>
@@ -240,8 +241,10 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
               type="button"
               className="ah-iconbtn"
               onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              title="Cambiar tema"
-              aria-label="Cambiar tema"
+              title={resolvedTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+              aria-label={
+                resolvedTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"
+              }
             >
               <span className="material-icons" style={{ fontSize: 19 }} aria-hidden>
                 {resolvedTheme === "dark" ? "light_mode" : "dark_mode"}
@@ -288,6 +291,7 @@ const AtlasTopbar: React.FC<AtlasTopbarProps> = ({ activeTab, onTabChange }) => 
                       type="button"
                       role="menuitem"
                       className={"ah-menu__item" + (activeTab === "profile" ? " active" : "")}
+                      aria-current={activeTab === "profile" ? "page" : undefined}
                       onClick={() => handleTabChange("profile")}
                     >
                       <span className="material-icons" aria-hidden>

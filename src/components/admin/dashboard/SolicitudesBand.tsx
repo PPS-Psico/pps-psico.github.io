@@ -44,7 +44,6 @@ export const SolicitudesBand: React.FC<SolicitudesBandProps> = ({ metrics, onOpe
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
           gap: 12,
         }}
         className="grid-cols-1 md:grid-cols-3"

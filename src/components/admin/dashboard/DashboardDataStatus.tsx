@@ -16,6 +16,7 @@ export const DashboardDataStatus: React.FC<DashboardDataStatusProps> = ({ status
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
+          flexWrap: "wrap",
           marginTop: 20,
           padding: "12px 14px",
           border: "1px solid var(--warn)",
@@ -30,7 +31,7 @@ export const DashboardDataStatus: React.FC<DashboardDataStatusProps> = ({ status
           </span>
           <div style={{ fontSize: 13, lineHeight: 1.4 }}>
             <strong>Algunos datos no pudieron actualizarse.</strong>{" "}
-            <span className="meta">Faltan: {status.failedSections.join(", ")}.</span>
+            <span className="meta">No se pudo actualizar: {status.failedSections.join(", ")}.</span>
           </div>
         </div>
         <button className="btn btn-sm press" onClick={onRetry} disabled={status.isFetching}>

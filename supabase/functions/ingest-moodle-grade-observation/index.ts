@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { classifyMoodleSubmissionFiles } from "../../../src/domain/moodle/moodleSubmissionEvidence.ts";
+import { hasSameMoodleObservationContent } from "../../../src/domain/moodle/moodleObservationContent.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -324,20 +325,12 @@ Deno.serve(async (req) => {
     const { data: practiceData, error: practiceError } = await admin
       .from("practicas")
       .select("id, estudiante_id, lanzamiento_id, especialidad, es_online")
-      .eq("estudiante_id", student.id)
-      .in("id", practiceIds);
+      .eq("estudiante_id", student.id);
     if (practiceError) throw new Error("practice_lookup_failed");
     const practices = (practiceData ?? []) as PracticeRow[];
-    if (practices.length !== practiceIds.length) throw new Error("practice_not_owned");
-
-    const onsitePracticeIdsByCmid = new Map<number, Set<string>>();
-    normalizedInput.forEach((item) => {
-      const practice = practices.find((candidate) => candidate.id === item.practicaId);
-      if (!practice || practice.es_online === true) return;
-      const practiceIdsForTask = onsitePracticeIdsByCmid.get(item.cmid) ?? new Set<string>();
-      practiceIdsForTask.add(practice.id);
-      onsitePracticeIdsByCmid.set(item.cmid, practiceIdsForTask);
-    });
+    if (practiceIds.some((id) => !practices.some((practice) => practice.id === id))) {
+      throw new Error("practice_not_owned");
+    }
 
     const launchIds = [
       ...new Set(practices.map((practice) => practice.lanzamiento_id).filter(Boolean)),
@@ -359,9 +352,40 @@ Deno.serve(async (req) => {
       .from("practica_moodle_tareas")
       .select("id, practica_id, aula_entregas!inner(id, course_id, moodle_id, moodle_grade_max)")
       .eq("validation_status", "confirmed")
-      .in("practica_id", practiceIds);
+      .in(
+        "practica_id",
+        practices.map((practice) => practice.id)
+      );
     if (practiceLinkError) throw new Error("practice_task_link_lookup_failed");
     const practiceLinks = (practiceLinkData ?? []) as unknown as PracticeTaskLinkRow[];
+
+    // El tamaño del lote no define cuántas PPS comparten una tarea. Se cuenta
+    // el padrón confirmado del alumno, incluidas las PPS que hoy no se releen.
+    const onsitePracticeIdsByCmid = new Map<number, Set<string>>();
+    practices
+      .filter((practice) => practice.es_online !== true)
+      .forEach((practice) => {
+        const direct = practiceLinks.filter((link) => link.practica_id === practice.id);
+        const orientation = normalizeOrientation(practice.especialidad);
+        const confirmedTasks =
+          direct.length > 0
+            ? direct.map((link) => link.aula_entregas)
+            : links
+                .filter(
+                  (link) =>
+                    link.lanzamiento_id === practice.lanzamiento_id &&
+                    (!orientation || link.orientacion_key === orientation)
+                )
+                .map((link) => link.aula_entregas);
+        confirmedTasks.forEach((task) => {
+          if (!task || task.course_id !== COURSE_ID) return;
+          const cmid = Number(task.moodle_id);
+          if (!Number.isSafeInteger(cmid) || cmid <= 0) return;
+          const members = onsitePracticeIdsByCmid.get(cmid) ?? new Set<string>();
+          members.add(practice.id);
+          onsitePracticeIdsByCmid.set(cmid, members);
+        });
+      });
 
     const resolvedObservations = await Promise.all(
       normalizedInput.map(async (item) => {
@@ -502,7 +526,7 @@ Deno.serve(async (req) => {
     const { data: existingSnapshots, error: existingSnapshotError } = await admin
       .from("moodle_grade_snapshots")
       .select(
-        "practica_id, cmid, task_status, observed_at, last_observed_at, scan_closed, grade_revision, grade_value, grade_max, submission_file_count, submission_logical_file_count, attendance_evidence, submission_classifier_version"
+        "practica_id, cmid, observed_at, last_observed_at, scan_closed, grade_revision, task_status, submitted, submitted_at, submitted_at_display, grade_value, grade_max, grade_display, graded_at_display, feedback_comment, submission_file_count, submission_logical_file_count, submission_file_types, attendance_evidence, attendance_confidence, attendance_evidence_reasons, submission_classifier_version"
       )
       .in("practica_id", candidatePracticeIds);
     if (existingSnapshotError) throw new Error("snapshot_lookup_failed");
@@ -516,10 +540,6 @@ Deno.serve(async (req) => {
     // califica y por lo tanto tapaba las recorrecciones: si la catedra cambiaba
     // la nota, el panel no volvia a enterarse nunca. La proteccion de una nota
     // ya establecida vive en el trigger, que respeta `nota_fuente`.
-    const sameNumber = (a: unknown, b: unknown) =>
-      a === null || a === undefined || b === null || b === undefined
-        ? a == null && b == null
-        : Number(a) === Number(b);
     const carriesNothingNew = (row: {
       practica_id: string;
       cmid: number;
@@ -527,15 +547,7 @@ Deno.serve(async (req) => {
     }) => {
       const existing = existingByKey.get(`${row.practica_id}:${row.cmid}`);
       if (!existing) return false;
-      return (
-        existing.task_status === row.task_status &&
-        sameNumber(existing.grade_value, row.grade_value) &&
-        sameNumber(existing.grade_max, row.grade_max) &&
-        sameNumber(existing.submission_file_count, row.submission_file_count) &&
-        sameNumber(existing.submission_logical_file_count, row.submission_logical_file_count) &&
-        existing.attendance_evidence === row.attendance_evidence &&
-        existing.submission_classifier_version === row.submission_classifier_version
-      );
+      return hasSameMoodleObservationContent(existing, row);
     };
     const unchangedSkipped = observationRows.filter(carriesNothingNew).length;
     const rowsToStore = observationRows.filter((row) => !carriesNothingNew(row));

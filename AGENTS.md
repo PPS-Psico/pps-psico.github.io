@@ -220,8 +220,8 @@ Pipeline visible en el sidebar/pipeline del Lanzador (definido en `src/services/
 ### Automatizacion Moodle v2
 
 - La unidad de entrega es `(lanzamiento_id, orientacion_key)`, no sólo el lanzamiento.
-- 2024–2026 usa `legacy_shared`: observar vínculos confirmados, nunca adoptar por nombre ni reconfigurar tareas históricas.
-- Desde 2027 usa `dedicated`: una tarea exclusiva por unidad con `stable_key` en el `ID number` de Moodle.
+- Desde el 7/9/2026, todo lanzamiento nuevo nace con `moodle_task_policy = dedicated`, también durante 2026: una tarea exclusiva por unidad con `stable_key` en el `ID number` de Moodle.
+- Los lanzamientos históricos preservan `legacy_shared`: observar vínculos confirmados, nunca adoptar por nombre ni reconfigurar tareas históricas. El año por sí solo ya no determina el modo.
 - `moodle_task_intents` declara lo deseado y `moodle_task_expected_participants` define quién debe entregar; los conteos nunca usan el total bruto de Moodle.
 - La activación reconcilia datos locales mediante triggers, pero no espera ni llama a Moodle. El worker externo reclama un lease y sólo confirma si toda la configuración coincide.
 - La lectura anual de jefatura se conserva por tareas únicas de año+orientación y el frontend la divide en lotes secuenciales de 4.

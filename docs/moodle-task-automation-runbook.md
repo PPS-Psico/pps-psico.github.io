@@ -1,8 +1,18 @@
 # Runbook · Tareas e informes Moodle v2
 
-Vigencia: 3 de septiembre de 2026
-Alcance actual: lectura legacy 2026 y fundación dedicada; escritura Moodle aún
-no habilitada
+Vigencia operativa: 7 de septiembre de 2026.
+La creación dedicada por lanzamiento está autorizada, también en 2026.
+Claude debe trabajar en `../consulta-pps-moodle-automation`, el checkout operativo
+versionado. Seguir allí `docs/moodle-v2/claude-task-writer.md` y el contrato
+`moodle-writer/v2` con claim, preflight y confirm mediante archivos de evidencia.
+La aceptación integral de la corrida sigue pendiente; no omitir los controles.
+Las notas históricas inferiores no sustituyen ese procedimiento.
+
+Actualización operativa del 6/9/2026: consultar primero el
+[corte del tablero](moodle-v2/workboard.md#corte-operativo-del-6-de-septiembre).
+El puente vigente está instalado en la **descripción de General, sección
+50889**, no en una actividad Etiqueta independiente. No agregar otro puente
+siguiendo la ubicación histórica de este documento.
 
 ## 1. Comprobación rápida
 

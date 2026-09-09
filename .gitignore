@@ -88,5 +88,12 @@ tmp/
 /playwright-report/
 /blob-report/
 /.playwright/
+/.e2e-dist/
 
 __pycache__/
+
+.moodle-worker-runs/
+
+# Evidencia con datos personales de estudiantes: no va al repo (es publico).
+artifacts/ester-audit/
+artifacts/moodle-evidence/negative-pilot-grading.html

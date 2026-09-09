@@ -68,8 +68,7 @@ describe("parseCourseOverviewTasks", () => {
       buildDoc(filaCalificada + filaSinEntrega + filaEntregadaSinNota)
     );
     expect(tasks).toHaveLength(3);
-    // Es el punto del cambio: 284 prácticas sin vínculo hoy no se piden nunca,
-    // y acá aparecen sin que nadie las haya declarado de antemano.
+    // Enumera tareas. Vincularlas a prácticas requiere otra etapa explícita.
     expect(tasks.map((t) => t.cmid)).toContain(805657);
   });
 

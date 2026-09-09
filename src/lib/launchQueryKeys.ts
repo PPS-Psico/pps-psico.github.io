@@ -15,6 +15,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 export const launchKeys = {
+  selectorLaunches: (testing: boolean, initialLaunchId?: string | null) =>
+    ["openLaunchesForSelector", testing, initialLaunchId] as const,
+  candidates: (launchId: string | undefined, testing: boolean) =>
+    ["candidatesForLaunch", launchId, testing] as const,
   /** Lista completa de lanzamientos (sidebar + canvas). */
   history: (isTestingMode: boolean) => ["launchHistory", isTestingMode] as const,
   /** Conteos por lanzamiento (inscriptos/seleccionados) vía RPC. */
@@ -43,7 +47,6 @@ const LAUNCH_QUERY_PREFIXES = [
   // Seleccionador
   "openLaunchesForSelector",
   "candidatesForLaunch",
-  "availableStudents",
   "seleccionadosInfo",
   // Padrón de tareas de Moodle por lanzamiento (ActivaView)
   "launch-moodle-units",

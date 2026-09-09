@@ -28,7 +28,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    logger.error("ErrorBoundary caught an error:", { error, errorInfo });
+    logger.error("ErrorBoundary caught an error:", error, errorInfo);
 
     const msg = error.message || "";
 

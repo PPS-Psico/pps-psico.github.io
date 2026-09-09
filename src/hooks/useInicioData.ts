@@ -1,21 +1,29 @@
 /**
- * Hook que arma toda la data del Inicio editorial (briefing + bandas + priorities).
- * Lee Supabase directo y la última suggestion `daily_brief` de Hermes.
+ * Hook que arma toda la data del Inicio editorial (briefing + banda de
+ * solicitudes + priorities). Compone las consultas de features/inicio y la última suggestion
+ * `daily_brief` de Hermes.
+ *
+ * 2026-09-04 — se quitó la banda "En tus conversaciones · instituciones".
+ * Sus cuatro números no describían instituciones: los 496 hilos de
+ * `gmail_hilos` tenían todos `clasificacion = 'uflo_interno'` y ninguno
+ * `institucion_id`, la cola de clasificaciones llevaba tres semanas sin
+ * entradas nuevas y los 60 contactos de WhatsApp estaban sin vincular.
+ * La bandeja de mails sigue viva en Gestión, que es donde se usa.
  */
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { matchesGmailFilter, useGmailHilos } from "./useGmailHilos";
+import { inicioQueries } from "../features/inicio/inicioQueries";
+import { inicioQueryState, type InicioSectionState } from "./inicioQueryState";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export type Tone = "accent" | "warn" | "ok" | "ai" | "crit";
 
 export interface DetectionMetric {
-  id: string;
+  id: "s-ing" | "s-egr" | "s-cor";
   tone: Tone;
   icon: string;
-  n: number;
+  n: number | null;
+  state: InicioSectionState;
   label: string;
   sub: string;
   note?: string | null;
@@ -47,7 +55,7 @@ export interface BriefingData {
   lead: string;
   body: string[];
   generadoAgo: string;
-  totalChats: number;
+  totalChats: number | null;
   listaNombre: string;
 }
 
@@ -61,11 +69,16 @@ export interface InicioDataStatus {
 
 export interface InicioData {
   briefing: BriefingData;
-  detectionMetrics: DetectionMetric[];
   solicitudesMetrics: DetectionMetric[];
   drafts: DraftPreview[];
   totalDrafts: number;
   priorities: PriorityItem[];
+  sections: {
+    briefing: InicioSectionState;
+    drafts: InicioSectionState;
+    contacts: InicioSectionState;
+  };
+  retrySection: (section: "briefing" | "drafts" | "contacts" | "s-ing" | "s-egr" | "s-cor") => void;
   loaded: boolean;
   status: InicioDataStatus;
 }
@@ -256,202 +269,44 @@ export function useInicioData(): InicioData {
   // 1. Último daily_brief de Hermes
   //    Traemos SIEMPRE el más reciente, sin filtrar por fecha: si el job de las
   //    8am no corrió todavía (o falló), seguimos mostrando el último brief.
-  const briefQuery = useQuery({
-    queryKey: ["inicio_daily_brief"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agent_suggestions")
-        .select("id, payload, created_at")
-        .eq("tipo", "daily_brief")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const briefQuery = useQuery(inicioQueries.brief());
   const brief = briefQuery.data;
 
-  // 2. Métricas de instituciones (DetectionBand)
-  // Mails: usamos la MISMA fuente que la bandeja de Mails de Gestión.
-  const gmailQuery = useGmailHilos(false);
-  const gmailHilos = useMemo(() => gmailQuery.data ?? [], [gmailQuery.data]);
-  const gmailEsperando = useMemo(
-    () => gmailHilos.filter((h) => matchesGmailFilter(h, "esperando")).length,
-    [gmailHilos]
-  );
-  const gmailEsperando5d = useMemo(
-    () => gmailHilos.filter((h) => matchesGmailFilter(h, "esperando5d")).length,
-    [gmailHilos]
-  );
-
-  const clasifPendingQuery = useQuery({
-    queryKey: ["inicio_clasif_pending"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("agent_suggestions")
-        .select("id", { count: "exact", head: true })
-        .eq("tipo", "clasificacion")
-        .eq("estado", "pending");
-      if (error) throw error;
-      return count ?? 0;
-    },
-    staleTime: 60 * 1000,
-  });
-  const clasifPending = clasifPendingQuery.data ?? 0;
-
-  const contactosSinConvenioQuery = useQuery({
-    queryKey: ["inicio_contactos_sin_convenio"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("whatsapp_contactos")
-        .select("chat_jid", { count: "exact", head: true })
-        .eq("tipo", "sin_convenio");
-      if (error) throw error;
-      return count ?? 0;
-    },
-    staleTime: 60 * 1000,
-  });
-  const contactosSinConvenio = contactosSinConvenioQuery.data ?? 0;
-
-  const contactosSinVincularQuery = useQuery({
-    queryKey: ["inicio_contactos_sin_vincular"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("whatsapp_contactos")
-        .select("chat_jid", { count: "exact", head: true })
-        .is("institucion_id", null)
-        .neq("tipo", "ignorado");
-      if (error) throw error;
-      return count ?? 0;
-    },
-    staleTime: 60 * 1000,
-  });
-  const contactosSinVincular = contactosSinVincularQuery.data ?? 0;
-
   // 3. Métricas de solicitudes (SolicitudesBand)
-  const solicitudesActivasQuery = useQuery({
-    queryKey: ["inicio_solicitudes_activas"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("solicitudes_pps")
-        .select(
-          "id, estado_seguimiento, actualizacion, created_at, nombre_institucion, nombre_alumno"
-        )
-        .not("estado_seguimiento", "in", "(Realizada,No se pudo concretar,Archivado)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 2 * 60 * 1000,
-  });
+  const solicitudesActivasQuery = useQuery(inicioQueries.solicitudes());
   const solicitudesActivas = solicitudesActivasQuery.data ?? [];
 
-  const institucionesQuery = useQuery({
-    queryKey: ["inicio_instituciones_nombres"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("instituciones").select("id, nombre");
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 10 * 60 * 1000,
-  });
+  const institucionesQuery = useQuery(inicioQueries.instituciones());
   const instituciones = institucionesQuery.data ?? [];
 
-  const pendingCorreccionesQuery = useQuery({
-    queryKey: ["inicio_correcciones_pending"],
-    queryFn: async () => {
-      const [mod, nuevas] = await Promise.all([
-        supabase
-          .from("solicitudes_modificacion_pps")
-          .select("id", { count: "exact", head: true })
-          .eq("estado", "pendiente"),
-        supabase
-          .from("solicitudes_nueva_pps")
-          .select("id", { count: "exact", head: true })
-          .eq("estado", "pendiente"),
-      ]);
-      if (mod.error) throw mod.error;
-      if (nuevas.error) throw nuevas.error;
-      return (mod.count ?? 0) + (nuevas.count ?? 0);
-    },
-    staleTime: 2 * 60 * 1000,
-  });
+  const pendingCorreccionesQuery = useQuery(inicioQueries.correcciones());
   const pendingCorrecciones = pendingCorreccionesQuery.data ?? 0;
 
-  const egresoMetricsQuery = useQuery({
-    queryKey: ["inicio_egreso_metrics"],
-    queryFn: async () => {
-      const { data: verifs, error } = await supabase
-        .from("agent_suggestions")
-        .select("payload, contexto, created_at")
-        .eq("tipo", "update_estado")
-        .eq("estado", "pending");
-      if (error) throw error;
-      const all = (verifs || []).filter(
-        (v) => (v.contexto as { kind?: string } | null)?.kind === "verificacion_finalizacion"
-      );
-      let criticos = 0,
-        atencion = 0,
-        aprobados = 0;
-      for (const v of all) {
-        const vp = (v.payload as { verificacion?: { estado?: string } } | null)?.verificacion ?? {};
-        if (vp.estado === "critical") criticos++;
-        else if (vp.estado === "attention") atencion++;
-        else if (vp.estado === "verified") aprobados++;
-      }
-      return { total: all.length, criticos, atencion, aprobados };
-    },
-    staleTime: 2 * 60 * 1000,
-  });
+  /**
+   * Egreso = finalizaciones que todavía no llegaron al historial.
+   *
+   * Antes esto contaba `agent_suggestions` de tipo `update_estado` pendientes,
+   * o sea la cola de verificación de Hermes. Esa cola tiene una sola fila desde
+   * el 2026-05-28: la tarjeta mostraba un número congelado hacía 99 días
+   * mientras la cola real de acreditación quedaba invisible. Ahora leemos la
+   * misma tabla y el mismo criterio que el tab de Egreso (`SolicitudesManager`
+   * → `FINALIZACION_HISTORY_STATES`), así la tarjeta y su destino coinciden.
+   */
+  const egresoMetricsQuery = useQuery(inicioQueries.egreso());
   const egresoMetrics = egresoMetricsQuery.data ?? {
     total: 0,
-    criticos: 0,
-    atencion: 0,
-    aprobados: 0,
+    pendientes: 0,
+    enProceso: 0,
+    masViejoDias: 0,
   };
 
   // 4. Drafts: total exacto + sólo las tres filas que se muestran.
-  const draftsQuery = useQuery({
-    queryKey: ["inicio_drafts_preview"],
-    queryFn: async () => {
-      const [preview, total] = await Promise.all([
-        supabase
-          .from("agent_suggestions")
-          .select("id, payload, contexto, institucion_id, tipo, created_at")
-          .in("tipo", ["email_draft", "whatsapp_followup"])
-          .eq("estado", "pending")
-          .order("created_at", { ascending: false })
-          .limit(3),
-        supabase
-          .from("agent_suggestions")
-          .select("id", { count: "exact", head: true })
-          .in("tipo", ["email_draft", "whatsapp_followup"])
-          .eq("estado", "pending"),
-      ]);
-      if (preview.error) throw preview.error;
-      if (total.error) throw total.error;
-      return { items: preview.data || [], total: total.count ?? 0 };
-    },
-    staleTime: 60 * 1000,
-  });
+  const draftsQuery = useQuery(inicioQueries.drafts());
   const rawDrafts = draftsQuery.data?.items ?? [];
   const totalDrafts = draftsQuery.data?.total ?? 0;
 
   // 5. Privacidad — total de contactos en lista PPS
-  const totalChatsPpsQuery = useQuery({
-    queryKey: ["inicio_total_chats_pps"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("whatsapp_contactos")
-        .select("chat_jid", { count: "exact", head: true })
-        .neq("tipo", "ignorado");
-      if (error) throw error;
-      return count ?? 0;
-    },
-    staleTime: 30 * 60 * 1000,
-  });
+  const totalChatsPpsQuery = useQuery(inicioQueries.contacts());
   const totalChatsPps = totalChatsPpsQuery.data ?? 0;
 
   // ── Cómputos derivados ─────────────────────────────────────────────────────
@@ -489,86 +344,49 @@ export function useInicioData(): InicioData {
     return n && !instNombres.has(n);
   }).length;
 
-  const detectionMetrics: DetectionMetric[] = [
-    {
-      id: "m-resp",
-      tone: gmailEsperando > 0 ? "warn" : "accent",
-      icon: "reply",
-      n: gmailEsperando,
-      label: "Te toca responder",
-      sub: "Mails esperando respuesta",
-      href: "/admin/gestion?view=mails&filter=esperando",
-    },
-    {
-      id: "m-esp",
-      tone: "accent",
-      icon: "schedule_send",
-      n: gmailEsperando5d,
-      label: "Esperando +5 días",
-      sub: "Te deben respuesta",
-      href: "/admin/gestion?view=mails&filter=esperando5d",
-    },
-    {
-      id: "m-dec",
-      tone: "ai",
-      icon: "pan_tool",
-      n: clasifPending,
-      label: "Requieren tu criterio",
-      sub: "Hermes no decide esto",
-      href: "/admin/gestion?view=contactos",
-    },
-    {
-      id: "m-new",
-      tone: "ok",
-      icon: "person_add",
-      n: contactosSinConvenio,
-      label: "Instituciones nuevas",
-      sub: `${contactosSinVincular} chats sin vincular`,
-      href: "/admin/gestion?view=contactos",
-    },
-  ];
-
   const egresoNote =
-    egresoMetrics.criticos > 0
+    egresoMetrics.enProceso > 0
       ? {
-          note: `${egresoMetrics.criticos} con problemas críticos`,
-          noteTone: "crit" as Tone,
-          noteIcon: "error",
+          note: `${egresoMetrics.enProceso} esperando tu Confirmar SAC`,
+          noteTone: "warn" as Tone,
+          noteIcon: "how_to_reg",
         }
-      : egresoMetrics.atencion > 0
+      : egresoMetrics.pendientes > 0
         ? {
-            note: `${egresoMetrics.atencion} con observaciones`,
-            noteTone: "warn" as Tone,
-            noteIcon: "warning",
+            note: `${egresoMetrics.pendientes} sin precargar en el SAC`,
+            noteTone: "accent" as Tone,
+            noteIcon: "upload_file",
           }
-        : egresoMetrics.aprobados > 0
-          ? {
-              note: `${egresoMetrics.aprobados} verificadas por Hermes`,
-              noteTone: "ai" as Tone,
-              noteIcon: "verified",
-            }
-          : { note: null, noteTone: null as Tone | null, noteIcon: null };
+        : { note: null, noteTone: null as Tone | null, noteIcon: null };
 
   const solicitudesMetrics: DetectionMetric[] = [
     {
       id: "s-ing",
       tone: ingresoSinMov > 0 ? "warn" : "accent",
       icon: "login",
-      n: ingresoActivas,
+      n: solicitudesActivasQuery.data === undefined ? null : ingresoActivas,
+      state: inicioQueryState(solicitudesActivasQuery, ingresoActivas === 0),
       label: "Ingreso · PPS propuestas",
       sub: `${ingresoSinMov} sin movimiento +4d`,
-      note: ingresoNoCat > 0 ? `${ingresoNoCat} sin catalogar` : null,
+      note:
+        !institucionesQuery.isError && institucionesQuery.data !== undefined && ingresoNoCat > 0
+          ? `${ingresoNoCat} sin catalogar`
+          : null,
       noteTone: "warn",
       noteIcon: "help",
       href: "/admin/solicitudes?tab=ingreso",
     },
     {
       id: "s-egr",
-      tone: egresoMetrics.criticos > 0 ? "crit" : egresoMetrics.atencion > 0 ? "warn" : "ok",
+      tone: egresoMetrics.masViejoDias > 7 ? "warn" : egresoMetrics.total > 0 ? "accent" : "ok",
       icon: "logout",
-      n: egresoMetrics.total,
+      n: egresoMetricsQuery.data === undefined ? null : egresoMetrics.total,
+      state: inicioQueryState(egresoMetricsQuery, egresoMetrics.total === 0),
       label: "Egreso · finalizaciones",
-      sub: "Por acreditar",
+      sub:
+        egresoMetrics.total === 0
+          ? "Nada por acreditar"
+          : `Por acreditar · la más vieja hace ${egresoMetrics.masViejoDias} d`,
       href: "/admin/solicitudes?tab=egreso",
       ...egresoNote,
     },
@@ -576,12 +394,23 @@ export function useInicioData(): InicioData {
       id: "s-cor",
       tone: "accent",
       icon: "edit_note",
-      n: pendingCorrecciones,
+      n: pendingCorreccionesQuery.data === undefined ? null : pendingCorrecciones,
+      state: inicioQueryState(pendingCorreccionesQuery, pendingCorrecciones === 0),
       label: "Correcciones",
       sub: "Modificaciones y nuevas PPS",
       href: "/admin/solicitudes?tab=correcciones",
     },
   ];
+
+  // El fallback aritmético sirve para los cálculos internos, nunca para afirmar
+  // que no hay trabajo cuando todavía no tenemos una respuesta válida.
+  for (const metric of solicitudesMetrics) {
+    if (metric.n === null) {
+      metric.sub = metric.state.status === "loading" ? "Consultando…" : "No disponible";
+      metric.note = null;
+      metric.tone = "accent";
+    }
+  }
 
   const drafts: DraftPreview[] = rawDrafts.map((d) => {
     const payload = (d.payload as Record<string, unknown>) || {};
@@ -640,10 +469,18 @@ export function useInicioData(): InicioData {
 
   // Briefing lead computed
   const totalSolicitudes = ingresoActivas + egresoMetrics.total + pendingCorrecciones;
-  const novedadesInst = gmailEsperando + clasifPending;
+  const solicitudesConfirmadas = [
+    solicitudesActivasQuery,
+    egresoMetricsQuery,
+    pendingCorreccionesQuery,
+  ].every((query) => query.data !== undefined && !query.isError);
   const lead =
     briefingResumen ||
-    `Buenos días. Tenés ${totalSolicitudes} solicitudes esperando y ${novedadesInst} novedades de instituciones.`;
+    (!solicitudesConfirmadas
+      ? "El resumen de solicitudes no está disponible mientras se actualizan sus datos."
+      : totalSolicitudes === 0
+        ? "Buenos días. No hay solicitudes esperando."
+        : `Buenos días. Tenés ${totalSolicitudes} solicitudes esperando.`);
 
   const briefingBody: string[] = [];
   if (briefingResumen) {
@@ -680,10 +517,6 @@ export function useInicioData(): InicioData {
 
   const trackedQueries = [
     { label: "briefing de Hermes", query: briefQuery },
-    { label: "mails", query: gmailQuery },
-    { label: "clasificaciones", query: clasifPendingQuery },
-    { label: "contactos sin convenio", query: contactosSinConvenioQuery },
-    { label: "contactos sin vincular", query: contactosSinVincularQuery },
     { label: "solicitudes", query: solicitudesActivasQuery },
     { label: "instituciones", query: institucionesQuery },
     { label: "correcciones", query: pendingCorreccionesQuery },
@@ -704,15 +537,30 @@ export function useInicioData(): InicioData {
       lead,
       body: briefingBody.filter(Boolean),
       generadoAgo,
-      totalChats: totalChatsPps,
+      totalChats: totalChatsPpsQuery.data === undefined ? null : totalChatsPps,
       listaNombre: "PPS",
     },
-    detectionMetrics,
     solicitudesMetrics,
     drafts,
     totalDrafts,
     priorities,
-    loaded: !isLoading,
+    sections: {
+      briefing: inicioQueryState(briefQuery, brief === null),
+      drafts: inicioQueryState(draftsQuery, totalDrafts === 0),
+      contacts: inicioQueryState(totalChatsPpsQuery, totalChatsPps === 0),
+    },
+    retrySection: (section) => {
+      const queries = {
+        briefing: briefQuery,
+        drafts: draftsQuery,
+        contacts: totalChatsPpsQuery,
+        "s-ing": solicitudesActivasQuery,
+        "s-egr": egresoMetricsQuery,
+        "s-cor": pendingCorreccionesQuery,
+      };
+      void queries[section].refetch();
+    },
+    loaded: !trackedQueries.every(({ query }) => query.isPending),
     status: {
       isLoading,
       isFetching: trackedQueries.some(({ query }) => query.isFetching),

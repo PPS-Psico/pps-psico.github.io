@@ -206,36 +206,33 @@ export const AdminDashboardSkeleton: React.FC = () => (
         <InkSkeleton style={{ height: 16, width: "60%" }} />
       </div>
 
-      {/* Bandas de métricas (DetectionBand + SolicitudesBand) */}
-      {[0, 1].map((band) => (
-        <div
-          key={band}
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: 12,
-            marginBottom: 20,
-          }}
-        >
-          {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={{
-                border: "1px solid var(--rule-2)",
-                borderRadius: 16,
-                padding: 18,
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
-            >
-              <InkSkeleton style={{ height: 12, width: "60%" }} />
-              <InkSkeleton style={{ height: 30, width: 56 }} />
-              <InkSkeleton style={{ height: 12, width: "80%" }} />
-            </div>
-          ))}
-        </div>
-      ))}
+      {/* Banda de métricas (SolicitudesBand: ingreso, egreso, correcciones) */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            style={{
+              border: "1px solid var(--rule-2)",
+              borderRadius: 16,
+              padding: 18,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <InkSkeleton style={{ height: 12, width: "60%" }} />
+            <InkSkeleton style={{ height: 30, width: 56 }} />
+            <InkSkeleton style={{ height: 12, width: "80%" }} />
+          </div>
+        ))}
+      </div>
 
       {/* Borradores + Prioridades */}
       <div

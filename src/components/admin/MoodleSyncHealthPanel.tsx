@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { MOODLE_ASSIGN } from "../../hooks/useAulaEntregas";
 import MoodleGradeImportPanel from "./MoodleGradeImportPanel";
+import MoodleEvidenceInbox from "./MoodleEvidenceInbox";
 
 interface HealthSummary {
   linkedStudents?: number;
@@ -141,9 +142,12 @@ const MoodleSyncHealthPanel: React.FC<{ enabled?: boolean }> = ({ enabled = true
   if (!enabled) return null;
   if (healthQuery.isError) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-        No se pudo leer el diagnóstico de sincronización.
-      </div>
+      <>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          No se pudo leer el diagnóstico de sincronización.
+        </div>
+        <MoodleEvidenceInbox enabled={enabled} />
+      </>
     );
   }
 
@@ -374,6 +378,7 @@ const MoodleSyncHealthPanel: React.FC<{ enabled?: boolean }> = ({ enabled = true
       )}
 
       <MoodleGradeImportPanel />
+      <MoodleEvidenceInbox enabled={enabled} />
     </section>
   );
 };

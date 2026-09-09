@@ -1,0 +1,1342 @@
+<!-- AULA MOODLE · PPS 2026 — Etiqueta del Inicio + puente de tareas v1 -->
+<style id="pps-aula-style">
+  body.pps-rol-estudiante .secondary-navigation,
+  body.pps-rol-estudiante nav.secondary-navigation,
+  body.pps-rol-estudiante [data-region="secondary-navigation"],
+  body.userswitchedrole .secondary-navigation {
+    display: none !important;
+  }
+  #page-header::after,
+  #page-header::before,
+  header#page-header::after {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+    background-image: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    border: 0 !important;
+  }
+  #page-header {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .page-header-headings,
+  #page-header .page-header-headings,
+  #page-header h1,
+  .page-context-header {
+    display: none !important;
+  }
+  #page-content,
+  #region-main,
+  #region-main-box,
+  [role="main"] {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  .secondary-navigation {
+    margin-bottom: 0 !important;
+  }
+  #region-main .activitysection,
+  #region-main .course-content,
+  #region-main .section {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  body.limitedwidth #page.drawers .main-inner,
+  #page.drawers .main-inner,
+  .main-inner-wrapper,
+  #topofscroll,
+  #region-main,
+  #region-main-box,
+  #page-content,
+  .course-content,
+  #region-main .content,
+  [role="main"],
+  #page .container,
+  #page .container-fluid {
+    max-width: none !important;
+    width: auto !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  #region-main .activity,
+  #region-main .section .content,
+  #region-main ul.topics li.section .content {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  button[data-target="theme_boost-drawers-courseindex"],
+  button[data-target="theme_boost-drawers-blocks"],
+  [data-toggler="drawers"][data-action="toggle"],
+  .drawer-toggles,
+  .drawer-toggles .drawer-toggler-start,
+  .drawer-toggles .drawer-toggler-end {
+    display: none !important;
+  }
+  #page.drawers {
+    --drawer-left-width: 0px !important;
+    --drawer-right-width: 0px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  #theme_boost-drawers-blocks,
+  #theme_boost-drawers-courseindex,
+  .drawer.drawer-right,
+  .drawer.drawer-left,
+  [data-region="blocks-column"],
+  .block-region-side-post,
+  #block-region-side-post {
+    display: none !important;
+  }
+  #region-main .activity.label,
+  #region-main .activity-item {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  #region-main .activity.label .contentwithoutlink,
+  #region-main .activity-item .description {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  #pps-aula-embed {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 16px 18px;
+    background: transparent;
+    line-height: 0;
+  }
+  #pps-aula-frame {
+    width: 100%;
+    border: 1px solid rgba(20, 19, 16, 0.09);
+    display: block;
+    vertical-align: top;
+    min-height: 300px;
+    background: transparent;
+    border-radius: 22px;
+    box-shadow:
+      0 1px 2px rgba(20, 19, 16, 0.04),
+      0 18px 50px -22px rgba(20, 19, 16, 0.18);
+    overflow: hidden;
+  }
+  html,
+  body {
+    overflow-x: hidden !important;
+  }
+  #page-content,
+  #region-main {
+    overflow-x: hidden;
+  }
+</style>
+
+<div
+  id="pps-aula-embed"
+  data-course-id="{courseid}"
+  data-moodle-user-id="{userid}"
+  data-moodle-username="{username}"
+  data-email="{email}"
+  data-firstname="{firstname}"
+  data-lastname="{lastname}"
+>
+  <iframe
+    id="pps-aula-frame"
+    src="https://pps-psico.github.io/?v=32#/student"
+    title="Aula PPS 2026"
+    loading="lazy"
+    scrolling="auto"
+    allowtransparency="true"
+    allow="clipboard-write; fullscreen"
+  ></iframe>
+</div>
+
+<script>
+  (function () {
+    "use strict";
+
+    var PANEL_ORIGIN = "https://pps-psico.github.io";
+    var TICKET_ENDPOINT =
+      "https://qxnxtnhtbpsgzprqtrjl.supabase.co/functions/v1/issue-moodle-signup-ticket";
+    var EXPECTED_COURSE_ID = 3615;
+    var MAX_TASKS = 20;
+    var MAX_JEFE_ROWS = 1000;
+    var FETCH_TIMEOUT_MS = 10000;
+    // Presupuesto propio del índice: no consume el tiempo reservado al detalle.
+    var OVERVIEW_TIMEOUT_MS = 4000;
+    var OVERVIEW_CACHE_MS = 30000;
+    var OVERVIEW_BACKOFF_MS = 5 * 60 * 1000;
+    var overviewCache = null;
+    var overviewCacheUntil = 0;
+    var overviewRetryAt = 0;
+    var overviewInFlight = null;
+    var f = document.getElementById("pps-aula-frame");
+    var embed = document.getElementById("pps-aula-embed");
+    if (!f || !embed) return;
+    var COURSE_ID = Number(embed.getAttribute("data-course-id"));
+
+    function panelH() {
+      return Math.max(620, Math.round(window.innerHeight * 0.92));
+    }
+
+    function cleanText(value) {
+      return String(value || "")
+        .replace(/\u00a0/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function normalizeText(value) {
+      return cleanText(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    }
+
+    function resolvedText(value) {
+      var result = cleanText(value);
+      return result && result.indexOf("{") === -1 && result.indexOf("}") === -1 ? result : "";
+    }
+
+    function validRequestId(value) {
+      return (
+        typeof value === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+      );
+    }
+
+    function validContextRequest(data) {
+      return (
+        data &&
+        data.type === "PPS_MOODLE_CONTEXT_REQUEST" &&
+        data.version === 1 &&
+        validRequestId(data.requestId)
+      );
+    }
+
+    function readMoodleContext() {
+      return {
+        courseId: COURSE_ID,
+        moodleUserId: Number(embed.getAttribute("data-moodle-user-id")),
+        moodleUsername: resolvedText(embed.getAttribute("data-moodle-username")).replace(/\D/g, ""),
+        email: resolvedText(embed.getAttribute("data-email")).toLowerCase(),
+        firstname: resolvedText(embed.getAttribute("data-firstname")),
+        lastname: resolvedText(embed.getAttribute("data-lastname")),
+      };
+    }
+
+    function validMoodleContext(context) {
+      return (
+        context.courseId === EXPECTED_COURSE_ID &&
+        Number.isSafeInteger(context.moodleUserId) &&
+        context.moodleUserId > 0 &&
+        /^\d{6,12}$/.test(context.moodleUsername) &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(context.email) &&
+        context.firstname.length >= 2 &&
+        context.lastname.length >= 2
+      );
+    }
+
+    function issueSignupTicket(context) {
+      return fetch(TICKET_ENDPOINT, {
+        method: "POST",
+        mode: "cors",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(context),
+      }).then(function (response) {
+        if (!response.ok) throw new Error("ticket_http_" + response.status);
+        return response.json();
+      });
+    }
+
+    function parseLocaleNumber(value) {
+      var raw = cleanText(value).replace(/\s/g, "");
+      if (!raw) return null;
+      if (raw.indexOf(",") > -1 && raw.indexOf(".") > -1) {
+        raw =
+          raw.lastIndexOf(",") > raw.lastIndexOf(".")
+            ? raw.replace(/\./g, "").replace(",", ".")
+            : raw.replace(/,/g, "");
+      } else if (raw.indexOf(",") > -1) {
+        raw = raw.replace(",", ".");
+      }
+      var result = Number(raw);
+      return Number.isFinite(result) ? result : null;
+    }
+
+    function parseMoodleSubmissionDate(value) {
+      var display = cleanText(value);
+      if (!display) return null;
+
+      var normalized = normalizeText(display);
+      var months = {
+        enero: 1,
+        january: 1,
+        febrero: 2,
+        february: 2,
+        marzo: 3,
+        march: 3,
+        abril: 4,
+        april: 4,
+        mayo: 5,
+        may: 5,
+        junio: 6,
+        june: 6,
+        julio: 7,
+        july: 7,
+        agosto: 8,
+        august: 8,
+        septiembre: 9,
+        september: 9,
+        setiembre: 9,
+        octubre: 10,
+        october: 10,
+        noviembre: 11,
+        november: 11,
+        diciembre: 12,
+        december: 12,
+      };
+      var match = normalized.match(
+        /(\d{1,2})\s+(?:de\s+)?([a-z]+)\s+(?:de\s+)?(\d{4})[^\d]+(\d{1,2}):(\d{2})(?:\s*([ap])\.?\s*m\.?)?/
+      );
+      if (!match || !months[match[2]]) return null;
+
+      var day = Number(match[1]);
+      var month = months[match[2]];
+      var year = Number(match[3]);
+      var hour = Number(match[4]);
+      var minute = Number(match[5]);
+      var meridiem = match[6] || "";
+      if (meridiem === "p" && hour < 12) hour += 12;
+      if (meridiem === "a" && hour === 12) hour = 0;
+      if (
+        year < 2020 ||
+        year > 2100 ||
+        day < 1 ||
+        day > 31 ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59
+      ) {
+        return null;
+      }
+
+      var pad = function (number) {
+        return String(number).padStart(2, "0");
+      };
+      var argentinaTime =
+        year +
+        "-" +
+        pad(month) +
+        "-" +
+        pad(day) +
+        "T" +
+        pad(hour) +
+        ":" +
+        pad(minute) +
+        ":00-03:00";
+      var parsed = new Date(argentinaTime);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return { iso: parsed.toISOString(), display: display.slice(0, 200) };
+    }
+
+    function rowsFromDocument(doc) {
+      return Array.prototype.map.call(
+        doc.querySelectorAll(".feedbacktable tr, .submissionstatustable tr, table.generaltable tr"),
+        function (row) {
+          var cells = Array.prototype.map.call(row.querySelectorAll("th, td"), function (cell) {
+            return cleanText(cell.textContent);
+          });
+          return { cells: cells, text: cleanText(cells.join(" | ")) };
+        }
+      );
+    }
+
+    function appendSubmissionFileNames(container, fileNames, seenLinks) {
+      Array.prototype.forEach.call(
+        container.querySelectorAll('a[href*="/pluginfile.php/"]'),
+        function (anchor) {
+          if (fileNames.length >= 20) return;
+          var href = anchor.getAttribute("href") || "";
+          if (!href || seenLinks[href]) return;
+          var name = cleanText(anchor.textContent);
+          if (!name) {
+            try {
+              name = decodeURIComponent(href.split(/[?#]/)[0].split("/").pop() || "");
+            } catch (_error) {
+              name = "";
+            }
+          }
+          if (!name) return;
+          seenLinks[href] = true;
+          fileNames.push(name.slice(0, 180));
+        }
+      );
+    }
+
+    // Lee únicamente los nombres visibles de los adjuntos de la entrega. Los
+    // nombres viajan hasta el clasificador y se descartan allí: Supabase
+    // conserva sólo conteos/tipos, nunca los archivos ni sus nombres. `null`
+    // significa que esta versión de la página no expuso una lista verificable;
+    // `[]`, que la lista sí estaba pero quedó vacía.
+    function submissionFilesFromDocument(doc) {
+      var fileNames = [];
+      var seenLinks = Object.create(null);
+      var listObserved = false;
+      var rows = doc.querySelectorAll(
+        ".submissionstatustable tr, .feedbacktable tr, table.generaltable tr"
+      );
+
+      Array.prototype.forEach.call(rows, function (row) {
+        var cells = row.querySelectorAll("th, td");
+        if (cells.length < 2) return;
+        var label = normalizeText(cells[0].textContent);
+        var isFileRow =
+          label.indexOf("archivos enviados") > -1 ||
+          label.indexOf("archivos de la entrega") > -1 ||
+          label.indexOf("file submissions") > -1 ||
+          label.indexOf("submitted files") > -1;
+        if (!isFileRow) return;
+        listObserved = true;
+        appendSubmissionFileNames(row, fileNames, seenLinks);
+      });
+
+      return listObserved ? fileNames : null;
+    }
+
+    function meansNotSubmitted(value) {
+      var state = normalizeText(value);
+      return (
+        state.indexOf("no se ha hecho ninguna entrega") > -1 ||
+        state.indexOf("no se ha realizado ninguna entrega") > -1 ||
+        state.indexOf("no se ha realizado ningun envio") > -1 ||
+        state.indexOf("no se han realizado envios") > -1 ||
+        state.indexOf("no entregado") > -1 ||
+        state.indexOf("no submission has been made") > -1 ||
+        state.indexOf("no submissions have been made") > -1
+      );
+    }
+
+    function parseTaskDocument(cmid, doc) {
+      var pageText = normalizeText(doc.body ? doc.body.textContent : "");
+      var rows = rowsFromDocument(doc);
+      var gradeValue = null;
+      var gradeMax = null;
+      var gradeDisplay = null;
+      var gradedAtDisplay = null;
+      var feedbackComment = null;
+      var submittedAt = null;
+      var submittedAtDisplay = null;
+      var submitted = false;
+      var explicitNotSubmitted = false;
+      var submissionFiles = submissionFilesFromDocument(doc);
+
+      rows.forEach(function (row) {
+        var label = normalizeText(row.cells[0]);
+        var value = cleanText(row.cells.slice(1).join(" "));
+
+        if ((label === "calificacion" || label === "grade") && value) {
+          var gradeMatch = value.match(/(-?[\d.,]+)\s*\/\s*([\d.,]+)/);
+          if (gradeMatch) {
+            gradeValue = parseLocaleNumber(gradeMatch[1]);
+            gradeMax = parseLocaleNumber(gradeMatch[2]);
+            gradeDisplay = value.slice(0, 160);
+          }
+        }
+
+        if ((label.indexOf("calificado sobre") > -1 || label.indexOf("graded on") > -1) && value) {
+          gradedAtDisplay = value.slice(0, 200);
+        }
+
+        // En las tareas que reciben dos informes (Fundacion Tiempo, Ateneos
+        // Ulloa) la nota de cada PPS vive aca y no en el numero: la catedra
+        // escribe "Clinica de Ninos: 7 (Siete)". Se guarda tal cual, sin
+        // interpretar, para que coordinacion pueda repartirla.
+        if (
+          (label.indexOf("comentarios de retroalimentacion") > -1 ||
+            label.indexOf("feedback comments") > -1) &&
+          value
+        ) {
+          feedbackComment = value.slice(0, 2000);
+        }
+
+        if (label.indexOf("estado de la entrega") > -1 || label.indexOf("submission status") > -1) {
+          var state = normalizeText(value);
+          if (
+            state.indexOf("enviado para calificar") > -1 ||
+            state.indexOf("entregado") > -1 ||
+            state.indexOf("submitted for grading") > -1
+          ) {
+            submitted = true;
+          }
+          if (meansNotSubmitted(state)) {
+            explicitNotSubmitted = true;
+          }
+        }
+
+        if (
+          label === "ultima modificacion" ||
+          label === "last modified" ||
+          label.indexOf("fecha de envio") > -1 ||
+          label.indexOf("submission date") > -1
+        ) {
+          var parsedSubmissionDate = parseMoodleSubmissionDate(value);
+          if (parsedSubmissionDate) {
+            submittedAt = parsedSubmissionDate.iso;
+            submittedAtDisplay = parsedSubmissionDate.display;
+          }
+        }
+      });
+
+      if (
+        gradeValue !== null &&
+        gradeMax !== null &&
+        gradeMax > 0 &&
+        gradeValue >= 0 &&
+        gradeValue <= gradeMax
+      ) {
+        return {
+          cmid: cmid,
+          status: "graded",
+          submitted: true,
+          gradeValue: gradeValue,
+          gradeMax: gradeMax,
+          gradeDisplay: gradeDisplay,
+          gradedAtDisplay: gradedAtDisplay,
+          feedbackComment: feedbackComment,
+          submittedAt: submittedAt,
+          submittedAtDisplay: submittedAtDisplay,
+          submissionFiles: submissionFiles,
+        };
+      }
+
+      if (submitted) {
+        return {
+          cmid: cmid,
+          status: "submitted",
+          submitted: true,
+          gradeValue: null,
+          gradeMax: null,
+          gradeDisplay: null,
+          gradedAtDisplay: null,
+          feedbackComment: feedbackComment,
+          submittedAt: submittedAt,
+          submittedAtDisplay: submittedAtDisplay,
+          submissionFiles: submissionFiles,
+        };
+      }
+
+      if (explicitNotSubmitted || meansNotSubmitted(pageText)) {
+        return {
+          cmid: cmid,
+          status: "not_submitted",
+          submitted: false,
+          gradeValue: null,
+          gradeMax: null,
+          gradeDisplay: null,
+          gradedAtDisplay: null,
+          submittedAt: null,
+          submittedAtDisplay: null,
+          submissionFiles: submissionFiles,
+        };
+      }
+
+      return {
+        cmid: cmid,
+        status: "parse_error",
+        submitted: false,
+        gradeValue: null,
+        gradeMax: null,
+        gradeDisplay: null,
+        gradedAtDisplay: null,
+        submittedAt: null,
+        submittedAtDisplay: null,
+        submissionFiles: submissionFiles,
+      };
+    }
+
+    function noAccess(cmid) {
+      return {
+        cmid: cmid,
+        status: "no_access",
+        submitted: false,
+        gradeValue: null,
+        gradeMax: null,
+        gradeDisplay: null,
+        gradedAtDisplay: null,
+        submittedAt: null,
+        submittedAtDisplay: null,
+        submissionFiles: null,
+      };
+    }
+
+    function fetchTask(cmid) {
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () {
+        controller.abort();
+      }, FETCH_TIMEOUT_MS);
+
+      return fetch("/mod/assign/view.php?id=" + encodeURIComponent(cmid), {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { Accept: "text/html" },
+      })
+        .then(function (response) {
+          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          return response.text();
+        })
+        .then(function (html) {
+          if (!html) return noAccess(cmid);
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          return parseTaskDocument(cmid, doc);
+        })
+        .catch(function () {
+          return noAccess(cmid);
+        })
+        .finally(function () {
+          window.clearTimeout(timer);
+        });
+    }
+
+    // El índice enumera las tareas visibles para esta sesión. Es una ayuda de
+    // lectura, no una prueba de cobertura histórica ni un resolvedor de PPS.
+
+    function overviewCellValue(row, item) {
+      var cell = row.querySelector('td[data-mdl-overview-item="' + item + '"]');
+      if (!cell) return null;
+      var raw = cell.getAttribute("data-mdl-overview-value");
+      return raw !== null && raw !== "" ? raw : null;
+    }
+
+    function overviewGradeCell(row) {
+      var cells = Array.prototype.slice.call(row.querySelectorAll("td[data-mdl-overview-item]"));
+      var byName = null;
+      cells.forEach(function (cell) {
+        var item = cell.getAttribute("data-mdl-overview-item") || "";
+        if (!byName && /^(calificacion|grade|nota)$/.test(normalizeText(item))) byName = cell;
+      });
+      return byName;
+    }
+
+    function parseCourseOverviewDoc(doc) {
+      var byCmid = {};
+      var rows = doc.querySelectorAll("tr[data-mdl-overview-cmid]");
+      Array.prototype.forEach.call(rows, function (row) {
+        // La tabla docente contiene agregados, no el estado del alumno.
+        if (!row.querySelector('td[data-mdl-overview-item="submissionstatus"]')) return;
+        var rawCmid = row.getAttribute("data-mdl-overview-cmid");
+        if (!rawCmid || !/^\d+$/.test(rawCmid)) return;
+        var cmid = Number(rawCmid);
+        if (!Number.isSafeInteger(cmid) || cmid <= 0) return;
+
+        var gradeCell = overviewGradeCell(row);
+        var rawGrade = gradeCell ? gradeCell.getAttribute("data-mdl-overview-value") : null;
+        var hasGrade = rawGrade !== null && String(rawGrade).trim() !== "";
+        var gradeValue = hasGrade ? Number(String(rawGrade).replace(",", ".")) : null;
+        if (gradeValue !== null && !isFinite(gradeValue)) gradeValue = null;
+
+        var estado = normalizeText(overviewCellValue(row, "submissionstatus") || "");
+        var status;
+        if (gradeValue !== null) status = "graded";
+        else if (!estado || estado === "-") status = "unknown";
+        else if (estado.indexOf("no entregado") > -1 || estado.indexOf("sin entrega") > -1)
+          status = "not_submitted";
+        else if (estado.indexOf("enviado") > -1 || estado.indexOf("entregado") > -1)
+          status = "submitted";
+        else status = "unknown";
+
+        byCmid[cmid] = {
+          cmid: cmid,
+          status: status,
+          gradeValue: gradeValue,
+          gradeDisplay: gradeCell
+            ? (gradeCell.textContent || "").replace(/\s+/g, " ").trim() || null
+            : null,
+        };
+      });
+      return byCmid;
+    }
+
+    function fetchCourseOverview() {
+      if (!esEstudiante()) return Promise.resolve(null);
+      if (overviewInFlight) return overviewInFlight;
+      if (Date.now() < overviewCacheUntil) return Promise.resolve(overviewCache);
+      if (Date.now() < overviewRetryAt) return Promise.resolve(null);
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () {
+        controller.abort();
+      }, OVERVIEW_TIMEOUT_MS);
+
+      overviewInFlight = fetch(
+        "/course/overview.php?id=" + encodeURIComponent(COURSE_ID) + "&expand%5B%5D=assign",
+        {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          redirect: "follow",
+          signal: controller.signal,
+          headers: { Accept: "text/html" },
+        }
+      )
+        .then(function (response) {
+          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          return response.text();
+        })
+        .then(function (html) {
+          if (!html) return null;
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          var parsed = parseCourseOverviewDoc(doc);
+          // Sin filas no hay indice utilizable: mejor caer al camino de siempre
+          // que dar por "no entregado" lo que en realidad no pudimos leer.
+          return Object.keys(parsed).length > 0 ? parsed : null;
+        })
+        .catch(function () {
+          return null;
+        })
+        .then(function (result) {
+          overviewCache = result;
+          overviewCacheUntil = result ? Date.now() + OVERVIEW_CACHE_MS : 0;
+          overviewRetryAt = result ? 0 : Date.now() + OVERVIEW_BACKOFF_MS;
+          return result;
+        })
+        .finally(function () {
+          window.clearTimeout(timer);
+          overviewInFlight = null;
+        });
+      return overviewInFlight;
+    }
+
+    function overviewNotSubmitted(cmid) {
+      return {
+        cmid: cmid,
+        status: "not_submitted",
+        submitted: false,
+        gradeValue: null,
+        gradeMax: null,
+        gradeDisplay: null,
+        gradedAtDisplay: null,
+        submittedAt: null,
+        submittedAtDisplay: null,
+        submissionFiles: null,
+      };
+    }
+
+    function fetchTasks(cmids) {
+      // El indice se lee una sola vez y sirve para descartar: la pagina de
+      // detalle -que es la que trae archivos y fechas- se pide solo para las
+      // tareas donde el indice vio algo. En un alumno tipico eso es una request
+      // en lugar de una por tarea vinculada.
+      return fetchCourseOverview().then(function (overview) {
+        var results = new Array(cmids.length);
+        var cursor = 0;
+
+        function worker() {
+          var index = cursor++;
+          if (index >= cmids.length) return Promise.resolve();
+          var cmid = cmids[index];
+          var seen = overview ? overview[cmid] : null;
+          if (seen && seen.status === "not_submitted") {
+            results[index] = overviewNotSubmitted(cmid);
+            return worker();
+          }
+          return fetchTask(cmid).then(function (result) {
+            results[index] = result;
+            return worker();
+          });
+        }
+
+        var workers = [];
+        for (var i = 0; i < Math.min(3, cmids.length); i += 1) workers.push(worker());
+        return Promise.all(workers).then(function () {
+          return results;
+        });
+      });
+    }
+
+    function directCells(row) {
+      return Array.prototype.filter.call(row.children || [], function (cell) {
+        return cell.tagName === "TD" || cell.tagName === "TH";
+      });
+    }
+
+    function findHeaderIndex(headers, alternatives) {
+      for (var i = 0; i < headers.length; i += 1) {
+        var header = normalizeText(headers[i]);
+        for (var j = 0; j < alternatives.length; j += 1) {
+          if (header.indexOf(alternatives[j]) > -1) return i;
+        }
+      }
+      return -1;
+    }
+
+    function jefeTaskFailure(cmid, status, errorCode) {
+      return { cmid: cmid, status: status, errorCode: errorCode, rows: [] };
+    }
+
+    function parseJefeGradingDocument(cmid, doc) {
+      var table = doc.querySelector("table#submissions");
+      if (!table || !table.tBodies || table.tBodies.length === 0) {
+        var emptyPageText = normalizeText(doc.body ? doc.body.textContent : "");
+        if (
+          emptyPageText.indexOf("nada que mostrar") > -1 ||
+          emptyPageText.indexOf("nothing to display") > -1 ||
+          emptyPageText.indexOf("no hay entregas") > -1
+        ) {
+          return { cmid: cmid, status: "ok", errorCode: null, rows: [] };
+        }
+        return jefeTaskFailure(cmid, "parse_error", "submissions_table_missing");
+      }
+
+      var headerRow = table.tHead && table.tHead.rows.length ? table.tHead.rows[0] : null;
+      if (!headerRow) {
+        return jefeTaskFailure(cmid, "parse_error", "submissions_header_missing");
+      }
+      var headers = directCells(headerRow).map(function (cell) {
+        return cleanText(cell.textContent);
+      });
+      var usernameIndex = findHeaderIndex(headers, ["nombre de usuario", "username"]);
+      var emailIndex = findHeaderIndex(headers, ["direccion de correo", "email address"]);
+      var statusIndex = findHeaderIndex(headers, ["estado", "status"]);
+      var gradeIndex = findHeaderIndex(headers, ["calificacion", "grade"]);
+      var feedbackIndex = findHeaderIndex(headers, [
+        "comentarios de retroalimentacion",
+        "feedback comments",
+      ]);
+      var submittedAtIndex = findHeaderIndex(headers, [
+        "ultima modificacion (entrega)",
+        "last modified (submission)",
+      ]);
+      var gradedAtIndex = findHeaderIndex(headers, [
+        "ultima modificacion (calificacion)",
+        "last modified (grade)",
+      ]);
+      var submissionFilesIndex = findHeaderIndex(headers, [
+        "archivos enviados",
+        "archivos de la entrega",
+        "file submissions",
+        "submitted files",
+      ]);
+
+      if (usernameIndex < 0 || statusIndex < 0 || submittedAtIndex < 0) {
+        return jefeTaskFailure(cmid, "parse_error", "required_columns_missing");
+      }
+
+      var rows = [];
+      var negativeRows = [];
+      var unknownStatus = false;
+      var tableRows = Array.prototype.slice.call(table.tBodies[0].children || []);
+      tableRows.forEach(function (row) {
+        if (!row || row.tagName !== "TR") return;
+        var cells = directCells(row);
+        if (cells.length <= Math.max(usernameIndex, statusIndex, submittedAtIndex)) return;
+
+        var moodleUsername = cleanText(cells[usernameIndex].textContent).replace(/\D/g, "");
+        if (!/^\d{6,12}$/.test(moodleUsername)) return;
+
+        var statusText = normalizeText(cells[statusIndex].textContent);
+        var notSubmitted =
+          /sin (entrega|envio)|no (hay entregas|entregado|se han realizado|submissions?)|not submitted|borrador|draft|^nuevo$|^new$/.test(
+            statusText
+          );
+        var submitted =
+          !notSubmitted &&
+          (statusText.indexOf("enviado para calificar") > -1 ||
+            statusText.indexOf("entregado") > -1 ||
+            statusText.indexOf("submitted for grading") > -1);
+
+        var gradeValue = null;
+        var gradeMax = null;
+        var gradeDisplay = null;
+        if (gradeIndex >= 0 && cells[gradeIndex]) {
+          var gradeText = cleanText(cells[gradeIndex].textContent);
+          var gradeMatch = gradeText.match(/(-?[\d.,]+)\s*\/\s*([\d.,]+)/);
+          if (gradeMatch) {
+            gradeValue = parseLocaleNumber(gradeMatch[1]);
+            gradeMax = parseLocaleNumber(gradeMatch[2]);
+            if (
+              gradeValue === null ||
+              gradeMax === null ||
+              gradeMax <= 0 ||
+              gradeValue < 0 ||
+              gradeValue > gradeMax
+            ) {
+              gradeValue = null;
+              gradeMax = null;
+            } else {
+              gradeDisplay = cleanText(gradeMatch[0]).slice(0, 160);
+              submitted = true;
+            }
+          }
+        }
+        if (!submitted && !notSubmitted) {
+          unknownStatus = true;
+          return;
+        }
+        var parsedSubmissionDate = parseMoodleSubmissionDate(
+          cleanText(cells[submittedAtIndex].textContent)
+        );
+        var classMatch = cleanText(row.className).match(/(?:^|\s)user(\d+)(?:\s|$)/);
+        var profileLink = row.querySelector('a[href*="/user/view.php?id="]');
+        var hrefMatch = profileLink
+          ? String(profileLink.getAttribute("href") || "").match(/[?&]id=(\d+)/)
+          : null;
+        var moodleUserId = Number(classMatch ? classMatch[1] : hrefMatch ? hrefMatch[1] : 0);
+        if (!Number.isSafeInteger(moodleUserId) || moodleUserId <= 0) return;
+
+        var email =
+          emailIndex >= 0 && cells[emailIndex] ? cleanText(cells[emailIndex].textContent) : "";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) email = null;
+        var gradedAtDisplay =
+          gradedAtIndex >= 0 && cells[gradedAtIndex]
+            ? cleanText(cells[gradedAtIndex].textContent)
+            : "";
+        if (!gradedAtDisplay || gradedAtDisplay === "-") gradedAtDisplay = null;
+        var submissionFiles = null;
+        if (submissionFilesIndex >= 0 && cells[submissionFilesIndex]) {
+          submissionFiles = [];
+          appendSubmissionFileNames(
+            cells[submissionFilesIndex],
+            submissionFiles,
+            Object.create(null)
+          );
+        }
+
+        (submitted ? rows : negativeRows).push({
+          moodleUserId: moodleUserId,
+          moodleUsername: moodleUsername,
+          email: email,
+          status: gradeValue !== null ? "graded" : submitted ? "submitted" : "not_submitted",
+          submitted: submitted,
+          gradeValue: gradeValue,
+          gradeMax: gradeMax,
+          gradeDisplay: gradeDisplay,
+          gradedAtDisplay: gradedAtDisplay ? gradedAtDisplay.slice(0, 200) : null,
+          feedbackComment:
+            feedbackIndex >= 0 && cells[feedbackIndex]
+              ? cleanText(cells[feedbackIndex].textContent).slice(0, 2000) || null
+              : null,
+          submittedAt: submitted && parsedSubmissionDate ? parsedSubmissionDate.iso : null,
+          submittedAtDisplay:
+            submitted && parsedSubmissionDate ? parsedSubmissionDate.display : null,
+          submissionFiles: submissionFiles,
+        });
+      });
+
+      if (rows.length > 500) return jefeTaskFailure(cmid, "parse_error", "task_row_limit");
+      return {
+        cmid: cmid,
+        status: "ok",
+        errorCode: unknownStatus ? "partial_unknown_submission_status" : null,
+        rows: rows,
+        negativeRows: negativeRows,
+        pageRowCount: tableRows.filter(function (row) {
+          return row.tagName === "TR" && !row.classList.contains("emptyrow");
+        }).length,
+      };
+    }
+
+    function fetchJefeGradingPage(cmid, page, budgetMs) {
+      var controller = new AbortController();
+      var timer = window.setTimeout(
+        function () {
+          controller.abort();
+        },
+        Math.min(FETCH_TIMEOUT_MS, budgetMs || FETCH_TIMEOUT_MS)
+      );
+      var url =
+        "/mod/assign/view.php?id=" +
+        encodeURIComponent(cmid) +
+        // Moodle recuerda filtros del docente. El mismo contrato de "Limpiar
+        // todo" evita certificar una lista recortada por estado, grupo o nombre.
+        "&action=grading&group=0&status=&workflowfilter=&markingallocationfilter=" +
+        "&suspendedparticipantsfilter=0&tifirst=&tilast=&perpage=100" +
+        (page > 0 ? "&page=" + page : "");
+
+      return fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { Accept: "text/html" },
+      })
+        .then(function (response) {
+          if (!response.ok || response.url.indexOf("/login/") > -1) return null;
+          return response.text();
+        })
+        .then(function (html) {
+          if (!html) return jefeTaskFailure(cmid, "no_access", "grading_page_unavailable");
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          return parseJefeGradingDocument(cmid, doc);
+        })
+        .catch(function () {
+          return jefeTaskFailure(cmid, "no_access", "grading_page_unavailable");
+        })
+        .finally(function () {
+          window.clearTimeout(timer);
+        });
+    }
+
+    var JEFE_GRADING_PAGE_SIZE = 100;
+    var JEFE_GRADING_MAX_PAGES = 24;
+
+    // La tabla de calificaciones pagina del lado del servidor aunque se pida
+    // perpage=-1: con tareas de mas de ~100 entregas quedan filas fuera. Se
+    // recorren las paginas de 100 hasta una corta, deduplicando por identidad
+    // de usuario. Si una pagina posterior falla de acceso pero ya hay datos,
+    // se conserva lo recolectado en vez de descartar el barrido completo.
+    function fetchJefeTask(cmid) {
+      var page = 0;
+      var seen = {};
+      var collected = [];
+      var negativeCollected = [];
+      var deadline = Date.now() + 18000;
+
+      function partial(code) {
+        return {
+          cmid: cmid,
+          status: "ok",
+          errorCode: code,
+          rows: collected,
+          negativeRows: negativeCollected,
+        };
+      }
+
+      function step() {
+        if (Date.now() >= deadline) return Promise.resolve(partial("partial_time_budget"));
+        return fetchJefeGradingPage(cmid, page, deadline - Date.now()).then(function (result) {
+          if (result.status !== "ok") {
+            if (collected.length > 0 || negativeCollected.length > 0) {
+              return partial("partial_page_unavailable");
+            }
+            return result;
+          }
+          (result.rows || []).forEach(function (row) {
+            var key = row.moodleUserId + "|" + row.moodleUsername;
+            if (seen[key] !== "positive") {
+              if (seen[key] === "negative") {
+                negativeCollected = negativeCollected.filter(function (item) {
+                  return item.moodleUserId + "|" + item.moodleUsername !== key;
+                });
+              }
+              seen[key] = "positive";
+              collected.push(row);
+            }
+          });
+          (result.negativeRows || []).forEach(function (row) {
+            var key = row.moodleUserId + "|" + row.moodleUsername;
+            if (!seen[key]) {
+              seen[key] = "negative";
+              negativeCollected.push(row);
+            }
+          });
+          if (collected.length > 500) {
+            collected = collected.slice(0, 500);
+            negativeCollected = [];
+            return partial("partial_row_limit");
+          }
+          if (collected.length + negativeCollected.length > 500) {
+            negativeCollected = negativeCollected.slice(0, 500 - collected.length);
+            return partial("partial_row_limit");
+          }
+          if (result.errorCode) return partial(result.errorCode);
+          // Paging depends on ALL table rows, including students without a submission.
+          if ((result.pageRowCount || 0) < JEFE_GRADING_PAGE_SIZE) {
+            return {
+              cmid: cmid,
+              status: "ok",
+              errorCode: null,
+              rows: collected,
+              negativeRows: negativeCollected,
+            };
+          }
+          page += 1;
+          if (page >= JEFE_GRADING_MAX_PAGES) {
+            return partial("partial_page_limit");
+          }
+          return step();
+        });
+      }
+
+      return step();
+    }
+
+    function fetchJefeTasks(cmids) {
+      var results = new Array(cmids.length);
+      var cursor = 0;
+
+      function worker() {
+        var index = cursor++;
+        if (index >= cmids.length) return Promise.resolve();
+        return fetchJefeTask(cmids[index]).then(function (result) {
+          results[index] = result;
+          return worker();
+        });
+      }
+
+      var workers = [];
+      for (var i = 0; i < Math.min(2, cmids.length); i += 1) workers.push(worker());
+      return Promise.all(workers).then(function () {
+        var total = 0;
+        return results.map(function (task) {
+          total += task.rows.length;
+          if (total > MAX_JEFE_ROWS) {
+            return jefeTaskFailure(task.cmid, "parse_error", "response_row_limit");
+          }
+          return task;
+        });
+      });
+    }
+
+    function validJefeRequest(data) {
+      if (!data || data.type !== "PPS_MOODLE_JEFE_TASKS_REQUEST" || data.version !== 1) {
+        return false;
+      }
+      if (COURSE_ID !== EXPECTED_COURSE_ID || data.courseId !== COURSE_ID) return false;
+      if (!validRequestId(data.requestId)) return false;
+      if (!Array.isArray(data.cmids) || data.cmids.length < 1 || data.cmids.length > MAX_TASKS) {
+        return false;
+      }
+      return data.cmids.every(function (cmid) {
+        return Number.isSafeInteger(cmid) && cmid > 0;
+      });
+    }
+
+    function validRequest(data) {
+      if (!data || data.type !== "PPS_MOODLE_TASKS_REQUEST" || data.version !== 1) return false;
+      if (COURSE_ID !== EXPECTED_COURSE_ID || data.courseId !== COURSE_ID) return false;
+      if (!validRequestId(data.requestId)) return false;
+      if (!Array.isArray(data.cmids) || data.cmids.length < 1 || data.cmids.length > MAX_TASKS) {
+        return false;
+      }
+      return data.cmids.every(function (cmid) {
+        return Number.isSafeInteger(cmid) && cmid > 0;
+      });
+    }
+
+    function esEstudiante() {
+      var b = document.body;
+      if (b.classList.contains("userswitchedrole")) return true;
+      var nav = document.querySelector(
+        '.secondary-navigation, nav.secondary-navigation, [data-region="secondary-navigation"]'
+      );
+      if (!nav) return false;
+      if (
+        nav.querySelector(
+          'a[href*="course/edit.php"], a[href*="/admin/roles"], a[href*="/group/index.php"], a[href*="report/"], a[href*="enrol/"]'
+        )
+      )
+        return false;
+      var text = normalizeText(nav.textContent);
+      return !(
+        text.indexOf("configuraci") > -1 ||
+        text.indexOf("settings") > -1 ||
+        text.indexOf("ajustes") > -1
+      );
+    }
+
+    function aplicarRol() {
+      document.body.classList.toggle("pps-rol-estudiante", esEstudiante());
+    }
+
+    aplicarRol();
+    window.addEventListener("load", aplicarRol);
+    window.setTimeout(aplicarRol, 300);
+    window.setTimeout(aplicarRol, 800);
+    window.setTimeout(aplicarRol, 1500);
+
+    window.addEventListener("message", function (event) {
+      if (event.origin !== PANEL_ORIGIN || event.source !== f.contentWindow) return;
+      var data = event.data;
+      if (!data) return;
+
+      if (
+        data.type === "PPS_MOODLE_CAPABILITIES_REQUEST" &&
+        data.version === 2 &&
+        data.courseId === COURSE_ID &&
+        typeof data.requestId === "string" &&
+        /^[0-9a-f-]{36}$/i.test(data.requestId)
+      ) {
+        f.contentWindow.postMessage(
+          {
+            type: "PPS_MOODLE_CAPABILITIES_RESULT",
+            version: 2,
+            requestId: data.requestId,
+            courseId: COURSE_ID,
+            discovery: esEstudiante(),
+          },
+          PANEL_ORIGIN
+        );
+        return;
+      }
+
+      if (
+        data.type === "PPS_MOODLE_DISCOVERY_REQUEST" &&
+        data.version === 2 &&
+        data.courseId === COURSE_ID &&
+        typeof data.requestId === "string" &&
+        /^[0-9a-f-]{36}$/i.test(data.requestId)
+      ) {
+        fetchCourseOverview().then(function (overview) {
+          var all = overview ? Object.keys(overview) : [];
+          var positive = all.filter(function (key) {
+            return overview[key].status === "submitted" || overview[key].status === "graded";
+          });
+          f.contentWindow.postMessage(
+            {
+              type: "PPS_MOODLE_DISCOVERY_RESULT",
+              version: 2,
+              requestId: data.requestId,
+              courseId: COURSE_ID,
+              status: overview ? "ok" : "unavailable",
+              cmids: positive.slice(0, 500).map(Number),
+              rowsSeen: all.length,
+            },
+            PANEL_ORIGIN
+          );
+        });
+        return;
+      }
+
+      if (data.ppsAula && typeof data.height === "number" && data.height > 200) {
+        f.style.height = data.height + 2 + "px";
+        return;
+      }
+      if (data.ppsPanel) {
+        var height = typeof data.height === "number" && data.height > 200 ? data.height : panelH();
+        f.style.height = height + 2 + "px";
+        return;
+      }
+
+      if (validContextRequest(data)) {
+        var context = readMoodleContext();
+        if (!validMoodleContext(context)) return;
+
+        issueSignupTicket(context)
+          .then(function (ticketResult) {
+            if (
+              !ticketResult ||
+              ticketResult.ok !== true ||
+              !/^[0-9a-f]{64}$/.test(ticketResult.signupTicket || "")
+            )
+              return;
+
+            f.contentWindow.postMessage(
+              {
+                type: "PPS_MOODLE_CONTEXT_RESULT",
+                version: 1,
+                requestId: data.requestId,
+                courseId: context.courseId,
+                moodleUserId: context.moodleUserId,
+                moodleUsername: context.moodleUsername,
+                email: context.email,
+                firstname: context.firstname,
+                lastname: context.lastname,
+                signupTicket: ticketResult.signupTicket,
+                signupTicketExpiresAt: ticketResult.expiresAt,
+              },
+              PANEL_ORIGIN
+            );
+          })
+          .catch(function () {
+            // Fallo cerrado: sin ticket el panel sólo permite iniciar sesión.
+          });
+        return;
+      }
+
+      if (validJefeRequest(data)) {
+        var jefeCmids = data.cmids.filter(function (cmid, index, all) {
+          return all.indexOf(cmid) === index;
+        });
+        fetchJefeTasks(jefeCmids).then(function (tasks) {
+          f.contentWindow.postMessage(
+            {
+              type: "PPS_MOODLE_JEFE_TASKS_RESULT",
+              version: 1,
+              requestId: data.requestId,
+              courseId: COURSE_ID,
+              observedAt: new Date().toISOString(),
+              moodleUserId: Number(embed.getAttribute("data-moodle-user-id")),
+              moodleUsername: cleanText(embed.getAttribute("data-moodle-username")).replace(
+                /\D/g,
+                ""
+              ),
+              tasks: tasks,
+            },
+            PANEL_ORIGIN
+          );
+        });
+        return;
+      }
+
+      if (!validRequest(data)) return;
+
+      var cmids = data.cmids.filter(function (cmid, index, all) {
+        return all.indexOf(cmid) === index;
+      });
+      fetchTasks(cmids).then(function (tasks) {
+        var moodleUserId = Number(embed.getAttribute("data-moodle-user-id"));
+        var moodleUsername = cleanText(embed.getAttribute("data-moodle-username")).replace(
+          /\D/g,
+          ""
+        );
+        f.contentWindow.postMessage(
+          {
+            type: "PPS_MOODLE_TASKS_RESULT",
+            version: 1,
+            requestId: data.requestId,
+            courseId: COURSE_ID,
+            observedAt: new Date().toISOString(),
+            moodleUserId: moodleUserId,
+            moodleUsername: moodleUsername,
+            tasks: tasks,
+          },
+          PANEL_ORIGIN
+        );
+      });
+    });
+
+    function closeBlocks() {
+      [
+        "drawer-open-blocks",
+        "drawer-open-right",
+        "show-drawer-blocks",
+        "show-drawer-right",
+        "drawer-open-index",
+        "show-drawer-left",
+      ].forEach(function (className) {
+        document.body.classList.remove(className);
+        var page = document.getElementById("page");
+        if (page) page.classList.remove(className);
+      });
+      ["theme_boost-drawers-blocks", "theme_boost-drawers-courseindex"].forEach(function (id) {
+        var drawer = document.getElementById(id);
+        if (drawer) {
+          drawer.classList.remove("show");
+          drawer.setAttribute("aria-hidden", "true");
+          var close = drawer.querySelector('[data-action="closedrawer"]');
+          if (close) close.click();
+        }
+      });
+    }
+
+    closeBlocks();
+    window.addEventListener("load", closeBlocks);
+    window.setTimeout(closeBlocks, 500);
+    window.setTimeout(closeBlocks, 1500);
+  })();
+</script>

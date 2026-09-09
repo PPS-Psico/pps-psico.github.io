@@ -152,6 +152,47 @@ describe("jefeMoodleTasksResultSchema", () => {
   it("acepta una entrega de la tabla anual de la jefatura", () => {
     expect(jefeMoodleTasksResultSchema.safeParse(validJefeResult).success).toBe(true);
   });
+  it("acepta lectura negativa separada sin convertirla en entrega", () => {
+    const negative = {
+      ...validJefeResult.tasks[0].rows[0],
+      status: "not_submitted",
+      submitted: false,
+      submittedAt: null,
+      submittedAtDisplay: null,
+    };
+    const task = { ...validJefeResult.tasks[0], rows: [], negativeRows: [negative] };
+    expect(
+      jefeMoodleTasksResultSchema.safeParse({ ...validJefeResult, tasks: [task] }).success
+    ).toBe(true);
+    expect(
+      jefeMoodleTasksResultSchema.safeParse({
+        ...validJefeResult,
+        tasks: [{ ...task, negativeRows: [{ ...negative, submitted: true }] }],
+      }).success
+    ).toBe(false);
+    expect(
+      jefeMoodleTasksResultSchema.safeParse({
+        ...validJefeResult,
+        tasks: [{ ...task, status: "no_access" }],
+      }).success
+    ).toBe(false);
+    expect(
+      jefeMoodleTasksResultSchema.safeParse({
+        ...validJefeResult,
+        tasks: [
+          { ...task, negativeRows: [{ ...negative, submittedAt: validJefeResult.observedAt }] },
+        ],
+      }).success
+    ).toBe(false);
+  });
+  it("rechaza tareas duplicadas aunque todos sus CMID hayan sido solicitados", () => {
+    expect(
+      jefeMoodleTasksResultSchema.safeParse({
+        ...validJefeResult,
+        tasks: [validJefeResult.tasks[0], validJefeResult.tasks[0]],
+      }).success
+    ).toBe(false);
+  });
 
   it("rechaza filas de una tarea que Moodle no pudo leer", () => {
     const candidate = {

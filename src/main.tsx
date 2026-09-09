@@ -4,6 +4,9 @@ import App from "./App";
 import { testSupabaseConnection } from "./constants";
 import { AuthProvider } from "./contexts/AuthContext";
 import { logger } from "./utils/logger";
+import { startErrorMonitoring } from "./utils/errorMonitoring";
+
+void startErrorMonitoring();
 
 const isVisualBaseline = import.meta.env.VITE_VISUAL_BASELINE === "true";
 

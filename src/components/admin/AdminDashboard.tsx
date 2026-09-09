@@ -1,3 +1,4 @@
+import { invalidateInicioData } from "../../features/inicio/inicioQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -9,12 +10,12 @@ import { logger } from "../../utils/logger";
 import { AdminDashboardSkeleton } from "../Skeletons";
 import { Briefing } from "./dashboard/Briefing";
 import { DashboardDataStatus } from "./dashboard/DashboardDataStatus";
-import { DetectionBand } from "./dashboard/DetectionBand";
 import { DraftsPreview } from "./dashboard/DraftsPreview";
 import { PageHead } from "./dashboard/PageHead";
 import { PrioritiesList } from "./dashboard/PrioritiesList";
 import { SolicitudesBand } from "./dashboard/SolicitudesBand";
 import HermesStatus from "./HermesStatus";
+import { SectionDataStatus } from "./dashboard/SectionDataStatus";
 
 const AdminDashboard: React.FC = () => {
   const { authenticatedUser } = useAuth();
@@ -25,14 +26,10 @@ const AdminDashboard: React.FC = () => {
   const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   const refreshInicioData = () =>
-    queryClient.invalidateQueries({
-      predicate: ({ queryKey }) => {
-        const rootKey = queryKey[0];
-        return (
-          typeof rootKey === "string" && (rootKey.startsWith("inicio_") || rootKey === "gmailHilos")
-        );
-      },
-    });
+    Promise.all([
+      invalidateInicioData(queryClient),
+      queryClient.invalidateQueries({ queryKey: ["gmailHilos"] }),
+    ]);
 
   const handleReanalyze = async () => {
     setIsReanalyzing(true);
@@ -79,27 +76,29 @@ const AdminDashboard: React.FC = () => {
           <Briefing
             data={data.briefing}
             totalChats={data.briefing.totalChats}
+            state={data.sections.briefing}
+            contactsState={data.sections.contacts}
+            onRetry={() => data.retrySection("briefing")}
+            onRetryContacts={() => data.retrySection("contacts")}
             onReanalyze={handleReanalyze}
             isReanalyzing={isReanalyzing}
           />
         )}
 
-        <DetectionBand
-          metrics={data.detectionMetrics.map((m) => ({
-            ...m,
-            onClick: () => (m.href ? navigate(m.href) : navigate("/admin/gestion?view=mails")),
-          }))}
-          onOpenHermes={() => navigate("/admin/gestion?view=mails")}
-        />
-
         <SolicitudesBand
           metrics={data.solicitudesMetrics.map((m) => ({
             ...m,
+            onRetry: () => data.retrySection(m.id),
             onClick: () => (m.href ? navigate(m.href) : navigate("/admin/solicitudes")),
           }))}
           onOpenSolicitudes={() => navigate("/admin/solicitudes")}
         />
 
+        <SectionDataStatus
+          state={data.sections.drafts}
+          label="Borradores"
+          onRetry={() => data.retrySection("drafts")}
+        />
         <DraftsPreview
           drafts={data.drafts}
           total={data.totalDrafts}

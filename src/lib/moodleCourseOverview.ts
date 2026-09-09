@@ -8,9 +8,9 @@
  * producción el 05/09/2026: 284 prácticas sin lectura no tienen vínculo, así que
  * el panel nunca pide nada para ellas.
  *
- * Esta página resuelve las tres cosas de una: lista TODAS las tareas del curso
- * -incluidas las ocultas- con el estado de entrega y la nota del propio alumno,
- * en una sola request. Verificado en el campus con rol estudiante: 112 filas.
+ * Esta página enumera las tareas visibles para la sesión. Puede aportar
+ * descubrimiento, pero este parser no atribuye entregas a prácticas. La vista
+ * de un profesor con rol cambiado no prueba acceso de todos los estudiantes.
  *
  * El DOM es estable y no hace falta adivinar nada: cada fila trae el cmid como
  * atributo y cada celda se identifica por `data-mdl-overview-item`.
@@ -37,9 +37,6 @@ export interface CourseOverviewTask {
   dueDate: string | null;
 }
 
-/** Claves de celda conocidas; cualquier otra es la de nota, que viene traducida. */
-const KNOWN_ITEMS = new Set(["name", "duedate", "completion", "submissionstatus"]);
-
 function normalize(value: string | null | undefined): string {
   return (value ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
@@ -53,20 +50,15 @@ function cellValue(row: Element, item: string): string | null {
 
 /**
  * La celda de nota se identifica por una clave traducida ("Calificación"), así
- * que se la busca por nombre y, si el campus cambia de idioma, por descarte
- * entre las claves conocidas. Sin esto, un cambio de idioma dejaría de leer
- * notas en silencio.
+ * que sólo aceptamos claves conocidas. Una columna nueva o un agregado docente
+ * nunca deben interpretarse como una nota por descarte.
  */
 function gradeCell(row: Element): Element | null {
   const cells = Array.from(row.querySelectorAll("td[data-mdl-overview-item]"));
   const byName = cells.find((cell) =>
-    /calificacion|grade|nota/.test(normalize(cell.getAttribute("data-mdl-overview-item")))
+    /^(calificacion|grade|nota)$/.test(normalize(cell.getAttribute("data-mdl-overview-item")))
   );
-  if (byName) return byName;
-  return (
-    cells.find((cell) => !KNOWN_ITEMS.has(cell.getAttribute("data-mdl-overview-item") ?? "")) ??
-    null
-  );
+  return byName ?? null;
 }
 
 function parseGrade(row: Element): { value: number | null; display: string | null } {
@@ -100,6 +92,7 @@ export function parseCourseOverviewTasks(doc: Document): CourseOverviewTask[] {
   const tasks: CourseOverviewTask[] = [];
 
   rows.forEach((row) => {
+    if (!row.querySelector('td[data-mdl-overview-item="submissionstatus"]')) return;
     const rawCmid = row.getAttribute("data-mdl-overview-cmid");
     if (!rawCmid || !/^\d+$/.test(rawCmid)) return;
     const cmid = Number(rawCmid);

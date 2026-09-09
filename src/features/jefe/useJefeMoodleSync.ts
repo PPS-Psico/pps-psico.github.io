@@ -21,6 +21,8 @@ const AUTO_SYNC_THROTTLE_MS = 60_000;
 export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMoodleSyncState => {
   const queryClient = useQueryClient();
   const startedRef = useRef(false);
+  const inFlightRef = useRef(false);
+  const [queueRefresh, setQueueRefresh] = useState(0);
   const [syncStatus, setSyncStatus] = useState<JefeMoodleSyncStatus>("idle");
   const [accepted, setAccepted] = useState(0);
   const [ambiguous, setAmbiguous] = useState(0);
@@ -42,6 +44,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
   });
 
   const tasks = useMemo(() => tasksQuery.data ?? [], [tasksQuery.data]);
+  const refetchTasks = tasksQuery.refetch;
   const signature = useMemo(
     () =>
       tasks.length > 0
@@ -54,9 +57,9 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
   );
 
   const runSync = useCallback(async () => {
-    if (!enabled || tasksQuery.isLoading) return;
+    if (!enabled || tasksQuery.isLoading || inFlightRef.current) return;
     if (tasks.length === 0) {
-      setSyncStatus("complete");
+      setSyncStatus("idle");
       setErrorMessage(null);
       return;
     }
@@ -66,6 +69,7 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
       return;
     }
 
+    inFlightRef.current = true;
     setSyncStatus("syncing");
     setErrorMessage(null);
     setNoAccessTasks(0);
@@ -96,7 +100,9 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
             previewKey
           );
           successfulBatches += 1;
-          failedTotal += bridgeResult.tasks.filter((task) => task.status !== "ok").length;
+          failedTotal += bridgeResult.tasks.filter(
+            (task) => task.status !== "ok" || !!task.errorCode
+          ).length;
           // Campus contesta el login cuando la sesión de Moodle venció: el
           // puente lo reporta como `no_access` tarea por tarea.
           noAccessTotal += bridgeResult.tasks.filter((task) => task.status === "no_access").length;
@@ -155,14 +161,15 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
           ? "Campus tardó demasiado en responder. Podés reintentar sin perder los datos guardados."
           : "No pudimos completar la lectura anual de Campus."
       );
+    } finally {
+      inFlightRef.current = false;
     }
   }, [enabled, previewKey, queryClient, tasks, tasksQuery.isLoading]);
 
   useEffect(() => {
-    if (!enabled || tasksQuery.isLoading || tasksQuery.isError || startedRef.current) return;
-    startedRef.current = true;
+    if (!enabled || tasksQuery.isFetching || tasksQuery.isError || startedRef.current) return;
     if (!signature) {
-      setSyncStatus("complete");
+      setSyncStatus("idle");
       return;
     }
     if (!isEmbeddedInMoodle()) {
@@ -171,16 +178,39 @@ export const useJefeMoodleSync = (enabled: boolean, previewKey?: string): JefeMo
     }
 
     const lastStartedAt = recentlyStarted.get(signature) ?? 0;
-    if (Date.now() - lastStartedAt < AUTO_SYNC_THROTTLE_MS) {
-      setSyncStatus("synced");
-      return;
-    }
+    // A recent attempt may still be running or may have failed. Preserve this
+    // instance's result and wait out the throttle instead of reporting success
+    // or dropping a queue refresh that arrived just before the deadline.
+    const delay = Math.max(300, AUTO_SYNC_THROTTLE_MS - (Date.now() - lastStartedAt));
     const timer = window.setTimeout(() => {
+      if (inFlightRef.current) return;
+      startedRef.current = true;
       recentlyStarted.set(signature, Date.now());
       void runSync();
-    }, 300);
+    }, delay);
     return () => window.clearTimeout(timer);
-  }, [enabled, runSync, signature, tasksQuery.isError, tasksQuery.isLoading]);
+  }, [enabled, runSync, signature, tasksQuery.isError, tasksQuery.isFetching, queueRefresh]);
+
+  // Drain later slices while the authorized Campus session stays open. Coverage
+  // and retry budgets live in SQL, so reopening the panel resumes the queue.
+  useEffect(() => {
+    if (!enabled || !isEmbeddedInMoodle()) return;
+    let disposed = false;
+    const timer = window.setInterval(() => {
+      if (inFlightRef.current) return;
+      void refetchTasks().then((result) => {
+        if (disposed || !result.isSuccess) return;
+        startedRef.current = false;
+        // React Query may retain identical data and batch its fetching state.
+        // A completed refresh must still wake retries of the same task slice.
+        setQueueRefresh((value) => value + 1);
+      });
+    }, 60_000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [enabled, refetchTasks]);
 
   const status: JefeMoodleSyncStatus = !enabled
     ? "idle"

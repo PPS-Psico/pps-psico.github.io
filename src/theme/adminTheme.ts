@@ -107,7 +107,7 @@ export const adminTheme = {
 
   // Cards
   card: {
-    base: "rounded-xl border transition-all duration-200",
+    base: "rounded-xl border transition-[background-color,border-color,box-shadow,transform] duration-200",
     default: "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700",
     hover: "hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-600",
     interactive: "cursor-pointer hover:-translate-y-0.5 hover:shadow-lg",

@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import DesaprobacionPPSModal from "../../../components/admin/DesaprobacionPPSModal";
 import DisapprovalBadge from "../../../components/admin/DisapprovalBadge";
+import { StudentReplacementSearch } from "../../../features/estudiantes/StudentReplacementSearch";
 import Toast from "../../../components/ui/Toast";
 import {
   FIELD_FECHA_FIN_LANZAMIENTOS,
@@ -65,11 +66,15 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   const {
     candidates,
     selectedCandidates,
-    availableStudents,
+    isEnrollingStudent,
     enrollNewStudent,
     handleToggle,
     handleBajaConPenalizacion,
     isLoadingCandidates,
+    candidatesReady,
+    candidatesError,
+    isFetchingCandidates,
+    refetchCandidates,
     toastInfo,
     setToastInfo,
   } = useSeleccionadorLogic(false, launch.id);
@@ -104,7 +109,6 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
   const [penaltyNotes, setPenaltyNotes] = useState("");
   const [isSubmittingBaja, setIsSubmittingBaja] = useState(false);
   const [showReplacementSearch, setShowReplacementSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   // 4. Filtrar candidatos no seleccionados (lista de inscriptos restantes)
   const unselectedCandidates = useMemo(() => {
@@ -126,21 +130,6 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
       ),
     [launch.id, selectedCandidates]
   );
-
-  // 5. Filtrar estudiantes activos en el sistema para búsqueda manual
-  const filteredAvailable = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
-    return availableStudents
-      .filter(
-        (s) =>
-          s.nombre?.toLowerCase().includes(query) ||
-          String(s.legajo || "")
-            .toLowerCase()
-            .includes(query)
-      )
-      .slice(0, 5);
-  }, [availableStudents, searchQuery]);
 
   // 7. Acción de dar de baja con justificación y registro de penalización automático
   const handleConfirmBaja = async () => {
@@ -651,107 +640,29 @@ const ActivaView: React.FC<{ launch: LanzamientoPPS; onArchivar: () => void }> =
                   <span className="lv4-group-count">no postulados</span>
                 </button>
 
-                {showReplacementSearch && (
-                  <div
-                    style={{
-                      marginTop: 10,
-                      padding: 14,
-                      border: "1px solid var(--rule-2)",
-                      borderRadius: 12,
-                      background: "var(--paper-2)",
-                    }}
-                  >
-                    <div className="lv4-search-wrap" style={{ marginBottom: 10 }}>
-                      <span
-                        className="material-icons lv4-search-icon"
-                        style={{
-                          position: "absolute",
-                          left: 10,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          color: "var(--ink-4)",
-                          fontSize: 16,
-                        }}
-                      >
-                        search
-                      </span>
-                      <input
-                        type="text"
-                        className="lv4-search"
-                        style={{ width: "100%", paddingLeft: 34, fontSize: 12.5 }}
-                        placeholder="Buscar por nombre o legajo..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                    </div>
-
-                    {filteredAvailable.length > 0 ? (
-                      <div
-                        style={{
-                          border: "1px solid var(--rule-2)",
-                          borderRadius: 8,
-                          overflow: "hidden",
-                          background: "var(--paper)",
-                        }}
-                      >
-                        {filteredAvailable.map((student, idx) => (
-                          <div
-                            key={student.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "8px 12px",
-                              borderBottom:
-                                idx === filteredAvailable.length - 1
-                                  ? "none"
-                                  : "1px solid var(--rule-2)",
-                            }}
-                          >
-                            <div style={{ minWidth: 0, flex: 1, marginRight: 8 }}>
-                              <div
-                                style={{
-                                  fontSize: 12.5,
-                                  fontWeight: 600,
-                                  color: "var(--ink)",
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {student.nombre}
-                              </div>
-                              <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 1 }}>
-                                Legajo: {student.legajo}
-                              </div>
-                            </div>
-                            <button
-                              className="lv4-btn"
-                              style={{ padding: "4px 8px", fontSize: 11.5, flexShrink: 0 }}
-                              onClick={() => {
-                                enrollNewStudent(student.id);
-                                setSearchQuery("");
-                                setShowReplacementSearch(false);
-                              }}
-                            >
-                              Seleccionar
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : searchQuery.trim() ? (
-                      <div
-                        style={{
-                          textAlign: "center",
-                          padding: 10,
-                          color: "var(--ink-4)",
-                          fontSize: 12,
-                        }}
-                      >
-                        No se encontraron estudiantes activos.
-                      </div>
-                    ) : null}
+                {showReplacementSearch && candidatesError ? (
+                  <div className="lv4-replacement-status" role="alert">
+                    No se pudo confirmar la lista de postulados.
+                    <button
+                      className="lv4-btn"
+                      disabled={isFetchingCandidates}
+                      onClick={() => void refetchCandidates()}
+                    >
+                      Reintentar lista de postulados
+                    </button>
                   </div>
+                ) : (
+                  showReplacementSearch && (
+                    <StudentReplacementSearch
+                      enabled={candidatesReady && !isFetchingCandidates}
+                      enrolledIds={candidates.map((candidate) => candidate.studentId)}
+                      disabled={isEnrollingStudent || isLoadingCandidates}
+                      onSelect={(studentId) => {
+                        enrollNewStudent(studentId);
+                        setShowReplacementSearch(false);
+                      }}
+                    />
+                  )
                 )}
               </div>
             </div>

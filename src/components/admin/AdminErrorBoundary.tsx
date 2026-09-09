@@ -27,9 +27,6 @@ export class AdminErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     logger.error("AdminErrorBoundary caught an error:", error, errorInfo);
     this.setState({ error, errorInfo });
-
-    // Aquí podrías enviar el error a un servicio de monitoreo
-    // Sentry.captureException(error);
   }
 
   handleReset = () => {

@@ -46,7 +46,7 @@ import {
 } from "../constants";
 import { db } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
-import { invalidateLaunchData } from "../lib/launchQueryKeys";
+import { invalidateLaunchData, launchKeys } from "../lib/launchQueryKeys";
 import {
   darBajaPpsConPenalizacion,
   toggleStudentSelection,
@@ -96,7 +96,7 @@ export const useSeleccionadorLogic = (
   const queryClient = useQueryClient();
 
   const { data: openLaunches = [], isLoading: isLoadingLaunches } = useQuery({
-    queryKey: ["openLaunchesForSelector", isTestingMode, initialLaunchId],
+    queryKey: launchKeys.selectorLaunches(isTestingMode, initialLaunchId),
     queryFn: async () => {
       let records: Record<string, unknown>[] = [];
       if (isTestingMode) {
@@ -192,11 +192,14 @@ export const useSeleccionadorLogic = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLaunchId, openLaunches]);
 
-  const candidatesQueryKey = ["candidatesForLaunch", selectedLanzamiento?.id, isTestingMode];
+  const candidatesQueryKey = launchKeys.candidates(selectedLanzamiento?.id, isTestingMode);
 
   const {
     data: candidates = [],
     isLoading: isLoadingCandidates,
+    isSuccess: candidatesReady,
+    isError: candidatesError,
+    isFetching: isFetchingCandidates,
     refetch: refetchCandidates,
   } = useQuery({
     queryKey: candidatesQueryKey,
@@ -570,10 +573,7 @@ export const useSeleccionadorLogic = (
       });
     }
 
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: candidatesQueryKey }),
-      queryClient.invalidateQueries({ queryKey: ["availableStudents"] }),
-    ]);
+    await queryClient.invalidateQueries({ queryKey: candidatesQueryKey });
     invalidateLaunchData(queryClient);
     return result;
   };
@@ -587,27 +587,6 @@ export const useSeleccionadorLogic = (
       isSelected: normalizeStringForComparison(student.status) === "seleccionado",
     });
   };
-
-  // Query para estudiantes disponibles (no inscriptos)
-  const { data: availableStudents = [], isLoading: isLoadingAvailable } = useQuery({
-    queryKey: ["availableStudents", selectedLanzamiento?.id, isTestingMode],
-    queryFn: async () => {
-      if (!selectedLanzamiento) return [];
-
-      // Traer todos los estudiantes
-      let allStudents: Estudiante[] = [];
-      if (isTestingMode) {
-        allStudents = await mockDb.getAll("estudiantes");
-      } else {
-        allStudents = await db.estudiantes.getAll();
-      }
-
-      // Filtrar los que ya están inscriptos
-      const enrolledIds = new Set(candidates.map((c) => c.studentId));
-      return allStudents.filter((s) => !enrolledIds.has(s.id));
-    },
-    enabled: !!selectedLanzamiento && candidates.length > 0,
-  });
 
   // Mutation para inscribir nuevo estudiante
   const enrollNewStudentMutation = useMutation({
@@ -649,7 +628,6 @@ export const useSeleccionadorLogic = (
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: candidatesQueryKey });
-      queryClient.invalidateQueries({ queryKey: ["availableStudents"] });
       invalidateLaunchData(queryClient);
       setToastInfo({ message: "Estudiante inscripto correctamente", type: "success" });
     },
@@ -716,6 +694,10 @@ export const useSeleccionadorLogic = (
     isLoadingLaunches,
     candidates,
     isLoadingCandidates,
+    candidatesReady,
+    candidatesError,
+    isFetchingCandidates,
+    refetchCandidates,
     selectedCandidates,
     displayedCandidates,
     scheduleInfo,
@@ -725,8 +707,7 @@ export const useSeleccionadorLogic = (
     handleOptionChoice,
     handleBajaConPenalizacion,
     handleUpdateSchedule,
-    availableStudents,
-    isLoadingAvailable,
     enrollNewStudent: enrollNewStudentMutation.mutate,
+    isEnrollingStudent: enrollNewStudentMutation.isPending,
   };
 };

@@ -210,14 +210,18 @@ body {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition-property: color, background-color, transform;
   transition-duration: var(--app-duration-fast);
   transition-timing-function: var(--app-ease);
 }
 
-.app-icon-button:hover {
-  color: var(--app-text);
-  background: var(--app-surface-muted);
+@media (hover: hover) and (pointer: fine) {
+  .app-icon-button:hover {
+    color: var(--app-text);
+    background: var(--app-surface-muted);
+  }
 }
 
 .app-icon-button:active {
@@ -241,6 +245,8 @@ body {
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition-property: color, background-color, border-color, box-shadow, opacity, transform;
   transition-duration: var(--app-duration-fast);
   transition-timing-function: var(--app-ease);
@@ -404,14 +410,21 @@ body {
   background: transparent;
   border: 0;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   font-family: var(--font-sans);
   transition-property: color, background-color;
   transition-duration: var(--app-duration-fast);
 }
 
-.app-bottom-nav__item:hover,
 .app-bottom-nav__item.is-active {
   color: var(--app-accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-bottom-nav__item:hover {
+    color: var(--app-accent);
+  }
 }
 
 .app-bottom-nav__item:active {

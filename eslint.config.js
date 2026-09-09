@@ -10,6 +10,7 @@ export default [
   {
     ignores: [
       'dist',
+      '.e2e-dist/**',
       'node_modules',
       'coverage',
       'build',
@@ -153,6 +154,18 @@ export default [
     files: ['main.tsx'],
     rules: {
       'react-hooks/rules-of-hooks': 'off'
+    }
+  },
+  {
+    files: ['src/features/{inicio,estudiantes}/*Service.ts', 'src/domain/finalizacion/states.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: ['react', '@tanstack/react-query'],
+        patterns: [{
+          group: ['**/components/**', '**/views/**', '**/hooks/**'],
+          message: 'Los servicios y las reglas de dominio no deben depender de la interfaz ni de hooks.'
+        }]
+      }]
     }
   },
   prettier

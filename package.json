@@ -14,6 +14,7 @@
     "type-check": "tsc --noEmit",
     "check:functions": "node ./scripts/check-edge-functions.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:production": "playwright test --config playwright.production.config.ts",
     "check:migrations": "node ./scripts/check-migrations.mjs",
     "check:migrations:replay": "node ./scripts/replay-migrations.mjs",
     "check:migrations:replay:contracts": "node ./scripts/replay-migrations.mjs --contracts",

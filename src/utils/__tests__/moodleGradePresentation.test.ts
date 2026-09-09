@@ -1,6 +1,38 @@
 import { isFinalMoodleGrade, presentMoodleGrade } from "../moodleGradePresentation";
 
 describe("presentMoodleGrade", () => {
+  it("conserva la nota académica individual frente al número global de una tarea compartida", () => {
+    const presentation = presentMoodleGrade({
+      task_status: "graded",
+      submitted: true,
+      grade_value: 80,
+      grade_max: 100,
+      grade_display: "80/100",
+      observed_at: "2026-09-06T00:00:00Z",
+      academicGrade: "7",
+      academicGradeSource: "admin",
+    });
+    expect(presentation).toMatchObject({
+      compact: "7",
+      hasGrade: true,
+      label: "Calificación registrada en Mi Panel",
+    });
+  });
+  it("una recorrección señala revisión sin reemplazar la nota aplicada", () => {
+    const presentation = presentMoodleGrade({
+      task_status: "graded",
+      submitted: true,
+      grade_value: 7,
+      grade_max: 10,
+      grade_display: "7",
+      observed_at: "2026-09-06T00:00:00Z",
+      academicGrade: "7",
+      reviewedAllocation: true,
+      reviewRequired: true,
+    });
+    expect(presentation).toMatchObject({ compact: "7", hasGrade: true, tone: "warn" });
+    expect(presentation?.detail).toContain("posteriores por revisar");
+  });
   it("convierte la escala de Moodle a 1–10 redondeada", () => {
     const presentation = presentMoodleGrade({
       task_status: "graded",

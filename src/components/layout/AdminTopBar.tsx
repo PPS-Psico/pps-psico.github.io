@@ -47,9 +47,11 @@ const CSS = `
   border: none; background: transparent; cursor: pointer;
   font-family: inherit; font-size: 13.5px; font-weight: 500;
   color: var(--ink-3); padding: 0 13px; height: 60px;
-  white-space: nowrap; transition: color .12s ease;
+  white-space: nowrap; touch-action: manipulation;
+  transition: color .12s ease, transform .12s var(--ease-out);
 }
 .admin-nav-tab:hover { color: var(--ink-2); }
+.admin-nav-tab:active { transform: translateY(1px); }
 .admin-nav-tab.active { color: var(--ink); font-weight: 600; }
 .admin-nav-tab .material-icons { font-size: 17px; opacity: .75; }
 .admin-nav-tab.active .material-icons { opacity: 1; }
@@ -68,12 +70,14 @@ const CSS = `
 }
 .admin-nav-close {
   display: inline-flex; align-items: center; justify-content: center;
-  margin-left: -7px; margin-right: 8px; padding: 2px; border-radius: 999px;
+  width: 32px; height: 32px; margin-left: -9px; margin-right: 4px; padding: 0; border-radius: 999px;
   border: none; background: transparent; cursor: pointer;
-  color: var(--ink-4); transition: color .12s ease, background .12s ease;
+  color: var(--ink-4); touch-action: manipulation;
+  transition: color .12s ease, background .12s ease, transform .12s var(--ease-out);
 }
 .admin-nav-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 .admin-nav-close:hover { color: var(--crit); background: var(--paper-2); }
+.admin-nav-close:active { transform: scale(.96); }
 
 .admin-pill {
   display: inline-flex; align-items: center; gap: 6px;
@@ -86,14 +90,16 @@ const CSS = `
 .admin-pill .material-icons { color: var(--ink-4); }
 .admin-icon-btn {
   position: relative;
-  width: 36px; height: 36px; border-radius: 999px;
+  width: 40px; height: 40px; border-radius: 999px;
   border: 1px solid var(--rule-2); background: var(--paper);
   color: var(--ink-3); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: background .12s ease, color .12s ease, border-color .12s ease;
+  touch-action: manipulation;
+  transition: background .12s ease, color .12s ease, border-color .12s ease, transform .12s var(--ease-out);
 }
 .admin-icon-btn:hover { background: var(--paper-2); color: var(--ink); border-color: var(--rule-3); }
 .admin-icon-btn.danger:hover { color: var(--crit); border-color: var(--crit); }
+.admin-icon-btn:active { transform: scale(.96); }
 .admin-icon-btn .material-icons { font-size: 19px; }
 .admin-topbar-divider { width: 1px; height: 18px; background: var(--rule-2); flex-shrink: 0; margin: 0 2px; }
 
@@ -118,12 +124,16 @@ const CSS = `
 }
 .admin-notif-list { max-height: 380px; overflow-y: auto; }
 .admin-notif-item {
-  display: flex; gap: 10px; padding: 13px 16px;
+  width: 100%; display: flex; gap: 10px; padding: 13px 16px;
   border-bottom: 1px solid var(--rule-2); cursor: pointer;
+  border-top: 0; border-right: 0; border-left: 0;
+  background: transparent; color: inherit; font: inherit; text-align: left;
+  touch-action: manipulation;
   transition: background .12s ease;
 }
 .admin-notif-item:last-child { border-bottom: none; }
 .admin-notif-item:hover { background: var(--paper-2); }
+.admin-notif-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .admin-notif-empty { padding: 28px 16px; text-align: center; color: var(--ink-3); }
 .admin-link-btn {
   border: none; background: transparent; cursor: pointer;
@@ -162,7 +172,13 @@ const NotificationsPopover: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   }, [onClose]);
 
   return (
-    <div ref={ref} className="admin-notif-pop animate-fade-in-up">
+    <div
+      ref={ref}
+      id="admin-notifications-popover"
+      className="admin-notif-pop animate-fade-in-up"
+      role="region"
+      aria-label="Notificaciones"
+    >
       {notifications.length === 0 ? (
         <div className="admin-notif-empty">
           <span className="material-icons" style={{ fontSize: 28, opacity: 0.4 }}>
@@ -187,7 +203,8 @@ const NotificationsPopover: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           </div>
           <div className="admin-notif-list">
             {notifications.map((notif) => (
-              <div
+              <button
+                type="button"
                 key={notif.id}
                 className="admin-notif-item"
                 onClick={() => {
@@ -246,7 +263,7 @@ const NotificationsPopover: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                     })}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </>
@@ -410,7 +427,11 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
               <button
                 className="admin-icon-btn"
                 onClick={() => setIsNotifOpen((o) => !o)}
-                aria-label="Notificaciones"
+                aria-label={
+                  unreadCount > 0 ? `Notificaciones, ${unreadCount} sin leer` : "Notificaciones"
+                }
+                aria-expanded={isNotifOpen}
+                aria-controls="admin-notifications-popover"
                 title="Notificaciones"
               >
                 <span className="material-icons">

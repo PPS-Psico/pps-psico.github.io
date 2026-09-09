@@ -6,6 +6,7 @@ import {
   FIELD_FECHA_INICIO_PRACTICAS,
   FIELD_HORAS_PRACTICAS,
   FIELD_NOMBRE_INSTITUCION_LOOKUP_PRACTICAS,
+  FIELD_NOTA_PRACTICAS,
   FIELD_TIPO_ACTIVIDAD_PRACTICAS,
 } from "../../constants";
 import { resolveGradeReadiness } from "../../domain/finalizacion/gradeReadiness";
@@ -34,6 +35,7 @@ export interface GuidedDelivery {
    * atraso creciendo indefinidamente aunque ya tuvieran nota.
    */
   gradedDirectly: boolean;
+  recordedGrade?: string | null;
   startDate: Date | null;
   endDate: Date | null;
   deadline: Date | null;
@@ -221,6 +223,7 @@ export function buildGuidedDeliveries(
         institution,
         task,
         gradedDirectly,
+        recordedGrade: cleanDbValue(practice[FIELD_NOTA_PRACTICAS]) || null,
         startDate,
         endDate,
         deadline,

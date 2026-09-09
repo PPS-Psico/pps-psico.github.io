@@ -17,14 +17,14 @@ import {
   MOODLE_COURSE_ID,
   MoodleBridgeError,
   requestMoodleTasks,
+  requestMoodleDiscovery,
 } from "../lib/moodleBridge";
 import type { MoodleGradeConversionMode } from "../domain/moodle/moodleReportStatus";
+import { syncStudentMoodleBatches } from "../domain/moodle/moodleStudentSync";
 import { supabase } from "../lib/supabaseClient";
+import { captureStudentMoodleEvidence } from "../services/moodleEvidenceService";
 import type { Database } from "../types/supabase";
-import {
-  buildPendingMoodleAssignments,
-  selectCurrentMoodleSnapshots,
-} from "../utils/moodleTaskResolution";
+import { buildPendingMoodleAssignments } from "../utils/moodleTaskResolution";
 
 /**
  * El snapshot no guarda la escala de la tarea: vive en `aula_entregas`. Sin
@@ -33,6 +33,10 @@ import {
  */
 export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_snapshots"]["Row"] & {
   grade_conversion_mode: MoodleGradeConversionMode | null;
+  reviewedAllocation?: boolean;
+  reviewRequired?: boolean;
+  academicGrade?: string | null;
+  academicGradeSource?: string | null;
 };
 
 export type MoodleGradeSyncStatus =
@@ -90,30 +94,20 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     enabled: canReadSnapshots,
     queryFn: async () => {
       if (!studentId) return [];
-      const { data, error } = await supabase
-        .from("moodle_grade_snapshots")
-        .select("*, aula_entregas(grade_conversion_mode)")
-        .eq("estudiante_id", studentId)
-        .order("observed_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map((row) => {
-        const { aula_entregas: task, ...snapshot } = row as typeof row & {
-          aula_entregas: { grade_conversion_mode: string | null } | null;
-        };
-        return {
-          ...snapshot,
-          grade_conversion_mode:
-            (task?.grade_conversion_mode as MoodleGradeConversionMode | null) ?? null,
-        } as MoodleGradeSnapshot;
+      const { data, error } = await supabase.rpc("read_moodle_practice_snapshots_v1", {
+        p_student: studentId,
       });
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("Invalid canonical delivery response");
+      return data as unknown as MoodleGradeSnapshot[];
     },
     staleTime: 60_000,
     retry: 1,
   });
 
   const snapshotsByPractice = useMemo(() => {
-    return selectCurrentMoodleSnapshots(practicas, links, snapshotsQuery.data ?? []);
-  }, [links, practicas, snapshotsQuery.data]);
+    return new Map((snapshotsQuery.data ?? []).map((snapshot) => [snapshot.practica_id, snapshot]));
+  }, [snapshotsQuery.data]);
 
   const assignments = useMemo(() => {
     if (!isOwnStudentSession || snapshotsQuery.isLoading) return new Map<string, string[]>();
@@ -134,11 +128,6 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
 
   const runSync = useCallback(async () => {
     if (!isOwnStudentSession) return;
-    if (assignments.size === 0) {
-      setSyncStatus(practicas.length > 0 ? "complete" : "idle");
-      setErrorMessage(null);
-      return;
-    }
     if (!isInsideParentFrame) {
       setSyncStatus("unavailable");
       setErrorMessage(null);
@@ -150,46 +139,54 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     setSyncStatus("syncing");
     setErrorMessage(null);
     try {
-      const cmids = [...assignments.keys()];
-      const batches = Array.from({ length: Math.ceil(cmids.length / 20) }, (_, index) =>
-        cmids.slice(index * 20, index * 20 + 20)
+      const discovery = await requestMoodleDiscovery();
+      let discoveryFailures = discovery?.status === "ok" ? 0 : 1;
+      let discoveredBatches = 0;
+      const discovered = [...new Set(discovery?.cmids ?? [])].filter(
+        (cmid) => !assignments.has(String(cmid))
       );
-      let rejectedCount = 0;
-
-      for (const batch of batches) {
-        const result = await requestMoodleTasks(batch);
-        const observations = result.tasks.flatMap((task) =>
-          (assignments.get(String(task.cmid)) ?? []).map((practicaId) => ({
-            practicaId,
-            cmid: task.cmid,
-            status: task.status,
-            submitted: task.submitted,
-            gradeValue: task.gradeValue,
-            gradeMax: task.gradeMax,
-            gradeDisplay: task.gradeDisplay,
-            gradedAtDisplay: task.gradedAtDisplay,
-            submittedAt: task.submittedAt ?? null,
-            submittedAtDisplay: task.submittedAtDisplay ?? null,
-            submissionFiles: task.submissionFiles ?? null,
-          }))
-        );
-        if (observations.length === 0) throw new MoodleBridgeError("invalid_response");
-
-        const { data, error } = await supabase.functions.invoke("ingest-moodle-grade-observation", {
-          body: {
-            requestId: result.requestId,
-            bridgeVersion: MOODLE_BRIDGE_VERSION,
-            courseId: MOODLE_COURSE_ID,
-            observedAt: result.observedAt,
-            moodleUserId: result.moodleUserId,
-            moodleUsername: result.moodleUsername,
-            observations,
-          },
-        });
-        if (error) throw error;
-        if (data && typeof data === "object" && Array.isArray(data.rejected)) {
-          rejectedCount += data.rejected.length;
+      for (let index = 0; index < discovered.length; index += 3) {
+        try {
+          const result = await requestMoodleTasks(discovered.slice(index, index + 3).map(String));
+          const receipt = await captureStudentMoodleEvidence(result);
+          discoveryFailures +=
+            receipt.rejected +
+            result.tasks.filter(
+              (task) => task.status === "no_access" || task.status === "parse_error"
+            ).length;
+          discoveredBatches += 1;
+        } catch {
+          discoveryFailures += 1;
         }
+      }
+      const outcome = await syncStudentMoodleBatches(
+        assignments,
+        requestMoodleTasks,
+        async (result, observations) => {
+          const receipt = await captureStudentMoodleEvidence(result);
+          const { data, error } = await supabase.functions.invoke(
+            "ingest-moodle-grade-observation",
+            {
+              body: {
+                requestId: result.requestId,
+                bridgeVersion: MOODLE_BRIDGE_VERSION,
+                courseId: MOODLE_COURSE_ID,
+                observedAt: result.observedAt,
+                moodleUserId: result.moodleUserId,
+                moodleUsername: result.moodleUsername,
+                observations,
+              },
+            }
+          );
+          if (error) throw error;
+          if (!data || data.success !== true || !Array.isArray(data.rejected)) {
+            throw new MoodleBridgeError("invalid_response");
+          }
+          return data.rejected.length + receipt.rejected;
+        }
+      );
+      if (assignments.size > 0 && outcome.persistedBatches === 0 && discoveredBatches === 0) {
+        throw outcome.lastError ?? new MoodleBridgeError("invalid_response");
       }
 
       await Promise.all([
@@ -201,10 +198,10 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
         queryClient.invalidateQueries({ queryKey: ["accreditationTransition", studentId] }),
         queryClient.invalidateQueries({ queryKey: ["finalizacionRequest"] }),
       ]);
-      if (rejectedCount > 0) {
+      if (outcome.rejectedObservations > 0 || outcome.failedTasks > 0 || discoveryFailures > 0) {
         setSyncStatus("partial");
         setErrorMessage(
-          `Campus respondió, pero ${rejectedCount} ${rejectedCount === 1 ? "tarea requiere" : "tareas requieren"} revisión. Conservamos el último estado confirmado.`
+          "La lectura de Campus quedó parcial. Guardamos las respuestas válidas y conservamos el último estado confirmado de las demás tareas. Podés reintentar."
         );
       } else {
         setSyncStatus("synced");
@@ -224,20 +221,13 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     } finally {
       syncInFlightRef.current = false;
     }
-  }, [
-    assignments,
-    isInsideParentFrame,
-    isOwnStudentSession,
-    practicas.length,
-    queryClient,
-    studentId,
-  ]);
+  }, [assignments, isInsideParentFrame, isOwnStudentSession, queryClient, studentId]);
 
   // Mientras el alumno mantiene abierto el panel, una corrección docente puede
   // llegar después de la primera lectura. Reintentamos de forma moderada y al
   // recuperar el foco; las respuestas idénticas quedan como noop en el servidor.
   useEffect(() => {
-    if (!isOwnStudentSession || !isInsideParentFrame || assignments.size === 0) return;
+    if (!isOwnStudentSession || !isInsideParentFrame) return;
     const refresh = () => void runSync();
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") refresh();
@@ -254,11 +244,6 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
 
   useEffect(() => {
     if (!isOwnStudentSession || isPracticasLoading || areLinksLoading) return;
-    if (assignments.size === 0) {
-      setSyncStatus(practicas.length > 0 ? "complete" : "idle");
-      setErrorMessage(null);
-      return;
-    }
     if (!isInsideParentFrame) {
       setSyncStatus("unavailable");
       return;

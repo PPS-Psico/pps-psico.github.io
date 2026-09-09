@@ -21,13 +21,10 @@ const snapshot = {
   confidence: "moodle_session_observed",
 };
 
-const orderSpy = jest.fn(async (_column: string, _options: { ascending: boolean }) => ({
+const rpcSpy = jest.fn(async (_name: string, _args: unknown) => ({
   data: [snapshot],
   error: null,
 }));
-const eqSpy = jest.fn((_column: string, _value: string) => ({ order: orderSpy }));
-const selectSpy = jest.fn((_columns: string) => ({ eq: eqSpy }));
-const fromSpy = jest.fn((_table: string) => ({ select: selectSpy }));
 const requestMoodleTasksSpy = jest.fn(async (_cmids: string[]) => null);
 const useMoodleTaskLinksSpy = jest.fn((_enabled: boolean) => ({
   links: [
@@ -75,7 +72,7 @@ jest.mock("../../lib/moodleBridge", () => ({
 
 jest.mock("../../lib/supabaseClient", () => ({
   supabase: {
-    from: (table: string) => fromSpy(table),
+    rpc: (name: string, args: unknown) => rpcSpy(name, args),
     functions: { invoke: jest.fn() },
   },
 }));
@@ -95,10 +92,7 @@ const createWrapper = () => {
 
 describe("MoodleGradeSyncProvider — lectura administrativa", () => {
   beforeEach(() => {
-    orderSpy.mockClear();
-    eqSpy.mockClear();
-    selectSpy.mockClear();
-    fromSpy.mockClear();
+    rpcSpy.mockClear();
     requestMoodleTasksSpy.mockClear();
     useMoodleTaskLinksSpy.mockClear();
   });
@@ -108,8 +102,9 @@ describe("MoodleGradeSyncProvider — lectura administrativa", () => {
 
     await waitFor(() => expect(result.current.status).toBe("synced"));
 
-    expect(fromSpy).toHaveBeenCalledWith("moodle_grade_snapshots");
-    expect(eqSpy).toHaveBeenCalledWith("estudiante_id", "student-selected");
+    expect(rpcSpy).toHaveBeenCalledWith("read_moodle_practice_snapshots_v1", {
+      p_student: "student-selected",
+    });
     expect(result.current.lastObservedAt).toBe(snapshot.observed_at);
     expect(result.current.snapshotsByPractice.get("practice-1")?.grade_value).toBe(90);
     // Coordinación necesita el vínculo vigente para no mostrar como actual un

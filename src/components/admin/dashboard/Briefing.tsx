@@ -1,5 +1,7 @@
 import React from "react";
 import DOMPurify from "dompurify";
+import type { InicioSectionState } from "../../../hooks/inicioQueryState";
+import { SectionDataStatus } from "./SectionDataStatus";
 
 interface BriefingData {
   generadoAgo: string;
@@ -9,7 +11,11 @@ interface BriefingData {
 
 interface BriefingProps {
   data: BriefingData;
-  totalChats: number;
+  totalChats: number | null;
+  state?: InicioSectionState;
+  contactsState?: InicioSectionState;
+  onRetry?: () => void;
+  onRetryContacts?: () => void;
   onReanalyze?: () => void;
   isReanalyzing?: boolean;
 }
@@ -53,7 +59,19 @@ export const Briefing: React.FC<BriefingProps> = ({
   totalChats,
   onReanalyze,
   isReanalyzing,
+  state,
+  contactsState,
+  onRetry,
+  onRetryContacts,
 }) => {
+  if (state?.status === "error" || state?.status === "loading") {
+    return (
+      <section className="admin-brief" style={{ padding: "32px 0 8px" }}>
+        <h2 style={{ fontSize: 18, color: "var(--ink)" }}>Briefing de Hermes</h2>
+        <SectionDataStatus state={state} label="Briefing de Hermes" onRetry={onRetry} />
+      </section>
+    );
+  }
   return (
     <section className="admin-brief" style={{ padding: "32px 0 8px" }}>
       <style>{`
@@ -141,6 +159,7 @@ export const Briefing: React.FC<BriefingProps> = ({
         )}
       </div>
 
+      {state && <SectionDataStatus state={state} label="Briefing de Hermes" onRetry={onRetry} />}
       <div
         className="serif"
         style={{
@@ -193,9 +212,18 @@ export const Briefing: React.FC<BriefingProps> = ({
         <span className="material-icons" style={{ fontSize: 14, color: "var(--ai)" }}>
           shield
         </span>
-        Hermes lee {totalChats} chats de tu lista "Instituciones" y la casilla de mail. Nada
-        personal entra al sistema.
+        {totalChats !== null ? (
+          <>
+            Hermes lee {totalChats} chats de tu lista "Instituciones" y la casilla de mail. Nada
+            personal entra al sistema.
+          </>
+        ) : (
+          "Cantidad de contactos PPS no disponible."
+        )}
       </div>
+      {contactsState && (
+        <SectionDataStatus state={contactsState} label="Contactos PPS" onRetry={onRetryContacts} />
+      )}
     </section>
   );
 };

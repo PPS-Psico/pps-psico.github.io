@@ -1,6 +1,127 @@
 # Tablero verificable · Moodle Task Automation v2
 
-Última actualización: 29 de agosto de 2026
+Última actualización: 6 de septiembre de 2026
+
+## Corte operativo del 6 de septiembre
+
+Este corte prevalece sobre la tabla de fundación del 29 de agosto conservada
+debajo. La reconciliación de entregas se publicó en PR #19 y #20; el despliegue
+`34036803616` terminó correctamente sobre `7f18efc`.
+
+### Cierre de lectura completa, 6/9 a las 21:09 UTC
+
+PR #22 y #23 publicadas. El despliegue final `34059574276` terminó correctamente
+sobre `ce94eb85c41e51d178e17fa1da2d93a3e094b0ad`: 98 suites, 812 pruebas y 7 e2e,
+TypeScript, lint, migraciones y build aprobados. El puente final se guardó y
+releyó en General (50889); los respaldos conservan el HTML previo y se reemplazó
+sólo el script. TypeScript también pasó en el checkout principal del responsable.
+
+| Alcance               | Tareas completas | Filas por tarea | Última lectura UTC |
+| --------------------- | ---------------- | --------------- | ------------------ |
+| Laboral + Comunitaria | 57/57            | 346             | 20:56:23           |
+| Educacional           | 33/33            | 346             | 21:02:05           |
+| Clínica               | 51/51            | 346–347         | 21:08:30           |
+
+Son **112 tareas distintas**, no 141: las áreas se solapan. Todas las coberturas
+quedaron `ok`, sin relecturas vencidas ni parciales pendientes. La tarea clínica
+946366 expone 347 participantes: esa diferencia no es un error ni cambia el
+denominador de obligaciones confirmadas de cada PPS.
+
+Se conservaron 1.255 casos y 387 versiones negativas de jefe, correspondientes
+a 279 casos. La auditoría de esos casos encontró **cero fuera de un vínculo
+confirmado o de evidencia previa** y cero aplicaciones manuales al expediente.
+El contrato SQL de lectura común volvió a pasar después del barrido. También se
+comprobó la bandeja de coordinación dentro de Campus. Una ausencia observada no
+borra una nota académica.
+
+Este cierre acepta la captura y relectura del catálogo actual. No equivale a
+resolver asociaciones académicas ambiguas, activar la acreditación híbrida ni
+validar el escritor dedicado de 2027; esos pendientes se mantienen debajo.
+
+### Barrido previo, 6/9 a las 14:02 UTC
+
+El responsable abrió las jefaturas y se comprobó su persistencia en la base:
+Clínica 51/51 tareas, Educacional 33/33 y Laboral/Comunitaria 57/57, todas con
+estado `ok`. Son **112 tareas distintas**, con solapamientos entre áreas.
+Quedaron 1.121 casos (174 más que el corte previo) y cero aplicaciones manuales.
+El contrato de lectura común volvió a pasar después de esta ingesta.
+
+Esto supera el pendiente de cero filas de cobertura del corte previo conservado
+en la tabla de abajo. Certifica el recorrido del catálogo; no certifica la
+ausencia individual de entrega: el puente de ese momento conservaba sólo filas
+positivas. La extensión agrega `negativeRows` sin alterar `rows` v1,
+guarda cada tarea en una petición de evidencia y excluye las negativas del
+proyector académico. No hay nota borrada por una ausencia observada.
+Los estados desconocidos producen cobertura parcial; no se inventa una ausencia.
+La extensión se instaló en General (sección 50889) el 6/9, conservando el HTML
+ajeno al script y un respaldo local previo. La prueba descubrió además que
+Moodle conservaba el filtro docente «Enviada»: una respuesta correcta y todas
+sus páginas podían seguir siendo una lista filtrada. Al quitarlo aparecieron
+«Sin entrega» y se conservaron las primeras 28 observaciones negativas de jefe.
+El puente instalado solicita ahora los parámetros explícitos de «Limpiar todo»
+(estado, grupo, nombre, flujo y asignación de corrector) en cada página. También
+excluye `tr.emptyrow` del cómputo de paginación: Moodle rellena hasta 100 filas
+aunque haya sólo cinco personas. Dos regresiones nuevas verifican ambos casos.
+La relectura con esta versión terminó según el cierre superior; el barrido
+filtrado anterior no certificaba cobertura de ausencias.
+
+La medición del padrón completo (100 + 100 + 100 + 46) dio 3.728, 6.548,
+1.974 y 1.765 ms. Con lecturas simultáneas hubo cortes al presupuesto antiguo
+de 18 s. El presupuesto pasa a 36 s por tarea; el panel espera las dos oleadas
+de un lote de cuatro más 5 s de margen (77 s). El timeout de cada página sigue
+siendo 10 s y una interrupción sigue conservando cobertura parcial. Una prueba
+de cuatro páginas a 6 s verifica el caso antes truncado.
+
+`20260906142427_moodle_expected_negative_observations` quedó aplicada con SQL
+exacto y ledger en la misma transacción, después de ensayo con `ROLLBACK` y
+contrato PostgreSQL 17 aislado. La captura negativa exige evidencia previa de
+esa persona/tarea o un vínculo confirmado de su práctica (incluido el fallback
+confirmado de lanzamiento por orientación). No convierte el padrón completo del
+curso en obligaciones para todas las tareas. La captura positiva sin vínculo
+continúa habilitada. Se verificaron permisos privados, aislamiento por alumno y
+curso, rechazo de vínculos sin confirmar y conservación de la nota académica.
+
+La PR #21 (`d94c8cb`) y el despliegue `34038086581` terminaron correctamente:
+arranque cancelable sin bloqueo, espera restante del throttle y reanudación
+aunque la cola devuelva los mismos datos. Seis regresiones nuevas, TypeScript,
+lint, suite completa, e2e y build aprobados.
+
+El corte de evidencia documental posterior al barrido tiene 941 snapshots
+clasificados y 33 entregados/calificados sin observación de archivos. La
+acreditación híbrida continúa en `shadow`: esos conteos no sustituyen la muestra
+académica revisada ni autorizan el paso a `active`.
+
+### Corte anterior al barrido (conservado para trazabilidad)
+
+| Circuito               | Estado comprobado                                                                                                    | Pendiente para su aceptación operativa                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Captura y conservación | Publicado: cuatro migraciones verificadas, puente instalado y Edge Function desplegada; 947 casos en el corte actual | El total de casos no demuestra cobertura completa                                                            |
+| Aplicación y reversión | Publicado, probado con transacción revertida y datos sintéticos; 0 aplicaciones académicas reales                    | Decisiones del responsable sobre casos ambiguos                                                              |
+| Lectura común          | Estudiante, bandeja y filas de jefatura conectadas; contrato SQL real aprobado nuevamente el 6/9                     | Última inspección del conjunto publicado dentro de Campus                                                    |
+| Cola persistente       | Código y SQL publicados; conserva resultados parciales y rota mientras Campus está abierto                           | **0 filas de cobertura en la base**: ejecutar el primer barrido real de jefatura y comprobar su persistencia |
+| Escritor dedicado      | 1 intención verificada y 212 legacy; scripts de claim/confirm y planner disponibles                                  | No hay worker autónomo ni evidencia del ciclo completo de creación, entrega, nota y reentrega                |
+| Acreditación híbrida   | `shadow` confirmado en vivo                                                                                          | Reescaneo, muestra revisada y decisión operativa antes de activar                                            |
+
+La intención dedicada existente enlaza el catálogo interno 151, cuyo CMID real
+es **1222866**, curso 3615. No confundir la PK del catálogo con el CMID.
+Tiene cuatro participantes y `provisioning_evidence` nulo; `verified` y hashes
+iguales no prueban por sí solos el piloto completo. No modificarla ni crear otra
+por semejanza de nombre para completar esta lista.
+
+La revisión del arranque del observer añadió regresiones para StrictMode con
+cola en cache, tandas `4 + 4 + 4 + 1`, fallo parcial, remonte tras un error,
+rotación persistente, error de consulta y modo fuera de Campus. La cancelación
+del timer ya no deja el arranque marcado como ejecutado; el throttle no anuncia
+una lectura exitosa que no ocurrió.
+
+La última comprobación visual y el piloto real requieren control del navegador
+integrado autenticado. Una captura de pantalla prueba la presentación visible,
+pero no sustituye las acciones ni la evidencia persistida de esos recorridos.
+El rediseño solicitado de «Estado en Campus»/«Entrega» queda pospuesto por
+indicación del responsable hasta terminar la aceptación funcional.
+
+## Fotografía de fundación del 29 de agosto (histórica)
+
 Estado general: fundación productiva y lectura 2026 reforzada; escritura Moodle
 dedicada pendiente de piloto
 
