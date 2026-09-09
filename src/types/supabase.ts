@@ -4548,6 +4548,10 @@ export type Database = {
         Args: { p_launch_id?: string }
         Returns: Json
       }
+      reconcile_student_moodle_evidence_v1: {
+        Args: { p_student: string }
+        Returns: Json
+      }
       register_campus_student: {
         Args: {
           apellido_input?: string

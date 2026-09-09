@@ -33,6 +33,7 @@ import { buildPendingMoodleAssignments } from "../utils/moodleTaskResolution";
  */
 export type MoodleGradeSnapshot = Database["public"]["Tables"]["moodle_grade_snapshots"]["Row"] & {
   grade_conversion_mode: MoodleGradeConversionMode | null;
+  inheritedFromSharedTask?: boolean;
   reviewedAllocation?: boolean;
   reviewRequired?: boolean;
   academicGrade?: string | null;
@@ -94,6 +95,26 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
     enabled: canReadSnapshots,
     queryFn: async () => {
       if (!studentId) return [];
+      // Reprocess captured corrections even when every Moodle fetch is closed.
+      // The RPC computes grades from evidence; callers cannot submit a grade.
+      if (isOwnStudentSession || isSuperUserMode || isAdminTesterMode) {
+        const reconciliation = await supabase.rpc("reconcile_student_moodle_evidence_v1", {
+          p_student: studentId,
+        });
+        if (reconciliation.error) throw reconciliation.error;
+        if (
+          reconciliation.data &&
+          typeof reconciliation.data === "object" &&
+          "changed" in reconciliation.data &&
+          Number(reconciliation.data.changed) > 0
+        ) {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["practicas"] }),
+            queryClient.invalidateQueries({ queryKey: ["accreditationTransition", studentId] }),
+            queryClient.invalidateQueries({ queryKey: ["finalizacionRequest"] }),
+          ]);
+        }
+      }
       const { data, error } = await supabase.rpc("read_moodle_practice_snapshots_v1", {
         p_student: studentId,
       });

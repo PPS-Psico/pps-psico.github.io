@@ -1,6 +1,19 @@
 # Tablero verificable · Moodle Task Automation v2
 
-Última actualización: 7 de septiembre de 2026
+Última actualización: 9 de septiembre de 2026
+
+## Correcciones capturadas · 9 de septiembre
+
+Implementado el [reprocesamiento automático de evidencia](automatic-evidence-reconciliation.md).
+Migraciones `20260909111412` y `20260909113509` aplicadas con ledger. El caso
+auditado recuperó dos notas 9 de informes compartidos y una nota 8 de escala
+directa, con aplicaciones individuales y evidencia conservada. Una segunda
+ejecución no agrega aplicaciones. La pantalla muestra sólo pendiente de entrega,
+en corrección o la nota; los diagnósticos permanecen internos.
+
+La atribución automática es conservadora: comentarios no compatibles o sin
+correspondencia única requieren revisión. No equivale a un lector libre de
+cualquier redacción docente. No modifica la cola de creación de tareas.
 
 ## Corte operativo del 7 de septiembre
 

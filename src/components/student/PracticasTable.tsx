@@ -19,7 +19,7 @@ import type { Practica, SolicitudModificacionPPS } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
 import { haptics } from "../../utils/haptics";
 import { logger } from "../../utils/logger";
-import { presentMoodleGrade } from "../../utils/moodleGradePresentation";
+import { presentStudentMoodleGrade } from "../../utils/moodleGradePresentation";
 import EmptyState from "../EmptyState";
 import { TableSkeleton } from "../Skeletons";
 import { canShowPpsAssignmentSummary } from "./PpsAssignmentSummary";
@@ -79,7 +79,7 @@ const PracticaRow: React.FC<{
 
   const areaText = practica[FIELD_ESPECIALIDAD_PRACTICAS] || "General";
   const color = getAreaColor(areaText);
-  const campusGrade = presentMoodleGrade(moodleSnapshot);
+  const campusGrade = presentStudentMoodleGrade(moodleSnapshot);
   const horasMostradas = getEffectiveHours(practica);
 
   const canRequestModification = Boolean(
@@ -228,9 +228,9 @@ const PracticaRow: React.FC<{
                   ? "text-emerald-700 dark:text-emerald-300"
                   : "text-slate-500 dark:text-slate-400"
               }`}
-              title={campusGrade?.detail || "Todavía no hay datos sincronizados desde Campus"}
+              title={undefined}
             >
-              {campusGrade?.compact || "Pendiente"}
+              {campusGrade.compact}
             </span>
           )}
           <span className="mono prow__hs-u text-[9px] uppercase tracking-wider text-slate-400 mt-0.5">

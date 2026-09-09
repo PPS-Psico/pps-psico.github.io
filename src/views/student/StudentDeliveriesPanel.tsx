@@ -212,12 +212,6 @@ function compactStatus(
     delivery,
     snapshot && !snapshot.reviewedAllocation ? { ...snapshot, academicGrade: null } : snapshot
   );
-  if (snapshot?.task_status === "graded" && presentation.hasGrade) {
-    return { label: "Calificada", detail: presentation.detail, tone: presentation.tone };
-  }
-  if (snapshot && (snapshot.submitted || snapshot.task_status === "submitted")) {
-    return { label: "En corrección", detail: presentation.detail, tone: "info" };
-  }
   return {
     label: presentation.label,
     detail: presentation.detail,
@@ -230,13 +224,6 @@ function compactStatus(
  * lectura, se dice que no la hay en vez de afirmar una entrega que nadie
  * verificó.
  */
-function deliveredSummary(_delivery: GuidedDelivery, snapshot?: MoodleGradeSnapshot): string {
-  if (snapshot?.reviewedAllocation) return "Confirmada por coordinación";
-  if (snapshot?.task_status === "graded") return "Calificada";
-  if (snapshot && (snapshot.submitted || snapshot.task_status === "submitted")) return "Entregado";
-  return "Sin registro en Campus";
-}
-
 function PendingDeliveryCard({
   delivery,
   snapshot,
@@ -452,16 +439,13 @@ function DeliveredRow({
     ? `${MOODLE_ASSIGN}${delivery.institution.moodleId}`
     : null;
   const status = compactStatus(delivery, snapshot);
-  const presentation = deliveryPresentation(delivery, snapshot);
   // Sólo la fecha que Moodle registró. Antes caía a `fechaEntregaInforme`, que
   // es el plazo cargado al lanzar la convocatoria y no cuándo entregó el
   // alumno: se mostraba un vencimiento administrativo como si fuera la entrega.
   const submittedAt =
     formatStoredTime(snapshot?.submitted_at) ?? snapshot?.submitted_at_display ?? null;
   const correctedAt = snapshot?.graded_at_display;
-  const deliveredLabel = deliveredSummary(delivery, snapshot);
   const deliveredDetail = correctedAt ? `Corregida ${correctedAt}` : submittedAt;
-  const grade = presentation.hasGrade ? presentation.compact : null;
   const areaName = cleanAreaName(delivery.areaName);
 
   return (
@@ -481,16 +465,7 @@ function DeliveredRow({
         {status.label}
       </span>
       <div className="sd-ledger__submitted">
-        <strong>{deliveredLabel}</strong>
         {deliveredDetail ? <small>{deliveredDetail}</small> : null}
-      </div>
-      <div className="sd-ledger__grade" aria-label={grade ? `Nota ${grade}` : "Sin nota publicada"}>
-        {grade ?? "—"}
-        {grade && (
-          <small className="block text-xs font-normal">
-            {snapshot?.reviewedAllocation ? "Coordinación" : "Campus"}
-          </small>
-        )}
       </div>
       <div className="sd-ledger__actions">
         {directHref && (
@@ -674,27 +649,31 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
               <h2 id="pending-deliveries-title">Te falta subir</h2>
               <div
                 className="sd-sync"
-                data-state={status}
+                data-state={canReopenGrades ? status : undefined}
                 role="status"
                 aria-live="polite"
                 aria-atomic="true"
               >
-                <span className="sd-sync__icon" aria-hidden>
-                  <Icon
-                    name={
-                      status === "error" || status === "partial" || status === "unavailable"
-                        ? "alert"
-                        : status === "loading" || status === "syncing"
-                          ? "refresh"
-                          : "check"
-                    }
-                    size={14}
-                    className={isRefreshing ? "is-spinning" : undefined}
-                  />
-                </span>
-                <span>
-                  {isCampusDataLoading ? "Consultando tus tareas en Campus…" : syncMessage}
-                </span>
+                {canReopenGrades && (
+                  <>
+                    <span className="sd-sync__icon" aria-hidden>
+                      <Icon
+                        name={
+                          status === "error" || status === "partial" || status === "unavailable"
+                            ? "alert"
+                            : status === "loading" || status === "syncing"
+                              ? "refresh"
+                              : "check"
+                        }
+                        size={14}
+                        className={isRefreshing ? "is-spinning" : undefined}
+                      />
+                    </span>
+                    <span>
+                      {isCampusDataLoading ? "Consultando tus tareas en Campus…" : syncMessage}
+                    </span>
+                  </>
+                )}
                 {isCampusDataLoading ? (
                   <span className="sd-sync__loader" aria-hidden>
                     <i />
@@ -704,7 +683,7 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                 ) : (
                   <button type="button" onClick={() => void handleRefresh()}>
                     <Icon name="refresh" size={15} />
-                    {status === "error" || status === "partial" ? "Reintentar" : "Actualizar"}
+                    Actualizar
                   </button>
                 )}
               </div>
@@ -751,10 +730,12 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
                         ? "Tus próximos informes se muestran debajo."
                         : "No tenés informes pendientes."}
                   </strong>
-                  <p>
-                    Esta sección muestra evidencia de Campus. Las notas manuales se conservan en Mis
-                    Prácticas.
-                  </p>
+                  {canReopenGrades && (
+                    <p>
+                      Esta sección muestra evidencia de Campus. Las notas manuales se conservan en
+                      Mis Prácticas.
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -845,9 +826,8 @@ const StudentDeliveriesPanel: React.FC<StudentDeliveriesPanelProps> = ({
               <div className="sd-ledger">
                 <div className="sd-ledger__header" aria-hidden>
                   <span>Práctica</span>
-                  <span>Estado en Campus</span>
+                  <span>Estado / Nota</span>
                   <span>Entrega</span>
-                  <span>Nota</span>
                   <span />
                 </div>
                 {deliveredDeliveries.map((delivery) => (

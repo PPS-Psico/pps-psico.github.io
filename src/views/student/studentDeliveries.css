@@ -558,7 +558,7 @@
 .sd-ledger__header,
 .sd-ledger__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 176px 172px 88px minmax(24px, auto);
+  grid-template-columns: minmax(0, 1fr) 176px 172px minmax(24px, auto);
   align-items: center;
   gap: 18px;
 }
@@ -1016,7 +1016,7 @@
 
   .sd-ledger__header,
   .sd-ledger__row {
-    grid-template-columns: minmax(0, 1fr) 152px 150px 62px minmax(24px, auto);
+    grid-template-columns: minmax(0, 1fr) 152px 150px minmax(24px, auto);
     gap: 14px;
   }
 }
