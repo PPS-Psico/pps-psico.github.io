@@ -24,7 +24,6 @@ import { canShowPpsAssignmentSummary } from "../../components/student/PpsAssignm
 import {
   getEffectiveHours,
   getPracticePresentationStatus,
-  isPracticeActive,
   isPracticeComputable,
   isPracticeDisapproved,
 } from "../../logic/studentRules";
@@ -163,45 +162,6 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
     }
     const snapshot = snapshotsByPractice.get(p.id);
     const campusGrade = presentStudentMoodleGrade(snapshot);
-    if (isPracticeActive(estado)) {
-      // Hay PPS -- los talleres de Fundación Tiempo, por ejemplo -- donde el
-      // informe se entrega y se corrige al principio y la práctica sigue
-      // cursándose durante meses. Mostrar sólo "en curso" escondía una nota ya
-      // puesta y el alumno lo leía como una corrección pendiente.
-      const registrada = resolveGradeReadiness(p);
-      const notaEnCurso =
-        (registrada.ready && registrada.nota) ||
-        (campusGrade?.hasGrade ? campusGrade.compact : null);
-      if (notaEnCurso) {
-        return (
-          <span
-            className="nota"
-            style={{ color: "var(--ink)", fontSize: 12.5, fontFamily: "var(--font-mono)" }}
-            title="El informe ya está corregido. La práctica sigue en curso hasta su fecha de finalización."
-          >
-            {notaEnCurso}
-            <small
-              style={{
-                display: "block",
-                fontFamily: "var(--font-sans)",
-                fontWeight: 400,
-                fontSize: 11,
-                marginTop: 2,
-                color: "var(--info-500)",
-              }}
-            >
-              informe corregido · sigue en curso
-            </small>
-          </span>
-        );
-      }
-      return (
-        <span className="nota" style={{ color: "var(--info-500)", fontSize: 12.5 }}>
-          en curso
-        </span>
-      );
-    }
-
     // Sin lectura de Campus la nota igual puede estar registrada en el panel
     // (PPS previas a la integracion, o cargadas por coordinacion). Mostrar
     // "Pend." en ese caso le decia al alumno que faltaba corregir algo que ya
