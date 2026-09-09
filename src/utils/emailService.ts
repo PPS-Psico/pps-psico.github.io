@@ -7,10 +7,15 @@ type EmailScenario =
   | "seleccion"
   | "solicitud"
   | "sac"
+  | "relevamiento_asignado"
   | "recordatorio_consentimiento"
   | "contacto_institucion"
   | "desaprobacion_inasistencia"
   | "desaprobacion_institucion";
+
+/** Instructivo de la PPS "Relevamiento del Ejercicio Profesional en Psicología". */
+export const RELEVAMIENTO_INSTRUCTIVO_URL =
+  "https://qxnxtnhtbpsgzprqtrjl.supabase.co/storage/v1/object/public/plantillas/instructivos/relevamiento-ejercicio-profesional.pdf";
 
 export const DISAPPROVAL_CC = "Agostina Reale Berrueta <agostina.reale@uflouniversidad.edu.ar>";
 
@@ -44,6 +49,27 @@ Nuevo Estado: {{estado_nuevo}}`,
     subject: "Relevamiento del Ejercicio Profesional en Psicología - PPS UFLO",
     body: `Hola {{nombre_alumno}},
 {{notas}}`,
+  },
+  relevamiento_asignado: {
+    subject: "Te asignamos la PPS: Relevamiento del Ejercicio Profesional en Psicología",
+    body: `Hola {{nombre_alumno}},
+
+Te asignamos la PPS **Relevamiento del Ejercicio Profesional en Psicología** para acreditar en la orientación {{orientacion}}. Consiste en gestionar y realizar 3 entrevistas a psicólogos/as en ejercicio; al menos 2 deben ser con profesionales de instituciones con convenio. Las pautas y el listado de instituciones están en el instructivo.
+
+[[button|Descargar el instructivo|{{instructivo_url}}]]
+
+**Tené en cuenta** Esta práctica tiene su propio grado de dificultad: depende de que las y los profesionales puedan recibirte para una entrevista, y no están obligados a brindarla. Por este motivo, varios estudiantes no llegaron a completarla. Te recomendamos no perder de vista tu finalización: si podés, cursá en paralelo otra PPS por convocatoria para no depender solo de esta.
+
+**Plazo** La tarea de entrega está abierta hasta el 31 de diciembre. No hay fecha de entrega intermedia, pero después del cierre anual no se aceptan nuevas entregas: lo que quede pendiente se retoma el año siguiente como una PPS nueva.
+
+[[button|Ver mi práctica en Mi Panel|{{panel_url}}]]
+
+Saludos,
+
+Blas
+Coordinador de Prácticas Profesionales Supervisadas
+Licenciatura en Psicología
+UFLO`,
   },
   recordatorio_consentimiento: {
     subject: "Recordatorio urgente: Tenés 12 horas para confirmar tu PPS",
@@ -140,6 +166,7 @@ interface EmailData {
   customSubject?: string;
   customBody?: string;
   publicReason?: string;
+  orientation?: string;
   cc?: string | string[];
 }
 
@@ -428,6 +455,8 @@ export const sendSmartEmail = async (
       .replace(/{{estado_nuevo}}/g, data.newState || "")
       .replace(/{{notas}}/g, data.notes || "")
       .replace(/{{motivo_publico}}/g, data.publicReason || "")
+      .replace(/{{orientacion}}/g, data.orientation || "")
+      .replace(/{{instructivo_url}}/g, RELEVAMIENTO_INSTRUCTIVO_URL)
       .replace(/{{encuentro_inicial}}/g, encuentroText);
 
     const firstName =

@@ -40,8 +40,8 @@ insert into public.aula_entregas (
 )
 overriding system value
 values (
-  1999999901, 'laboral', '[TEST] Entrevistas a Profesionales',
-  '1999999901', true, 3615, 2099, '[TEST] Entrevistas a Profesionales'
+  1999999901, 'laboral', '[TEST] Relevamiento Profesional',
+  '1999999901', true, 3615, 2099, '[TEST] Relevamiento Profesional'
 );
 
 set local role authenticated;
@@ -55,11 +55,11 @@ declare
   v_assignment uuid;
 begin
   perform public.set_special_pps_task_v1(
-    'entrevistas_profesionales', 'laboral_comunitaria', 2099::smallint, v_catalog_id
+    'relevamiento_profesional', 'laboral_comunitaria', 2099::smallint, v_catalog_id
   );
 
   v_result := public.assign_special_pps_v1(
-    v_student, 'entrevistas_profesionales', 'comunitaria', 2099::smallint, 20
+    v_student, 'relevamiento_profesional', 'comunitaria', 2099::smallint, 20
   );
   v_practice := (v_result ->> 'practica_id')::uuid;
   v_assignment := (v_result ->> 'assignment_id')::uuid;
@@ -89,7 +89,7 @@ begin
 
   begin
     perform public.assign_special_pps_v1(
-      v_student, 'entrevistas_profesionales', 'laboral', 2099::smallint, 20
+      v_student, 'relevamiento_profesional', 'laboral', 2099::smallint, 20
     );
     raise exception 'A duplicate active annual assignment was accepted';
   exception when unique_violation then null;

@@ -246,7 +246,7 @@ const FAMILIES: FamilyDef[] = [
       {
         id: "pps-especiales",
         name: "PPS especiales",
-        desc: "Asigná relevamientos o entrevistas y conectá la tarea exacta del Campus.",
+        desc: "Asigná relevamientos y proyectos de investigación, y conectá la tarea del Campus.",
         icon: "assignment_ind",
       },
     ],
