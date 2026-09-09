@@ -103,6 +103,33 @@ Coordinador de Prácticas Profesionales Supervisadas
 Licenciatura en Psicología
 UFLO`,
   },
+  {
+    id: "relevamiento_asignado",
+    label: "PPS Relevamiento asignada",
+    description:
+      'Se envía al asignar la PPS "Relevamiento del Ejercicio Profesional" desde Taller → PPS especiales. Incluye el instructivo y el aviso de cierre anual.',
+    icon: "record_voice_over",
+    variables: ["{{nombre_alumno}}", "{{orientacion}}", "{{instructivo_url}}", "{{panel_url}}"],
+    defaultSubject: "Te asignamos la PPS: Relevamiento del Ejercicio Profesional en Psicología",
+    defaultBody: `Hola {{nombre_alumno}},
+
+Te asignamos la PPS **Relevamiento del Ejercicio Profesional en Psicología** para acreditar en la orientación {{orientacion}}. Consiste en gestionar y realizar 3 entrevistas a psicólogos/as en ejercicio; al menos 2 deben ser con profesionales de instituciones con convenio. Las pautas y el listado de instituciones están en el instructivo.
+
+[[button|Descargar el instructivo|{{instructivo_url}}]]
+
+**Tené en cuenta** Esta práctica tiene su propio grado de dificultad: depende de que las y los profesionales puedan recibirte para una entrevista, y no están obligados a brindarla. Por este motivo, varios estudiantes no llegaron a completarla. Te recomendamos no perder de vista tu finalización: si podés, cursá en paralelo otra PPS por convocatoria para no depender solo de esta.
+
+**Plazo** La tarea de entrega está abierta hasta el 31 de diciembre. No hay fecha de entrega intermedia, pero después del cierre anual no se aceptan nuevas entregas: lo que quede pendiente se retoma el año siguiente como una PPS nueva.
+
+[[button|Ver mi práctica en Mi Panel|{{panel_url}}]]
+
+Saludos,
+
+Blas
+Coordinador de Prácticas Profesionales Supervisadas
+Licenciatura en Psicología
+UFLO`,
+  },
 ];
 
 const PUSH_SCENARIOS: AutomationScenario[] = [
@@ -360,6 +387,14 @@ const EmailAutomationManager: React.FC = () => {
         finalSubject = finalSubject.replace("{{institucion}}", "Hospital Modelo");
       } else if (scenario.id === "sac") {
         rawTextBody = rawTextBody.replace("{{nombre_pps}}", "Práctica Profesional Supervisada");
+      } else if (scenario.id === "relevamiento_asignado") {
+        rawTextBody = rawTextBody
+          .replace(/{{orientacion}}/g, "Clínica")
+          .replace(
+            /{{instructivo_url}}/g,
+            "https://qxnxtnhtbpsgzprqtrjl.supabase.co/storage/v1/object/public/plantillas/instructivos/relevamiento-ejercicio-profesional.pdf"
+          )
+          .replace(/{{panel_url}}/g, "https://pps-psico.github.io/#/student");
       }
 
       const firstName = studentName.split(" ")[0];

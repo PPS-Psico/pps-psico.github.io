@@ -15,14 +15,12 @@ import {
 } from "../../constants";
 import type { Database } from "../../types/supabase";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import { sendSmartEmail } from "../../utils/emailService";
 import { injectScopedStyles } from "../../utils/injectScopedStyles";
 import Loader from "../Loader";
 import Toast from "../ui/Toast";
 
-type ActivityType =
-  | "relevamiento_profesional"
-  | "entrevistas_profesionales"
-  | "proyecto_investigacion";
+type ActivityType = "relevamiento_profesional" | "proyecto_investigacion";
 type OrientationKey = "clinica" | "laboral" | "comunitaria" | "educacional";
 type TaskOrientationKey = "clinica" | "laboral_comunitaria" | "educacional" | "general";
 
@@ -62,11 +60,6 @@ const ACTIVITIES: Array<{ id: ActivityType; label: string; shortLabel: string }>
     shortLabel: "Relevamiento profesional",
   },
   {
-    id: "entrevistas_profesionales",
-    label: "Entrevistas a Profesionales",
-    shortLabel: "Entrevistas profesionales",
-  },
-  {
     id: "proyecto_investigacion",
     label: "Informe de un proyecto de investigación de la universidad",
     shortLabel: "Proyecto de investigación",
@@ -98,11 +91,11 @@ const TASK_ORIENTATIONS: Array<{
 ];
 
 /**
- * Relevamiento y Entrevistas piden un trabajo distinto en cada área, así que
- * llevan una tarea por orientación. En un proyecto de investigación el
- * entregable es siempre el mismo informe y la orientación que acredita la
- * decide Coordinación caso por caso, así que alcanza con una única tarea
- * compartida y la orientación se elige recién al asignar.
+ * Relevamiento pide un trabajo distinto en cada área, así que lleva una tarea
+ * por orientación. En un proyecto de investigación el entregable es siempre el
+ * mismo informe y la orientación que acredita la decide Coordinación caso por
+ * caso, así que alcanza con una única tarea compartida y la orientación se
+ * elige recién al asignar.
  */
 const RESEARCH_TASK_ORIENTATION: (typeof TASK_ORIENTATIONS)[number] = {
   id: "general",
@@ -202,9 +195,8 @@ function taskOrientationFor(activity: ActivityType, value: OrientationKey): Task
 
 function taskMatchesActivity(task: TaskRow, activity: ActivityType): boolean {
   const name = `${task.moodle_name ?? ""} ${task.institucion}`;
-  if (activity === "relevamiento_profesional") return /relevamiento/i.test(name);
-  if (activity === "entrevistas_profesionales")
-    return /entrevistas?\s+a\s+profesionales/i.test(name);
+  if (activity === "relevamiento_profesional")
+    return /relevamiento|entrevistas?\s+a\s+profesionales/i.test(name);
   return /investigaci[oó]n/i.test(name);
 }
 
@@ -323,12 +315,34 @@ const AsignacionesEspecialesPanel: React.FC<AsignacionesEspecialesPanelProps> = 
         p_project_title: needsProjectTitle ? projectTitle.trim() : undefined,
       });
       if (error) throw error;
+      return { student: selectedStudent, activityType: activity, orientationKey: orientation };
     },
-    onSuccess: async () => {
-      setToast({
-        message: "PPS asignada. El estudiante ya tiene su tarea exacta en Entregas.",
-        type: "success",
-      });
+    onSuccess: async ({ student, activityType, orientationKey }) => {
+      // Relevamiento manda el instructivo por correo (con el aviso de cierre
+      // anual). El envío no bloquea la asignación y respeta el toggle de la
+      // plantilla en Automatizaciones.
+      const correo = student.correo?.trim();
+      if (!isTestingMode && activityType === "relevamiento_profesional" && correo) {
+        const { success, message } = await sendSmartEmail("relevamiento_asignado", {
+          studentName: student.nombre ?? "",
+          studentEmail: correo,
+          ppsName: "Relevamiento del Ejercicio Profesional en Psicología",
+          orientation: orientationLabel(orientationKey),
+        });
+        setToast(
+          success
+            ? { message: "PPS asignada. Le mandamos el instructivo por correo.", type: "success" }
+            : {
+                message: `PPS asignada, pero el correo no salió: ${message ?? "error"}`,
+                type: "warning",
+              }
+        );
+      } else {
+        setToast({
+          message: "PPS asignada. El estudiante ya tiene su tarea exacta en Entregas.",
+          type: "success",
+        });
+      }
       setSelectedStudent(null);
       setStudentSearch("");
       setProjectTitle("");

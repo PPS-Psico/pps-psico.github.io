@@ -23,15 +23,18 @@ deben confundirse con capacidades productivas.
 
 ### PPS especiales sin lanzamiento
 
-`relevamiento_profesional` y `entrevistas_profesionales` se asignan desde el
+`relevamiento_profesional` y `proyecto_investigacion` se asignan desde el
 Taller admin y no crean una intención de lanzamiento. La asignación crea una
 `practicas` de tipo `actividad_especial`, sin fechas, y un vínculo confirmado en
 `practica_moodle_tareas`. La tarea se elige por actividad, año y grupo de
-orientación: `clinica`, `laboral_comunitaria` o `educacional`.
+orientación: `clinica`, `laboral_comunitaria` o `educacional`
+(`general` para investigación).
 
-Entrevistas 2026 usa los CMID verificados `1224814` (Clínica), `1097090`
-(Laboral/Comunitaria) y `1224816` (Educacional). Son tareas compartidas anuales,
-sin vencimiento; los estudiantes sólo acceden a la que coordinación les asignó.
+Relevamiento 2026 usa los CMID verificados `1224814` (Clínica), `1097090`
+(Laboral/Comunitaria) y `1224816` (Educacional) — antes rotulados "Entrevistas a
+Profesionales", que era el nombre viejo de la misma actividad. Son tareas
+compartidas anuales, sin vencimiento; los estudiantes sólo acceden a la que
+coordinación les asignó.
 
 ## 2. Tablas
 

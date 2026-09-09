@@ -80,6 +80,13 @@ export type Database = {
             foreignKeyName: "accreditation_transition_events_trigger_practica_id_fkey"
             columns: ["trigger_practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "accreditation_transition_events_trigger_practica_id_fkey"
+            columns: ["trigger_practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -1390,6 +1397,7 @@ export type Database = {
           mensaje_whatsapp: string | null
           modalidad_cupo: string
           moodle_pilot_dedicated: boolean
+          moodle_task_policy: string
           nombre_pps: string | null
           notas_gestion: string | null
           orientacion: string | null
@@ -1405,6 +1413,7 @@ export type Database = {
           selection_closed_at: string | null
           selection_closed_by: string | null
           tipo_actividad: string
+          unidad_id: number | null
           updated_at: string | null
         }
         Insert: {
@@ -1442,6 +1451,7 @@ export type Database = {
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
           moodle_pilot_dedicated?: boolean
+          moodle_task_policy?: string
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null
@@ -1457,6 +1467,7 @@ export type Database = {
           selection_closed_at?: string | null
           selection_closed_by?: string | null
           tipo_actividad?: string
+          unidad_id?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -1494,6 +1505,7 @@ export type Database = {
           mensaje_whatsapp?: string | null
           modalidad_cupo?: string
           moodle_pilot_dedicated?: boolean
+          moodle_task_policy?: string
           nombre_pps?: string | null
           notas_gestion?: string | null
           orientacion?: string | null
@@ -1509,9 +1521,18 @@ export type Database = {
           selection_closed_at?: string | null
           selection_closed_by?: string | null
           tipo_actividad?: string
+          unidad_id?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lanzamientos_pps_unidad_id_fkey"
+            columns: ["unidad_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_entrega"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       moodle_grade_import_batches: {
         Row: {
@@ -1696,6 +1717,13 @@ export type Database = {
             foreignKeyName: "moodle_grade_observations_practica_id_fkey"
             columns: ["practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_observations_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -1733,6 +1761,13 @@ export type Database = {
           requested_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "moodle_grade_reopen_events_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
           {
             foreignKeyName: "moodle_grade_reopen_events_practica_id_fkey"
             columns: ["practica_id"]
@@ -1898,6 +1933,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "moodle_grade_observations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_grade_snapshots_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
           },
           {
             foreignKeyName: "moodle_grade_snapshots_practica_id_fkey"
@@ -2141,6 +2183,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "moodle_task_intents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moodle_task_expected_participants_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
           },
           {
             foreignKeyName: "moodle_task_expected_participants_practica_id_fkey"
@@ -2434,6 +2483,13 @@ export type Database = {
             foreignKeyName: "penalizaciones_practica_id_fkey"
             columns: ["practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "penalizaciones_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -2483,6 +2539,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "aula_entregas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practica_moodle_tareas_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: true
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
           },
           {
             foreignKeyName: "practica_moodle_tareas_practica_id_fkey"
@@ -2885,6 +2948,13 @@ export type Database = {
             foreignKeyName: "solicitudes_modificacion_pps_practica_id_fkey"
             columns: ["practica_id"]
             isOneToOne: false
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "solicitudes_modificacion_pps_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: false
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -3115,6 +3185,13 @@ export type Database = {
             foreignKeyName: "special_pps_assignments_practica_id_fkey"
             columns: ["practica_id"]
             isOneToOne: true
+            referencedRelation: "practica_estado_entrega"
+            referencedColumns: ["practica_id"]
+          },
+          {
+            foreignKeyName: "special_pps_assignments_practica_id_fkey"
+            columns: ["practica_id"]
+            isOneToOne: true
             referencedRelation: "practicas"
             referencedColumns: ["id"]
           },
@@ -3173,6 +3250,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      unidad_entrega_tareas: {
+        Row: {
+          aula_entrega_id: number
+          compartida: boolean
+          created_at: string
+          unidad_id: number
+        }
+        Insert: {
+          aula_entrega_id: number
+          compartida?: boolean
+          created_at?: string
+          unidad_id: number
+        }
+        Update: {
+          aula_entrega_id?: number
+          compartida?: boolean
+          created_at?: string
+          unidad_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unidad_entrega_tareas_aula_entrega_id_fkey"
+            columns: ["aula_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "aula_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unidad_entrega_tareas_unidad_id_fkey"
+            columns: ["unidad_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_entrega"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unidades_entrega: {
+        Row: {
+          clave: string
+          created_at: string
+          id: number
+          nombre: string
+          nota: string | null
+        }
+        Insert: {
+          clave: string
+          created_at?: string
+          id?: number
+          nombre: string
+          nota?: string | null
+        }
+        Update: {
+          clave?: string
+          created_at?: string
+          id?: number
+          nombre?: string
+          nota?: string | null
+        }
+        Relationships: []
       }
       verification_attempts: {
         Row: {
@@ -3292,9 +3429,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      practica_estado_entrega: {
+        Row: {
+          cmid_evidencia: number | null
+          cmid_vinculado: number | null
+          desde_tarea_hermana: boolean | null
+          entregado: boolean | null
+          especialidad: string | null
+          estado: string | null
+          estudiante_id: string | null
+          grade_display: string | null
+          grade_max: number | null
+          grade_value: number | null
+          lanzamiento_id: string | null
+          nombre_institucion: string | null
+          observed_at: string | null
+          practica_id: string | null
+          submitted_at: string | null
+          submitted_at_display: string | null
+          tarea_evidencia: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_practica_estudiante"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_practica_lanzamiento"
+            columns: ["lanzamiento_id"]
+            isOneToOne: false
+            referencedRelation: "lanzamientos_pps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicas_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      activate_started_launches: { Args: never; Returns: number }
       admin_reset_password: {
         Args: { legajo_input: string; new_password: string }
         Returns: undefined
@@ -3309,6 +3490,16 @@ export type Database = {
           penalizacion_id: string
           practica_id: string
         }[]
+      }
+      apply_moodle_evidence_decision_v1: {
+        Args: {
+          p_action: string
+          p_decision: string
+          p_expected_academic: Json
+          p_expected_application?: string
+          p_reason: string
+        }
+        Returns: string
       }
       archive_lanzamientos_after_start_grace: { Args: never; Returns: number }
       assign_special_pps_v1: {
@@ -3330,6 +3521,23 @@ export type Database = {
       cancel_special_pps_assignment_v1: {
         Args: { p_assignment_id: string; p_reason: string }
         Returns: boolean
+      }
+      canonical_orientacion_label: {
+        Args: { p_value: string }
+        Returns: string
+      }
+      capture_jefe_moodle_evidence_v1: {
+        Args: {
+          p_academic_year: number
+          p_actor_moodle_user_id: number
+          p_actor_moodle_username: string
+          p_course_id: number
+          p_observed_at: string
+          p_preview_key?: string
+          p_request_id: string
+          p_tasks: Json
+        }
+        Returns: Json
       }
       check_fcm_token_exists: { Args: { uid: string }; Returns: boolean }
       claim_consentimiento_final_reminder_batch: {
@@ -3563,6 +3771,31 @@ export type Database = {
           penalizacion_id: string
           practicas_eliminadas: number
         }[]
+      }
+      decide_moodle_evidence_v1: {
+        Args: {
+          p_action: string
+          p_case: string
+          p_evidence: string
+          p_grade?: number
+          p_practice: string
+          p_reason: string
+          p_revision: number
+        }
+        Returns: number
+      }
+      decide_moodle_evidence_v2: {
+        Args: {
+          p_action: string
+          p_case: string
+          p_evidence: string
+          p_grade?: number
+          p_practice: string
+          p_qualitative_grade?: string
+          p_reason: string
+          p_revision: number
+        }
+        Returns: number
       }
       delete_fcm_token: { Args: { p_user_id: string }; Returns: undefined }
       delete_fcm_token_user: { Args: { uid: string }; Returns: boolean }
@@ -4121,6 +4354,17 @@ export type Database = {
       }
       identity_ip_rate_limited: { Args: never; Returns: boolean }
       increment_snooze_count: { Args: { reminder_id: string }; Returns: number }
+      ingest_student_moodle_evidence_v1: {
+        Args: {
+          p_course: number
+          p_moodle_user: number
+          p_observed: string
+          p_request: string
+          p_tasks: Json
+          p_username: string
+        }
+        Returns: Json
+      }
       inscribir_convocatoria_multiopcion: {
         Args: {
           p_datos?: Json
@@ -4262,6 +4506,24 @@ export type Database = {
         Returns: string
       }
       mark_password_changed: { Args: never; Returns: undefined }
+      moodle_evidence_inbox_v1: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      moodle_evidence_inbox_v2: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      moodle_evidence_scan_queue_v1: {
+        Args: { p_preview_key?: string }
+        Returns: {
+          academic_year: number
+          area_keys: string[]
+          cmid: number
+          course_id: number
+          task_name: string
+        }[]
+      }
       moodle_task_close_state_v1: {
         Args: never
         Returns: {
@@ -4278,8 +4540,16 @@ export type Database = {
       practica_computa: { Args: { p_estado: string }; Returns: boolean }
       process_consentimiento_timeouts: { Args: never; Returns: undefined }
       publish_scheduled_launches: { Args: never; Returns: number }
+      read_moodle_practice_snapshots_v1: {
+        Args: { p_student: string }
+        Returns: Json
+      }
       reconcile_moodle_task_intents_v1: {
         Args: { p_launch_id?: string }
+        Returns: Json
+      }
+      reconcile_student_moodle_evidence_v1: {
+        Args: { p_student: string }
         Returns: Json
       }
       register_campus_student: {
