@@ -307,10 +307,12 @@ function PendingDeliveryCard({
               {delivery.hours ?? "—"} <span>hs</span>
             </dd>
           </div>
-          <div>
-            <dt>Última lectura</dt>
-            <dd>{observedLabel ?? "Sin lectura"}</dd>
-          </div>
+          {canReopenGrades && (
+            <div>
+              <dt>Última lectura</dt>
+              <dd>{observedLabel ?? "Sin lectura"}</dd>
+            </div>
+          )}
         </dl>
       </div>
 
