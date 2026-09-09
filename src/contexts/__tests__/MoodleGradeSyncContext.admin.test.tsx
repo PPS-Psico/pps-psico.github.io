@@ -105,6 +105,10 @@ describe("MoodleGradeSyncProvider — lectura administrativa", () => {
     expect(rpcSpy).toHaveBeenCalledWith("read_moodle_practice_snapshots_v1", {
       p_student: "student-selected",
     });
+    expect(rpcSpy.mock.calls.map(([name]) => name)).toEqual([
+      "reconcile_student_moodle_evidence_v1",
+      "read_moodle_practice_snapshots_v1",
+    ]);
     expect(result.current.lastObservedAt).toBe(snapshot.observed_at);
     expect(result.current.snapshotsByPractice.get("practice-1")?.grade_value).toBe(90);
     // Coordinación necesita el vínculo vigente para no mostrar como actual un

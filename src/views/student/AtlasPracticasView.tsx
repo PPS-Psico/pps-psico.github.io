@@ -18,7 +18,7 @@ import type {
   SolicitudModificacionPPS,
 } from "../../types";
 import { cleanDbValue, formatDate, normalizeStringForComparison } from "../../utils/formatters";
-import { presentMoodleGrade } from "../../utils/moodleGradePresentation";
+import { presentStudentMoodleGrade } from "../../utils/moodleGradePresentation";
 import { resolveGradeReadiness } from "../../domain/finalizacion/gradeReadiness";
 import { canShowPpsAssignmentSummary } from "../../components/student/PpsAssignmentSummary";
 import {
@@ -162,7 +162,7 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
       );
     }
     const snapshot = snapshotsByPractice.get(p.id);
-    const campusGrade = presentMoodleGrade(snapshot);
+    const campusGrade = presentStudentMoodleGrade(snapshot);
     if (isPracticeActive(estado)) {
       // Hay PPS -- los talleres de Fundación Tiempo, por ejemplo -- donde el
       // informe se entrega y se corrige al principio y la práctica sigue
@@ -229,9 +229,9 @@ const AtlasPracticasView: React.FC<AtlasPracticasViewProps> = ({
           fontSize: 12.5,
           fontFamily: "var(--font-mono)",
         }}
-        title={campusGrade?.detail || "Todavía no hay datos sincronizados desde Campus"}
+        title={undefined}
       >
-        {campusGrade?.compact || "Pend."}
+        {campusGrade.compact}
       </span>
     );
   };

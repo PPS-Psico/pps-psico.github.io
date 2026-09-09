@@ -22,7 +22,7 @@ it("no convierte notas ni marcas manuales en entregas o notas de Campus", () => 
   for (const grade of ["9", "6", "5", "Aprobado"]) {
     const d = { ...delivery, recordedGrade: grade };
     expect(getDeliveryBucket(d, snapshot)).toBe("pending");
-    expect(getDeliveryBucket(d)).toBe("unknown");
+    expect(getDeliveryBucket(d)).toBe("pending");
     expect(deliveryPresentation(d, { ...snapshot, academicGrade: grade }).hasGrade).toBe(false);
   }
 });
@@ -45,4 +45,35 @@ it("conserva una asignación cualitativa revisada por coordinación", () => {
     compact: "Aprobado",
     hasGrade: true,
   });
+});
+
+it.each(["not_submitted", "no_access", "parse_error"])(
+  "no expone diagnósticos de %s como estado del estudiante",
+  (task_status) => {
+    expect(deliveryPresentation(delivery, { ...snapshot, task_status })).toMatchObject({
+      label: "Pendiente de entrega",
+      compact: "Pendiente de entrega",
+      detail: "",
+      tone: "neutral",
+    });
+  }
+);
+it("entrega compartida sin nota atribuida permanece en corrección", () => {
+  expect(
+    deliveryPresentation(delivery, {
+      ...snapshot,
+      submitted: true,
+      inheritedFromSharedTask: true,
+    })
+  ).toMatchObject({ label: "En corrección", detail: "", hasGrade: false });
+});
+it("conserva la nota confirmada sin exponer avisos de revisión", () => {
+  expect(
+    deliveryPresentation(delivery, {
+      ...snapshot,
+      reviewedAllocation: true,
+      reviewRequired: true,
+      academicGrade: "9",
+    })
+  ).toMatchObject({ label: "9", compact: "9", detail: "", tone: "ok" });
 });

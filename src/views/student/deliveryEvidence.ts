@@ -1,6 +1,6 @@
 import type { MoodleGradeSnapshot } from "../../contexts/MoodleGradeSyncContext";
 import {
-  presentMoodleGrade,
+  presentStudentMoodleGrade,
   type MoodleGradePresentation,
 } from "../../utils/moodleGradePresentation";
 import type { GuidedDelivery } from "./deliveryGuide";
@@ -21,25 +21,12 @@ export function getDeliveryBucket(
   snapshot?: MoodleGradeSnapshot
 ): DeliveryBucket {
   if (isDelivered(delivery, snapshot)) return "delivered";
-  if (delivery.statusLabel === "Todavía en cursada") return "upcoming";
-  if (snapshot?.task_status === "not_submitted") return "pending";
-
-  return "unknown";
+  return "pending";
 }
 
 export function deliveryPresentation(
-  delivery: GuidedDelivery,
+  _delivery: GuidedDelivery,
   snapshot?: MoodleGradeSnapshot
 ): MoodleGradePresentation {
-  return (
-    presentMoodleGrade(
-      snapshot && !snapshot.reviewedAllocation ? { ...snapshot, academicGrade: null } : snapshot
-    ) ?? {
-      label: delivery.statusLabel,
-      detail: delivery.statusDetail,
-      compact: delivery.statusLabel,
-      tone: delivery.statusTone,
-      hasGrade: false,
-    }
-  );
+  return presentStudentMoodleGrade(snapshot);
 }

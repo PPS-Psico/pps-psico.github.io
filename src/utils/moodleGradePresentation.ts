@@ -47,6 +47,34 @@ export interface MoodleGradePresentation {
   hasGrade: boolean;
 }
 
+/** Student vocabulary is independent from internal reconciliation diagnostics. */
+export function presentStudentMoodleGrade(
+  snapshot: MoodleGradeLike | null | undefined
+): MoodleGradePresentation {
+  const grade = presentMoodleGrade(
+    snapshot && !snapshot.reviewedAllocation ? { ...snapshot, academicGrade: null } : snapshot
+  );
+  const delivered = Boolean(
+    snapshot &&
+    (snapshot.reviewedAllocation ||
+      snapshot.submitted ||
+      snapshot.task_status === "submitted" ||
+      snapshot.task_status === "graded")
+  );
+  const label = grade?.hasGrade
+    ? grade.compact
+    : delivered
+      ? "En corrección"
+      : "Pendiente de entrega";
+  return {
+    label,
+    compact: label,
+    detail: "",
+    hasGrade: grade?.hasGrade ?? false,
+    tone: grade?.hasGrade ? "ok" : delivered ? "info" : "neutral",
+  };
+}
+
 type FinalMoodleGrade = MoodleGradeLike & {
   task_status: "graded";
   grade_value: number;
