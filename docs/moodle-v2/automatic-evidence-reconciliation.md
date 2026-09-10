@@ -7,6 +7,62 @@ El cliente sólo envía el identificador del estudiante, nunca la nota a aplicar
 La RPC autoriza al propio estudiante o a coordinación; los lectores de jefatura
 y dirección conservan sus permisos de lectura.
 
+## Cierre del circuito de escritura — 9/9/2026
+
+La migración `20260909235159_moodle_single_grade_authority` elimina las dos
+escrituras paralelas que todavía subsistían. El trigger de observaciones legacy
+y el de cambios de escala delegan en `reconcile_moodle_case_v1`; ninguno actualiza
+directamente `practicas`. Las capturas originales de estudiante y jefatura
+reconcilian al guardarse, sin esperar a que el alumno abra el panel.
+
+`plan_moodle_case_v1` es una función `STABLE` de solo lectura: contiene las reglas
+de atribución y protección de decisiones humanas. El reconciliador consume ese
+plan después de bloquear los expedientes y el caso. La decisión manual de
+coordinación mantiene su circuito explícito, autenticado y auditado.
+
+El número de una tarea sin atribución ya no funciona como nota de respaldo en
+la proyección canónica. El expediente conserva la nota histórica para revisión
+administrativa; el estudiante ve `En corrección` cuando hay entrega, hasta que
+se confirme una nota para esa PPS. No se declara incorrecta ni se borra una nota
+por falta de evidencia, por una fecha temprana o por un fallo de lectura.
+
+### Revisión histórica operativa
+
+```sh
+node scripts/moodle-grade-history.mjs preview output/moodle-history/primera-revision
+node scripts/moodle-grade-history.mjs apply output/moodle-history/primera-revision
+```
+
+El primer comando abre transacciones `READ ONLY`, pagina hasta completar los
+casos conservados y escribe un manifiesto local con el diagnóstico y los
+expedientes previos. No llama al reconciliador ni modifica la base. Los archivos
+contienen información académica y deben permanecer fuera de Git.
+
+El segundo comando exige ese diagnóstico completo del mismo proyecto. Cada lote
+vuelve a comparar la evidencia, la escala, las proyecciones y el expediente con
+la fotografía previa. Si cambió algo, registra `stale_preview` y no fuerza la
+aplicación. Un nuevo diagnóstico puede procesar esos casos. Los reintentos con
+el mismo identificador de corrida devuelven el resultado ya registrado.
+
+`private.moodle_history_reviews` conserva cada diagnóstico y resultado. Las
+aplicaciones aceptadas guardan el antes/después en
+`private.moodle_evidence_applications`; las ambigüedades permanecen en
+`private.moodle_evidence_reconciliation` y en la bandeja de evidencia de
+coordinación, sin crear estados adicionales para estudiantes. Un diagnóstico
+de ambigüedad es una solicitud de revisión, no una prueba de nota incorrecta.
+
+Para consultar el resultado de una corrida desde una sesión SQL administrativa:
+
+```sql
+select outcome->>'reason' as reason, count(*)
+from private.moodle_history_reviews
+where run_id = '<run del manifiesto>'::uuid
+group by 1;
+```
+
+La revisión de expedientes no crea, cierra ni cambia tareas Moodle: los nuevos
+lanzamientos siguen usando `dedicated` y los históricos conservan `legacy_shared`.
+
 ## Reglas automáticas v1
 
 - Identidad sin conflictos, curso 3615, captura original `student` o `jefe`.
@@ -20,6 +76,9 @@ y dirección conservan sus permisos de lectura.
   `Informe <identificador>: <nota> (<nota escrita>)`, con número y texto
   concordantes. Cada identificador debe corresponder a un único lanzamiento
   del estudiante. No se copia el número global a todas las prácticas.
+  La migración `20260910000709` excluye comentarios terminados en `...` o `…`:
+  una vista recortada de la tabla de calificaciones requiere la lectura completa
+  antes de atribuir informes (`incomplete_allocation_feedback`).
 - Sólo notas numéricas de 4 a 10 en tareas posteriores a 2024. Los comentarios
   libres, escalas ambiguas y aprobaciones cualitativas continúan en revisión.
   El criterio de 2024 `Aprobado`/`Desaprobado` permanece sin equivalencias nuevas.
@@ -48,7 +107,10 @@ de conciliación. El botón Actualizar conserva su función de reintento.
 
 ## Verificación
 
-- Contrato portable: `supabase/tests/moodle_auto_evidence.sql`.
+- Contratos: `supabase/tests/moodle_auto_evidence.sql` y
+  `supabase/tests/moodle_grade_authority.sql`. El segundo cubre observaciones
+  legacy, cambio de escala con/sin proyección, protección de notas ambiguas,
+  vista canónica, permisos, diagnóstico obsoleto y reintento de lote.
 - Prueba transaccional con correcciones reales y rollback: atribución separada,
   escala directa, proyección, repetición, corrección posterior con notas distintas,
   respeto de edición manual, comentario ambiguo y fallo de lectura.
