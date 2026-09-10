@@ -219,9 +219,9 @@ export const MoodleGradeSyncProvider: React.FC<{ children: ReactNode }> = ({ chi
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["moodle-grade-snapshots", studentId] }),
-        // La Edge Function inserta la observacion y el trigger del servidor aplica
-        // una eventual correccion en practicas.nota. Revalidamos el panel para que
-        // Inicio y Practicas reflejen la nota sin que el alumno cambie de seccion.
+        // La captura original aplica únicamente atribuciones validadas por el
+        // circuito de evidencia. La observación legacy conserva compatibilidad,
+        // pero ya no puede escribir una nota por un camino independiente.
         queryClient.invalidateQueries({ queryKey: ["practicas"] }),
         queryClient.invalidateQueries({ queryKey: ["accreditationTransition", studentId] }),
         queryClient.invalidateQueries({ queryKey: ["finalizacionRequest"] }),

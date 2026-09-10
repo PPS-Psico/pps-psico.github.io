@@ -90,3 +90,6 @@ tmp/
 /.playwright/
 
 __pycache__/
+
+# Private academic review previews and application receipts
+/artifacts/moodle-evidence/history-authority-*/

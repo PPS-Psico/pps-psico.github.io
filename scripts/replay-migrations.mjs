@@ -33,6 +33,7 @@ const portableContracts = [
   "selection_close_contract.sql",
   "online_practice_classification_contract.sql",
   "moodle_auto_evidence.sql",
+  "moodle_grade_authority.sql",
 ];
 
 function redact(value = "") {

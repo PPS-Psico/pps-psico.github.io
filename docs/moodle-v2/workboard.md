@@ -264,3 +264,20 @@ código no puede declarar completo el paso operativo.
   en esta sesión, intención generada por el reconciliador. Confirmación Moodle pendiente.
 - Los restantes históricos sin vínculo permanecen en attention; no adoptar por nombre.
 - El piloto real de entrega/corrección/reentrega 2027 continúa pendiente.
+
+### 9/9/2026 — cierre de la autoridad de notas
+
+- Aplicadas y registradas en el ledger: `20260909235159` y `20260910000709`.
+- Los dos triggers legacy delegan; ninguna observación o cambio de escala
+  modifica notas por fuera de la atribución auditada. Las capturas de estudiante
+  y jefatura reconcilian al guardarse.
+- Planner de solo lectura compartido por sincronización e histórico. Los lotes
+  comparan evidencia y expediente con el diagnóstico previo y rechazan cambios
+  concurrentes; no degradan notas ambiguas.
+- La proyección del estudiante excluye números de tareas sin atribución y
+  mantiene los tres estados acordados. Los expedientes históricos se conservan.
+- Contrato SQL sintético y regresión de correcciones reales probados mediante
+  rollback. Docker local no estaba disponible para un replay aislado completo.
+- Procedimiento y límites: [reconciliación automática](automatic-evidence-reconciliation.md).
+  La revisión de excepciones académicas no equivale a un pendiente de implementación
+  ni habilita a inferir notas, recrear tareas compartidas o cerrarlas.
