@@ -4,22 +4,29 @@
 concurrencia_resoluciones.py — Competencia real entre dos conexiones sobre las
 RPC de resolucion de solicitudes de PPS.
 
-Por que existe: las RPC bloquean la fila con FOR UPDATE, y eso es lo unico que
-impide que un doble clic acredite dos veces. Ese bloqueo no se puede observar
-desde una sola conexion —las llamadas salen una despues de la otra y nunca
-compiten—, asi que hasta ahora era la unica propiedad del sistema que estaba
-afirmada y no demostrada.
+Por que existe: el FOR UPDATE de las RPC es lo unico que impide que un doble clic
+acredite dos veces. Eso no se puede observar desde una sola conexion —las
+llamadas salen una despues de la otra y nunca compiten—, asi que era la ultima
+propiedad del sistema afirmada y no demostrada.
 
-Como fuerza la competencia: no alcanza con lanzar dos llamadas "al mismo tiempo"
-y confiar en que se solapen. La conexion A abre una transaccion y toma el lock de
-la solicitud con SELECT ... FOR UPDATE; recien entonces la conexion B llama a la
-RPC, que queda esperando ese lock. El arnes verifica que B efectivamente quedo
-bloqueada antes de continuar: si B contesta enseguida, el escenario se reporta
-como NO CONCLUYENTE en vez de pasar. Un verde que no compitio no prueba nada.
+Como fuerza la competencia:
 
-ESCRIBE EN LA BASE. Crea solicitudes sinteticas, las resuelve y las borra al
-terminar. No usa las solicitudes reales de la cola. Aun asi, correr contra
-produccion deja rastros si el proceso muere en el medio, por eso exige
+  · A abre una transaccion y llama a la RPC SIN confirmar. La RPC toma sus
+    bloqueos de fila y los retiene mientras la transaccion siga abierta.
+  · B llama a la suya y queda esperando esos bloqueos.
+  · El arnes NO deduce el bloqueo de un tiempo sin respuesta: lo comprueba con
+    pg_blocking_pids(pid_b), que tiene que contener el pid de A. Si no lo logra
+    dentro del plazo, el escenario es NO CONCLUYENTE, no un aprobado.
+  · Recien entonces A confirma y B sigue. Se captura lo que le paso a B.
+
+No usa SELECT ... FOR UPDATE desde el arnes: ese comando exige privilegio UPDATE
+y `authenticated` no lo tiene sobre estas tablas —se le revoco a proposito para
+que la resolucion solo se escriba por RPC—. Tomar el bloqueo desde adentro de la
+RPC, que es SECURITY DEFINER, es ademas mas fiel a lo que pasa en produccion.
+
+ESCRIBE EN LA BASE. Todo lo que crea es sintetico y propio (institucion,
+estudiante, practica, solicitudes), marcado con un id de corrida para poder
+barrer residuos si el proceso muere. No toca ningun dato real. Aun asi exige
 --confirmo-entorno-de-prueba.
 
 Uso:
@@ -27,8 +34,8 @@ Uso:
     python scripts/pps/concurrencia_resoluciones.py --confirmo-entorno-de-prueba
 
 La cadena de conexion no esta en el .env del repo (ahi solo vive la service role
-key, que va por PostgREST y no sirve para abrir dos sesiones). Se saca del
-dashboard de Supabase, en Project Settings > Database.
+key, que va por PostgREST y no sirve para abrir dos sesiones). Sale del dashboard
+de Supabase, en Project Settings > Database.
 """
 
 from __future__ import annotations
@@ -39,6 +46,7 @@ import os
 import sys
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 
 try:
@@ -49,8 +57,8 @@ except ImportError:
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-# Cuanto se espera para dar por hecho que la segunda conexion quedo bloqueada.
-ESPERA_BLOQUEO = 1.0
+# Plazo para demostrar que B quedo esperando un bloqueo de A.
+PLAZO_BLOQUEO = 5.0
 # Tope duro de cada sentencia: si algo se traba, el arnes falla en vez de colgarse.
 TIMEOUT_MS = 15_000
 
@@ -58,25 +66,30 @@ TIMEOUT_MS = 15_000
 @dataclass
 class Resultado:
     nombre: str
-    estado: str  # "ok" | "falla" | "no concluyente"
+    estado: str  # ok | falla | no concluyente | observado
     detalle: str = ""
+
+
+def _error(exc: psycopg.Error) -> tuple:
+    return ("error", exc.sqlstate, str(exc).strip().splitlines()[0])
 
 
 @dataclass
 class Arnes:
     dsn: str
+    corrida: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     admin_uid: str = ""
     estudiante_id: str = ""
     institucion_id: str = ""
     practica_id: str = ""
-    solicitudes_creadas: list[str] = field(default_factory=list)
-    modificaciones_creadas: list[str] = field(default_factory=list)
-    practicas_creadas: list[str] = field(default_factory=list)
+
+    def marca(self) -> str:
+        return f"[arnes {self.corrida}]"
 
     # ── Conexiones ──────────────────────────────────────────────────────────
     def conectar(self, como_admin: bool = True) -> psycopg.Connection:
-        """Sesion que se comporta como el navegador: rol authenticated y un JWT
-        simulado. Con el rol de servicio, is_admin() no pasa y las RPC rechazan."""
+        """Sesion equivalente a la del navegador: rol authenticated y JWT simulado.
+        Con el rol de servicio is_admin() no pasa y las RPC rechazan todo."""
         conn = psycopg.connect(self.dsn, autocommit=True)
         with conn.cursor() as cur:
             cur.execute(f"set statement_timeout = {TIMEOUT_MS}")
@@ -89,9 +102,13 @@ class Arnes:
                 cur.execute("set role authenticated")
         return conn
 
-    # ── Fixtures ────────────────────────────────────────────────────────────
+    def servicio(self) -> psycopg.Connection:
+        """Conexion sin cambiar de rol: fixtures, limpieza y observacion de locks."""
+        return psycopg.connect(self.dsn, autocommit=True)
+
+    # ── Fixtures, todos propios ─────────────────────────────────────────────
     def preparar(self) -> None:
-        with psycopg.connect(self.dsn, autocommit=True) as conn, conn.cursor() as cur:
+        with self.servicio() as conn, conn.cursor() as cur:
             cur.execute(
                 """
                 select user_id from public.estudiantes
@@ -105,41 +122,76 @@ class Arnes:
             self.admin_uid = str(fila[0])
 
             cur.execute(
-                """
-                select id from public.estudiantes
-                where coalesce(role,'') not in
-                      ('SuperUser','Jefe','Directivo','AdminTester')
-                limit 1
-                """
+                "insert into public.instituciones (nombre) values (%s) returning id",
+                (f"Institucion sintetica {self.marca()}",),
             )
-            fila = cur.fetchone()
-            if not fila:
-                sys.exit("No hay un estudiante para armar los fixtures.")
-            self.estudiante_id = str(fila[0])
-
-            cur.execute("select id from public.instituciones limit 1")
             self.institucion_id = str(cur.fetchone()[0])
 
-            # Practica sintetica propia. Los escenarios de modificacion y baja le
-            # cambian las horas y la borran: usar la practica real de un alumno
-            # dejaria su legajo alterado si el proceso muere en el medio.
+            # Estudiante sintetico, sin user_id: nunca es una persona real.
+            cur.execute(
+                """
+                insert into public.estudiantes (nombre, legajo, correo)
+                values (%s, %s, %s) returning id
+                """,
+                (
+                    f"Estudiante sintetico {self.marca()}",
+                    f"ARNES{self.corrida}",
+                    f"arnes-{self.corrida}@ejemplo.invalido",
+                ),
+            )
+            self.estudiante_id = str(cur.fetchone()[0])
+
             cur.execute(
                 """
                 insert into public.practicas
                   (estudiante_id, institucion_id, especialidad, fecha_inicio,
                    fecha_finalizacion, horas_realizadas, estado, nombre_institucion)
                 values (%s, %s, 'Clinica', '2026-01-01', '2026-02-01', 80,
-                        'Finalizada', 'Practica sintetica del arnes')
+                        'Finalizada', %s)
                 returning id
                 """,
-                (self.estudiante_id, self.institucion_id),
+                (self.estudiante_id, self.institucion_id, f"Practica sintetica {self.marca()}"),
             )
             self.practica_id = str(cur.fetchone()[0])
-            self.practicas_creadas.append(self.practica_id)
+
+    def verificar_identidad(self) -> None:
+        """Sin esto, un fallo de autenticacion se veria como seis escenarios
+        rotos con 42501 y el diagnostico seria confuso."""
+        conn = self.conectar()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("select current_user, auth.uid()::text, public.is_admin()")
+                usuario, uid, es_admin = cur.fetchone()
+            if usuario != "authenticated":
+                sys.exit(f"La sesion no corre como authenticated sino como {usuario}.")
+            if uid != self.admin_uid:
+                sys.exit(f"auth.uid() devolvio {uid}, se esperaba {self.admin_uid}.")
+            if not es_admin:
+                sys.exit("is_admin() es falso: el JWT simulado no esta siendo reconocido.")
+        finally:
+            conn.close()
+
+    # ── Estado observable ───────────────────────────────────────────────────
+    def practicas_del_alumno(self) -> list[tuple]:
+        """Todas las practicas del estudiante sintetico. Como es propio, cualquier
+        practica que aparezca la creo este arnes: una segunda practica creada y
+        abandonada fuera del vinculo con la solicitud tambien se ve aca."""
+        with self.servicio() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                select p.id::text, p.horas_realizadas, p.estado,
+                       (select count(*) from public.solicitudes_nueva_pps s
+                        where s.practica_id = p.id)
+                from public.practicas p
+                where p.estudiante_id = %s
+                order by p.created_at
+                """,
+                (self.estudiante_id,),
+            )
+            return cur.fetchall()
 
     def nueva_solicitud(self) -> str:
-        """Solicitud de alta sintetica, pendiente. No toca la cola real."""
-        with psycopg.connect(self.dsn, autocommit=True) as conn, conn.cursor() as cur:
+        with self.servicio() as conn, conn.cursor() as cur:
             cur.execute(
                 """
                 insert into public.solicitudes_nueva_pps
@@ -152,12 +204,10 @@ class Arnes:
                 """,
                 (self.estudiante_id, self.institucion_id),
             )
-            sid = str(cur.fetchone()[0])
-        self.solicitudes_creadas.append(sid)
-        return sid
+            return str(cur.fetchone()[0])
 
     def nueva_modificacion(self, tipo: str = "horas") -> str:
-        with psycopg.connect(self.dsn, autocommit=True) as conn, conn.cursor() as cur:
+        with self.servicio() as conn, conn.cursor() as cur:
             if tipo == "eliminacion":
                 cur.execute(
                     """
@@ -180,79 +230,89 @@ class Arnes:
                     """,
                     (self.estudiante_id, self.practica_id),
                 )
-            sid = str(cur.fetchone()[0])
-        self.modificaciones_creadas.append(sid)
-        return sid
+            return str(cur.fetchone()[0])
 
     def limpiar(self) -> None:
-        """Borra todo lo sintetico. Las practicas creadas por una aprobacion se
-        borran primero: la solicitud las referencia."""
-        with psycopg.connect(self.dsn, autocommit=True) as conn, conn.cursor() as cur:
-            for sid in self.solicitudes_creadas:
-                cur.execute(
-                    "select practica_id from public.solicitudes_nueva_pps where id = %s",
-                    (sid,),
-                )
-                fila = cur.fetchone()
-                if fila and fila[0]:
-                    self.practicas_creadas.append(str(fila[0]))
-                cur.execute("delete from public.solicitudes_nueva_pps where id = %s", (sid,))
-            for sid in self.modificaciones_creadas:
-                cur.execute(
-                    "delete from public.solicitudes_modificacion_pps where id = %s", (sid,)
-                )
-            for pid in self.practicas_creadas:
-                cur.execute("delete from public.practicas where id = %s", (pid,))
+        """Borra por estudiante e institucion sinteticos, no por ids acumulados:
+        si el proceso murio en el medio, esto barre igual lo que haya quedado."""
+        with self.servicio() as conn, conn.cursor() as cur:
+            cur.execute(
+                "delete from public.solicitudes_nueva_pps where estudiante_id = %s",
+                (self.estudiante_id,),
+            )
+            cur.execute(
+                "delete from public.solicitudes_modificacion_pps where estudiante_id = %s",
+                (self.estudiante_id,),
+            )
+            cur.execute("delete from public.practicas where estudiante_id = %s", (self.estudiante_id,))
+            cur.execute("delete from public.estudiantes where id = %s", (self.estudiante_id,))
+            cur.execute(
+                "delete from public.lanzamientos_pps where institucion_uuid = %s",
+                (self.institucion_id,),
+            )
+            cur.execute("delete from public.instituciones where id = %s", (self.institucion_id,))
 
 
 # ── Motor de competencia ────────────────────────────────────────────────────
 
-def competir(arnes: Arnes, tabla: str, solicitud_id: str, op_a, op_b) -> tuple:
-    """Garantiza que B compita de verdad contra A.
+def _pid(conn: psycopg.Connection) -> int:
+    with conn.cursor() as cur:
+        cur.execute("select pg_backend_pid()")
+        return int(cur.fetchone()[0])
 
-    A abre transaccion y toma el lock de la fila. B llama su operacion y deberia
-    quedar esperando. Recien cuando se comprueba que B esta bloqueada, A hace lo
-    suyo y commitea; entonces B sigue y se captura su resultado.
 
-    Devuelve (resultado_a, resultado_b, hubo_bloqueo). Cada resultado es
-    ("ok", valor) o ("error", sqlstate, mensaje).
+def competir(arnes: Arnes, op_a, op_b) -> tuple:
+    """A retiene los bloqueos de su RPC con la transaccion abierta; B compite.
+
+    El bloqueo se demuestra con pg_blocking_pids, no con un tiempo de espera.
+    Devuelve (resultado_a, resultado_b, demostrado).
     """
     conn_a = arnes.conectar()
     conn_b = arnes.conectar()
+    vigia = arnes.servicio()
     caja_b: dict = {}
-    arrancó_b = threading.Event()
+    arranco_b = threading.Event()
 
     def correr_b():
-        arrancó_b.set()
+        arranco_b.set()
         try:
             with conn_b.cursor() as cur:
                 caja_b["valor"] = ("ok", op_b(cur))
         except psycopg.Error as exc:
-            caja_b["valor"] = ("error", exc.sqlstate, str(exc).strip().splitlines()[0])
+            caja_b["valor"] = _error(exc)
 
     try:
+        pid_a, pid_b = _pid(conn_a), _pid(conn_b)
         conn_a.autocommit = False
+        demostrado = False
+
         with conn_a.cursor() as cur_a:
-            cur_a.execute(
-                f"select id from public.{tabla} where id = %s for update", (solicitud_id,)
-            )
-
-            hilo = threading.Thread(target=correr_b, daemon=True)
-            hilo.start()
-            arrancó_b.wait(timeout=5)
-            time.sleep(ESPERA_BLOQUEO)
-
-            # Si B ya contesto, nunca compitio: el escenario no prueba nada.
-            hubo_bloqueo = "valor" not in caja_b
-
             try:
                 resultado_a = ("ok", op_a(cur_a))
             except psycopg.Error as exc:
-                resultado_a = ("error", exc.sqlstate, str(exc).strip().splitlines()[0])
-        conn_a.commit()
+                conn_a.rollback()
+                return _error(exc), ("error", None, "A fallo: B no llego a correr"), False
 
+            # A ya aplico su resolucion y retiene los locks: la transaccion sigue abierta.
+            hilo = threading.Thread(target=correr_b, daemon=True)
+            hilo.start()
+            arranco_b.wait(timeout=5)
+
+            limite = time.monotonic() + PLAZO_BLOQUEO
+            while time.monotonic() < limite:
+                if "valor" in caja_b:
+                    break  # B contesto sin esperar: no hubo competencia
+                with vigia.cursor() as cur_v:
+                    cur_v.execute("select pg_blocking_pids(%s)", (pid_b,))
+                    bloqueantes = cur_v.fetchone()[0] or []
+                if pid_a in bloqueantes:
+                    demostrado = True
+                    break
+                time.sleep(0.05)
+
+        conn_a.commit()
         hilo.join(timeout=TIMEOUT_MS / 1000 + 5)
-        return resultado_a, caja_b.get("valor", ("error", None, "B nunca termino")), hubo_bloqueo
+        return resultado_a, caja_b.get("valor", ("error", None, "B nunca termino")), demostrado
     finally:
         try:
             conn_a.rollback()
@@ -260,246 +320,260 @@ def competir(arnes: Arnes, tabla: str, solicitud_id: str, op_a, op_b) -> tuple:
             pass
         conn_a.close()
         conn_b.close()
+        vigia.close()
 
 
 def leer(arnes: Arnes, sql: str, params: tuple = ()):
-    with psycopg.connect(arnes.dsn, autocommit=True) as conn, conn.cursor() as cur:
+    with arnes.servicio() as conn, conn.cursor() as cur:
         cur.execute(sql, params)
         return cur.fetchone()
 
 
+def _sin_competencia(nombre: str) -> Resultado:
+    return Resultado(nombre, "no concluyente",
+                     "no se pudo demostrar con pg_blocking_pids que B esperara a A")
+
+
 # ── Escenarios ──────────────────────────────────────────────────────────────
 
-def _aprobar_nueva(horas: int):
+def _op_aprobar_nueva(sid: str, horas: int):
     def op(cur):
         cur.execute(
-            "select id from public.aprobar_solicitud_nueva_pps(%s, %s, %s)",
-            (op.solicitud, horas, "arnes de concurrencia"),
+            "select id from public.aprobar_solicitud_nueva_pps(%s, %s, 'arnes')", (sid, horas)
         )
         return str(cur.fetchone()[0])
 
     return op
 
 
-def escenario_dos_aprobaciones_iguales(arnes: Arnes) -> Resultado:
-    sid = arnes.nueva_solicitud()
-    a, b = _aprobar_nueva(70), _aprobar_nueva(70)
-    a.solicitud = b.solicitud = sid
-
-    ra, rb, bloqueo = competir(arnes, "solicitudes_nueva_pps", sid, a, b)
-    practicas = leer(
-        arnes,
-        """
-        select count(*) from public.practicas p
-        join public.solicitudes_nueva_pps s on s.practica_id = p.id
-        where s.id = %s
-        """,
-        (sid,),
-    )[0]
-
-    if not bloqueo:
-        return Resultado("dos aprobaciones identicas", "no concluyente",
-                         "la segunda no llego a competir")
-    if ra[0] != "ok" or rb[0] != "ok":
-        return Resultado("dos aprobaciones identicas", "falla",
-                         f"una de las dos fallo: A={ra} B={rb}")
-    if ra[1] != rb[1]:
-        return Resultado("dos aprobaciones identicas", "falla",
-                         "devolvieron practicas distintas")
-    if practicas != 1:
-        return Resultado("dos aprobaciones identicas", "falla",
-                         f"quedaron {practicas} practicas, deberia haber 1")
-    return Resultado("dos aprobaciones identicas", "ok",
-                     "la segunda espero el lock y devolvio la misma practica")
-
-
-def escenario_aprobaciones_distintas(arnes: Arnes) -> Resultado:
-    sid = arnes.nueva_solicitud()
-    a, b = _aprobar_nueva(70), _aprobar_nueva(90)
-    a.solicitud = b.solicitud = sid
-
-    ra, rb, bloqueo = competir(arnes, "solicitudes_nueva_pps", sid, a, b)
-    horas = leer(
-        arnes,
-        """
-        select p.horas_realizadas from public.practicas p
-        join public.solicitudes_nueva_pps s on s.practica_id = p.id where s.id = %s
-        """,
-        (sid,),
-    )
-    horas = horas[0] if horas else None
-
-    if not bloqueo:
-        return Resultado("aprobaciones con decisiones distintas", "no concluyente",
-                         "la segunda no llego a competir")
-    if ra[0] != "ok":
-        return Resultado("aprobaciones con decisiones distintas", "falla",
-                         f"la primera fallo: {ra}")
-    if rb[0] != "error" or rb[1] != "P0001":
-        return Resultado("aprobaciones con decisiones distintas", "falla",
-                         f"la segunda no informo conflicto: {rb}")
-    if horas != 70:
-        return Resultado("aprobaciones con decisiones distintas", "falla",
-                         f"la practica quedo con {horas} h, deberia ser 70")
-    return Resultado("aprobaciones con decisiones distintas", "ok",
-                     "gano la primera y la segunda informo conflicto, no exito falso")
-
-
-def escenario_aprobacion_contra_rechazo(arnes: Arnes) -> Resultado:
-    sid = arnes.nueva_solicitud()
-
-    def aprobar(cur):
+def _op_rechazar_nueva(sid: str, motivo: str):
+    def op(cur):
         cur.execute(
-            "select id from public.aprobar_solicitud_nueva_pps(%s, 70, 'arnes')", (sid,)
-        )
-        return str(cur.fetchone()[0])
-
-    def rechazar(cur):
-        cur.execute(
-            "select estado from public.rechazar_solicitud_nueva_pps(%s, 'motivo del arnes')",
-            (sid,),
+            "select estado from public.rechazar_solicitud_nueva_pps(%s, %s)", (sid, motivo)
         )
         return cur.fetchone()[0]
 
-    ra, rb, bloqueo = competir(arnes, "solicitudes_nueva_pps", sid, aprobar, rechazar)
-    estado, practicas = leer(
+    return op
+
+
+def _op_aprobar_mod(sid: str, horas: int):
+    def op(cur):
+        cur.execute(
+            "select estado from public.aprobar_solicitud_modificacion_pps(%s, %s, 'arnes')",
+            (sid, horas),
+        )
+        return cur.fetchone()[0]
+
+    return op
+
+
+def _op_resolver_baja(sid: str, decision: str, tipo, comentario):
+    def op(cur):
+        cur.execute(
+            "select estado from public.resolver_solicitud_baja_pps_v1(%s, %s, %s, 'arnes', %s)",
+            (sid, decision, tipo, comentario),
+        )
+        return cur.fetchone()[0]
+
+    return op
+
+
+def escenario_aprobaciones_iguales(arnes: Arnes) -> Resultado:
+    nombre = "dos aprobaciones identicas"
+    antes = {p[0] for p in arnes.practicas_del_alumno()}
+    sid = arnes.nueva_solicitud()
+
+    ra, rb, ok = competir(arnes, _op_aprobar_nueva(sid, 70), _op_aprobar_nueva(sid, 70))
+    if not ok:
+        return _sin_competencia(nombre)
+
+    nuevas = [p for p in arnes.practicas_del_alumno() if p[0] not in antes]
+    if ra[0] != "ok" or rb[0] != "ok":
+        return Resultado(nombre, "falla", f"A={ra} B={rb}")
+    if ra[1] != rb[1]:
+        return Resultado(nombre, "falla", "devolvieron practicas distintas")
+    if len(nuevas) != 1:
+        return Resultado(nombre, "falla",
+                         f"se crearon {len(nuevas)} practicas: {nuevas}")
+    pid_, horas, estado, vinculos = nuevas[0]
+    if horas != 70 or estado != "Finalizada" or vinculos != 1:
+        return Resultado(nombre, "falla",
+                         f"practica en {horas} h, estado {estado}, {vinculos} vinculos")
+    return Resultado(nombre, "ok",
+                     "B espero el lock y devolvio la misma practica; una sola creada")
+
+
+def escenario_aprobaciones_distintas(arnes: Arnes) -> Resultado:
+    nombre = "aprobaciones con decisiones distintas"
+    antes = {p[0] for p in arnes.practicas_del_alumno()}
+    sid = arnes.nueva_solicitud()
+
+    ra, rb, ok = competir(arnes, _op_aprobar_nueva(sid, 70), _op_aprobar_nueva(sid, 90))
+    if not ok:
+        return _sin_competencia(nombre)
+
+    nuevas = [p for p in arnes.practicas_del_alumno() if p[0] not in antes]
+    if ra[0] != "ok":
+        return Resultado(nombre, "falla", f"la primera fallo: {ra}")
+    if rb[0] != "error" or rb[1] != "P0001":
+        return Resultado(nombre, "falla", f"la segunda no informo conflicto: {rb}")
+    if len(nuevas) != 1 or nuevas[0][1] != 70:
+        return Resultado(nombre, "falla", f"practicas resultantes: {nuevas}")
+    return Resultado(nombre, "ok",
+                     "gano la primera, la segunda dio conflicto y no quedo practica de mas")
+
+
+def escenario_aprobacion_contra_rechazo(arnes: Arnes) -> Resultado:
+    nombre = "aprobacion contra rechazo"
+    antes = {p[0] for p in arnes.practicas_del_alumno()}
+    sid = arnes.nueva_solicitud()
+
+    ra, rb, ok = competir(
+        arnes, _op_aprobar_nueva(sid, 70), _op_rechazar_nueva(sid, "motivo del arnes")
+    )
+    if not ok:
+        return _sin_competencia(nombre)
+
+    estado, practica_vinculada = leer(
         arnes,
-        """
-        select s.estado, (select count(*) from public.practicas p where p.id = s.practica_id)
-        from public.solicitudes_nueva_pps s where s.id = %s
-        """,
+        "select estado, practica_id::text from public.solicitudes_nueva_pps where id = %s",
         (sid,),
     )
-
-    if not bloqueo:
-        return Resultado("aprobacion contra rechazo", "no concluyente",
-                         "el rechazo no llego a competir")
+    nuevas = [p for p in arnes.practicas_del_alumno() if p[0] not in antes]
     if ra[0] != "ok":
-        return Resultado("aprobacion contra rechazo", "falla", f"la aprobacion fallo: {ra}")
+        return Resultado(nombre, "falla", f"la aprobacion fallo: {ra}")
     if rb[0] != "error" or rb[1] != "P0001":
-        return Resultado("aprobacion contra rechazo", "falla",
-                         f"el rechazo piso una solicitud ya aprobada: {rb}")
-    if estado != "aprobada" or practicas != 1:
-        return Resultado("aprobacion contra rechazo", "falla",
-                         f"estado={estado}, practicas={practicas}")
-    return Resultado("aprobacion contra rechazo", "ok",
-                     "una sola decision final y la practica no quedo huerfana")
+        return Resultado(nombre, "falla", f"el rechazo piso una aprobacion: {rb}")
+    if estado != "aprobada" or len(nuevas) != 1 or practica_vinculada != nuevas[0][0]:
+        return Resultado(nombre, "falla",
+                         f"estado={estado}, practicas={nuevas}, vinculo={practica_vinculada}")
+    return Resultado(nombre, "ok", "una sola decision final, sin practica huerfana")
 
 
 def escenario_dos_rechazos(arnes: Arnes) -> Resultado:
+    nombre = "dos rechazos"
     sid = arnes.nueva_solicitud()
 
-    def rechazar(motivo):
-        def op(cur):
-            cur.execute(
-                "select estado from public.rechazar_solicitud_nueva_pps(%s, %s)", (sid, motivo)
-            )
-            return cur.fetchone()[0]
-
-        return op
-
-    ra, rb, bloqueo = competir(
-        arnes, "solicitudes_nueva_pps", sid, rechazar("primero"), rechazar("segundo")
+    ra, rb, ok = competir(
+        arnes, _op_rechazar_nueva(sid, "primero"), _op_rechazar_nueva(sid, "segundo")
     )
+    if not ok:
+        return _sin_competencia(nombre)
+
     estado, comentario = leer(
         arnes,
         "select estado, comentario_rechazo from public.solicitudes_nueva_pps where id = %s",
         (sid,),
     )
-
-    if not bloqueo:
-        return Resultado("dos rechazos", "no concluyente", "el segundo no llego a competir")
     if ra[0] != "ok" or rb[0] != "error" or rb[1] != "P0001":
-        return Resultado("dos rechazos", "falla", f"A={ra} B={rb}")
+        return Resultado(nombre, "falla", f"A={ra} B={rb}")
     if estado != "rechazada" or comentario != "primero":
-        return Resultado("dos rechazos", "falla",
-                         f"el segundo motivo piso al primero: {comentario!r}")
-    return Resultado("dos rechazos", "ok", "quedo el motivo del primero, sin pisarse")
+        return Resultado(nombre, "falla", f"el motivo quedo en {comentario!r}")
+    return Resultado(nombre, "ok", "quedo el motivo del primero, sin pisarse")
 
 
-def escenario_bajas_concurrentes(arnes: Arnes) -> Resultado:
-    sid = arnes.nueva_modificacion("eliminacion")
-
-    def resolver(decision, comentario):
-        def op(cur):
-            cur.execute(
-                "select estado from public.resolver_solicitud_baja_pps_v1(%s, %s, %s, %s, %s)",
-                (sid, decision, None, "arnes", comentario),
-            )
-            return cur.fetchone()[0]
-
-        return op
-
-    ra, rb, bloqueo = competir(
-        arnes,
-        "solicitudes_modificacion_pps",
-        sid,
-        resolver("rechazar", "primero"),
-        resolver("rechazar", "segundo"),
-    )
-    estado = leer(
-        arnes, "select estado from public.solicitudes_modificacion_pps where id = %s", (sid,)
+def escenario_dos_resoluciones_misma_modificacion(arnes: Arnes) -> Resultado:
+    nombre = "dos resoluciones sobre la misma solicitud de horas"
+    sid = arnes.nueva_modificacion("horas")
+    horas_previas = leer(
+        arnes, "select horas_realizadas from public.practicas where id = %s", (arnes.practica_id,)
     )[0]
 
-    if not bloqueo:
-        return Resultado("bajas concurrentes", "no concluyente", "la segunda no compitio")
+    ra, rb, ok = competir(arnes, _op_aprobar_mod(sid, 100), _op_aprobar_mod(sid, 120))
+    if not ok:
+        return _sin_competencia(nombre)
+
+    horas, aprobadas = leer(
+        arnes,
+        """
+        select p.horas_realizadas, s.horas_aprobadas
+        from public.practicas p
+        join public.solicitudes_modificacion_pps s on s.practica_id = p.id
+        where s.id = %s
+        """,
+        (sid,),
+    )
     if ra[0] != "ok":
-        return Resultado("bajas concurrentes", "falla", f"la primera fallo: {ra}")
+        return Resultado(nombre, "falla", f"la primera fallo: {ra}")
+    if rb[0] != "error" or rb[1] != "P0001":
+        return Resultado(nombre, "falla", f"la segunda no informo conflicto: {rb}")
+    if horas != 100 or aprobadas != 100:
+        return Resultado(nombre, "falla",
+                         f"practica en {horas} h (venia de {horas_previas}), decision {aprobadas}")
+    return Resultado(nombre, "ok", "se aplico una sola decision y quedo registrada")
+
+
+def escenario_bajas_concurrentes_aprobando(arnes: Arnes) -> Resultado:
+    nombre = "dos aprobaciones de la misma baja"
+    sid = arnes.nueva_modificacion("eliminacion")
+
+    ra, rb, ok = competir(
+        arnes,
+        _op_resolver_baja(sid, "aprobar", "Baja Administrativa / Sin Penalización", None),
+        _op_resolver_baja(sid, "aprobar", "Abandono durante la PPS", None),
+    )
+    if not ok:
+        return _sin_competencia(nombre)
+
+    estado, penalizaciones = leer(
+        arnes,
+        """
+        select s.estado,
+               (select count(*) from public.penalizaciones pe
+                 where pe.estudiante_id = s.estudiante_id)
+        from public.solicitudes_modificacion_pps s where s.id = %s
+        """,
+        (sid,),
+    )
+    if ra[0] != "ok":
+        return Resultado(nombre, "falla", f"la primera fallo: {ra}")
     if rb[0] != "error":
-        return Resultado("bajas concurrentes", "falla",
-                         "la segunda resolvio una baja ya resuelta")
-    if estado != "rechazada":
-        return Resultado("bajas concurrentes", "falla", f"estado final inesperado: {estado}")
-    return Resultado("bajas concurrentes", "ok", "una sola resolucion")
+        return Resultado(nombre, "falla", "la segunda resolvio una baja ya resuelta")
+    if estado != "aprobada" or penalizaciones != 1:
+        return Resultado(nombre, "falla",
+                         f"estado={estado}, penalizaciones={penalizaciones} (deberia ser 1)")
+    return Resultado(nombre, "ok", "una sola baja y una sola penalizacion")
 
 
 def escenario_dos_solicitudes_misma_practica(arnes: Arnes) -> Resultado:
     """Caso distinto de la idempotencia: DOS solicitudes distintas sobre la misma
-    practica. Hoy no hay contrato definido —no existe control de version— asi que
-    esto no afirma que este bien ni mal: observa y reporta que pasa, para que
-    coordinacion decida si la segunda debe detectar una decision ya aplicada.
+    practica. Compiten por el lock de la practica, no por el de la solicitud.
+    No hay contrato definido —no existe control de version— asi que esto observa
+    y reporta en vez de fijar una conducta que todavia no se decidio.
     """
+    nombre = "dos solicitudes distintas sobre la misma practica"
     sid_a = arnes.nueva_modificacion("horas")
     sid_b = arnes.nueva_modificacion("horas")
 
-    def aprobar(sid, horas):
-        def op(cur):
-            cur.execute(
-                "select estado from public.aprobar_solicitud_modificacion_pps(%s, %s, 'arnes')",
-                (sid, horas),
-            )
-            return cur.fetchone()[0]
-
-        return op
-
-    ra, rb, bloqueo = competir(
-        arnes, "solicitudes_modificacion_pps", sid_a, aprobar(sid_a, 100), aprobar(sid_b, 120)
-    )
+    ra, rb, ok = competir(arnes, _op_aprobar_mod(sid_a, 100), _op_aprobar_mod(sid_b, 120))
     horas = leer(
         arnes, "select horas_realizadas from public.practicas where id = %s", (arnes.practica_id,)
     )[0]
 
     return Resultado(
-        "dos solicitudes distintas sobre la misma practica",
+        nombre,
         "observado",
-        f"A={ra[0]} B={rb[0]} · la practica quedo en {horas} h. "
-        f"{'Compitieron.' if bloqueo else 'No compitieron por el mismo lock (son filas distintas).'} "
-        "Sin contrato definido: decidir si la segunda debe ver la decision previa.",
+        f"A={ra[0]} B={rb[0]} · la practica quedo en {horas} h · "
+        f"{'compitieron por el lock de la practica' if ok else 'no se demostro competencia'}. "
+        "Sin control de version: decidir si la segunda deberia ver la decision previa.",
     )
 
 
 ESCENARIOS = [
-    escenario_dos_aprobaciones_iguales,
+    escenario_aprobaciones_iguales,
     escenario_aprobaciones_distintas,
     escenario_aprobacion_contra_rechazo,
     escenario_dos_rechazos,
-    escenario_bajas_concurrentes,
+    escenario_dos_resoluciones_misma_modificacion,
+    escenario_bajas_concurrentes_aprobando,
     escenario_dos_solicitudes_misma_practica,
 ]
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--dsn", default=os.environ.get("SUPABASE_DB_URL"),
                    help="Cadena de conexion. Por defecto, SUPABASE_DB_URL.")
     p.add_argument("--confirmo-entorno-de-prueba", action="store_true",
@@ -508,15 +582,18 @@ def main() -> None:
 
     if not args.dsn:
         sys.exit("Falta la cadena de conexion (--dsn o SUPABASE_DB_URL).\n"
-                 "No esta en el .env del repo: se saca del dashboard de Supabase, "
+                 "No esta en el .env del repo: sale del dashboard de Supabase, "
                  "en Project Settings > Database.")
     if not args.confirmo_entorno_de_prueba:
-        sys.exit("Este arnes ESCRIBE en la base (crea solicitudes sinteticas, las "
-                 "resuelve y las borra).\nCorrelo contra un entorno de prueba y "
-                 "volve a pasar --confirmo-entorno-de-prueba.")
+        sys.exit("Este arnes ESCRIBE en la base (crea una institucion, un estudiante, "
+                 "una practica y solicitudes sinteticas, los resuelve y los borra).\n"
+                 "Correlo contra un entorno de prueba y volve a pasar "
+                 "--confirmo-entorno-de-prueba.")
 
     arnes = Arnes(dsn=args.dsn)
+    print(f"\n  corrida {arnes.corrida}")
     arnes.preparar()
+    arnes.verificar_identidad()
 
     resultados: list[Resultado] = []
     try:
@@ -539,7 +616,8 @@ def main() -> None:
     fallas = [r for r in resultados if r.estado == "falla"]
     dudosos = [r for r in resultados if r.estado == "no concluyente"]
     print()
-    print(f"  {len(resultados)} escenarios · {len(fallas)} fallas · {len(dudosos)} no concluyentes")
+    print(f"  {len(resultados)} escenarios · {len(fallas)} fallas · "
+          f"{len(dudosos)} no concluyentes")
     print()
 
     # Un "no concluyente" no es un aprobado: significa que no se llego a competir.
