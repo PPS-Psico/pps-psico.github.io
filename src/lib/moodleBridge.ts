@@ -205,6 +205,101 @@ const jefeTaskScanSchema = z.object({
     .optional(),
 });
 
+export const jefeMoodlePageSchema = z
+  .object({
+    type: z.literal("PPS_MOODLE_JEFE_PAGE_RESULT"),
+    version: z.literal(2),
+    requestId: z.string().uuid(),
+    courseId: z.literal(MOODLE_COURSE_ID),
+    page: z.number().int().min(0).max(23),
+    observedAt: z.string().datetime({ offset: true }),
+    moodleUserId: z.number().int().positive(),
+    moodleUsername: z.string().regex(/^\d{6,12}$/),
+    task: jefeTaskScanSchema.extend({ pageRowCount: z.number().int().min(0).max(100).default(0) }),
+  })
+  .refine(({ task }) => task.rows.length + (task.negativeRows?.length ?? 0) <= 100);
+
+export type JefeMoodlePage = z.infer<typeof jefeMoodlePageSchema>;
+
+/** No fallback to the unbounded v1 scan when an old Campus label is installed. */
+export function supportsJefeMoodlePages(): Promise<boolean> {
+  if (!isEmbeddedInMoodle()) return Promise.resolve(false);
+  const requestId = createRequestId();
+  return new Promise((resolve) => {
+    const finish = (supported: boolean) => {
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      resolve(supported);
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== MOODLE_ORIGIN || event.source !== window.parent) return;
+      const data = event.data;
+      if (
+        data?.type === "PPS_MOODLE_CAPABILITIES_RESULT" &&
+        data.version === 2 &&
+        data.requestId === requestId &&
+        data.courseId === MOODLE_COURSE_ID
+      ) {
+        finish(data.jefePages === true);
+      }
+    };
+    const timer = window.setTimeout(() => finish(false), 2000);
+    window.addEventListener("message", onMessage);
+    window.parent.postMessage(
+      {
+        type: "PPS_MOODLE_CAPABILITIES_REQUEST",
+        version: 2,
+        requestId,
+        courseId: MOODLE_COURSE_ID,
+      },
+      MOODLE_ORIGIN
+    );
+  });
+}
+
+export function requestJefeMoodlePage(cmid: number, page: number): Promise<JefeMoodlePage> {
+  if (!isEmbeddedInMoodle()) return Promise.reject(new MoodleBridgeError("not_embedded"));
+  if (!Number.isSafeInteger(cmid) || cmid <= 0 || !Number.isInteger(page) || page < 0 || page > 23)
+    return Promise.reject(new MoodleBridgeError("invalid_response"));
+  const requestId = createRequestId();
+  return new Promise((resolve, reject) => {
+    const finish = (callback: () => void) => {
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      callback();
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (
+        event.origin !== MOODLE_ORIGIN ||
+        event.source !== window.parent ||
+        event.data?.requestId !== requestId
+      )
+        return;
+      if (event.data?.type !== "PPS_MOODLE_JEFE_PAGE_RESULT") return;
+      const parsed = jefeMoodlePageSchema.safeParse(event.data);
+      if (!parsed.success || parsed.data.page !== page || parsed.data.task.cmid !== cmid) {
+        finish(() => reject(new MoodleBridgeError("invalid_response")));
+      } else finish(() => resolve(parsed.data));
+    };
+    const timer = window.setTimeout(
+      () => finish(() => reject(new MoodleBridgeError("timeout"))),
+      15_000
+    );
+    window.addEventListener("message", onMessage);
+    window.parent.postMessage(
+      {
+        type: "PPS_MOODLE_JEFE_PAGE_REQUEST",
+        version: 2,
+        requestId,
+        courseId: MOODLE_COURSE_ID,
+        cmid,
+        page,
+      },
+      MOODLE_ORIGIN
+    );
+  });
+}
+
 export const jefeMoodleTasksResultSchema = z
   .object({
     type: z.literal("PPS_MOODLE_JEFE_TASKS_RESULT"),
