@@ -58,5 +58,6 @@ la misma transacción antes del despliegue, siempre con rollback.
 
 Las pruebas de frontend cubren límites de tanda, avance visible, fallos de
 transporte, confirmación incierta, pausa, remontaje, revisión histórica y
-compatibilidad del protocolo. La validación del recorrido real en Selva se
-registra en el workboard una vez publicado el panel.
+compatibilidad del protocolo. El despliegue `34620478007` pasó todas las
+verificaciones. La prueba real de Selva confirmó guardado, pausa después de 100
+filas y reanudación desde página 2; el workboard registra el alcance de esa prueba.

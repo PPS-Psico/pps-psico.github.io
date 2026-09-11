@@ -1,14 +1,21 @@
 # Tablero verificable · Moodle Task Automation v2
 
-Última actualización: 9 de septiembre de 2026
+Última actualización: 11 de septiembre de 2026
 
 ## Lectura reanudable · 11 de septiembre
 
 Implementación y contrato: [lectura por páginas](resumable-jefe-scan.md).
 Migración `20260910112441` aplicada con ledger; puente instalado en General del
 curso 3615 preservando el resto del HTML. Pruebas SQL con rollback aprobadas.
-La publicación del frontend y la prueba real de Selva están pendientes en esta
-etapa; no considerar cerrado WP-05 hasta registrar ese resultado.
+Frontend publicado en PR #36, commit `2a284af`, despliegue `34620478007`
+exitoso con lint, tipos, pruebas unitarias, writer y e2e. Prueba real de Selva:
+cinco tareas completadas con 346 filas cada una y cero fallos; en `569006` se
+pausó después de guardar 100 filas (`next_page=1`) y la interfaz retomó desde
+página 2. La tarea terminó con 346 filas, sin repetir la primera página.
+Los errores y la confirmación incierta se verificaron en pruebas automatizadas;
+no se provocaron fallos deliberados en el Campus productivo.
+La actualización inicial completa continúa por tandas; la validación anterior
+no certifica que todo el histórico haya sido leído o atribuido.
 
 ## Correcciones capturadas · 9 de septiembre
 
@@ -219,7 +226,7 @@ producción.
 | WP-02 Backfill 2024–2026    | `DONE_WITH_EXCEPTIONS` | 212 intenciones, 1.409 participantes, 0 cruces de orientación, 0 ambigüedades                                | resolver 3 prácticas históricas contradictorias sin inferir                 |
 | WP-03 Dominio TypeScript    | `FOUNDATION_READY`     | estados y escalas con pruebas unitarias                                                                      | adoptar el mismo read model en todas las vistas legacy                      |
 | WP-04 Provisioner           | `WRITE_AGENT_PENDING`  | planner, hash, lease y confirmación estricta                                                                 | conectar agente navegador, dry-run, creación, verificación y auditoría real |
-| WP-05 Observer incremental  | `PARTIAL`              | cola pura, matching estricto y batching                                                                      | scheduler, checkpoints, backoff y cierre persistente                        |
+| WP-05 Observer incremental  | `IMPLEMENTED (jefatura)` | cursores por página, leases, pausa de errores, avance visible y prueba real de reanudación                    | revisión histórica explícita y seguimiento de cobertura                    |
 | WP-06 Jefatura v2           | `PARTIAL`              | lectura anual en lotes de 4, fallos parciales y críticos primero                                             | validar en Campus, health/frescura por unidad y migrar a cola persistente   |
 | WP-07 Lanzador v2           | `READ_PATH_DONE`       | tarjeta por orientación con conteos reales y reintento permitido                                             | habilitar sólo cuando exista worker de escritura                            |
 | WP-08 Estudiante/Admin v2   | `PARTIAL`              | FAQ corregida y presentación canónica disponible                                                             | integración total del nuevo estado en cada superficie                       |
