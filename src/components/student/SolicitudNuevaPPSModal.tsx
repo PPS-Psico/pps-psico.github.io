@@ -56,7 +56,12 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
   const [orientacion, setOrientacion] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState<string>("");
   const [fechaFinalizacion, setFechaFinalizacion] = useState<string>("");
-  const [horasEstimadas, setHorasEstimadas] = useState<string>("80");
+  /*
+    Arranca vacio a proposito: el valor lo pone la convocatoria al elegir la
+    institucion. Un 80 fijo se leia como el numero correcto y era solo un
+    default.
+  */
+  const [horasEstimadas, setHorasEstimadas] = useState<string>("");
   const [esOnline, setEsOnline] = useState(false);
   const [planillaFile, setPlanillaFile] = useState<File | null>(null);
   const [informeFile, setInformeFile] = useState<File | null>(null);
@@ -132,17 +137,19 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     return lanzamientos.filter((l) => l.institucion_uuid === institucionSeleccionada.id);
   }, [lanzamientos, institucionSeleccionada]);
 
-  const maxHorasPermitidas = useMemo(() => {
-    if (lanzamientosDeInstitucion.length > 0) {
-      const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
-        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-      );
-      const ultimoLanzamiento = sortedLanzamientos[0];
-      if (ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) {
-        return Number(ultimoLanzamiento[FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]) || 80;
-      }
-    }
-    return 80;
+  /*
+    Lo que acredita la convocatoria es una sugerencia, no un tope: el pedido
+    puede venir consensuado por correo y a veces corresponde mas. Cuanto se
+    acredita finalmente lo define coordinacion al aprobar la solicitud.
+    Es null cuando no se conoce la convocatoria, para no afirmar un numero.
+  */
+  const horasDeLaConvocatoria = useMemo<number | null>(() => {
+    if (lanzamientosDeInstitucion.length === 0) return null;
+    const sortedLanzamientos = [...lanzamientosDeInstitucion].sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
+    const horas = Number(sortedLanzamientos[0][FIELD_HORAS_ACREDITADAS_LANZAMIENTOS]);
+    return Number.isFinite(horas) && horas > 0 ? horas : null;
   }, [lanzamientosDeInstitucion]);
 
   // Auto-completar datos cuando se selecciona institución del listado
@@ -204,7 +211,7 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     setOrientacion("");
     setFechaInicio("");
     setFechaFinalizacion("");
-    setHorasEstimadas("80");
+    setHorasEstimadas("");
     setEsOnline(false);
     setPlanillaFile(null);
     setInformeFile(null);
@@ -282,10 +289,6 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
     }
     if (!horasEstimadas || parseInt(horasEstimadas) <= 0) {
       showToast("Ingresá las horas estimadas", "error");
-      return false;
-    }
-    if (parseInt(horasEstimadas) > maxHorasPermitidas) {
-      showToast(`El máximo permitido es ${maxHorasPermitidas} horas`, "error");
       return false;
     }
     // Si es online, solo informe es obligatorio
@@ -651,12 +654,13 @@ const SolicitudNuevaPPSModal: React.FC<SolicitudNuevaPPSModalProps> = ({
                 onChange={(e) => setHorasEstimadas(e.target.value)}
                 placeholder="Ej: 80"
                 min="1"
-                max={maxHorasPermitidas}
                 className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2 transition"
                 style={fieldStyle}
               />
               <p className="text-xs mt-1" style={{ color: "var(--ink-subtle)" }}>
-                Máximo {maxHorasPermitidas} horas
+                {horasDeLaConvocatoria !== null
+                  ? `Esta PPS acredita ${horasDeLaConvocatoria} horas. Podés pedir otra cantidad si corresponde; la coordinación define cuántas se acreditan.`
+                  : "La coordinación define cuántas horas se acreditan al aprobar la solicitud."}
               </p>
             </div>
 
