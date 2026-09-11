@@ -409,12 +409,19 @@ export interface AprobarSolicitudInput {
   */
   horasAprobadas?: number;
   notasAdmin?: string;
+  /*
+    Las horas que la pantalla mostraba al abrir la solicitud. Si al guardar la
+    practica ya no las tiene, la base rechaza con 45001 en vez de pisar una
+    decision tomada desde otra pantalla. Solo aplica a modificaciones de horas.
+  */
+  horasVistas?: number | null;
 }
 
 export const approveSolicitudModificacion = async ({
   solicitudId,
   horasAprobadas,
   notasAdmin,
+  horasVistas,
 }: AprobarSolicitudInput) => {
   if (solicitudId.startsWith("mock_")) {
     const solicitudes = await mockDb.getAll("solicitudes_modificacion_pps", { id: solicitudId });
@@ -440,6 +447,7 @@ export const approveSolicitudModificacion = async ({
     p_solicitud_id: solicitudId,
     ...(horasAprobadas != null ? { p_horas_aprobadas: horasAprobadas } : {}),
     ...(notasAdmin?.trim() ? { p_notas: notasAdmin.trim() } : {}),
+    ...(horasVistas != null ? { p_horas_vistas: horasVistas } : {}),
   });
 
   if (error) throw error;

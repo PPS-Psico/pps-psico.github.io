@@ -123,14 +123,40 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
   }, [solicitudesModificacion, solicitudesNuevas, onUpdateCounts]);
 
   const approveModMutation = useMutation({
-    mutationFn: ({ id, notas, horas }: { id: string; notas?: string; horas?: number }) =>
-      approveSolicitudModificacion({ solicitudId: id, horasAprobadas: horas, notasAdmin: notas }),
+    mutationFn: ({
+      id,
+      notas,
+      horas,
+      horasVistas,
+    }: {
+      id: string;
+      notas?: string;
+      horas?: number;
+      horasVistas?: number | null;
+    }) =>
+      approveSolicitudModificacion({
+        solicitudId: id,
+        horasAprobadas: horas,
+        notasAdmin: notas,
+        horasVistas,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion"] });
       queryClient.invalidateQueries({ queryKey: ["practicas"] });
       onToast("Solicitud de modificación aprobada.");
     },
-    onError: (e) => onToast(getErrorMessage(e, "Error al aprobar"), "error"),
+    onError: (e) => {
+      /*
+        45001: la práctica cambió desde que se abrió la pantalla. Se refresca la
+        lista para que el coordinador vea el valor nuevo; si después de mirarlo
+        vuelve a aprobar, el pedido viaja con el valor fresco y se aplica.
+      */
+      if ((e as { code?: string })?.code === "45001") {
+        queryClient.invalidateQueries({ queryKey: ["solicitudes_modificacion"] });
+        queryClient.invalidateQueries({ queryKey: ["practicas"] });
+      }
+      onToast(getErrorMessage(e, "Error al aprobar"), "error");
+    },
   });
 
   const approveNuevaMutation = useMutation({
@@ -213,7 +239,12 @@ const CorreccionesTabView: React.FC<CorreccionesTabViewProps> = ({
                   */
                   onApprove={async (id, notas, horas) => {
                     if (sol.tipo_solicitud === "modificacion") {
-                      await approveModMutation.mutateAsync({ id, notas, horas });
+                      await approveModMutation.mutateAsync({
+                        id,
+                        notas,
+                        horas,
+                        horasVistas: sol.practica?.horas_realizadas ?? null,
+                      });
                     } else {
                       await approveNuevaMutation.mutateAsync({ id, notas, horas });
                     }

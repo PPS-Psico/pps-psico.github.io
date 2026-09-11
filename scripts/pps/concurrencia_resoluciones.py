@@ -206,7 +206,8 @@ class Arnes:
             )
             return str(cur.fetchone()[0])
 
-    def nueva_modificacion(self, tipo: str = "horas") -> str:
+    def nueva_modificacion(self, tipo: str = "horas", practica_id: str | None = None) -> str:
+        practica_id = practica_id or self.practica_id
         with self.servicio() as conn, conn.cursor() as cur:
             if tipo == "eliminacion":
                 cur.execute(
@@ -218,7 +219,7 @@ class Arnes:
                             'baja sintetica del arnes de concurrencia')
                     returning id
                     """,
-                    (self.estudiante_id, self.practica_id),
+                    (self.estudiante_id, practica_id),
                 )
             else:
                 cur.execute(
@@ -228,7 +229,7 @@ class Arnes:
                     values (%s, %s, 'horas', 90, 'pendiente')
                     returning id
                     """,
-                    (self.estudiante_id, self.practica_id),
+                    (self.estudiante_id, practica_id),
                 )
             return str(cur.fetchone()[0])
 
@@ -236,6 +237,10 @@ class Arnes:
         """Borra por estudiante e institucion sinteticos, no por ids acumulados:
         si el proceso murio en el medio, esto barre igual lo que haya quedado."""
         with self.servicio() as conn, conn.cursor() as cur:
+            if not self.estudiante_id:
+                if self.institucion_id:
+                    cur.execute("delete from public.instituciones where id = %s", (self.institucion_id,))
+                return
             cur.execute(
                 "delete from public.solicitudes_nueva_pps where estudiante_id = %s",
                 (self.estudiante_id,),
@@ -365,11 +370,15 @@ def _op_rechazar_nueva(sid: str, motivo: str):
     return op
 
 
-def _op_aprobar_mod(sid: str, horas: int):
+def _op_aprobar_mod(sid: str, horas: int, horas_vistas=None):
+    """`horas_vistas` son las que mostraba la pantalla al abrir la solicitud.
+    Cuando se mandan, la RPC rechaza con 45001 si la practica cambio desde
+    entonces, en vez de pisar una decision tomada desde otra pantalla."""
+
     def op(cur):
         cur.execute(
-            "select estado from public.aprobar_solicitud_modificacion_pps(%s, %s, 'arnes')",
-            (sid, horas),
+            "select estado from public.aprobar_solicitud_modificacion_pps(%s, %s, 'arnes', %s)",
+            (sid, horas, horas_vistas),
         )
         return cur.fetchone()[0]
 
@@ -514,13 +523,26 @@ def escenario_dos_resoluciones_misma_modificacion(arnes: Arnes) -> Resultado:
 
 def escenario_bajas_concurrentes_aprobando(arnes: Arnes) -> Resultado:
     nombre = "dos aprobaciones de la misma baja"
-    sid = arnes.nueva_modificacion("eliminacion")
+    # La baja exige En curso y elimina la práctica. Usar una propia evita
+    # invalidar la precondición y destruir la que usan los otros escenarios.
+    practica_baja = leer(
+        arnes,
+        """
+        insert into public.practicas
+          (estudiante_id, institucion_id, especialidad, estado, horas_realizadas, nombre_institucion)
+        values (%s, %s, 'Clinica', 'En curso', 80, %s) returning id::text
+        """,
+        (arnes.estudiante_id, arnes.institucion_id, f"Baja sintetica {arnes.marca()}"),
+    )[0]
+    sid = arnes.nueva_modificacion("eliminacion", practica_id=practica_baja)
 
     ra, rb, ok = competir(
         arnes,
         _op_resolver_baja(sid, "aprobar", "Baja Administrativa / Sin Penalización", None),
         _op_resolver_baja(sid, "aprobar", "Abandono durante la PPS", None),
     )
+    if ra[0] != "ok":
+        return Resultado(nombre, "falla", f"la primera fallo antes de competir: {ra}")
     if not ok:
         return _sin_competencia(nombre)
 
@@ -534,38 +556,52 @@ def escenario_bajas_concurrentes_aprobando(arnes: Arnes) -> Resultado:
         """,
         (sid,),
     )
-    if ra[0] != "ok":
-        return Resultado(nombre, "falla", f"la primera fallo: {ra}")
-    if rb[0] != "error":
+    if rb[0] != "error" or rb[1] != "P0001":
         return Resultado(nombre, "falla", "la segunda resolvio una baja ya resuelta")
     if estado != "aprobada" or penalizaciones != 1:
         return Resultado(nombre, "falla",
                          f"estado={estado}, penalizaciones={penalizaciones} (deberia ser 1)")
+    if leer(arnes, "select count(*) from public.practicas where id = %s", (practica_baja,))[0] != 0:
+        return Resultado(nombre, "falla", "la baja no eliminó su práctica")
     return Resultado(nombre, "ok", "una sola baja y una sola penalizacion")
 
 
 def escenario_dos_solicitudes_misma_practica(arnes: Arnes) -> Resultado:
     """Caso distinto de la idempotencia: DOS solicitudes distintas sobre la misma
     practica. Compiten por el lock de la practica, no por el de la solicitud.
-    No hay contrato definido —no existe control de version— asi que esto observa
-    y reporta en vez de fijar una conducta que todavia no se decidio.
+
+    Las dos aprobaciones salen de pantallas que veian las mismas horas. La
+    segunda tiene que avisar (45001) en vez de pisar a la primera en silencio, y
+    la practica tiene que quedar con la decision de la primera.
     """
     nombre = "dos solicitudes distintas sobre la misma practica"
     sid_a = arnes.nueva_modificacion("horas")
     sid_b = arnes.nueva_modificacion("horas")
-
-    ra, rb, ok = competir(arnes, _op_aprobar_mod(sid_a, 100), _op_aprobar_mod(sid_b, 120))
-    horas = leer(
+    vistas = leer(
         arnes, "select horas_realizadas from public.practicas where id = %s", (arnes.practica_id,)
     )[0]
 
-    return Resultado(
-        nombre,
-        "observado",
-        f"A={ra[0]} B={rb[0]} · la practica quedo en {horas} h · "
-        f"{'compitieron por el lock de la practica' if ok else 'no se demostro competencia'}. "
-        "Sin control de version: decidir si la segunda deberia ver la decision previa.",
+    ra, rb, ok = competir(
+        arnes,
+        _op_aprobar_mod(sid_a, 100, int(vistas)),
+        _op_aprobar_mod(sid_b, 120, int(vistas)),
     )
+    if not ok:
+        return _sin_competencia(nombre)
+
+    horas = leer(
+        arnes, "select horas_realizadas from public.practicas where id = %s", (arnes.practica_id,)
+    )[0]
+    if ra[0] != "ok":
+        return Resultado(nombre, "falla", f"la primera fallo: {ra}")
+    if rb[0] != "error" or rb[1] != "45001":
+        return Resultado(nombre, "falla",
+                         f"la segunda piso a la primera sin avisar: {rb}")
+    if horas != 100:
+        return Resultado(nombre, "falla",
+                         f"la practica quedo en {horas} h, deberia tener la decision de la primera")
+    return Resultado(nombre, "ok",
+                     "la segunda aviso que la practica habia cambiado y no la piso")
 
 
 ESCENARIOS = [
@@ -601,11 +637,10 @@ def main() -> None:
 
     arnes = Arnes(dsn=args.dsn)
     print(f"\n  corrida {arnes.corrida}")
-    arnes.preparar()
-    arnes.verificar_identidad()
-
     resultados: list[Resultado] = []
     try:
+        arnes.preparar()
+        arnes.verificar_identidad()
         for escenario in ESCENARIOS:
             try:
                 resultados.append(escenario(arnes))

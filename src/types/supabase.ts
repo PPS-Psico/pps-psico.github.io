@@ -3543,6 +3543,7 @@ export type Database = {
       aprobar_solicitud_modificacion_pps: {
         Args: {
           p_horas_aprobadas?: number
+          p_horas_vistas?: number
           p_notas?: string
           p_solicitud_id: string
         }
@@ -3679,6 +3680,10 @@ export type Database = {
         Args: { p_convocatoria_id: string }
         Returns: boolean
       }
+      claim_moodle_scan_page_v2: {
+        Args: { p_cmid: number; p_manual?: boolean; p_preview?: string }
+        Returns: Json
+      }
       claim_moodle_task_intent_lease_v1: {
         Args: {
           p_batch_size?: number
@@ -3763,6 +3768,10 @@ export type Database = {
         Returns: undefined
       }
       close_selection: { Args: { p_lanzamiento_id: string }; Returns: Json }
+      commit_moodle_scan_page_v2: {
+        Args: { p_lease: string; p_payload: Json; p_preview?: string }
+        Returns: Json
+      }
       complete_moodle_jefe_login_v1: {
         Args: { token_hash_input: string; userid_input: string }
         Returns: string
@@ -3981,6 +3990,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      fail_moodle_scan_page_v2: {
+        Args: { p_lease: string; p_preview?: string }
+        Returns: undefined
       }
       finalize_password_reset_delivery: {
         Args: {
@@ -4643,6 +4656,10 @@ export type Database = {
           course_id: number
           task_name: string
         }[]
+      }
+      moodle_scan_queue_v2: {
+        Args: { p_history?: boolean; p_manual?: boolean; p_preview?: string }
+        Returns: Json
       }
       moodle_task_close_state_v1: {
         Args: never
