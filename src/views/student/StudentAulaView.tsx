@@ -526,6 +526,22 @@ const faqGroups: FaqGroup[] = [
         ),
       },
       {
+        q: "¿Cuándo finaliza mi PPS? ¿Puedo dejar de asistir si ya completé las horas?",
+        a: (
+          <>
+            La PPS finaliza cuando la{" "}
+            <strong>institución lo indica y confirma el cierre del recorrido</strong>. La fecha
+            publicada es aproximada y puede variar según el cronograma, los feriados, las
+            recuperaciones u otras circunstancias.{" "}
+            <strong>
+              Alcanzar las horas requeridas antes de esa fecha no te habilita a dejar de asistir
+            </strong>
+            . Tampoco debés darla por terminada sólo porque llegó la fecha estimada. Antes de
+            finalizar, confirmá el cierre con la persona referente de la institución.
+          </>
+        ),
+      },
+      {
         q: "¿Las fechas de finalización son exactas?",
         a: "No. Son estimativas y pueden variar según el cronograma, la frecuencia, los feriados o las recuperaciones. Además, la institución puede extender la PPS para asegurar el cumplimiento total de las horas acordadas.",
       },
